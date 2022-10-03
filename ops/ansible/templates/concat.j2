@@ -1,0 +1,4 @@
+{% for filename in lookup('fileglob', 'peer-inventory/*', wantlist=true) -%}
+{{ lookup('file', filename) }}
+
+{% endfor %}

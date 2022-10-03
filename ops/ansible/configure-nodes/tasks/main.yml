@@ -1,0 +1,89 @@
+---
+# tasks file for configure-nodes
+- name: Update repo cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Install dependencies
+  become: yes
+  apt:
+    name:
+      - wireguard
+    state: latest
+
+- name: Create the gen key script
+  ansible.builtin.copy:
+    dest: /home/{{ ansible_user }}/gen-keys.sh
+    content: |
+      if [ ! -e /etc/wireguard/public.key ]; then
+          wg genkey | sudo tee /etc/wireguard/private.key | wg pubkey | sudo tee /etc/wireguard/public.key
+      fi
+
+- name: Copy the verifier script
+  copy:
+    src: verify-connectivity.sh
+    dest: /home/{{ ansible_user }}/
+    mode: '0755'
+
+- name: Copy inventory for verification
+  copy:
+    src: "{{ inventory_location }}"
+    dest: /home/{{ ansible_user }}/
+
+- name: Create Node Keys
+  become: yes
+  shell: |
+    chmod +x /home/{{ ansible_user }}/gen-keys.sh
+    /home/{{ ansible_user }}/gen-keys.sh
+
+- name: Register the Public Key for the Node
+  become: yes
+  shell: cat /etc/wireguard/public.key
+  register: PUBLIC_KEY
+
+- name: Register the Private Key for the Node
+  become: yes
+  shell: cat /etc/wireguard/private.key
+  register: PRIVATE_KEY
+
+- name: Create the endpoint config on the localhost if it doesn't exist
+  file:
+    dest: "{{ jaywalk_conf_file }}"
+    state: touch
+  delegate_to: localhost
+
+- name: Create the peer-inventory on the localhost if it doesn't exist
+  file:
+    path: /var/tmp/ansible
+    state: directory
+  delegate_to: localhost
+
+- name: Register the Ansible SSH Address
+  shell: echo "{{ inventory_hostname }}"
+  register: ANISBLE_SSH_ADDRESS
+
+- name: Register the public facing IP (Presumes Internet Connectivity)
+  shell: curl https://checkip.amazonaws.com
+  register: PUBLIC_ADDRESS
+
+- name: Register the private address
+  shell: hostname -I | awk '{print $1}'
+  register: PRIVATE_ADDRESS
+
+- name: Insert Node Configuration
+  vars:
+    WIREGUARD_ALLOWED_IPS: "{{ hostvars[inventory_hostname].wireguard_allowed_ips }}"
+    EC2_NODE_NAME: "{{ hostvars[inventory_hostname].node_name }}"
+  blockinfile:
+    path: "{{ peer_inventory }}/{{ hostvars[inventory_hostname].node_name }}"
+    marker: "#-- {mark} {{ hostvars[inventory_hostname].node_name }} ANSIBLE MANAGED BLOCK --#"
+    insertafter: EOF
+    create: true
+    block: |
+      [Peers.public-ip-{{ EC2_NODE_NAME }}]
+      PublicKey = "{{ PUBLIC_KEY.stdout }}"
+      PrivateKey = "{{ PRIVATE_KEY.stdout }}"
+      EndpointIP = "{{ PUBLIC_ADDRESS.stdout }}:{{ wireguard_port }}"
+      AllowedIPs = "{{ WIREGUARD_ALLOWED_IPS }}"
+  delegate_to: localhost

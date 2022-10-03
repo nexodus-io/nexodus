@@ -1,0 +1,18 @@
+# roles get branched from here
+- hosts: localhost
+  vars_files:
+    - vars.yml
+  roles:
+    - role: setup-ec2
+
+- hosts: wireguardNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: configure-nodes
+
+- hosts: wireguardNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: deploy-mesh

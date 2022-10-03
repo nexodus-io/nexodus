@@ -1,0 +1,98 @@
+---
+# tasks file for setup-ec2
+- name: Installing boto library
+  pip:
+    name: boto
+    state: present
+
+### VPC Blue Deployment ###
+- name: Creating Security Group for VPC Blue
+  amazon.aws.ec2_group:
+    name: "{{ secgroup_name_blue }}"
+    aws_region: "{{ aws_region }}"
+    description: "{{ security_group_description }}"
+    vpc_id: "{{ vpc_id_blue }}"
+    rules:
+      - proto: all
+        cidr_ip: "0.0.0.0/0"
+
+- name: Launching EC2 Instances in VPC Blue
+  amazon.aws.ec2_instance:
+    name: "wireguard-blue-node-{{ item+1 }}"
+    aws_region: "{{ aws_region }}"
+    key_name: "{{ aws_key_name }}"
+    instance_type: "{{ aws_instance_type }}"
+    image_id: "{{ aws_image_id }}"
+    security_group: "{{ secgroup_name_blue }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 25
+          delete_on_termination: true
+          volume_type: standard
+    network:
+      assign_public_ip: true
+    subnet_id: "{{ aws_subnet_blue }}"
+    tags:
+      NodeType: "{{ aws_nodetype_tag }}"
+    state: running
+    wait: true
+  register: nodeIP
+  loop: "{{ range(0, node_count_blue | int) }}"
+
+- name: Updating the node's public ip in inventory
+  lineinfile:
+    path: "{{ inventory_location }}"
+    regexp: "wireguardNodes"
+    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-blue-node-{{ item+1 }} wireguard_allowed_ips=10.100.1.{{ item+1 }}/32"
+  loop: "{{ range(0, node_count_blue | int) }}"
+
+### VPC Green Deployment ###
+- name: Creating Security Group for VPC Blue
+  amazon.aws.ec2_group:
+    name: "{{ secgroup_name_green }}"
+    aws_region: "{{ aws_region }}"
+    description: "{{ security_group_description }}"
+    vpc_id: "{{ vpc_id_green }}"
+    rules:
+      - proto: all
+        cidr_ip: "0.0.0.0/0"
+
+- name: Launching EC2 Instances in VPC Green
+  amazon.aws.ec2_instance:
+    name: "wireguard-green-node-{{ item+1 }}"
+    aws_region: "{{ aws_region }}"
+    key_name: "{{ aws_key_name }}"
+    instance_type: "{{ aws_instance_type }}"
+    image_id: "{{ aws_image_id }}"
+    security_group: "{{ secgroup_name_green }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 25
+          delete_on_termination: true
+          volume_type: standard
+    network:
+      assign_public_ip: true
+    subnet_id: "{{ aws_subnet_green }}"
+    tags:
+      NodeType: "{{ aws_nodetype_tag }}"
+    state: running
+    wait: true
+  register: nodeIP
+  loop: "{{ range(0, node_count_green | int) }}"
+
+- name: Updating the node's public ip in inventory
+  lineinfile:
+    path: "{{ inventory_location }}"
+    regexp: "wireguardNodes"
+    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-green-node-{{ item+1 }} wireguard_allowed_ips=10.200.1.{{ item+1 }}/32"
+  loop: "{{ range(0, node_count_green | int) }}"
+
+
+- name: Refresh inventory to ensure new instaces exist in inventory
+  meta: refresh_inventory
+
+- name: Pause for 80 seconds to allow the instances to finish booting and become reachable
+  pause:
+    seconds: 80

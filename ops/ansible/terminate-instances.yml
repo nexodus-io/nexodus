@@ -1,0 +1,6 @@
+# roles get branched from here
+- hosts: localhost
+  vars_files:
+    - vars.yml
+  roles:
+    - role: terminate-ec2

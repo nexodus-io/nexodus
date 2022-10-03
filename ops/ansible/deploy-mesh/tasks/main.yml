@@ -1,0 +1,29 @@
+---
+# tasks file for deploy-mesh
+
+- name: concatenate
+  ansible.builtin.template:
+    src: templates/concat.j2
+    dest: "{{ jaywalk_conf_file }}"
+  delegate_to: localhost
+
+- name: Register the Public Key for the Node
+  become: yes
+  shell: cat /etc/wireguard/public.key
+  register: PUBLIC_KEY
+
+- name: Download the jaywalk binary
+  become: yes
+  shell: |
+    curl {{ wireguard_binary_bucket }} --output /usr/local/sbin/jaywalk
+    chmod +x /usr/local/sbin/jaywalk
+
+- name: Copy the endpoints configuration file to the remote host
+  copy:
+    src: "{{ jaywalk_conf_file }}"
+    dest: /home/{{ ansible_user }}/
+
+- name: Run Jaywalk and build the tunnels
+  become: yes
+  shell: |
+    jaywalk --public-key={{ PUBLIC_KEY.stdout }} --config=/home/{{ ansible_user }}/{{ jaywalk_conf_file }}
