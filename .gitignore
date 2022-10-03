@@ -19,7 +19,8 @@ jaywalk-amd64-linux
 # Ops files
 *.pem
 **/peer-inventory/*
-endpoints.toml
+**/endpoints.toml
+**/inventory.txt
 
 # misc
 *.idea

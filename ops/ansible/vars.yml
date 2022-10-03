@@ -8,7 +8,7 @@ ansible_user: ubuntu                  # this is the default user ID for your AMI
 security_group_description: "Wireguard Testing and CI for VPC perf-testing-vpc"
 inventory_location: inventory.txt     # leaving this as is will use the inventory.txt file in the base directory
 wireguard_port: 51871
-wireguard_binary_bucket: https://perf-testing-submariner-s3.s3.amazonaws.com/jaywalk-amd64-linux
+wireguard_binary_bucket: https://jaywalking.s3.amazonaws.com/jaywalk-amd64-linux
 jaywalk_conf_file: endpoints.toml
 peer_inventory: ./peer-inventory
 

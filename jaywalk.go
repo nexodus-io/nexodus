@@ -99,10 +99,10 @@ func main() {
 	}
 	app.Name = "jaywalk"
 	app.Usage = "encrypted mesh networking"
-	// clean up any pre-existing interfaces or processes from prior tests
+	// clean up any pre-existing interfaces
 	app.Before = func(c *cli.Context) error {
 		if c.IsSet("clean") {
-			log.Print("Cleaning up any existing benchmark interfaces")
+			log.Print("Cleaning up any residuals")
 			// todo: implement a cleanup function
 		}
 		return nil
@@ -151,7 +151,7 @@ func runInit() {
 		}
 	}
 
-	appState := &jaywalkState{
+	js := &jaywalkState{
 		nodePubKey:        cliFlags.wireguardPubKey,
 		jaywalkConfigFile: cliFlags.configFile,
 		daemon:            cliFlags.daemon,
@@ -159,9 +159,9 @@ func runInit() {
 	}
 
 	// parse the jaywalk config into wireguard config structs
-	appState.parseJaywalkConfig()
+	js.parseJaywalkConfig()
 	// write the wireguard configuration to file and deploy
-	appState.deployWireguardConfig()
+	js.deployWireguardConfig()
 
 	// if agent-mode is set, run as a daemon TODO: stuff ¯\_(ツ)_/¯
 	if cliFlags.daemon {
