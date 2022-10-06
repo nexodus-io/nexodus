@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"gopkg.in/ini.v1"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/spf13/viper"
+	"gopkg.in/ini.v1"
 )
 
 // parseJaywalkConfig extracts the jaywalk toml config and
@@ -27,14 +29,13 @@ func (js *jaywalkState) parseJaywalkConfig() {
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 
-	var pubKeyExists bool
 	for _, value := range conf.Peers {
 		if value.PublicKey == js.nodePubKey {
-			pubKeyExists = true
+			js.nodePubKeyInConfig = true
 		}
 	}
-	if !pubKeyExists {
-		log.Fatalf("Public Key for this host was not found in %s", jaywalkConfig)
+	if !js.nodePubKeyInConfig {
+		log.Printf("Public Key for this node was not found in %s", jaywalkConfig)
 	}
 
 	for nodeName, value := range conf.Peers {
@@ -45,7 +46,7 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				[]string{value.WireguardIP},
 			}
 			peers = append(peers, peer)
-			log.Printf("[debug] Peer Node Configuration for: [ %v ] Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ]\n",
+			log.Printf("[DEBUG] Peer Node Configuration [%v] Peer AllowedIPs [%s] Peer Endpoint IP [%s] Peer Public Key [%s]\n",
 				nodeName,
 				value.WireguardIP,
 				value.EndpointIP,
@@ -58,10 +59,11 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				wgListenPort,
 				false,
 			}
-			log.Printf("[debug] Local Node Configuration - Wireguard Local Endpoint IP [ %s ] Port [ %v ] Local Private Key [ %s ]\n",
-				localInterface.Address,
-				wgListenPort,
-				localInterface.PrivateKey)
+			log.Printf("[DEBUG] Local Node Configuration [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
+				nodeName,
+				value.WireguardIP,
+				value.EndpointIP,
+				value.PrivateKey)
 		}
 	}
 	js.wgConf.Interface = localInterface
@@ -85,7 +87,7 @@ func (js *jaywalkState) deployWireguardConfig() {
 
 	switch js.nodeOS {
 	case linux.String():
-		// wg does create the linux filepath by default
+		// wg does not create the OSX config directory by default
 		if err = createDirectory(wgLinuxConfPath); err != nil {
 			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
 		}
@@ -94,38 +96,40 @@ func (js *jaywalkState) deployWireguardConfig() {
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
 		}
+		if js.nodePubKeyInConfig {
 
-		// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
-		activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
-		if _, err = os.Stat(activeConfig); err != nil {
-			if err = applyWireguardConf(); err != nil {
-				log.Fatal(err)
-			}
-		} else {
-			if err = updateWireguardConfig(); err != nil {
-				log.Fatal(err)
+			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
+			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
+			if _, err = os.Stat(activeConfig); err != nil {
+				if err = applyWireguardConf(); err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				if err = updateWireguardConfig(); err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 	case darwin.String():
-		// wg does not create the OSX config directory by default
-		if err = createDirectory(wgDarwinConfPath); err != nil {
-			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
-		}
-
 		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
 		}
-		wgOut, err := runCommand("wg-quick", "down", wgIface)
-		if err != nil {
-			log.Printf("failed to start the wireguard interface: %v", err)
+
+		if js.nodePubKeyInConfig {
+			wgOut, err := runCommand("wg-quick", "down", wgIface)
+			if err != nil {
+				log.Printf("failed to start the wireguard interface: %v", err)
+			}
+			log.Printf("%v\n", wgOut)
+			wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
+			if err != nil {
+				log.Printf("failed to start the wireguard interface: %v", err)
+			}
+			log.Printf("%v\n", wgOut)
+		} else {
+			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
-		log.Printf("%v\n", wgOut)
-		wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
-		if err != nil {
-			log.Printf("failed to start the wireguard interface: %v", err)
-		}
-		log.Printf("%v\n", wgOut)
 	}
 }
 
@@ -153,15 +157,27 @@ func updateWireguardConfig() error {
 		return fmt.Errorf("failed to strip the latest configuration: %v", err)
 	}
 
+	// TODO: WARNING!!! THIS IS A HACK SINCE unmarshallWireguardCfg()
+	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
+	if !strings.Contains(stripActiveCfg, "[Peer") {
+		log.Printf("No existing peers found")
+		err := applyWireguardConf()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	// unmarshall the active and latest configurations
-	activePeers, err := unmarshallWireguadCfg(stripActiveCfg)
+	activePeers, err := unmarshallWireguardCfg(stripActiveCfg)
 	if err != nil {
 		return err
 	}
-	revisedPeers, err := unmarshallWireguadCfg(stripLatestRevCfg)
+	revisedPeers, err := unmarshallWireguardCfg(stripLatestRevCfg)
 	if err != nil {
 		return err
 	}
+
 	// diff the configurations and rebuild the tunnel if there has been a change
 	if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
 		log.Printf("Configuration change detected\n")
@@ -187,7 +203,7 @@ func applyWireguardConf() error {
 	}
 	activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
 	latestRevConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
-	// copy the latest config rev to /etc/wireguard/wg0.conf
+	// copy the latest config rev to wg0.conf
 	if err := copyFile(latestRevConfig, activeConfig); err != nil {
 		return err
 	}

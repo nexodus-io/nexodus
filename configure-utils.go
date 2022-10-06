@@ -2,12 +2,18 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/ini.v1"
 	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
-func unmarshallWireguadCfg(iniConfig string) (*wgConfig, error) {
-	iniFile, err := ini.LoadSources(ini.LoadOptions{AllowNonUniqueSections: true}, strings.NewReader(iniConfig))
+func unmarshallWireguardCfg(iniConfig string) (*wgConfig, error) {
+	iniFile, err := ini.LoadSources(ini.LoadOptions{
+		IgnoreInlineComment:     true,
+		AllowNonUniqueSections:  true,
+		SkipUnrecognizableLines: true,
+	}, strings.NewReader(iniConfig))
+
 	if err != nil {
 		return nil, fmt.Errorf("error loading wireguard ini file: %v", err)
 	}

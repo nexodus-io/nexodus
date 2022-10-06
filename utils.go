@@ -15,21 +15,6 @@ import (
 	"time"
 )
 
-// Encapsulation supported encap types
-type Encapsulation string
-
-const (
-	Wireguard Encapsulation = "wireguard"
-)
-
-func (encap Encapsulation) String() string {
-	switch encap {
-	case Wireguard:
-		return "wireguard"
-	}
-	return "unsupported"
-}
-
 // supported OS types
 type operatingSystem string
 
@@ -74,33 +59,6 @@ func isCommandAvailable(name string) bool {
 // timestampFile return a unique timestamped filename
 func timestampFile(filename string) string {
 	return fmt.Sprintf(filename + "-" + time.Now().Format("20060102150405"))
-}
-
-// SplitTunnelDest is used to parse node name from
-// node IP if multiple tunnel endpoints are passed
-func SplitTunnelDest(tunnelDestInput string) []string {
-	return strings.Split(tunnelDestInput, ",")
-}
-
-// SplitTunnelPair splits the IP and hostname
-// todo: fix this as it probably breaks with ipv6
-func splitTunnelPair(tunnelDestInput string) []string {
-	return strings.Split(tunnelDestInput, ":")
-}
-
-// mapTunnelDest creates a k/v pair of node name and node IP
-func mapTunnelDest(tunnelDestInput string) map[string]net.IP {
-	tunnelDestList := strings.Split(tunnelDestInput, ",")
-	tunnelDestMap := make(map[string]net.IP)
-	for _, tunnelDestPair := range tunnelDestList {
-		hostAddressPair := splitTunnelPair(tunnelDestPair)
-		// validate the passed remote address is a valid v4 or v6 address
-		if err := validateIp(hostAddressPair[1]); err != nil {
-			log.Fatal(err)
-		}
-		tunnelDestMap[hostAddressPair[0]] = net.ParseIP(hostAddressPair[1])
-	}
-	return tunnelDestMap
 }
 
 // validateIp ensures a valid IP4/IP6 address is provided
