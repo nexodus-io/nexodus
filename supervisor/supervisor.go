@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
@@ -32,19 +33,12 @@ func init() {
 	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
 	flag.Parse()
 
-	streamSocket := fmt.Sprintf("%s:%d", *streamService, streamPort)
-	redisDB = redis.NewClient(&redis.Options{
-		Addr:     streamSocket,
-		Password: *streamPasswd,
-	})
-
 	// Start the gin router
 	router := gin.Default()
 	router.GET("/peers", getPeers)
 	router.GET("/peers/:id", getPeerByKey)
 	router.POST("/peers", postPeers)
 	go router.Run("localhost:8080")
-
 }
 
 // Message Events
@@ -58,6 +52,7 @@ type Peer struct {
 	PublicKey  string `json:"PublicKey"`
 	EndpointIP string `json:"EndpointIP"`
 	AllowedIPs string `json:"AllowedIPs"`
+	Zone       string `json:"Zone"`
 }
 
 type MsgEvent struct {
@@ -66,74 +61,87 @@ type MsgEvent struct {
 }
 
 func main() {
+	streamerSocket := fmt.Sprintf("%s:%d", *streamService, streamPort)
 
-	defer redisDB.Close()
-	pubsub := redisDB.Subscribe(zoneChannelBlue)
-	defer pubsub.Close()
+	client := newRedisClient(streamerSocket, *streamPasswd)
+	defer client.Close()
 
-	fmt.Printf("[INFO] Subscribed to channel: %s\n", zoneChannelBlue)
+	_, err := client.Ping().Result()
+	if err != nil {
+		log.Fatalf("Unable to connect to the redis instance at %s: %v", streamerSocket, err)
+	}
 
-	var nodeSate = make(map[string]Peer)
-	for {
-		msg, err := pubsub.ReceiveMessage()
-		if err != nil {
-			log.Fatal(err)
-			os.Exit(1)
-		}
+	pubBlue := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
+	subBlue := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
+	var nodeStateBlue = make(map[string]Peer)
+	msgChanBlue := make(chan string)
+	go func() {
+		subBlue.subscribe(zoneChannelBlue, msgChanBlue)
+		for {
+			msg := <-msgChanBlue
+			incomingMsg := handleMsg(msg)
 
-		switch msg.Channel {
-		case zoneChannelBlue:
-			incomingMsg := handleMsg(msg.Payload)
 			switch incomingMsg.Event {
 			case registerNodeRequest:
 
 				if incomingMsg.Peer.PublicKey != "" {
-					lameIPAM := len(nodeSate) + 1
+					lameIPAM := len(nodeStateBlue) + 1
 					wireguardIP := fmt.Sprintf("%s.%d/32", ipPrefixBlue, lameIPAM)
 					newNode := Peer{
 						PublicKey:  incomingMsg.Peer.PublicKey,
 						EndpointIP: incomingMsg.Peer.EndpointIP,
 						AllowedIPs: wireguardIP,
+						Zone:       incomingMsg.Peer.Zone,
 					}
-					nodeSate[incomingMsg.Peer.PublicKey] = newNode
+					nodeStateBlue[incomingMsg.Peer.PublicKey] = newNode
 					var peerList []Peer
-					for pubKey, nodeElements := range nodeSate {
-						fmt.Printf("NodeState -> PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
+					for pubKey, nodeElements := range nodeStateBlue {
+						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
 					}
-					publishAllPeersMessage(zoneChannelBlue, peerList)
-
+					pubBlue.publish(zoneChannelBlue, peerList)
 				}
 			}
-		case zoneChannelRed:
-			incomingMsg := handleMsg(msg.Payload)
+		}
+	}()
+
+	pubRed := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
+	subRed := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
+	var nodeStateRed = make(map[string]Peer)
+	msgChanRed := make(chan string)
+	go func() {
+		subRed.subscribe(zoneChannelRed, msgChanRed)
+		for {
+			msg := <-msgChanRed
+			incomingMsg := handleMsg(msg)
 			switch incomingMsg.Event {
 			case registerNodeRequest:
-
 				if incomingMsg.Peer.PublicKey != "" {
-					lameIPAM := len(nodeSate) + 1
+					lameIPAM := len(nodeStateRed) + 1
 					wireguardIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
 					newNode := Peer{
 						PublicKey:  incomingMsg.Peer.PublicKey,
 						EndpointIP: incomingMsg.Peer.EndpointIP,
 						AllowedIPs: wireguardIP,
+						Zone:       incomingMsg.Peer.Zone,
 					}
-					nodeSate[incomingMsg.Peer.PublicKey] = newNode
+					nodeStateRed[incomingMsg.Peer.PublicKey] = newNode
 					var peerList []Peer
-					for pubKey, nodeElements := range nodeSate {
-						fmt.Printf("NodeState -> PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
+					for pubKey, nodeElements := range nodeStateRed {
+						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
 					}
-					publishAllPeersMessage(zoneChannelBlue, peerList)
-
+					pubRed.publish(zoneChannelRed, peerList)
 				}
 			}
 		}
-		// TODO: Unnecessary but temporarily useful for debugging
-		time.Sleep(1 * time.Second)
-	}
+	}()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	<-ch
 }
 
 // handleMsg deals with streaming messages
@@ -147,14 +155,46 @@ func handleMsg(payload string) MsgEvent {
 	return peer
 }
 
-func publishAllPeersMessage(channel string, data []Peer) {
-	id, msg := createAllPeerMessage(data)
-	err := redisDB.Publish(channel, msg).Err()
-	if err != nil {
-		log.Printf("[ERROR] sending %s message failed, %v\n", id, err)
-		return
-	}
+// pubSub redis pubsub struct
+type pubSub struct {
+	client *redis.Client
+}
+
+// dispose dispose pubsub instance
+func (pubsub *pubSub) dispose() {
+	pubsub.client.Close()
+}
+
+// newPubsub create pubsub instance
+func newPubsub(client *redis.Client) *pubSub {
+	return &pubSub{client: client}
+}
+
+// publish publish a message into the channel
+func (pubsub *pubSub) publish(channel string, data []Peer) (int64, error) {
+	_, msg := createAllPeerMessage(data)
 	log.Printf("[INFO] Published new message: %s\n", msg)
+	return pubsub.client.Publish(channel, msg).Result()
+}
+
+// subscribe subscribe a redis channel to receive message
+func (pubsub *pubSub) subscribe(channel string, msg chan string) {
+	sub := pubsub.client.Subscribe(channel)
+	go func() {
+		for {
+			outPut, _ := sub.ReceiveMessage()
+			msg <- outPut.Payload
+		}
+	}()
+}
+
+// newRedisClient creates a redis client instance
+func newRedisClient(streamerSocket, streamPasswd string) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:     streamerSocket,
+		Password: streamPasswd,
+		DB:       0,
+	})
 }
 
 func createAllPeerMessage(postData []Peer) (string, string) {
@@ -163,33 +203,10 @@ func createAllPeerMessage(postData []Peer) (string, string) {
 	return id, string(msg)
 }
 
-func UnmarshalMessage(s string) (*MsgEvent, error) {
+func unmarshalMessage(s string) (*MsgEvent, error) {
 	var msg MsgEvent
 	if err := json.Unmarshal([]byte(s), &msg); err != nil {
 		return nil, err
 	}
 	return &msg, nil
-}
-
-func NewMessage(event, pubKey, privateKey, allowedIPs string) (string, string) {
-	id := uuid.NewString()
-	msg := MsgEvent{}
-	msg.Event = event
-	peer := Peer{
-		PublicKey:  pubKey,
-		EndpointIP: privateKey,
-		AllowedIPs: allowedIPs,
-	}
-	msg.Peer = peer
-	jMsg, _ := json.Marshal(&msg)
-	return id, string(jMsg)
-}
-
-func PublishMessage(channel, msg string) {
-	err := redisDB.Publish(channel, msg).Err()
-	if err != nil {
-		log.Printf("[ERROR] sending message, %v\n", err)
-		return
-	}
-	fmt.Printf("[INFO] SENT ---> %s\n", msg)
 }

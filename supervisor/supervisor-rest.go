@@ -50,3 +50,13 @@ func getPeerByKey(c *gin.Context) {
 	}
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Peers not found"})
 }
+
+func publishAllPeersMessage(channel string, data []Peer) {
+	id, msg := createAllPeerMessage(data)
+	err := redisDB.Publish(channel, msg).Err()
+	if err != nil {
+		log.Printf("[ERROR] sending %s message failed, %v\n", id, err)
+		return
+	}
+	log.Printf("[INFO] Published new message: %s\n", msg)
+}
