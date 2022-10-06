@@ -12,6 +12,7 @@ type Peer struct {
 	PublicKey  string `json:"PublicKey"`
 	EndpointIP string `json:"EndpointIP"`
 	AllowedIPs string `json:"AllowedIPs"`
+	Zone       string `json:"Zone"`
 }
 
 // handleMsg deal with streaming messages

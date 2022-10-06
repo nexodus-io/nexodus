@@ -234,8 +234,8 @@ func runInit() {
 			log.Printf("[WARN] Unable to determine the public address")
 		}
 		endPointIP := fmt.Sprintf("%s:%d", pubIP, wgListenPort)
-		// 34.224.78.66:51820
-		peerRegister := publishMessage(registerNodeRequest, js.nodePubKey, endPointIP)
+
+		peerRegister := publishMessage(registerNodeRequest, js.zone, js.nodePubKey, endPointIP)
 		err = rc.Publish(js.zone, peerRegister).Err()
 		if err != nil {
 			log.Printf("[ERROR] failed to publish subscriber message: %v", err)
@@ -277,12 +277,13 @@ type MsgEvent struct {
 	Peer  Peer
 }
 
-func publishMessage(event, pubKey, endpointIP string) string {
+func publishMessage(event, zone, pubKey, endpointIP string) string {
 	msg := MsgEvent{}
 	msg.Event = event
 	peer := Peer{
 		PublicKey:  pubKey,
 		EndpointIP: endpointIP,
+		Zone:       zone,
 	}
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)
