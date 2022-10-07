@@ -13,13 +13,13 @@ peer_inventory: ./peer-inventory
 
 ### Blue VPC Details ###
 secgroup_name_blue: JaywalkBlue           # the security group name can be an existing group or else it will be created by the playbook
-node_count_blue: 2                         # the number of cluster nodes you want to deploy
+node_count_blue: 1                         # the number of cluster nodes you want to deploy
 vpc_id_blue: vpc-0566e09aa71f553c1         # VPC id from your aws account
 aws_subnet_blue: subnet-0f8a1403fde2af94e  # VPC subnet id from your aws account
 
 ### Green VPC Details ###
 secgroup_name_green: JaywalkGreen          # the security group name can be an existing group or else it will be created by the playbook
-node_count_green: 2                         # the number of cluster nodes you want to deploy
+node_count_green: 1                         # the number of cluster nodes you want to deploy
 vpc_id_green: vpc-27b7165a                  # VPC id from your aws account
 aws_subnet_green: subnet-dabb9e97           # VPC subnet id from your aws account
 
