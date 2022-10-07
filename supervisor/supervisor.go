@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
-	"github.com/google/uuid"
 )
 
 var (
@@ -32,13 +31,6 @@ func init() {
 	streamService = flag.String("streamer-address", "", "streamer address")
 	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
 	flag.Parse()
-
-	// Start the gin router
-	router := gin.Default()
-	router.GET("/peers", getPeers)
-	router.GET("/peers/:id", getPeerByKey)
-	router.POST("/peers", postPeers)
-	go router.Run("localhost:8080")
 }
 
 // Message Events
@@ -60,20 +52,44 @@ type MsgEvent struct {
 	Peer  Peer
 }
 
-func main() {
-	streamerSocket := fmt.Sprintf("%s:%d", *streamService, streamPort)
+type Supervisor struct {
+	Router       *gin.Engine
+	nodeMapRed   map[string]Peer
+	nodeMapBlue  map[string]Peer
+	stream       *redis.Client
+	streamSocket string
+	streamPass   string
+}
 
-	client := newRedisClient(streamerSocket, *streamPasswd)
+func initApp() *Supervisor {
+	sup := new(Supervisor)
+	sup.Router = gin.Default()
+	sup.Router.GET("/peers", sup.getPeers)          // curl http://localhost:8080/peers
+	sup.Router.GET("/peers/:key", sup.getPeerByKey) // curl http://localhost:8080/peers/pubkey
+	sup.Router.POST("/peers", sup.postPeers)        // TODO: not functioning
+	sup.nodeMapBlue = make(map[string]Peer)
+	sup.nodeMapRed = make(map[string]Peer)
+	sup.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
+	sup.streamPass = *streamPasswd
+
+	return sup
+}
+
+func main() {
+
+	sup := initApp()
+
+	client := newRedisClient(sup.streamSocket, sup.streamPass)
 	defer client.Close()
 
 	_, err := client.Ping().Result()
 	if err != nil {
-		log.Fatalf("Unable to connect to the redis instance at %s: %v", streamerSocket, err)
+		log.Fatalf("Unable to connect to the redis instance at %s: %v", sup.streamSocket, err)
 	}
 
-	pubBlue := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
-	subBlue := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
-	var nodeStateBlue = make(map[string]Peer)
+	pubBlue := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
+	subBlue := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
+
 	msgChanBlue := make(chan string)
 	go func() {
 		subBlue.subscribe(zoneChannelBlue, msgChanBlue)
@@ -86,21 +102,21 @@ func main() {
 					nodeEvent := Peer{}
 					// if the node already exists, preserve it's wireguard IP,
 					// delete the peer and add in the latest state
-					if _, ok := nodeStateBlue[msgEvent.Peer.PublicKey]; ok {
-						nodeEvent = msgEvent.newNode(nodeStateBlue[msgEvent.Peer.PublicKey].AllowedIPs)
+					if _, ok := sup.nodeMapBlue[msgEvent.Peer.PublicKey]; ok {
+						nodeEvent = msgEvent.newNode(sup.nodeMapBlue[msgEvent.Peer.PublicKey].AllowedIPs)
 					} else {
 						// if this is a new node, assign a new ipam address
-						lameIPAM := len(nodeStateBlue) + 1
+						lameIPAM := len(sup.nodeMapBlue) + 1
 						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixBlue, lameIPAM)
 						nodeEvent = msgEvent.newNode(ipamIP)
 					}
 					// delete the old k/v pair if one exists and replace it with the new registration data
-					if _, ok := nodeStateBlue[msgEvent.Peer.PublicKey]; ok {
-						delete(nodeStateBlue, msgEvent.Peer.PublicKey)
+					if _, ok := sup.nodeMapBlue[msgEvent.Peer.PublicKey]; ok {
+						delete(sup.nodeMapBlue, msgEvent.Peer.PublicKey)
 					}
-					nodeStateBlue[msgEvent.Peer.PublicKey] = nodeEvent
+					sup.nodeMapBlue[msgEvent.Peer.PublicKey] = nodeEvent
 					var peerList []Peer
-					for pubKey, nodeElements := range nodeStateBlue {
+					for pubKey, nodeElements := range sup.nodeMapBlue {
 						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
@@ -111,9 +127,9 @@ func main() {
 		}
 	}()
 
-	pubRed := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
-	subRed := newPubsub(newRedisClient(streamerSocket, *streamPasswd))
-	var nodeStateRed = make(map[string]Peer)
+	pubRed := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
+	subRed := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
+
 	msgChanRed := make(chan string)
 	go func() {
 		subRed.subscribe(zoneChannelRed, msgChanRed)
@@ -126,22 +142,22 @@ func main() {
 					nodeEvent := Peer{}
 					// if the node already exists, preserve it's wireguard IP,
 					// delete the peer and add in the latest state
-					if _, ok := nodeStateRed[msgEvent.Peer.PublicKey]; ok {
-						nodeEvent = msgEvent.newNode(nodeStateRed[msgEvent.Peer.PublicKey].AllowedIPs)
+					if _, ok := sup.nodeMapRed[msgEvent.Peer.PublicKey]; ok {
+						nodeEvent = msgEvent.newNode(sup.nodeMapRed[msgEvent.Peer.PublicKey].AllowedIPs)
 					} else {
 						// if this is a new node, assign a new ipam address
-						lameIPAM := len(nodeStateRed) + 1
+						lameIPAM := len(sup.nodeMapRed) + 1
 						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
 						nodeEvent = msgEvent.newNode(ipamIP)
 					}
 					// delete the old k/v pair if one exists and replace it
-					if _, ok := nodeStateRed[msgEvent.Peer.PublicKey]; ok {
-						delete(nodeStateRed, msgEvent.Peer.PublicKey)
+					if _, ok := sup.nodeMapRed[msgEvent.Peer.PublicKey]; ok {
+						delete(sup.nodeMapRed, msgEvent.Peer.PublicKey)
 					}
-					nodeStateRed[msgEvent.Peer.PublicKey] = nodeEvent
+					sup.nodeMapRed[msgEvent.Peer.PublicKey] = nodeEvent
 
 					var peerList []Peer
-					for pubKey, nodeElements := range nodeStateRed {
+					for pubKey, nodeElements := range sup.nodeMapRed {
 						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
@@ -151,6 +167,8 @@ func main() {
 			}
 		}
 	}()
+	// Start the http router
+	sup.Router.Run("localhost:8080")
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
@@ -176,60 +194,4 @@ func handleMsg(payload string) MsgEvent {
 		return peer
 	}
 	return peer
-}
-
-// pubSub redis pubsub struct
-type pubSub struct {
-	client *redis.Client
-}
-
-// dispose dispose pubsub instance
-func (pubsub *pubSub) dispose() {
-	pubsub.client.Close()
-}
-
-// newPubsub create pubsub instance
-func newPubsub(client *redis.Client) *pubSub {
-	return &pubSub{client: client}
-}
-
-// publish publish a message into the channel
-func (pubsub *pubSub) publish(channel string, data []Peer) (int64, error) {
-	_, msg := createAllPeerMessage(data)
-	log.Printf("[INFO] Published new message: %s\n", msg)
-	return pubsub.client.Publish(channel, msg).Result()
-}
-
-// subscribe subscribe a redis channel to receive message
-func (pubsub *pubSub) subscribe(channel string, msg chan string) {
-	sub := pubsub.client.Subscribe(channel)
-	go func() {
-		for {
-			outPut, _ := sub.ReceiveMessage()
-			msg <- outPut.Payload
-		}
-	}()
-}
-
-// newRedisClient creates a redis client instance
-func newRedisClient(streamerSocket, streamPasswd string) *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr:     streamerSocket,
-		Password: streamPasswd,
-		DB:       0,
-	})
-}
-
-func createAllPeerMessage(postData []Peer) (string, string) {
-	id := uuid.NewString()
-	msg, _ := json.Marshal(postData)
-	return id, string(msg)
-}
-
-func unmarshalMessage(s string) (*MsgEvent, error) {
-	var msg MsgEvent
-	if err := json.Unmarshal([]byte(s), &msg); err != nil {
-		return nil, err
-	}
-	return &msg, nil
 }

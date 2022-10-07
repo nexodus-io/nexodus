@@ -78,6 +78,74 @@ sudo wg-quick down wg0
 - This can be run behind natted networks for remote spoke machines and do not require any incoming ports to be opened to the device. Only one side of the peering needs an open port
   for connections to be initiated. Once the connection is initiated from one side, bi-directional communications can be established. This aspect is especially interesting for IOT/Edge.
 
+### REST API
+
+There are currently some basic supported REST calls:
+
+- Get all peers
+
+```shell
+curl -s --location --request GET 'http://localhost:8080/peers' | python -m json.tool
+```
+
+- Get all peers output
+
+```json
+[{
+"PublicKey": "DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=",
+"EndpointIP": "3.94.59.204:51820",
+"AllowedIPs": "10.10.1.1/32",
+"Zone": "zone-blue"
+},
+{
+"PublicKey": "O3UVnLl6BFNYWf21tEDGpKbxYfzCp9LzwSXbtd9i+Eg=",
+"EndpointIP": "18.205.149.74:51820",
+"AllowedIPs": "10.10.1.2/32",
+"Zone": "zone-blue"
+},
+{
+"PublicKey": "SvAAJctGA5U6EP+30LMuhoG76VLrEhwq3rwFf9pqcB4=",
+"EndpointIP": "3.82.51.92:51820",
+"AllowedIPs": "10.10.1.3/32",
+"Zone": "zone-blue"
+},
+{
+"PublicKey": "M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=",
+"EndpointIP": "34.224.78.66:51820",
+"AllowedIPs": "10.10.1.1/32",
+"Zone": "zone-red"
+},
+{
+"PublicKey": "oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=",
+"EndpointIP": "71.31.21.22:51820",
+"AllowedIPs": "10.10.1.2/32",
+"Zone": "zone-red"
+},
+{
+"PublicKey": "IMqxPz/eQzCdHjb8Ajl7OVTtJmZqiKeS6SvQLml21nU=",
+"EndpointIP": "71.31.21.22:51820",
+"AllowedIPs": "10.10.1.3/32",
+"Zone": "zone-red"
+}]
+```
+
+- Get a peer by key
+
+```shell
+curl -s --location --request GET 'http://localhost:8080/peers/M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=' | python -m json.tool
+```
+
+- Get a peer by key output
+
+```json
+{
+    "PublicKey": "M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=",
+    "EndpointIP": "34.224.78.66:51820",
+    "AllowedIPs": "10.10.1.1/32",
+    "Zone": "zone-red"
+}
+```
+
 ### Ansible Deployment
 
 To deploy the current state run the following which deploys nodes across two VPCs and enables full mesh connectivity between them (simulating two disparate data centers)
