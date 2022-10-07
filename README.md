@@ -4,6 +4,10 @@ Roads? Where we're going, we don't need roads - *Dr Emmett Brown*
 
 ### Jaywalk Quickstart
 
+<img src="https://jaywalking.s3.amazonaws.com/jaywalker-multi-tenant.png" width="50%" height="50%">
+
+*Figure 1. Getting started topology that can be setup in minutes* 
+
 - Build for the node OS that is getting onboarded to the mesh:
 
 ```
@@ -36,7 +40,7 @@ jaywalk-supervisor \
 - Generate your private/public key pair:
 
 ```
-sudo cat /etc/wireguard/private.key | wg pubkey | sudo tee /etc/wireguard/public.key
+wg genkey | sudo tee /etc/wireguard/private.key | wg pubkey | sudo tee /etc/wireguard/public.key
 ```
 
 - Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller:
@@ -48,6 +52,8 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUB_KEY>  \
     --controller-password=<REDIS_PASSWD>
      --agent-mode
 ```
+
+- You will now have a flat host routed network between the endpoints. We currently work around NAT with a STUN server to automatically discover public addressing for the user.
 
 - Cleanup
 
@@ -64,7 +70,12 @@ sudo ip link del wg0
 sudo wg-quick down wg0
 ```
 
-- You will now have a flat host routed network between the endpoints. We currently work around NAT with a STUN server to automatically discover public addressing.
+### Additional Features
+- This also provides multi-tenancy and overlapping CIDR IPv4 or IPv6 by providing the `--zone=zone-blue` or `--zone=zone-red`. These will be made more generic moving forward.
+- You can also run the jaywalk command on one node and then run the exact same command and keys on a new node and the assigned address from the supervisor will move that peering
+  from to the new machine you run it on along with updating the mesh as to the new endpoint address.
+- This can be run behind natted networks for remote spoke machines and do not require any incoming ports to be opened to the device. Only one side of the peering needs an open port
+  for connections to be initiated. Once the connection is initiated from one side, bi-directional communications can be established. This aspect is especially ideal for IOT/Edge.
 
 ### Ansible Deploy
 

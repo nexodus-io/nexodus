@@ -25,7 +25,7 @@ const (
 	zoneChannelRed  = "zone-red"
 	streamPort      = 6379
 	ipPrefixBlue    = "10.10.1"
-	ipPrefixRed     = "10.20.1"
+	ipPrefixRed     = "10.10.1"
 )
 
 func init() {
@@ -79,28 +79,33 @@ func main() {
 		subBlue.subscribe(zoneChannelBlue, msgChanBlue)
 		for {
 			msg := <-msgChanBlue
-			incomingMsg := handleMsg(msg)
-
-			switch incomingMsg.Event {
+			msgEvent := handleMsg(msg)
+			switch msgEvent.Event {
 			case registerNodeRequest:
-
-				if incomingMsg.Peer.PublicKey != "" {
-					lameIPAM := len(nodeStateBlue) + 1
-					wireguardIP := fmt.Sprintf("%s.%d/32", ipPrefixBlue, lameIPAM)
-					newNode := Peer{
-						PublicKey:  incomingMsg.Peer.PublicKey,
-						EndpointIP: incomingMsg.Peer.EndpointIP,
-						AllowedIPs: wireguardIP,
-						Zone:       incomingMsg.Peer.Zone,
+				if msgEvent.Peer.PublicKey != "" {
+					nodeEvent := Peer{}
+					// if the node already exists, preserve it's wireguard IP,
+					// delete the peer and add in the latest state
+					if _, ok := nodeStateBlue[msgEvent.Peer.PublicKey]; ok {
+						nodeEvent = msgEvent.newNode(nodeStateBlue[msgEvent.Peer.PublicKey].AllowedIPs)
+					} else {
+						// if this is a new node, assign a new ipam address
+						lameIPAM := len(nodeStateBlue) + 1
+						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
+						nodeEvent = msgEvent.newNode(ipamIP)
 					}
-					nodeStateBlue[incomingMsg.Peer.PublicKey] = newNode
+					// delete the old k/v pair if one exists and replace it with the new registration data
+					if _, ok := nodeStateBlue[msgEvent.Peer.PublicKey]; ok {
+						delete(nodeStateBlue, msgEvent.Peer.PublicKey)
+					}
+					nodeStateBlue[msgEvent.Peer.PublicKey] = nodeEvent
 					var peerList []Peer
 					for pubKey, nodeElements := range nodeStateBlue {
 						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
 					}
-					pubBlue.publish(zoneChannelBlue, peerList)
+					pubBlue.publish(zoneChannelRed, peerList)
 				}
 			}
 		}
@@ -114,19 +119,27 @@ func main() {
 		subRed.subscribe(zoneChannelRed, msgChanRed)
 		for {
 			msg := <-msgChanRed
-			incomingMsg := handleMsg(msg)
-			switch incomingMsg.Event {
+			msgEvent := handleMsg(msg)
+			switch msgEvent.Event {
 			case registerNodeRequest:
-				if incomingMsg.Peer.PublicKey != "" {
-					lameIPAM := len(nodeStateRed) + 1
-					wireguardIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
-					newNode := Peer{
-						PublicKey:  incomingMsg.Peer.PublicKey,
-						EndpointIP: incomingMsg.Peer.EndpointIP,
-						AllowedIPs: wireguardIP,
-						Zone:       incomingMsg.Peer.Zone,
+				if msgEvent.Peer.PublicKey != "" {
+					nodeEvent := Peer{}
+					// if the node already exists, preserve it's wireguard IP,
+					// delete the peer and add in the latest state
+					if _, ok := nodeStateRed[msgEvent.Peer.PublicKey]; ok {
+						nodeEvent = msgEvent.newNode(nodeStateRed[msgEvent.Peer.PublicKey].AllowedIPs)
+					} else {
+						// if this is a new node, assign a new ipam address
+						lameIPAM := len(nodeStateRed) + 1
+						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
+						nodeEvent = msgEvent.newNode(ipamIP)
 					}
-					nodeStateRed[incomingMsg.Peer.PublicKey] = newNode
+					// delete the old k/v pair if one exists and replace it
+					if _, ok := nodeStateRed[msgEvent.Peer.PublicKey]; ok {
+						delete(nodeStateRed, msgEvent.Peer.PublicKey)
+					}
+					nodeStateRed[msgEvent.Peer.PublicKey] = nodeEvent
+
 					var peerList []Peer
 					for pubKey, nodeElements := range nodeStateRed {
 						fmt.Printf("[INFO] NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s]\n",
@@ -142,6 +155,16 @@ func main() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	<-ch
+}
+
+func (msgEvent *MsgEvent) newNode(ipamIP string) Peer {
+	peer := Peer{
+		PublicKey:  msgEvent.Peer.PublicKey,
+		EndpointIP: msgEvent.Peer.EndpointIP,
+		AllowedIPs: ipamIP,
+		Zone:       msgEvent.Peer.Zone,
+	}
+	return peer
 }
 
 // handleMsg deals with streaming messages

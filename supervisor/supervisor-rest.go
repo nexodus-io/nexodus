@@ -8,11 +8,14 @@ import (
 )
 
 var (
-	peers []Peer
+	peers         []Peer
+	postRestEvent = make(chan string)
 )
 
 // getPeers responds with the list of all peers as JSON.
 func getPeers(c *gin.Context) {
+	postRestEvent := make(chan string)
+	go func() { postRestEvent <- "REST POST EVENT" }()
 	c.IndentedJSON(http.StatusOK, peers)
 }
 
@@ -48,6 +51,7 @@ func getPeerByKey(c *gin.Context) {
 			return
 		}
 	}
+
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Peers not found"})
 }
 

@@ -45,7 +45,8 @@ type wgConfig struct {
 type wgPeerConfig struct {
 	PublicKey  string
 	Endpoint   string
-	AllowedIPs []string `delim:","`
+	AllowedIPs string
+	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
 }
 
 type wgLocalConfig struct {
@@ -217,7 +218,7 @@ func runInit() {
 		js.deployWireguardConfig()
 	}
 
-	// run as a agentMode
+	// run as a persistent agent
 	if cliFlags.agentMode {
 		controller := fmt.Sprintf("%s:6379", cliFlags.controllerIP)
 		rc := redis.NewClient(&redis.Options{
@@ -261,7 +262,7 @@ func runInit() {
 				if peerListing != nil {
 					log.Printf("[INFO] received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
-					js.deployWireguardConfig()
+					js.deploySupervisorWireguardConfig()
 				}
 			}
 		}

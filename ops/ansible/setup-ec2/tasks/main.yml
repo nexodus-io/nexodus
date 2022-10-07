@@ -5,6 +5,10 @@
     name: boto
     state: present
 
+- name: Generate a UUID for the ec2 host
+  shell: uuidgen | head -c 4
+  register: uuid
+
 ### VPC Blue Deployment ###
 - name: Creating Security Group for VPC Blue
   amazon.aws.ec2_group:
@@ -18,7 +22,7 @@
 
 - name: Launching EC2 Instances in VPC Blue
   amazon.aws.ec2_instance:
-    name: "wireguard-blue-node-{{ item+1 }}"
+    name: "wireguard-blue-node-{{ item+1 }}-{{ uuid.stdout }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -44,7 +48,7 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "wireguardNodes"
-    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-blue-node-{{ item+1 }} wireguard_allowed_ips=10.100.1.{{ item+1 }}/32"
+    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-blue-node-{{ item+1 }}-{{ uuid.stdout }} wireguard_allowed_ips=10.100.1.{{ item+1 }}/32"
   loop: "{{ range(0, node_count_blue | int) }}"
 
 ### VPC Green Deployment ###
@@ -60,7 +64,7 @@
 
 - name: Launching EC2 Instances in VPC Green
   amazon.aws.ec2_instance:
-    name: "wireguard-green-node-{{ item+1 }}"
+    name: "wireguard-green-node-{{ item+1 }}-{{ uuid.stdout }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -86,7 +90,7 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "wireguardNodes"
-    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-green-node-{{ item+1 }} wireguard_allowed_ips=10.200.1.{{ item+1 }}/32"
+    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-green-node-{{ item+1 }}-{{ uuid.stdout }} wireguard_allowed_ips=10.200.1.{{ item+1 }}/32"
   loop: "{{ range(0, node_count_green | int) }}"
 
 
