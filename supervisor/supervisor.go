@@ -91,7 +91,7 @@ func main() {
 					} else {
 						// if this is a new node, assign a new ipam address
 						lameIPAM := len(nodeStateBlue) + 1
-						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixRed, lameIPAM)
+						ipamIP := fmt.Sprintf("%s.%d/32", ipPrefixBlue, lameIPAM)
 						nodeEvent = msgEvent.newNode(ipamIP)
 					}
 					// delete the old k/v pair if one exists and replace it with the new registration data
@@ -105,7 +105,7 @@ func main() {
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs)
 						peerList = append(peerList, nodeElements)
 					}
-					pubBlue.publish(zoneChannelRed, peerList)
+					pubBlue.publish(zoneChannelBlue, peerList)
 				}
 			}
 		}
