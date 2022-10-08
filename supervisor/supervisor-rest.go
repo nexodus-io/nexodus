@@ -1,37 +1,40 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
-// getPeers responds with the list of all peers as JSON.
-func (sup *Supervisor) getPeers(c *gin.Context) {
+// GetPeers responds with the list of all peers as JSON.
+func (sup *Supervisor) GetPeers(c *gin.Context) {
 	allNodes := make([]Peer, 0)
-	for _, v := range sup.nodeMapBlue {
+	for _, v := range sup.NodeMapBlue {
 		allNodes = append(allNodes, v)
 	}
-	for _, v := range sup.nodeMapRed {
+	for _, v := range sup.NodeMapRed {
 		allNodes = append(allNodes, v)
 	}
 
 	c.JSON(http.StatusOK, allNodes)
 }
 
-// getPeerByKey locates the Peers whose PublicKey value matches the id
-func (sup *Supervisor) getPeerByKey(c *gin.Context) {
+// GetPeerByKey locates the Peers whose PublicKey value matches the id
+func (sup *Supervisor) GetPeerByKey(c *gin.Context) {
 	key := c.Param("key")
-	for pubKey, _ := range sup.nodeMapBlue {
+	for pubKey, _ := range sup.NodeMapBlue {
 		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, sup.nodeMapBlue[key])
+			c.IndentedJSON(http.StatusOK, sup.NodeMapBlue[key])
 			return
 		}
 	}
-	for pubKey, _ := range sup.nodeMapRed {
+	for pubKey, _ := range sup.NodeMapRed {
 		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, sup.nodeMapRed[key])
+			c.IndentedJSON(http.StatusOK, sup.NodeMapRed[key])
 			return
 		}
 	}
@@ -39,8 +42,45 @@ func (sup *Supervisor) getPeerByKey(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "peer not found"})
 }
 
-// postPeers adds a Peers from JSON received in the request body.
-func (sup *Supervisor) postPeers(c *gin.Context) {
+// GetZones responds with the list of all peers as JSON.
+func (sup *Supervisor) GetZones(c *gin.Context) {
+	zones := make([]ZoneConfig, 0)
+	for _, v := range sup.ZoneConfigBlue {
+		zones = append(zones, v)
+	}
+	for _, v := range sup.ZoneConfigRed {
+		zones = append(zones, v)
+	}
+
+	c.JSON(http.StatusOK, zones)
+}
+
+// TODO: this is hacky, should query the instance state instead, also file lock risk
+// GetIpamLeases responds with the list of all peers as JSON.
+func (sup *Supervisor) GetIpamLeases(c *gin.Context) {
+	blueIpamState := fileToString(BlueIpamSaveFile)
+	redIpamState := fileToString(RedIpamSaveFile)
+	zoneKey := c.Param("zone")
+	var zoneLeases []Prefix
+	var err error
+	if zoneKey == zoneChannelBlue {
+		zoneLeases, err = unmarshalIpamState(blueIpamState)
+		if err != nil {
+			fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+		}
+	}
+	if zoneKey == zoneChannelRed {
+		zoneLeases, err = unmarshalIpamState(redIpamState)
+		if err != nil {
+			fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, zoneLeases)
+}
+
+// PostPeers adds a Peers from JSON received in the request body.
+func (sup *Supervisor) PostPeers(c *gin.Context) {
 	var newPeer []Peer
 	// Call BindJSON to bind the received JSON to
 	if err := c.BindJSON(&newPeer); err != nil {
@@ -58,8 +98,31 @@ func publishAllPeersMessage(channel string, data []Peer) {
 	id, msg := createAllPeerMessage(data)
 	err := redisDB.Publish(channel, msg).Err()
 	if err != nil {
-		log.Printf("[ERROR] sending %s message failed, %v\n", id, err)
+		log.Errorf("sending %s message failed, %v\n", id, err)
 		return
 	}
-	log.Printf("[INFO] Published new message: %s\n", msg)
+	log.Printf("Published new message: %s\n", msg)
+}
+
+func fileToString(file string) string {
+	fileContent, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Errorf("unable to read the file [%s] %v\n", file, err)
+		return ""
+	}
+	return string(fileContent)
+}
+
+// Prefix is used to unmarshall ipam lease information
+type Prefix struct {
+	Cidr string          // The Cidr of this prefix
+	IPs  map[string]bool // The ips contained in this prefix
+}
+
+func unmarshalIpamState(s string) ([]Prefix, error) {
+	var msg []Prefix
+	if err := json.Unmarshal([]byte(s), &msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }

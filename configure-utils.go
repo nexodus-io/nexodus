@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
 
@@ -27,12 +27,12 @@ func applyWireguardConf() error {
 	if err != nil {
 		return fmt.Errorf("failed to start the wireguard interface: %v", err)
 	}
-	log.Printf("%v\n", wgOut)
+	log.Printf("%v", wgOut)
 	return nil
 }
 
 // updateWireguardConfig strip and diff the latest rev to the active config
-// TODO: use syncconf and manually track routes instead of wg-quick managing them
+// TODO: use syncconf and manually track routes instead of wg-quick managing them?
 func updateWireguardConfig() error {
 	activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
 	latestRevConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
@@ -54,7 +54,6 @@ func updateWireguardConfig() error {
 	if err != nil {
 		return fmt.Errorf("failed to strip the latest configuration: %v", err)
 	}
-
 	// TODO: WARNING!!! THIS IS A HACK SINCE unmarshallWireguardCfg()
 	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
 	if !strings.Contains(stripActiveCfg, "[Peer") {
@@ -65,18 +64,16 @@ func updateWireguardConfig() error {
 		}
 		return nil
 	}
-
 	// TODO: WARNING!!! THIS IS A HACK SINCE unmarshallWireguardCfg()
 	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
 	if !strings.Contains(stripLatestRevCfg, "[Peer") {
-		log.Printf("No peers found in the latest config")
+		log.Print("No peers found in the latest config")
 		err := applyWireguardConf()
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-
 	// unmarshall the active and latest configurations
 	activePeers, err := unmarshallWireguardCfg(stripActiveCfg)
 	if err != nil {
@@ -86,12 +83,31 @@ func updateWireguardConfig() error {
 	if err != nil {
 		return err
 	}
-
-	// diff the configurations and rebuild the tunnel if there has been a change
-	if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
-		log.Printf("Configuration change detected\n")
+	// unmarshall the active and latest configurations from file.
+	// diff the old and new config to see if the local config [Interface] address has changed
+	// This is hacky because wg conf commands do not show [Interface].Address since that is
+	// only a wg-quick relevant configuration and not wg. TODO: part of how we want to manage wg
+	activeLocalConfig, err := unmarshallWireguardCfg(fileToString(activeConfig))
+	if err != nil {
+		return err
+	}
+	revisedLocalConfig, err := unmarshallWireguardCfg(fileToString(latestRevConfig))
+	if err != nil {
+		return err
+	}
+	// check if the Address field in the [Interface] section has changed
+	if activeLocalConfig.Interface.Address != revisedLocalConfig.Interface.Address {
+		log.Print("Local interface configuration change detected")
 		if err := applyWireguardConf(); err != nil {
 			return err
+		}
+	} else {
+		// diff the unordered list of [Peers] configuration peers and rebuild the tunnel if there has been a change
+		if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
+			log.Print("Peers configuration change detected")
+			if err := applyWireguardConf(); err != nil {
+				return err
+			}
 		}
 	}
 	// if there is no wg0 interface, apply the configuration

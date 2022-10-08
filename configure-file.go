@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/ini.v1"
 )
@@ -35,8 +35,8 @@ func (js *jaywalkState) parseJaywalkConfig() {
 	if !js.nodePubKeyInConfig {
 		log.Printf("Public Key for this node was not found in %s", jaywalkConfig)
 	}
-
 	for nodeName, value := range conf.Peers {
+		// Parse the [Peers] section
 		if value.PublicKey != js.nodePubKey {
 			peer := wgPeerConfig{
 				value.PublicKey,
@@ -44,12 +44,13 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				value.WireguardIP,
 			}
 			peers = append(peers, peer)
-			log.Printf("[DEBUG] Peer Node Configuration [%v] Peer AllowedIPs [%s] Peer Endpoint IP [%s] Peer Public Key [%s]\n",
+			log.Printf("Peer Node Configuration [%v] Peer AllowedIPs [%s] Peer Endpoint IP [%s] Peer Public Key [%s]\n",
 				nodeName,
 				value.WireguardIP,
 				value.EndpointIP,
 				value.PublicKey)
 		}
+		// Parse the [Interface] section of the wg config
 		if value.PublicKey == js.nodePubKey {
 			localInterface = wgLocalConfig{
 				value.PrivateKey,
@@ -57,7 +58,7 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				wgListenPort,
 				false,
 			}
-			log.Printf("[DEBUG] Local Node Configuration [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
+			log.Infof("Local Node Configuration [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
 				nodeName,
 				value.WireguardIP,
 				value.EndpointIP,

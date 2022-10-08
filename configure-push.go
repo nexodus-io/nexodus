@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
 
@@ -13,10 +13,11 @@ type PeerListing []Peer
 
 // Peer REST struct
 type Peer struct {
-	PublicKey  string `json:"PublicKey"`
-	EndpointIP string `json:"EndpointIP"`
-	AllowedIPs string `json:"AllowedIPs"`
-	Zone       string `json:"Zone"`
+	PublicKey   string `json:"PublicKey"`
+	EndpointIP  string `json:"EndpointIP"`
+	AllowedIPs  string `json:"AllowedIPs"`
+	Zone        string `json:"Zone"`
+	NodeAddress string `json:"NodeAddress"`
 }
 
 // handleMsg deal with streaming messages
@@ -44,9 +45,9 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 	}
 
 	if !js.nodePubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the broker update", js.nodePubKey)
+		log.Printf("Public Key for this node %s was not found in the supervisor update\n", js.nodePubKey)
 	}
-
+	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
 		if value.PublicKey != js.nodePubKey {
 			peer := wgPeerConfig{
@@ -55,11 +56,14 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				value.AllowedIPs,
 			}
 			peers = append(peers, peer)
-			log.Printf("[DEBUG] Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ]\n",
+			log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
 				value.AllowedIPs,
 				value.EndpointIP,
-				value.PublicKey)
+				value.PublicKey,
+				value.NodeAddress,
+				value.Zone)
 		}
+		// Parse the [Interface] section of the wg config
 		if value.PublicKey == js.nodePubKey {
 			localInterface = wgLocalConfig{
 				cliFlags.wireguardPvtKey,
@@ -67,7 +71,7 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				cliFlags.listenPort,
 				false,
 			}
-			log.Printf("[DEBUG] Local Node Configuration - Wireguard Local Endpoint IP [ %s ] Port [ %v ] Local Private Key [ %s ]\n",
+			log.Printf("Local Node Configuration - Wireguard Local Endpoint IP [ %s ] Port [ %v ] Local Private Key [ %s ]\n",
 				localInterface.Address,
 				wgListenPort,
 				localInterface.PrivateKey)
@@ -92,16 +96,11 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 	}
 	switch js.nodeOS {
 	case linux.String():
-		// wg does not create the OSX config directory by default
-		if err = createDirectory(wgLinuxConfPath); err != nil {
-			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
-		}
 		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
-			log.Fatal("Save latest configuration error", err)
+			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
 		if js.nodePubKeyInConfig {
-
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
@@ -117,19 +116,19 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 	case darwin.String():
 		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
-			log.Fatal("Save latest configuration error", err)
+			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
 		if js.nodePubKeyInConfig {
 			wgOut, err := runCommand("wg-quick", "down", wgIface)
 			if err != nil {
-				log.Printf("failed to start the wireguard interface: %v", err)
+				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Printf("%v\n", wgOut)
 			wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
 			if err != nil {
-				log.Printf("failed to start the wireguard interface: %v", err)
+				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
-			log.Printf("%v\n", wgOut)
+			log.Printf("%v", wgOut)
 		} else {
 			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
