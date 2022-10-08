@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
@@ -98,7 +98,7 @@ func routeAdd(devName, gateway, dstCidr string) error {
 // deleteIface checks to see if  is an interface exists and deletes it
 func deleteIface(ifaceName string) error {
 	if _, err := netlink.LinkByName(ifaceName); err == nil {
-		log.Printf("deleting existing interface %s", ifaceName)
+		log.Errorf("deleting existing interface %s", ifaceName)
 		if err = delLink(ifaceName); err != nil {
 			return fmt.Errorf("failed to delete existing interface %s: %v", ifaceName, err)
 		}

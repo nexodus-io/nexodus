@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-redis/redis"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,6 +20,7 @@ type flags struct {
 	listenPort       int
 	configFile       string
 	zone             string
+	requestedIP      string
 	agentMode        bool
 }
 
@@ -34,6 +35,7 @@ type jaywalkState struct {
 	daemon             bool
 	nodeOS             string
 	zone               string
+	requestedIP        string
 	wgConf             wgConfig
 }
 
@@ -141,6 +143,13 @@ func main() {
 				Destination: &cliFlags.configFile,
 				EnvVars:     []string{"JAYWALK_CONFIG"},
 			},
+			&cli.StringFlag{
+				Name:        "request-ip",
+				Value:       "",
+				Usage:       "request a specific IP address from Ipam if available",
+				Destination: &cliFlags.requestedIP,
+				EnvVars:     []string{"JAYWALK_REQUESTED_IP"},
+			},
 			&cli.BoolFlag{Name: "agent-mode",
 				Usage:       "run as a agentMode",
 				Value:       false,
@@ -184,9 +193,17 @@ func runInit() {
 	case darwin.String():
 		log.Printf("[%s] operating system detected", darwin.String())
 		nodeOS = darwin.String()
+		// ensure the osx wireguard directory exists
+		if err := createDirectory(wgLinuxConfPath); err != nil {
+			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
+		}
 	case linux.String():
 		log.Printf("[%s] operating system detected", linux.String())
 		nodeOS = linux.String()
+		// ensure the wireguard directory exists
+		if err := createDirectory(wgLinuxConfPath); err != nil {
+			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
+		}
 	default:
 		log.Fatalf("OS [%s] is not supported\n", getOS())
 	}
@@ -209,6 +226,7 @@ func runInit() {
 		daemon:            cliFlags.agentMode,
 		nodeOS:            nodeOS,
 		zone:              cliFlags.zone,
+		requestedIP:       cliFlags.requestedIP,
 	}
 
 	if !cliFlags.agentMode {
@@ -232,14 +250,14 @@ func runInit() {
 
 		pubIP, err := getPubIP()
 		if err != nil {
-			log.Printf("[WARN] Unable to determine the public address")
+			log.Warn("Unable to determine the public address")
 		}
 		endPointIP := fmt.Sprintf("%s:%d", pubIP, wgListenPort)
 
-		peerRegister := publishMessage(registerNodeRequest, js.zone, js.nodePubKey, endPointIP)
+		peerRegister := publishMessage(registerNodeRequest, js.zone, js.nodePubKey, endPointIP, js.requestedIP)
 		err = rc.Publish(js.zone, peerRegister).Err()
 		if err != nil {
-			log.Printf("[ERROR] failed to publish subscriber message: %v", err)
+			log.Errorf("failed to publish subscriber message: %v", err)
 		}
 
 		for {
@@ -253,7 +271,7 @@ func runInit() {
 			case zoneChannelBlue:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("[INFO] received message: %+v\n", peerListing)
+					log.Printf("received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
 					js.deployWireguardConfig()
 				}
@@ -278,13 +296,14 @@ type MsgEvent struct {
 	Peer  Peer
 }
 
-func publishMessage(event, zone, pubKey, endpointIP string) string {
+func publishMessage(event, zone, pubKey, endpointIP, requestedIP string) string {
 	msg := MsgEvent{}
 	msg.Event = event
 	peer := Peer{
-		PublicKey:  pubKey,
-		EndpointIP: endpointIP,
-		Zone:       zone,
+		PublicKey:   pubKey,
+		EndpointIP:  endpointIP,
+		Zone:        zone,
+		NodeAddress: requestedIP,
 	}
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)

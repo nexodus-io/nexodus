@@ -14,9 +14,17 @@ Roads? Where we're going, we don't need roads - *Dr Emmett Brown*
 GOOS=linux GOARCH=amd64 go build -o jaywalk-amd64-linux
 GOOS=darwin GOARCH=amd64 go build -o jaywalk-amd64-darwin
 # Windows support soon.
+
+# Or download a recent build to the nodes you are looking to add to the mesh:
+# OSX Binary
+curl https://jaywalking.s3.amazonaws.com/jaywalk-amd64-darwin --output /usr/local/sbin/jaywalk
+chmod +x /usr/local/sbin/jaywalk
+# Linux Binary
+sudo curl https://jaywalking.s3.amazonaws.com/jaywalk-amd64-linux --output /usr/local/sbin/jaywalk
+chmod +x /usr/local/sbin/jaywalk
 ```
 
-- Start redis instance in EC2 or somewhere all nodes can reach (below is an example for podman or docker for ease of use, no other configuration is required):
+- Start a redis instance in EC2 or somewhere all nodes can reach (below is an example for podman or docker for ease of use, no other configuration is required):
 
 ```
 docker run \
@@ -29,10 +37,12 @@ docker run \
 - Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above):
 
 ```
+git clone https://github.com/redhat-et/jaywalking.git
+
 cd supervisor
 go build -o jaywalk-supervisor
 
-jaywalk-supervisor \
+./jaywalk-supervisor \
     -streamer-address <REDIS_SERVER_ADDRESS> \
     -streamer-passwd <REDIS_PASSWD>
 ```
@@ -47,10 +57,10 @@ wg genkey | sudo tee /etc/wireguard/server_private.key | wg pubkey | sudo tee /e
 - Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller:
 
 ```
-sudo jaywalk --public-key=<NODE_WIREGUARD_PUB_KEY>  \
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
     --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWD>
+    --controller-password=<REDIS_PASSWORD> \
      --agent-mode
 ```
 
@@ -77,10 +87,24 @@ sudo wg-quick down wg0
   from to the new machine you run it on along with updating the mesh as to the new endpoint address.
 - This can be run behind natted networks for remote spoke machines and do not require any incoming ports to be opened to the device. Only one side of the peering needs an open port
   for connections to be initiated. Once the connection is initiated from one side, bi-directional communications can be established. This aspect is especially interesting for IOT/Edge.
+- An IPAM module handles node address allocations but also allows the user to specify it's wireguard node address.
 
+
+Another join example from a node includes the ability to specify what zone to join and allows you to request a particular IP address from the IPAM module. If an existing lease exists, it
+will be released and offered to the node requesting it.
+
+```curl
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --request-ip=10.10.0.30 \
+    --zone=zone-red 
+```
 ### REST API
 
-There are currently some basic supported REST calls:
+There are currently some supported REST calls:
 
 - Get all peers
 
@@ -145,6 +169,59 @@ curl -s --location --request GET 'http://localhost:8080/peers/M+BTP8LbMikKLufoTT
     "Zone": "zone-red"
 }
 ```
+
+- Get zone details
+
+```shell
+curl --location --request GET 'http://localhost:8080/zones'
+```
+
+- Zone details output (notice the overlapping CIDR address support)
+
+```json
+[
+  {
+    "Name": "zone-red",
+    "Description": "Tenancy Zone Red",
+    "IpCidr": "10.10.1.0/20"
+  },
+  {
+    "Name": "zone-blue",
+    "Description": "Tenancy Zone Blue",
+    "IpCidr": "10.10.1.0/20"
+  }
+]
+```
+
+- Get the leases of nodes in a particular zone
+
+```shell
+curl --location --request GET 'http://localhost:8080/ipam/leases/zone-blue'
+curl --location --request GET 'http://localhost:8080/ipam/leases/zone-red'
+```
+
+- Lease details from a zone
+
+```json
+[
+    {
+        "Cidr": "10.10.0.0/20",
+        "IPs": {
+            "10.10.0.0": true,
+            "10.10.0.1": true,
+            "10.10.0.2": true,
+            "10.10.0.29": true,
+            "10.10.0.3": true,
+            "10.10.0.4": true,
+            "10.10.0.5": true,
+            "10.10.0.6": true,
+            "10.10.15.255": true
+        }
+    }
+]
+```
+
+
 
 ### Ansible Deployment
 

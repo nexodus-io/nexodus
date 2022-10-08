@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // supported OS types
@@ -73,16 +74,25 @@ func validateIp(ip string) error {
 func diffConfig(oldCfg, newCfg string) bool {
 	cfgOld, err := ioutil.ReadFile(oldCfg)
 	if err != nil {
-		log.Fatalf("unable to read file: %v", err)
+		log.Fatalf("unable to read file: %v\n", err)
 	}
 	cfgNew, err := ioutil.ReadFile(newCfg)
 	if err != nil {
-		log.Fatalf("unable to read file: %v", err)
+		log.Fatalf("unable to read file: %v\n", err)
 	}
 	if string(cfgOld) != string(cfgNew) {
 		return false
 	}
 	return true
+}
+
+func fileToString(file string) string {
+	fileContent, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Errorf("unable to read the file [%s] %v\n", file, err)
+		return ""
+	}
+	return string(fileContent)
 }
 
 // copyFile source destination
