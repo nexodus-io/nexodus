@@ -57,7 +57,6 @@ func updateWireguardConfig() error {
 	// TODO: WARNING!!! THIS IS A HACK SINCE unmarshallWireguardCfg()
 	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
 	if !strings.Contains(stripActiveCfg, "[Peer") {
-		log.Printf("No existing peers found")
 		err := applyWireguardConf()
 		if err != nil {
 			return err

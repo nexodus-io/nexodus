@@ -1,5 +1,7 @@
 # Jaywalking
 
+[![build](https://github.com/redhat-et/jaywalking/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/jaywalking/actions/workflows/build.yml)
+
 Roads? Where we're going, we don't need roads - *Dr Emmett Brown*
 
 ### Jaywalk Quickstart
@@ -31,7 +33,7 @@ docker run \
     --name redis \
     -d -p 6379:6379 \
     redis redis-server \
-    --requirepass <pass>
+    --requirepass <REDIS_PASSWD>
 ```
 
 - Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above):
