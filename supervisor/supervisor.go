@@ -50,6 +50,7 @@ type Peer struct {
 	AllowedIPs  string `json:"AllowedIPs"`
 	Zone        string `json:"Zone"`
 	NodeAddress string `json:"NodeAddress"`
+	ChildPrefix string `json:"ChildPrefix"`
 }
 
 type ZoneConfig struct {
@@ -111,11 +112,13 @@ func main() {
 	if err != nil {
 		log.Warnf("failed to acquire an ipam address %v\n", err)
 	}
-	supIpamBlue.IpamSave(ctxBlue)
+
 	pubBlue := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
 	subBlue := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
 
+	// channel for async messages from the zone subscription
 	msgChanBlue := make(chan string)
+
 	go func() {
 		subBlue.subscribe(zoneChannelBlue, msgChanBlue)
 		for {
@@ -123,41 +126,55 @@ func main() {
 			msgEvent := handleMsg(msg)
 			switch msgEvent.Event {
 			case registerNodeRequest:
+				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
 					nodeEvent := Peer{}
 					var ip string
+					// If this was a static address request
 					if msgEvent.Peer.NodeAddress != "" {
-						// If this was a static address request
 						if err := ipam.ValidateIp(msgEvent.Peer.NodeAddress); err == nil {
 							ip, err = supIpamBlue.RequestSpecificIP(ctxBlue, msgEvent.Peer.NodeAddress, ipPrefixBlue)
 							if err != nil {
-								log.Errorf("failed to assign the requested address, assigning an address from the pool %v", err)
+								log.Errorf("failed to assign the requested address, assigning an address from the pool %v\n", err)
 								ip, err = supIpamBlue.RequestIP(ctxBlue, ipPrefixBlue)
 								if err != nil {
-									log.Errorf("[ERROR] failed to acquire an IPAM assigned address %v", err)
+									log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 								}
 							}
 						}
 					} else {
 						ip, err = supIpamBlue.RequestIP(ctxBlue, ipPrefixBlue)
 						if err != nil {
-							log.Errorf("[ERROR] failed to acquire an IPAM assigned address %v", err)
+							log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 						}
 					}
+					// allocate a child prefix if requested
+					var childPrefix string
+					if msgEvent.Peer.ChildPrefix != "" {
+						childPrefix, err = supIpamBlue.RequestChildPrefix(ctxBlue, msgEvent.Peer.ChildPrefix)
+						if err != nil {
+							log.Errorf("%v\n", err)
+						}
+					}
+					// save the ipam to persistent storage
 					supIpamBlue.IpamSave(ctxBlue)
-					nodeEvent = msgEvent.newNode(ip)
-
+					// construct the new node
+					nodeEvent = msgEvent.newNode(ip, childPrefix)
+					log.Debugf("node allocated: %+v\n", nodeEvent)
 					// delete the old k/v pair if one exists and replace it with the new registration data
 					if _, ok := sup.NodeMapBlue[msgEvent.Peer.PublicKey]; ok {
 						delete(sup.NodeMapBlue, msgEvent.Peer.PublicKey)
 					}
 					sup.NodeMapBlue[msgEvent.Peer.PublicKey] = nodeEvent
+					// append all peers into the updated peer list to be published
 					var peerList []Peer
 					for pubKey, nodeElements := range sup.NodeMapBlue {
-						fmt.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s]\n",
-							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone)
+						log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",
+							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
+						// append the new node to the updated peer listing
 						peerList = append(peerList, nodeElements)
 					}
+					// publish the latest peer list
 					pubBlue.publish(zoneChannelBlue, peerList)
 				}
 			}
@@ -171,12 +188,13 @@ func main() {
 	if err != nil {
 		log.Errorf("failed to acquire an ipam address %v\n", err)
 	}
-	supIpamRed.IpamSave(ctxRed)
 
 	pubRed := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
 	subRed := newPubsub(newRedisClient(sup.streamSocket, sup.streamPass))
 
+	// channel for async messages from the zone subscription
 	msgChanRed := make(chan string)
+
 	go func() {
 		subRed.subscribe(zoneChannelRed, msgChanRed)
 		for {
@@ -184,46 +202,63 @@ func main() {
 			msgEvent := handleMsg(msg)
 			switch msgEvent.Event {
 			case registerNodeRequest:
+				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
 					nodeEvent := Peer{}
 					var ip string
+					// If this was a static address request
 					if msgEvent.Peer.NodeAddress != "" {
-						// If this was a static address request
 						if err := ipam.ValidateIp(msgEvent.Peer.NodeAddress); err == nil {
 							ip, err = supIpamRed.RequestSpecificIP(ctxRed, msgEvent.Peer.NodeAddress, ipPrefixRed)
 							if err != nil {
-								log.Errorf("failed to assign the requested address, assigning an address from the pool %v", err)
+								log.Errorf("failed to assign the requested address, assigning an address from the pool %v\n", err)
 								ip, err = supIpamRed.RequestIP(ctxRed, ipPrefixRed)
 								if err != nil {
-									log.Errorf("failed to acquire an IPAM assigned address %v", err)
+									log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 								}
 							}
 						}
 					} else {
 						ip, err = supIpamRed.RequestIP(ctxRed, ipPrefixRed)
 						if err != nil {
-							log.Errorf("failed to acquire an IPAM assigned address %v", err)
+							log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 						}
 					}
+
+					// allocate a child prefix if requested
+					var childPrefix string
+					if msgEvent.Peer.ChildPrefix != "" {
+						childPrefix, err = supIpamRed.RequestChildPrefix(ctxRed, msgEvent.Peer.ChildPrefix)
+						if err != nil {
+							log.Errorf("%v\n", err)
+						}
+					}
+					// save the ipam to persistent storage
 					supIpamRed.IpamSave(ctxRed)
-					nodeEvent = msgEvent.newNode(ip)
+					// construct the new node
+					nodeEvent = msgEvent.newNode(ip, childPrefix)
+					log.Debugf("node allocated: %+v\n", nodeEvent)
 					// delete the old k/v pair if one exists and replace it with the new registration data
 					if _, ok := sup.NodeMapRed[msgEvent.Peer.PublicKey]; ok {
 						delete(sup.NodeMapRed, msgEvent.Peer.PublicKey)
 					}
 					sup.NodeMapRed[msgEvent.Peer.PublicKey] = nodeEvent
+					// append all peers into the updated peer list to be published
 					var peerList []Peer
 					for pubKey, nodeElements := range sup.NodeMapRed {
-						fmt.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s]\n",
-							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone)
+						log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",
+							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
+						// append the new node to the updated peer listing
 						peerList = append(peerList, nodeElements)
 					}
+					// publish the latest peer list
 					pubRed.publish(zoneChannelRed, peerList)
 				}
 			}
 		}
 	}()
-	// Start the http router
+
+	// Start the http router, this is blocking
 	sup.Router.Run("localhost:8080")
 
 	ch := make(chan os.Signal, 1)
@@ -231,13 +266,14 @@ func main() {
 	<-ch
 }
 
-func (msgEvent *MsgEvent) newNode(ipamIP string) Peer {
+func (msgEvent *MsgEvent) newNode(ipamIP, childPrefix string) Peer {
 	peer := Peer{
 		PublicKey:   msgEvent.Peer.PublicKey,
 		EndpointIP:  msgEvent.Peer.EndpointIP,
 		AllowedIPs:  ipamIP, // This will be a slice, NodeAddress will hold the /32
 		Zone:        msgEvent.Peer.Zone,
 		NodeAddress: ipamIP,
+		ChildPrefix: childPrefix,
 	}
 	return peer
 }

@@ -72,6 +72,18 @@ func (si *SupIpam) RequestIP(ctx context.Context, prefix string) (string, error)
 	return ip.IP.String(), err
 }
 
+func (si *SupIpam) RequestChildPrefix(ctx context.Context, prefix string) (string, error) {
+	cidr, err := cleanCidr(prefix)
+	if err != nil {
+		return "", fmt.Errorf("invalid child prefix requested: %v", err)
+	}
+	childPrefix, err := si.ZoneIpam.NewPrefix(ctx, cidr)
+	if err != nil {
+		return "", fmt.Errorf("failed to allocate requested child prefix %v", err)
+	}
+	return childPrefix.Cidr, nil
+}
+
 func (si *SupIpam) IpamSave(ctx context.Context) error {
 	if si.PersistFile == "" {
 		return nil
@@ -103,21 +115,21 @@ func (si *SupIpam) IpamDeleteAllPrefixes(ctx context.Context) error {
 	return nil
 }
 
-// validateIp ensures a valid IP4/IP6 address is provided
+// validateIp ensures a valid IP4/IP6 address is provided and return a proper
+// network prefix if the network address if the network address was not precise.
+// example: if a user provides 192.168.1.1/24 we will infer 192.168.1.0/24.
+func cleanCidr(uncheckedCidr string) (string, error) {
+	_, validCidr, err := net.ParseCIDR(uncheckedCidr)
+	if err != nil {
+		return "", err
+	}
+	return validCidr.String(), nil
+}
+
+// ValidateIp ensures a valid IP4/IP6 address is provided
 func ValidateIp(ip string) error {
 	if ip := net.ParseIP(ip); ip != nil {
 		return nil
 	}
 	return fmt.Errorf("%s is not a valid v4 or v6 IP", ip)
 }
-
-//func getCidrOfIP(ip string) string {
-//	IP := net.ParseIP(ip)
-//	for i := range im.cidrList {
-//		if im.cidrList[i].Contains(IP) {
-//			return im.cidrs[i]
-//		}
-//	}
-//
-//	return ""
-//}
