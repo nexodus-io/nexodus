@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/redhat-et/jaywalking/supervisor/ipam"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,19 +22,29 @@ var (
 )
 
 const (
-	zoneChannelBlue  = "zone-blue"
-	zoneChannelRed   = "zone-red"
-	ipPrefixBlue     = "10.10.1.0/20"
-	ipPrefixRed      = "10.10.1.0/20"
-	BlueIpamSaveFile = "ipam-blue.json"
-	RedIpamSaveFile  = "ipam-red.json"
-	streamPort       = 6379
+	zoneChannelBlue           = "zone-blue"
+	zoneChannelRed            = "zone-red"
+	ipPrefixBlue              = "10.10.1.0/20"
+	ipPrefixRed               = "10.10.1.0/20"
+	BlueIpamSaveFile          = "ipam-blue.json"
+	RedIpamSaveFile           = "ipam-red.json"
+	streamPort                = 6379
+	restPort                  = "8080"
+	healthcheckRequestChannel = "supervisor-healthcheck-request"
+	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
+	healthcheckReplyMsg       = "supervisor-healthy"
+	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 
 func init() {
 	streamService = flag.String("streamer-address", "", "streamer address")
 	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
 	flag.Parse()
+	// set the log level
+	env := os.Getenv(jwLogEnv)
+	if env == "debug" {
+		log.SetLevel(log.DebugLevel)
+	}
 }
 
 // Message Events
@@ -97,15 +107,17 @@ func initApp() *Supervisor {
 }
 
 func main() {
-
 	sup := initApp()
 	client := newRedisClient(sup.streamSocket, sup.streamPass)
 	defer client.Close()
 
-	_, err := client.Ping().Result()
+	ctx := context.Background()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("Unable to connect to the redis instance at %s: %v", sup.streamSocket, err)
 	}
+
+	readyCheckRepsonder(ctx, client)
 	// Initilize ipam for zone blue
 	ctxBlue := context.Background()
 	supIpamBlue, err := ipam.NewIPAM(ctxBlue, BlueIpamSaveFile, ipPrefixBlue)
@@ -120,7 +132,7 @@ func main() {
 	msgChanBlue := make(chan string)
 
 	go func() {
-		subBlue.subscribe(zoneChannelBlue, msgChanBlue)
+		subBlue.subscribe(ctx, zoneChannelBlue, msgChanBlue)
 		for {
 			msg := <-msgChanBlue
 			msgEvent := handleMsg(msg)
@@ -174,8 +186,8 @@ func main() {
 						// append the new node to the updated peer listing
 						peerList = append(peerList, nodeElements)
 					}
-					// publish the latest peer list
-					pubBlue.publish(zoneChannelBlue, peerList)
+					// publishPeers the latest peer list
+					pubBlue.publishPeers(ctx, zoneChannelBlue, peerList)
 				}
 			}
 		}
@@ -196,7 +208,7 @@ func main() {
 	msgChanRed := make(chan string)
 
 	go func() {
-		subRed.subscribe(zoneChannelRed, msgChanRed)
+		subRed.subscribe(ctx, zoneChannelRed, msgChanRed)
 		for {
 			msg := <-msgChanRed
 			msgEvent := handleMsg(msg)
@@ -251,15 +263,16 @@ func main() {
 						// append the new node to the updated peer listing
 						peerList = append(peerList, nodeElements)
 					}
-					// publish the latest peer list
-					pubRed.publish(zoneChannelRed, peerList)
+					// publishPeers the latest peer list
+					pubRed.publishPeers(ctx, zoneChannelRed, peerList)
 				}
 			}
 		}
 	}()
 
 	// Start the http router, this is blocking
-	sup.Router.Run("localhost:8080")
+	ginSocket := fmt.Sprintf("localhost:%s", restPort)
+	sup.Router.Run(ginSocket)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
@@ -283,7 +296,7 @@ func handleMsg(payload string) MsgEvent {
 	var peer MsgEvent
 	err := json.Unmarshal([]byte(payload), &peer)
 	if err != nil {
-		log.Printf("HandleMsg unmarshall error: %v\n", err)
+		log.Debugf("HandleMsg unmarshall error: %v\n", err)
 		return peer
 	}
 	return peer

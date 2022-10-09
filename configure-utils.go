@@ -27,7 +27,7 @@ func applyWireguardConf() error {
 	if err != nil {
 		return fmt.Errorf("failed to start the wireguard interface: %v", err)
 	}
-	log.Printf("%v", wgOut)
+	log.Debugf("%v\n", wgOut)
 	return nil
 }
 

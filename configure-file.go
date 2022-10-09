@@ -12,7 +12,7 @@ import (
 // parseJaywalkConfig extracts the jaywalk toml config and
 // builds the wireguard configuration data structs
 func (js *jaywalkState) parseJaywalkConfig() {
-	// parse toml config TODO: move out of main
+	// parse toml config
 	viper.SetConfigType("toml")
 	viper.SetConfigFile(js.jaywalkConfigFile)
 	if err := viper.ReadInConfig(); err != nil {
@@ -58,7 +58,7 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				wgListenPort,
 				false,
 			}
-			log.Infof("Local Node Configuration [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
+			log.Infof("Local Node Configuration Name [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
 				nodeName,
 				value.WireguardIP,
 				value.EndpointIP,
@@ -116,16 +116,17 @@ func (js *jaywalkState) deployWireguardConfig() {
 		}
 
 		if js.nodePubKeyInConfig {
+			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := runCommand("wg-quick", "down", wgIface)
 			if err != nil {
-				log.Printf("failed to start the wireguard interface: %v", err)
+				log.Debugf("failed to start the wireguard interface: %v", err)
 			}
-			log.Printf("%v\n", wgOut)
+			log.Debugf("%v\n", wgOut)
 			wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
 			if err != nil {
 				log.Printf("failed to start the wireguard interface: %v", err)
 			}
-			log.Printf("%v\n", wgOut)
+			log.Debugf("%v\n", wgOut)
 		} else {
 			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
