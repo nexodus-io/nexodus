@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -60,6 +60,11 @@ type wgLocalConfig struct {
 	SaveConfig bool
 }
 
+type MsgEvent struct {
+	Event string
+	Peer  Peer
+}
+
 type ConfigToml struct {
 	Peers map[string]PeerToml `mapstructure:"Peers"`
 }
@@ -73,21 +78,34 @@ type PeerToml struct {
 }
 
 const (
-	wgListenPort     = 51820
-	wgLinuxConfPath  = "/etc/wireguard/"
-	wgDarwinConfPath = "/usr/local/etc/wireguard/"
-	wgConfActive     = "wg0.conf"
-	wgConfLatestRev  = "wg0-latest-rev.conf"
-	wgIface          = "wg0"
-	jaywalkConfig    = "endpoints.toml"
-	zoneChannelBlue  = "zone-blue"
-	zoneChannelRed   = "zone-red"
+	wgListenPort              = 51820
+	wgLinuxConfPath           = "/etc/wireguard/"
+	wgDarwinConfPath          = "/usr/local/etc/wireguard/"
+	wgConfActive              = "wg0.conf"
+	wgConfLatestRev           = "wg0-latest-rev.conf"
+	wgIface                   = "wg0"
+	jaywalkConfig             = "endpoints.toml"
+	zoneChannelBlue           = "zone-blue"
+	zoneChannelRed            = "zone-red"
+	healthcheckRequestChannel = "supervisor-healthcheck-request"
+	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
+	healthcheckRequestMsg     = "supervisor-ready-request"
+	readyRequestTimeout       = 10
+	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 
 // Message Events
 const (
 	registerNodeRequest = "register-node-request"
 )
+
+func init() {
+	// set the log level
+	env := os.Getenv(jwLogEnv)
+	if env == "debug" {
+		log.SetLevel(log.DebugLevel)
+	}
+}
 
 func main() {
 	// instantiate the cli
@@ -184,7 +202,6 @@ func main() {
 	app.Run(os.Args)
 }
 
-// runInit
 func runInit() {
 	if !isCommandAvailable("wg") {
 		log.Fatal("wg command not found, is wireguard installed?")
@@ -193,6 +210,7 @@ func runInit() {
 	if cliFlags.wireguardPubKey == "" {
 		log.Fatal("the public key for this host is required to run")
 	}
+	ctx := context.Background()
 
 	var nodeOS string
 	switch getOS() {
@@ -254,7 +272,10 @@ func runInit() {
 		})
 		defer rc.Close()
 
-		pubsub := rc.Subscribe(js.zone)
+		// ping the supervisor to see if it is responding via the broker
+		superVisorReadyCheck(ctx, rc)
+
+		pubsub := rc.Subscribe(ctx, js.zone)
 		defer pubsub.Close()
 
 		pubIP, err := getPubIP()
@@ -271,14 +292,14 @@ func runInit() {
 			js.requestedIP,
 			js.childPrefix)
 
-		err = rc.Publish(js.zone, peerRegister).Err()
+		err = rc.Publish(ctx, js.zone, peerRegister).Err()
 		if err != nil {
 			log.Errorf("failed to publish subscriber message: %v", err)
 		}
 		log.Printf("Publishing registration to supervisor: %v\n", peerRegister)
 
 		for {
-			msg, err := pubsub.ReceiveMessage()
+			msg, err := pubsub.ReceiveMessage(ctx)
 			if err != nil {
 				log.Fatalf("Failed to subscribe to the controller: %v", err)
 				os.Exit(1)
@@ -288,29 +309,20 @@ func runInit() {
 			case zoneChannelBlue:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("Received message: %+v\n", peerListing)
+					log.Debugf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
-					js.deployWireguardConfig()
+					js.deploySupervisorWireguardConfig()
 				}
 			case zoneChannelRed:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("Received message: %+v\n", peerListing)
+					log.Debugf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
 					js.deploySupervisorWireguardConfig()
 				}
 			}
 		}
-
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-		<-ch
 	}
-}
-
-type MsgEvent struct {
-	Event string
-	Peer  Peer
 }
 
 func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
@@ -326,4 +338,24 @@ func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix st
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)
 	return string(jMsg)
+}
+
+// superVisorReadyCheck blocks until the supervisor responds or the request times out
+func superVisorReadyCheck(ctx context.Context, client *redis.Client) {
+	log.Println("Checking the readiness of the supervisor")
+	healthCheckReplyChan := make(chan string)
+	sub := client.Subscribe(ctx, healthcheckReplyChannel)
+	go func() {
+		for {
+			outPut, _ := sub.ReceiveMessage(ctx)
+			healthCheckReplyChan <- outPut.Payload
+		}
+	}()
+	client.Publish(ctx, healthcheckRequestChannel, healthcheckRequestMsg).Result()
+	select {
+	case <-healthCheckReplyChan:
+	case <-time.After(readyRequestTimeout * time.Second):
+		log.Fatal("Supervisor was not reachable, ensure it is running and attached to the broker")
+	}
+	log.Println("Supervisor is available")
 }

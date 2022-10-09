@@ -27,7 +27,7 @@ func handleMsg(payload string) PeerListing {
 	var peerListing PeerListing
 	err := json.Unmarshal([]byte(payload), &peerListing)
 	if err != nil {
-		log.Warnf("Unmarshalling error from handleMsg: %v\n", err)
+		log.Debugf("Unmarshalling error from handleMsg: %v\n", err)
 		return nil
 	}
 	return peerListing
@@ -81,7 +81,8 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				cliFlags.listenPort,
 				false,
 			}
-			log.Printf("Local Node Configuration - Wireguard Local Endpoint IP [ %s ] Port [ %v ] Local Private Key [ %s ]\n",
+			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard :q!" +
+				"Port [ %v ] Local Private Key [ %s ]\n",
 				localInterface.Address,
 				wgListenPort,
 				localInterface.PrivateKey)
@@ -129,19 +130,21 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
 		if js.nodePubKeyInConfig {
+			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := runCommand("wg-quick", "down", wgIface)
 			if err != nil {
-				log.Errorf("failed to start the wireguard interface: %v\n", err)
+				log.Debugf("failed to start the wireguard interface: %v\n", err)
 			}
-			log.Printf("%v\n", wgOut)
+			log.Debugf("%v\n", wgOut)
 			wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
 			if err != nil {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
-			log.Printf("%v", wgOut)
+			log.Debugf("%v", wgOut)
 		} else {
 			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
+		log.Printf("Peer setup complete")
 	}
 }
 
