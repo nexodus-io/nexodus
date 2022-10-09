@@ -33,12 +33,18 @@ const (
 	healthcheckRequestChannel = "supervisor-healthcheck-request"
 	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
 	healthcheckReplyMsg       = "supervisor-healthy"
+	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 
 func init() {
 	streamService = flag.String("streamer-address", "", "streamer address")
 	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
 	flag.Parse()
+	// set the log level
+	env := os.Getenv(jwLogEnv)
+	if env == "debug" {
+		log.SetLevel(log.DebugLevel)
+	}
 }
 
 // Message Events
@@ -101,7 +107,6 @@ func initApp() *Supervisor {
 }
 
 func main() {
-
 	sup := initApp()
 	client := newRedisClient(sup.streamSocket, sup.streamPass)
 	defer client.Close()
@@ -291,7 +296,7 @@ func handleMsg(payload string) MsgEvent {
 	var peer MsgEvent
 	err := json.Unmarshal([]byte(payload), &peer)
 	if err != nil {
-		log.Printf("HandleMsg unmarshall error: %v\n", err)
+		log.Debugf("HandleMsg unmarshall error: %v\n", err)
 		return peer
 	}
 	return peer

@@ -36,7 +36,9 @@ docker run \
     --requirepass <REDIS_PASSWD>
 ```
 
-- Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above):
+- Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above). 
+- The supervisor must be running for agents to connect to the tunnel mesh. 
+- If the supervisor becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down.
 
 ```shell
 git clone https://github.com/redhat-et/jaywalking.git
@@ -353,75 +355,36 @@ curl --location --request GET 'http://localhost:8080/ipam/leases/zone-red'
 ]
 ```
 
+### Developer Quickstart
 
-
-### Ansible Deployment
-
-To deploy the current state run the following which deploys nodes across two VPCs and enables full mesh connectivity between them (simulating two disparate data centers)
-
-- Setup your aws profile with the required keys for ec2 provisioning:
+- build
 
 ```shell
-vi ~/.aws/credentials
-[default]
-region = us-east-1
-aws_access_key_id = <aws_access_key_id>
-aws_secret_access_key = <aws_secret_access_key>
-```
-
-- Edit the controller section to add the running redis server address/password and change the binary address if you want a modified binary. The S3 bucket will generally have the latest build as we develop.
-
-```
-### Controller Section ###
-controller_address: <ADD REDIS ADDRESS HERE>
-controller_password: <ADD PASS HERE>
-jaywalk_binary: https://jaywalking.s3.amazonaws.com/jaywalk-zeroconf-poc-amd64-linux
-```
-- Run the playbook (the jaywalk binary is stored in an S3 bucket and pulled down by ansible)
-
-```shell
-# Install Ansible if not already installed
-python3 -m pip install --user ansible
-ansible-playbook --version
-
-# Run the playbook
 git clone https://github.com/redhat-et/jaywalking.git
-cd /jaywalking/ops/ansible/
-ansible-playbook -vv ./deploy.yml 
+cd jaywalking
+# Default build for your OS
+go build -o jaywalk
+cd supervisor
+go build -o jaywalk-supervisor
+
+# Build for specific OSs
+GOOS=linux GOARCH=amd64 go build -o jaywalk-amd64-linux 
+GOOS=darwin GOARCH=amd64 go build -o jaywalk-amd64-darwin
 ```
 
-- Once the nodes are finished provisioning, ssh to a node from the inventory and run the validation test that verifies connectivity across VPCs. 
+- run
 
 ```shell
-cat inventory.txt
-ssh -i <key_name>.pem ubuntu@<ip_from_inventory>
+# Start the supervisor with debug logging
+JAYWALK_LOG_LEVEL=debug ./jaywalk-supervisor  \
+    -streamer-address <REDIS_SERVER_ADDRESS> \
+    -streamer-passwd <REDIS_PASSWD>
 
-./verify-connectivity.sh
-node 10.10.1.8 is up
-node 10.10.1.7 is up
-node 10.10.1.6 is up
-node 10.10.1.5 is up
-node 10.10.1.4 is up
-node 10.10.1.3 is up
-node 10.10.1.2 is up
-node 10.10.1.1 is up
-```
-
-- Add your own machine to the mesh, for example, a mac or linux dev machine by creating a toml file of any name with your host's details:
-
-```
-sudo jaywalk --public-key=<PUBLIC_KEY> \
-    --private-key=<PRIVATE_KEY>  \
-    --controller=<CONTROLLER_ADDRESS>  \
-    --controller-password=<CONTROLLER_ADDRESS> \
-    --agent-mode
-```
-
-- Copy the toml file into the `ops/ansible/peer-inventory` directory and re-run the playbook.
-
-- Now your host should be able to reach all nodes in the mesh, verify with `./verify-connectivity.sh` located in the ansible directory.
-
-- Tear down the environment with:
-```
-ansible-playbook terminate-instances.yml
+# Start the agent on a node with debug logging
+sudo JAYWALK_LOG_LEVEL=debug ./jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --zone=zone-blue 
 ```

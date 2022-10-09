@@ -91,12 +91,21 @@ const (
 	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
 	healthcheckRequestMsg     = "supervisor-ready-request"
 	readyRequestTimeout       = 10
+	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 
 // Message Events
 const (
 	registerNodeRequest = "register-node-request"
 )
+
+func init() {
+	// set the log level
+	env := os.Getenv(jwLogEnv)
+	if env == "debug" {
+		log.SetLevel(log.DebugLevel)
+	}
+}
 
 func main() {
 	// instantiate the cli
@@ -300,14 +309,14 @@ func runInit() {
 			case zoneChannelBlue:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("Received message: %+v\n", peerListing)
+					log.Debugf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
-					js.deployWireguardConfig()
+					js.deploySupervisorWireguardConfig()
 				}
 			case zoneChannelRed:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("Received message: %+v\n", peerListing)
+					log.Debugf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
 					js.deploySupervisorWireguardConfig()
 				}
