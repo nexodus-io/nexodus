@@ -12,7 +12,7 @@ import (
 // parseJaywalkConfig extracts the jaywalk toml config and
 // builds the wireguard configuration data structs
 func (js *jaywalkState) parseJaywalkConfig() {
-	// parse toml config TODO: move out of main
+	// parse toml config
 	viper.SetConfigType("toml")
 	viper.SetConfigFile(js.jaywalkConfigFile)
 	if err := viper.ReadInConfig(); err != nil {
