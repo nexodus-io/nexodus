@@ -161,11 +161,13 @@ sudo ip addr add 172.20.3.10/32 dev lo
 
 ### Connect Containers Directly Between Nodes in a Mesh
 
+The following example allows a user to connect Docker container directly to one another without exposing a port on the node.
+These nodes could be in different data centers or CSPs. This example uses the `--child-prefix` option to advertise the private
+container networks to the mesh and enable connectivity as depicted below.
+
 <img src="https://jaywalking.s3.amazonaws.com/jaywalk-container-connectivity.png" width="100%" height="100%">
 
-The following example allows a user to connect Docker container directly to one another without exposing a port on the node. 
-These nodes could be in different data centers or CSPs. This example uses the `--child-prefix` option to advertise the private 
-container networks to the mesh.
+*Figure 2. Encrypt and connect private RFC-1918 addresses and services in containers to all nodes in the mesh regardless of location*
 
 *Note:* the containers need to have unique private addresses on the docker network as exemplified below. Overlapping addresses 
 within a zone is not supported because that is a nightmare to troubleshoot, creates major fragility in SDN deployments and is 
@@ -180,13 +182,13 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    --child-prefix=172.24.0.0/24
+    --child-prefix=172.24.0.0/24 \
     --zone=zone-blue 
 
 # Create the container network:
 docker network create --driver=bridge --subnet=172.24.0.0/24 net1
 # Add the address range to the wg0 interface (required for docker only):
-iptables -I DOCKER-USER -i wg0 -d 172.24.0.0/24 -j ACCEPT
+sudo iptables -I DOCKER-USER -i wg0 -d 172.24.0.0/24 -j ACCEPT
 # Start a container
 docker run -it --rm --network=net1 busybox bash
 ```
@@ -200,13 +202,13 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    -zone=zone-blue \
-    --child-prefix=172.28.0.0/24
+    --child-prefix=172.28.0.0/24 \
+    --zone=zone-blue \
 
 # Setup a docker network and start a node on it:
 docker network create --driver=bridge --subnet=172.28.0.0/24 net1
 # Add the address range to the wg0 interface (required for docker only):
-iptables -I DOCKER-USER -i wg0 -d 172.28.0.0/24 -j ACCEPT
+sudo iptables -I DOCKER-USER -i wg0 -d 172.28.0.0/24 -j ACCEPT
 # Start a container
 docker run -it --rm --network=net1 busybox bash
 # ping the container started on Node1
