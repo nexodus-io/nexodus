@@ -22,6 +22,7 @@ type flags struct {
 	zone             string
 	requestedIP      string
 	agentMode        bool
+	childPrefix      string
 }
 
 var (
@@ -36,6 +37,7 @@ type jaywalkState struct {
 	nodeOS             string
 	zone               string
 	requestedIP        string
+	childPrefix        string
 	wgConf             wgConfig
 }
 
@@ -88,7 +90,6 @@ const (
 )
 
 func main() {
-
 	// instantiate the cli
 	app := cli.NewApp()
 	// flags are stored in the global flags variable
@@ -149,6 +150,13 @@ func main() {
 				Usage:       "request a specific IP address from Ipam if available",
 				Destination: &cliFlags.requestedIP,
 				EnvVars:     []string{"JAYWALK_REQUESTED_IP"},
+			},
+			&cli.StringFlag{
+				Name:        "child-prefix",
+				Value:       "",
+				Usage:       "request a CIDR range of addresses that will be advertised from this node",
+				Destination: &cliFlags.childPrefix,
+				EnvVars:     []string{"JAYWALK_REQUESTED_CHILD_PREFIX"},
 			},
 			&cli.BoolFlag{Name: "agent-mode",
 				Usage:       "run as a agentMode",
@@ -227,6 +235,7 @@ func runInit() {
 		nodeOS:            nodeOS,
 		zone:              cliFlags.zone,
 		requestedIP:       cliFlags.requestedIP,
+		childPrefix:       cliFlags.childPrefix,
 	}
 
 	if !cliFlags.agentMode {
@@ -254,11 +263,19 @@ func runInit() {
 		}
 		endPointIP := fmt.Sprintf("%s:%d", pubIP, wgListenPort)
 
-		peerRegister := publishMessage(registerNodeRequest, js.zone, js.nodePubKey, endPointIP, js.requestedIP)
+		peerRegister := publishMessage(
+			registerNodeRequest,
+			js.zone,
+			js.nodePubKey,
+			endPointIP,
+			js.requestedIP,
+			js.childPrefix)
+
 		err = rc.Publish(js.zone, peerRegister).Err()
 		if err != nil {
 			log.Errorf("failed to publish subscriber message: %v", err)
 		}
+		log.Printf("Publishing registration to supervisor: %v\n", peerRegister)
 
 		for {
 			msg, err := pubsub.ReceiveMessage()
@@ -271,14 +288,14 @@ func runInit() {
 			case zoneChannelBlue:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("received message: %+v\n", peerListing)
+					log.Printf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
 					js.deployWireguardConfig()
 				}
 			case zoneChannelRed:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
-					log.Printf("[INFO] received message: %+v\n", peerListing)
+					log.Printf("Received message: %+v\n", peerListing)
 					js.parseJaywalkSupervisorConfig(peerListing)
 					js.deploySupervisorWireguardConfig()
 				}
@@ -296,7 +313,7 @@ type MsgEvent struct {
 	Peer  Peer
 }
 
-func publishMessage(event, zone, pubKey, endpointIP, requestedIP string) string {
+func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
 	msg := MsgEvent{}
 	msg.Event = event
 	peer := Peer{
@@ -304,6 +321,7 @@ func publishMessage(event, zone, pubKey, endpointIP, requestedIP string) string 
 		EndpointIP:  endpointIP,
 		Zone:        zone,
 		NodeAddress: requestedIP,
+		ChildPrefix: childPrefix,
 	}
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)

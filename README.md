@@ -38,7 +38,7 @@ docker run \
 
 - Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above):
 
-```
+```shell
 git clone https://github.com/redhat-et/jaywalking.git
 
 cd supervisor
@@ -56,9 +56,9 @@ go build -o jaywalk-supervisor
 wg genkey | sudo tee /etc/wireguard/server_private.key | wg pubkey | sudo tee /etc/wireguard/server_public.key
 ```
 
-- Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller:
+- Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller. Run the following on a few nodes and set up a mesh:
 
-```
+```shell
 sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
     --controller=<REDIS_SERVER_ADDRESS> \
@@ -66,11 +66,11 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
      --agent-mode
 ```
 
-- You will now have a flat host routed network between the endpoints. We currently work around NAT with a STUN server to automatically discover public addressing for the user.
+- You will now have a flat host routed network between the endpoints. All of the wg0 interfaces can now reach one another. We currently work around NAT with a STUN server to automatically discover public addressing for the user.
 
 - Cleanup
 
-```
+```shell
 # Quick Linux
 sudo ip link del wg0
 
@@ -91,19 +91,147 @@ sudo wg-quick down wg0
   for connections to be initiated. Once the connection is initiated from one side, bi-directional communications can be established. This aspect is especially interesting for IOT/Edge.
 - An IPAM module handles node address allocations but also allows the user to specify it's wireguard node address.
 
+### Multi-Tenancy 
 
-Another join example from a node includes the ability to specify what zone to join and allows you to request a particular IP address from the IPAM module. If an existing lease exists, it
+- Another join example from a node includes the ability to specify what zone to join and allows you to request a particular IP address from the IPAM module. If an existing lease exists, it
 will be released and offered to the node requesting it.
+- In the following example, two zones are setup that are completely isolated from one another and can have overlapping CIDRs. If you were to add more nodes to either zone, the new nodes could 
+communicate to other nodes in it's zone but not to a different zone. Zones are completely separate overlays and tenants.
 
-```curl
-sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
-    --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
+```shell
+# Zone Blue
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --request-ip=10.10.0.30 \
+    --zone=zone-blue 
+    
+# Zone Red
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
     --request-ip=10.10.0.30 \
     --zone=zone-red 
 ```
+
+
+### Child Prefixes
+
+- Imagine a user wants to not only communicate between the node address each member of the mesh but also want to advertise
+some additional IP prefixes for additional services running on a node. This can be accomplished with the `--child-prefix` flag.
+Prefixes have to be unique within a zone but can overlap on separate zones.
+- *Note:* once you allocate a prefix, it is fixed in IPAM. We do not currently support removing the prefix. If you want to
+add different child prefix either use a different cidr or delete the persistent state file in the root of where you ran the 
+supervisor binary named `ipam-red.json` or `ipam-red.json`.
+
+```shell
+# Zone Blue Node-1
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --child-prefix=172.20.1.0/24
+    --zone=zone-red 
+
+# Zone Blue Node-2
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --child-prefix=172.20.3.0/24 \
+    --zone=zone-red 
+```
+
+You can create a loopback on each node's child prefix range and ping them from all nodes in the mesh like so:
+
+```shell
+# Node-1
+sudo ip addr add 172.20.1.10/32 dev lo
+Node-2
+sudo ip addr add 172.20.3.10/32 dev lo
+# ping between nodes to the loopbacks
+# Both IPs are reachable because those prefixes were added to the routing tables
+```
+
+### Connect Containers Directly Between Nodes in a Mesh
+
+<img src="https://jaywalking.s3.amazonaws.com/jaywalk-container-connectivity.png" width="100%" height="100%">
+
+The following example allows a user to connect Docker container directly to one another without exposing a port on the node. 
+These nodes could be in different data centers or CSPs. This example uses the `--child-prefix` option to advertise the private 
+container networks to the mesh.
+
+*Note:* the containers need to have unique private addresses on the docker network as exemplified below. Overlapping addresses 
+within a zone is not supported because that is a nightmare to troubleshoot, creates major fragility in SDN deployments and is 
+all around insanity. TLDR; IP address management in v4 networks is important when deploying infrastructure ¯\_(ツ)_/¯ 
+
+- Node1 setup
+
+```shell
+# Node1
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --child-prefix=172.24.0.0/24
+    --zone=zone-blue 
+
+# Create the container network:
+docker network create --driver=bridge --subnet=172.24.0.0/24 net1
+# Add the address range to the wg0 interface (required for docker only):
+iptables -I DOCKER-USER -i wg0 -d 172.24.0.0/24 -j ACCEPT
+# Start a container
+docker run -it --rm --network=net1 busybox bash
+```
+
+- Node2 setup
+
+```shell
+# Node2
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    -zone=zone-blue \
+    --child-prefix=172.28.0.0/24
+
+# Setup a docker network and start a node on it:
+docker network create --driver=bridge --subnet=172.28.0.0/24 net1
+# Add the address range to the wg0 interface (required for docker only):
+iptables -I DOCKER-USER -i wg0 -d 172.28.0.0/24 -j ACCEPT
+# Start a container
+docker run -it --rm --network=net1 busybox bash
+# ping the container started on Node1
+ping 172.28.0.x
+```
+
+- To go one step further, a user could then run jaywalk on any machine, join the mesh and ping, or connect to a service, 
+on both of the containers that were started. 
+- This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. 
+- That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
+
+```shell
+# Zone Blue Node3
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_C>  \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY_C>  \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> \
+    --agent-mode \
+    --zone=zone-blue 
+    
+ping 172.28.0.x
+ping 172.24.0.x
+```
+
+
 ### REST API
 
 There are currently some supported REST calls:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -58,21 +59,25 @@ func (sup *Supervisor) GetZones(c *gin.Context) {
 // TODO: this is hacky, should query the instance state instead, also file lock risk
 // GetIpamLeases responds with the list of all peers as JSON.
 func (sup *Supervisor) GetIpamLeases(c *gin.Context) {
-	blueIpamState := fileToString(BlueIpamSaveFile)
-	redIpamState := fileToString(RedIpamSaveFile)
 	zoneKey := c.Param("zone")
 	var zoneLeases []Prefix
 	var err error
 	if zoneKey == zoneChannelBlue {
-		zoneLeases, err = unmarshalIpamState(blueIpamState)
-		if err != nil {
-			fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+		if fileExists(BlueIpamSaveFile) {
+			blueIpamState := fileToString(BlueIpamSaveFile)
+			zoneLeases, err = unmarshalIpamState(blueIpamState)
+			if err != nil {
+				fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+			}
 		}
 	}
 	if zoneKey == zoneChannelRed {
-		zoneLeases, err = unmarshalIpamState(redIpamState)
-		if err != nil {
-			fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+		if fileExists(RedIpamSaveFile) {
+			redIpamState := fileToString(RedIpamSaveFile)
+			zoneLeases, err = unmarshalIpamState(redIpamState)
+			if err != nil {
+				fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
+			}
 		}
 	}
 
@@ -125,4 +130,11 @@ func unmarshalIpamState(s string) ([]Prefix, error) {
 		return nil, err
 	}
 	return msg, nil
+}
+
+func fileExists(f string) bool {
+	if _, err := os.Stat(f); err != nil {
+		return false
+	}
+	return true
 }

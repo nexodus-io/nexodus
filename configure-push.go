@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -18,6 +19,7 @@ type Peer struct {
 	AllowedIPs  string `json:"AllowedIPs"`
 	Zone        string `json:"Zone"`
 	NodeAddress string `json:"NodeAddress"`
+	ChildPrefix string `json:"ChildPrefix"`
 }
 
 // handleMsg deal with streaming messages
@@ -25,7 +27,7 @@ func handleMsg(payload string) PeerListing {
 	var peerListing PeerListing
 	err := json.Unmarshal([]byte(payload), &peerListing)
 	if err != nil {
-		log.Printf("[ERROR] UnmarshalMessage: %v\n", err)
+		log.Warnf("Unmarshalling error from handleMsg: %v\n", err)
 		return nil
 	}
 	return peerListing
@@ -49,15 +51,23 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
+		// Build the wg config for all peers
 		if value.PublicKey != js.nodePubKey {
+
+			var allowedIPs string
+			if value.ChildPrefix != "" {
+				allowedIPs = appendChildPrefix(value.AllowedIPs, value.ChildPrefix)
+			} else {
+				allowedIPs = value.AllowedIPs
+			}
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.EndpointIP,
-				value.AllowedIPs,
+				allowedIPs,
 			}
 			peers = append(peers, peer)
 			log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-				value.AllowedIPs,
+				allowedIPs,
 				value.EndpointIP,
 				value.PublicKey,
 				value.NodeAddress,
@@ -133,4 +143,9 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
 	}
+}
+
+func appendChildPrefix(nodeAddress, childPrefix string) string {
+	allowedIps := fmt.Sprintf("%s, %s", nodeAddress, childPrefix)
+	return allowedIps
 }
