@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -95,13 +96,13 @@ func (sup *Supervisor) PostPeers(c *gin.Context) {
 	// Add the new Peers to the slice.
 	//peers = append(peers, newPeer)
 	c.IndentedJSON(http.StatusCreated, newPeer)
-
-	publishAllPeersMessage(zoneChannelBlue, newPeer)
+	// TODO: broken atm
+	// publishAllPeersMessage(ctx, zoneChannelBlue, newPeer)
 }
 
-func publishAllPeersMessage(channel string, data []Peer) {
+func publishAllPeersMessage(ctx context.Context, channel string, data []Peer) {
 	id, msg := createAllPeerMessage(data)
-	err := redisDB.Publish(channel, msg).Err()
+	err := redisDB.Publish(ctx, channel, msg).Err()
 	if err != nil {
 		log.Errorf("sending %s message failed, %v\n", id, err)
 		return
