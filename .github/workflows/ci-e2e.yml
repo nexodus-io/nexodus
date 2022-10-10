@@ -1,0 +1,43 @@
+name: ci-e2e-tests
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  e2e:
+    name: e2e-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment: ["peer-to-peer"]
+    env:
+      JOB_NAME: "jaywalk-e2e-${{ matrix.deployment }}"
+      DEPLOYMENT: ${{ matrix.deployment }}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Build Jaywalk Agent
+      run: |
+        go build -o jaywalk
+        chmod +x jaywalk
+        sudo cp jaywalk /usr/local/sbin/
+
+    - name: Build Jaywalk Supervisor
+      run: |
+        pushd supervisor
+        go build -o jaywalk-supervisor
+        chmod +x jaywalk-supervisor
+        popd
+
+    - name: Run e2e
+      run: make -C tests run-ci-e2e
