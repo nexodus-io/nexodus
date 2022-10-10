@@ -81,7 +81,7 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				cliFlags.listenPort,
 				false,
 			}
-			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard :q!" +
+			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard :q!"+
 				"Port [ %v ] Local Private Key [ %s ]\n",
 				localInterface.Address,
 				wgListenPort,

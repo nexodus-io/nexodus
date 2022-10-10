@@ -38,7 +38,8 @@ docker run \
 
 - Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above). 
 - The supervisor must be running for agents to connect to the tunnel mesh. 
-- If the supervisor becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down.
+- If the supervisor becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. The same applies 
+to the agent, if the agent process exits, tunnels are maintained and only new peer joins are affected.
 
 ```shell
 git clone https://github.com/redhat-et/jaywalking.git
