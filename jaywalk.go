@@ -282,6 +282,12 @@ func runInit() {
 		})
 		defer rc.Close()
 
+		// TODO: move to a db package used by both server and agent
+		_, err := rc.Ping(ctx).Result()
+		if err != nil {
+			log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
+		}
+
 		// ping the supervisor to see if it is responding via the broker, exit the agent on timeout
 		superVisorReadyCheck(ctx, rc)
 
