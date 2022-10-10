@@ -13,16 +13,17 @@ import (
 )
 
 type flags struct {
-	wireguardPubKey  string
-	wireguardPvtKey  string
-	controllerIP     string
-	controllerPasswd string
-	listenPort       int
-	configFile       string
-	zone             string
-	requestedIP      string
-	agentMode        bool
-	childPrefix      string
+	wireguardPubKey        string
+	wireguardPvtKey        string
+	controllerIP           string
+	controllerPasswd       string
+	listenPort             int
+	configFile             string
+	zone                   string
+	requestedIP            string
+	userProvidedEndpointIP string
+	agentMode              bool
+	childPrefix            string
 }
 
 var (
@@ -30,15 +31,16 @@ var (
 )
 
 type jaywalkState struct {
-	nodePubKey         string
-	nodePubKeyInConfig bool
-	jaywalkConfigFile  string
-	daemon             bool
-	nodeOS             string
-	zone               string
-	requestedIP        string
-	childPrefix        string
-	wgConf             wgConfig
+	nodePubKey             string
+	nodePubKeyInConfig     bool
+	jaywalkConfigFile      string
+	daemon                 bool
+	nodeOS                 string
+	zone                   string
+	requestedIP            string
+	childPrefix            string
+	userProvidedEndpointIP string
+	wgConf                 wgConfig
 }
 
 type wgConfig struct {
@@ -137,42 +139,49 @@ func main() {
 			&cli.StringFlag{
 				Name:        "controller",
 				Value:       "",
-				Usage:       "Address of the controller (required)",
+				Usage:       "address of the controller (required)",
 				Destination: &cliFlags.controllerIP,
 				EnvVars:     []string{"JAYWALK_CONTROLLER"},
 			},
 			&cli.StringFlag{
 				Name:        "controller-password",
 				Value:       "",
-				Usage:       "Password for the controller",
+				Usage:       "password for the controller (required)",
 				Destination: &cliFlags.controllerPasswd,
 				EnvVars:     []string{"JAYWALK_CONTROLLER_PASSWD"},
 			},
 			&cli.StringFlag{
 				Name:        "zone",
 				Value:       "zone-blue",
-				Usage:       "the tenancy zone the peer is to join",
+				Usage:       "the tenancy zone the peer is to join (optional)",
 				Destination: &cliFlags.zone,
 				EnvVars:     []string{"JAYWALK_ZONE"},
 			},
 			&cli.StringFlag{
 				Name:        "config",
 				Value:       "",
-				Usage:       "configuration file",
+				Usage:       "configuration file (ignored if run in agent-mode - likely deprecate)",
 				Destination: &cliFlags.configFile,
 				EnvVars:     []string{"JAYWALK_CONFIG"},
 			},
 			&cli.StringFlag{
 				Name:        "request-ip",
 				Value:       "",
-				Usage:       "request a specific IP address from Ipam if available",
+				Usage:       "request a specific IP address from Ipam if available (optional)",
 				Destination: &cliFlags.requestedIP,
 				EnvVars:     []string{"JAYWALK_REQUESTED_IP"},
 			},
 			&cli.StringFlag{
+				Name:        "local-endpoint-ip",
+				Value:       "",
+				Usage:       "specify the endpoint address of this node instead of being discovered (optional)",
+				Destination: &cliFlags.userProvidedEndpointIP,
+				EnvVars:     []string{"JAYWALK_LOCAL_ENDPOINT_IP"},
+			},
+			&cli.StringFlag{
 				Name:        "child-prefix",
 				Value:       "",
-				Usage:       "request a CIDR range of addresses that will be advertised from this node",
+				Usage:       "request a CIDR range of addresses that will be advertised from this node (optional)",
 				Destination: &cliFlags.childPrefix,
 				EnvVars:     []string{"JAYWALK_REQUESTED_CHILD_PREFIX"},
 			},
@@ -247,13 +256,14 @@ func runInit() {
 	}
 
 	js := &jaywalkState{
-		nodePubKey:        cliFlags.wireguardPubKey,
-		jaywalkConfigFile: cliFlags.configFile,
-		daemon:            cliFlags.agentMode,
-		nodeOS:            nodeOS,
-		zone:              cliFlags.zone,
-		requestedIP:       cliFlags.requestedIP,
-		childPrefix:       cliFlags.childPrefix,
+		nodePubKey:             cliFlags.wireguardPubKey,
+		jaywalkConfigFile:      cliFlags.configFile,
+		daemon:                 cliFlags.agentMode,
+		nodeOS:                 nodeOS,
+		zone:                   cliFlags.zone,
+		requestedIP:            cliFlags.requestedIP,
+		childPrefix:            cliFlags.childPrefix,
+		userProvidedEndpointIP: cliFlags.userProvidedEndpointIP,
 	}
 
 	if !cliFlags.agentMode {
@@ -278,17 +288,28 @@ func runInit() {
 		pubsub := rc.Subscribe(ctx, js.zone)
 		defer pubsub.Close()
 
-		pubIP, err := getPubIP()
-		if err != nil {
-			log.Warn("Unable to determine the public facing address")
+		// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
+		// Otherwise, discover what the public of the node is and provide that to the peers.
+		var localEndpointIP string
+		if js.userProvidedEndpointIP != "" {
+			if err := validateIp(js.userProvidedEndpointIP); err != nil {
+				log.Fatal("the IP address passed in --local-endpoint-ip %s was not valid: %v",
+					js.userProvidedEndpointIP, err)
+			}
+			localEndpointIP = js.userProvidedEndpointIP
+		} else {
+			localEndpointIP, err = getPubIP()
+			if err != nil {
+				log.Warn("Unable to determine the public facing address")
+			}
 		}
-		endPointIP := fmt.Sprintf("%s:%d", pubIP, wgListenPort)
-
+		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, wgListenPort)
+		// Create the message describing this peer to be published
 		peerRegister := publishMessage(
 			registerNodeRequest,
 			js.zone,
 			js.nodePubKey,
-			endPointIP,
+			endpointSocket,
 			js.requestedIP,
 			js.childPrefix)
 
@@ -347,8 +368,8 @@ func superVisorReadyCheck(ctx context.Context, client *redis.Client) {
 	sub := client.Subscribe(ctx, healthcheckReplyChannel)
 	go func() {
 		for {
-			outPut, _ := sub.ReceiveMessage(ctx)
-			healthCheckReplyChan <- outPut.Payload
+			output, _ := sub.ReceiveMessage(ctx)
+			healthCheckReplyChan <- output.Payload
 		}
 	}()
 	client.Publish(ctx, healthcheckRequestChannel, healthcheckRequestMsg).Result()

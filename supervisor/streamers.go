@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -37,8 +35,8 @@ func (s *streamer) subscribe(ctx context.Context, channel string, msg chan strin
 	sub := s.client.Subscribe(ctx, channel)
 	go func() {
 		for {
-			outPut, _ := sub.ReceiveMessage(ctx)
-			msg <- outPut.Payload
+			output, _ := sub.ReceiveMessage(ctx)
+			msg <- output.Payload
 		}
 	}()
 }
@@ -61,7 +59,7 @@ func readyCheckRepsonder(ctx context.Context, client *redis.Client) {
 		subHealthRequests.subscribe(ctx, healthcheckRequestChannel, msgRedChan)
 		for {
 			serverStatusRequest := <-msgRedChan
-			fmt.Println(serverStatusRequest)
+			log.Debugf("Ready check channel message %s", serverStatusRequest)
 			if serverStatusRequest == "supervisor-ready-request" {
 				client.Publish(ctx, healthcheckReplyChannel, healthcheckReplyMsg).Result()
 			}
