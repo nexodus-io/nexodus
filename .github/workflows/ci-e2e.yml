@@ -28,6 +28,7 @@ jobs:
 
     - name: Build Jaywalk Agent
       run: |
+        pushd jaywalk-agent
         go build -o jaywalk
         chmod +x jaywalk
         sudo cp jaywalk /usr/local/sbin/

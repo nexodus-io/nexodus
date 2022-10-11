@@ -19,9 +19,13 @@ jobs:
         go-version: 1.18
 
     - name: Build Jaywalk Agent
-      run: go build -v ./...
+      run: |
+        pushd jaywalk-agent
+        go build -v ./...
+        popd
 
     - name: Build Jaywalk Supervisor
       run: |
-        cd supervisor
+        pushd supervisor
         go build -v ./...
+        popd
