@@ -108,7 +108,7 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    --request-ip=10.10.0.30 \
+    --request-ip=10.20.0.30 \
     --zone=zone-blue 
     
 # Zone Red
@@ -117,7 +117,7 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    --request-ip=10.10.0.30 \
+    --request-ip=10.20.0.30 \
     --zone=zone-red 
 ```
 
@@ -253,37 +253,37 @@ curl -s --location --request GET 'http://localhost:8080/peers' | python -m json.
 [{
 "PublicKey": "DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=",
 "EndpointIP": "3.94.59.204:51820",
-"AllowedIPs": "10.10.1.1/32",
+"AllowedIPs": "10.20.1.1/32",
 "Zone": "zone-blue"
 },
 {
 "PublicKey": "O3UVnLl6BFNYWf21tEDGpKbxYfzCp9LzwSXbtd9i+Eg=",
 "EndpointIP": "18.205.149.74:51820",
-"AllowedIPs": "10.10.1.2/32",
+"AllowedIPs": "10.20.1.2/32",
 "Zone": "zone-blue"
 },
 {
 "PublicKey": "SvAAJctGA5U6EP+30LMuhoG76VLrEhwq3rwFf9pqcB4=",
 "EndpointIP": "3.82.51.92:51820",
-"AllowedIPs": "10.10.1.3/32",
+"AllowedIPs": "10.20.1.3/32",
 "Zone": "zone-blue"
 },
 {
 "PublicKey": "M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=",
 "EndpointIP": "34.224.78.66:51820",
-"AllowedIPs": "10.10.1.1/32",
+"AllowedIPs": "10.20.1.1/32",
 "Zone": "zone-red"
 },
 {
 "PublicKey": "oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=",
 "EndpointIP": "71.31.21.22:51820",
-"AllowedIPs": "10.10.1.2/32",
+"AllowedIPs": "10.20.1.2/32",
 "Zone": "zone-red"
 },
 {
 "PublicKey": "IMqxPz/eQzCdHjb8Ajl7OVTtJmZqiKeS6SvQLml21nU=",
 "EndpointIP": "71.31.21.22:51820",
-"AllowedIPs": "10.10.1.3/32",
+"AllowedIPs": "10.20.1.3/32",
 "Zone": "zone-red"
 }]
 ```
@@ -300,7 +300,7 @@ curl -s --location --request GET 'http://localhost:8080/peers/M+BTP8LbMikKLufoTT
 {
     "PublicKey": "M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=",
     "EndpointIP": "34.224.78.66:51820",
-    "AllowedIPs": "10.10.1.1/32",
+    "AllowedIPs": "10.20.1.1/32",
     "Zone": "zone-red"
 }
 ```
@@ -318,12 +318,12 @@ curl --location --request GET 'http://localhost:8080/zones'
   {
     "Name": "zone-red",
     "Description": "Tenancy Zone Red",
-    "IpCidr": "10.10.1.0/20"
+    "IpCidr": "10.20.1.0/20"
   },
   {
     "Name": "zone-blue",
     "Description": "Tenancy Zone Blue",
-    "IpCidr": "10.10.1.0/20"
+    "IpCidr": "10.20.1.0/20"
   }
 ]
 ```
@@ -340,17 +340,17 @@ curl --location --request GET 'http://localhost:8080/ipam/leases/zone-red'
 ```json
 [
     {
-        "Cidr": "10.10.0.0/20",
+        "Cidr": "10.20.0.0/20",
         "IPs": {
-            "10.10.0.0": true,
-            "10.10.0.1": true,
-            "10.10.0.2": true,
-            "10.10.0.29": true,
-            "10.10.0.3": true,
-            "10.10.0.4": true,
-            "10.10.0.5": true,
-            "10.10.0.6": true,
-            "10.10.15.255": true
+            "10.20.0.0": true,
+            "10.20.0.1": true,
+            "10.20.0.2": true,
+            "10.20.0.29": true,
+            "10.20.0.3": true,
+            "10.20.0.4": true,
+            "10.20.0.5": true,
+            "10.20.0.6": true,
+            "10.20.15.255": true
         }
     }
 ]
