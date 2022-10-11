@@ -24,8 +24,8 @@ var (
 const (
 	zoneChannelBlue           = "zone-blue"
 	zoneChannelRed            = "zone-red"
-	ipPrefixBlue              = "10.10.1.0/20"
-	ipPrefixRed               = "10.10.1.0/20"
+	ipPrefixBlue              = "10.20.1.0/20"
+	ipPrefixRed               = "10.20.1.0/20"
 	BlueIpamSaveFile          = "ipam-blue.json"
 	RedIpamSaveFile           = "ipam-red.json"
 	streamPort                = 6379

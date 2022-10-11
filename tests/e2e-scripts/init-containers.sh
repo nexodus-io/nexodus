@@ -103,12 +103,12 @@ copy_binaries() {
     cat jaywalk-run-node2.sh
 
     # Set permissions
-    chmod +x ../jaywalk
+    chmod +x ../jaywalk-agent/jaywalk
     chmod +x ../supervisor/jaywalk-supervisor
 
     # Copy binaries and scripts (copying the supervisor even though we are running it on the VM instead of in a container)
-    sudo docker cp ../jaywalk node1:/bin/jaywalk
-    sudo docker cp ../jaywalk node2:/bin/jaywalk
+    sudo docker cp ../jaywalk-agent/jaywalk node1:/bin/jaywalk
+    sudo docker cp ../jaywalk-agent/jaywalk node2:/bin/jaywalk
     sudo docker cp ../supervisor/jaywalk-supervisor node1:/bin/jaywalk-supervisor
     sudo docker cp ../supervisor/jaywalk-supervisor node2:/bin/jaywalk-supervisor
     sudo docker cp ./jaywalk-run-node1.sh node1:/bin/jaywalk-run-node1.sh
