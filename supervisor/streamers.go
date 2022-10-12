@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -18,8 +19,8 @@ func (s *streamer) dispose() {
 	s.client.Close()
 }
 
-// newPubsub create streamer instance
-func newPubsub(client *redis.Client) *streamer {
+// NewPubsub create streamer instance
+func NewPubsub(client *redis.Client) *streamer {
 	return &streamer{client: client}
 }
 
@@ -41,8 +42,8 @@ func (s *streamer) subscribe(ctx context.Context, channel string, msg chan strin
 	}()
 }
 
-// newRedisClient creates a new redis client instance
-func newRedisClient(streamerSocket, streamPasswd string) *redis.Client {
+// NewRedisClient creates a new redis client instance
+func NewRedisClient(streamerSocket, streamPasswd string) *redis.Client {
 	return redis.NewClient(&redis.Options{
 		Addr:     streamerSocket,
 		Password: streamPasswd,
@@ -53,7 +54,7 @@ func newRedisClient(streamerSocket, streamPasswd string) *redis.Client {
 // readyCheckRepsonder listens for any msg on healthcheckRequestChannel
 // replies on healthcheckReplyChannel to let the agents know it is available
 func readyCheckRepsonder(ctx context.Context, client *redis.Client) {
-	subHealthRequests := newPubsub(client)
+	subHealthRequests := NewPubsub(client)
 	msgRedChan := make(chan string)
 	go func() {
 		subHealthRequests.subscribe(ctx, healthcheckRequestChannel, msgRedChan)
