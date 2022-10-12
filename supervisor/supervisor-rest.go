@@ -9,16 +9,72 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redhat-et/jaywalking/supervisor/ipam"
 	log "github.com/sirupsen/logrus"
 )
 
-// GetPeers responds with the list of all peers as JSON.
+// Prefix is used to unmarshall ipam lease information
+type Prefix struct {
+	Cidr string          // The Cidr of this prefix
+	IPs  map[string]bool // The ips contained in this prefix
+}
+
+// PostZone creates a new zone via a REST call
+func (sup *Supervisor) PostZone(c *gin.Context) {
+	var newZone Zone
+	ctx := context.Background()
+	// Call BindJSON to bind the received JSON to
+	if err := c.BindJSON(&newZone); err != nil {
+		return
+	}
+	if newZone.IpCidr == "" {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "the zone request did not contain a required CIDR prefix"})
+		return
+	}
+	for _, zone := range sup.Zones {
+		if zone.Name == newZone.Name {
+			failMsg := fmt.Sprintf("%s zone already exists", newZone.Name)
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": failMsg})
+			return
+		}
+	}
+	log.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
+
+	zoneIpamSaveFile := fmt.Sprintf("%s.json", newZone.Name)
+	// TODO: until we save supervisor state between restarts, the ipam save file will be out of sync
+	// new zones will delete the stale IPAM file on creation.
+	// currently this will delete and overwrite an existing zone and ipam objects.
+	if fileExists(zoneIpamSaveFile) {
+		log.Warnf("ipam persistant storage file [ %s ] already exists on the supervisor, deleting it", zoneIpamSaveFile)
+		if err := deleteFile(zoneIpamSaveFile); err != nil {
+			failMsg := fmt.Sprintf("unable to delete the ipam persistant storage file on the supervisor [ %s ]: %v", zoneIpamSaveFile, err)
+			c.IndentedJSON(http.StatusNotImplemented, gin.H{"message": failMsg})
+		}
+	}
+
+	ipam, err := ipam.NewIPAM(ctx, zoneIpamSaveFile, newZone.IpCidr)
+	if err != nil {
+		failMsg := fmt.Sprintf("failed to acquire an ipam instance: %v", err)
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": failMsg})
+	}
+	newZone.ZoneIpam = *ipam
+	if err := ipam.IpamSave(ctx); err != nil {
+		log.Errorf("failed to save the ipam persistant storage file %v", err)
+	}
+	sup.Zones = append(sup.Zones, newZone)
+
+	c.IndentedJSON(http.StatusCreated, newZone)
+}
+
+// GetZones responds with the list of all peers as JSON.
+func (sup *Supervisor) GetZones(c *gin.Context) {
+	c.JSON(http.StatusOK, sup.Zones)
+}
+
+// GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
 func (sup *Supervisor) GetPeers(c *gin.Context) {
 	allNodes := make([]Peer, 0)
-	for _, v := range sup.NodeMapBlue {
-		allNodes = append(allNodes, v)
-	}
-	for _, v := range sup.NodeMapRed {
+	for _, v := range sup.NodeMapDefault {
 		allNodes = append(allNodes, v)
 	}
 
@@ -28,33 +84,14 @@ func (sup *Supervisor) GetPeers(c *gin.Context) {
 // GetPeerByKey locates the Peers whose PublicKey value matches the id
 func (sup *Supervisor) GetPeerByKey(c *gin.Context) {
 	key := c.Param("key")
-	for pubKey, _ := range sup.NodeMapBlue {
+	for pubKey, _ := range sup.NodeMapDefault {
 		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, sup.NodeMapBlue[key])
-			return
-		}
-	}
-	for pubKey, _ := range sup.NodeMapRed {
-		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, sup.NodeMapRed[key])
+			c.IndentedJSON(http.StatusOK, sup.NodeMapDefault[key])
 			return
 		}
 	}
 
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "peer not found"})
-}
-
-// GetZones responds with the list of all peers as JSON.
-func (sup *Supervisor) GetZones(c *gin.Context) {
-	zones := make([]ZoneConfig, 0)
-	for _, v := range sup.ZoneConfigBlue {
-		zones = append(zones, v)
-	}
-	for _, v := range sup.ZoneConfigRed {
-		zones = append(zones, v)
-	}
-
-	c.JSON(http.StatusOK, zones)
 }
 
 // TODO: this is hacky, should query the instance state instead, also file lock risk
@@ -63,41 +100,15 @@ func (sup *Supervisor) GetIpamLeases(c *gin.Context) {
 	zoneKey := c.Param("zone")
 	var zoneLeases []Prefix
 	var err error
-	if zoneKey == zoneChannelBlue {
-		if fileExists(BlueIpamSaveFile) {
-			blueIpamState := fileToString(BlueIpamSaveFile)
-			zoneLeases, err = unmarshalIpamState(blueIpamState)
-			if err != nil {
-				fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
-			}
-		}
-	}
-	if zoneKey == zoneChannelRed {
-		if fileExists(RedIpamSaveFile) {
-			redIpamState := fileToString(RedIpamSaveFile)
-			zoneLeases, err = unmarshalIpamState(redIpamState)
-			if err != nil {
-				fmt.Printf("[ERROR] unable to unmarshall ipam leases: %v", err)
-			}
+	if fileExists(zoneKey) {
+		blueIpamState := fileToString(zoneKey)
+		zoneLeases, err = unmarshalIpamState(blueIpamState)
+		if err != nil {
+			log.Errorf("unable to unmarshall ipam leases: %v", err)
 		}
 	}
 
 	c.JSON(http.StatusOK, zoneLeases)
-}
-
-// PostPeers adds a Peers from JSON received in the request body.
-func (sup *Supervisor) PostPeers(c *gin.Context) {
-	var newPeer []Peer
-	// Call BindJSON to bind the received JSON to
-	if err := c.BindJSON(&newPeer); err != nil {
-		return
-	}
-	// TODO: add single node config
-	// Add the new Peers to the slice.
-	//peers = append(peers, newPeer)
-	c.IndentedJSON(http.StatusCreated, newPeer)
-	// TODO: broken atm
-	// publishAllPeersMessage(ctx, zoneChannelBlue, newPeer)
 }
 
 func publishAllPeersMessage(ctx context.Context, channel string, data []Peer) {
@@ -119,12 +130,6 @@ func fileToString(file string) string {
 	return string(fileContent)
 }
 
-// Prefix is used to unmarshall ipam lease information
-type Prefix struct {
-	Cidr string          // The Cidr of this prefix
-	IPs  map[string]bool // The ips contained in this prefix
-}
-
 func unmarshalIpamState(s string) ([]Prefix, error) {
 	var msg []Prefix
 	if err := json.Unmarshal([]byte(s), &msg); err != nil {
@@ -138,4 +143,11 @@ func fileExists(f string) bool {
 		return false
 	}
 	return true
+}
+
+func deleteFile(f string) error {
+	if err := os.Remove(f); err != nil {
+		return err
+	}
+	return nil
 }

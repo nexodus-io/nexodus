@@ -88,8 +88,9 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --controller-password=<REDIS_PASSWORD> \
      --agent-mode
 ```
-
-- You will now have a flat host routed network between the endpoints. All of the wg0 interfaces can now reach one another. We currently work around NAT with a STUN server to automatically discover public addressing for the user.
+- By default, the network joins a zone named `default`. A zone is simply the isolated wireguard network mesh as depicted in **Figure 1**.
+- - The default zone prefix is currently hardcoded to `10.200.1.0/20`. Custom zones and IPAM are in the next example.
+- You will now have a flat host routed network between the endpoints. All of the wg0 interfaces can now reach one another. We currently work around NAT with a hacky STUN-like server to automatically discover public addressing for the user.
 
 - Cleanup
 
@@ -107,7 +108,8 @@ sudo wg-quick down wg0
 ```
 
 ### Additional Features
-- This also provides multi-tenancy and overlapping CIDR IPv4 or IPv6 by providing the `--zone=zone-blue` or `--zone=zone-red`. These will be made more generic moving forward.
+
+- This also provides multi-tenancy and overlapping CIDR IPv4 or IPv6 by creating new zones and populating them via the agent switch `--zone=X` or `--zone=Y`.
 - You can also run the jaywalk command on one node and then run the exact same command and keys on a new node and the assigned address from the supervisor will move that peering
   from to the new machine you run it on along with updating the mesh as to the new endpoint address.
 - This can be run behind natted networks for remote spoke machines and do not require any incoming ports to be opened to the device. Only one side of the peering needs an open port
@@ -116,10 +118,43 @@ sudo wg-quick down wg0
 
 ### Multi-Tenancy 
 
-- Another join example from a node includes the ability to specify what zone to join and allows you to request a particular IP address from the IPAM module. If an existing lease exists, it
-will be released and offered to the node requesting it.
+- Another join example from a node includes the ability to specify what zone to join and allows you to request a particular IP address from the IPAM module with the request ip switch `--request-ip`. If an existing lease exists, it
+will be released and offered to the node requesting it. The IP you are requesting has to be in the CIDR range of the zone's prefix.
 - In the following example, two zones are setup that are completely isolated from one another and can have overlapping CIDRs. If you were to add more nodes to either zone, the new nodes could 
 communicate to other nodes in it's zone but not to a different zone. Zones are completely separate overlays and tenants.
+
+
+- **Note:** in the following example, the CIDR ranges can overlap since each zone is a separate peering mesh isolated from one another.
+- First, create the zones via the REST API on the supervisor with the following (replace localhost with the IP address of the node the supervisor is running on):
+
+```shell
+# Create Zone - zone-blue
+curl -L -X POST 'http://localhost:8080/zone' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+    "Name": "zone-blue",
+    "Description": "Tenant - Zone Blue",
+    "CIDR": "10.140.0.0/20"
+}'
+
+# Create Zone - zone-red
+curl -L -X POST 'http://localhost:8080/zone' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+    "Name": "zone-red",
+    "Description": "Tenant - Zone Red",
+    "CIDR": "172.20.0.0/20"
+}'
+```
+
+- View the zones you just created:
+
+```shell
+curl -L -X GET 'http://localhost:8080/zones'
+```
+
+- Now simply join the nodes to the zones you just created. A node can only belong to one zone at a time for isolation between tenants/security zones.
+- **Disclaimer:** if the zone does not exist, we do not currently handle an error channel back from the supervisor, so the agent will just sit there. Tail the supervisor logs for specifics and debugging.
 
 ```shell
 # Zone Blue
@@ -128,7 +163,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    --request-ip=10.20.0.30 \
     --zone=zone-blue 
     
 # Zone Red
@@ -137,11 +171,35 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
-    --request-ip=10.20.0.30 \
     --zone=zone-red 
 ```
 
+- Once you have more than one node in a zone, the nodes can now ping one another on using the wireguard interfaces. Get the address with the following:
 
+```shell
+# Linux
+ip a wg0
+# OSX - Note: OSX maps wg0 to tun(n). Generally 'ifconfig utun3' will show you the specific interface
+ifconfig
+```
+
+You can also view the lease state of the IPAM objects with:
+
+```shell
+curl http://localhost:8080/ipam/leases/zone-blue
+
+[
+    {
+        "Cidr": "10.140.0.0/20",
+        "IPs": {
+            "10.140.0.0": true,
+            "10.140.0.1": true,
+            "10.140.0.2": true,
+            "10.140.15.255": true
+        }
+    }
+]
+```
 ### Child Prefixes
 
 - Imagine a user wants to not only communicate between the node address each member of the mesh but also want to advertise
@@ -149,7 +207,7 @@ some additional IP prefixes for additional services running on a node. This can 
 Prefixes have to be unique within a zone but can overlap on separate zones.
 - *Note:* once you allocate a prefix, it is fixed in IPAM. We do not currently support removing the prefix. If you want to
 add different child prefix either use a different cidr or delete the persistent state file in the root of where you ran the 
-supervisor binary named `ipam-red.json` or `ipam-red.json`.
+supervisor binary named `<zone-name>.json`. For example, `ipam-red.json`.
 
 ```shell
 # Zone Blue Node-1
@@ -196,6 +254,8 @@ container networks to the mesh and enable connectivity as depicted below.
 within a zone is not supported because that is a nightmare to troubleshoot, creates major fragility in SDN deployments and is 
 all around insanity. TLDR; IP address management in v4 networks is important when deploying infrastructure ¯\_(ツ)_/¯ 
 
+- For simplicity, we are just using the default, built-in zone `default`. You can also use the zones you created in the previous exercise or create a new one.
+
 - Node1 setup
 
 ```shell
@@ -206,7 +266,7 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
     --child-prefix=172.24.0.0/24 \
-    --zone=zone-blue 
+    --zone=default 
 
 # Create the container network:
 docker network create --driver=bridge --subnet=172.24.0.0/24 net1
@@ -226,7 +286,7 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --controller-password=<REDIS_PASSWORD> \
     --agent-mode \
     --child-prefix=172.28.0.0/24 \
-    --zone=zone-blue \
+    --zone=default \
 
 # Setup a docker network and start a node on it:
 docker network create --driver=bridge --subnet=172.28.0.0/24 net1

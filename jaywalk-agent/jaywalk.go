@@ -39,6 +39,7 @@ type jaywalkState struct {
 	zone                   string
 	requestedIP            string
 	childPrefix            string
+	agentChannel           string
 	userProvidedEndpointIP string
 	wgConf                 wgConfig
 }
@@ -87,8 +88,8 @@ const (
 	wgConfLatestRev           = "wg0-latest-rev.conf"
 	wgIface                   = "wg0"
 	jaywalkConfig             = "endpoints.toml"
-	zoneChannelBlue           = "zone-blue"
-	zoneChannelRed            = "zone-red"
+	zoneChannelController     = "controller"
+	zoneChannelDefault        = "default"
 	healthcheckRequestChannel = "supervisor-healthcheck-request"
 	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
 	healthcheckRequestMsg     = "supervisor-ready-request"
@@ -152,8 +153,8 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:        "zone",
-				Value:       "zone-blue",
-				Usage:       "the tenancy zone the peer is to join (optional)",
+				Value:       "default",
+				Usage:       "the tenancy zone the peer is to join - zone needs to be created before joining (optional)",
 				Destination: &cliFlags.zone,
 				EnvVars:     []string{"JAYWALK_ZONE"},
 			},
@@ -280,9 +281,8 @@ func runInit() {
 			Addr:     controller,
 			Password: cliFlags.controllerPasswd,
 		})
-		defer rc.Close()
 
-		// TODO: move to a db package used by both server and agent
+		// TODO: move to a redis package used by both server and agent
 		_, err := rc.Ping(ctx).Result()
 		if err != nil {
 			log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
@@ -291,15 +291,22 @@ func runInit() {
 		// ping the supervisor to see if it is responding via the broker, exit the agent on timeout
 		superVisorReadyCheck(ctx, rc)
 
-		pubsub := rc.Subscribe(ctx, js.zone)
-		defer pubsub.Close()
+		defer rc.Close()
+
+		subChannel := zoneChannelDefault
+		if js.zone != zoneChannelDefault {
+			subChannel = zoneChannelController
+		}
+
+		sub := rc.Subscribe(ctx, subChannel)
+		defer sub.Close()
 
 		// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
 		// Otherwise, discover what the public of the node is and provide that to the peers.
 		var localEndpointIP string
 		if js.userProvidedEndpointIP != "" {
 			if err := validateIp(js.userProvidedEndpointIP); err != nil {
-				log.Fatal("the IP address passed in --local-endpoint-ip %s was not valid: %v",
+				log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
 					js.userProvidedEndpointIP, err)
 			}
 			localEndpointIP = js.userProvidedEndpointIP
@@ -319,28 +326,37 @@ func runInit() {
 			js.requestedIP,
 			js.childPrefix)
 
-		err = rc.Publish(ctx, js.zone, peerRegister).Err()
+		// Agent only needs to subscribe
+		if js.zone == "default" {
+			js.agentChannel = zoneChannelDefault
+		} else {
+			js.agentChannel = zoneChannelController
+		}
+
+		err = rc.Publish(ctx, js.agentChannel, peerRegister).Err()
 		if err != nil {
 			log.Errorf("failed to publish subscriber message: %v", err)
 		}
-		log.Printf("Publishing registration to supervisor: %v\n", peerRegister)
-
+		defer rc.Close()
 		for {
-			msg, err := pubsub.ReceiveMessage(ctx)
+			msg, err := sub.ReceiveMessage(ctx)
 			if err != nil {
 				log.Fatalf("Failed to subscribe to the controller: %v", err)
 				os.Exit(1)
 			}
 			// Switch based on the streaming channel
 			switch msg.Channel {
-			case zoneChannelBlue:
+			case zoneChannelController:
 				peerListing := handleMsg(msg.Payload)
-				if peerListing != nil {
-					log.Debugf("Received message: %+v\n", peerListing)
-					js.parseJaywalkSupervisorConfig(peerListing)
-					js.deploySupervisorWireguardConfig()
+				if len(peerListing) > 0 {
+					// Only update the peer list if this node is a member of the zone update
+					if peerListing[0].Zone == js.zone {
+						log.Debugf("Received message: %+v\n", peerListing)
+						js.parseJaywalkSupervisorConfig(peerListing)
+						js.deploySupervisorWireguardConfig()
+					}
 				}
-			case zoneChannelRed:
+			case zoneChannelDefault:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
 					log.Debugf("Received message: %+v\n", peerListing)
