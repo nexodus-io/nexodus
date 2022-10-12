@@ -98,10 +98,11 @@ func (sup *Supervisor) GetPeerByKey(c *gin.Context) {
 // GetIpamLeases responds with the list of all peers as JSON.
 func (sup *Supervisor) GetIpamLeases(c *gin.Context) {
 	zoneKey := c.Param("zone")
+	zoneKeyFile := fmt.Sprintf("%s.json", zoneKey)
 	var zoneLeases []Prefix
 	var err error
-	if fileExists(zoneKey) {
-		blueIpamState := fileToString(zoneKey)
+	if fileExists(zoneKeyFile) {
+		blueIpamState := fileToString(zoneKeyFile)
 		zoneLeases, err = unmarshalIpamState(blueIpamState)
 		if err != nil {
 			log.Errorf("unable to unmarshall ipam leases: %v", err)

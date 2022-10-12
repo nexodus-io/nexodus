@@ -20,6 +20,7 @@ jaywalk-amd64-linux
 *.pem
 **/peer-inventory/*
 endpoints.toml
+default-ipam.json
 
 # misc
 *.idea

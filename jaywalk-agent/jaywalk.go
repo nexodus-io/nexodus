@@ -15,6 +15,7 @@ import (
 type flags struct {
 	wireguardPubKey        string
 	wireguardPvtKey        string
+	wireguardPvtKeyFile    string
 	controllerIP           string
 	controllerPasswd       string
 	listenPort             int
@@ -32,6 +33,7 @@ var (
 
 type jaywalkState struct {
 	nodePubKey             string
+	nodePvtKey             string
 	nodePubKeyInConfig     bool
 	jaywalkConfigFile      string
 	daemon                 bool
@@ -124,9 +126,16 @@ func main() {
 				EnvVars:     []string{"JAYWALK_PUB_KEY"},
 			},
 			&cli.StringFlag{
+				Name:        "private-key-file",
+				Value:       "",
+				Usage:       "private key for the local host (recommended - but alternatively pass through --private-key",
+				Destination: &cliFlags.wireguardPvtKeyFile,
+				EnvVars:     []string{"JAYWALK_PRIVATE_KEY_FILE"},
+			},
+			&cli.StringFlag{
 				Name:        "private-key",
 				Value:       "",
-				Usage:       "private key for the local host (required)",
+				Usage:       "private key for the local host (demo purposes only - alternatively pass through --private-key-file",
 				Destination: &cliFlags.wireguardPvtKey,
 				EnvVars:     []string{"JAYWALK_PRIVATE_KEY"},
 			},
@@ -256,8 +265,30 @@ func runInit() {
 		}
 	}
 
+	// parse the private key for the local configuration from file or CLI
+	var pvtKey string
+	if cliFlags.wireguardPvtKey != "" && cliFlags.wireguardPvtKeyFile != "" {
+		log.Fatalf("Please use either --private-key or --private-key-file but not both")
+	}
+	if cliFlags.wireguardPvtKey == "" && cliFlags.wireguardPvtKeyFile == "" {
+		log.Fatalf("Private key or key file location is required: use either --private-key or --private-key-file")
+	}
+	if cliFlags.wireguardPvtKey != "" {
+		pvtKey = cliFlags.wireguardPvtKey
+	}
+	if cliFlags.wireguardPvtKeyFile != "" {
+		if !fileExists(cliFlags.wireguardPvtKeyFile) {
+			log.Fatalf("Failed to retrieve the private key from file: %s", cliFlags.wireguardPvtKeyFile)
+		}
+		pvtKey, err = readKeyFileToString(cliFlags.wireguardPvtKeyFile)
+		if err != nil {
+			log.Fatalf("Failed to retrieve the private key from file %s: %v", cliFlags.wireguardPvtKeyFile, err)
+		}
+	}
+
 	js := &jaywalkState{
 		nodePubKey:             cliFlags.wireguardPubKey,
+		nodePvtKey:             pvtKey,
 		jaywalkConfigFile:      cliFlags.configFile,
 		daemon:                 cliFlags.agentMode,
 		nodeOS:                 nodeOS,
