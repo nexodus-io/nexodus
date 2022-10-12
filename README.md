@@ -12,29 +12,46 @@ Roads? Where we're going, we don't need roads - *Dr Emmett Brown*
 
 - Build for the node OS that is getting onboarded to the mesh:
 
-```
+```shell
+git clone https://github.com/redhat-et/jaywalking
+cd jaywalking
+cd jaywalk-agent
 GOOS=linux GOARCH=amd64 go build -o jaywalk-amd64-linux
 GOOS=darwin GOARCH=amd64 go build -o jaywalk-amd64-darwin
-# Windows support soon.
+```
 
-# Or download a recent build to the nodes you are looking to add to the mesh:
-# OSX Binary
-curl https://jaywalking.s3.amazonaws.com/jaywalk-amd64-darwin --output /usr/local/sbin/jaywalk
-chmod +x /usr/local/sbin/jaywalk
-# Linux Binary
+
+- Or download a recent build to the nodes you are looking to add to the mesh:
+
+__OSX Binary__
+
+```shell
+sudo curl https://jaywalking.s3.amazonaws.com/jaywalk-amd64-darwin --output /usr/local/sbin/jaywalk
+sudo chmod +x /usr/local/sbin/jaywalk
+```
+
+__Linux Binary__
+```shell
 sudo curl https://jaywalking.s3.amazonaws.com/jaywalk-amd64-linux --output /usr/local/sbin/jaywalk
-chmod +x /usr/local/sbin/jaywalk
+sudo chmod +x /usr/local/sbin/jaywalk
 ```
 
 - Start a redis instance in EC2 or somewhere all nodes can reach (below is an example for podman or docker for ease of use, no other configuration is required):
 
-```
+```shell
 docker run \
     --name redis \
     -d -p 6379:6379 \
     redis redis-server \
     --requirepass <REDIS_PASSWD>
 ```
+
+- Verify that container is up and redis server is in running state 
+```shell
+docker run -it --rm redis redis-cli -h <container-host-ip> -a <REDIS_PASSWD> --no-auth-warning PING
+```
+If it outputs **PONG**, that's a success.
+
 
 - Start the supervisor/controller SaaS portion (this can be your laptop, the only requirement is it can reach the redis streamer started above). 
 - The supervisor must be running for agents to connect to the tunnel mesh. 
@@ -52,12 +69,15 @@ go build -o jaywalk-supervisor
     -streamer-passwd <REDIS_PASSWD>
 ```
 
-- Generate your private/public key pair:
+- Generate private/public key pair for the nodes that you want to connect in the mesh network. For a Linux node run the following. For Windows and Mac adjust the paths to existing directories. ex. ~/.wireguard/
 
-```
-# For a Linux node run the following. For Windows and Mac adjust the paths to existing directories. ex. ~/.wireguard/
+```shell
 wg genkey | sudo tee /etc/wireguard/server_private.key | wg pubkey | sudo tee /etc/wireguard/server_public.key
 ```
+ NOTE: Make sure the node has wireguard installed. You can use following command to install wireguard on Ubuntu
+ ```shell
+ apt install wireguard-tools
+ ```
 
 - Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller. Run the following on a few nodes and set up a mesh:
 
