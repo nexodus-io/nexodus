@@ -194,3 +194,20 @@ func createDirectory(path string) error {
 	}
 	return nil
 }
+
+func fileExists(f string) bool {
+	if _, err := os.Stat(f); err != nil {
+		return false
+	}
+	return true
+}
+
+// readKeyFileToString reads the key file and strips any newline chars that create wireguard issues
+func readKeyFileToString(s string) (string, error) {
+	buf, err := ioutil.ReadFile(s)
+	if err != nil {
+		return "", fmt.Errorf("unable to read file: %v\n", err)
+	}
+	rawStr := string(buf)
+	return strings.Replace(rawStr, "\n", "", -1), nil
+}

@@ -79,7 +79,8 @@ wg genkey | sudo tee /etc/wireguard/server_private.key | wg pubkey | sudo tee /e
  apt install wireguard-tools
  ```
 
-- Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller. Run the following on a few nodes and set up a mesh:
+- Start the jaywalk agent on the node you want to join the mesh and fill in the relevant configuration. IP addressing of the mesh network is managed via the controller. Run the following on a few nodes and set up a mesh.
+- *Note:* while we pass the private key via CLI in the examples (dev/demo purposes only), we would highly recommend using the cli flag `--private-key-file=/path/to/private.key` or ENV `JAYWALK_PRIVATE_KEY_FILE=/path/to/private.key` in all scenarios where key safety protection is an issue.
 
 ```shell
 sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \

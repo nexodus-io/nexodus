@@ -24,8 +24,20 @@ jobs:
         go build -v ./...
         popd
 
+    - name: Go Vet Jaywalk Agent
+      run: |
+        pushd jaywalk-agent
+        go vet ./...
+        popd
+
     - name: Build Jaywalk Supervisor
       run: |
         pushd supervisor
         go build -v ./...
+        popd
+
+    - name: Go Vet Jaywalk Supervisor
+      run: |
+        pushd supervisor
+        go vet ./...
         popd

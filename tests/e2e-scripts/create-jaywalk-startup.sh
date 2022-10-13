@@ -8,6 +8,7 @@ local_endpoint=${4}
 controller_passwd=${5}
 zone=${6}
 script_output_name=${7}
+child_prefix=${8}
 
 echo "Public Key: ${pubkey}"
 echo "Private Key: ${pvtkey}"
@@ -16,6 +17,7 @@ echo "Local Endpoint IP: ${local_endpoint}"
 echo "Controller Password ${controller_passwd}"
 echo "Zone Name: ${zone}"
 echo "Script Name: ${script_output_name}"
+echo "Child Prefix: ${child_prefix}"
 
 # Create the script
 cat << EOF > ${7}

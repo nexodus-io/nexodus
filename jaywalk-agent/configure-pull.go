@@ -76,15 +76,14 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 		// Parse the [Interface] section of the wg config
 		if value.PublicKey == js.nodePubKey {
 			localInterface = wgLocalConfig{
-				cliFlags.wireguardPvtKey,
+				js.nodePvtKey,
 				value.AllowedIPs,
 				cliFlags.listenPort,
 				false,
 			}
-			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ] Local Private Key [ %s ]\n",
+			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ]\n",
 				localInterface.Address,
-				wgListenPort,
-				localInterface.PrivateKey)
+				wgListenPort)
 			// set the node unique local interface configuration
 			js.wgConf.Interface = localInterface
 		}
