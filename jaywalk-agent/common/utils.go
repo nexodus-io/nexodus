@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"errors"
@@ -17,18 +17,18 @@ import (
 )
 
 // supported OS types
-type operatingSystem string
+type OperatingSystem string
 
 const (
-	linux  operatingSystem = "linux"
-	darwin operatingSystem = "darwin"
+	Linux  OperatingSystem = "Linux"
+	Darwin OperatingSystem = "Darwin"
 )
 
-func (operatingSystem operatingSystem) String() string {
+func (operatingSystem OperatingSystem) String() string {
 	switch operatingSystem {
-	case linux:
+	case Linux:
 		return "linux"
-	case darwin:
+	case Darwin:
 		return "darwin"
 	}
 
@@ -36,12 +36,12 @@ func (operatingSystem operatingSystem) String() string {
 }
 
 // GetOS get os type
-func getOS() (operatingSystem string) {
+func GetOS() (operatingSystem string) {
 	return runtime.GOOS
 }
 
-// runCommand runs the cmd and returns the combined stdout and stderr
-func runCommand(cmd ...string) (string, error) {
+// RunCommand runs the cmd and returns the combined stdout and stderr
+func RunCommand(cmd ...string) (string, error) {
 	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
@@ -49,8 +49,8 @@ func runCommand(cmd ...string) (string, error) {
 	return string(output), nil
 }
 
-// isCommandAvailable checks to see if a binary is available in the current path
-func isCommandAvailable(name string) bool {
+// IsCommandAvailable checks to see if a binary is available in the current path
+func IsCommandAvailable(name string) bool {
 	if _, err := exec.LookPath(name); err != nil {
 		return false
 	}
@@ -62,8 +62,8 @@ func timestampFile(filename string) string {
 	return fmt.Sprintf(filename + "-" + time.Now().Format("20060102150405"))
 }
 
-// validateIp ensures a valid IP4/IP6 address is provided
-func validateIp(ip string) error {
+// ValidateIp ensures a valid IP4/IP6 address is provided
+func ValidateIp(ip string) error {
 	if ip := net.ParseIP(ip); ip != nil {
 		return nil
 	}
@@ -86,7 +86,7 @@ func diffConfig(oldCfg, newCfg string) bool {
 	return true
 }
 
-func fileToString(file string) string {
+func FileToString(file string) string {
 	fileContent, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Errorf("unable to read the file [%s] %v\n", file, err)
@@ -95,8 +95,8 @@ func fileToString(file string) string {
 	return string(fileContent)
 }
 
-// copyFile source destination
-func copyFile(src, dst string) error {
+// CopyFile source destination
+func CopyFile(src, dst string) error {
 	w, err := os.Create(dst)
 	if err != nil {
 		return err
@@ -112,9 +112,9 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-// getIPv4 returns the first address from hostname -I
-func getIPv4() (string, error) {
-	out, err := runCommand("hostname", "-I")
+// GetIPv4Linux returns the first address from hostname -I
+func GetIPv4Linux() (string, error) {
+	out, err := RunCommand("hostname", "-I")
 	if err != nil {
 		return "", err
 	}
@@ -126,17 +126,17 @@ func getIPv4() (string, error) {
 	return items[0], nil
 }
 
-// getDarwinIPv4 returns the first address from ipconfig getifaddr en0
-func getDarwinIPv4() (string, error) {
-	osxIP, err := runCommand("ipconfig", "getifaddr", "en0")
+// GetDarwinIPv4 returns the first address from ipconfig getifaddr en0
+func GetDarwinIPv4() (string, error) {
+	osxIP, err := RunCommand("ipconfig", "getifaddr", "en0")
 	if err != nil {
 		return "", err
 	}
 	return osxIP, nil
 }
 
-// getPubIP retrieves current global IP address using https://checkip.amazonaws.com/
-func getPubIP() (string, error) {
+// GetPubIP retrieves current global IP address using https://checkip.amazonaws.com/
+func GetPubIP() (string, error) {
 	c := http.DefaultClient
 	req, err := http.NewRequest("GET", "https://checkip.amazonaws.com/", nil)
 	if err != nil {
@@ -159,22 +159,22 @@ func getPubIP() (string, error) {
 	return strings.TrimSpace(string(ip)), nil
 }
 
-func isNAT(nodeOS string) (bool, error) {
+func IsNAT(nodeOS string) (bool, error) {
 	var hostIP string
 	var err error
-	if nodeOS == darwin.String() {
-		hostIP, err = getDarwinIPv4()
+	if nodeOS == Darwin.String() {
+		hostIP, err = GetDarwinIPv4()
 		if err != nil {
 			return false, err
 		}
 	}
-	if nodeOS == linux.String() {
-		hostIP, err = getIPv4()
+	if nodeOS == Linux.String() {
+		hostIP, err = GetIPv4Linux()
 		if err != nil {
 			return false, err
 		}
 	}
-	pubIP, err := getPubIP()
+	pubIP, err := GetPubIP()
 	if err != nil {
 		return false, err
 	}
@@ -184,8 +184,8 @@ func isNAT(nodeOS string) (bool, error) {
 	return false, nil
 }
 
-// createDirectory create a directory if one does not exist
-func createDirectory(path string) error {
+// CreateDirectory create a directory if one does not exist
+func CreateDirectory(path string) error {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(path, os.ModePerm)
 		if err != nil {
@@ -195,15 +195,15 @@ func createDirectory(path string) error {
 	return nil
 }
 
-func fileExists(f string) bool {
+func FileExists(f string) bool {
 	if _, err := os.Stat(f); err != nil {
 		return false
 	}
 	return true
 }
 
-// readKeyFileToString reads the key file and strips any newline chars that create wireguard issues
-func readKeyFileToString(s string) (string, error) {
+// ReadKeyFileToString reads the key file and strips any newline chars that create wireguard issues
+func ReadKeyFileToString(s string) (string, error) {
 	buf, err := ioutil.ReadFile(s)
 	if err != nil {
 		return "", fmt.Errorf("unable to read file: %v\n", err)

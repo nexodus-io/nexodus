@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	common "github.com/redhat-et/jaywalking/jaywalk-agent/common"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -20,10 +21,10 @@ func applyWireguardConf() error {
 	activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
 	latestRevConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
 	// copy the latest config rev to wg0.conf
-	if err := copyFile(latestRevConfig, activeConfig); err != nil {
+	if err := common.CopyFile(latestRevConfig, activeConfig); err != nil {
 		return err
 	}
-	wgOut, err := runCommand("wg-quick", "up", activeConfig)
+	wgOut, err := common.RunCommand("wg-quick", "up", activeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to start the wireguard interface: %v", err)
 	}
@@ -39,18 +40,18 @@ func updateWireguardConfig() error {
 	// If no config exists, copy the latest rev config to /etc/wireguard/wg0-latest-rev.conf
 	if _, err := os.Stat(activeConfig); err != nil {
 		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
-		if err := copyFile(latestConfig, activeConfig); err == nil {
+		if err := common.CopyFile(latestConfig, activeConfig); err == nil {
 			return nil
 		} else {
 			return err
 		}
 	}
 	// If a config exists, strip and diff the active and latest revision
-	stripActiveCfg, err := runCommand("wg-quick", "strip", activeConfig)
+	stripActiveCfg, err := common.RunCommand("wg-quick", "strip", activeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to strip the active configuration: %v", err)
 	}
-	stripLatestRevCfg, err := runCommand("wg-quick", "strip", latestRevConfig)
+	stripLatestRevCfg, err := common.RunCommand("wg-quick", "strip", latestRevConfig)
 	if err != nil {
 		return fmt.Errorf("failed to strip the latest configuration: %v", err)
 	}
@@ -86,11 +87,11 @@ func updateWireguardConfig() error {
 	// diff the old and new config to see if the local config [Interface] address has changed
 	// This is hacky because wg conf commands do not show [Interface].Address since that is
 	// only a wg-quick relevant configuration and not wg. TODO: part of how we want to manage wg
-	activeLocalConfig, err := unmarshallWireguardCfg(fileToString(activeConfig))
+	activeLocalConfig, err := unmarshallWireguardCfg(common.FileToString(activeConfig))
 	if err != nil {
 		return err
 	}
-	revisedLocalConfig, err := unmarshallWireguardCfg(fileToString(latestRevConfig))
+	revisedLocalConfig, err := unmarshallWireguardCfg(common.FileToString(latestRevConfig))
 	if err != nil {
 		return err
 	}
