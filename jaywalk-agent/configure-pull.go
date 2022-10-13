@@ -3,10 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	common "github.com/redhat-et/jaywalking/jaywalk-agent/common"
 	"os"
 	"path/filepath"
-
+	
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -105,7 +104,7 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 		log.Fatal("load ini configuration from struct error")
 	}
 	switch js.nodeOS {
-	case common.Linux.String():
+	case Linux.String():
 		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
@@ -123,19 +122,19 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 				}
 			}
 		}
-	case common.Darwin.String():
+	case Darwin.String():
 		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
 		if js.nodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
-			wgOut, err := common.RunCommand("wg-quick", "down", wgIface)
+			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
 				log.Debugf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
-			wgOut, err = common.RunCommand("wg-quick", "up", activeDarwinConfig)
+			wgOut, err = RunCommand("wg-quick", "up", activeDarwinConfig)
 			if err != nil {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}

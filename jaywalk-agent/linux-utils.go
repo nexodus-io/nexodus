@@ -57,8 +57,8 @@ func setIP(ifaceName, ip string) error {
 	return nil
 }
 
-// ifaceUP brings a specified netlink interface up
-func ifaceUP(ifaceName string) error {
+// IfaceUP brings a specified netlink interface up
+func IfaceUP(ifaceName string) error {
 	link, err := netlink.LinkByName(ifaceName)
 	if err != nil {
 		return fmt.Errorf("failed to find the specified interface %s: %v", ifaceName, err)

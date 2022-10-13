@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	common "github.com/redhat-et/jaywalking/jaywalk-agent/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -223,7 +222,7 @@ func main() {
 }
 
 func runInit() {
-	if !common.IsCommandAvailable("wg") {
+	if !IsCommandAvailable("wg") {
 		log.Fatal("wg command not found, is wireguard installed?")
 	}
 	// PublicKey is the unique identifier for a node and required
@@ -233,29 +232,29 @@ func runInit() {
 	ctx := context.Background()
 
 	var nodeOS string
-	switch common.GetOS() {
+	switch GetOS() {
 	case "windows":
-		log.Fatalf("OS [%s] is not currently supported\n", common.GetOS())
-	case common.Darwin.String():
-		log.Printf("[%s] operating system detected", common.Darwin.String())
-		nodeOS = common.Darwin.String()
+		log.Fatalf("OS [%s] is not currently supported\n", GetOS())
+	case Darwin.String():
+		log.Printf("[%s] operating system detected", Darwin.String())
+		nodeOS = Darwin.String()
 		// ensure the osx wireguard directory exists
-		if err := common.CreateDirectory(wgLinuxConfPath); err != nil {
+		if err := CreateDirectory(wgLinuxConfPath); err != nil {
 			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
 		}
-	case common.Linux.String():
-		log.Printf("[%s] operating system detected", common.Linux.String())
-		nodeOS = common.Linux.String()
+	case Linux.String():
+		log.Printf("[%s] operating system detected", Linux.String())
+		nodeOS = Linux.String()
 		// ensure the wireguard directory exists
-		if err := common.CreateDirectory(wgLinuxConfPath); err != nil {
+		if err := CreateDirectory(wgLinuxConfPath); err != nil {
 			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
 		}
 	default:
-		log.Fatalf("OS [%s] is not supported\n", common.GetOS())
+		log.Fatalf("OS [%s] is not supported\n", GetOS())
 	}
 
 	// check to see if the host is natted
-	nat, err := common.IsNAT(nodeOS)
+	nat, err := IsNAT(nodeOS)
 	if err != nil {
 		log.Printf("unable determining if the host is natted: %v", err)
 	} else {
@@ -278,10 +277,10 @@ func runInit() {
 		pvtKey = cliFlags.wireguardPvtKey
 	}
 	if cliFlags.wireguardPvtKeyFile != "" {
-		if !common.FileExists(cliFlags.wireguardPvtKeyFile) {
+		if !FileExists(cliFlags.wireguardPvtKeyFile) {
 			log.Fatalf("Failed to retrieve the private key from file: %s", cliFlags.wireguardPvtKeyFile)
 		}
-		pvtKey, err = common.ReadKeyFileToString(cliFlags.wireguardPvtKeyFile)
+		pvtKey, err = ReadKeyFileToString(cliFlags.wireguardPvtKeyFile)
 		if err != nil {
 			log.Fatalf("Failed to retrieve the private key from file %s: %v", cliFlags.wireguardPvtKeyFile, err)
 		}
@@ -337,13 +336,13 @@ func runInit() {
 		// Otherwise, discover what the public of the node is and provide that to the peers.
 		var localEndpointIP string
 		if js.userProvidedEndpointIP != "" {
-			if err := common.ValidateIp(js.userProvidedEndpointIP); err != nil {
+			if err := ValidateIp(js.userProvidedEndpointIP); err != nil {
 				log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
 					js.userProvidedEndpointIP, err)
 			}
 			localEndpointIP = js.userProvidedEndpointIP
 		} else {
-			localEndpointIP, err = common.GetPubIP()
+			localEndpointIP, err = GetPubIP()
 			if err != nil {
 				log.Warn("Unable to determine the public facing address")
 			}

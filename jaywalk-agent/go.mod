@@ -1,4 +1,4 @@
-module github.com/redhat-et/jaywalking
+module github.com/redhat-et/jaywalking/jaywalk-agent
 
 go 1.18
 
