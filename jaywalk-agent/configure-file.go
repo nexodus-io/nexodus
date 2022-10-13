@@ -42,6 +42,7 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				value.PublicKey,
 				value.EndpointIP,
 				value.WireguardIP,
+				persistentKeepalive,
 			}
 			peers = append(peers, peer)
 			log.Printf("Peer Node Configuration [%v] Peer AllowedIPs [%s] Peer Endpoint IP [%s] Peer Public Key [%s]\n",
