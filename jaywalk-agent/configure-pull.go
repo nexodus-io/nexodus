@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	common "github.com/redhat-et/jaywalking/jaywalk-agent/common"
 	"os"
 	"path/filepath"
 
+	"github.com/redhat-et/jaywalking/common"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
