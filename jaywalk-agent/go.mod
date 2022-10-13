@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/redhat-et/jaywalking/common v0.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/viper v1.13.0
 	github.com/urfave/cli/v2 v2.17.1
