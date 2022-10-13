@@ -30,10 +30,10 @@ func (sup *Supervisor) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 			z = zone
 		}
 	}
+	// todo, the needs to go over an err channal to the agent
 	if nodeZone == "" {
 		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?\n", msgEvent.Peer.Zone)
 	}
-
 	peer := Peer{}
 	var ip string
 	// If this was a static address request

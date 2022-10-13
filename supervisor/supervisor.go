@@ -87,7 +87,6 @@ type Supervisor struct {
 	Zones             []Zone
 	NodeMapDefault    map[string]Peer
 	ZoneConfigDefault map[string]ZoneConfig
-	ZoneConfigBlue    map[string]ZoneConfig
 	stream            *redis.Client
 	streamSocket      string
 	streamPass        string
@@ -103,7 +102,6 @@ func initApp() *Supervisor {
 	sup.Router.POST("/zone", sup.PostZone)
 	sup.NodeMapDefault = make(map[string]Peer)
 	sup.ZoneConfigDefault = make(map[string]ZoneConfig)
-	sup.ZoneConfigBlue = make(map[string]ZoneConfig)
 	sup.setZoneDefaultDetails(DefaultZoneName)
 	sup.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
 	sup.streamPass = *streamPasswd

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	common "github.com/redhat-et/jaywalking/jaywalk-agent/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/ini.v1"
@@ -85,9 +86,9 @@ func (js *jaywalkState) deployWireguardConfig() {
 	}
 
 	switch js.nodeOS {
-	case linux.String():
+	case common.Linux.String():
 		// wg does not create the OSX config directory by default
-		if err = createDirectory(wgLinuxConfPath); err != nil {
+		if err = common.CreateDirectory(wgLinuxConfPath); err != nil {
 			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
 		}
 
@@ -109,7 +110,7 @@ func (js *jaywalkState) deployWireguardConfig() {
 				}
 			}
 		}
-	case darwin.String():
+	case common.Linux.String():
 		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
@@ -117,12 +118,12 @@ func (js *jaywalkState) deployWireguardConfig() {
 
 		if js.nodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
-			wgOut, err := runCommand("wg-quick", "down", wgIface)
+			wgOut, err := common.RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
 				log.Debugf("failed to start the wireguard interface: %v", err)
 			}
 			log.Debugf("%v\n", wgOut)
-			wgOut, err = runCommand("wg-quick", "up", activeDarwinConfig)
+			wgOut, err = common.RunCommand("wg-quick", "up", activeDarwinConfig)
 			if err != nil {
 				log.Printf("failed to start the wireguard interface: %v", err)
 			}
