@@ -12,6 +12,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/redhat-et/jaywalking/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
@@ -55,12 +56,13 @@ func init() {
 
 // Peer represents data about a Peer's record.
 type Peer struct {
-	PublicKey   string `json:"PublicKey"`
-	EndpointIP  string `json:"EndpointIP"`
-	AllowedIPs  string `json:"AllowedIPs"`
-	Zone        string `json:"Zone"`
-	NodeAddress string `json:"NodeAddress"`
-	ChildPrefix string `json:"ChildPrefix"`
+	ID          uuid.UUID `json:"id"`
+	PublicKey   string    `json:"public-key"`
+	EndpointIP  string    `json:"endpoint-ip"`
+	AllowedIPs  string    `json:"allowed-ips"`
+	Zone        string    `json:"zone"`
+	NodeAddress string    `json:"node-address"`
+	ChildPrefix string    `json:"child-prefix"`
 }
 
 type ZoneConfig struct {
@@ -75,10 +77,11 @@ type MsgEvent struct {
 }
 
 type Zone struct {
+	ID          uuid.UUID `json:"id"`
 	NodeMap     map[string]Peer
-	Name        string `json:"Name"`
-	Description string `json:"Description"`
-	IpCidr      string `json:"CIDR"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IpCidr      string `json:"cidr"`
 	ZoneIpam    ipam.AirliftIpam
 }
 
@@ -219,6 +222,7 @@ func main() {
 
 func (msgEvent *MsgEvent) newNode(ipamIP, childPrefix string) Peer {
 	peer := Peer{
+		ID:          uuid.New(),
 		PublicKey:   msgEvent.Peer.PublicKey,
 		EndpointIP:  msgEvent.Peer.EndpointIP,
 		AllowedIPs:  ipamIP, // This will be a slice, NodeAddress will hold the /32
