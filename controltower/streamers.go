@@ -51,9 +51,9 @@ func NewRedisClient(streamerSocket, streamPasswd string) *redis.Client {
 	})
 }
 
-// readyCheckRepsonder listens for any msg on healthcheckRequestChannel
+// readyCheckResponder listens for any msg on healthcheckRequestChannel
 // replies on healthcheckReplyChannel to let the agents know it is available
-func readyCheckRepsonder(ctx context.Context, client *redis.Client) {
+func readyCheckResponder(ctx context.Context, client *redis.Client) {
 	subHealthRequests := NewPubsub(client)
 	msgRedChan := make(chan string)
 	go func() {
