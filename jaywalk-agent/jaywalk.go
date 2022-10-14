@@ -52,9 +52,10 @@ type wgConfig struct {
 }
 
 type wgPeerConfig struct {
-	PublicKey  string
-	Endpoint   string
-	AllowedIPs string
+	PublicKey           string
+	Endpoint            string
+	AllowedIPs          string
+	PersistentKeepAlive string
 	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
 }
 
@@ -96,6 +97,7 @@ const (
 	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
 	healthcheckRequestMsg     = "supervisor-ready-request"
 	readyRequestTimeout       = 10
+	persistentKeepalive       = "25"
 	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 

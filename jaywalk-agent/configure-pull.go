@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	
+
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -64,6 +64,7 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				value.PublicKey,
 				value.EndpointIP,
 				allowedIPs,
+				persistentKeepalive,
 			}
 			peers = append(peers, peer)
 			log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
