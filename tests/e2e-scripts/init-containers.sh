@@ -399,7 +399,7 @@ EOF
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
-    sleep 2
+    sleep 4
     
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
     if sudo docker exec node1 ping -c 2 -w 2 172.20.3.10; then

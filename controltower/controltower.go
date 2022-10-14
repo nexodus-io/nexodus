@@ -121,13 +121,13 @@ func main() {
 	}
 
 	// respond to initial health check from agents initializing
-	readyCheckRepsonder(ctx, client)
+	readyCheckResponder(ctx, client)
 
 	// Handle all messages for zones other than the default zone
 	// TODO: assign each zone it's own channel for better multi-tenancy
 	go ct.MessageHandling(ctx)
 
-	// Initilize ipam for the default zone
+	// Initialize ipam for the default zone
 	ctxDefault := context.Background()
 	ctIpamDefault, err := ipam.NewIPAM(ctx, DefaultIpamSaveFile, ipPrefixDefault)
 	if err != nil {
@@ -150,7 +150,7 @@ func main() {
 			switch msgEvent.Event {
 			case registerNodeRequest:
 				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelDefault)
-				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
+				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
 					nodeEvent := Peer{}
 					var ip string
