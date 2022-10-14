@@ -202,6 +202,12 @@ setup_custom_zone_connectivity() {
     sudo docker exec node1 killall aircrew
     sudo docker exec node2 killall aircrew
 
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying aircrew-run-node1.sh ==="
+    cat aircrew-run-node1.sh
+    echo "=== Displaying aircrew-run-node2.sh ==="
+    cat aircrew-run-node2.sh
+
     sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
@@ -269,6 +275,12 @@ setup_custom_second_zone_connectivity() {
     sudo docker exec node1 killall aircrew
     sudo docker exec node2 killall aircrew
 
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying aircrew-run-node1.sh ==="
+    cat aircrew-run-node1.sh
+    echo "=== Displaying aircrew-run-node2.sh ==="
+    cat aircrew-run-node2.sh
+
     sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
@@ -317,7 +329,7 @@ setup_child_prefix_connectivity() {
 
     # Delete the ipam storage in the case the run has re-run since we dont overwrite existing child-prefix
     rm -rf prefix-test.json
-    
+
     # Create the new zone with a CGNAT range
     curl -L -X POST 'http://localhost:8080/zone' \
     -H 'Content-Type: application/json' \
@@ -361,6 +373,14 @@ EOF
     --zone=${zone}
 EOF
 
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying aircrew-run-node1.sh ==="
+    cat aircrew-run-node1.sh
+    echo "=== Displaying aircrew-run-node2.sh ==="
+    cat aircrew-run-node2.sh
+    echo "=== Displaying ipam persistent storage ==="
+
+    # Copy files to the containers
     sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
