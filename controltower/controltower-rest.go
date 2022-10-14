@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redhat-et/jaywalking/controltower/ipam"
@@ -67,6 +68,9 @@ func (ct *Controltower) PostZone(c *gin.Context) {
 
 // GetZones responds with the list of all peers as JSON.
 func (ct *Controltower) GetZones(c *gin.Context) {
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(ct.Zones)))
 	c.JSON(http.StatusOK, ct.Zones)
 }
 
@@ -76,7 +80,9 @@ func (ct *Controltower) GetPeers(c *gin.Context) {
 	for _, v := range ct.NodeMapDefault {
 		allNodes = append(allNodes, v)
 	}
-
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(allNodes)))
 	c.JSON(http.StatusOK, allNodes)
 }
 
