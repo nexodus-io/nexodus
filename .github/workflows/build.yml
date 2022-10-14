@@ -18,25 +18,25 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build Jaywalk Agent
+    - name: Build Aircrew Agent
       run: |
-        pushd jaywalk-agent
+        pushd aircrew
         go build -v ./...
         popd
 
-    - name: Go Vet Jaywalk Agent
+    - name: Go Vet Aircrew Agent
       run: |
-        pushd jaywalk-agent
+        pushd aircrew
         go vet ./...
         popd
 
-    - name: Build Jaywalk Supervisor
+    - name: Build Control Tower
       run: |
         pushd supervisor
         go build -v ./...
         popd
 
-    - name: Go Vet Jaywalk Supervisor
+    - name: Go Vet Control Tower
       run: |
         pushd supervisor
         go vet ./...

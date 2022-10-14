@@ -29,9 +29,9 @@ const (
 	DefaultZoneName           = "default"
 	streamPort                = 6379
 	restPort                  = "8080"
-	healthcheckRequestChannel = "supervisor-healthcheck-request"
-	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
-	healthcheckReplyMsg       = "supervisor-healthy"
+	healthcheckRequestChannel = "controltower-healthcheck-request"
+	healthcheckReplyChannel   = "controltower-healthcheck-reply"
+	healthcheckReplyMsg       = "controltower-healthy"
 	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
 )
 

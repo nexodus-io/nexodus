@@ -12,9 +12,9 @@
 *.out
 
 # Built binaries
-jaywalk
-jaywalk-amd64-darwin
-jaywalk-amd64-linux
+aircrew
+aircrew-amd64-darwin
+aircrew-amd64-linux
 
 # Ops files
 *.pem

@@ -31,11 +31,11 @@ var (
 	cliFlags flags
 )
 
-type jaywalkState struct {
+type aircrewState struct {
 	nodePubKey             string
 	nodePvtKey             string
 	nodePubKeyInConfig     bool
-	jaywalkConfigFile      string
+	aircrewConfigFile      string
 	daemon                 bool
 	nodeOS                 string
 	zone                   string
@@ -90,15 +90,15 @@ const (
 	wgConfActive              = "wg0.conf"
 	wgConfLatestRev           = "wg0-latest-rev.conf"
 	wgIface                   = "wg0"
-	jaywalkConfig             = "endpoints.toml"
+	aircrewConfig             = "endpoints.toml"
 	zoneChannelController     = "controller"
 	zoneChannelDefault        = "default"
-	healthcheckRequestChannel = "supervisor-healthcheck-request"
-	healthcheckReplyChannel   = "supervisor-healthcheck-reply"
-	healthcheckRequestMsg     = "supervisor-ready-request"
+	healthcheckRequestChannel = "controltower-healthcheck-request"
+	healthcheckReplyChannel   = "controltower-healthcheck-reply"
+	healthcheckRequestMsg     = "controltower-ready-request"
 	readyRequestTimeout       = 10
 	persistentKeepalive       = "25"
-	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
+	aircrewLogEnv             = "AIRCREW_LOG_LEVEL"
 )
 
 // Message Events
@@ -108,7 +108,7 @@ const (
 
 func init() {
 	// set the log level
-	env := os.Getenv(jwLogEnv)
+	env := os.Getenv(aircrewLogEnv)
 	if env == "debug" {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -125,87 +125,87 @@ func main() {
 				Value:       "",
 				Usage:       "public key for the local host (required)",
 				Destination: &cliFlags.wireguardPubKey,
-				EnvVars:     []string{"JAYWALK_PUB_KEY"},
+				EnvVars:     []string{"AIRCREW_PUB_KEY"},
 			},
 			&cli.StringFlag{
 				Name:        "private-key-file",
 				Value:       "",
 				Usage:       "private key for the local host (recommended - but alternatively pass through --private-key",
 				Destination: &cliFlags.wireguardPvtKeyFile,
-				EnvVars:     []string{"JAYWALK_PRIVATE_KEY_FILE"},
+				EnvVars:     []string{"AIRCREW_PRIVATE_KEY_FILE"},
 			},
 			&cli.StringFlag{
 				Name:        "private-key",
 				Value:       "",
 				Usage:       "private key for the local host (demo purposes only - alternatively pass through --private-key-file",
 				Destination: &cliFlags.wireguardPvtKey,
-				EnvVars:     []string{"JAYWALK_PRIVATE_KEY"},
+				EnvVars:     []string{"AIRCREW_PRIVATE_KEY"},
 			},
 			&cli.IntFlag{
 				Name:        "listen-port",
 				Value:       51820,
 				Usage:       "port wireguard is to listen for incoming peers on",
 				Destination: &cliFlags.listenPort,
-				EnvVars:     []string{"JAYWALK_LISTEN_PORT"},
+				EnvVars:     []string{"AIRCREW_LISTEN_PORT"},
 			},
 			&cli.StringFlag{
 				Name:        "controller",
 				Value:       "",
 				Usage:       "address of the controller (required)",
 				Destination: &cliFlags.controllerIP,
-				EnvVars:     []string{"JAYWALK_CONTROLLER"},
+				EnvVars:     []string{"AIRCREW_CONTROLLER"},
 			},
 			&cli.StringFlag{
 				Name:        "controller-password",
 				Value:       "",
 				Usage:       "password for the controller (required)",
 				Destination: &cliFlags.controllerPasswd,
-				EnvVars:     []string{"JAYWALK_CONTROLLER_PASSWD"},
+				EnvVars:     []string{"AIRCREW_CONTROLLER_PASSWD"},
 			},
 			&cli.StringFlag{
 				Name:        "zone",
 				Value:       "default",
 				Usage:       "the tenancy zone the peer is to join - zone needs to be created before joining (optional)",
 				Destination: &cliFlags.zone,
-				EnvVars:     []string{"JAYWALK_ZONE"},
+				EnvVars:     []string{"AIRCREW_ZONE"},
 			},
 			&cli.StringFlag{
 				Name:        "config",
 				Value:       "",
 				Usage:       "configuration file (ignored if run in agent-mode - likely deprecate)",
 				Destination: &cliFlags.configFile,
-				EnvVars:     []string{"JAYWALK_CONFIG"},
+				EnvVars:     []string{"AIRCREW_CONFIG"},
 			},
 			&cli.StringFlag{
 				Name:        "request-ip",
 				Value:       "",
 				Usage:       "request a specific IP address from Ipam if available (optional)",
 				Destination: &cliFlags.requestedIP,
-				EnvVars:     []string{"JAYWALK_REQUESTED_IP"},
+				EnvVars:     []string{"AIRCREW_REQUESTED_IP"},
 			},
 			&cli.StringFlag{
 				Name:        "local-endpoint-ip",
 				Value:       "",
 				Usage:       "specify the endpoint address of this node instead of being discovered (optional)",
 				Destination: &cliFlags.userProvidedEndpointIP,
-				EnvVars:     []string{"JAYWALK_LOCAL_ENDPOINT_IP"},
+				EnvVars:     []string{"AIRCREW_LOCAL_ENDPOINT_IP"},
 			},
 			&cli.StringFlag{
 				Name:        "child-prefix",
 				Value:       "",
 				Usage:       "request a CIDR range of addresses that will be advertised from this node (optional)",
 				Destination: &cliFlags.childPrefix,
-				EnvVars:     []string{"JAYWALK_REQUESTED_CHILD_PREFIX"},
+				EnvVars:     []string{"AIRCREW_REQUESTED_CHILD_PREFIX"},
 			},
 			&cli.BoolFlag{Name: "agent-mode",
 				Usage:       "run as a agentMode",
 				Value:       false,
 				Destination: &cliFlags.agentMode,
-				EnvVars:     []string{"JAYWALK_AGENT_MODE"},
+				EnvVars:     []string{"AIRCREW_AGENT_MODE"},
 			},
 		},
 	}
-	app.Name = "jaywalk"
+	app.Name = "aircrew"
 	app.Usage = "encrypted mesh networking"
 	// clean up any pre-existing interfaces or processes from prior tests
 	app.Before = func(c *cli.Context) error {
@@ -288,10 +288,10 @@ func runInit() {
 		}
 	}
 
-	js := &jaywalkState{
+	as := &aircrewState{
 		nodePubKey:             cliFlags.wireguardPubKey,
 		nodePvtKey:             pvtKey,
-		jaywalkConfigFile:      cliFlags.configFile,
+		aircrewConfigFile:      cliFlags.configFile,
 		daemon:                 cliFlags.agentMode,
 		nodeOS:                 nodeOS,
 		zone:                   cliFlags.zone,
@@ -301,10 +301,10 @@ func runInit() {
 	}
 
 	if !cliFlags.agentMode {
-		// parse the jaywalk config into wireguard config structs
-		js.parseJaywalkConfig()
+		// parse the Aircrew config into wireguard config structs
+		as.parseAircrewConfig()
 		// write the wireguard configuration to file and deploy
-		js.deployWireguardConfig()
+		as.deployWireguardConfig()
 	}
 
 	// run as a persistent agent
@@ -321,13 +321,13 @@ func runInit() {
 			log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
 		}
 
-		// ping the supervisor to see if it is responding via the broker, exit the agent on timeout
-		superVisorReadyCheck(ctx, rc)
+		// ping the control-tower to see if it is responding via the broker, exit the agent on timeout
+		controlTowerReadyCheck(ctx, rc)
 
 		defer rc.Close()
 
 		subChannel := zoneChannelDefault
-		if js.zone != zoneChannelDefault {
+		if as.zone != zoneChannelDefault {
 			subChannel = zoneChannelController
 		}
 
@@ -337,12 +337,12 @@ func runInit() {
 		// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
 		// Otherwise, discover what the public of the node is and provide that to the peers.
 		var localEndpointIP string
-		if js.userProvidedEndpointIP != "" {
-			if err := ValidateIp(js.userProvidedEndpointIP); err != nil {
+		if as.userProvidedEndpointIP != "" {
+			if err := ValidateIp(as.userProvidedEndpointIP); err != nil {
 				log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
-					js.userProvidedEndpointIP, err)
+					as.userProvidedEndpointIP, err)
 			}
-			localEndpointIP = js.userProvidedEndpointIP
+			localEndpointIP = as.userProvidedEndpointIP
 		} else {
 			localEndpointIP, err = GetPubIP()
 			if err != nil {
@@ -353,20 +353,20 @@ func runInit() {
 		// Create the message describing this peer to be published
 		peerRegister := publishMessage(
 			registerNodeRequest,
-			js.zone,
-			js.nodePubKey,
+			as.zone,
+			as.nodePubKey,
 			endpointSocket,
-			js.requestedIP,
-			js.childPrefix)
+			as.requestedIP,
+			as.childPrefix)
 
 		// Agent only needs to subscribe
-		if js.zone == "default" {
-			js.agentChannel = zoneChannelDefault
+		if as.zone == "default" {
+			as.agentChannel = zoneChannelDefault
 		} else {
-			js.agentChannel = zoneChannelController
+			as.agentChannel = zoneChannelController
 		}
 
-		err = rc.Publish(ctx, js.agentChannel, peerRegister).Err()
+		err = rc.Publish(ctx, as.agentChannel, peerRegister).Err()
 		if err != nil {
 			log.Errorf("failed to publish subscriber message: %v", err)
 		}
@@ -383,18 +383,18 @@ func runInit() {
 				peerListing := handleMsg(msg.Payload)
 				if len(peerListing) > 0 {
 					// Only update the peer list if this node is a member of the zone update
-					if peerListing[0].Zone == js.zone {
+					if peerListing[0].Zone == as.zone {
 						log.Debugf("Received message: %+v\n", peerListing)
-						js.parseJaywalkSupervisorConfig(peerListing)
-						js.deploySupervisorWireguardConfig()
+						as.parseAircrewControlTowerConfig(peerListing)
+						as.deployControlTowerWireguardConfig()
 					}
 				}
 			case zoneChannelDefault:
 				peerListing := handleMsg(msg.Payload)
 				if peerListing != nil {
 					log.Debugf("Received message: %+v\n", peerListing)
-					js.parseJaywalkSupervisorConfig(peerListing)
-					js.deploySupervisorWireguardConfig()
+					as.parseAircrewControlTowerConfig(peerListing)
+					as.deployControlTowerWireguardConfig()
 				}
 			}
 		}
@@ -416,9 +416,9 @@ func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix st
 	return string(jMsg)
 }
 
-// superVisorReadyCheck blocks until the supervisor responds or the request times out
-func superVisorReadyCheck(ctx context.Context, client *redis.Client) {
-	log.Println("Checking the readiness of the supervisor")
+// controlTowerReadyCheck blocks until the control-tower responds or the request times out
+func controlTowerReadyCheck(ctx context.Context, client *redis.Client) {
+	log.Println("Checking the readiness of the control tower")
 	healthCheckReplyChan := make(chan string)
 	sub := client.Subscribe(ctx, healthcheckReplyChannel)
 	go func() {
@@ -431,7 +431,7 @@ func superVisorReadyCheck(ctx context.Context, client *redis.Client) {
 	select {
 	case <-healthCheckReplyChan:
 	case <-time.After(readyRequestTimeout * time.Second):
-		log.Fatal("Supervisor was not reachable, ensure it is running and attached to the broker")
+		log.Fatal("Control tower was not reachable, ensure it is running and attached to the broker")
 	}
-	log.Println("Supervisor is available")
+	log.Println("Control tower is available")
 }

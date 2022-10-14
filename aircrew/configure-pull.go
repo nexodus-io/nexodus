@@ -33,26 +33,26 @@ func handleMsg(payload string) PeerListing {
 	return peerListing
 }
 
-// parseJaywalkSupervisorConfig this is hacky but assumes there is no local config
+// parseAircrewControlTowerConfig this is hacky but assumes there is no local config
 // or if there is will overwrite it from the publisher peer listing
-func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
+func (as *aircrewState) parseAircrewControlTowerConfig(peerListing PeerListing) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 
 	for _, value := range peerListing {
-		if value.PublicKey == js.nodePubKey {
-			js.nodePubKeyInConfig = true
+		if value.PublicKey == as.nodePubKey {
+			as.nodePubKeyInConfig = true
 		}
 	}
 
-	if !js.nodePubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the supervisor update\n", js.nodePubKey)
+	if !as.nodePubKeyInConfig {
+		log.Printf("Public Key for this node %s was not found in the control tower update\n", as.nodePubKey)
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
 		// Build the wg config for all peers
-		if value.PublicKey != js.nodePubKey {
+		if value.PublicKey != as.nodePubKey {
 
 			var allowedIPs string
 			if value.ChildPrefix != "" {
@@ -75,9 +75,9 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				value.Zone)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == js.nodePubKey {
+		if value.PublicKey == as.nodePubKey {
 			localInterface = wgLocalConfig{
-				js.nodePvtKey,
+				as.nodePvtKey,
 				value.AllowedIPs,
 				cliFlags.listenPort,
 				false,
@@ -86,16 +86,16 @@ func (js *jaywalkState) parseJaywalkSupervisorConfig(peerListing PeerListing) {
 				localInterface.Address,
 				wgListenPort)
 			// set the node unique local interface configuration
-			js.wgConf.Interface = localInterface
+			as.wgConf.Interface = localInterface
 		}
 	}
-	js.wgConf.Peer = peers
+	as.wgConf.Peer = peers
 }
 
-func (js *jaywalkState) deploySupervisorWireguardConfig() {
+func (as *aircrewState) deployControlTowerWireguardConfig() {
 	latestCfg := &wgConfig{
-		Interface: js.wgConf.Interface,
-		Peer:      js.wgConf.Peer,
+		Interface: as.wgConf.Interface,
+		Peer:      as.wgConf.Peer,
 	}
 	cfg := ini.Empty(ini.LoadOptions{
 		AllowNonUniqueSections: true,
@@ -104,13 +104,13 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 	if err != nil {
 		log.Fatal("load ini configuration from struct error")
 	}
-	switch js.nodeOS {
+	switch as.nodeOS {
 	case Linux.String():
 		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
-		if js.nodePubKeyInConfig {
+		if as.nodePubKeyInConfig {
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
@@ -128,7 +128,7 @@ func (js *jaywalkState) deploySupervisorWireguardConfig() {
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
-		if js.nodePubKeyInConfig {
+		if as.nodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {

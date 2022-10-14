@@ -41,7 +41,7 @@ start_containers() {
         redis redis-server \
         --requirepass floofykittens
 
-    # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the jaywalk cmd)
+    # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the aircrew cmd)
     sudo docker run -itd \
         --name=node1 \
         --cap-add=SYS_MODULE \
@@ -56,18 +56,18 @@ start_containers() {
         quay.io/networkstatic/wireguard
 }
 
-start_supervisor() {
+start_controltower() {
     ###########################################################################
     # Description:                                                            #
-    # Start the supervisor/controller instance                                #
+    # Start the controltower instance                                #
     #                                                                         #
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
     local redis_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
-    ../supervisor/jaywalk-supervisor \
+    ../supervisor/controltower \
         -streamer-address ${redis_ip} \
-        -streamer-passwd floofykittens >supervisor-logs.txt &
+        -streamer-passwd floofykittens &
 }
 
 copy_binaries() {
@@ -93,35 +93,35 @@ copy_binaries() {
     local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
     local node2_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
-    chmod +x e2e-scripts/create-jaywalk-startup.sh
-    # Create jaywalk startup script for node1
-    e2e-scripts/create-jaywalk-startup.sh ${node1_pubkey} ${node1_pvtkey} ${controller} ${node1_ip} ${controller_passwd} ${zone} jaywalk-run-node1.sh
-    # Create jaywalk startup script for node2
-    e2e-scripts/create-jaywalk-startup.sh ${node2_pubkey} ${node2_pvtkey} ${controller} ${node2_ip} ${controller_passwd} ${zone} jaywalk-run-node2.sh
+    chmod +x e2e-scripts/create-aircrew-startup.sh
+    # Create aircrew startup script for node1
+    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node1_pvtkey} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
+    # Create aircrew startup script for node2
+    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node2_pvtkey} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
 
     # STDOUT the scripts for debugging
-    cat jaywalk-run-node1.sh
-    cat jaywalk-run-node2.sh
+    cat aircrew-run-node1.sh
+    cat aircrew-run-node2.sh
 
     # Set permissions
-    chmod +x ../jaywalk-agent/jaywalk
-    chmod +x ../supervisor/jaywalk-supervisor
+    chmod +x ../aircrew/aircrew
+    chmod +x ../supervisor/controltower
 
-    # Copy binaries and scripts (copying the supervisor even though we are running it on the VM instead of in a container)
-    sudo docker cp ../jaywalk-agent/jaywalk node1:/bin/jaywalk
-    sudo docker cp ../jaywalk-agent/jaywalk node2:/bin/jaywalk
-    sudo docker cp ../supervisor/jaywalk-supervisor node1:/bin/jaywalk-supervisor
-    sudo docker cp ../supervisor/jaywalk-supervisor node2:/bin/jaywalk-supervisor
-    sudo docker cp ./jaywalk-run-node1.sh node1:/bin/jaywalk-run-node1.sh
-    sudo docker cp ./jaywalk-run-node2.sh node2:/bin/jaywalk-run-node2.sh
+    # Copy binaries and scripts (copying the controltower even though we are running it on the VM instead of in a container)
+    sudo docker cp ../aircrew/aircrew node1:/bin/aircrew
+    sudo docker cp ../aircrew/aircrew node2:/bin/aircrew
+    sudo docker cp ../supervisor/controltower node1:/bin/controltower
+    sudo docker cp ../supervisor/controltower node2:/bin/controltower
+    sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
+    sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
 
     # Set permissions in the container
-    sudo docker exec node1 chmod +x /bin/jaywalk-run-node1.sh
-    sudo docker exec node2 chmod +x /bin/jaywalk-run-node2.sh
+    sudo docker exec node1 chmod +x /bin/aircrew-run-node1.sh
+    sudo docker exec node2 chmod +x /bin/aircrew-run-node2.sh
 
     # Start the agents on both nodes
-    sudo docker exec node1 /bin/jaywalk-run-node1.sh &
-    sudo docker exec node2 /bin/jaywalk-run-node2.sh &
+    sudo docker exec node1 /bin/aircrew-run-node1.sh &
+    sudo docker exec node2 /bin/aircrew-run-node2.sh &
     sleep 1
 }
 
@@ -187,33 +187,33 @@ setup_custom_zone_connectivity() {
     echo -e  "$node2_pvtkey\n\n" | tee node2-private.key
 
     # Validate the private key file option by swapping out the options
-    sed -i 's/--private-key=${pvtkey}/--private-key-file=${pvtkey}/g' e2e-scripts/create-jaywalk-startup.sh
+    sed -i 's/--private-key=${pvtkey}/--private-key-file=${pvtkey}/g' e2e-scripts/create-aircrew-startup.sh
 
-    # Create jaywalk startup script for node1
-    e2e-scripts/create-jaywalk-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} jaywalk-run-node1.sh
-    # Create jaywalk startup script for node2
-    e2e-scripts/create-jaywalk-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} jaywalk-run-node2.sh
+    # Create aircrew startup script for node1
+    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
+    # Create aircrew startup script for node2
+    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
 
     # STDOUT the scripts for debugging
-    cat jaywalk-run-node1.sh
-    cat jaywalk-run-node2.sh
+    cat aircrew-run-node1.sh
+    cat aircrew-run-node2.sh
 
-    # Kill the jaywalk process on both nodes
-    sudo docker exec node1 killall jaywalk
-    sudo docker exec node2 killall jaywalk
+    # Kill the aircrew process on both nodes
+    sudo docker exec node1 killall aircrew
+    sudo docker exec node2 killall aircrew
 
-    sudo docker cp ./jaywalk-run-node1.sh node1:/bin/jaywalk-run-node1.sh
-    sudo docker cp ./jaywalk-run-node2.sh node2:/bin/jaywalk-run-node2.sh
+    sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
+    sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
     sudo docker cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    sudo docker exec node1 chmod +x /bin/jaywalk-run-node1.sh
-    sudo docker exec node2 chmod +x /bin/jaywalk-run-node2.sh
+    sudo docker exec node1 chmod +x /bin/aircrew-run-node1.sh
+    sudo docker exec node2 chmod +x /bin/aircrew-run-node2.sh
 
     # Start the agents on both nodes
-    sudo docker exec node1 /bin/jaywalk-run-node1.sh &
-    sudo docker exec node2 /bin/jaywalk-run-node2.sh &
+    sudo docker exec node1 /bin/aircrew-run-node1.sh &
+    sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
     # Allow one second for the wg0 interface to readdress
     sleep 2
@@ -256,31 +256,31 @@ setup_custom_second_zone_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Create jaywalk startup script for node1
-    e2e-scripts/create-jaywalk-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} jaywalk-run-node1.sh
-    # Create jaywalk startup script for node2
-    e2e-scripts/create-jaywalk-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} jaywalk-run-node2.sh
+    # Create aircrew startup script for node1
+    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
+    # Create aircrew startup script for node2
+    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
 
     # STDOUT the scripts for debugging
-    cat jaywalk-run-node1.sh
-    cat jaywalk-run-node2.sh
+    cat aircrew-run-node1.sh
+    cat aircrew-run-node2.sh
 
-    # Kill the jaywalk process on both nodes
-    sudo docker exec node1 killall jaywalk
-    sudo docker exec node2 killall jaywalk
+    # Kill the aircrew process on both nodes
+    sudo docker exec node1 killall aircrew
+    sudo docker exec node2 killall aircrew
 
-    sudo docker cp ./jaywalk-run-node1.sh node1:/bin/jaywalk-run-node1.sh
-    sudo docker cp ./jaywalk-run-node2.sh node2:/bin/jaywalk-run-node2.sh
+    sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
+    sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
     sudo docker cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    sudo docker exec node1 chmod +x /bin/jaywalk-run-node1.sh
-    sudo docker exec node2 chmod +x /bin/jaywalk-run-node2.sh
+    sudo docker exec node1 chmod +x /bin/aircrew-run-node1.sh
+    sudo docker exec node2 chmod +x /bin/aircrew-run-node2.sh
 
     # Start the agents on both nodes
-    sudo docker exec node1 /bin/jaywalk-run-node1.sh &
-    sudo docker exec node2 /bin/jaywalk-run-node2.sh &
+    sudo docker exec node1 /bin/aircrew-run-node1.sh &
+    sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
     # Allow one second for the wg0 interface to readdress
     sleep 2
@@ -316,7 +316,7 @@ setup_child_prefix_connectivity() {
     local node2_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
     # Add the --child-prefix and --request-ip flags
-    sed -i 's/--controller-password=${controller_passwd}/--controller-password=${controller_passwd} --child-prefix=${child_prefix} --request-ip=${requested_ip}/g' e2e-scripts/create-jaywalk-startup.sh
+    sed -i 's/--controller-password=${controller_passwd}/--controller-password=${controller_passwd} --child-prefix=${child_prefix} --request-ip=${requested_ip}/g' e2e-scripts/create-aircrew-startup.sh
 
     # Create the new zone with a CGNAT range
     curl -L -X POST 'http://localhost:8080/zone' \
@@ -331,35 +331,35 @@ setup_child_prefix_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Create jaywalk startup script for node1
-    e2e-scripts/create-jaywalk-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} jaywalk-run-node1.sh ${child_prefix_node1} ${requested_ip_node1}
-    # Create jaywalk startup script for node2
-    e2e-scripts/create-jaywalk-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} jaywalk-run-node2.sh ${child_prefix_node2} ${requested_ip_node2}
+    # Create aircrew startup script for node1
+    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh ${child_prefix_node1} ${requested_ip_node1}
+    # Create aircrew startup script for node2
+    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh ${child_prefix_node2} ${requested_ip_node2}
 
     # STDOUT the scripts for debugging
-    cat jaywalk-run-node1.sh
-    cat jaywalk-run-node2.sh
+    cat aircrew-run-node1.sh
+    cat aircrew-run-node2.sh
 
-    # Kill the jaywalk process on both nodes
-    sudo docker exec node1 killall jaywalk
-    sudo docker exec node2 killall jaywalk
+    # Kill the aircrew process on both nodes
+    sudo docker exec node1 killall aircrew
+    sudo docker exec node2 killall aircrew
 
-    sudo docker cp ./jaywalk-run-node1.sh node1:/bin/jaywalk-run-node1.sh
-    sudo docker cp ./jaywalk-run-node2.sh node2:/bin/jaywalk-run-node2.sh
+    sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
+    sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
     sudo docker cp ./node1-private.key node1:/etc/wireguard/private.key
     sudo docker cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    sudo docker exec node1 chmod +x /bin/jaywalk-run-node1.sh
-    sudo docker exec node2 chmod +x /bin/jaywalk-run-node2.sh
+    sudo docker exec node1 chmod +x /bin/aircrew-run-node1.sh
+    sudo docker exec node2 chmod +x /bin/aircrew-run-node2.sh
 
     # Add loopback addresses the are in the child-prefix cidr range
     sudo docker exec node1 ip addr add 172.20.1.10/32 dev lo
     sudo docker exec node2 ip addr add 172.20.3.10/32 dev lo
 
     # Start the agents on both nodes
-    sudo docker exec node1 /bin/jaywalk-run-node1.sh &
-    sudo docker exec node2 /bin/jaywalk-run-node2.sh &
+    sudo docker exec node1 /bin/aircrew-run-node1.sh &
+    sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
     # Allow one second for the wg0 interface to readdress
     sleep 2
@@ -390,7 +390,7 @@ setup_child_prefix_connectivity() {
 ###########################################################################
 install_docker
 start_containers
-start_supervisor
+start_controltower
 copy_binaries
 verify_connectivity
 setup_custom_zone_connectivity

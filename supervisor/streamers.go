@@ -61,7 +61,7 @@ func readyCheckRepsonder(ctx context.Context, client *redis.Client) {
 		for {
 			serverStatusRequest := <-msgRedChan
 			log.Debugf("Ready check channel message %s", serverStatusRequest)
-			if serverStatusRequest == "supervisor-ready-request" {
+			if serverStatusRequest == "controltower-ready-request" {
 				client.Publish(ctx, healthcheckReplyChannel, healthcheckReplyMsg).Result()
 			}
 		}
