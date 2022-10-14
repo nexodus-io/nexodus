@@ -32,9 +32,8 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	}
 	// todo, the needs to go over an err channal to the agent
 	if nodeZone == "" {
-		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?\n", msgEvent.Peer.Zone)
+		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?", msgEvent.Peer.Zone)
 	}
-	peer := Peer{}
 	var ip string
 	// If this was a static address request
 	// TODO: handle a user requesting an IP not in the IPAM prefix
@@ -67,7 +66,7 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	z.ZoneIpam.IpamSave(ctx)
 
 	// construct the new node
-	peer = msgEvent.newNode(ip, childPrefix)
+	peer := msgEvent.newNode(ip, childPrefix)
 	log.Debugf("node allocated: %+v\n", peer)
 
 	for i, zone := range ct.Zones {
@@ -76,9 +75,7 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 				ct.Zones[i].NodeMap = make(map[string]Peer)
 			}
 			// delete the old k/v pair if one exists and replace it with the new registration data
-			if _, ok := ct.Zones[i].NodeMap[msgEvent.Peer.PublicKey]; ok {
-				delete(ct.Zones[i].NodeMap, msgEvent.Peer.PublicKey)
-			}
+			delete(ct.Zones[i].NodeMap, msgEvent.Peer.PublicKey)
 			ct.Zones[i].NodeMap[msgEvent.Peer.PublicKey] = peer
 		}
 	}

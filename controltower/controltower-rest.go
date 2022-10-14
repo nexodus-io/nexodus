@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -84,7 +83,7 @@ func (ct *Controltower) GetPeers(c *gin.Context) {
 // GetPeerByKey locates the Peers whose PublicKey value matches the id
 func (ct *Controltower) GetPeerByKey(c *gin.Context) {
 	key := c.Param("key")
-	for pubKey, _ := range ct.NodeMapDefault {
+	for pubKey := range ct.NodeMapDefault {
 		if pubKey == key {
 			c.IndentedJSON(http.StatusOK, ct.NodeMapDefault[key])
 			return
@@ -112,6 +111,7 @@ func (ct *Controltower) GetIpamLeases(c *gin.Context) {
 	c.JSON(http.StatusOK, zoneLeases)
 }
 
+/*
 func publishAllPeersMessage(ctx context.Context, channel string, data []Peer) {
 	id, msg := createAllPeerMessage(data)
 	err := redisDB.Publish(ctx, channel, msg).Err()
@@ -121,9 +121,10 @@ func publishAllPeersMessage(ctx context.Context, channel string, data []Peer) {
 	}
 	log.Printf("Published new message: %s\n", msg)
 }
+*/
 
 func fileToString(file string) string {
-	fileContent, err := ioutil.ReadFile(file)
+	fileContent, err := os.ReadFile(file)
 	if err != nil {
 		log.Errorf("unable to read the file [%s] %v\n", file, err)
 		return ""

@@ -91,7 +91,6 @@ type Controltower struct {
 	Zones             []Zone
 	NodeMapDefault    map[string]Peer
 	ZoneConfigDefault map[string]ZoneConfig
-	stream            *redis.Client
 	streamSocket      string
 	streamPass        string
 }
@@ -159,7 +158,6 @@ func main() {
 				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelDefault)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					nodeEvent := Peer{}
 					var ip string
 					// If this was a static address request
 					if msgEvent.Peer.NodeAddress != "" {
@@ -190,12 +188,10 @@ func main() {
 					// save the ipam to persistent storage
 					ctIpamDefault.IpamSave(ctxDefault)
 					// construct the new node
-					nodeEvent = msgEvent.newNode(ip, childPrefix)
+					nodeEvent := msgEvent.newNode(ip, childPrefix)
 					log.Debugf("node allocated: %+v\n", nodeEvent)
 					// delete the old k/v pair if one exists and replace it with the new registration data
-					if _, ok := ct.NodeMapDefault[msgEvent.Peer.PublicKey]; ok {
-						delete(ct.NodeMapDefault, msgEvent.Peer.PublicKey)
-					}
+					delete(ct.NodeMapDefault, msgEvent.Peer.PublicKey)
 					ct.NodeMapDefault[msgEvent.Peer.PublicKey] = nodeEvent
 					// append all peers into the updated peer list to be published
 					var peerList []Peer
