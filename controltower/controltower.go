@@ -87,12 +87,12 @@ type Zone struct {
 
 // Control tower specific data
 type Controltower struct {
-	Router            *gin.Engine
-	Zones             []Zone
-	NodeMapDefault    map[string]Peer
-	ZoneConfigDefault map[string]ZoneConfig
-	streamSocket      string
-	streamPass        string
+	Router         *gin.Engine
+	Zones          map[uuid.UUID]Zone
+	Peers          map[uuid.UUID]Peer
+	NodeMapDefault map[string]Peer
+	streamSocket   string
+	streamPass     string
 }
 
 func initApp() *Controltower {
@@ -102,13 +102,14 @@ func initApp() *Controltower {
 	corsConfig.AllowAllOrigins = true
 	ct.Router.Use(cors.New(corsConfig))
 	ct.Router.GET("/peers", ct.GetPeers)                  // http://localhost:8080/peers TODO: only functioning for zone:default atm
-	ct.Router.GET("/peers/:key", ct.GetPeerByKey)         // http://localhost:8080/peers/pubkey
+	ct.Router.GET("/peers/:id", ct.GetPeer)               // http://localhost:8080/peers/id
 	ct.Router.GET("/ipam/leases/:zone", ct.GetIpamLeases) // http://localhost:8080/leases/:zone-name
 	ct.Router.GET("/zones", ct.GetZones)                  // http://localhost:8080/zones
+	ct.Router.GET("/zones/:id", ct.GetZone)
 	ct.Router.POST("/zones", ct.PostZone)
 	ct.NodeMapDefault = make(map[string]Peer)
-	ct.ZoneConfigDefault = make(map[string]ZoneConfig)
-	ct.Zones = make([]Zone, 0)
+	ct.Peers = make(map[uuid.UUID]Peer)
+	ct.Zones = make(map[uuid.UUID]Zone)
 	ct.setZoneDefaultDetails(DefaultZoneName)
 	ct.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
 	ct.streamPass = *streamPasswd
@@ -243,10 +244,13 @@ func handleMsg(payload string) MsgEvent {
 
 // setZoneDetails set general zone attributes
 func (ct *Controltower) setZoneDefaultDetails(zone string) {
-	zoneConfDefault := ZoneConfig{
+	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+	zoneConfDefault := Zone{
+		ID:          id,
 		Name:        zone,
+		NodeMap:     make(map[string]Peer),
 		Description: "Default Zone",
 		IpCidr:      ipPrefixDefault,
 	}
-	ct.ZoneConfigDefault[zone] = zoneConfDefault
+	ct.Zones[id] = zoneConfDefault
 }

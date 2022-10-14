@@ -22,7 +22,7 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	var nodeZone string
 	var ipamPrefix string
 	var err error
-	z := Zone{}
+	var z Zone
 	for _, zone := range ct.Zones {
 		if msgEvent.Peer.Zone == zone.Name {
 			nodeZone = msgEvent.Peer.Zone
@@ -68,15 +68,13 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	// construct the new node
 	peer := msgEvent.newNode(ip, childPrefix)
 	log.Debugf("node allocated: %+v\n", peer)
+	ct.Peers[peer.ID] = peer
 
-	for i, zone := range ct.Zones {
+	for k, zone := range ct.Zones {
 		if zone.Name == nodeZone {
-			if ct.Zones[i].NodeMap == nil {
-				ct.Zones[i].NodeMap = make(map[string]Peer)
-			}
 			// delete the old k/v pair if one exists and replace it with the new registration data
-			delete(ct.Zones[i].NodeMap, msgEvent.Peer.PublicKey)
-			ct.Zones[i].NodeMap[msgEvent.Peer.PublicKey] = peer
+			delete(ct.Zones[k].NodeMap, msgEvent.Peer.PublicKey)
+			ct.Zones[k].NodeMap[msgEvent.Peer.PublicKey] = peer
 		}
 	}
 

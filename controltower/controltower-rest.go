@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/redhat-et/jaywalking/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,6 +23,7 @@ type Prefix struct {
 // PostZone creates a new zone via a REST call
 func (ct *Controltower) PostZone(c *gin.Context) {
 	var newZone Zone
+	newZone.ID = uuid.New()
 	ctx := context.Background()
 	// Call BindJSON to bind the received JSON to
 	if err := c.BindJSON(&newZone); err != nil {
@@ -61,23 +63,45 @@ func (ct *Controltower) PostZone(c *gin.Context) {
 	if err := ipam.IpamSave(ctx); err != nil {
 		log.Errorf("failed to save the ipam persistent storage file %v", err)
 	}
-	ct.Zones = append(ct.Zones, newZone)
+	ct.Zones[newZone.ID] = newZone
 
 	c.IndentedJSON(http.StatusCreated, newZone)
 }
 
 // GetZones responds with the list of all peers as JSON.
 func (ct *Controltower) GetZones(c *gin.Context) {
+	allZones := make([]Zone, 0)
+	for _, z := range ct.Zones {
+		allZones = append(allZones, z)
+	}
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
-	c.Header("X-Total-Count", strconv.Itoa(len(ct.Zones)))
-	c.JSON(http.StatusOK, ct.Zones)
+	c.Header("X-Total-Count", strconv.Itoa(len(allZones)))
+	c.JSON(http.StatusOK, allZones)
+}
+
+// GetZone responds with a single zone
+func (ct *Controltower) GetZone(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if value, ok := ct.Zones[k]; ok {
+		c.JSON(http.StatusOK, value)
+	} else {
+		c.Status(http.StatusNotFound)
+	}
 }
 
 // GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
 func (ct *Controltower) GetPeers(c *gin.Context) {
 	allNodes := make([]Peer, 0)
+	pubKey := c.Query("public-key")
 	for _, v := range ct.NodeMapDefault {
+		if pubKey != "" && v.PublicKey != pubKey {
+			continue
+		}
 		allNodes = append(allNodes, v)
 	}
 	// For pagination
@@ -86,17 +110,18 @@ func (ct *Controltower) GetPeers(c *gin.Context) {
 	c.JSON(http.StatusOK, allNodes)
 }
 
-// GetPeerByKey locates the Peers whose PublicKey value matches the id
-func (ct *Controltower) GetPeerByKey(c *gin.Context) {
-	key := c.Param("key")
-	for pubKey := range ct.NodeMapDefault {
-		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, ct.NodeMapDefault[key])
-			return
-		}
+// GetPeerByKey locates the Peers
+func (ct *Controltower) GetPeer(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
 	}
-
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "peer not found"})
+	if v, ok := ct.Peers[k]; ok {
+		c.JSON(http.StatusOK, v)
+	} else {
+		c.Status(http.StatusNotFound)
+	}
 }
 
 // TODO: this is hacky, should query the instance state instead, also file lock risk
