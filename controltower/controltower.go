@@ -108,6 +108,7 @@ func initApp() *Controltower {
 	ct.Router.POST("/zones", ct.PostZone)
 	ct.NodeMapDefault = make(map[string]Peer)
 	ct.ZoneConfigDefault = make(map[string]ZoneConfig)
+	ct.Zones = make([]Zone, 0)
 	ct.setZoneDefaultDetails(DefaultZoneName)
 	ct.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
 	ct.streamPass = *streamPasswd
@@ -208,7 +209,7 @@ func main() {
 	}()
 
 	// Start the http router, this is blocking
-	ginSocket := fmt.Sprintf("localhost:%s", restPort)
+	ginSocket := fmt.Sprintf("0.0.0.0:%s", restPort)
 	ct.Router.Run(ginSocket)
 
 	ch := make(chan os.Signal, 1)
