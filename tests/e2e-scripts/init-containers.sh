@@ -315,6 +315,9 @@ setup_child_prefix_connectivity() {
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
+    # Delete the ipam storage in the case the run has re-run since we dont overwrite existing child-prefix
+    rm -rf prefix-test.json
+    
     # Create the new zone with a CGNAT range
     curl -L -X POST 'http://localhost:8080/zone' \
     -H 'Content-Type: application/json' \
@@ -376,7 +379,7 @@ EOF
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
-    sleep 2
+    sleep 4
     
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
     if sudo docker exec node1 ping -c 2 -w 2 172.20.3.10; then
