@@ -23,7 +23,7 @@ echo "Child Prefix: ${child_prefix}"
 cat << EOF > ${7}
 #!/bin/bash
 
-jaywalk \
+aircrew \
 --public-key=${pubkey} \
 --private-key=${pvtkey}  \
 --controller=${redis}  \

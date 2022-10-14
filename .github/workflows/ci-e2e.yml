@@ -28,16 +28,16 @@ jobs:
 
     - name: Build Jaywalk Agent
       run: |
-        pushd jaywalk-agent
-        go build -o jaywalk
-        chmod +x jaywalk
-        sudo cp jaywalk /usr/local/sbin/
+        pushd aircrew
+        go build -o aircrew
+        chmod +x aircrew
+        sudo cp aircrew /usr/local/sbin/
 
-    - name: Build Jaywalk Supervisor
+    - name: Build Control Tower
       run: |
         pushd supervisor
-        go build -o jaywalk-supervisor
-        chmod +x jaywalk-supervisor
+        go build -o controltower
+        chmod +x controltower
         popd
 
     - name: Run e2e

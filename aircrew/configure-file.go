@@ -9,12 +9,12 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// parseJaywalkConfig extracts the jaywalk toml config and
+// parseAircrewConfig extracts the aircrew toml config and
 // builds the wireguard configuration data structs
-func (js *jaywalkState) parseJaywalkConfig() {
+func (as *aircrewState) parseAircrewConfig() {
 	// parse toml config
 	viper.SetConfigType("toml")
-	viper.SetConfigFile(js.jaywalkConfigFile)
+	viper.SetConfigFile(as.aircrewConfigFile)
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal("Unable to read config file", err)
 	}
@@ -28,16 +28,16 @@ func (js *jaywalkState) parseJaywalkConfig() {
 	var localInterface wgLocalConfig
 
 	for _, value := range conf.Peers {
-		if value.PublicKey == js.nodePubKey {
-			js.nodePubKeyInConfig = true
+		if value.PublicKey == as.nodePubKey {
+			as.nodePubKeyInConfig = true
 		}
 	}
-	if !js.nodePubKeyInConfig {
-		log.Printf("Public Key for this node was not found in %s", jaywalkConfig)
+	if !as.nodePubKeyInConfig {
+		log.Printf("Public Key for this node was not found in %s", aircrewConfig)
 	}
 	for nodeName, value := range conf.Peers {
 		// Parse the [Peers] section
-		if value.PublicKey != js.nodePubKey {
+		if value.PublicKey != as.nodePubKey {
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.EndpointIP,
@@ -52,7 +52,7 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				value.PublicKey)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == js.nodePubKey {
+		if value.PublicKey == as.nodePubKey {
 			localInterface = wgLocalConfig{
 				value.PrivateKey,
 				value.WireguardIP,
@@ -66,14 +66,14 @@ func (js *jaywalkState) parseJaywalkConfig() {
 				value.PrivateKey)
 		}
 	}
-	js.wgConf.Interface = localInterface
-	js.wgConf.Peer = peers
+	as.wgConf.Interface = localInterface
+	as.wgConf.Peer = peers
 }
 
-func (js *jaywalkState) deployWireguardConfig() {
+func (as *aircrewState) deployWireguardConfig() {
 	latestCfg := &wgConfig{
-		Interface: js.wgConf.Interface,
-		Peer:      js.wgConf.Peer,
+		Interface: as.wgConf.Interface,
+		Peer:      as.wgConf.Peer,
 	}
 
 	cfg := ini.Empty(ini.LoadOptions{
@@ -85,7 +85,7 @@ func (js *jaywalkState) deployWireguardConfig() {
 		log.Fatal("load ini configuration from struct error")
 	}
 
-	switch js.nodeOS {
+	switch as.nodeOS {
 	case Linux.String():
 		// wg does not create the OSX config directory by default
 		if err = CreateDirectory(wgLinuxConfPath); err != nil {
@@ -96,7 +96,7 @@ func (js *jaywalkState) deployWireguardConfig() {
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
 		}
-		if js.nodePubKeyInConfig {
+		if as.nodePubKeyInConfig {
 
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
@@ -116,7 +116,7 @@ func (js *jaywalkState) deployWireguardConfig() {
 			log.Fatal("Save latest configuration error", err)
 		}
 
-		if js.nodePubKeyInConfig {
+		if as.nodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
