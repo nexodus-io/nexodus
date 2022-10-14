@@ -132,7 +132,7 @@ func GetDarwinIPv4() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return osxIP, nil
+	return strings.TrimSuffix(osxIP, "\n"), nil
 }
 
 // GetPubIP retrieves current global IP address using https://checkip.amazonaws.com/

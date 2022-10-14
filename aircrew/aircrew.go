@@ -23,8 +23,9 @@ type flags struct {
 	zone                   string
 	requestedIP            string
 	userProvidedEndpointIP string
-	agentMode              bool
 	childPrefix            string
+	agentMode              bool
+	internalNetwork        bool
 }
 
 var (
@@ -32,18 +33,18 @@ var (
 )
 
 type aircrewState struct {
-	nodePubKey             string
-	nodePvtKey             string
-	nodePubKeyInConfig     bool
-	aircrewConfigFile      string
-	daemon                 bool
-	nodeOS                 string
-	zone                   string
-	requestedIP            string
-	childPrefix            string
-	agentChannel           string
-	userProvidedEndpointIP string
-	wgConf                 wgConfig
+	nodePubKey         string
+	nodePvtKey         string
+	nodePubKeyInConfig bool
+	aircrewConfigFile  string
+	daemon             bool
+	nodeOS             string
+	zone               string
+	requestedIP        string
+	childPrefix        string
+	agentChannel       string
+	userEndpointIP     string
+	wgConf             wgConfig
 }
 
 type wgConfig struct {
@@ -198,10 +199,16 @@ func main() {
 				EnvVars:     []string{"AIRCREW_REQUESTED_CHILD_PREFIX"},
 			},
 			&cli.BoolFlag{Name: "agent-mode",
-				Usage:       "run as a agentMode",
-				Value:       false,
+				Usage:       "run as an agent",
+				Value:       true,
 				Destination: &cliFlags.agentMode,
-				EnvVars:     []string{"AIRCREW_AGENT_MODE"},
+				EnvVars:     []string{"JAYWALK_AGENT_MODE"},
+			},
+			&cli.BoolFlag{Name: "internal-network",
+				Usage:       "do not discover the public address for this host, use the local address for peering",
+				Value:       false,
+				Destination: &cliFlags.internalNetwork,
+				EnvVars:     []string{"JAYWALK_INTERNAL_NETWORK"},
 			},
 		},
 	}
@@ -232,7 +239,7 @@ func runInit() {
 		log.Fatal("the public key for this host is required to run")
 	}
 	ctx := context.Background()
-
+	var err error
 	var nodeOS string
 	switch GetOS() {
 	case "windows":
@@ -253,18 +260,6 @@ func runInit() {
 		}
 	default:
 		log.Fatalf("OS [%s] is not supported\n", GetOS())
-	}
-
-	// check to see if the host is natted
-	nat, err := IsNAT(nodeOS)
-	if err != nil {
-		log.Printf("unable determining if the host is natted: %v", err)
-	} else {
-		if nat {
-			log.Printf("Host appears to be natted")
-		} else {
-			log.Printf("Host appears to be publicly routed and not natted")
-		}
 	}
 
 	// parse the private key for the local configuration from file or CLI
@@ -288,16 +283,49 @@ func runInit() {
 		}
 	}
 
+	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
+	// Otherwise, discover what the public of the node is and provide that to the peers unless the --internal flag was set,
+	// in which case the endpoint address will be set to an existing address on the host.
+	var localEndpointIP string
+	if cliFlags.internalNetwork && nodeOS == Darwin.String() {
+		localEndpointIP, err = GetDarwinIPv4()
+		if err != nil {
+			log.Fatalf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+		}
+	}
+	if cliFlags.internalNetwork && nodeOS == Linux.String() {
+		localEndpointIP, err = GetIPv4Linux()
+		if err != nil {
+			log.Fatalf("unable to determine the ip address, please specify using --local-endpoint-ip")
+		}
+	}
+	// User provided --local-endpoint-ip overrides --internal-network
+	if cliFlags.userProvidedEndpointIP != "" {
+		if err := ValidateIp(cliFlags.userProvidedEndpointIP); err != nil {
+			log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
+				cliFlags.userProvidedEndpointIP, err)
+		}
+		localEndpointIP = cliFlags.userProvidedEndpointIP
+	}
+	// this conditional is last since it is expensive to do the public address lookup
+	if !cliFlags.internalNetwork && cliFlags.userProvidedEndpointIP == "" {
+		localEndpointIP, err = GetPubIP()
+		if err != nil {
+			log.Warn("Unable to determine the public facing address")
+		}
+	}
+	log.Debugf("This node's endpoint address will be [ %s ]", localEndpointIP)
+
 	as := &aircrewState{
-		nodePubKey:             cliFlags.wireguardPubKey,
-		nodePvtKey:             pvtKey,
-		aircrewConfigFile:      cliFlags.configFile,
-		daemon:                 cliFlags.agentMode,
-		nodeOS:                 nodeOS,
-		zone:                   cliFlags.zone,
-		requestedIP:            cliFlags.requestedIP,
-		childPrefix:            cliFlags.childPrefix,
-		userProvidedEndpointIP: cliFlags.userProvidedEndpointIP,
+		nodePubKey:        cliFlags.wireguardPubKey,
+		nodePvtKey:        pvtKey,
+		aircrewConfigFile: cliFlags.configFile,
+		daemon:            cliFlags.agentMode,
+		nodeOS:            nodeOS,
+		zone:              cliFlags.zone,
+		requestedIP:       cliFlags.requestedIP,
+		childPrefix:       cliFlags.childPrefix,
+		userEndpointIP:    cliFlags.userProvidedEndpointIP,
 	}
 
 	if !cliFlags.agentMode {
@@ -334,21 +362,6 @@ func runInit() {
 		sub := rc.Subscribe(ctx, subChannel)
 		defer sub.Close()
 
-		// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
-		// Otherwise, discover what the public of the node is and provide that to the peers.
-		var localEndpointIP string
-		if as.userProvidedEndpointIP != "" {
-			if err := ValidateIp(as.userProvidedEndpointIP); err != nil {
-				log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
-					as.userProvidedEndpointIP, err)
-			}
-			localEndpointIP = as.userProvidedEndpointIP
-		} else {
-			localEndpointIP, err = GetPubIP()
-			if err != nil {
-				log.Warn("Unable to determine the public facing address")
-			}
-		}
 		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, wgListenPort)
 		// Create the message describing this peer to be published
 		peerRegister := publishMessage(

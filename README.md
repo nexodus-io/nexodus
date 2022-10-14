@@ -20,7 +20,7 @@ Some of the high level features that this project is planning to provide are:
 
 ### 1. Mesh Network between nodes deployed across different VPC and at Edge
 
-<img src="./docs/images/caas-vpc-edge-single-zone.png" width="60%" height="60%" >
+<img src="./docs/images/caas-vpc-edge-single-zone.png" width="70%" height="70%" >
 
 *Figure 1. Getting started topology that can be setup in minutes.* 
 
@@ -110,13 +110,34 @@ For Windows and Mac adjust the paths to existing directories.
 
 #### **Start the Jaywalk agent**
  Start the jaywalk agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the supervisor. Run the following commands on all the nodes:
+ **Note**: If your test nodes does nodes are on internal networks and not on something like EC2 use the `--network-internal` flag  which will use an IP from your host instead of discovering your public NAT address or provide a specific address with `--local-endpoint-ip=x.x.x.x`:
 
+- There are currently 3 scenarios that allow an operator to define how the peers in a mesh are defined. There is a public address or cloud scenario, a private network address option and the ability to define exactly what address a peer will use when being mapped to a public key in the mesh. The following is an example of each:
 ```shell
-sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
-    --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
+# 1. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example).
+# This is currently the default behavior as public CSP to private edge is primary a focus of the project.
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+--private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD> 
+# 2. If the node does not have inbound access on UDP port 51820 and a publicly reachable address,
+# the following will use an existing IP on the node as the peer endpoint address. This would 
+# create internal peering to other nodes in your network or allow the node to initiate peers
+# to public machines in the cloud. (--local-endpoint-ip)
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+--private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-     --agent-mode
+    --local-endpoint-ip=X.X.X.X
+
+# 3.  If an operator wants complete control over what address will be advertised to it's
+# peers, they can specify the endpoint address that will be distributed to all of the other 
+# peers in the mesh. (--internal-network)
+sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+--private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD>\
+    --internal-network
 ```
 **NOTES**
 - *By default, the node joins a zone named `default`. A **zone** is simply the isolated wireguard network where all the nodes in that zone is connected as a mesh (as depicted in **Figure 1**).*
@@ -180,7 +201,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=zone-blue 
 ```
 To join zone red:
@@ -189,7 +209,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=zone-red 
 ```
 
@@ -253,7 +272,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --child-prefix=172.24.0.0/24 \
     --zone=default 
 ```
@@ -282,9 +300,8 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --child-prefix=172.28.0.0/24 \
-    --zone=default \
+    --zone=default
 ```
 
 Setup a docker network and start a node on it:
@@ -325,7 +342,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_C>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_C>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=default
 ```
 Ping to prefixes on both the other nodes should be successful now.

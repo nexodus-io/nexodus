@@ -315,9 +315,6 @@ setup_child_prefix_connectivity() {
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
-    # Add the --child-prefix and --request-ip flags
-    sed -i 's/--controller-password=${controller_passwd}/--controller-password=${controller_passwd} --child-prefix=${child_prefix} --request-ip=${requested_ip}/g' e2e-scripts/create-aircrew-startup.sh
-
     # Create the new zone with a CGNAT range
     curl -L -X POST 'http://localhost:8080/zone' \
     -H 'Content-Type: application/json' \
@@ -331,18 +328,35 @@ setup_child_prefix_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Create aircrew startup script for node1
-    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh ${child_prefix_node1} ${requested_ip_node1}
-    # Create aircrew startup script for node2
-    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh ${child_prefix_node2} ${requested_ip_node2}
-
-    # STDOUT the scripts for debugging
-    cat aircrew-run-node1.sh
-    cat aircrew-run-node2.sh
-
     # Kill the aircrew process on both nodes
     sudo docker exec node1 killall aircrew
     sudo docker exec node2 killall aircrew
+
+    # Node-1 aircrew run
+    cat <<EOF > aircrew-run-node1.sh
+#!/bin/bash
+    aircrew --public-key=${node1_pubkey} \
+    --private-key-file=/etc/wireguard/private.key  \
+    --controller=${controller} \
+    --controller-password=${controller_passwd} \
+    --child-prefix=${child_prefix_node1} \
+    --internal-network \
+    --request-ip=${requested_ip_node1} \
+    --zone=${zone}
+EOF
+
+    # Node-2 aircrew run
+    cat <<EOF > aircrew-run-node2.sh
+#!/bin/bash
+    aircrew --public-key=${node2_pubkey} \
+    --private-key-file=/etc/wireguard/private.key  \
+    --controller=${controller} \
+    --controller-password=${controller_passwd} \
+    --child-prefix=${child_prefix_node2} \
+    --request-ip=${requested_ip_node2} \
+    --internal-network \
+    --zone=${zone}
+EOF
 
     sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo docker cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
@@ -361,7 +375,7 @@ setup_child_prefix_connectivity() {
     sudo docker exec node1 /bin/aircrew-run-node1.sh &
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
-    # Allow one second for the wg0 interface to readdress
+    # Allow two seconds for the wg0 interface to readdress
     sleep 2
     
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
