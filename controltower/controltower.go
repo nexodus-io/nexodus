@@ -103,7 +103,7 @@ func initApp() *Controltower {
 	ct.Router.GET("/peers/:key", ct.GetPeerByKey)         // http://localhost:8080/peers/pubkey
 	ct.Router.GET("/ipam/leases/:zone", ct.GetIpamLeases) // http://localhost:8080/leases/:zone-name
 	ct.Router.GET("/zones", ct.GetZones)                  // http://localhost:8080/zones
-	ct.Router.POST("/zone", ct.PostZone)
+	ct.Router.POST("/zones", ct.PostZone)
 	ct.NodeMapDefault = make(map[string]Peer)
 	ct.ZoneConfigDefault = make(map[string]ZoneConfig)
 	ct.setZoneDefaultDetails(DefaultZoneName)
