@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/redhat-et/jaywalking/controltower/ipam"
@@ -95,6 +96,9 @@ type Controltower struct {
 func initApp() *Controltower {
 	ct := new(Controltower)
 	ct.Router = gin.Default()
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	ct.Router.Use(cors.New(corsConfig))
 	ct.Router.GET("/peers", ct.GetPeers)                  // http://localhost:8080/peers TODO: only functioning for zone:default atm
 	ct.Router.GET("/peers/:key", ct.GetPeerByKey)         // http://localhost:8080/peers/pubkey
 	ct.Router.GET("/ipam/leases/:zone", ct.GetIpamLeases) // http://localhost:8080/leases/:zone-name
