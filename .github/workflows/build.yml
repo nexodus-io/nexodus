@@ -32,12 +32,12 @@ jobs:
 
     - name: Build Control Tower
       run: |
-        pushd supervisor
+        pushd controltower
         go build -v ./...
         popd
 
     - name: Go Vet Control Tower
       run: |
-        pushd supervisor
+        pushd controltower
         go vet ./...
         popd

@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redhat-et/jaywalking/supervisor/ipam"
+	"github.com/redhat-et/jaywalking/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,7 +20,7 @@ type Prefix struct {
 }
 
 // PostZone creates a new zone via a REST call
-func (sup *Supervisor) PostZone(c *gin.Context) {
+func (ct *Controltower) PostZone(c *gin.Context) {
 	var newZone Zone
 	ctx := context.Background()
 	// Call BindJSON to bind the received JSON to
@@ -31,7 +31,7 @@ func (sup *Supervisor) PostZone(c *gin.Context) {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "the zone request did not contain a required CIDR prefix"})
 		return
 	}
-	for _, zone := range sup.Zones {
+	for _, zone := range ct.Zones {
 		if zone.Name == newZone.Name {
 			failMsg := fmt.Sprintf("%s zone already exists", newZone.Name)
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": failMsg})
@@ -41,13 +41,13 @@ func (sup *Supervisor) PostZone(c *gin.Context) {
 	log.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
 
 	zoneIpamSaveFile := fmt.Sprintf("%s.json", newZone.Name)
-	// TODO: until we save supervisor state between restarts, the ipam save file will be out of sync
+	// TODO: until we save control tower state between restarts, the ipam save file will be out of sync
 	// new zones will delete the stale IPAM file on creation.
 	// currently this will delete and overwrite an existing zone and ipam objects.
 	if fileExists(zoneIpamSaveFile) {
-		log.Warnf("ipam persistant storage file [ %s ] already exists on the supervisor, deleting it", zoneIpamSaveFile)
+		log.Warnf("ipam persistent storage file [ %s ] already exists on the control tower, deleting it", zoneIpamSaveFile)
 		if err := deleteFile(zoneIpamSaveFile); err != nil {
-			failMsg := fmt.Sprintf("unable to delete the ipam persistant storage file on the supervisor [ %s ]: %v", zoneIpamSaveFile, err)
+			failMsg := fmt.Sprintf("unable to delete the ipam persistent storage file on the control tower [ %s ]: %v", zoneIpamSaveFile, err)
 			c.IndentedJSON(http.StatusNotImplemented, gin.H{"message": failMsg})
 		}
 	}
@@ -59,22 +59,22 @@ func (sup *Supervisor) PostZone(c *gin.Context) {
 	}
 	newZone.ZoneIpam = *ipam
 	if err := ipam.IpamSave(ctx); err != nil {
-		log.Errorf("failed to save the ipam persistant storage file %v", err)
+		log.Errorf("failed to save the ipam persistent storage file %v", err)
 	}
-	sup.Zones = append(sup.Zones, newZone)
+	ct.Zones = append(ct.Zones, newZone)
 
 	c.IndentedJSON(http.StatusCreated, newZone)
 }
 
 // GetZones responds with the list of all peers as JSON.
-func (sup *Supervisor) GetZones(c *gin.Context) {
-	c.JSON(http.StatusOK, sup.Zones)
+func (ct *Controltower) GetZones(c *gin.Context) {
+	c.JSON(http.StatusOK, ct.Zones)
 }
 
 // GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
-func (sup *Supervisor) GetPeers(c *gin.Context) {
+func (ct *Controltower) GetPeers(c *gin.Context) {
 	allNodes := make([]Peer, 0)
-	for _, v := range sup.NodeMapDefault {
+	for _, v := range ct.NodeMapDefault {
 		allNodes = append(allNodes, v)
 	}
 
@@ -82,11 +82,11 @@ func (sup *Supervisor) GetPeers(c *gin.Context) {
 }
 
 // GetPeerByKey locates the Peers whose PublicKey value matches the id
-func (sup *Supervisor) GetPeerByKey(c *gin.Context) {
+func (ct *Controltower) GetPeerByKey(c *gin.Context) {
 	key := c.Param("key")
-	for pubKey, _ := range sup.NodeMapDefault {
+	for pubKey, _ := range ct.NodeMapDefault {
 		if pubKey == key {
-			c.IndentedJSON(http.StatusOK, sup.NodeMapDefault[key])
+			c.IndentedJSON(http.StatusOK, ct.NodeMapDefault[key])
 			return
 		}
 	}
@@ -96,7 +96,7 @@ func (sup *Supervisor) GetPeerByKey(c *gin.Context) {
 
 // TODO: this is hacky, should query the instance state instead, also file lock risk
 // GetIpamLeases responds with the list of all peers as JSON.
-func (sup *Supervisor) GetIpamLeases(c *gin.Context) {
+func (ct *Controltower) GetIpamLeases(c *gin.Context) {
 	zoneKey := c.Param("zone")
 	zoneKeyFile := fmt.Sprintf("%s.json", zoneKey)
 	var zoneLeases []Prefix

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/jaywalking/supervisor/ipam"
+	"github.com/redhat-et/jaywalking/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,13 +17,13 @@ type MsgTypes struct {
 	Peer  Peer
 }
 
-func (sup *Supervisor) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
+func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 
 	var nodeZone string
 	var ipamPrefix string
 	var err error
 	z := Zone{}
-	for _, zone := range sup.Zones {
+	for _, zone := range ct.Zones {
 		if msgEvent.Peer.Zone == zone.Name {
 			nodeZone = msgEvent.Peer.Zone
 			ipamPrefix = zone.IpCidr
@@ -70,26 +70,26 @@ func (sup *Supervisor) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	peer = msgEvent.newNode(ip, childPrefix)
 	log.Debugf("node allocated: %+v\n", peer)
 
-	for i, zone := range sup.Zones {
+	for i, zone := range ct.Zones {
 		if zone.Name == nodeZone {
-			if sup.Zones[i].NodeMap == nil {
-				sup.Zones[i].NodeMap = make(map[string]Peer)
+			if ct.Zones[i].NodeMap == nil {
+				ct.Zones[i].NodeMap = make(map[string]Peer)
 			}
 			// delete the old k/v pair if one exists and replace it with the new registration data
-			if _, ok := sup.Zones[i].NodeMap[msgEvent.Peer.PublicKey]; ok {
-				delete(sup.Zones[i].NodeMap, msgEvent.Peer.PublicKey)
+			if _, ok := ct.Zones[i].NodeMap[msgEvent.Peer.PublicKey]; ok {
+				delete(ct.Zones[i].NodeMap, msgEvent.Peer.PublicKey)
 			}
-			sup.Zones[i].NodeMap[msgEvent.Peer.PublicKey] = peer
+			ct.Zones[i].NodeMap[msgEvent.Peer.PublicKey] = peer
 		}
 	}
 
 	return nil
 }
 
-func (sup *Supervisor) MessageHandling(ctx context.Context) {
+func (ct *Controltower) MessageHandling(ctx context.Context) {
 
-	pub := NewPubsub(NewRedisClient(sup.streamSocket, sup.streamPass))
-	sub := NewPubsub(NewRedisClient(sup.streamSocket, sup.streamPass))
+	pub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+	sub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
 
 	// channel for async messages from the zone subscription
 	controllerChan := make(chan string)
@@ -107,11 +107,11 @@ func (sup *Supervisor) MessageHandling(ctx context.Context) {
 				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelController)
 				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					err := sup.AddPeer(ctx, msgEvent)
+					err := ct.AddPeer(ctx, msgEvent)
 					// append all peers into the updated peer list to be published
 					if err == nil {
 						var peerList []Peer
-						for _, zone := range sup.Zones {
+						for _, zone := range ct.Zones {
 							if zone.Name == msgEvent.Peer.Zone {
 								for pubKey, nodeElements := range zone.NodeMap {
 									log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",

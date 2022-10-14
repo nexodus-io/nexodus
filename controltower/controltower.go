@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
-	"github.com/redhat-et/jaywalking/supervisor/ipam"
+	"github.com/redhat-et/jaywalking/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -32,7 +32,7 @@ const (
 	healthcheckRequestChannel = "controltower-healthcheck-request"
 	healthcheckReplyChannel   = "controltower-healthcheck-reply"
 	healthcheckReplyMsg       = "controltower-healthy"
-	jwLogEnv                  = "JAYWALK_LOG_LEVEL"
+	ctLogEnv                  = "CONTROLTOWER_LOG_LEVEL"
 )
 
 // Message Events
@@ -46,7 +46,7 @@ func init() {
 	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
 	flag.Parse()
 	// set the log level
-	env := os.Getenv(jwLogEnv)
+	env := os.Getenv(ctLogEnv)
 	if env == "debug" {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -78,11 +78,11 @@ type Zone struct {
 	Name        string `json:"Name"`
 	Description string `json:"Description"`
 	IpCidr      string `json:"CIDR"`
-	ZoneIpam    ipam.SupIpam
+	ZoneIpam    ipam.AirliftIpam
 }
 
-// Supervisor data specific to the supervisor
-type Supervisor struct {
+// Control tower specific data
+type Controltower struct {
 	Router            *gin.Engine
 	Zones             []Zone
 	NodeMapDefault    map[string]Peer
@@ -92,32 +92,32 @@ type Supervisor struct {
 	streamPass        string
 }
 
-func initApp() *Supervisor {
-	sup := new(Supervisor)
-	sup.Router = gin.Default()
-	sup.Router.GET("/peers", sup.GetPeers)                  // http://localhost:8080/peers TODO: only functioning for zone:default atm
-	sup.Router.GET("/peers/:key", sup.GetPeerByKey)         // http://localhost:8080/peers/pubkey
-	sup.Router.GET("/ipam/leases/:zone", sup.GetIpamLeases) // http://localhost:8080/leases/:zone-name
-	sup.Router.GET("/zones", sup.GetZones)                  // http://localhost:8080/zones
-	sup.Router.POST("/zone", sup.PostZone)
-	sup.NodeMapDefault = make(map[string]Peer)
-	sup.ZoneConfigDefault = make(map[string]ZoneConfig)
-	sup.setZoneDefaultDetails(DefaultZoneName)
-	sup.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
-	sup.streamPass = *streamPasswd
+func initApp() *Controltower {
+	ct := new(Controltower)
+	ct.Router = gin.Default()
+	ct.Router.GET("/peers", ct.GetPeers)                  // http://localhost:8080/peers TODO: only functioning for zone:default atm
+	ct.Router.GET("/peers/:key", ct.GetPeerByKey)         // http://localhost:8080/peers/pubkey
+	ct.Router.GET("/ipam/leases/:zone", ct.GetIpamLeases) // http://localhost:8080/leases/:zone-name
+	ct.Router.GET("/zones", ct.GetZones)                  // http://localhost:8080/zones
+	ct.Router.POST("/zone", ct.PostZone)
+	ct.NodeMapDefault = make(map[string]Peer)
+	ct.ZoneConfigDefault = make(map[string]ZoneConfig)
+	ct.setZoneDefaultDetails(DefaultZoneName)
+	ct.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
+	ct.streamPass = *streamPasswd
 
-	return sup
+	return ct
 }
 
 func main() {
-	sup := initApp()
-	client := NewRedisClient(sup.streamSocket, sup.streamPass)
+	ct := initApp()
+	client := NewRedisClient(ct.streamSocket, ct.streamPass)
 	defer client.Close()
 
 	ctx := context.Background()
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
-		log.Fatalf("Unable to connect to the redis instance at %s: %v", sup.streamSocket, err)
+		log.Fatalf("Unable to connect to the redis instance at %s: %v", ct.streamSocket, err)
 	}
 
 	// respond to initial health check from agents initializing
@@ -125,17 +125,17 @@ func main() {
 
 	// Handle all messages for zones other than the default zone
 	// TODO: assign each zone it's own channel for better multi-tenancy
-	go sup.MessageHandling(ctx)
+	go ct.MessageHandling(ctx)
 
 	// Initilize ipam for the default zone
 	ctxDefault := context.Background()
-	supIpamDefault, err := ipam.NewIPAM(ctx, DefaultIpamSaveFile, ipPrefixDefault)
+	ctIpamDefault, err := ipam.NewIPAM(ctx, DefaultIpamSaveFile, ipPrefixDefault)
 	if err != nil {
 		log.Warnf("failed to acquire an ipam address %v\n", err)
 	}
 
-	pubDefault := NewPubsub(NewRedisClient(sup.streamSocket, sup.streamPass))
-	subDefault := NewPubsub(NewRedisClient(sup.streamSocket, sup.streamPass))
+	pubDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+	subDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
 
 	log.Debugf("Listening on channel: %s", zoneChannelDefault)
 
@@ -157,17 +157,17 @@ func main() {
 					// If this was a static address request
 					if msgEvent.Peer.NodeAddress != "" {
 						if err := ipam.ValidateIp(msgEvent.Peer.NodeAddress); err == nil {
-							ip, err = supIpamDefault.RequestSpecificIP(ctxDefault, msgEvent.Peer.NodeAddress, ipPrefixDefault)
+							ip, err = ctIpamDefault.RequestSpecificIP(ctxDefault, msgEvent.Peer.NodeAddress, ipPrefixDefault)
 							if err != nil {
 								log.Errorf("failed to assign the requested address, assigning an address from the pool %v\n", err)
-								ip, err = supIpamDefault.RequestIP(ctxDefault, ipPrefixDefault)
+								ip, err = ctIpamDefault.RequestIP(ctxDefault, ipPrefixDefault)
 								if err != nil {
 									log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 								}
 							}
 						}
 					} else {
-						ip, err = supIpamDefault.RequestIP(ctxDefault, ipPrefixDefault)
+						ip, err = ctIpamDefault.RequestIP(ctxDefault, ipPrefixDefault)
 						if err != nil {
 							log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 						}
@@ -175,24 +175,24 @@ func main() {
 					// allocate a child prefix if requested
 					var childPrefix string
 					if msgEvent.Peer.ChildPrefix != "" {
-						childPrefix, err = supIpamDefault.RequestChildPrefix(ctxDefault, msgEvent.Peer.ChildPrefix)
+						childPrefix, err = ctIpamDefault.RequestChildPrefix(ctxDefault, msgEvent.Peer.ChildPrefix)
 						if err != nil {
 							log.Errorf("%v\n", err)
 						}
 					}
 					// save the ipam to persistent storage
-					supIpamDefault.IpamSave(ctxDefault)
+					ctIpamDefault.IpamSave(ctxDefault)
 					// construct the new node
 					nodeEvent = msgEvent.newNode(ip, childPrefix)
 					log.Debugf("node allocated: %+v\n", nodeEvent)
 					// delete the old k/v pair if one exists and replace it with the new registration data
-					if _, ok := sup.NodeMapDefault[msgEvent.Peer.PublicKey]; ok {
-						delete(sup.NodeMapDefault, msgEvent.Peer.PublicKey)
+					if _, ok := ct.NodeMapDefault[msgEvent.Peer.PublicKey]; ok {
+						delete(ct.NodeMapDefault, msgEvent.Peer.PublicKey)
 					}
-					sup.NodeMapDefault[msgEvent.Peer.PublicKey] = nodeEvent
+					ct.NodeMapDefault[msgEvent.Peer.PublicKey] = nodeEvent
 					// append all peers into the updated peer list to be published
 					var peerList []Peer
-					for pubKey, nodeElements := range sup.NodeMapDefault {
+					for pubKey, nodeElements := range ct.NodeMapDefault {
 						log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",
 							pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
 						// append the new node to the updated peer listing
@@ -206,7 +206,7 @@ func main() {
 
 	// Start the http router, this is blocking
 	ginSocket := fmt.Sprintf("localhost:%s", restPort)
-	sup.Router.Run(ginSocket)
+	ct.Router.Run(ginSocket)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
@@ -237,11 +237,11 @@ func handleMsg(payload string) MsgEvent {
 }
 
 // setZoneDetails set general zone attributes
-func (sup *Supervisor) setZoneDefaultDetails(zone string) {
+func (ct *Controltower) setZoneDefaultDetails(zone string) {
 	zoneConfDefault := ZoneConfig{
 		Name:        zone,
 		Description: "Default Zone",
 		IpCidr:      ipPrefixDefault,
 	}
-	sup.ZoneConfigDefault[zone] = zoneConfDefault
+	ct.ZoneConfigDefault[zone] = zoneConfDefault
 }
