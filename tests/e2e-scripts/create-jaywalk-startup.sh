@@ -28,7 +28,6 @@ jaywalk \
 --private-key=${pvtkey}  \
 --controller=${redis}  \
 --local-endpoint-ip=${local_endpoint} \
---agent-mode \
 --zone=${zone} \
 --controller-password=${controller_passwd}
 EOF

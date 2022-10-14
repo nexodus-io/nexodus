@@ -109,14 +109,14 @@ For Windows and Mac adjust the paths to existing directories.
  ```
 
 #### **Start the Jaywalk agent**
- Start the jaywalk agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the supervisor. Run the following commands on all the nodes:
+ Start the jaywalk agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the supervisor. Run the following commands on all the nodes. 
+ **Note**: If your test nodes does nodes are on internal networks and not on something like EC2 use the `--network-internal` flag  which will use an IP from your host instead of discovering your public NAT address or provide a specific address with `--local-endpoint-ip=x.x.x.x`:
 
 ```shell
 sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-     --agent-mode
 ```
 **NOTES**
 - *By default, the node joins a zone named `default`. A **zone** is simply the isolated wireguard network where all the nodes in that zone is connected as a mesh (as depicted in **Figure 1**).*
@@ -130,7 +130,7 @@ You will now have a flat host routed network between the endpoints. All of the w
 
 This scenario shows how user can create multiple zone and connect the devices to these zone, to support multi tenant use cases. It also supports overlapping CIDR IPv4 or IPv6 across different zones.
 
-<img src="./docs/images/caas-vpc-dc-multi-zone.png" width="60%" height="60%" >
+<img src="./docs/images/caas-vpc-dc-multi-zone.png" width="70%" height="70%" >
 
 *Figure 2. Create multiple zones and connect nodes to each of these zone with network isolation.*
 
@@ -180,7 +180,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=zone-blue 
 ```
 To join zone red:
@@ -189,7 +188,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=zone-red 
 ```
 
@@ -253,7 +251,6 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --child-prefix=172.24.0.0/24 \
     --zone=default 
 ```
@@ -282,9 +279,8 @@ sudo jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --child-prefix=172.28.0.0/24 \
-    --zone=default \
+    --zone=default
 ```
 
 Setup a docker network and start a node on it:

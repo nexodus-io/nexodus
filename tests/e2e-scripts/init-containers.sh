@@ -317,6 +317,8 @@ setup_child_prefix_connectivity() {
 
     # Add the --child-prefix and --request-ip flags
     sed -i 's/--controller-password=${controller_passwd}/--controller-password=${controller_passwd} --child-prefix=${child_prefix} --request-ip=${requested_ip}/g' e2e-scripts/create-jaywalk-startup.sh
+    # Replace --local_endpoint-ip with --internal-network
+    sed -i 's/--local-endpoint-ip=${local_endpoint}/--internal-network/g' e2e-scripts/create-jaywalk-startup.sh
 
     # Create the new zone with a CGNAT range
     curl -L -X POST 'http://localhost:8080/zone' \
@@ -363,7 +365,7 @@ setup_child_prefix_connectivity() {
 
     # Allow one second for the wg0 interface to readdress
     sleep 2
-    
+
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
     if sudo docker exec node1 ping -c 2 -w 2 172.20.3.10; then
         echo "peer node loopbacks successfully communicated"
