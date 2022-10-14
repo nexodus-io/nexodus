@@ -11,13 +11,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type SupIpam struct {
+type AirliftIpam struct {
 	PersistFile string
 	ZoneIpam    goipam.Ipamer
 	Prefix      *goipam.Prefix
 }
 
-func NewIPAM(ctx context.Context, saveFile, cidr string) (*SupIpam, error) {
+func NewIPAM(ctx context.Context, saveFile, cidr string) (*AirliftIpam, error) {
 	ipamer := goipam.New()
 
 	prefix, err := ipamer.NewPrefix(ctx, cidr)
@@ -25,7 +25,7 @@ func NewIPAM(ctx context.Context, saveFile, cidr string) (*SupIpam, error) {
 		return nil, err
 	}
 
-	ipam := &SupIpam{
+	ipam := &AirliftIpam{
 		PersistFile: saveFile,
 		ZoneIpam:    ipamer,
 		Prefix:      prefix,
@@ -36,7 +36,7 @@ func NewIPAM(ctx context.Context, saveFile, cidr string) (*SupIpam, error) {
 	return ipam, nil
 }
 
-func (si *SupIpam) loadData(ctx context.Context) error {
+func (si *AirliftIpam) loadData(ctx context.Context) error {
 	if _, err := os.Stat(si.PersistFile); os.IsNotExist(err) {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (si *SupIpam) loadData(ctx context.Context) error {
 	return si.ZoneIpam.Load(ctx, string(b))
 }
 
-func (si *SupIpam) RequestSpecificIP(ctx context.Context, requestedIP, prefix string) (string, error) {
+func (si *AirliftIpam) RequestSpecificIP(ctx context.Context, requestedIP, prefix string) (string, error) {
 	err := si.ZoneIpam.ReleaseIPFromPrefix(ctx, prefix, requestedIP)
 	if err != nil {
 		log.Warnln("failed to release requested address from IPAM")
@@ -64,7 +64,7 @@ func (si *SupIpam) RequestSpecificIP(ctx context.Context, requestedIP, prefix st
 	return ip.IP.String(), err
 }
 
-func (si *SupIpam) RequestIP(ctx context.Context, prefix string) (string, error) {
+func (si *AirliftIpam) RequestIP(ctx context.Context, prefix string) (string, error) {
 	ip, err := si.ZoneIpam.AcquireIP(ctx, prefix)
 	if err != nil {
 		return "", fmt.Errorf("%v", err)
@@ -72,7 +72,7 @@ func (si *SupIpam) RequestIP(ctx context.Context, prefix string) (string, error)
 	return ip.IP.String(), err
 }
 
-func (si *SupIpam) RequestChildPrefix(ctx context.Context, prefix string) (string, error) {
+func (si *AirliftIpam) RequestChildPrefix(ctx context.Context, prefix string) (string, error) {
 	cidr, err := cleanCidr(prefix)
 	if err != nil {
 		return "", fmt.Errorf("invalid child prefix requested: %v", err)
@@ -84,7 +84,7 @@ func (si *SupIpam) RequestChildPrefix(ctx context.Context, prefix string) (strin
 	return childPrefix.Cidr, nil
 }
 
-func (si *SupIpam) IpamSave(ctx context.Context) error {
+func (si *AirliftIpam) IpamSave(ctx context.Context) error {
 	if si.PersistFile == "" {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (si *SupIpam) IpamSave(ctx context.Context) error {
 	return err
 }
 
-func (si *SupIpam) IpamDeleteAllPrefixes(ctx context.Context) error {
+func (si *AirliftIpam) IpamDeleteAllPrefixes(ctx context.Context) error {
 	prefixes, err := si.ZoneIpam.ReadAllPrefixCidrs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read prefixes for deletion %w", err)
