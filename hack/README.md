@@ -7,23 +7,25 @@ Following command will build the binaries for your default host OS.
 ```shell
 git clone https://github.com/redhat-et/jaywalking.git
 cd jaywalking
-go build -o jaywalk
-cd supervisor
-go build -o jaywalk-supervisor
+cd aircrew
+go build -o aircrew
+cd ..
+cd controltower
+go build -o controltower
 ```
 
 TO build for specific OSs
 *Linux:*
 ```shell
-GOOS=linux GOARCH=amd64 go build -o jaywalk-amd64-linux 
+GOOS=linux GOARCH=amd64 go build -o aircrew-amd64-linux 
 ```
 *Mac-Osx:*
 ```shell
-GOOS=darwin GOARCH=amd64 go build -o jaywalk-amd64-darwin
+GOOS=darwin GOARCH=amd64 go build -o aircrew-amd64-darwin
 ```
 
 ## Setup the dev environment:
-Start redis instance in Cloud or on any local node. This nodes must be reachable from all the nodes that you will be using for your dev environment to test the connectivity and the machine where supervisor will be running (e.g your laptop). Below is an example for podman or docker for ease of use, no other configuration is required.
+Start redis instance in Cloud or on any local node. This nodes must be reachable from all the nodes that you will be using for your dev environment to test the connectivity and the machine where ControlTower will be running (e.g your laptop). Below is an example for podman or docker for ease of use, no other configuration is required.
 
 ```shell
 docker run \
@@ -39,17 +41,17 @@ docker run -it --rm redis redis-cli -h <container-host-ip> -a <REDIS_PASSWD> --n
 ```
 If it outputs **PONG**, that's a success.
 
-Start the supervisor with debug logging (You can start it on your laptop where you are hacking):
+Start the ControlTower with debug logging (You can start it on your laptop where you are hacking):
 
 ```shell
-JAYWALK_LOG_LEVEL=debug ./jaywalk-supervisor  \
+CONTROLTOWER_LOG_LEVEL=debug ./controltower  \
     -streamer-address <REDIS_SERVER_ADDRESS> \
     -streamer-passwd <REDIS_PASSWD>
 ```
 
 Start the agent on a node with debug logging. This is just an example command which starts the agent and connect the node to default zone. If you are testing different connectivity scenarios as mentioned in the main [readme](../README.md), you need to invoke the agent with relevant configuration options:
 ```shell
-sudo JAYWALK_LOG_LEVEL=debug ./jaywalk --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
+sudo AIRCREW_LOG_LEVEL=debug ./aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -72,4 +74,4 @@ sudo ip link del wg0
 sudo wg-quick down wg0
 ```
 
-Kill your supervisor and build and restart if you want to deploy new changes.
+Kill your ControlTower and build & restart if you want to deploy new changes.
