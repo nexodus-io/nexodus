@@ -199,7 +199,7 @@ setup_custom_zone_connectivity() {
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
     # Create the new zone
-    curl -L -X POST 'http://localhost:8080/zone' \
+    curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-blue",
@@ -287,7 +287,7 @@ setup_custom_second_zone_connectivity() {
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    curl -L -X POST 'http://localhost:8080/zone' \
+    curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-red",
@@ -383,7 +383,7 @@ setup_child_prefix_connectivity() {
     rm -rf prefix-test.json
 
     # Create the new zone with a CGNAT range
-    curl -L -X POST 'http://localhost:8080/zone' \
+    curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "prefix-test",
