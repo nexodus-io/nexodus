@@ -85,6 +85,17 @@ type Zone struct {
 	ZoneIpam    ipam.AirliftIpam
 }
 
+func NewZone(name string, description string, cidr string) Zone {
+	return Zone{
+		ID:          uuid.New(),
+		NodeMap:     make(map[string]Peer),
+		Name:        name,
+		Description: description,
+		IpCidr:      cidr,
+		ZoneIpam:    ipam.AirliftIpam{},
+	}
+}
+
 // Control tower specific data
 type Controltower struct {
 	Router         *gin.Engine
@@ -101,10 +112,9 @@ func initApp() *Controltower {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	ct.Router.Use(cors.New(corsConfig))
-	ct.Router.GET("/peers", ct.GetPeers)                  // http://localhost:8080/peers TODO: only functioning for zone:default atm
-	ct.Router.GET("/peers/:id", ct.GetPeer)               // http://localhost:8080/peers/id
-	ct.Router.GET("/ipam/leases/:zone", ct.GetIpamLeases) // http://localhost:8080/leases/:zone-name
-	ct.Router.GET("/zones", ct.GetZones)                  // http://localhost:8080/zones
+	ct.Router.GET("/peers", ct.GetPeers)    // http://localhost:8080/peers TODO: only functioning for zone:default atm
+	ct.Router.GET("/peers/:id", ct.GetPeer) // http://localhost:8080/peers/id
+	ct.Router.GET("/zones", ct.GetZones)    // http://localhost:8080/zones
 	ct.Router.GET("/zones/:id", ct.GetZone)
 	ct.Router.POST("/zones", ct.PostZone)
 	ct.NodeMapDefault = make(map[string]Peer)
@@ -242,15 +252,10 @@ func handleMsg(payload string) MsgEvent {
 	return peer
 }
 
-// setZoneDetails set general zone attributes
+// setZoneDetails set default zone attributes
 func (ct *Controltower) setZoneDefaultDetails(zone string) {
-	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
-	zoneConfDefault := Zone{
-		ID:          id,
-		Name:        zone,
-		NodeMap:     make(map[string]Peer),
-		Description: "Default Zone",
-		IpCidr:      ipPrefixDefault,
-	}
-	ct.Zones[id] = zoneConfDefault
+	z := NewZone(zone, "Default Zone", ipPrefixDefault)
+	// Set Zone ID to emptyUUID
+	z.ID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
+	ct.Zones[z.ID] = z
 }

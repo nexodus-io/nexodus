@@ -22,8 +22,8 @@ type Prefix struct {
 
 // PostZone creates a new zone via a REST call
 func (ct *Controltower) PostZone(c *gin.Context) {
-	var newZone Zone
-	newZone.ID = uuid.New()
+	// Name, CIDR and Description are populated in BindJSON
+	newZone := NewZone("", "", "")
 	ctx := context.Background()
 	// Call BindJSON to bind the received JSON to
 	if err := c.BindJSON(&newZone); err != nil {
@@ -126,20 +126,18 @@ func (ct *Controltower) GetPeer(c *gin.Context) {
 
 // TODO: this is hacky, should query the instance state instead, also file lock risk
 // GetIpamLeases responds with the list of all peers as JSON.
-func (ct *Controltower) GetIpamLeases(c *gin.Context) {
-	zoneKey := c.Param("zone")
-	zoneKeyFile := fmt.Sprintf("%s.json", zoneKey)
+func (z *Zone) getIpamLeases() []Prefix {
+	zoneKeyFile := fmt.Sprintf("%s.json", z.ZoneIpam.PersistFile)
 	var zoneLeases []Prefix
 	var err error
 	if fileExists(zoneKeyFile) {
-		blueIpamState := fileToString(zoneKeyFile)
-		zoneLeases, err = unmarshalIpamState(blueIpamState)
+		ipamState := fileToString(zoneKeyFile)
+		zoneLeases, err = unmarshalIpamState(ipamState)
 		if err != nil {
 			log.Errorf("unable to unmarshall ipam leases: %v", err)
 		}
 	}
-
-	c.JSON(http.StatusOK, zoneLeases)
+	return zoneLeases
 }
 
 /*
