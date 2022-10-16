@@ -1,4 +1,4 @@
-import { Datagrid, List, TextField, SimpleForm, TextInput, Create, Show, SimpleShowLayout } from 'react-admin';
+import { Datagrid, List, TextField, SimpleForm, TextInput, ReferenceArrayField, Create, Show, SimpleShowLayout } from 'react-admin';
 
 export const ZoneList = () => (
     <List>
@@ -18,6 +18,13 @@ export const ZoneShow = () => (
             <TextField label="Name" source="name" />
             <TextField label="Description" source="description" />
             <TextField label="CIDR" source="cidr" />
+            <ReferenceArrayField label="Peers" reference="peers" source="peers">
+                <Datagrid rowClick="show" bulkActionButtons={false}>
+                    <TextField label="ID" source="id" />
+                    <TextField label="Public Key" source="public-key" />
+                    <TextField label="IP Address" source="allowed-ips" />
+                </Datagrid>
+            </ReferenceArrayField>
         </SimpleShowLayout>
     </Show>
 )
