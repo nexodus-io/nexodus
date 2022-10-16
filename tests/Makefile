@@ -2,4 +2,4 @@
 
 # Runs the CI e2e tests used in github actions
 run-ci-e2e:
-	./e2e-scripts/init-containers.sh
+	./e2e-scripts/init-containers.sh -o $(OS_IMAGE)

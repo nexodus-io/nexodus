@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        deployment: ["peer-to-peer"]
+        deployment: ["wireguard", "fedora-wireguard"]
     env:
       JOB_NAME: "jaywalk-e2e-${{ matrix.deployment }}"
       DEPLOYMENT: ${{ matrix.deployment }}
@@ -41,4 +41,4 @@ jobs:
         popd
 
     - name: Run e2e
-      run: make -C tests run-ci-e2e
+      run: make -C tests OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} run-ci-e2e
