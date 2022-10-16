@@ -14,11 +14,6 @@ type streamer struct {
 	client *redis.Client
 }
 
-// dispose streamer instance
-func (s *streamer) dispose() {
-	s.client.Close()
-}
-
 // NewPubsub create streamer instance
 func NewPubsub(client *redis.Client) *streamer {
 	return &streamer{client: client}
@@ -72,12 +67,4 @@ func createAllPeerMessage(postData []Peer) (string, string) {
 	id := uuid.NewString()
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)
-}
-
-func unmarshalMessage(s string) (*MsgEvent, error) {
-	var msg MsgEvent
-	if err := json.Unmarshal([]byte(s), &msg); err != nil {
-		return nil, err
-	}
-	return &msg, nil
 }

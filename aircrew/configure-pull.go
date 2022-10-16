@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -14,12 +15,13 @@ type PeerListing []Peer
 
 // Peer REST struct
 type Peer struct {
-	PublicKey   string `json:"PublicKey"`
-	EndpointIP  string `json:"EndpointIP"`
-	AllowedIPs  string `json:"AllowedIPs"`
-	Zone        string `json:"Zone"`
-	NodeAddress string `json:"NodeAddress"`
-	ChildPrefix string `json:"ChildPrefix"`
+	ID          uuid.UUID `json:"id"`
+	PublicKey   string    `json:"public-key"`
+	EndpointIP  string    `json:"endpoint-ip"`
+	AllowedIPs  string    `json:"allowed-ips"`
+	Zone        string    `json:"zone"`
+	NodeAddress string    `json:"node-address"`
+	ChildPrefix string    `json:"child-prefix"`
 }
 
 // handleMsg deal with streaming messages

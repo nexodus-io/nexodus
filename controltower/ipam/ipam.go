@@ -3,7 +3,6 @@ package ipam
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 
@@ -45,7 +44,7 @@ func (si *AirliftIpam) loadData(ctx context.Context) error {
 		return fmt.Errorf("failed to delete prefixes for loading %w", err)
 	}
 
-	b, err := ioutil.ReadFile(si.PersistFile)
+	b, err := os.ReadFile(si.PersistFile)
 	if err != nil {
 		return err
 	}
