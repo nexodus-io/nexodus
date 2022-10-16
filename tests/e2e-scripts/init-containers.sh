@@ -52,6 +52,7 @@ start_containers() {
         --name=node1 \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
+        --cap-add=NET_RAW \
         ${node_image}
 
     # Start node2
@@ -59,6 +60,7 @@ start_containers() {
         --name=node2 \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
+        --cap-add=NET_RAW \
         ${node_image}
 }
 

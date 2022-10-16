@@ -129,7 +129,7 @@ func msgHandler(payload string) MsgEvent {
 	var peer MsgEvent
 	err := json.Unmarshal([]byte(payload), &peer)
 	if err != nil {
-		log.Debugf("HandleMsg unmarshall error: %v\n", err)
+		log.Debugf("msgHandler unmarshall error: %v\n", err)
 		return peer
 	}
 	return peer

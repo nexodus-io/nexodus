@@ -262,7 +262,7 @@ func main() {
 								}
 							}
 							// publishPeers the latest peer list
-							pubDefault.publishPeers(ctx, zoneChannelController, peerList)
+							pubDefault.publishPeers(ctx, zoneChannelDefault, peerList)
 						}
 					} else {
 						log.Errorf("Peer was not added: %v", err)
@@ -300,7 +300,7 @@ func handleMsg(payload string) MsgEvent {
 	var peer MsgEvent
 	err := json.Unmarshal([]byte(payload), &peer)
 	if err != nil {
-		log.Debugf("HandleMsg unmarshall error: %v\n", err)
+		log.Debugf("handleMsg unmarshall error: %v\n", err)
 		return peer
 	}
 	return peer
