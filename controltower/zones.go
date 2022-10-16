@@ -18,20 +18,17 @@ type MsgTypes struct {
 }
 
 func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
-
-	var nodeZone string
 	var ipamPrefix string
 	var err error
-	var z Zone
+	var z *Zone
 	for _, zone := range ct.Zones {
 		if msgEvent.Peer.Zone == zone.Name {
-			nodeZone = msgEvent.Peer.Zone
 			ipamPrefix = zone.IpCidr
 			z = zone
 		}
 	}
 	// todo, the needs to go over an err channal to the agent
-	if nodeZone == "" {
+	if z == nil {
 		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?", msgEvent.Peer.Zone)
 	}
 	var ip string
@@ -68,16 +65,10 @@ func (ct *Controltower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 	// construct the new node
 	peer := msgEvent.newNode(ip, childPrefix)
 	log.Debugf("node allocated: %+v\n", peer)
-	ct.Peers[peer.ID] = peer
-
-	for k, zone := range ct.Zones {
-		if zone.Name == nodeZone {
-			// delete the old k/v pair if one exists and replace it with the new registration data
-			delete(ct.Zones[k].NodeMap, msgEvent.Peer.PublicKey)
-			ct.Zones[k].NodeMap[msgEvent.Peer.PublicKey] = peer
-		}
-	}
-
+	peerID := ct.Peers.InsertOrUpdate(peer)
+	z.Peers[peerID] = struct{}{}
+	log.Infof("Zone has %d peers", len(z.Peers))
+	log.Infof("Zone %+v", ct.Zones[z.ID])
 	return nil
 }
 
@@ -108,11 +99,16 @@ func (ct *Controltower) MessageHandling(ctx context.Context) {
 						var peerList []Peer
 						for _, zone := range ct.Zones {
 							if zone.Name == msgEvent.Peer.Zone {
-								for pubKey, nodeElements := range zone.NodeMap {
+								for id := range zone.Peers {
+									nodeElements, err := ct.Peers.Get(id)
+									if err != nil {
+										log.Errorf("unable to find peer with id %s", id.String())
+										continue
+									}
 									log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",
-										pubKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
+										nodeElements.PublicKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
 									// append the new node to the updated peer listing
-									peerList = append(peerList, nodeElements)
+									peerList = append(peerList, *nodeElements)
 								}
 							}
 							// publishPeers the latest peer list
