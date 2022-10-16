@@ -8,8 +8,9 @@ install_docker() {
     # Install Docker                                                          #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   Node OS Image                                                         #
     ###########################################################################
+
     sudo apt-get update
     sudo apt-get install -y \
         ca-certificates \
@@ -32,8 +33,11 @@ start_containers() {
     # Start the redis broker instance, and two Docker edge nodes              #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   Arg1: Node Container Image                                            #
     ###########################################################################
+
+    local node_image=${1}
+
     # Start redis server
     sudo docker run \
         --name redis \
@@ -46,14 +50,14 @@ start_containers() {
         --name=node1 \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
-        quay.io/networkstatic/wireguard
+        ${node_image}
 
     # Start node2
     sudo docker run -itd \
         --name=node2 \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
-        quay.io/networkstatic/wireguard
+        ${node_image}
 }
 
 start_controltower() {
@@ -93,14 +97,32 @@ copy_binaries() {
     local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
     local node2_ip=$(sudo docker inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
-    chmod +x e2e-scripts/create-aircrew-startup.sh
-    # Create aircrew startup script for node1
-    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node1_pvtkey} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
-    # Create aircrew startup script for node2
-    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node2_pvtkey} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
+    # Node-1 aircrew run default zone
+    cat <<EOF > aircrew-run-node1.sh
+#!/bin/bash
+aircrew \
+--public-key=${node1_pubkey} \
+--private-key=${node1_pvtkey} \
+--controller=${controller} \
+--local-endpoint-ip=${node1_ip} \
+--controller-password=${controller_passwd}
+EOF
 
-    # STDOUT the scripts for debugging
+    # Node-2 aircrew run default zone
+    cat <<EOF > aircrew-run-node2.sh
+#!/bin/bash
+aircrew \
+--public-key=${node2_pubkey} \
+--private-key=${node2_pvtkey} \
+--controller=${controller} \
+--local-endpoint-ip=${node2_ip} \
+--controller-password=${controller_passwd}
+EOF
+
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying aircrew-run-node1.sh ==="
     cat aircrew-run-node1.sh
+    echo "=== Displaying aircrew-run-node2.sh ==="
     cat aircrew-run-node2.sh
 
     # Set permissions
@@ -122,7 +144,6 @@ copy_binaries() {
     # Start the agents on both nodes
     sudo docker exec node1 /bin/aircrew-run-node1.sh &
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
-    sleep 1
 }
 
 verify_connectivity() {
@@ -133,6 +154,8 @@ verify_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
+    # Allow for convergence
+    sleep 4
     # Check connectivity between node1 -> node2
     if sudo docker exec node1 ping -c 2 -w 2 $(sudo docker exec node2 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1); then
         echo "peer nodes successfully communicated"
@@ -186,17 +209,29 @@ setup_custom_zone_connectivity() {
     echo -e  "$node1_pvtkey\n\n" | tee node1-private.key
     echo -e  "$node2_pvtkey\n\n" | tee node2-private.key
 
-    # Validate the private key file option by swapping out the options
-    sed -i 's/--private-key=${pvtkey}/--private-key-file=${pvtkey}/g' e2e-scripts/create-aircrew-startup.sh
+    # Node-1 aircrew run
+    cat <<EOF > aircrew-run-node1.sh
+#!/bin/bash
+aircrew \
+--public-key=${node1_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node1_ip} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
 
-    # Create aircrew startup script for node1
-    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
-    # Create aircrew startup script for node2
-    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
-
-    # STDOUT the scripts for debugging
-    cat aircrew-run-node1.sh
-    cat aircrew-run-node2.sh
+    # Node-2 aircrew run
+    cat <<EOF > aircrew-run-node2.sh
+#!/bin/bash
+aircrew \
+--public-key=${node2_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node2_ip} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
 
     # Kill the aircrew process on both nodes
     sudo docker exec node1 killall aircrew
@@ -221,7 +256,7 @@ setup_custom_zone_connectivity() {
     sudo docker exec node1 /bin/aircrew-run-node1.sh &
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
-    # Allow one second for the wg0 interface to readdress
+    # Allow two seconds for the wg0 interface to readdress
     sleep 2
 }
 
@@ -262,14 +297,29 @@ setup_custom_second_zone_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Create aircrew startup script for node1
-    e2e-scripts/create-aircrew-startup.sh ${node1_pubkey} ${node_pvtkey_file} ${controller} ${node1_ip} ${controller_passwd} ${zone} aircrew-run-node1.sh
-    # Create aircrew startup script for node2
-    e2e-scripts/create-aircrew-startup.sh ${node2_pubkey} ${node_pvtkey_file} ${controller} ${node2_ip} ${controller_passwd} ${zone} aircrew-run-node2.sh
+    # Node-1 aircrew run
+    cat <<EOF > aircrew-run-node1.sh
+#!/bin/bash
+aircrew \
+--public-key=${node1_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node1_ip} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
 
-    # STDOUT the scripts for debugging
-    cat aircrew-run-node1.sh
-    cat aircrew-run-node2.sh
+    # Node-2 aircrew run
+    cat <<EOF > aircrew-run-node2.sh
+#!/bin/bash
+aircrew \
+--public-key=${node2_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node2_ip} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
 
     # Kill the aircrew process on both nodes
     sudo docker exec node1 killall aircrew
@@ -294,7 +344,7 @@ setup_custom_second_zone_connectivity() {
     sudo docker exec node1 /bin/aircrew-run-node1.sh &
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
-    # Allow one second for the wg0 interface to readdress
+    # Allow two seconds for the wg0 interface to readdress
     sleep 2
 }
 
@@ -302,8 +352,8 @@ setup_custom_second_zone_connectivity() {
 setup_child_prefix_connectivity() {
     ###########################################################################
     # Description:                                                            #
-    # Verify a child-prefix and request-ip can be created and add a loopback on each node    #
-    # in the child prefix cidr and verify connectivity                        #
+    # Verify a child-prefix and request-ip can be created and add a loopback  #
+    # on each node in the child prefix cidr and verify connectivity           #
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
@@ -378,7 +428,6 @@ EOF
     cat aircrew-run-node1.sh
     echo "=== Displaying aircrew-run-node2.sh ==="
     cat aircrew-run-node2.sh
-    echo "=== Displaying ipam persistent storage ==="
 
     # Copy files to the containers
     sudo docker cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
@@ -398,7 +447,7 @@ EOF
     sudo docker exec node1 /bin/aircrew-run-node1.sh &
     sudo docker exec node2 /bin/aircrew-run-node2.sh &
 
-    # Allow two seconds for the wg0 interface to readdress
+    # Allow four seconds for the wg0 interface to readdress
     sleep 4
     
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
@@ -417,24 +466,48 @@ EOF
     fi
 }
 
+clean_nodes() {
+    ###########################################################################
+    # Description:                                                            #
+    # Clean up the nodes in between tests                                     #
+    # Wireguard interfaces in the container on interface wg0                  #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   None                                                                  #
+    ###########################################################################
+    sudo docker exec node1 ip link del wg0
+    sudo docker exec node2 ip link del wg0
+}
+
 ###########################################################################
 # Description:                                                            #
 # Run the following functions to test end to end connectivity between     #
-# Wireguard interfaces in the container on interface wg0                 #
-#                                                                         #
-# Arguments:                                                              #
-#   None                                                                  #
+# Wireguard interfaces in the container on interface wg0                  #
+                                                                          #
 ###########################################################################
+
+while getopts "o:" flag; do
+    case "${flag}" in
+    o) os="${OPTARG}" ;;
+    esac
+done
+
+echo -e "Job running with OS Image: ${os}"
+
 install_docker
-start_containers
+start_containers ${os}
 start_controltower
 copy_binaries
 verify_connectivity
+clean_nodes
 setup_custom_zone_connectivity
 verify_connectivity
+clean_nodes
 setup_custom_second_zone_connectivity
 verify_connectivity
+clean_nodes
 setup_child_prefix_connectivity
 verify_connectivity
+clean_nodes
 
 echo "e2e completed"
