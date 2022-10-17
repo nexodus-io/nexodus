@@ -27,7 +27,8 @@ const (
 type ControlTower struct {
 	Router       *gin.Engine
 	Zones        map[uuid.UUID]*Zone
-	Peers        *PeerMap
+	PubKeys      map[string]*PubKey
+	Peers        map[uuid.UUID]*Peer
 	Client       *redis.Client
 	streamSocket string
 	streamPass   string
@@ -49,7 +50,8 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 	ct := &ControlTower{
 		Router:       gin.Default(),
 		Zones:        make(map[uuid.UUID]*Zone),
-		Peers:        NewPeerMap(),
+		PubKeys:      make(map[string]*PubKey),
+		Peers:        make(map[uuid.UUID]*Peer),
 		Client:       client,
 		streamSocket: streamSocket,
 		streamPass:   streamPasswd,
@@ -62,13 +64,13 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	ct.Router.Use(cors.New(corsConfig))
-	ct.Router.GET("/peers", ct.GetPeers)    // http://localhost:8080/peers TODO: only functioning for zone:default atm
-	ct.Router.GET("/peers/:id", ct.GetPeer) // http://localhost:8080/peers/:id
-	ct.Router.GET("/zones", ct.GetZones)    // http://localhost:8080/zones
-	ct.Router.GET("/zones/:id", ct.GetZone) // http://localhost:8080/zones/:id
+	ct.Router.GET("/peers", ct.GetPeers)        // http://localhost:8080/peers
+	ct.Router.GET("/peers/:id", ct.GetPeer)     // http://localhost:8080/peers/:id
+	ct.Router.GET("/zones", ct.GetZones)        // http://localhost:8080/zones
+	ct.Router.GET("/zones/:id", ct.GetZone)     // http://localhost:8080/zones/:id
+	ct.Router.GET("/pubkeys", ct.GetPubKeys)    // http://localhost:8080/pubkeys
+	ct.Router.GET("/pubkeys/:id", ct.GetPubKey) // http://localhost:8080/oubkeys/:id
 	ct.Router.POST("/zones", ct.PostZone)
-	ct.Peers = NewPeerMap()
-	ct.Zones = make(map[uuid.UUID]*Zone)
 	if err := ct.setZoneDefaultDetails(); err != nil {
 		return nil, err
 	}
@@ -114,9 +116,9 @@ func (ct *ControlTower) Run() {
 						var peerList []Peer
 						for _, zone := range ct.Zones {
 							if zone.Name == msgEvent.Peer.Zone {
-								for _, id := range zone.Peers {
-									nodeElements, err := ct.Peers.Get(id)
-									if err != nil {
+								for id := range zone.Peers {
+									nodeElements, ok := ct.Peers[id]
+									if !ok {
 										log.Errorf("unable to find peer with id %s", id.String())
 										continue
 									}
@@ -207,17 +209,20 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?", msgEvent.Peer.Zone)
 	}
 
-	if id, ok := z.Peers[msgEvent.Peer.PublicKey]; ok {
-		// Peer already exists and has updated data
-		peer, err := ct.Peers.Get(id)
-		if err != nil {
-			return fmt.Errorf("unable to get peer with ID %s", id)
+	// Have we seen this pubKey before?
+	if pk, ok := ct.PubKeys[msgEvent.Peer.PublicKey]; ok {
+		for id := range pk.Peers {
+			if ct.Peers[id].Zone == z.Name {
+				// TODO: Do other things need updating here too?
+				ct.Peers[id].EndpointIP = msgEvent.Peer.EndpointIP
+				return nil
+			}
 		}
-		// TODO: Do other things need updating here too?
-		peer.EndpointIP = msgEvent.Peer.EndpointIP
-		return nil
-	}
 
+	} else {
+		pk := NewPubKey(msgEvent.Peer.PublicKey)
+		ct.PubKeys[msgEvent.Peer.PublicKey] = pk
+	}
 	var ip string
 	// If this was a static address request
 	// TODO: handle a user requesting an IP not in the IPAM prefix
@@ -262,8 +267,9 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 	)
 
 	log.Debugf("node allocated: %+v\n", peer)
-	ct.Peers.Insert(peer)
-	z.Peers[peer.PublicKey] = peer.ID
+	ct.Peers[peer.ID] = &peer
+	ct.PubKeys[peer.PublicKey].Peers[peer.ID] = struct{}{}
+	z.Peers[peer.ID] = struct{}{}
 	log.Infof("Zone has %d peers", len(z.Peers))
 	log.Infof("Zone %+v", ct.Zones[z.ID])
 	return nil
@@ -296,9 +302,9 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 						var peerList []Peer
 						for _, zone := range ct.Zones {
 							if zone.Name == msgEvent.Peer.Zone {
-								for _, id := range zone.Peers {
-									nodeElements, err := ct.Peers.Get(id)
-									if err != nil {
+								for id := range zone.Peers {
+									nodeElements, ok := ct.Peers[id]
+									if !ok {
 										log.Errorf("unable to find peer with id %s", id.String())
 										continue
 									}
@@ -322,28 +328,6 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 		}
 	}()
 }
-
-/*
-func NewPubMessage(data string) (string, string) {
-	id := uuid.NewString()
-	msg, _ := json.Marshal(&MsgTypes{
-		ID:    id,
-		Event: data,
-	})
-	return id, string(msg)
-}
-
-// TODO example: do we want to implement a UUID with channel messages?
-func PubMessage(ctx context.Context, channel, data string) {
-	id, msg := NewPubMessage(data)
-	err := redisDB.Publish(ctx, channel, msg).Err()
-	if err != nil {
-		log.Errorf("Sending msg ID %s failed, %v\n", id, err)
-		return
-	}
-	log.Printf("Sent Message: %s\n", msg)
-}
-*/
 
 type ZoneRequest struct {
 	Name        string `json:"name"`
@@ -404,7 +388,7 @@ func (ct *ControlTower) GetZones(c *gin.Context) {
 func (ct *ControlTower) GetZone(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
 		return
 	}
 	if value, ok := ct.Zones[k]; ok {
@@ -416,12 +400,9 @@ func (ct *ControlTower) GetZone(c *gin.Context) {
 
 // GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
 func (ct *ControlTower) GetPeers(c *gin.Context) {
-	pubKey := c.Query("public-key")
-	var allPeers []*Peer
-	if pubKey != "" {
-		allPeers = ct.Peers.ListByPubKey(pubKey)
-	} else {
-		allPeers = ct.Peers.List()
+	allPeers := make([]*Peer, 0)
+	for _, p := range ct.Peers {
+		allPeers = append(allPeers, p)
 	}
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
@@ -433,13 +414,38 @@ func (ct *ControlTower) GetPeers(c *gin.Context) {
 func (ct *ControlTower) GetPeer(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "zone if is not a valid UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "peer id is not a valid UUID"})
 		return
 	}
-	v, err := ct.Peers.Get(k)
-	if err != nil {
+	if value, ok := ct.Peers[k]; ok {
+		c.JSON(http.StatusOK, value)
+	} else {
 		c.Status(http.StatusNotFound)
+	}
+}
+
+// GetPubKeys responds with the list of all peers as JSON. TODO: Currently default zone only
+func (ct *ControlTower) GetPubKeys(c *gin.Context) {
+	allPubKeys := make([]*PubKey, 0)
+	for _, p := range ct.PubKeys {
+		allPubKeys = append(allPubKeys, p)
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(allPubKeys)))
+	c.JSON(http.StatusOK, allPubKeys)
+}
+
+// GetPubKey locates a peer
+func (ct *ControlTower) GetPubKey(c *gin.Context) {
+	k := c.Param("id")
+	if k == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pubkey id is not valid"})
 		return
 	}
-	c.JSON(http.StatusOK, v)
+	if value, ok := ct.PubKeys[k]; ok {
+		c.JSON(http.StatusOK, value)
+	} else {
+		c.Status(http.StatusNotFound)
+	}
 }

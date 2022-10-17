@@ -13,7 +13,7 @@ import (
 
 type Zone struct {
 	ID          uuid.UUID
-	Peers       map[string]uuid.UUID
+	Peers       map[uuid.UUID]struct{}
 	Name        string
 	Description string
 	IpCidr      string
@@ -41,7 +41,7 @@ func NewZone(id uuid.UUID, name string, description string, cidr string) (*Zone,
 	}
 	return &Zone{
 		ID:          id,
-		Peers:       make(map[string]uuid.UUID),
+		Peers:       make(map[uuid.UUID]struct{}),
 		Name:        name,
 		Description: description,
 		IpCidr:      cidr,
@@ -51,8 +51,8 @@ func NewZone(id uuid.UUID, name string, description string, cidr string) (*Zone,
 
 func (z *Zone) MarshalJSON() ([]byte, error) {
 	peers := make([]uuid.UUID, 0)
-	for _, v := range z.Peers {
-		peers = append(peers, v)
+	for k := range z.Peers {
+		peers = append(peers, k)
 	}
 	return json.Marshal(
 		struct {
