@@ -22,9 +22,10 @@ jobs:
       run: |
         go test -v ./...
 
-    - name: Go Vet
-      run: |
-        go vet ./...
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.50.0
 
   build-linux:
     runs-on: ubuntu-latest

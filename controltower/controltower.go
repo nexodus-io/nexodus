@@ -34,6 +34,7 @@ type ControlTower struct {
 	wg           sync.WaitGroup
 	server       *http.Server
 	msgChannels  []chan string
+	readyChan    chan string
 }
 
 func NewControlTower(ctx context.Context, streamService string, streamPort int, streamPasswd string) (*ControlTower, error) {
@@ -55,6 +56,7 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 		wg:           sync.WaitGroup{},
 		server:       nil,
 		msgChannels:  make([]chan string, 0),
+		readyChan:    make(chan string),
 	}
 
 	corsConfig := cors.DefaultConfig()
@@ -67,7 +69,9 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 	ct.Router.POST("/zones", ct.PostZone)
 	ct.Peers = NewPeerMap()
 	ct.Zones = make(map[uuid.UUID]*Zone)
-	ct.setZoneDefaultDetails()
+	if err := ct.setZoneDefaultDetails(); err != nil {
+		return nil, err
+	}
 	return ct, nil
 }
 
@@ -75,7 +79,7 @@ func (ct *ControlTower) Run() {
 	ctx := context.Background()
 
 	// respond to initial health check from agents initializing
-	readyCheckResponder(ctx, ct.Client)
+	readyCheckResponder(ctx, ct.Client, ct.readyChan, &ct.wg)
 
 	// Handle all messages for zones other than the default zone
 	// TODO: assign each zone it's own channel for better multi-tenancy
@@ -123,7 +127,9 @@ func (ct *ControlTower) Run() {
 								}
 							}
 							// publishPeers the latest peer list
-							pubDefault.publishPeers(ctx, zoneChannelDefault, peerList)
+							if _, err := pubDefault.publishPeers(ctx, zoneChannelDefault, peerList); err != nil {
+								log.Errorf("unable to publish peer list: %s", err)
+							}
 						}
 					} else {
 						log.Errorf("Peer was not added: %v", err)
@@ -139,8 +145,6 @@ func (ct *ControlTower) Run() {
 		Handler: ct.Router,
 	}
 
-	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
 	ct.wg.Add(1)
 	go func() {
 		defer ct.wg.Done()
@@ -150,9 +154,14 @@ func (ct *ControlTower) Run() {
 	}()
 }
 
-func (ct *ControlTower) Shutdown(ctx context.Context) {
+func (ct *ControlTower) Shutdown(ctx context.Context) error {
+	// Shutdown Ready Checker
+	close(ct.readyChan)
+
 	// Shutdown REST API
-	ct.server.Shutdown(ctx)
+	if err := ct.server.Shutdown(ctx); err != nil {
+		return err
+	}
 
 	// Shutdown Message Handlers
 	for _, c := range ct.msgChannels {
@@ -161,6 +170,8 @@ func (ct *ControlTower) Shutdown(ctx context.Context) {
 
 	// Wait for everything to wind down
 	ct.wg.Wait()
+
+	return nil
 }
 
 // setZoneDetails set default zone attributes
@@ -217,14 +228,14 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 				log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
 				ip, err = z.ZoneIpam.RequestIP(ctx, ipamPrefix)
 				if err != nil {
-					log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+					return fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 				}
 			}
 		}
 	} else {
 		ip, err = z.ZoneIpam.RequestIP(ctx, ipamPrefix)
 		if err != nil {
-			log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+			return fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 		}
 	}
 	// allocate a child prefix if requested
@@ -236,7 +247,9 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
 		}
 	}
 	// save the ipam to persistent storage
-	z.ZoneIpam.IpamSave(ctx)
+	if err := z.ZoneIpam.IpamSave(ctx); err != nil {
+		return err
+	}
 
 	// construct the new peer
 	peer := NewPeer(
@@ -296,7 +309,9 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 								}
 							}
 							// publishPeers the latest peer list
-							pub.publishPeers(ctx, zoneChannelController, peerList)
+							if _, err := pub.publishPeers(ctx, zoneChannelController, peerList); err != nil {
+								log.Errorf("unable to publish peer updates: %s", err)
+							}
 						}
 					} else {
 						log.Errorf("Peer was not added: %v", err)

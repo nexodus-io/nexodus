@@ -4,14 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -57,11 +55,6 @@ func IsCommandAvailable(name string) bool {
 	return true
 }
 
-// timestampFile return a unique timestamped filename
-func timestampFile(filename string) string {
-	return fmt.Sprintf(filename + "-" + time.Now().Format("20060102150405"))
-}
-
 // ValidateIp ensures a valid IP4/IP6 address is provided
 func ValidateIp(ip string) error {
 	if ip := net.ParseIP(ip); ip != nil {
@@ -70,24 +63,8 @@ func ValidateIp(ip string) error {
 	return fmt.Errorf("%s is not a valid v4 or v6 IP", ip)
 }
 
-// diffConfig diffs the contents of two files
-func diffConfig(oldCfg, newCfg string) bool {
-	cfgOld, err := ioutil.ReadFile(oldCfg)
-	if err != nil {
-		log.Fatalf("unable to read file: %v\n", err)
-	}
-	cfgNew, err := ioutil.ReadFile(newCfg)
-	if err != nil {
-		log.Fatalf("unable to read file: %v\n", err)
-	}
-	if string(cfgOld) != string(cfgNew) {
-		return false
-	}
-	return true
-}
-
 func FileToString(file string) string {
-	fileContent, err := ioutil.ReadFile(file)
+	fileContent, err := os.ReadFile(file)
 	if err != nil {
 		log.Errorf("unable to read the file [%s] %v\n", file, err)
 		return ""
@@ -152,7 +129,7 @@ func GetPubIP() (string, error) {
 		}()
 		return "", fmt.Errorf("%s: %s %s", res.Status, req.Method, req.URL)
 	}
-	ip, err := ioutil.ReadAll(res.Body)
+	ip, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response from https://checkip.amazonaws.com: %w", err)
 	}
@@ -204,7 +181,7 @@ func FileExists(f string) bool {
 
 // ReadKeyFileToString reads the key file and strips any newline chars that create wireguard issues
 func ReadKeyFileToString(s string) (string, error) {
-	buf, err := ioutil.ReadFile(s)
+	buf, err := os.ReadFile(s)
 	if err != nil {
 		return "", fmt.Errorf("unable to read file: %v\n", err)
 	}

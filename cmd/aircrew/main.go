@@ -172,7 +172,9 @@ func main() {
 		runInit()
 		return nil
 	}
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func runInit() {
@@ -295,7 +297,9 @@ func runInit() {
 		}
 
 		// ping the control-tower to see if it is responding via the broker, exit the agent on timeout
-		controlTowerReadyCheck(ctx, rc)
+		if err := controlTowerReadyCheck(ctx, rc); err != nil {
+			log.Fatal(err)
+		}
 
 		defer rc.Close()
 
@@ -375,7 +379,7 @@ func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix st
 }
 
 // controlTowerReadyCheck blocks until the control-tower responds or the request times out
-func controlTowerReadyCheck(ctx context.Context, client *redis.Client) {
+func controlTowerReadyCheck(ctx context.Context, client *redis.Client) error {
 	log.Println("Checking the readiness of the control tower")
 	healthCheckReplyChan := make(chan string)
 	sub := client.Subscribe(ctx, healthcheckReplyChannel)
@@ -385,11 +389,14 @@ func controlTowerReadyCheck(ctx context.Context, client *redis.Client) {
 			healthCheckReplyChan <- output.Payload
 		}
 	}()
-	client.Publish(ctx, healthcheckRequestChannel, healthcheckRequestMsg).Result()
+	if _, err := client.Publish(ctx, healthcheckRequestChannel, healthcheckRequestMsg).Result(); err != nil {
+		return err
+	}
 	select {
 	case <-healthCheckReplyChan:
 	case <-time.After(readyRequestTimeout * time.Second):
-		log.Fatal("Control tower was not reachable, ensure it is running and attached to the broker")
+		return fmt.Errorf("Control tower was not reachable, ensure it is running and attached to the broker")
 	}
 	log.Println("Control tower is available")
+	return nil
 }
