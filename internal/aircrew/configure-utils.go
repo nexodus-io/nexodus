@@ -1,4 +1,4 @@
-package main
+package aircrew
 
 import (
 	"fmt"
@@ -10,6 +10,15 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+const (
+	WgListenPort     = 51820
+	WgLinuxConfPath  = "/etc/wireguard/"
+	WgDarwinConfPath = "/usr/local/etc/wireguard/"
+	wgConfActive     = "wg0.conf"
+	wgConfLatestRev  = "wg0-latest-rev.conf"
+	wgIface          = "wg0"
+)
+
 func applyWireguardConf() error {
 	// TODO: deleting the interface is a hammer and creates disruption
 	if linkExists(wgIface) {
@@ -17,8 +26,8 @@ func applyWireguardConf() error {
 			return fmt.Errorf("unable to delete the existing wireguard interface: %v", err)
 		}
 	}
-	activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
-	latestRevConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
+	activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
+	latestRevConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 	// copy the latest config rev to wg0.conf
 	if err := CopyFile(latestRevConfig, activeConfig); err != nil {
 		return err
@@ -34,11 +43,11 @@ func applyWireguardConf() error {
 // updateWireguardConfig strip and diff the latest rev to the active config
 // TODO: use syncconf and manually track routes instead of wg-quick managing them?
 func updateWireguardConfig() error {
-	activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
-	latestRevConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
+	activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
+	latestRevConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 	// If no config exists, copy the latest rev config to /etc/wireguard/wg0-latest-rev.conf
 	if _, err := os.Stat(activeConfig); err != nil {
-		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
+		latestConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 		if err := CopyFile(latestConfig, activeConfig); err == nil {
 			return nil
 		} else {

@@ -1,11 +1,13 @@
-package main
+package controltower
 
 import (
 	"context"
 	"encoding/json"
+	"sync"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redhat-et/jaywalking/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,16 +50,22 @@ func NewRedisClient(streamerSocket, streamPasswd string) *redis.Client {
 
 // readyCheckResponder listens for any msg on healthcheckRequestChannel
 // replies on healthcheckReplyChannel to let the agents know it is available
-func readyCheckResponder(ctx context.Context, client *redis.Client) {
+func readyCheckResponder(ctx context.Context, client *redis.Client, readyChan chan string, wg *sync.WaitGroup) {
 	subHealthRequests := NewPubsub(client)
-	msgRedChan := make(chan string)
+	wg.Add(1)
 	go func() {
-		subHealthRequests.subscribe(ctx, healthcheckRequestChannel, msgRedChan)
+		subHealthRequests.subscribe(ctx, messages.HealthcheckRequestChannel, readyChan)
 		for {
-			serverStatusRequest := <-msgRedChan
+			serverStatusRequest, ok := <-readyChan
+			if !ok {
+				wg.Done()
+				return
+			}
 			log.Debugf("Ready check channel message %s", serverStatusRequest)
 			if serverStatusRequest == "controltower-ready-request" {
-				client.Publish(ctx, healthcheckReplyChannel, healthcheckReplyMsg).Result()
+				if _, err := client.Publish(ctx, messages.HealthcheckReplyChannel, messages.HealthcheckReplyMsg).Result(); err != nil {
+					log.Errorf("Unable to publish healthcheck reply: %s", err)
+				}
 			}
 		}
 	}()

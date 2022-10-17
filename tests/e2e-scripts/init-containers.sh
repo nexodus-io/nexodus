@@ -73,7 +73,7 @@ start_controltower() {
     #   None                                                                  #
     ###########################################################################
     local redis_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
-    ../controltower/controltower \
+    controltower \
         -streamer-address ${redis_ip} \
         -streamer-passwd floofykittens &
 }
@@ -129,15 +129,11 @@ EOF
     echo "=== Displaying aircrew-run-node2.sh ==="
     cat aircrew-run-node2.sh
 
-    # Set permissions
-    chmod +x ../aircrew/aircrew
-    chmod +x ../controltower/controltower
-
     # Copy binaries and scripts (copying the controltower even though we are running it on the VM instead of in a container)
-    sudo $DOCKER cp ../aircrew/aircrew node1:/bin/aircrew
-    sudo $DOCKER cp ../aircrew/aircrew node2:/bin/aircrew
-    sudo $DOCKER cp ../controltower/controltower node1:/bin/controltower
-    sudo $DOCKER cp ../controltower/controltower node2:/bin/controltower
+    sudo $DOCKER cp $(which aircrew) node1:/bin/aircrew
+    sudo $DOCKER cp $(which aircrew) node2:/bin/aircrew
+    sudo $DOCKER cp $(which controltower) node1:/bin/controltower
+    sudo $DOCKER cp $(which controltower) node2:/bin/controltower
     sudo $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
 

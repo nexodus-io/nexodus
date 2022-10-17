@@ -18,11 +18,14 @@ aircrew-amd64-linux
 /controltower
 
 # Ops files
-*.pem
+ops/
+tests/
+hack/
+docs/
 **/peer-inventory/*
-endpoints.toml
-default-ipam.json
+**/endpoints.toml
+**/default-ipam.json
 
-# misc
-*.idea
-.DS_Store
+ui/node_modules
+
+docker-compose.yml

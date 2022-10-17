@@ -1,4 +1,4 @@
-package main
+package aircrew
 
 import (
 	"os"
@@ -9,12 +9,64 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+const (
+	aircrewConfig       = "endpoints.toml"
+	persistentKeepalive = "25"
+)
+
+type AircrewState struct {
+	NodePubKey         string
+	NodePvtKey         string
+	NodePubKeyInConfig bool
+	AircrewConfigFile  string
+	Daemon             bool
+	NodeOS             string
+	Zone               string
+	RequestedIP        string
+	ChildPrefix        string
+	AgentChannel       string
+	UserEndpointIP     string
+	WgConf             wgConfig
+}
+
+type wgConfig struct {
+	Interface wgLocalConfig
+	Peer      []wgPeerConfig `ini:",nonunique"`
+}
+
+type wgPeerConfig struct {
+	PublicKey           string
+	Endpoint            string
+	AllowedIPs          string
+	PersistentKeepAlive string
+	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
+}
+
+type wgLocalConfig struct {
+	PrivateKey string
+	Address    string
+	ListenPort int
+	SaveConfig bool
+}
+
+type ConfigToml struct {
+	Peers map[string]PeerToml `mapstructure:"Peers"`
+}
+
+// TODO: add support for AllowedIPs as a []list
+type PeerToml struct {
+	PublicKey   string `mapstructure:"PublicKey"`
+	PrivateKey  string `mapstructure:"PrivateKey"`
+	WireguardIP string `mapstructure:"AllowedIPs"`
+	EndpointIP  string `mapstructure:"EndpointIP"`
+}
+
 // parseAircrewConfig extracts the aircrew toml config and
 // builds the wireguard configuration data structs
-func (as *aircrewState) parseAircrewConfig() {
+func (as *AircrewState) ParseAircrewConfig() {
 	// parse toml config
 	viper.SetConfigType("toml")
-	viper.SetConfigFile(as.aircrewConfigFile)
+	viper.SetConfigFile(as.AircrewConfigFile)
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal("Unable to read config file", err)
 	}
@@ -28,16 +80,16 @@ func (as *aircrewState) parseAircrewConfig() {
 	var localInterface wgLocalConfig
 
 	for _, value := range conf.Peers {
-		if value.PublicKey == as.nodePubKey {
-			as.nodePubKeyInConfig = true
+		if value.PublicKey == as.NodePubKey {
+			as.NodePubKeyInConfig = true
 		}
 	}
-	if !as.nodePubKeyInConfig {
+	if !as.NodePubKeyInConfig {
 		log.Printf("Public Key for this node was not found in %s", aircrewConfig)
 	}
 	for nodeName, value := range conf.Peers {
 		// Parse the [Peers] section
-		if value.PublicKey != as.nodePubKey {
+		if value.PublicKey != as.NodePubKey {
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.EndpointIP,
@@ -52,11 +104,11 @@ func (as *aircrewState) parseAircrewConfig() {
 				value.PublicKey)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == as.nodePubKey {
+		if value.PublicKey == as.NodePubKey {
 			localInterface = wgLocalConfig{
 				value.PrivateKey,
 				value.WireguardIP,
-				wgListenPort,
+				WgListenPort,
 				false,
 			}
 			log.Infof("Local Node Configuration Name [%v] Wireguard Address [%v] Local Endpoint IP [%v] Local Private Key [%v]\n",
@@ -66,14 +118,14 @@ func (as *aircrewState) parseAircrewConfig() {
 				value.PrivateKey)
 		}
 	}
-	as.wgConf.Interface = localInterface
-	as.wgConf.Peer = peers
+	as.WgConf.Interface = localInterface
+	as.WgConf.Peer = peers
 }
 
-func (as *aircrewState) deployWireguardConfig() {
+func (as *AircrewState) DeployWireguardConfig() {
 	latestCfg := &wgConfig{
-		Interface: as.wgConf.Interface,
-		Peer:      as.wgConf.Peer,
+		Interface: as.WgConf.Interface,
+		Peer:      as.WgConf.Peer,
 	}
 
 	cfg := ini.Empty(ini.LoadOptions{
@@ -85,21 +137,21 @@ func (as *aircrewState) deployWireguardConfig() {
 		log.Fatal("load ini configuration from struct error")
 	}
 
-	switch as.nodeOS {
+	switch as.NodeOS {
 	case Linux.String():
 		// wg does not create the OSX config directory by default
-		if err = CreateDirectory(wgLinuxConfPath); err != nil {
-			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
+		if err = CreateDirectory(WgLinuxConfPath); err != nil {
+			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
 
-		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
+		latestConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
 		}
-		if as.nodePubKeyInConfig {
+		if as.NodePubKeyInConfig {
 
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
-			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
+			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
 				if err = applyWireguardConf(); err != nil {
 					log.Fatal(err)
@@ -111,12 +163,12 @@ func (as *aircrewState) deployWireguardConfig() {
 			}
 		}
 	case Linux.String():
-		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
+		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatal("Save latest configuration error", err)
 		}
 
-		if as.nodePubKeyInConfig {
+		if as.NodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
