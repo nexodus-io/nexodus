@@ -55,7 +55,6 @@ sudo AIRCREW_LOG_LEVEL=debug ./aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> 
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
-    --agent-mode \
     --zone=default 
 ```
 

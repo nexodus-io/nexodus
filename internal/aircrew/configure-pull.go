@@ -10,6 +10,45 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+const (
+	persistentKeepalive = "25"
+)
+
+type AircrewState struct {
+	NodePubKey         string
+	NodePvtKey         string
+	NodePubKeyInConfig bool
+	AircrewConfigFile  string
+	Daemon             bool
+	NodeOS             string
+	Zone               string
+	RequestedIP        string
+	ChildPrefix        string
+	AgentChannel       string
+	UserEndpointIP     string
+	WgConf             wgConfig
+}
+
+type wgConfig struct {
+	Interface wgLocalConfig
+	Peer      []wgPeerConfig `ini:",nonunique"`
+}
+
+type wgPeerConfig struct {
+	PublicKey           string
+	Endpoint            string
+	AllowedIPs          string
+	PersistentKeepAlive string
+	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
+}
+
+type wgLocalConfig struct {
+	PrivateKey string
+	Address    string
+	ListenPort int
+	SaveConfig bool
+}
+
 // parseAircrewControlTowerConfig this is hacky but assumes there is no local config
 // or if there is will overwrite it from the publisher peer listing
 func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListing []messages.Peer) {

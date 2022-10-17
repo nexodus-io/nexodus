@@ -59,8 +59,7 @@ node 10.10.1.1 is up
 sudo jaywalk --public-key=<PUBLIC_KEY> \
     --private-key=<PRIVATE_KEY>  \
     --controller=<CONTROLLER_ADDRESS>  \
-    --controller-password=<CONTROLLER_ADDRESS> \
-    --agent-mode
+    --controller-password=<CONTROLLER_ADDRESS>
 ```
 
 - Copy the toml file into the `ops/ansible/peer-inventory` directory and re-run the playbook.

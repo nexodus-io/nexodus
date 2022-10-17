@@ -40,7 +40,6 @@
     jaywalk --public-key={{ PUBLIC_KEY.stdout }} \
         --private-key={{ PRIVATE_KEY.stdout }} \
         --controller={{ controller_address }} \
-        --controller-password={{ controller_password }} \
-        --agent-mode &
+        --controller-password={{ controller_password }} &
   ignore_errors: yes
 
