@@ -1,0 +1,14 @@
+FROM docker.io/library/golang:1.18-alpine as build
+
+WORKDIR /src
+COPY . .
+RUN go mod download
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o controltower ./cmd/controltower
+
+FROM scratch
+
+COPY --from=build /src/controltower /controltower
+EXPOSE 8080
+ENTRYPOINT [ "/controltower" ]

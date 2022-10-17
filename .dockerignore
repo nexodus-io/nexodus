@@ -1,0 +1,31 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Built binaries
+/aircrew
+aircrew-amd64-darwin
+aircrew-amd64-linux
+/controltower
+
+# Ops files
+ops/
+tests/
+hack/
+docs/
+**/peer-inventory/*
+**/endpoints.toml
+**/default-ipam.json
+
+ui/node_modules
+
+docker-compose.yml

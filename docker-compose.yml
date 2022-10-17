@@ -1,0 +1,32 @@
+version: "3.7"
+
+services:
+  redis:
+    image: docker.io/library/redis
+    ports:
+      - 6379:6379
+    command:
+      - "--requirepass"
+      - "floofykittens"
+
+  controller:
+    image: quay.io/jaywalking/controltower
+    build:
+      context: .
+      dockerfile: ./Containerfile.controltower
+    ports:
+      - 8080:8080
+    command:
+      - "-streamer-address=redis"
+      - "-streamer-passwd=floofykittens"
+    environment:
+      CONTROLTOWER_LOG_LEVEL: debug
+  
+  ui:
+    image: quay.io/jaywalking/ui
+    build:
+      context: .
+      dockerfile: ./Containerfile.ui
+      target: development
+    ports:
+      - 3000:3000
