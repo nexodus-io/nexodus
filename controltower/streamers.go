@@ -1,4 +1,4 @@
-package main
+package controltower
 
 import (
 	"context"
@@ -7,6 +7,16 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	zoneChannelController     = "controller"
+	zoneChannelDefault        = "default"
+	healthcheckRequestChannel = "controltower-healthcheck-request"
+	healthcheckReplyChannel   = "controltower-healthcheck-reply"
+	healthcheckReplyMsg       = "controltower-healthy"
+	registerNodeRequest       = "register-node-request"
+	registerNodeReply         = "register-node-reply"
 )
 
 // streamer redis struct
@@ -67,4 +77,9 @@ func createAllPeerMessage(postData []Peer) (string, string) {
 	id := uuid.NewString()
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)
+}
+
+type MsgEvent struct {
+	Event string
+	Peer  Peer
 }

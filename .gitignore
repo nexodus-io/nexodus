@@ -12,7 +12,6 @@
 *.out
 
 # Built binaries
-aircrew
 aircrew-amd64-darwin
 aircrew-amd64-linux
 
@@ -25,8 +24,3 @@ default-ipam.json
 # misc
 *.idea
 .DS_Store
-
-#controltower
-controltower/controltower
-controltower/ipam-blue.json
-

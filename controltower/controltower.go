@@ -1,13 +1,13 @@
-package main
+package controltower
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
+	"errors"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+	"net/http"
+	"strconv"
+	"sync"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -17,211 +17,65 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	redisDB       *redis.Client
-	streamService *string
-	streamPasswd  *string
-)
-
 const (
-	zoneChannelController     = "controller"
-	zoneChannelDefault        = "default"
-	ipPrefixDefault           = "10.200.1.0/20"
-	DefaultIpamSaveFile       = "default-ipam.json"
-	DefaultZoneName           = "default"
-	streamPort                = 6379
-	restPort                  = "8080"
-	healthcheckRequestChannel = "controltower-healthcheck-request"
-	healthcheckReplyChannel   = "controltower-healthcheck-reply"
-	healthcheckReplyMsg       = "controltower-healthy"
-	ctLogEnv                  = "CONTROLTOWER_LOG_LEVEL"
+	ipPrefixDefault = "10.200.1.0/20"
+	DefaultZoneName = "default"
+	restPort        = "8080"
 )
-
-// Message Events
-const (
-	registerNodeRequest = "register-node-request"
-	registerNodeReply   = "register-node-reply"
-)
-
-func init() {
-	streamService = flag.String("streamer-address", "", "streamer address")
-	streamPasswd = flag.String("streamer-passwd", "", "streamer password")
-	flag.Parse()
-	// set the log level
-	env := os.Getenv(ctLogEnv)
-	if env == "debug" {
-		log.SetLevel(log.DebugLevel)
-	}
-}
-
-// Peer represents data about a Peer's record.
-type Peer struct {
-	ID          uuid.UUID `json:"id"`
-	PublicKey   string    `json:"public-key"`
-	EndpointIP  string    `json:"endpoint-ip"`
-	AllowedIPs  string    `json:"allowed-ips"`
-	Zone        string    `json:"zone"`
-	NodeAddress string    `json:"node-address"`
-	ChildPrefix string    `json:"child-prefix"`
-}
-
-type ZoneConfig struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IpCidr      string `json:"cidr"`
-}
-
-type MsgEvent struct {
-	Event string
-	Peer  Peer
-}
-
-type Zone struct {
-	ID          uuid.UUID
-	Peers       map[uuid.UUID]struct{}
-	Name        string
-	Description string
-	IpCidr      string
-	ZoneIpam    ipam.AirliftIpam
-}
-
-func NewZone(id uuid.UUID, name string, description string, cidr string) (*Zone, error) {
-	zoneIpamSaveFile := fmt.Sprintf("%s.json", id.String())
-	// TODO: until we save control tower state between restarts, the ipam save file will be out of sync
-	// new zones will delete the stale IPAM file on creation.
-	// currently this will delete and overwrite an existing zone and ipam objects.
-	if fileExists(zoneIpamSaveFile) {
-		log.Warnf("ipam persistent storage file [ %s ] already exists on the control tower, deleting it", zoneIpamSaveFile)
-		if err := deleteFile(zoneIpamSaveFile); err != nil {
-			return nil, fmt.Errorf("unable to delete the ipam persistent storage file on the control tower [ %s ]: %v", zoneIpamSaveFile, err)
-		}
-	}
-	ipam, err := ipam.NewIPAM(context.Background(), zoneIpamSaveFile, cidr)
-	if err != nil {
-		return nil, err
-	}
-	if err := ipam.IpamSave(context.Background()); err != nil {
-		log.Errorf("failed to save the ipam persistent storage file %v", err)
-		return nil, err
-	}
-	return &Zone{
-		ID:          id,
-		Peers:       make(map[uuid.UUID]struct{}),
-		Name:        name,
-		Description: description,
-		IpCidr:      cidr,
-		ZoneIpam:    *ipam,
-	}, nil
-}
-
-func (z *Zone) MarshalJSON() ([]byte, error) {
-	peers := make([]uuid.UUID, 0)
-	for k := range z.Peers {
-		peers = append(peers, k)
-	}
-	return json.Marshal(
-		struct {
-			ID          uuid.UUID   `json:"id"`
-			Peers       []uuid.UUID `json:"peers"`
-			Name        string      `json:"name"`
-			Description string      `json:"description"`
-			IpCidr      string      `json:"cidr"`
-		}{
-			ID:          z.ID,
-			Peers:       peers,
-			Name:        z.Name,
-			Description: z.Description,
-			IpCidr:      z.IpCidr,
-		})
-}
-
-type PeerMap struct {
-	cache   map[uuid.UUID]*Peer
-	pubKeys map[string]uuid.UUID
-}
-
-func NewPeerMap() *PeerMap {
-	return &PeerMap{
-		cache:   make(map[uuid.UUID]*Peer),
-		pubKeys: make(map[string]uuid.UUID),
-	}
-}
-
-func (m *PeerMap) InsertOrUpdate(p Peer) uuid.UUID {
-	if id, ok := m.pubKeys[p.PublicKey]; ok {
-		m.cache[id] = &p
-		return id
-	} else {
-		m.cache[p.ID] = &p
-		m.pubKeys[p.PublicKey] = p.ID
-		return p.ID
-	}
-}
-
-func (m *PeerMap) List() []*Peer {
-	res := make([]*Peer, 0)
-	for _, v := range m.cache {
-		res = append(res, v)
-	}
-	return res
-}
-
-func (m *PeerMap) ListByPubKey(key string) []*Peer {
-	if v, ok := m.pubKeys[key]; ok {
-		return []*Peer{m.cache[v]}
-	}
-	return nil
-}
-
-func (m *PeerMap) Get(id uuid.UUID) (*Peer, error) {
-	if peer, ok := m.cache[id]; ok {
-		return peer, nil
-	}
-	return nil, fmt.Errorf("peer not found")
-}
 
 // Control tower specific data
-type Controltower struct {
+type ControlTower struct {
 	Router       *gin.Engine
 	Zones        map[uuid.UUID]*Zone
 	Peers        *PeerMap
+	Client       *redis.Client
 	streamSocket string
 	streamPass   string
+	wg           sync.WaitGroup
+	server       *http.Server
+	msgChannels  []chan string
 }
 
-func initApp() *Controltower {
-	ct := new(Controltower)
-	ct.Router = gin.Default()
+func NewControlTower(ctx context.Context, streamService string, streamPort int, streamPasswd string) (*ControlTower, error) {
+	streamSocket := fmt.Sprintf("%s:%d", streamService, streamPort)
+	client := NewRedisClient(streamSocket, streamPasswd)
+
+	_, err := client.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Unable to connect to the redis instance at %s: %v", streamSocket, err)
+	}
+
+	ct := &ControlTower{
+		Router:       gin.Default(),
+		Zones:        make(map[uuid.UUID]*Zone),
+		Peers:        NewPeerMap(),
+		Client:       client,
+		streamSocket: streamSocket,
+		streamPass:   streamPasswd,
+		wg:           sync.WaitGroup{},
+		server:       nil,
+		msgChannels:  make([]chan string, 0),
+	}
+
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	ct.Router.Use(cors.New(corsConfig))
 	ct.Router.GET("/peers", ct.GetPeers)    // http://localhost:8080/peers TODO: only functioning for zone:default atm
-	ct.Router.GET("/peers/:id", ct.GetPeer) // http://localhost:8080/peers/id
+	ct.Router.GET("/peers/:id", ct.GetPeer) // http://localhost:8080/peers/:id
 	ct.Router.GET("/zones", ct.GetZones)    // http://localhost:8080/zones
-	ct.Router.GET("/zones/:id", ct.GetZone)
+	ct.Router.GET("/zones/:id", ct.GetZone) // http://localhost:8080/zones/:id
 	ct.Router.POST("/zones", ct.PostZone)
 	ct.Peers = NewPeerMap()
 	ct.Zones = make(map[uuid.UUID]*Zone)
-	ct.setZoneDefaultDetails(DefaultZoneName)
-	ct.streamSocket = fmt.Sprintf("%s:%d", *streamService, streamPort)
-	ct.streamPass = *streamPasswd
-
-	return ct
+	ct.setZoneDefaultDetails()
+	return ct, nil
 }
 
-func main() {
-	ct := initApp()
-	client := NewRedisClient(ct.streamSocket, ct.streamPass)
-	defer client.Close()
-
+func (ct *ControlTower) Run() {
 	ctx := context.Background()
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("Unable to connect to the redis instance at %s: %v", ct.streamSocket, err)
-	}
 
 	// respond to initial health check from agents initializing
-	readyCheckResponder(ctx, client)
+	readyCheckResponder(ctx, ct.Client)
 
 	// Handle all messages for zones other than the default zone
 	// TODO: assign each zone it's own channel for better multi-tenancy
@@ -234,10 +88,17 @@ func main() {
 
 	// channel for async messages from the zone subscription for the default zone
 	msgChanDefault := make(chan string)
+	ct.msgChannels = append(ct.msgChannels, msgChanDefault)
+	ct.wg.Add(1)
 	go func() {
 		subDefault.subscribe(ctx, zoneChannelDefault, msgChanDefault)
 		for {
-			msg := <-msgChanDefault
+			msg, ok := <-msgChanDefault
+			if !ok {
+				log.Infof("Shutting down default message channel")
+				ct.wg.Done()
+				return
+			}
 			msgEvent := handleMsg(msg)
 			switch msgEvent.Event {
 			case registerNodeRequest:
@@ -249,7 +110,7 @@ func main() {
 						var peerList []Peer
 						for _, zone := range ct.Zones {
 							if zone.Name == msgEvent.Peer.Zone {
-								for id := range zone.Peers {
+								for _, id := range zone.Peers {
 									nodeElements, err := ct.Peers.Get(id)
 									if err != nil {
 										log.Errorf("unable to find peer with id %s", id.String())
@@ -273,26 +134,310 @@ func main() {
 		}
 	}()
 
-	// Start the http router, this is blocking
-	ginSocket := fmt.Sprintf("0.0.0.0:%s", restPort)
-	ct.Router.Run(ginSocket)
+	ct.server = &http.Server{
+		Addr:    fmt.Sprintf("0.0.0.0:%s", restPort),
+		Handler: ct.Router,
+	}
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	<-ch
+	// Initializing the server in a goroutine so that
+	// it won't block the graceful shutdown handling below
+	ct.wg.Add(1)
+	go func() {
+		defer ct.wg.Done()
+		if err := ct.server.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
+			log.Infof("REST API shutting down: %s\n", err)
+		}
+	}()
 }
 
-func (msgEvent *MsgEvent) newNode(ipamIP, childPrefix string) Peer {
-	peer := Peer{
-		ID:          uuid.New(),
-		PublicKey:   msgEvent.Peer.PublicKey,
-		EndpointIP:  msgEvent.Peer.EndpointIP,
-		AllowedIPs:  ipamIP, // This will be a slice, NodeAddress will hold the /32
-		Zone:        msgEvent.Peer.Zone,
-		NodeAddress: ipamIP,
-		ChildPrefix: childPrefix,
+func (ct *ControlTower) Shutdown(ctx context.Context) {
+	// Shutdown REST API
+	ct.server.Shutdown(ctx)
+
+	// Shutdown Message Handlers
+	for _, c := range ct.msgChannels {
+		close(c)
+	}
+
+	// Wait for everything to wind down
+	ct.wg.Wait()
+}
+
+// setZoneDetails set default zone attributes
+func (ct *ControlTower) setZoneDefaultDetails() error {
+	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+	z, err := NewZone(id, DefaultZoneName, "Default Zone", ipPrefixDefault)
+	if err != nil {
+		return err
+	}
+	ct.Zones[id] = z
+	return nil
+}
+
+type MsgTypes struct {
+	ID    string
+	Event string
+	Zone  string
+	Peer  Peer
+}
+
+func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
+	var ipamPrefix string
+	var err error
+	var z *Zone
+	for _, zone := range ct.Zones {
+		if msgEvent.Peer.Zone == zone.Name {
+			ipamPrefix = zone.IpCidr
+			z = zone
+		}
+	}
+	// todo, the needs to go over an err channal to the agent
+	if z == nil {
+		return fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?", msgEvent.Peer.Zone)
+	}
+
+	if id, ok := z.Peers[msgEvent.Peer.PublicKey]; ok {
+		// Peer already exists and has updated data
+		peer, err := ct.Peers.Get(id)
+		if err != nil {
+			return fmt.Errorf("unable to get peer with ID %s", id)
+		}
+		// TODO: Do other things need updating here too?
+		peer.EndpointIP = msgEvent.Peer.EndpointIP
+		return nil
+	}
+
+	var ip string
+	// If this was a static address request
+	// TODO: handle a user requesting an IP not in the IPAM prefix
+	if msgEvent.Peer.NodeAddress != "" {
+		if err := ipam.ValidateIp(msgEvent.Peer.NodeAddress); err == nil {
+			ip, err = z.ZoneIpam.RequestSpecificIP(ctx, msgEvent.Peer.NodeAddress, ipamPrefix)
+			if err != nil {
+				log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
+				ip, err = z.ZoneIpam.RequestIP(ctx, ipamPrefix)
+				if err != nil {
+					log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+				}
+			}
+		}
+	} else {
+		ip, err = z.ZoneIpam.RequestIP(ctx, ipamPrefix)
+		if err != nil {
+			log.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+		}
+	}
+	// allocate a child prefix if requested
+	var childPrefix string
+	if msgEvent.Peer.ChildPrefix != "" {
+		childPrefix, err = z.ZoneIpam.RequestChildPrefix(ctx, msgEvent.Peer.ChildPrefix)
+		if err != nil {
+			log.Errorf("%v\n", err)
+		}
+	}
+	// save the ipam to persistent storage
+	z.ZoneIpam.IpamSave(ctx)
+
+	// construct the new peer
+	peer := NewPeer(
+		msgEvent.Peer.PublicKey,
+		msgEvent.Peer.EndpointIP,
+		ip, // This will be a slice, NodeAddress will hold the /32
+		msgEvent.Peer.Zone,
+		ip,
+		childPrefix,
+	)
+
+	log.Debugf("node allocated: %+v\n", peer)
+	ct.Peers.Insert(peer)
+	z.Peers[peer.PublicKey] = peer.ID
+	log.Infof("Zone has %d peers", len(z.Peers))
+	log.Infof("Zone %+v", ct.Zones[z.ID])
+	return nil
+}
+
+func (ct *ControlTower) MessageHandling(ctx context.Context) {
+
+	pub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+	sub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+
+	// channel for async messages from the zone subscription
+	controllerChan := make(chan string)
+
+	go func() {
+		sub.subscribe(ctx, zoneChannelController, controllerChan)
+		log.Debugf("Listening on channel: %s", zoneChannelController)
+
+		for {
+			msg := <-controllerChan
+			msgEvent := msgHandler(msg)
+			switch msgEvent.Event {
+			// TODO implement error chans
+			case registerNodeRequest:
+				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelController)
+				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
+				if msgEvent.Peer.PublicKey != "" {
+					err := ct.AddPeer(ctx, msgEvent)
+					// append all peers into the updated peer list to be published
+					if err == nil {
+						var peerList []Peer
+						for _, zone := range ct.Zones {
+							if zone.Name == msgEvent.Peer.Zone {
+								for _, id := range zone.Peers {
+									nodeElements, err := ct.Peers.Get(id)
+									if err != nil {
+										log.Errorf("unable to find peer with id %s", id.String())
+										continue
+									}
+									log.Printf("NodeState - PublicKey: [%s] EndpointIP [%s] AllowedIPs [%s] NodeAddress [%s] Zone [%s] ChildPrefix [%s]\n",
+										nodeElements.PublicKey, nodeElements.EndpointIP, nodeElements.AllowedIPs, nodeElements.NodeAddress, nodeElements.Zone, nodeElements.ChildPrefix)
+									// append the new node to the updated peer listing
+									peerList = append(peerList, *nodeElements)
+								}
+							}
+							// publishPeers the latest peer list
+							pub.publishPeers(ctx, zoneChannelController, peerList)
+						}
+					} else {
+						log.Errorf("Peer was not added: %v", err)
+						// TODO: return an error to the agent on a message chan
+					}
+				}
+			}
+		}
+	}()
+}
+
+// handleMsg deals with streaming messages
+func msgHandler(payload string) MsgEvent {
+	var peer MsgEvent
+	err := json.Unmarshal([]byte(payload), &peer)
+	if err != nil {
+		log.Debugf("msgHandler unmarshall error: %v\n", err)
+		return peer
 	}
 	return peer
+}
+
+/*
+func NewPubMessage(data string) (string, string) {
+	id := uuid.NewString()
+	msg, _ := json.Marshal(&MsgTypes{
+		ID:    id,
+		Event: data,
+	})
+	return id, string(msg)
+}
+
+// TODO example: do we want to implement a UUID with channel messages?
+func PubMessage(ctx context.Context, channel, data string) {
+	id, msg := NewPubMessage(data)
+	err := redisDB.Publish(ctx, channel, msg).Err()
+	if err != nil {
+		log.Errorf("Sending msg ID %s failed, %v\n", id, err)
+		return
+	}
+	log.Printf("Sent Message: %s\n", msg)
+}
+*/
+
+type ZoneRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IpCidr      string `json:"cidr"`
+}
+
+// PostZone creates a new zone via a REST call
+func (ct *ControlTower) PostZone(c *gin.Context) {
+	var request ZoneRequest
+	// Call BindJSON to bind the received JSON
+	if err := c.BindJSON(&request); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	if request.IpCidr == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "the zone request did not contain a required CIDR prefix"})
+		return
+	}
+	if request.Name == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "the zone request did not contain a required name"})
+		return
+	}
+
+	// Create the zone
+	newZone, err := NewZone(uuid.New(), request.Name, request.Description, request.IpCidr)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "unable to create zone"})
+		return
+	}
+
+	// TODO: From this point on Zone should get cleaned up if we fail
+	for _, zone := range ct.Zones {
+		if zone.Name == newZone.Name {
+			failMsg := fmt.Sprintf("%s zone already exists", newZone.Name)
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": failMsg})
+			return
+		}
+	}
+	log.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
+	ct.Zones[newZone.ID] = newZone
+	c.IndentedJSON(http.StatusCreated, newZone)
+}
+
+// GetZones responds with the list of all peers as JSON.
+func (ct *ControlTower) GetZones(c *gin.Context) {
+	allZones := make([]*Zone, 0)
+	for _, z := range ct.Zones {
+		allZones = append(allZones, z)
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(allZones)))
+	c.JSON(http.StatusOK, allZones)
+}
+
+// GetZone responds with a single zone
+func (ct *ControlTower) GetZone(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if value, ok := ct.Zones[k]; ok {
+		c.JSON(http.StatusOK, value)
+	} else {
+		c.Status(http.StatusNotFound)
+	}
+}
+
+// GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
+func (ct *ControlTower) GetPeers(c *gin.Context) {
+	pubKey := c.Query("public-key")
+	var allPeers []*Peer
+	if pubKey != "" {
+		allPeers = ct.Peers.ListByPubKey(pubKey)
+	} else {
+		allPeers = ct.Peers.List()
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(allPeers)))
+	c.JSON(http.StatusOK, allPeers)
+}
+
+// GetPeer locates a peer
+func (ct *ControlTower) GetPeer(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "zone if is not a valid UUID"})
+		return
+	}
+	v, err := ct.Peers.Get(k)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, v)
 }
 
 // handleMsg deals with streaming messages
@@ -304,29 +449,4 @@ func handleMsg(payload string) MsgEvent {
 		return peer
 	}
 	return peer
-}
-
-// setZoneDetails set default zone attributes
-func (ct *Controltower) setZoneDefaultDetails(zone string) error {
-	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
-	z, err := NewZone(id, zone, "Default Zone", ipPrefixDefault)
-	if err != nil {
-		return err
-	}
-	ct.Zones[id] = z
-	return nil
-}
-
-func fileExists(f string) bool {
-	if _, err := os.Stat(f); err != nil {
-		return false
-	}
-	return true
-}
-
-func deleteFile(f string) error {
-	if err := os.Remove(f); err != nil {
-		return err
-	}
-	return nil
 }

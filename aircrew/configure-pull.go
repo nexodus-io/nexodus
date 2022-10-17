@@ -1,4 +1,4 @@
-package main
+package aircrew
 
 import (
 	"encoding/json"
@@ -25,7 +25,7 @@ type Peer struct {
 }
 
 // handleMsg deal with streaming messages
-func handleMsg(payload string) PeerListing {
+func HandleMsg(payload string) PeerListing {
 	var peerListing PeerListing
 	err := json.Unmarshal([]byte(payload), &peerListing)
 	if err != nil {
@@ -37,24 +37,24 @@ func handleMsg(payload string) PeerListing {
 
 // parseAircrewControlTowerConfig this is hacky but assumes there is no local config
 // or if there is will overwrite it from the publisher peer listing
-func (as *aircrewState) parseAircrewControlTowerConfig(peerListing PeerListing) {
+func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListing PeerListing) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 
 	for _, value := range peerListing {
-		if value.PublicKey == as.nodePubKey {
-			as.nodePubKeyInConfig = true
+		if value.PublicKey == as.NodePubKey {
+			as.NodePubKeyInConfig = true
 		}
 	}
 
-	if !as.nodePubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the control tower update\n", as.nodePubKey)
+	if !as.NodePubKeyInConfig {
+		log.Printf("Public Key for this node %s was not found in the control tower update\n", as.NodePubKey)
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
 		// Build the wg config for all peers
-		if value.PublicKey != as.nodePubKey {
+		if value.PublicKey != as.NodePubKey {
 
 			var allowedIPs string
 			if value.ChildPrefix != "" {
@@ -77,27 +77,27 @@ func (as *aircrewState) parseAircrewControlTowerConfig(peerListing PeerListing) 
 				value.Zone)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == as.nodePubKey {
+		if value.PublicKey == as.NodePubKey {
 			localInterface = wgLocalConfig{
-				as.nodePvtKey,
+				as.NodePvtKey,
 				value.AllowedIPs,
-				cliFlags.listenPort,
+				listenPort,
 				false,
 			}
 			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ]\n",
 				localInterface.Address,
-				wgListenPort)
+				WgListenPort)
 			// set the node unique local interface configuration
-			as.wgConf.Interface = localInterface
+			as.WgConf.Interface = localInterface
 		}
 	}
-	as.wgConf.Peer = peers
+	as.WgConf.Peer = peers
 }
 
-func (as *aircrewState) deployControlTowerWireguardConfig() {
+func (as *AircrewState) DeployControlTowerWireguardConfig() {
 	latestCfg := &wgConfig{
-		Interface: as.wgConf.Interface,
-		Peer:      as.wgConf.Peer,
+		Interface: as.WgConf.Interface,
+		Peer:      as.WgConf.Peer,
 	}
 	cfg := ini.Empty(ini.LoadOptions{
 		AllowNonUniqueSections: true,
@@ -106,15 +106,15 @@ func (as *aircrewState) deployControlTowerWireguardConfig() {
 	if err != nil {
 		log.Fatal("load ini configuration from struct error")
 	}
-	switch as.nodeOS {
+	switch as.NodeOS {
 	case Linux.String():
-		latestConfig := filepath.Join(wgLinuxConfPath, wgConfLatestRev)
+		latestConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
-		if as.nodePubKeyInConfig {
+		if as.NodePubKeyInConfig {
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
-			activeConfig := filepath.Join(wgLinuxConfPath, wgConfActive)
+			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
 				if err = applyWireguardConf(); err != nil {
 					log.Fatal(err)
@@ -126,11 +126,11 @@ func (as *aircrewState) deployControlTowerWireguardConfig() {
 			}
 		}
 	case Darwin.String():
-		activeDarwinConfig := filepath.Join(wgDarwinConfPath, wgConfActive)
+		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatalf("Save latest configuration error: %v\n", err)
 		}
-		if as.nodePubKeyInConfig {
+		if as.NodePubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {

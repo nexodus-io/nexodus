@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/redhat-et/jaywalking/aircrew"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -32,74 +33,20 @@ var (
 	cliFlags flags
 )
 
-type aircrewState struct {
-	nodePubKey         string
-	nodePvtKey         string
-	nodePubKeyInConfig bool
-	aircrewConfigFile  string
-	daemon             bool
-	nodeOS             string
-	zone               string
-	requestedIP        string
-	childPrefix        string
-	agentChannel       string
-	userEndpointIP     string
-	wgConf             wgConfig
-}
-
-type wgConfig struct {
-	Interface wgLocalConfig
-	Peer      []wgPeerConfig `ini:",nonunique"`
-}
-
-type wgPeerConfig struct {
-	PublicKey           string
-	Endpoint            string
-	AllowedIPs          string
-	PersistentKeepAlive string
-	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
-}
-
-type wgLocalConfig struct {
-	PrivateKey string
-	Address    string
-	ListenPort int
-	SaveConfig bool
-}
-
 type MsgEvent struct {
 	Event string
-	Peer  Peer
-}
-
-type ConfigToml struct {
-	Peers map[string]PeerToml `mapstructure:"Peers"`
-}
-
-// TODO: add support for AllowedIPs as a []list
-type PeerToml struct {
-	PublicKey   string `mapstructure:"PublicKey"`
-	PrivateKey  string `mapstructure:"PrivateKey"`
-	WireguardIP string `mapstructure:"AllowedIPs"`
-	EndpointIP  string `mapstructure:"EndpointIP"`
+	Peer  aircrew.Peer
 }
 
 const (
-	wgListenPort              = 51820
-	wgLinuxConfPath           = "/etc/wireguard/"
-	wgDarwinConfPath          = "/usr/local/etc/wireguard/"
-	wgConfActive              = "wg0.conf"
-	wgConfLatestRev           = "wg0-latest-rev.conf"
-	wgIface                   = "wg0"
-	aircrewConfig             = "endpoints.toml"
 	zoneChannelController     = "controller"
 	zoneChannelDefault        = "default"
 	healthcheckRequestChannel = "controltower-healthcheck-request"
 	healthcheckReplyChannel   = "controltower-healthcheck-reply"
 	healthcheckRequestMsg     = "controltower-ready-request"
 	readyRequestTimeout       = 10
-	persistentKeepalive       = "25"
-	aircrewLogEnv             = "AIRCREW_LOG_LEVEL"
+
+	aircrewLogEnv = "AIRCREW_LOG_LEVEL"
 )
 
 // Message Events
@@ -116,10 +63,8 @@ func init() {
 }
 
 func main() {
-	// instantiate the cli
-	app := cli.NewApp()
 	// flags are stored in the global flags variable
-	app = &cli.App{
+	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "public-key",
@@ -231,7 +176,7 @@ func main() {
 }
 
 func runInit() {
-	if !IsCommandAvailable("wg") {
+	if !aircrew.IsCommandAvailable("wg") {
 		log.Fatal("wg command not found, is wireguard installed?")
 	}
 	// PublicKey is the unique identifier for a node and required
@@ -241,25 +186,25 @@ func runInit() {
 	ctx := context.Background()
 	var err error
 	var nodeOS string
-	switch GetOS() {
+	switch aircrew.GetOS() {
 	case "windows":
-		log.Fatalf("OS [%s] is not currently supported\n", GetOS())
-	case Darwin.String():
-		log.Printf("[%s] operating system detected", Darwin.String())
-		nodeOS = Darwin.String()
+		log.Fatalf("OS [%s] is not currently supported\n", aircrew.GetOS())
+	case aircrew.Darwin.String():
+		log.Printf("[%s] operating system detected", aircrew.Darwin.String())
+		nodeOS = aircrew.Darwin.String()
 		// ensure the osx wireguard directory exists
-		if err := CreateDirectory(wgLinuxConfPath); err != nil {
-			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
+		if err := aircrew.CreateDirectory(aircrew.WgLinuxConfPath); err != nil {
+			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", aircrew.WgDarwinConfPath, err)
 		}
-	case Linux.String():
-		log.Printf("[%s] operating system detected", Linux.String())
-		nodeOS = Linux.String()
+	case aircrew.Linux.String():
+		log.Printf("[%s] operating system detected", aircrew.Linux.String())
+		nodeOS = aircrew.Linux.String()
 		// ensure the wireguard directory exists
-		if err := CreateDirectory(wgLinuxConfPath); err != nil {
-			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", wgDarwinConfPath, err)
+		if err := aircrew.CreateDirectory(aircrew.WgLinuxConfPath); err != nil {
+			log.Fatalf("Unable to create the wireguard config directory [%s]: %v", aircrew.WgDarwinConfPath, err)
 		}
 	default:
-		log.Fatalf("OS [%s] is not supported\n", GetOS())
+		log.Fatalf("OS [%s] is not supported\n", aircrew.GetOS())
 	}
 
 	// parse the private key for the local configuration from file or CLI
@@ -274,10 +219,10 @@ func runInit() {
 		pvtKey = cliFlags.wireguardPvtKey
 	}
 	if cliFlags.wireguardPvtKeyFile != "" {
-		if !FileExists(cliFlags.wireguardPvtKeyFile) {
+		if !aircrew.FileExists(cliFlags.wireguardPvtKeyFile) {
 			log.Fatalf("Failed to retrieve the private key from file: %s", cliFlags.wireguardPvtKeyFile)
 		}
-		pvtKey, err = ReadKeyFileToString(cliFlags.wireguardPvtKeyFile)
+		pvtKey, err = aircrew.ReadKeyFileToString(cliFlags.wireguardPvtKeyFile)
 		if err != nil {
 			log.Fatalf("Failed to retrieve the private key from file %s: %v", cliFlags.wireguardPvtKeyFile, err)
 		}
@@ -287,21 +232,21 @@ func runInit() {
 	// Otherwise, discover what the public of the node is and provide that to the peers unless the --internal flag was set,
 	// in which case the endpoint address will be set to an existing address on the host.
 	var localEndpointIP string
-	if cliFlags.internalNetwork && nodeOS == Darwin.String() {
-		localEndpointIP, err = GetDarwinIPv4()
+	if cliFlags.internalNetwork && nodeOS == aircrew.Darwin.String() {
+		localEndpointIP, err = aircrew.GetDarwinIPv4()
 		if err != nil {
 			log.Fatalf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
-	if cliFlags.internalNetwork && nodeOS == Linux.String() {
-		localEndpointIP, err = GetIPv4Linux()
+	if cliFlags.internalNetwork && nodeOS == aircrew.Linux.String() {
+		localEndpointIP, err = aircrew.GetIPv4Linux()
 		if err != nil {
 			log.Fatalf("unable to determine the ip address, please specify using --local-endpoint-ip")
 		}
 	}
 	// User provided --local-endpoint-ip overrides --internal-network
 	if cliFlags.userProvidedEndpointIP != "" {
-		if err := ValidateIp(cliFlags.userProvidedEndpointIP); err != nil {
+		if err := aircrew.ValidateIp(cliFlags.userProvidedEndpointIP); err != nil {
 			log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
 				cliFlags.userProvidedEndpointIP, err)
 		}
@@ -309,30 +254,30 @@ func runInit() {
 	}
 	// this conditional is last since it is expensive to do the public address lookup
 	if !cliFlags.internalNetwork && cliFlags.userProvidedEndpointIP == "" {
-		localEndpointIP, err = GetPubIP()
+		localEndpointIP, err = aircrew.GetPubIP()
 		if err != nil {
 			log.Warn("Unable to determine the public facing address")
 		}
 	}
 	log.Debugf("This node's endpoint address will be [ %s ]", localEndpointIP)
 
-	as := &aircrewState{
-		nodePubKey:        cliFlags.wireguardPubKey,
-		nodePvtKey:        pvtKey,
-		aircrewConfigFile: cliFlags.configFile,
-		daemon:            cliFlags.agentMode,
-		nodeOS:            nodeOS,
-		zone:              cliFlags.zone,
-		requestedIP:       cliFlags.requestedIP,
-		childPrefix:       cliFlags.childPrefix,
-		userEndpointIP:    cliFlags.userProvidedEndpointIP,
+	as := &aircrew.AircrewState{
+		NodePubKey:        cliFlags.wireguardPubKey,
+		NodePvtKey:        pvtKey,
+		AircrewConfigFile: cliFlags.configFile,
+		Daemon:            cliFlags.agentMode,
+		NodeOS:            nodeOS,
+		Zone:              cliFlags.zone,
+		RequestedIP:       cliFlags.requestedIP,
+		ChildPrefix:       cliFlags.childPrefix,
+		UserEndpointIP:    cliFlags.userProvidedEndpointIP,
 	}
 
 	if !cliFlags.agentMode {
 		// parse the Aircrew config into wireguard config structs
-		as.parseAircrewConfig()
+		as.ParseAircrewConfig()
 		// write the wireguard configuration to file and deploy
-		as.deployWireguardConfig()
+		as.DeployWireguardConfig()
 	}
 
 	// run as a persistent agent
@@ -355,31 +300,31 @@ func runInit() {
 		defer rc.Close()
 
 		subChannel := zoneChannelDefault
-		if as.zone != zoneChannelDefault {
+		if as.Zone != zoneChannelDefault {
 			subChannel = zoneChannelController
 		}
 
 		sub := rc.Subscribe(ctx, subChannel)
 		defer sub.Close()
 
-		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, wgListenPort)
+		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, aircrew.WgListenPort)
 		// Create the message describing this peer to be published
 		peerRegister := publishMessage(
 			registerNodeRequest,
-			as.zone,
-			as.nodePubKey,
+			as.Zone,
+			as.NodePubKey,
 			endpointSocket,
-			as.requestedIP,
-			as.childPrefix)
+			as.RequestedIP,
+			as.ChildPrefix)
 
 		// Agent only needs to subscribe
-		if as.zone == "default" {
-			as.agentChannel = zoneChannelDefault
+		if as.Zone == "default" {
+			as.AgentChannel = zoneChannelDefault
 		} else {
-			as.agentChannel = zoneChannelController
+			as.AgentChannel = zoneChannelController
 		}
 
-		err = rc.Publish(ctx, as.agentChannel, peerRegister).Err()
+		err = rc.Publish(ctx, as.AgentChannel, peerRegister).Err()
 		if err != nil {
 			log.Errorf("failed to publish subscriber message: %v", err)
 		}
@@ -393,21 +338,21 @@ func runInit() {
 			// Switch based on the streaming channel
 			switch msg.Channel {
 			case zoneChannelController:
-				peerListing := handleMsg(msg.Payload)
+				peerListing := aircrew.HandleMsg(msg.Payload)
 				if len(peerListing) > 0 {
 					// Only update the peer list if this node is a member of the zone update
-					if peerListing[0].Zone == as.zone {
+					if peerListing[0].Zone == as.Zone {
 						log.Debugf("Received message: %+v\n", peerListing)
-						as.parseAircrewControlTowerConfig(peerListing)
-						as.deployControlTowerWireguardConfig()
+						as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
+						as.DeployControlTowerWireguardConfig()
 					}
 				}
 			case zoneChannelDefault:
-				peerListing := handleMsg(msg.Payload)
+				peerListing := aircrew.HandleMsg(msg.Payload)
 				if peerListing != nil {
 					log.Debugf("Received message: %+v\n", peerListing)
-					as.parseAircrewControlTowerConfig(peerListing)
-					as.deployControlTowerWireguardConfig()
+					as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
+					as.DeployControlTowerWireguardConfig()
 				}
 			}
 		}
@@ -417,7 +362,7 @@ func runInit() {
 func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
 	msg := MsgEvent{}
 	msg.Event = event
-	peer := Peer{
+	peer := aircrew.Peer{
 		PublicKey:   pubKey,
 		EndpointIP:  endpointIP,
 		Zone:        zone,

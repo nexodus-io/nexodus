@@ -8,6 +8,24 @@ on:
 
 jobs:
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Unit tests
+      run: |
+        go test -v ./...
+
+    - name: Go Vet
+      run: |
+        go vet ./...
+
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -18,29 +36,9 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build Aircrew Agent
+    - name: Build
       run: |
-        pushd aircrew
         go build -v ./...
-        popd
-
-    - name: Go Vet Aircrew Agent
-      run: |
-        pushd aircrew
-        go vet ./...
-        popd
-
-    - name: Build Control Tower
-      run: |
-        pushd controltower
-        go build -v ./...
-        popd
-
-    - name: Go Vet Control Tower
-      run: |
-        pushd controltower
-        go vet ./...
-        popd
 
   build-osx:
     runs-on: macos-latest
@@ -52,26 +50,6 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build Aircrew Agent
+    - name: Build
       run: |
-        pushd aircrew
         go build -v ./...
-        popd
-
-    - name: Go Vet Aircrew Agent
-      run: |
-        pushd aircrew
-        go vet ./...
-        popd
-
-    - name: Build Control Tower
-      run: |
-        pushd controltower
-        go build -v ./...
-        popd
-
-    - name: Go Vet Control Tower
-      run: |
-        pushd controltower
-        go vet ./...
-        popd

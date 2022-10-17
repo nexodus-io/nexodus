@@ -32,17 +32,16 @@ You can directly build the required binaries from the source code
 
 ```shell
 git clone https://github.com/redhat-et/jaywalking
-cd jaywalking
-cd aircrew
+go install ./...
 ```
 to build for Linux OS node
 ```shell
-GOOS=linux GOARCH=amd64 go build -o aircrew-amd64-linux
+GOOS=linux GOARCH=amd64 go build -o aircrew-amd64-linux ./cmd/aircrew
 ```
 
 to build for Mac OS node 
 ```shell
-GOOS=darwin GOARCH=amd64 go build -o aircrew-amd64-darwin
+GOOS=darwin GOARCH=amd64 go build -o aircrew-amd64-darwin ./cmd/aircrew
 ```
 
 Or download a recent binaries to the nodes:

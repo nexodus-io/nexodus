@@ -26,19 +26,9 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build Aircrew Agent
+    - name: Build and Install Binaries
       run: |
-        pushd aircrew
-        go build -o aircrew
-        chmod +x aircrew
-        sudo cp aircrew /usr/local/sbin/
-
-    - name: Build Control Tower
-      run: |
-        pushd controltower
-        go build -o controltower
-        chmod +x controltower
-        popd
+        go install ./...
 
     - name: Run e2e
       run: make -C tests OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} run-ci-e2e
