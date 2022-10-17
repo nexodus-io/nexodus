@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/redhat-et/jaywalking/controltower"
+	"github.com/redhat-et/jaywalking/internal/controltower"
 	log "github.com/sirupsen/logrus"
 )
 

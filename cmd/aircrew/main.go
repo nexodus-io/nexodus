@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/redhat-et/jaywalking/aircrew"
+	"github.com/redhat-et/jaywalking/internal/aircrew"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )

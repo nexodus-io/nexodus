@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/jaywalking/controltower/ipam"
+	"github.com/redhat-et/jaywalking/internal/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
 

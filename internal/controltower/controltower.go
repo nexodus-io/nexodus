@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/redhat-et/jaywalking/controltower/ipam"
+	"github.com/redhat-et/jaywalking/internal/controltower/ipam"
 	log "github.com/sirupsen/logrus"
 )
 
