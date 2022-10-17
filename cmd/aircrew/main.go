@@ -105,13 +105,6 @@ func main() {
 				EnvVars:     []string{"AIRCREW_ZONE"},
 			},
 			&cli.StringFlag{
-				Name:        "config",
-				Value:       "",
-				Usage:       "configuration file (ignored if run in agent-mode - likely deprecate)",
-				Destination: &cliFlags.configFile,
-				EnvVars:     []string{"AIRCREW_CONFIG"},
-			},
-			&cli.StringFlag{
 				Name:        "request-ip",
 				Value:       "",
 				Usage:       "request a specific IP address from Ipam if available (optional)",
@@ -132,12 +125,6 @@ func main() {
 				Destination: &cliFlags.childPrefix,
 				EnvVars:     []string{"AIRCREW_REQUESTED_CHILD_PREFIX"},
 			},
-			&cli.BoolFlag{Name: "agent-mode",
-				Usage:       "run as an agent",
-				Value:       true,
-				Destination: &cliFlags.agentMode,
-				EnvVars:     []string{"AIRCREW_AGENT_MODE"},
-			},
 			&cli.BoolFlag{Name: "internal-network",
 				Usage:       "do not discover the public address for this host, use the local address for peering",
 				Value:       false,
@@ -148,10 +135,10 @@ func main() {
 	}
 	app.Name = "aircrew"
 	app.Usage = "encrypted mesh networking"
-	// clean up any pre-existing interfaces or processes from prior tests
+	// clean up any pre-existing interfaces
 	app.Before = func(c *cli.Context) error {
 		if c.IsSet("clean") {
-			log.Print("Cleaning up any existing benchmark interfaces")
+			log.Print("Cleaning up any existing interfaces")
 			// todo: implement a cleanup function
 		}
 		return nil
@@ -264,89 +251,79 @@ func runInit() {
 		UserEndpointIP:    cliFlags.userProvidedEndpointIP,
 	}
 
-	if !cliFlags.agentMode {
-		// parse the Aircrew config into wireguard config structs
-		as.ParseAircrewConfig()
-		// write the wireguard configuration to file and deploy
-		as.DeployWireguardConfig()
+	controller := fmt.Sprintf("%s:6379", cliFlags.controllerIP)
+	rc := redis.NewClient(&redis.Options{
+		Addr:     controller,
+		Password: cliFlags.controllerPasswd,
+	})
+
+	// TODO: move to a redis package used by both server and agent
+	_, err = rc.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
 	}
 
-	// run as a persistent agent
-	if cliFlags.agentMode {
-		controller := fmt.Sprintf("%s:6379", cliFlags.controllerIP)
-		rc := redis.NewClient(&redis.Options{
-			Addr:     controller,
-			Password: cliFlags.controllerPasswd,
-		})
+	// ping the control-tower to see if it is responding via the broker, exit the agent on timeout
+	if err := controlTowerReadyCheck(ctx, rc); err != nil {
+		log.Fatal(err)
+	}
 
-		// TODO: move to a redis package used by both server and agent
-		_, err := rc.Ping(ctx).Result()
+	defer rc.Close()
+
+	subChannel := messages.ZoneChannelDefault
+	if as.Zone != messages.ZoneChannelDefault {
+		subChannel = messages.ZoneChannelController
+	}
+
+	sub := rc.Subscribe(ctx, subChannel)
+	defer sub.Close()
+
+	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, aircrew.WgListenPort)
+	// Create the message describing this peer to be published
+	peerRegister := messages.NewPublishPeerMessage(
+		registerNodeRequest,
+		as.Zone,
+		as.NodePubKey,
+		endpointSocket,
+		as.RequestedIP,
+		as.ChildPrefix)
+
+	// Agent only needs to subscribe
+	if as.Zone == "default" {
+		as.AgentChannel = messages.ZoneChannelDefault
+	} else {
+		as.AgentChannel = messages.ZoneChannelController
+	}
+
+	err = rc.Publish(ctx, as.AgentChannel, peerRegister).Err()
+	if err != nil {
+		log.Errorf("failed to publish subscriber message: %v", err)
+	}
+	defer rc.Close()
+	for {
+		msg, err := sub.ReceiveMessage(ctx)
 		if err != nil {
-			log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
+			log.Fatalf("Failed to subscribe to the controller: %v", err)
+			os.Exit(1)
 		}
-
-		// ping the control-tower to see if it is responding via the broker, exit the agent on timeout
-		if err := controlTowerReadyCheck(ctx, rc); err != nil {
-			log.Fatal(err)
-		}
-
-		defer rc.Close()
-
-		subChannel := messages.ZoneChannelDefault
-		if as.Zone != messages.ZoneChannelDefault {
-			subChannel = messages.ZoneChannelController
-		}
-
-		sub := rc.Subscribe(ctx, subChannel)
-		defer sub.Close()
-
-		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, aircrew.WgListenPort)
-		// Create the message describing this peer to be published
-		peerRegister := messages.NewPublishPeerMessage(
-			registerNodeRequest,
-			as.Zone,
-			as.NodePubKey,
-			endpointSocket,
-			as.RequestedIP,
-			as.ChildPrefix)
-
-		// Agent only needs to subscribe
-		if as.Zone == "default" {
-			as.AgentChannel = messages.ZoneChannelDefault
-		} else {
-			as.AgentChannel = messages.ZoneChannelController
-		}
-
-		err = rc.Publish(ctx, as.AgentChannel, peerRegister).Err()
-		if err != nil {
-			log.Errorf("failed to publish subscriber message: %v", err)
-		}
-		defer rc.Close()
-		for {
-			msg, err := sub.ReceiveMessage(ctx)
-			if err != nil {
-				log.Fatalf("Failed to subscribe to the controller: %v", err)
-				os.Exit(1)
-			}
-			// Switch based on the streaming channel
-			switch msg.Channel {
-			case messages.ZoneChannelController:
-				peerListing := messages.HandlePeerList(msg.Payload)
-				if len(peerListing) > 0 {
-					// Only update the peer list if this node is a member of the zone update
-					if peerListing[0].Zone == as.Zone {
-						log.Debugf("Received message: %+v\n", peerListing)
-						as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
-						as.DeployControlTowerWireguardConfig()
-					}
-				}
-			case messages.ZoneChannelDefault:
-				peerListing := messages.HandlePeerList(msg.Payload)
-				if peerListing != nil {
+		// Switch based on the streaming channel
+		switch msg.Channel {
+		case messages.ZoneChannelController:
+			peerListing := messages.HandlePeerList(msg.Payload)
+			if len(peerListing) > 0 {
+				// Only update the peer list if this node is a member of the zone update
+				if peerListing[0].Zone == as.Zone {
 					log.Debugf("Received message: %+v\n", peerListing)
 					as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
 					as.DeployControlTowerWireguardConfig()
 				}
+			}
+		case messages.ZoneChannelDefault:
+			peerListing := messages.HandlePeerList(msg.Payload)
+			if peerListing != nil {
+				log.Debugf("Received message: %+v\n", peerListing)
+				as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
+				as.DeployControlTowerWireguardConfig()
 			}
 		}
 	}
@@ -369,7 +346,7 @@ func controlTowerReadyCheck(ctx context.Context, client *redis.Client) error {
 	select {
 	case <-healthCheckReplyChan:
 	case <-time.After(readyRequestTimeout * time.Second):
-		return fmt.Errorf("Control tower was not reachable, ensure it is running and attached to the broker")
+		return fmt.Errorf("control tower was not reachable, ensure it is running and attached to the broker")
 	}
 	log.Println("Control tower is available")
 	return nil
