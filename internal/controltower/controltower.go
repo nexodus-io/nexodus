@@ -2,7 +2,6 @@ package controltower
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/redhat-et/jaywalking/internal/controltower/ipam"
+	"github.com/redhat-et/jaywalking/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -88,14 +88,14 @@ func (ct *ControlTower) Run() {
 	pubDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
 	subDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
 
-	log.Debugf("Listening on channel: %s", zoneChannelDefault)
+	log.Debugf("Listening on channel: %s", messages.ZoneChannelDefault)
 
 	// channel for async messages from the zone subscription for the default zone
 	msgChanDefault := make(chan string)
 	ct.msgChannels = append(ct.msgChannels, msgChanDefault)
 	ct.wg.Add(1)
 	go func() {
-		subDefault.subscribe(ctx, zoneChannelDefault, msgChanDefault)
+		subDefault.subscribe(ctx, messages.ZoneChannelDefault, msgChanDefault)
 		for {
 			msg, ok := <-msgChanDefault
 			if !ok {
@@ -103,10 +103,10 @@ func (ct *ControlTower) Run() {
 				ct.wg.Done()
 				return
 			}
-			msgEvent := handleMsg(msg)
+			msgEvent := messages.HandleMessage(msg)
 			switch msgEvent.Event {
-			case registerNodeRequest:
-				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelDefault)
+			case messages.RegisterNodeRequest:
+				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelDefault)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
 					err := ct.AddPeer(ctx, msgEvent)
@@ -127,7 +127,7 @@ func (ct *ControlTower) Run() {
 								}
 							}
 							// publishPeers the latest peer list
-							if _, err := pubDefault.publishPeers(ctx, zoneChannelDefault, peerList); err != nil {
+							if _, err := pubDefault.publishPeers(ctx, messages.ZoneChannelDefault, peerList); err != nil {
 								log.Errorf("unable to publish peer list: %s", err)
 							}
 						}
@@ -192,7 +192,7 @@ type MsgTypes struct {
 	Peer  Peer
 }
 
-func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent MsgEvent) error {
+func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) error {
 	var ipamPrefix string
 	var err error
 	var z *Zone
@@ -278,16 +278,16 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 	controllerChan := make(chan string)
 
 	go func() {
-		sub.subscribe(ctx, zoneChannelController, controllerChan)
-		log.Debugf("Listening on channel: %s", zoneChannelController)
+		sub.subscribe(ctx, messages.ZoneChannelController, controllerChan)
+		log.Debugf("Listening on channel: %s", messages.ZoneChannelController)
 
 		for {
 			msg := <-controllerChan
-			msgEvent := msgHandler(msg)
+			msgEvent := messages.HandleMessage(msg)
 			switch msgEvent.Event {
 			// TODO implement error chans
-			case registerNodeRequest:
-				log.Debugf("Register node msg received on channel [ %s ]\n", zoneChannelController)
+			case messages.RegisterNodeRequest:
+				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelController)
 				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
 					err := ct.AddPeer(ctx, msgEvent)
@@ -309,7 +309,7 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 								}
 							}
 							// publishPeers the latest peer list
-							if _, err := pub.publishPeers(ctx, zoneChannelController, peerList); err != nil {
+							if _, err := pub.publishPeers(ctx, messages.ZoneChannelController, peerList); err != nil {
 								log.Errorf("unable to publish peer updates: %s", err)
 							}
 						}
@@ -321,17 +321,6 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 			}
 		}
 	}()
-}
-
-// handleMsg deals with streaming messages
-func msgHandler(payload string) MsgEvent {
-	var peer MsgEvent
-	err := json.Unmarshal([]byte(payload), &peer)
-	if err != nil {
-		log.Debugf("msgHandler unmarshall error: %v\n", err)
-		return peer
-	}
-	return peer
 }
 
 /*
@@ -453,15 +442,4 @@ func (ct *ControlTower) GetPeer(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, v)
-}
-
-// handleMsg deals with streaming messages
-func handleMsg(payload string) MsgEvent {
-	var peer MsgEvent
-	err := json.Unmarshal([]byte(payload), &peer)
-	if err != nil {
-		log.Debugf("handleMsg unmarshall error: %v\n", err)
-		return peer
-	}
-	return peer
 }

@@ -1,43 +1,18 @@
 package aircrew
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
+	"github.com/redhat-et/jaywalking/internal/messages"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
 
-type PeerListing []Peer
-
-// Peer REST struct
-type Peer struct {
-	ID          uuid.UUID `json:"id"`
-	PublicKey   string    `json:"public-key"`
-	EndpointIP  string    `json:"endpoint-ip"`
-	AllowedIPs  string    `json:"allowed-ips"`
-	Zone        string    `json:"zone"`
-	NodeAddress string    `json:"node-address"`
-	ChildPrefix string    `json:"child-prefix"`
-}
-
-// handleMsg deal with streaming messages
-func HandleMsg(payload string) PeerListing {
-	var peerListing PeerListing
-	err := json.Unmarshal([]byte(payload), &peerListing)
-	if err != nil {
-		log.Debugf("Unmarshalling error from handleMsg: %v\n", err)
-		return nil
-	}
-	return peerListing
-}
-
 // parseAircrewControlTowerConfig this is hacky but assumes there is no local config
 // or if there is will overwrite it from the publisher peer listing
-func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListing PeerListing) {
+func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListing []messages.Peer) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig

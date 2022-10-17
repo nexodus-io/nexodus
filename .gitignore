@@ -12,10 +12,10 @@
 *.out
 
 # Built binaries
-aircrew
+/aircrew
 aircrew-amd64-darwin
 aircrew-amd64-linux
-controltower
+/controltower
 
 # Ops files
 *.pem

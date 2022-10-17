@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/redhat-et/jaywalking/internal/aircrew"
+	"github.com/redhat-et/jaywalking/internal/messages"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -33,20 +33,9 @@ var (
 	cliFlags flags
 )
 
-type MsgEvent struct {
-	Event string
-	Peer  aircrew.Peer
-}
-
 const (
-	zoneChannelController     = "controller"
-	zoneChannelDefault        = "default"
-	healthcheckRequestChannel = "controltower-healthcheck-request"
-	healthcheckReplyChannel   = "controltower-healthcheck-reply"
-	healthcheckRequestMsg     = "controltower-ready-request"
-	readyRequestTimeout       = 10
-
-	aircrewLogEnv = "AIRCREW_LOG_LEVEL"
+	readyRequestTimeout = 10
+	aircrewLogEnv       = "AIRCREW_LOG_LEVEL"
 )
 
 // Message Events
@@ -303,9 +292,9 @@ func runInit() {
 
 		defer rc.Close()
 
-		subChannel := zoneChannelDefault
-		if as.Zone != zoneChannelDefault {
-			subChannel = zoneChannelController
+		subChannel := messages.ZoneChannelDefault
+		if as.Zone != messages.ZoneChannelDefault {
+			subChannel = messages.ZoneChannelController
 		}
 
 		sub := rc.Subscribe(ctx, subChannel)
@@ -313,7 +302,7 @@ func runInit() {
 
 		endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, aircrew.WgListenPort)
 		// Create the message describing this peer to be published
-		peerRegister := publishMessage(
+		peerRegister := messages.NewPublishPeerMessage(
 			registerNodeRequest,
 			as.Zone,
 			as.NodePubKey,
@@ -323,9 +312,9 @@ func runInit() {
 
 		// Agent only needs to subscribe
 		if as.Zone == "default" {
-			as.AgentChannel = zoneChannelDefault
+			as.AgentChannel = messages.ZoneChannelDefault
 		} else {
-			as.AgentChannel = zoneChannelController
+			as.AgentChannel = messages.ZoneChannelController
 		}
 
 		err = rc.Publish(ctx, as.AgentChannel, peerRegister).Err()
@@ -341,8 +330,8 @@ func runInit() {
 			}
 			// Switch based on the streaming channel
 			switch msg.Channel {
-			case zoneChannelController:
-				peerListing := aircrew.HandleMsg(msg.Payload)
+			case messages.ZoneChannelController:
+				peerListing := messages.HandlePeerList(msg.Payload)
 				if len(peerListing) > 0 {
 					// Only update the peer list if this node is a member of the zone update
 					if peerListing[0].Zone == as.Zone {
@@ -351,8 +340,8 @@ func runInit() {
 						as.DeployControlTowerWireguardConfig()
 					}
 				}
-			case zoneChannelDefault:
-				peerListing := aircrew.HandleMsg(msg.Payload)
+			case messages.ZoneChannelDefault:
+				peerListing := messages.HandlePeerList(msg.Payload)
 				if peerListing != nil {
 					log.Debugf("Received message: %+v\n", peerListing)
 					as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
@@ -363,33 +352,18 @@ func runInit() {
 	}
 }
 
-func publishMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
-	msg := MsgEvent{}
-	msg.Event = event
-	peer := aircrew.Peer{
-		PublicKey:   pubKey,
-		EndpointIP:  endpointIP,
-		Zone:        zone,
-		NodeAddress: requestedIP,
-		ChildPrefix: childPrefix,
-	}
-	msg.Peer = peer
-	jMsg, _ := json.Marshal(&msg)
-	return string(jMsg)
-}
-
 // controlTowerReadyCheck blocks until the control-tower responds or the request times out
 func controlTowerReadyCheck(ctx context.Context, client *redis.Client) error {
 	log.Println("Checking the readiness of the control tower")
 	healthCheckReplyChan := make(chan string)
-	sub := client.Subscribe(ctx, healthcheckReplyChannel)
+	sub := client.Subscribe(ctx, messages.HealthcheckReplyChannel)
 	go func() {
 		for {
 			output, _ := sub.ReceiveMessage(ctx)
 			healthCheckReplyChan <- output.Payload
 		}
 	}()
-	if _, err := client.Publish(ctx, healthcheckRequestChannel, healthcheckRequestMsg).Result(); err != nil {
+	if _, err := client.Publish(ctx, messages.HealthcheckRequestChannel, messages.HealthcheckRequestMsg).Result(); err != nil {
 		return err
 	}
 	select {

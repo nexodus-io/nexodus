@@ -7,17 +7,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redhat-et/jaywalking/internal/messages"
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	zoneChannelController     = "controller"
-	zoneChannelDefault        = "default"
-	healthcheckRequestChannel = "controltower-healthcheck-request"
-	healthcheckReplyChannel   = "controltower-healthcheck-reply"
-	healthcheckReplyMsg       = "controltower-healthy"
-	registerNodeRequest       = "register-node-request"
-	registerNodeReply         = "register-node-reply"
 )
 
 // streamer redis struct
@@ -63,7 +54,7 @@ func readyCheckResponder(ctx context.Context, client *redis.Client, readyChan ch
 	subHealthRequests := NewPubsub(client)
 	wg.Add(1)
 	go func() {
-		subHealthRequests.subscribe(ctx, healthcheckRequestChannel, readyChan)
+		subHealthRequests.subscribe(ctx, messages.HealthcheckRequestChannel, readyChan)
 		for {
 			serverStatusRequest, ok := <-readyChan
 			if !ok {
@@ -72,7 +63,7 @@ func readyCheckResponder(ctx context.Context, client *redis.Client, readyChan ch
 			}
 			log.Debugf("Ready check channel message %s", serverStatusRequest)
 			if serverStatusRequest == "controltower-ready-request" {
-				if _, err := client.Publish(ctx, healthcheckReplyChannel, healthcheckReplyMsg).Result(); err != nil {
+				if _, err := client.Publish(ctx, messages.HealthcheckReplyChannel, messages.HealthcheckReplyMsg).Result(); err != nil {
 					log.Errorf("Unable to publish healthcheck reply: %s", err)
 				}
 			}
@@ -84,9 +75,4 @@ func createAllPeerMessage(postData []Peer) (string, string) {
 	id := uuid.NewString()
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)
-}
-
-type MsgEvent struct {
-	Event string
-	Peer  Peer
 }
