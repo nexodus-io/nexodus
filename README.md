@@ -59,49 +59,19 @@ sudo curl https://jaywalking.s3.amazonaws.com/aircrew-amd64-linux --output /usr/
 sudo chmod +x /usr/local/sbin/aircrew
 ```
 
-#### **Start a Streamer (redis) instance**
-You can start redis instance in Cloud or on any other node, that is reachable from all the nodes that needs to be part of the network. Below is an example for podman or docker for ease of use, no other configuration is required. The postgres sql user is `controltower` and does not need to be passed to the controller.
-
-```shell
-docker run \
-    --name redis \
-    -d -p 6379:6379 \
-    redis redis-server \
-    --requirepass <REDIS_PASSWORD>
-
-docker run \
-     --name postgres \
-     -d -p 5432:5432 \
-     -e POSTGRES_USER=controltower \
-     -e POSTGRES_PASSWORD=<SQL_PASSWORD> \
-     docker.io/library/postgres:latest
-```
-
-#### **Verify that the Redis service is up and running**
-```shell
-docker run -it --rm redis redis-cli -h <container-host-ip> -a <REDIS_PASSWD> --no-auth-warning PING
-```
-If it outputs **PONG**, that's a success.
-
-
-#### **Start the ControlTower**
-- ControlTower can run anywhere (e.g. your laptop) ,as far as is it can reach the Streamer (redis) server started above.
+#### **Start the ControlTower stack**
+- ControlTower stack can run anywhere (e.g. your laptop).
 - The ControlTower must be running for agents to connect to the tunnel mesh. 
 - If the ControlTower becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. 
 - The same applies to the aircrew agent, if the agent process exits, tunnels are maintained and only new peer joins are affected.
 
+You can start the ControlTower stack using docker-compose or even podman-compose
 ```shell
-git clone https://github.com/redhat-et/jaywalking.git
-
-cd controltower
-go build -o controltower
-
-./controltower \
-     --streamer-address <REDIS_SERVICE_ADDRESS> \
-     --streamer-password <REDIS_PASSORWD> \
-     --db-address <SQL_SERVICE_ADDRESS> \
-     --db-password <SQL_PASSWORD>
+docker-compose build
+docker-compose up -d
 ```
+You may opt not to use `docker-compose build` if you'd rather use prebuilt images from CI.
+Ports are exposed to your host machine for ease of use.
 
 #### **Generate private/public key pair for nodes**
 Key pair is needed for the node to connect in the mesh network. For a Linux node run the following commands.ex. ~/.wireguard/

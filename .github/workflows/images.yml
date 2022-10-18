@@ -1,0 +1,96 @@
+name: image-build
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: quay.io
+  REPOSITORY: jaywalking
+  CONTROLTOWER_IMAGE_NAME: controltower
+  CONTROLTOWER_UI_IMAGE_NAME: controltower-ui
+  AIRCREW_IMAGE_NAME: aircrew
+
+jobs:
+  build:
+    name: Build Images
+    runs-on: ubuntu-latest
+    environment: image-repositories
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Login to Quay.io
+      uses: redhat-actions/podman-login@v1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.QUAY_ROBOT_USERNAME }}
+        password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+    - name: Extract metadata (tags, labels) for controltower image
+      id: meta-controltower
+      uses: docker/metadata-action@v3.6.2
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLTOWER_IMAGE_NAME }}
+
+    - name: Build controltower image
+      id: build-controltower
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: controltower
+        tags: ${{ steps.meta-controltower.outputs.tags }}
+        labels: ${{ steps.meta-controltower.outputs.labels }}
+        containerfiles: |
+          ./Containerfile.controltower
+
+    - name: Push controltower to quay.io/
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: ${{ steps.build-controltower.outputs.image }}
+        tags: ${{ steps.build-controltower.outputs.tags }}
+        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+
+    - name: Extract metadata (tags, labels) for controltower-ui image
+      id: meta-controltower-ui
+      uses: docker/metadata-action@v3.6.2
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLTOWER_UI_IMAGE_NAME }}
+
+    - name: Build controltower-ui image
+      id: build-controltower-ui
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: controltower-ui
+        tags: ${{ steps.meta-controltower-ui.outputs.tags }}
+        labels: ${{ steps.meta-controltower-ui.outputs.labels }}
+        containerfiles: |
+          ./Containerfile.ui
+
+    - name: Push controltower-ui to quay.io
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: ${{ steps.build-controltower-ui.outputs.image }}
+        tags: ${{ steps.build-controltower-ui.outputs.tags }}
+        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+
+    - name: Extract metadata (tags, labels) for aircrew image
+      id: meta-aircrew
+      uses: docker/metadata-action@v3.6.2
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.AIRCREW_IMAGE_NAME }}
+
+    - name: Build aircrew image
+      id: build-aircrew
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: aircrew
+        tags: ${{ steps.meta-aircrew.outputs.tags }}
+        labels: ${{ steps.meta-aircrew.outputs.labels }}
+        containerfiles: |
+          ./Containerfile.aircrew
+
+    - name: Push aircrew to quay.io/
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: ${{ steps.build-aircrew.outputs.image }}
+        tags: ${{ steps.build-aircrew.outputs.tags }}
+        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}

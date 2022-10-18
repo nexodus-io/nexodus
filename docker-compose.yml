@@ -19,6 +19,9 @@ services:
 
   controller:
     image: quay.io/jaywalking/controltower
+    depends_on:
+      - postgres
+      - redis
     build:
       context: .
       dockerfile: ./Containerfile.controltower
@@ -27,13 +30,15 @@ services:
     command:
       - "--streamer-address=redis"
       - "--streamer-password=floofykittens"
-      - "--db-address=redis"
+      - "--db-address=postgres"
       - "--db-password=floofykittens"
     environment:
       CONTROLTOWER_LOG_LEVEL: debug
   
   ui:
-    image: quay.io/jaywalking/ui
+    image: quay.io/jaywalking/controltower-ui
+    depends_on:
+     - controller
     build:
       context: .
       dockerfile: ./Containerfile.ui

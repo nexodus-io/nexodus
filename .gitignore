@@ -26,3 +26,8 @@ default-ipam.json
 # misc
 *.idea
 .DS_Store
+
+# test
+*.json
+aircrew-*.sh
+*.key
