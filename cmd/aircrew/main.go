@@ -276,6 +276,22 @@ func runInit() {
 	}
 
 	sub := rc.Subscribe(ctx, subChannel)
+	msg, err := sub.ReceiveTimeout(ctx, 5)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	switch msg := msg.(type) {
+	case *Subscription:
+		// Ignore.
+	case *Pong:
+		// Ignore.
+	case *Message:
+		log.Warn("Throwing away message received at subscription %v", msg)
+	default:
+		log.Fatal(err)
+	}
+
 	defer sub.Close()
 
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, aircrew.WgListenPort)
