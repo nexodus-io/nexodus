@@ -22,7 +22,7 @@ func NewPubsub(client *redis.Client) *streamer {
 }
 
 // publishPeers a message to the channel
-func (s *streamer) publishPeers(ctx context.Context, channel string, data []Peer) (int64, error) {
+func (s *streamer) publishPeers(ctx context.Context, channel string, data []messages.Peer) (int64, error) {
 	_, msg := createAllPeerMessage(data)
 	log.Printf("Published new message: %s\n", msg)
 	return s.client.Publish(ctx, channel, msg).Result()
@@ -71,7 +71,7 @@ func readyCheckResponder(ctx context.Context, client *redis.Client, readyChan ch
 	}()
 }
 
-func createAllPeerMessage(postData []Peer) (string, string) {
+func createAllPeerMessage(postData []messages.Peer) (string, string) {
 	id := uuid.NewString()
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)

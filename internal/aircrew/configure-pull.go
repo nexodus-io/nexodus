@@ -88,7 +88,7 @@ func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListi
 				value.EndpointIP,
 				value.PublicKey,
 				value.NodeAddress,
-				value.Zone)
+				value.ZoneID)
 		}
 		// Parse the [Interface] section of the wg config
 		if value.PublicKey == as.NodePubKey {

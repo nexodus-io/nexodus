@@ -9,6 +9,14 @@ services:
       - "--requirepass"
       - "floofykittens"
 
+  postgres:
+    image: docker.io/library/postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=controltower
+      - POSTGRES_PASSWORD=floofykittens
+
   controller:
     image: quay.io/jaywalking/controltower
     build:
@@ -17,8 +25,10 @@ services:
     ports:
       - 8080:8080
     command:
-      - "-streamer-address=redis"
-      - "-streamer-passwd=floofykittens"
+      - "--streamer-address=redis"
+      - "--streamer-password=floofykittens"
+      - "--db-address=redis"
+      - "--db-password=floofykittens"
     environment:
       CONTROLTOWER_LOG_LEVEL: debug
   

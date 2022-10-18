@@ -26,9 +26,9 @@ type Message struct {
 // Peer pub/sub struct
 type Peer struct {
 	PublicKey   string `json:"public-key"`
+	ZoneID      string `json:"zone-id"`
 	EndpointIP  string `json:"endpoint-ip"`
 	AllowedIPs  string `json:"allowed-ips"`
-	Zone        string `json:"zone"`
 	NodeAddress string `json:"node-address"`
 	ChildPrefix string `json:"child-prefix"`
 }
@@ -39,7 +39,7 @@ func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPr
 	peer := Peer{
 		PublicKey:   pubKey,
 		EndpointIP:  endpointIP,
-		Zone:        zone,
+		ZoneID:      zone,
 		NodeAddress: requestedIP,
 		ChildPrefix: childPrefix,
 	}
