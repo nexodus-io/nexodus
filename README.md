@@ -60,17 +60,24 @@ sudo chmod +x /usr/local/sbin/aircrew
 ```
 
 #### **Start a Streamer (redis) instance**
-You can start redis instance in Cloud or on any other node, that is reachable from all the nodes that needs to be part of the network. Below is an example for podman or docker for ease of use, no other configuration is required.
+You can start redis instance in Cloud or on any other node, that is reachable from all the nodes that needs to be part of the network. Below is an example for podman or docker for ease of use, no other configuration is required. The postgres sql user is `controltower` and does not need to be passed to the controller.
 
 ```shell
 docker run \
     --name redis \
     -d -p 6379:6379 \
     redis redis-server \
-    --requirepass <REDIS_PASSWD>
+    --requirepass <REDIS_PASSWORD>
+
+docker run \
+     --name postgres \
+     -d -p 5432:5432 \
+     -e POSTGRES_USER=controltower \
+     -e POSTGRES_PASSWORD=<SQL_PASSWORD> \
+     docker.io/library/postgres:latest
 ```
 
-#### **Verify that Streamer is up and running**
+#### **Verify that the Redis service is up and running**
 ```shell
 docker run -it --rm redis redis-cli -h <container-host-ip> -a <REDIS_PASSWD> --no-auth-warning PING
 ```
@@ -90,8 +97,10 @@ cd controltower
 go build -o controltower
 
 ./controltower \
-    -streamer-address <REDIS_SERVER_ADDRESS> \
-    -streamer-passwd <REDIS_PASSWD>
+     --streamer-address <REDIS_SERVICE_ADDRESS> \
+     --streamer-password <REDIS_PASSORWD> \
+     --db-address <SQL_SERVICE_ADDRESS> \
+     --db-password <SQL_PASSWORD>
 ```
 
 #### **Generate private/public key pair for nodes**
