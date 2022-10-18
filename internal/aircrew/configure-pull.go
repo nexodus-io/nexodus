@@ -19,6 +19,7 @@ type AircrewState struct {
 	NodePvtKey         string
 	NodePubKeyInConfig bool
 	AircrewConfigFile  string
+	HubRouter          bool
 	Daemon             bool
 	NodeOS             string
 	Zone               string
@@ -47,6 +48,8 @@ type wgLocalConfig struct {
 	Address    string
 	ListenPort int
 	SaveConfig bool
+	PostUp     string
+	PostDown   string
 }
 
 // parseAircrewControlTowerConfig this is hacky but assumes there is no local config
@@ -55,15 +58,39 @@ func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListi
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
-
+	var hubRouterExists bool
 	for _, value := range peerListing {
 		if value.PublicKey == as.NodePubKey {
 			as.NodePubKeyInConfig = true
 		}
+		if value.HubRouter {
+			hubRouterExists = true
+		}
 	}
-
 	if !as.NodePubKeyInConfig {
 		log.Printf("Public Key for this node %s was not found in the control tower update\n", as.NodePubKey)
+	}
+	// determine if the peer listing for this node is a hub zone or hub-router
+	for _, value := range peerListing {
+		if value.PublicKey == as.NodePubKey && value.HubRouter {
+			log.Debug("This node is a hub-router")
+			if as.NodeOS == Darwin.String() {
+				log.Fatalf("OSX nodes are not supported as bouncer hubs")
+			} else {
+				as.deployControlTowerHubWireguardConfig(listenPort, peerListing)
+				return
+			}
+		}
+		if value.HubZone {
+			log.Debug("This zone is a hub-zone")
+			if !hubRouterExists {
+				log.Error("Cannot deploy to a hub-zone if no hub router has joined the zone yet. See `--hub-router`")
+				os.Exit(1)
+			}
+			as.deployControlTowerHubWireguardConfig(listenPort, peerListing)
+			return
+
+		}
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
@@ -97,6 +124,8 @@ func (as *AircrewState) ParseAircrewControlTowerConfig(listenPort int, peerListi
 				value.AllowedIPs,
 				listenPort,
 				false,
+				"",
+				"",
 			}
 			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ]\n",
 				localInterface.Address,

@@ -188,3 +188,12 @@ func ReadKeyFileToString(s string) (string, error) {
 	rawStr := string(buf)
 	return strings.Replace(rawStr, "\n", "", -1), nil
 }
+
+// ParseIPNet return an IPNet from a string
+func ParseIPNet(s string) (*net.IPNet, error) {
+	ip, ipNet, err := net.ParseCIDR(s)
+	if err != nil {
+		return nil, err
+	}
+	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
+}

@@ -62,6 +62,14 @@ start_containers() {
         --cap-add=NET_ADMIN \
         --cap-add=NET_RAW \
         ${node_image}
+
+    # Start node3
+    sudo $DOCKER run -itd \
+        --name=node3 \
+        --cap-add=SYS_MODULE \
+        --cap-add=NET_ADMIN \
+        --cap-add=NET_RAW \
+        ${node_image}
 }
 
 start_controltower() {
@@ -132,8 +140,10 @@ EOF
     # Copy binaries and scripts (copying the controltower even though we are running it on the VM instead of in a container)
     sudo $DOCKER cp $(which aircrew) node1:/bin/aircrew
     sudo $DOCKER cp $(which aircrew) node2:/bin/aircrew
+    sudo $DOCKER cp $(which aircrew) node3:/bin/aircrew
     sudo $DOCKER cp $(which controltower) node1:/bin/controltower
     sudo $DOCKER cp $(which controltower) node2:/bin/controltower
+    sudo $DOCKER cp $(which controltower) node3:/bin/controltower
     sudo $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
     sudo $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
 
@@ -348,7 +358,6 @@ EOF
     sleep 2
 }
 
-
 setup_child_prefix_connectivity() {
     ###########################################################################
     # Description:                                                            #
@@ -466,6 +475,147 @@ EOF
     fi
 }
 
+setup_hub_spoke_connectivity() {
+    ###########################################################################
+    # Description:                                                            #
+    # Verify a child-prefix and request-ip can be created and add a loopback  #
+    # on each node in the child prefix cidr and verify connectivity           #
+    # Arguments:                                                              #
+    #   None                                                                  #
+    ###########################################################################
+    # Shared controller address
+    local controller=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
+    local controller_passwd=floofykittens
+    local zone=hub-spoke-zone
+    local node_pvtkey_file=/etc/wireguard/private.key
+
+    # node1 specific details
+    local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
+    local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
+    local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node1)
+
+    # node2 specific details
+    local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
+    local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
+    local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
+
+    # node3 specific details
+    local node3_pubkey=305lmZr0lFYy3E1S6e/GLCup300W5T4mOMnF9SKjmzc=
+    local node3_pvtkey=CCWJ1RfGdFxq9nBCYLa33I6B6IR9EPkMGnyb5gnJ+FI=
+    local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node3)
+
+    # Delete the ipam storage in the case the run has re-run since we dont overwrite existing child-prefix
+    rm -rf hub-spoke-zone.json
+
+    # Create the new zone
+    curl -L -X POST 'http://localhost:8080/zones' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "Name": "hub-spoke-zone",
+        "Description": "Hub/Spoke Zone",
+        "CIDR": "10.89.0.0/27",
+        "Hub-Zone": true
+    }'
+
+    # Create private key files for both nodes
+    echo -e  "$node1_pvtkey" | tee node1-private.key
+    echo -e  "$node2_pvtkey" | tee node2-private.key
+    echo -e  "$node3_pvtkey" | tee node3-private.key
+
+    # Kill the aircrew process on both nodes (no process running on node3 yet)
+    sudo $DOCKER exec node1 killall aircrew
+    sudo $DOCKER exec node2 killall aircrew
+
+    # Node-1 aircrew run
+    cat <<EOF > aircrew-run-node1.sh
+#!/bin/bash
+    aircrew --public-key=${node1_pubkey} \
+    --private-key-file=/etc/wireguard/private.key \
+    --controller=${controller} \
+    --controller-password=${controller_passwd} \
+    --internal-network \
+    --hub-router \
+    --zone=${zone}
+EOF
+
+    # Node-2 aircrew run
+    cat <<EOF > aircrew-run-node2.sh
+#!/bin/bash
+    aircrew --public-key=${node2_pubkey} \
+    --private-key-file=/etc/wireguard/private.key \
+    --controller=${controller} \
+    --controller-password=${controller_passwd} \
+    --internal-network \
+    --zone=${zone}
+EOF
+
+    # Node-3 aircrew run
+    cat <<EOF > aircrew-run-node3.sh
+#!/bin/bash
+    aircrew --public-key=${node3_pubkey} \
+    --private-key-file=/etc/wireguard/private.key \
+    --controller=${controller} \
+    --controller-password=${controller_passwd} \
+    --internal-network \
+    --zone=${zone}
+EOF
+
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying aircrew-run-node1.sh ==="
+    cat aircrew-run-node1.sh
+    echo "=== Displaying aircrew-run-node2.sh ==="
+    cat aircrew-run-node2.sh
+    echo "=== Displaying aircrew-run-node3.sh ==="
+    cat aircrew-run-node3.sh
+
+    # Copy files to the containers
+    sudo $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
+    sudo $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
+    sudo $DOCKER cp ./aircrew-run-node3.sh node3:/bin/aircrew-run-node3.sh
+    sudo $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
+    sudo $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
+    sudo $DOCKER cp ./node3-private.key node3:/etc/wireguard/private.key
+
+    # Set permissions in the container
+    sudo $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
+    sudo $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
+    sudo $DOCKER exec node3 chmod +x /bin/aircrew-run-node3.sh
+
+    # Start the agents on all 3 nodes nodes (currently the hub-router needs to be spun up first)
+    sudo $DOCKER exec node1 /bin/aircrew-run-node1.sh &
+    sleep 5
+    sudo $DOCKER exec node2 /bin/aircrew-run-node2.sh &
+    sudo $DOCKER exec node3 /bin/aircrew-run-node3.sh &
+
+    # Allow four seconds for the wg0 interface to readdress
+    sleep 4
+
+    # Check connectivity between node3 -> node1
+    if sudo $DOCKER exec node3 ping -c 2 -w 2 $(sudo $DOCKER exec node1 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1); then
+        echo "peer nodes successfully communicated"
+    else
+        echo "node3 failed to reach node1, e2e failed"
+        exit 1
+    fi
+    # Check connectivity between node3 -> node2
+    if sudo $DOCKER exec node3 ping -c 2 -w 2 $(sudo $DOCKER exec node2 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1); then
+        echo "peer nodes successfully communicated"
+    else
+        echo "node3 failed to reach node2, e2e failed"
+        exit 1
+    fi
+
+    # Check connectivity between node1 -> node3
+    if sudo $DOCKER exec node1 ping -c 2 -w 2 $(sudo $DOCKER exec node3 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1); then
+        echo "peer nodes successfully communicated"
+    else
+        echo "node1 failed to reach node3, e2e failed"
+        exit 1
+    fi
+
+
+}
+
 clean_nodes() {
     ###########################################################################
     # Description:                                                            #
@@ -513,6 +663,9 @@ setup_custom_second_zone_connectivity
 verify_connectivity
 clean_nodes
 setup_child_prefix_connectivity
+verify_connectivity
+clean_nodes
+setup_hub_spoke_connectivity
 verify_connectivity
 clean_nodes
 

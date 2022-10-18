@@ -31,9 +31,12 @@ type Peer struct {
 	Zone        string `json:"zone"`
 	NodeAddress string `json:"node-address"`
 	ChildPrefix string `json:"child-prefix"`
+	HubRouter   bool   `json:"hub-router"`
+	HubZone     bool   `json:"hub-zone"`
+	ZonePrefix  string `json:"zone-prefix"`
 }
 
-func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
+func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string, hubRouter bool) string {
 	msg := Message{}
 	msg.Event = event
 	peer := Peer{
@@ -42,6 +45,7 @@ func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPr
 		Zone:        zone,
 		NodeAddress: requestedIP,
 		ChildPrefix: childPrefix,
+		HubRouter:   hubRouter,
 	}
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)
@@ -50,7 +54,7 @@ func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPr
 
 type PeerListing []Peer
 
-// handleMsg deal with streaming messages
+// HandleMsg deal with streaming messages
 func HandlePeerList(payload string) []Peer {
 	var peerListing []Peer
 	err := json.Unmarshal([]byte(payload), &peerListing)

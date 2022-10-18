@@ -18,9 +18,10 @@ type Zone struct {
 	Description string
 	IpCidr      string
 	ZoneIpam    ipam.AirliftIpam
+	HubZone     bool
 }
 
-func NewZone(id uuid.UUID, name string, description string, cidr string) (*Zone, error) {
+func NewZone(id uuid.UUID, name, description, cidr string, hubZone bool) (*Zone, error) {
 	zoneIpamSaveFile := fmt.Sprintf("%s.json", id.String())
 	// TODO: until we save control tower state between restarts, the ipam save file will be out of sync
 	// new zones will delete the stale IPAM file on creation.
@@ -46,6 +47,7 @@ func NewZone(id uuid.UUID, name string, description string, cidr string) (*Zone,
 		Description: description,
 		IpCidr:      cidr,
 		ZoneIpam:    *ipam,
+		HubZone:     hubZone,
 	}, nil
 }
 
@@ -61,12 +63,14 @@ func (z *Zone) MarshalJSON() ([]byte, error) {
 			Name        string      `json:"name"`
 			Description string      `json:"description"`
 			IpCidr      string      `json:"cidr"`
+			HubZone     bool        `json:"hub-zone"`
 		}{
 			ID:          z.ID,
 			Peers:       peers,
 			Name:        z.Name,
 			Description: z.Description,
 			IpCidr:      z.IpCidr,
+			HubZone:     z.HubZone,
 		})
 }
 

@@ -179,7 +179,7 @@ func (ct *ControlTower) Shutdown(ctx context.Context) error {
 // setZoneDetails set default zone attributes
 func (ct *ControlTower) setZoneDefaultDetails() error {
 	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
-	z, err := NewZone(id, DefaultZoneName, "Default Zone", ipPrefixDefault)
+	z, err := NewZone(id, DefaultZoneName, "Default Zone", ipPrefixDefault, false)
 	if err != nil {
 		return err
 	}
@@ -198,10 +198,21 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 	var ipamPrefix string
 	var err error
 	var z *Zone
+	var allocateHubRouter bool
+	var hubZone bool
 	for _, zone := range ct.Zones {
 		if msgEvent.Peer.Zone == zone.Name {
 			ipamPrefix = zone.IpCidr
 			z = zone
+			// check if the zone is a hub zone and the peer joining is a zone-router
+			// TODO throw an error to the agent if a node tries to join as a hub router to a zone that isn't hub enabled
+			if msgEvent.Peer.HubRouter && zone.HubZone {
+				allocateHubRouter = true
+			}
+			// check if the zone the node is joining is hub zone enabled
+			if zone.HubZone {
+				hubZone = true
+			}
 		}
 	}
 	// todo, the needs to go over an err channal to the agent
@@ -265,6 +276,15 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 		ip,
 		childPrefix,
 	)
+	// set the peer as a hub-router hub and add the zone prefix to the peer listing
+	if allocateHubRouter {
+		peer.HubRouter = true
+	}
+	// if the node is in a bouncer zone but not a hub
+	if hubZone {
+		peer.ZonePrefix = ipamPrefix
+		peer.HubZone = true
+	}
 
 	log.Debugf("node allocated: %+v\n", peer)
 	ct.Peers[peer.ID] = &peer
@@ -333,6 +353,7 @@ type ZoneRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	IpCidr      string `json:"cidr"`
+	HubZone     bool   `json:"hub-zone"`
 }
 
 // PostZone creates a new zone via a REST call
@@ -353,7 +374,7 @@ func (ct *ControlTower) PostZone(c *gin.Context) {
 	}
 
 	// Create the zone
-	newZone, err := NewZone(uuid.New(), request.Name, request.Description, request.IpCidr)
+	newZone, err := NewZone(uuid.New(), request.Name, request.Description, request.IpCidr, request.HubZone)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "unable to create zone"})
 		return

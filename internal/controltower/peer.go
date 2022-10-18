@@ -13,6 +13,9 @@ type Peer struct {
 	Zone        string    `json:"zone"`
 	NodeAddress string    `json:"node-address"`
 	ChildPrefix string    `json:"child-prefix"`
+	HubRouter   bool      `json:"hub-router"`
+	HubZone     bool      `json:"hub-zone"`
+	ZonePrefix  string    `json:"zone-prefix"`
 }
 
 func NewPeer(publicKey, endpointIP, allowedIPs, zone, nodeAddress, childPrefix string) Peer {
