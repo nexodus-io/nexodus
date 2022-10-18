@@ -99,7 +99,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:        "zone",
-				Value:       "default",
+				Value:       "00000000-0000-0000-0000-000000000000",
 				Usage:       "the tenancy zone the peer is to join - zone needs to be created before joining (optional)",
 				Destination: &cliFlags.zone,
 				EnvVars:     []string{"AIRCREW_ZONE"},
@@ -312,7 +312,7 @@ func runInit() {
 			peerListing := messages.HandlePeerList(msg.Payload)
 			if len(peerListing) > 0 {
 				// Only update the peer list if this node is a member of the zone update
-				if peerListing[0].Zone == as.Zone {
+				if peerListing[0].ZoneID == as.Zone {
 					log.Debugf("Received message: %+v\n", peerListing)
 					as.ParseAircrewControlTowerConfig(cliFlags.listenPort, peerListing)
 					as.DeployControlTowerWireguardConfig()

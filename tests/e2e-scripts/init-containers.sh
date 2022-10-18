@@ -46,6 +46,17 @@ start_containers() {
         -d -p 6379:6379 \
         docker.io/library/redis:latest redis-server \
         --requirepass floofykittens
+    
+    # Start postgres
+    sudo $DOCKER run \
+        --name postgres \
+        -d -p 5432:5432 \
+        -e POSTGRES_USER=controltower \
+        -e POSTGRES_PASSWORD=floofykittens \
+        docker.io/library/postgres:latest 
+    
+    # Let postgres stablize
+    sleep 10
 
     # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the aircrew cmd)
     sudo $DOCKER run -itd \
@@ -55,7 +66,7 @@ start_containers() {
         --cap-add=NET_RAW \
         ${node_image}
 
-    # Start node2
+    # Start node2post
     sudo $DOCKER run -itd \
         --name=node2 \
         --cap-add=SYS_MODULE \
@@ -73,9 +84,12 @@ start_controltower() {
     #   None                                                                  #
     ###########################################################################
     local redis_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
+    local postgres_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" postgres)
     controltower \
-        -streamer-address ${redis_ip} \
-        -streamer-passwd floofykittens &
+        --streamer-address ${redis_ip} \
+        --streamer-password floofykittens \
+        --db-address ${postgres_ip} \
+        --db-password floofykittens &
 }
 
 copy_binaries() {
@@ -89,7 +103,7 @@ copy_binaries() {
     # Shared controller address
     local controller=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
     local controller_passwd=floofykittens
-    local zone=default
+    local zone="00000000-0000-0000-0000-000000000000"
 
     # node1 specific details
     local node1_pubkey=AbZ1fPkCbjYAe9D61normbb7urAzMGaRMDVyR5Bmzz4=
@@ -183,7 +197,6 @@ setup_custom_zone_connectivity() {
     # Shared controller address
     local controller=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
     local controller_passwd=floofykittens
-    local zone=zone-blue
     local node_pvtkey_file=/etc/wireguard/private.key
 
     # node1 specific details
@@ -197,13 +210,13 @@ setup_custom_zone_connectivity() {
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
     # Create the new zone
-    curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-blue",
         "Description": "Tenant - Zone Blue",
         "CIDR": "10.140.0.0/20"
-    }'
+    }' | jq -r '.ID')
 
     # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
     echo -e  "$node1_pvtkey\n\n" | tee node1-private.key
@@ -271,7 +284,6 @@ setup_custom_second_zone_connectivity() {
     # Shared controller address
     local controller=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
     local controller_passwd=floofykittens
-    local zone=zone-red
     local node_pvtkey_file=/etc/wireguard/private.key
 
     # node1 specific details
@@ -285,13 +297,13 @@ setup_custom_second_zone_connectivity() {
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-red",
         "Description": "Tenant - Zone Red",
         "CIDR": "100.64.0.0/20"
-    }'
+    }' | jq -r '.ID')
 
     # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
@@ -360,7 +372,6 @@ setup_child_prefix_connectivity() {
     # Shared controller address
     local controller=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.IPAddress }}" redis)
     local controller_passwd=floofykittens
-    local zone=prefix-test
     local node_pvtkey_file=/etc/wireguard/private.key
 
     # node1 specific details
@@ -381,13 +392,13 @@ setup_child_prefix_connectivity() {
     rm -rf prefix-test.json
 
     # Create the new zone with a CGNAT range
-    curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "prefix-test",
         "Description": "Tenant - Zone prefix-test",
         "CIDR": "192.168.200.0/24"
-    }'
+    }' | jq -r '.ID')
 
     # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
     echo -e  "\n$node1_pvtkey" | tee node1-private.key

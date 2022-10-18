@@ -46,7 +46,7 @@ Start the ControlTower with debug logging (You can start it on your laptop where
 ```shell
 CONTROLTOWER_LOG_LEVEL=debug ./controltower  \
     -streamer-address <REDIS_SERVER_ADDRESS> \
-    -streamer-passwd <REDIS_PASSWD>
+    -streamer-password <REDIS_PASSWD>
 ```
 
 Start the agent on a node with debug logging. This is just an example command which starts the agent and connect the node to default zone. If you are testing different connectivity scenarios as mentioned in the main [readme](../README.md), you need to invoke the agent with relevant configuration options:
