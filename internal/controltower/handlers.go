@@ -166,7 +166,7 @@ func (ct *ControlTower) handleGetDevices(c *gin.Context) {
 		return
 	}
 	var device Device
-	result := ct.db.First(&device, "id = ?", k)
+	result := ct.db.Debug().First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return

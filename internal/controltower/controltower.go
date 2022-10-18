@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -45,7 +46,17 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 	streamSocket := fmt.Sprintf("%s:%d", streamService, streamPort)
 	client := NewRedisClient(streamSocket, streamPasswd)
 	dsn := fmt.Sprintf("host=%s user=controltower password=%s dbname=controltower port=5432 sslmode=disable", dbHost, dbPass)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
+	var db *gorm.DB
+	connectDb := func() error {
+		var err error
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	err := backoff.Retry(connectDb, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, err
 	}

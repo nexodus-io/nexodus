@@ -31,4 +31,4 @@ jobs:
         go install ./...
 
     - name: Run e2e
-      run: make -C tests OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} run-ci-e2e
+      run: make OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} run-ci-e2e
