@@ -24,7 +24,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ secrets.QUAY_ROBOT_USERNAME }}
-        password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+        password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
     - name: Extract metadata (tags, labels) for controltower image
       id: meta-controltower
