@@ -60,7 +60,7 @@ sudo chmod +x /usr/local/sbin/aircrew
 ```
 
 #### **Start the ControlTower stack**
-- ControlTower stack can run anywhere (e.g. your laptop).
+- ControlTower stack can run anywhere, as far as the aircrew agents (mentioned below) can reach it.
 - The ControlTower must be running for agents to connect to the tunnel mesh. 
 - If the ControlTower becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. 
 - The same applies to the aircrew agent, if the agent process exits, tunnels are maintained and only new peer joins are affected.
