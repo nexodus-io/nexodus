@@ -41,12 +41,20 @@ docker run -it --rm redis redis-cli -h <container-host-ip> -a <REDIS_PASSWD> --n
 ```
 If it outputs **PONG**, that's a success.
 
-Start the ControlTower with debug logging (You can start it on your laptop where you are hacking):
+Start the ControlTower with debug logging (You can start it on your laptop where you are hacking). It contains two component 
+1) postgres db instance
+```shell
+docker run --name postgres -e POSTGRES_USER=<USERNAME> -e POSTGRES_PASSWORD=<PASSWORD> -p 5432:5432 -d postgres
+```
 
+2) controltower instance (connects to postgres db instance for persistent storage)
 ```shell
 CONTROLTOWER_LOG_LEVEL=debug ./controltower  \
-    -streamer-address <REDIS_SERVER_ADDRESS> \
-    -streamer-password <REDIS_PASSWD>
+    --streamer-address <REDIS_SERVER_ADDRESS> \
+    --streamer-password <REDIS_PASSWD> \
+    --db-address <POSTGRES_ADDR> \
+    --db-password <POSTGRES_PASS>    
+
 ```
 
 Start the agent on a node with debug logging. This is just an example command which starts the agent and connect the node to default zone. If you are testing different connectivity scenarios as mentioned in the main [readme](../README.md), you need to invoke the agent with relevant configuration options:
