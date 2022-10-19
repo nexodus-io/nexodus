@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/redhat-et/jaywalking/internal/controltower"
+	"github.com/redhat-et/apex/internal/controltower"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
