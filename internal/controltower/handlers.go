@@ -59,7 +59,7 @@ func (ct *ControlTower) handleListZones(c *gin.Context) {
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching zones from db"})
 	}
-	var results []ZoneJSON
+	results := make([]ZoneJSON, 0)
 	for _, z := range zones {
 		var peers []string
 		ct.db.Model(&Peer{}).Where("zone_id = ?", z.ID).Pluck("id", &peers)
@@ -143,7 +143,7 @@ func (ct *ControlTower) handleListDevices(c *gin.Context) {
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 	}
-	var results []DeviceJSON
+	results := make([]DeviceJSON, 0)
 	for _, d := range devices {
 		var peers []string
 		ct.db.Model(&Peer{}).Where("device_id = ?", d.ID).Pluck("id", &peers)

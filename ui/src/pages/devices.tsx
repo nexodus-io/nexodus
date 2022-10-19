@@ -1,5 +1,5 @@
 
-import { Datagrid, List, TextField, ReferenceArrayField, Show, SimpleShowLayout, ShowButton, SingleFieldList, ChipField } from 'react-admin';
+import { Datagrid, List, TextField, ReferenceArrayField, Show, SimpleShowLayout, SingleFieldList, ChipField } from 'react-admin';
 
 export const DeviceList = () => (
     <List>
