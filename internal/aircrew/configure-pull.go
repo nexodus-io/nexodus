@@ -62,6 +62,10 @@ func (ac *Aircrew) ParseAircrewControlTowerConfig(listenPort int, peerListing []
 
 			var allowedIPs string
 			if value.ChildPrefix != "" {
+				// check the netlink routing tables for the child prefix and exit if it already exists
+				if ac.os == Linux.String() && routeExists(value.ChildPrefix) {
+					log.Errorf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", value.ChildPrefix)
+				}
 				allowedIPs = appendChildPrefix(value.AllowedIPs, value.ChildPrefix)
 			} else {
 				allowedIPs = value.AllowedIPs
@@ -156,6 +160,5 @@ func (ac *Aircrew) DeployControlTowerWireguardConfig() {
 }
 
 func appendChildPrefix(nodeAddress, childPrefix string) string {
-	allowedIps := fmt.Sprintf("%s, %s", nodeAddress, childPrefix)
-	return allowedIps
+	return fmt.Sprintf("%s, %s", nodeAddress, childPrefix)
 }

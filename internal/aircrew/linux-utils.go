@@ -1,37 +1,31 @@
+//go:build linux
+
 package aircrew
 
 import (
-	"fmt"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
-// deleteIface checks to see if  is an interface exists and deletes it
-func linkExists(ifaceName string) bool {
-	if _, err := netlink.LinkByName(ifaceName); err != nil {
-		return false
-	}
-	return true
-}
-
-// delLink deletes the link and assumes it exists
-func delLink(ifaceName string) error {
-	if link, err := netlink.LinkByName(ifaceName); err == nil {
-		if err = netlink.LinkDel(link); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// IfaceUP brings a specified netlink interface up
-func IfaceUP(ifaceName string) error {
-	link, err := netlink.LinkByName(ifaceName)
+// routeExists checks the netlink routes for the desitination prefix
+func routeExists(prefix string) bool {
+	destNet, err := ParseIPNet(prefix)
 	if err != nil {
-		return fmt.Errorf("failed to find the specified interface %s: %v", ifaceName, err)
+		log.Errorf("Failed to parse a valid network address from %s: %v", prefix, err)
 	}
-	if err := netlink.LinkSetUp(link); err != nil {
-		return fmt.Errorf("failed to enable the specified interface %s: %v", ifaceName, err)
+	destRoute := &netlink.Route{Dst: destNet}
+	family := netlink.FAMILY_V6
+	if destNet.IP.To4() != nil {
+		family = netlink.FAMILY_V4
 	}
-	return nil
+	match, err := netlink.RouteListFiltered(family, destRoute, netlink.RT_FILTER_DST)
+	if err != nil {
+		log.Errorf("error retreiving netlink routes: %v", err)
+		return true
+	}
+	if len(match) > 0 {
+		return true
+	}
+	return false
+
 }
