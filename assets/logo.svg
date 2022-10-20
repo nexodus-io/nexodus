@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="2000"
+   height="600"
+   viewBox="0 0 529.16667 158.74986"
+   version="1.1"
+   id="svg5"
+   inkscape:export-filename="apex-full.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   sodipodi:docname="apex.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.70365411"
+     inkscape:cx="662.96777"
+     inkscape:cy="607.54282"
+     inkscape:window-width="3072"
+     inkscape:window-height="1655"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <circle
+       style="fill:#949ef7;fill-opacity:1;stroke:#464b75;stroke-width:10.5833;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       id="path113"
+       cx="99.827972"
+       cy="78.734001"
+       r="67.621513"
+       inkscape:label="path113" />
+    <circle
+       style="fill:#949ef7;fill-opacity:1;stroke:#464b75;stroke-width:10.5833;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       id="path113-5"
+       cx="99.828049"
+       cy="78.734077"
+       r="67.621513"
+       inkscape:label="path113" />
+    <path
+       id="path383"
+       style="fill:#464b75;fill-opacity:1;stroke:#464b75;stroke-width:0.264583;stroke-opacity:1"
+       inkscape:transform-center-y="-24.493686"
+       d="m 99.894685,36.395196 -42.424801,73.480814 -8.027933,13.90458 a 67.621513,67.621513 0 0 0 50.386071,22.57485 67.621513,67.621513 0 0 0 50.465198,-22.66735 l -7.97419,-13.81208 z" />
+    <path
+       id="path383-7"
+       style="fill:#ffffff;stroke:#464b75;stroke-width:0.0552922"
+       inkscape:transform-center-y="-5.1186534"
+       d="m 99.973091,60.520825 -8.865769,15.355962 c 0,0 -4.615289,8.08146 -8.865768,15.35596 -0.806437,1.380181 3.130264,0.786115 4.728735,0.797645 1.872654,0.01351 3.680081,-0.843749 5.552753,-0.854447 1.576931,-0.009 3.107918,0.725571 4.68375,0.66604 0.943524,-0.03564 1.822135,-0.617207 2.766299,-0.609237 1.082619,0.0091 2.077379,0.72584 3.159729,0.752026 1.46848,0.03553 2.86265,-0.838698 4.33131,-0.811806 1.02508,0.01877 1.97542,0.651216 3.00034,0.67691 0.87825,0.02202 1.71849,-0.430553 2.59678,-0.450483 0.77165,-0.01751 1.52565,0.317585 2.29706,0.291889 0.79648,-0.02653 2.77026,0.216306 2.34638,-0.458536 -5.91796,-9.42171 -8.86578,-15.355961 -8.86578,-15.355961 z"
+       sodipodi:nodetypes="ccssssssssssscc" />
+    <path
+       id="rect16079"
+       style="fill:#949ef7;stroke-width:0.895584"
+       d="m 120.82526,102.54208 -43.632032,0.44736 -18.704323,35.66044 c 11.54782,9.43937 27.060805,13.00492 41.351003,13.02318 13.315352,-0.01 27.528152,-2.83271 38.613372,-11.10467 z"
+       sodipodi:nodetypes="cccccc" />
+    <text
+       xml:space="preserve"
+       style="font-size:172.201px;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       x="194.74609"
+       y="133.23349"
+       id="text18319"
+       transform="scale(0.92359804,1.0827221)"><tspan
+         sodipodi:role="line"
+         id="tspan18317"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+         x="194.74609"
+         y="133.23349">PEX</tspan></text>
+  </g>
+</svg>
