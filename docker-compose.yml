@@ -13,6 +13,8 @@ services:
     image: docker.io/library/postgres
     ports:
       - 5432:5432
+    volumes:
+      - ./hack/init-keycloak-db.sh:/docker-entrypoint-initdb.d/init-keycloak-db.sh
     environment:
       - POSTGRES_USER=controltower
       - POSTGRES_PASSWORD=floofykittens
@@ -34,14 +36,34 @@ services:
       - "--db-password=floofykittens"
     environment:
       CONTROLTOWER_LOG_LEVEL: debug
-  
+
   ui:
     image: quay.io/jaywalking/controltower-ui
     depends_on:
      - controller
+     - keycloak
     build:
       context: .
       dockerfile: ./Containerfile.ui
-      target: development
     ports:
       - 3000:3000
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    depends_on:
+      - postgres
+    ports:
+      - 8888:8080
+    environment:
+      - KEYCLOAK_ADMIN=kittehlover
+      - KEYCLOAK_ADMIN_PASSWORD=floofykittens
+    volumes:
+      - ./hack/controltower-realm.json:/opt/keycloak/data/import/controltower-realm.json
+    command:
+        - start-dev
+        - --import-realm
+        - --db=postgres
+        - --features=token-exchange
+        - --db-url=jdbc:postgresql://postgres/keycloak
+        - --db-username=controltower
+        - --db-password=floofykittens
