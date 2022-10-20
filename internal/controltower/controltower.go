@@ -200,7 +200,7 @@ func (ct *ControlTower) CreateDefaultZone() error {
 	res := ct.db.First(&zone, "id = ?", id.String())
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		log.Debug("Creating Default Zone")
-		_, err := ct.NewZone(id.String(), DefaultZoneName, "Default Zone", ipPrefixDefault)
+		_, err := ct.NewZone(id.String(), DefaultZoneName, "Default Zone", ipPrefixDefault, false)
 		if err != nil {
 			return err
 		}
@@ -228,6 +228,15 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 	}
 
 	ipamPrefix := zone.IpCidr
+	var hubZone bool
+	var hubRouter bool
+	// determine if the node joining is a hub-router or in a hub-zone
+	if msgEvent.Peer.HubRouter && zone.HubZone {
+		hubRouter = true
+	}
+	if zone.HubZone {
+		hubZone = true
+	}
 
 	var key Device
 	res = ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
@@ -258,7 +267,7 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if msgEvent.Peer.NodeAddress != "" {
-			if err := validateIp(msgEvent.Peer.NodeAddress); err == nil {
+			if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
 				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, msgEvent.Peer.NodeAddress, ipamPrefix)
 				if err != nil {
 					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
@@ -294,6 +303,9 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 			AllowedIPs:  ip.IP.String(),
 			NodeAddress: ip.IP.String(),
 			ChildPrefix: msgEvent.Peer.ChildPrefix,
+			ZonePrefix:  ipamPrefix,
+			HubZone:     hubZone,
+			HubRouter:   hubRouter,
 		}
 		tx.Create(&peer)
 	}
@@ -313,6 +325,9 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 			AllowedIPs:  p.AllowedIPs,
 			NodeAddress: p.NodeAddress,
 			ChildPrefix: p.ChildPrefix,
+			HubRouter:   p.HubRouter,
+			HubZone:     p.HubZone,
+			ZonePrefix:  p.ZonePrefix,
 		})
 	}
 	return peerList, nil
@@ -355,7 +370,7 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 	}()
 }
 
-// validateIp ensures a valid IP4/IP6 address is provided and return a proper
+// cleanCidr ensures a valid IP4/IP6 address is provided and return a proper
 // network prefix if the network address if the network address was not precise.
 // example: if a user provides 192.168.1.1/24 we will infer 192.168.1.0/24.
 func cleanCidr(uncheckedCidr string) (string, error) {
@@ -366,8 +381,8 @@ func cleanCidr(uncheckedCidr string) (string, error) {
 	return validCidr.String(), nil
 }
 
-// ValidateIp ensures a valid IP4/IP6 address is provided
-func validateIp(ip string) error {
+// ValidateIP ensures a valid IP4/IP6 address is provided
+func validateIP(ip string) error {
 	if ip := net.ParseIP(ip); ip != nil {
 		return nil
 	}

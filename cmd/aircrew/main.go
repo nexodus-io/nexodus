@@ -27,6 +27,7 @@ type flags struct {
 	childPrefix            string
 	agentMode              bool
 	internalNetwork        bool
+	hubRouter              bool
 }
 
 var (
@@ -130,6 +131,12 @@ func main() {
 				Value:       false,
 				Destination: &cliFlags.internalNetwork,
 				EnvVars:     []string{"AIRCREW_INTERNAL_NETWORK"},
+			},
+			&cli.BoolFlag{Name: "hub-router",
+				Usage:       "set if this node is to be the hub in a hub and spoke deployment",
+				Value:       false,
+				Destination: &cliFlags.hubRouter,
+				EnvVars:     []string{"AIRCREW_HUB_ROUTER"},
 			},
 		},
 	}
@@ -249,6 +256,7 @@ func runInit() {
 		RequestedIP:       cliFlags.requestedIP,
 		ChildPrefix:       cliFlags.childPrefix,
 		UserEndpointIP:    cliFlags.userProvidedEndpointIP,
+		HubRouter:         cliFlags.hubRouter,
 	}
 
 	controller := fmt.Sprintf("%s:6379", cliFlags.controllerIP)
@@ -286,8 +294,10 @@ func runInit() {
 		as.NodePubKey,
 		endpointSocket,
 		as.RequestedIP,
-		as.ChildPrefix)
-
+		as.ChildPrefix,
+		"",
+		false,
+		as.HubRouter)
 	// Agent only needs to subscribe
 	if as.Zone == "default" {
 		as.AgentChannel = messages.ZoneChannelDefault
