@@ -24,6 +24,9 @@ type Peer struct {
 	AllowedIPs  string `json:"allowed-ips"`
 	NodeAddress string `json:"node-address"`
 	ChildPrefix string `json:"child-prefix"`
+	HubRouter   bool   `json:"hub-router"`
+	HubZone     bool   `json:"hub-zone"`
+	ZonePrefix  string `json:"zone-prefix"`
 }
 
 // Zone is a collection of devices that are connected together.
@@ -33,11 +36,12 @@ type Zone struct {
 	Name        string
 	Description string
 	IpCidr      string
+	HubZone     bool
 }
 
 // NewZone creates a new Zone since we also need to create a database for zone IPAM.
 // TODO: Investigate moving the IPAM service out of controltower and access it over grpc.
-func (ct *ControlTower) NewZone(id, name, description, cidr string) (*Zone, error) {
+func (ct *ControlTower) NewZone(id, name, description, cidr string, hubZone bool) (*Zone, error) {
 	dbName := fmt.Sprintf("ipam_%s", strings.ReplaceAll(id, "-", "_"))
 	log.Debugf("creating db %s", dbName)
 
@@ -70,6 +74,7 @@ func (ct *ControlTower) NewZone(id, name, description, cidr string) (*Zone, erro
 		Name:        name,
 		Description: description,
 		IpCidr:      cidr,
+		HubZone:     hubZone,
 	}
 	res := ct.db.Create(zone)
 	if res.Error != nil {

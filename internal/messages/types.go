@@ -31,9 +31,12 @@ type Peer struct {
 	AllowedIPs  string `json:"allowed-ips"`
 	NodeAddress string `json:"node-address"`
 	ChildPrefix string `json:"child-prefix"`
+	HubRouter   bool   `json:"hub-router"`
+	HubZone     bool   `json:"hub-zone"`
+	ZonePrefix  string `json:"zone-prefix"`
 }
 
-func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix string) string {
+func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPrefix, zonePrefix string, hubZone, hubRouter bool) string {
 	msg := Message{}
 	msg.Event = event
 	peer := Peer{
@@ -42,6 +45,9 @@ func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPr
 		ZoneID:      zone,
 		NodeAddress: requestedIP,
 		ChildPrefix: childPrefix,
+		ZonePrefix:  zonePrefix,
+		HubZone:     hubZone,
+		HubRouter:   hubRouter,
 	}
 	msg.Peer = peer
 	jMsg, _ := json.Marshal(&msg)

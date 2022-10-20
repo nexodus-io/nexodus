@@ -15,6 +15,7 @@ type ZoneRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	IpCidr      string `json:"cidr"`
+	HubZone     bool   `json:"hub-zone"`
 }
 
 // PostZone creates a new zone via a REST call
@@ -35,7 +36,7 @@ func (ct *ControlTower) handlePostZones(c *gin.Context) {
 	}
 
 	// Create the zone
-	newZone, err := ct.NewZone(uuid.New().String(), request.Name, request.Description, request.IpCidr)
+	newZone, err := ct.NewZone(uuid.New().String(), request.Name, request.Description, request.IpCidr, request.HubZone)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "unable to create zone"})
 		return
@@ -50,6 +51,7 @@ type ZoneJSON struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	IpCidr      string   `json:"cidr"`
+	HubZone     bool     `json:"hub-zone"`
 }
 
 // GetZones responds with the list of all peers as JSON.
@@ -69,6 +71,7 @@ func (ct *ControlTower) handleListZones(c *gin.Context) {
 			Name:        z.Name,
 			Description: z.Description,
 			IpCidr:      z.IpCidr,
+			HubZone:     z.HubZone,
 		})
 	}
 	// For pagination
@@ -98,6 +101,7 @@ func (ct *ControlTower) handleGetZones(c *gin.Context) {
 		Name:        zone.Name,
 		Description: zone.Description,
 		IpCidr:      zone.IpCidr,
+		HubZone:     zone.HubZone,
 	}
 	c.JSON(http.StatusOK, results)
 }
