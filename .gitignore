@@ -14,8 +14,6 @@
 # Built binaries
 cmd/aircrew/bin
 cmd/controltower/bin
-aircrew
-controltower
 
 # Ops files
 *.pem
