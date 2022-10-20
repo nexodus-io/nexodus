@@ -17,6 +17,7 @@ cmd/controltower/bin
 aircrew
 controltower
 
+
 # Ops files
 *.pem
 **/peer-inventory/*
