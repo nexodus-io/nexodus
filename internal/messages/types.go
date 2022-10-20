@@ -23,6 +23,25 @@ type Message struct {
 	Peer  Peer
 }
 
+type EventType string
+
+const (
+	Error EventType = "error"
+	Warn  EventType = "warn"
+)
+
+type ErrorCode string
+
+const (
+	ChannelNotRegistered ErrorCode = "E404"
+)
+
+type ErrorMessage struct {
+	Event EventType
+	Code  ErrorCode
+	Msg   string
+}
+
 // Peer pub/sub struct
 type Peer struct {
 	PublicKey   string `json:"public-key"`
@@ -57,14 +76,14 @@ func NewPublishPeerMessage(event, zone, pubKey, endpointIP, requestedIP, childPr
 type PeerListing []Peer
 
 // handleMsg deal with streaming messages
-func HandlePeerList(payload string) []Peer {
+func HandlePeerList(payload string) ([]Peer, error) {
 	var peerListing []Peer
 	err := json.Unmarshal([]byte(payload), &peerListing)
 	if err != nil {
 		log.Debugf("HandlePeerList: unmarshal error: %v\n", err)
-		return nil
+		return nil, err
 	}
-	return peerListing
+	return peerListing, nil
 }
 
 func HandleMessage(payload string) Message {
@@ -75,4 +94,14 @@ func HandleMessage(payload string) Message {
 		return msg
 	}
 	return msg
+}
+
+func HandleErrorMessage(payload string) (ErrorMessage, error) {
+	var errMsg ErrorMessage
+	err := json.Unmarshal([]byte(payload), &errMsg)
+	if err != nil {
+		log.Debugf("failed to unmarshal error message payload %v\n", err)
+		return ErrorMessage{}, err
+	}
+	return errMsg, nil
 }

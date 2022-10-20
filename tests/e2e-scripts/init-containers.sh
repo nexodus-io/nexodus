@@ -22,7 +22,7 @@ start_containers() {
     # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the aircrew cmd)
     $DOCKER run -itd \
         --name=node1 \
-        --net=jaywalking_default \
+        --net=apex_default \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
         --cap-add=NET_RAW \
@@ -31,7 +31,7 @@ start_containers() {
     # Start node2post
     $DOCKER run -itd \
         --name=node2 \
-        --net=jaywalking_default \
+        --net=apex_default \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
         --cap-add=NET_RAW \
@@ -40,7 +40,7 @@ start_containers() {
     # Start node3post
     $DOCKER run -itd \
         --name=node3 \
-        --net=jaywalking_default \
+        --net=apex_default \
         --cap-add=SYS_MODULE \
         --cap-add=NET_ADMIN \
         --cap-add=NET_RAW \
@@ -63,12 +63,12 @@ copy_binaries() {
     # node1 specific details
     local node1_pubkey=AbZ1fPkCbjYAe9D61normbb7urAzMGaRMDVyR5Bmzz4=
     local node1_pvtkey=8GtvCMlUsFVoadj0B3Y3foy7QbKJB9vcq5R+Mpc7OlE=
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node1)
+    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_pubkey=oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=
     local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node2)
+    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Node-1 aircrew run default zone
     cat <<EOF > aircrew-run-node1.sh
@@ -158,12 +158,12 @@ setup_custom_zone_connectivity() {
     # node1 specific details
     local node1_pubkey=AbZ1fPkCbjYAe9D61normbb7urAzMGaRMDVyR5Bmzz4=
     local node1_pvtkey=8GtvCMlUsFVoadj0B3Y3foy7QbKJB9vcq5R+Mpc7OlE=
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node1)
+    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_pubkey=oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=
     local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node2)
+    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone
     local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
@@ -245,12 +245,12 @@ setup_custom_second_zone_connectivity() {
     # node1 specific details
     local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
     local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node1)
+    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node2)
+    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
     local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
@@ -335,14 +335,14 @@ setup_child_prefix_connectivity() {
     local child_prefix_node1=172.20.1.0/24
     local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
     local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node1)
+    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local requested_ip_node2=192.168.200.200
     local child_prefix_node2=172.20.3.0/24
     local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node2)
+    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
     local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
@@ -462,17 +462,17 @@ setup_hub_spoke_connectivity() {
     # node1 specific details
     local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
     local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
-    local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node1)
+    local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
-    local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node2)
+    local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # node3 specific details
     local node3_pubkey=305lmZr0lFYy3E1S6e/GLCup300W5T4mOMnF9SKjmzc=
     local node3_pvtkey=CCWJ1RfGdFxq9nBCYLa33I6B6IR9EPkMGnyb5gnJ+FI=
-    local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.jaywalking_default.IPAddress }}" node3)
+    local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
     # Create the new zone
     local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
