@@ -1,6 +1,6 @@
-# Jaywalking
+# ![Apex](assets/logo.svg)
 
-[![build](https://github.com/redhat-et/jaywalking/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/jaywalking/actions/workflows/build.yml)
+[![build](https://github.com/redhat-et/apex/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
 
 *Roads? Where we're going, we don't need roads - Dr Emmett Brown*
 
