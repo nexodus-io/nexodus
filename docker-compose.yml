@@ -55,15 +55,15 @@ services:
     ports:
       - 8888:8080
     environment:
-      - KEYCLOAK_ADMIN=kittehlover
+      - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=floofykittens
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres/keycloak
+      - KC_DB_USERNAME=controltower
+      - KC_DB_PASSWORD=floofykittens
     volumes:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
         - start-dev
         - --import-realm
-        - --db=postgres
         - --features=token-exchange
-        - --db-url=jdbc:postgresql://postgres/keycloak
-        - --db-username=controller
-        - --db-password=floofykittens
