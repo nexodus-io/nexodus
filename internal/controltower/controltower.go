@@ -143,15 +143,23 @@ func (ct *ControlTower) Run() {
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelDefault)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					peers, err := ct.AddPeer(ctx, msgEvent)
-					if err == nil {
-						// publishPeers the latest peer list
-						if _, err := pubDefault.publishPeers(ctx, messages.ZoneChannelDefault, peers); err != nil {
-							log.Errorf("unable to publish peer list: %s", err)
+					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
+					if err != nil {
+						log.Error(err)
+						if _, err = pubDefault.publishErrorMessage(
+							ctx, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
+							log.Errorf("Unable to publish error message %s", err)
 						}
 					} else {
-						log.Errorf("Peer was not added: %v", err)
-						// TODO: return an error to the agent on a message chan
+						peers, err := ct.AddPeer(ctx, msgEvent, zone)
+						if err == nil {
+							// publishPeers the latest peer list
+							if _, err := pubDefault.publishPeers(ctx, messages.ZoneChannelDefault, peers); err != nil {
+								log.Errorf("unable to publish peer list: %s", err)
+							}
+						} else {
+							log.Errorf("Peer was not added: %v", err)
+						}
 					}
 				}
 			}
@@ -217,15 +225,18 @@ type MsgTypes struct {
 	Peer  Peer
 }
 
-func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) ([]messages.Peer, error) {
-	tx := ct.db.Begin()
-
+func (ct *ControlTower) zoneExists(ctx context.Context, zoneId string) (*Zone, error) {
 	var zone Zone
-	res := ct.db.Preload("Peers").First(&zone, "id = ?", msgEvent.Peer.ZoneID)
-	// todo, the needs to go over an err channal to the agent
+	res := ct.db.Preload("Peers").First(&zone, "id = ?", zoneId)
+	// todo, the needs to go over an err channel to the agent
 	if res.Error != nil && errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("requested zone [ %s ] was not found, has it been created yet?", msgEvent.Peer.ZoneID)
+		return &zone, fmt.Errorf("requested zone [ %s ] was not found.", zoneId)
 	}
+	return &zone, nil
+
+}
+func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message, zone *Zone) ([]messages.Peer, error) {
+	tx := ct.db.Begin()
 
 	ipamPrefix := zone.IpCidr
 	var hubZone bool
@@ -239,7 +250,7 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message) 
 	}
 
 	var key Device
-	res = ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
+	res := ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			log.Debug("Public Key Not Found. Adding A New One")
@@ -352,18 +363,28 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 			// TODO implement error chans
 			case messages.RegisterNodeRequest:
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelController)
-				log.Debugf("Recieved registration request: %+v\n", msgEvent.Peer)
+				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					peers, err := ct.AddPeer(ctx, msgEvent)
-					if err == nil {
-						// publishPeers the latest peer list
-						if _, err := pub.publishPeers(ctx, messages.ZoneChannelController, peers); err != nil {
-							log.Errorf("unable to publish peer updates: %s", err)
+					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
+					if err != nil {
+						log.Error(err)
+						if _, err = pub.publishErrorMessage(
+							ctx, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
+							log.Errorf("failed to publish error message %s", err)
 						}
 					} else {
-						// TODO: return an error to the agent on a message chan
-						log.Errorf("Peer was not added: %v", err)
+						peers, err := ct.AddPeer(ctx, msgEvent, zone)
+						if err == nil {
+							// publishPeers the latest peer list
+							if _, err := pub.publishPeers(ctx, msgEvent.Peer.ZoneID, peers); err != nil {
+								log.Errorf("failed to publish peer updates: %s", err)
+							}
+						} else {
+
+							log.Errorf("Peer was not added: %v", err)
+						}
 					}
+
 				}
 			}
 		}
