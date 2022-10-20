@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -76,3 +76,19 @@ func createAllPeerMessage(postData []messages.Peer) (string, string) {
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)
 }
+
+func (s *streamer) publishErrorMessage(ctx context.Context, channel string, event messages.EventType, code messages.ErrorCode, msg string) (int64, error) {
+	jsonMsg := createErrorMessage(event, code, msg)
+	log.Printf("Published new error message: %s\n", jsonMsg)
+	return s.client.Publish(ctx, channel, jsonMsg).Result()
+}
+
+func createErrorMessage(event messages.EventType, code messages.ErrorCode, msg string) string {
+	errMsg := messages.ErrorMessage{}
+	errMsg.Event = event
+	errMsg.Code = code
+	errMsg.Msg = msg
+	jMsg, _ := json.Marshal(&errMsg)
+	return string(jMsg)
+}
+
