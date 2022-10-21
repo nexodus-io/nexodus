@@ -16,8 +16,7 @@ start_containers() {
     $DOCKER_COMPOSE up -d
 
     # allow for all services to come up and be ready
-    # TODO: Replace with a proper healthcheck
-    sleep 10
+    timeout 300s bash -c 'until curl -sfL http://localhost:8080/health; do sleep 1; done'
 
     # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the apex cmd)
     $DOCKER run -itd \
@@ -45,6 +44,18 @@ start_containers() {
         --cap-add=NET_ADMIN \
         --cap-add=NET_RAW \
         ${node_image}
+}
+
+teardown() {
+    docker compose logs
+    if [ -z "NO_TEARDOWN" ]; then
+        return
+    fi
+    for node in "node1" "node2" "node3"; do
+        $DOCKER kill $node || true
+        $DOCKER rm $node || true
+    done
+    $DOCKER_COMPOSE down || true
 }
 
 copy_binaries() {
@@ -166,7 +177,8 @@ setup_custom_zone_connectivity() {
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone
-    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-blue",
@@ -253,7 +265,8 @@ setup_custom_second_zone_connectivity() {
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "zone-red",
@@ -345,7 +358,8 @@ setup_child_prefix_connectivity() {
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "prefix-test",
@@ -475,7 +489,8 @@ setup_hub_spoke_connectivity() {
     local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
     # Create the new zone
-    local zone=$(curl -L -X POST 'http://localhost:8080/zones' \
+    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
         "Name": "hub-spoke-zone",
@@ -581,6 +596,25 @@ EOF
     fi
 }
 
+get_token() {
+    local HOST="localhost:8888"
+    local REALM="controller"
+    local USERNAME="admin"
+    local PASSWORD="floofykittens"
+    local CLIENTID='api-clients'
+    local CLIENTSECRET='cvXhCRXI2Vld244jjDcnABCMrTEq2rwE'
+
+    local token=$(curl -s -X POST \
+        http://$HOST/realms/$REALM/protocol/openid-connect/token \
+        -H 'Content-Type: application/x-www-form-urlencoded' \
+        -d "username=$USERNAME" \
+        -d "password=$PASSWORD" \
+        -d "grant_type=password" \
+        -d "client_id=$CLIENTID" \
+        -d "client_secret=$CLIENTSECRET" | jq -r ".access_token")
+    export API_TOKEN=$token
+}
+
 ###########################################################################
 # Description:                                                            #
 # Run the following functions to test end to end connectivity between     #
@@ -603,7 +637,9 @@ fi
 
 echo -e "Job running with OS Image: ${os}"
 
+trap teardown EXIT
 start_containers ${os}
+get_token
 copy_binaries
 verify_connectivity
 clean_nodes
