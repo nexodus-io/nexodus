@@ -1,23 +1,22 @@
 #Aircrew Targets
-build-aircrew-local:
-	go build -o ./cmd/aircrew/bin/aircrew ./cmd/aircrew
-build-aircrew-linux:
-	GOOS=linux GOARCH=amd64 go build -o ./cmd/aircrew/bin/aircrew-amd64-linux ./cmd/aircrew
-build-aircrew-darwin:
-	GOOS=darwin GOARCH=amd64 go build -o ./cmd/aircrew/bin/aircrew-amd64-darwin ./cmd/aircrew
-clean-aircrew:
-	rm -Rf ./cmd/aircrew/bin
+build-apex-local:
+	go build -o ./dist/apex ./cmd/apex
+build-apex-linux:
+	GOOS=linux GOARCH=amd64 go build -o ./dist/apex-amd64-linux ./cmd/apex
+build-apex-darwin:
+	GOOS=darwin GOARCH=amd64 go build -o ./dist/apex-amd64-darwin ./cmd/apex
+clean-apex:
+	rm -Rf ./dist/apex ./dist/apex-amd64-linux ./dist/apex-amd64-darwin
 
 #ControlTower Targets
-build-controltower-local:
-	go build -o ./cmd/controltower/bin/controltower ./cmd/controltower
-build-controltower-linux:
-	GOOS=linux GOARCH=amd64 go build -o ./cmd/controltower/bin/controltower-amd64-linux ./cmd/controltower
-build-controltower-darwin:
-	GOOS=darwin GOARCH=amd64 go build -o ./cmd/controltower/bin/controltower-amd64-darwin ./cmd/controltower
-clean-controltower:
-	rm -Rf ./cmd/controltower/bin
-
+build-controller-local:
+	go build -o ./dist/apexcontroller ./cmd/apexcontroller
+build-controller-linux:
+	GOOS=linux GOARCH=amd64 go build -o ./dist/apexcontroller-amd64-linux ./cmd/apexcontroller
+build-controller-darwin:
+	GOOS=darwin GOARCH=amd64 go build -o ./dist/apexcontroller-amd64-darwin ./cmd/apexcontroller
+clean-controller:
+	rm -Rf ./dist/apexcontroller ./dist/apexcontroller-amd64-linux ./dist/apexcontroller-amd64-darwin
 #Lint
 
 go-lint:

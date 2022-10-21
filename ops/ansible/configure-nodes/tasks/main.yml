@@ -49,7 +49,7 @@
 
 - name: Create the endpoint config on the localhost if it doesn't exist
   file:
-    dest: "{{ jaywalk_conf_file }}"
+    dest: "{{ apex_conf_file }}"
     state: touch
   delegate_to: localhost
 

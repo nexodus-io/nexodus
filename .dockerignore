@@ -12,10 +12,10 @@
 *.out
 
 # Built binaries
-/aircrew
-aircrew-amd64-darwin
-aircrew-amd64-linux
-/controltower
+/apex
+apex-amd64-darwin
+apex-amd64-linux
+/controller
 
 # Ops files
 ops/

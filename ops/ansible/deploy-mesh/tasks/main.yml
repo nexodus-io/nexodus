@@ -4,7 +4,7 @@
 - name: concatenate
   ansible.builtin.template:
     src: templates/concat.j2
-    dest: "{{ jaywalk_conf_file }}"
+    dest: "{{ apex_conf_file }}"
   delegate_to: localhost
 
 - name: Register the Public Key for the Node
@@ -21,23 +21,23 @@
   shell: curl https://checkip.amazonaws.com
   register: PUBLIC_ADDRESS
 
-- name: Download the jaywalk binary
+- name: Download the apex binary
   become: yes
   shell: |
-    curl {{ jaywalk_binary }} --output /usr/local/sbin/jaywalk
-    chmod +x /usr/local/sbin/jaywalk
+    curl {{ apex_binary }} --output /usr/local/sbin/apex
+    chmod +x /usr/local/sbin/apex
 
 - name: Delete existing config from previous runs
   become: yes
   shell: |
-    killall jaywalk
+    killall apex
     rm /etc/wireguard/wg0.conf
   ignore_errors: yes
 
-- name: Run Jaywalk and build the tunnels
+- name: Run apex and build the tunnels
   become: yes
   shell: |
-    jaywalk --public-key={{ PUBLIC_KEY.stdout }} \
+    apex --public-key={{ PUBLIC_KEY.stdout }} \
         --private-key={{ PRIVATE_KEY.stdout }} \
         --controller={{ controller_address }} \
         --controller-password={{ controller_password }} &

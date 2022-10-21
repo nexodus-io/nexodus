@@ -21,9 +21,9 @@ aws_secret_access_key = <aws_secret_access_key>
 ### Controller Section ###
 controller_address: <ADD REDIS ADDRESS HERE>
 controller_password: <ADD PASS HERE>
-jaywalk_binary: https://jaywalking.s3.amazonaws.com/jaywalk-zeroconf-poc-amd64-linux
+apex_binary: https://jaywalking.s3.amazonaws.com/jaywalk-zeroconf-poc-amd64-linux
 ```
-- Run the playbook (the jaywalk binary is stored in an S3 bucket and pulled down by ansible)
+- Run the playbook (the apex binary is stored in an S3 bucket and pulled down by ansible)
 
 ```shell
 # Install Ansible if not already installed
@@ -31,8 +31,8 @@ python3 -m pip install --user ansible
 ansible-playbook --version
 
 # Run the playbook
-git clone https://github.com/redhat-et/jaywalking.git
-cd /jaywalking/ops/ansible/
+git clone https://github.com/redhat-et/apex.git
+cd /apex/ops/ansible/
 ansible-playbook -vv ./deploy.yml 
 ```
 
@@ -56,7 +56,7 @@ node 10.10.1.1 is up
 - Add your own machine to the mesh, for example, a mac or linux dev machine by creating a toml file of any name with your host's details:
 
 ```
-sudo jaywalk --public-key=<PUBLIC_KEY> \
+sudo apex --public-key=<PUBLIC_KEY> \
     --private-key=<PRIVATE_KEY>  \
     --controller=<CONTROLLER_ADDRESS>  \
     --controller-password=<CONTROLLER_ADDRESS>

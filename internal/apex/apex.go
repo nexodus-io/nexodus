@@ -1,4 +1,4 @@
-package aircrew
+package apex
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -21,7 +21,7 @@ const (
 	registerNodeRequest = "register-node-request"
 )
 
-type Aircrew struct {
+type Apex struct {
 	wireguardPubKey         string
 	wireguardPvtKey         string
 	wireguardPvtKeyFile     string
@@ -61,7 +61,7 @@ type wgLocalConfig struct {
 	PostDown   string
 }
 
-func NewAircrew(ctx context.Context, cCtx *cli.Context) (*Aircrew, error) {
+func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 
 	if !IsCommandAvailable("wg") {
 		return nil, fmt.Errorf("wg command not found, is wireguard installed?")
@@ -71,7 +71,7 @@ func NewAircrew(ctx context.Context, cCtx *cli.Context) (*Aircrew, error) {
 		return nil, err
 	}
 
-	ac := &Aircrew{
+	ax := &Apex{
 		wireguardPubKey:        cCtx.String("public-key"),
 		wireguardPvtKey:        cCtx.String("private-key"),
 		wireguardPvtKeyFile:    cCtx.String("private-key-file"),
@@ -87,46 +87,46 @@ func NewAircrew(ctx context.Context, cCtx *cli.Context) (*Aircrew, error) {
 		os:                     GetOS(),
 	}
 
-	if err := ac.checkUnsupportedConfigs(); err != nil {
+	if err := ax.checkUnsupportedConfigs(); err != nil {
 		return nil, err
 	}
 
-	return ac, nil
+	return ax, nil
 }
 
-func (ac *Aircrew) Run() {
+func (ax *Apex) Run() {
 	ctx := context.Background()
 	var err error
 	var pvtKey string
 
 	// parse the private key for the local configuration from file or CLI
-	if ac.wireguardPvtKey == "" && ac.wireguardPvtKeyFile != "" {
-		pvtKey, err = ac.readPrivateKey()
+	if ax.wireguardPvtKey == "" && ax.wireguardPvtKeyFile != "" {
+		pvtKey, err = ax.readPrivateKey()
 		if err != nil {
 			log.Fatal(err)
 		}
-		ac.wireguardPvtKey = pvtKey
+		ax.wireguardPvtKey = pvtKey
 	}
 
 	// this conditional is last since it is expensive to do the public address lookup
 	var localEndpointIP string
-	if !ac.internalNetwork && ac.userProvidedEndpointIP == "" {
+	if !ax.internalNetwork && ax.userProvidedEndpointIP == "" {
 		localEndpointIP, err = GetPubIP()
 		if err != nil {
 			log.Warn("Unable to determine the public facing address")
 		}
 	} else {
-		localEndpointIP, err = ac.findLocalEndpointIp()
+		localEndpointIP, err = ax.findLocalEndpointIp()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 	log.Debugf("This node's endpoint address will be [ %s ]", localEndpointIP)
 
-	controller := fmt.Sprintf("%s:6379", ac.controllerIP)
+	controller := fmt.Sprintf("%s:6379", ax.controllerIP)
 	rc := redis.NewClient(&redis.Options{
 		Addr:     controller,
-		Password: ac.controllerPasswd,
+		Password: ax.controllerPasswd,
 	})
 
 	// TODO: move to a redis package used by both server and agent
@@ -135,15 +135,15 @@ func (ac *Aircrew) Run() {
 		log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
 	}
 
-	// ping the control-tower to see if it is responding via the broker, exit the agent on timeout
-	if err := controlTowerReadyCheck(ctx, rc); err != nil {
+	// ping the controller to see if it is responding via the broker, exit the agent on timeout
+	if err := controllerReadyCheck(ctx, rc); err != nil {
 		log.Fatal(err)
 	}
 
 	defer rc.Close()
 
 	//Agent only need to subscribe to it's own zone.
-	sub := rc.Subscribe(ctx, ac.zone)
+	sub := rc.Subscribe(ctx, ax.zone)
 	defer sub.Close()
 
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, WgListenPort)
@@ -151,18 +151,18 @@ func (ac *Aircrew) Run() {
 	// Create the message describing this peer to be published
 	peerRegister := messages.NewPublishPeerMessage(
 		registerNodeRequest,
-		ac.zone,
-		ac.wireguardPubKey,
+		ax.zone,
+		ax.wireguardPubKey,
 		endpointSocket,
-		ac.requestedIP,
-		ac.childPrefix,
+		ax.requestedIP,
+		ax.childPrefix,
 		"",
 		false,
-		ac.hubRouter)
+		ax.hubRouter)
 
 	// Agent publish the peer register request to controller channel.
-	// If the zone defined is not registered with controltower,
-	// controltower will send the error message to the peer's zone.
+	// If the zone defined is not registered with controller,
+	// controller will send the error message to the peer's zone.
 	err = rc.Publish(ctx, messages.ZoneChannelController, peerRegister).Err()
 	if err != nil {
 		log.Errorf("failed to publish subscriber message: %v", err)
@@ -171,7 +171,7 @@ func (ac *Aircrew) Run() {
 	for {
 		msg, err := sub.ReceiveMessage(ctx)
 		if err != nil {
-			log.Fatalf("Failed to subscribe to the controller: %v", err)
+			log.Fatalf("Failed to subscribe to the controller channel: %v", err)
 			os.Exit(1)
 		}
 		// Switch based on the streaming channel
@@ -180,24 +180,24 @@ func (ac *Aircrew) Run() {
 			peerListing, err := messages.HandlePeerList(msg.Payload)
 			if err == nil && len(peerListing) > 0 {
 				// Only update the peer list if this node is a member of the zone update
-				if peerListing[0].ZoneID == ac.zone {
+				if peerListing[0].ZoneID == ax.zone {
 					log.Debugf("Received message: %+v\n", peerListing)
-					ac.ParseAircrewControlTowerConfig(ac.listenPort, peerListing)
-					ac.DeployControlTowerWireguardConfig()
+					ax.ParseWireguardConfig(ax.listenPort, peerListing)
+					ax.DeployWireguardConfig()
 				}
 			}
 		case messages.ZoneChannelDefault:
 			peerListing, err := messages.HandlePeerList(msg.Payload)
 			if err == nil && peerListing != nil {
 				log.Debugf("Received message: %+v\n", peerListing)
-				ac.ParseAircrewControlTowerConfig(ac.listenPort, peerListing)
-				ac.DeployControlTowerWireguardConfig()
+				ax.ParseWireguardConfig(ax.listenPort, peerListing)
+				ax.DeployWireguardConfig()
 			}
-		case ac.zone:
+		case ax.zone:
 			controlMsg, err := messages.HandleErrorMessage(msg.Payload)
 
 			if err == nil && controlMsg.Event == messages.Error {
-				log.Fatalf("Peer zone %s does not exist at control tower : [%s]:%s", ac.zone, controlMsg.Code, controlMsg.Msg)
+				log.Fatalf("Peer zone %s does not exist at controller : [%s]:%s", ax.zone, controlMsg.Code, controlMsg.Msg)
 			} else {
 				peerListing, err := messages.HandlePeerList(msg.Payload)
 
@@ -206,15 +206,15 @@ func (ac *Aircrew) Run() {
 				}
 				if peerListing != nil {
 					log.Debugf("Received message: %+v\n", peerListing)
-					ac.ParseAircrewControlTowerConfig(ac.listenPort, peerListing)
-					ac.DeployControlTowerWireguardConfig()
+					ax.ParseWireguardConfig(ax.listenPort, peerListing)
+					ax.DeployWireguardConfig()
 				}
 			}
 		}
 	}
 }
 
-func (ac *Aircrew) Shutdown(ctx context.Context) error {
+func (ax *Apex) Shutdown(ctx context.Context) error {
 	return nil
 }
 
@@ -242,63 +242,63 @@ func checkOS() error {
 	return nil
 }
 
-func (ac *Aircrew) checkUnsupportedConfigs() error {
-	if ac.wireguardPvtKey != "" && ac.wireguardPvtKeyFile != "" {
+func (ax *Apex) checkUnsupportedConfigs() error {
+	if ax.wireguardPvtKey != "" && ax.wireguardPvtKeyFile != "" {
 		return fmt.Errorf("Please use either --private-key or --private-key-file but not both")
 	}
-	if ac.wireguardPvtKey == "" && ac.wireguardPvtKeyFile == "" {
+	if ax.wireguardPvtKey == "" && ax.wireguardPvtKeyFile == "" {
 		return fmt.Errorf("Private key or key file location is required: use either --private-key or --private-key-file")
 	}
 	return nil
 }
 
-func (ac *Aircrew) readPrivateKey() (string, error) {
+func (ax *Apex) readPrivateKey() (string, error) {
 	// parse the private key for the local configuration from file or CLI
-	if ac.wireguardPvtKeyFile != "" {
-		if !FileExists(ac.wireguardPvtKeyFile) {
-			return "", fmt.Errorf("private key file doesn't exist : %s", ac.wireguardPvtKeyFile)
+	if ax.wireguardPvtKeyFile != "" {
+		if !FileExists(ax.wireguardPvtKeyFile) {
+			return "", fmt.Errorf("private key file doesn't exist : %s", ax.wireguardPvtKeyFile)
 		}
-		pvtKey, err := ReadKeyFileToString(ac.wireguardPvtKeyFile)
+		pvtKey, err := ReadKeyFileToString(ax.wireguardPvtKeyFile)
 		if err != nil {
-			return "", fmt.Errorf("failed to read from private key from file %s: %v", ac.wireguardPvtKeyFile, err)
+			return "", fmt.Errorf("failed to read from private key from file %s: %v", ax.wireguardPvtKeyFile, err)
 		}
 		return pvtKey, nil
 	}
 	return "", fmt.Errorf("failed to find private key from user config and key file.")
 }
 
-func (ac *Aircrew) findLocalEndpointIp() (string, error) {
+func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
 	// Otherwise, discover what the public of the node is and provide that to the peers unless the --internal flag was set,
 	// in which case the endpoint address will be set to an existing address on the host.
 	var localEndpointIP string
 	var err error
-	if ac.internalNetwork && ac.os == Darwin.String() {
+	if ax.internalNetwork && ax.os == Darwin.String() {
 		localEndpointIP, err = GetDarwinIPv4()
 		if err != nil {
 			return "", fmt.Errorf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
-	if ac.internalNetwork && ac.os == Linux.String() {
+	if ax.internalNetwork && ax.os == Linux.String() {
 		localEndpointIP, err = GetIPv4Linux()
 		if err != nil {
 			return "", fmt.Errorf("unable to determine the ip address, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
 	// User provided --local-endpoint-ip overrides --internal-network
-	if ac.userProvidedEndpointIP != "" {
-		if err := ValidateIp(ac.userProvidedEndpointIP); err != nil {
+	if ax.userProvidedEndpointIP != "" {
+		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
 			return "", fmt.Errorf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
-				ac.userProvidedEndpointIP, err)
+				ax.userProvidedEndpointIP, err)
 		}
-		localEndpointIP = ac.userProvidedEndpointIP
+		localEndpointIP = ax.userProvidedEndpointIP
 	}
 	return localEndpointIP, nil
 }
 
-// controlTowerReadyCheck blocks until the control-tower responds or the request times out
-func controlTowerReadyCheck(ctx context.Context, client *redis.Client) error {
-	log.Println("Checking the readiness of the control tower")
+// controllerReadyCheck blocks until the controller responds or the request times out
+func controllerReadyCheck(ctx context.Context, client *redis.Client) error {
+	log.Println("checking the readiness of the controller")
 	healthCheckReplyChan := make(chan string)
 	sub := client.Subscribe(ctx, messages.HealthcheckReplyChannel)
 	go func() {
@@ -313,8 +313,8 @@ func controlTowerReadyCheck(ctx context.Context, client *redis.Client) error {
 	select {
 	case <-healthCheckReplyChan:
 	case <-time.After(readyRequestTimeout * time.Second):
-		return fmt.Errorf("control tower was not reachable, ensure it is running and attached to the broker")
+		return fmt.Errorf("controller was not reachable, ensure it is up and running")
 	}
-	log.Println("Control tower is available")
+	log.Println("controller is available")
 	return nil
 }

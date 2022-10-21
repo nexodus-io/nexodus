@@ -15,7 +15,7 @@ jobs:
       matrix:
         deployment: ["wireguard", "fedora-wireguard"]
     env:
-      JOB_NAME: "jaywalk-e2e-${{ matrix.deployment }}"
+      JOB_NAME: "apex-e2e-${{ matrix.deployment }}"
       DEPLOYMENT: ${{ matrix.deployment }}
     steps:
     - name: checkout

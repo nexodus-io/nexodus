@@ -5,10 +5,10 @@ COPY . .
 RUN go mod download
 RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
-    -o controltower ./cmd/controltower
+    -o controller ./cmd/apexcontroller
 
 FROM scratch
 
-COPY --from=build /src/controltower /controltower
+COPY --from=build /src/controller /controller
 EXPOSE 8080
-ENTRYPOINT [ "/controltower" ]
+ENTRYPOINT [ "/controller" ]

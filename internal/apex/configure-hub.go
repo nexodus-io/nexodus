@@ -1,10 +1,10 @@
-package aircrew
+package apex
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,8 +13,8 @@ const (
 	hubPostDown = "iptables -D FORWARD -i wg0 -o wg0 -j ACCEPT"
 )
 
-// parseControlTowerHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListing []messages.Peer) {
+// parseHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
+func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.Peer) {
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
@@ -22,12 +22,12 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 	var zonePrefix string
 
 	for _, value := range peerListing {
-		if value.PublicKey == ac.wireguardPubKey {
-			ac.wireguardPubKeyInConfig = true
+		if value.PublicKey == ax.wireguardPubKey {
+			ax.wireguardPubKeyInConfig = true
 		}
 		if value.HubRouter {
 			hubRouterIP = value.AllowedIPs
-			if ac.zone == value.ZoneID {
+			if ax.zone == value.ZoneID {
 				zonePrefix = value.ZonePrefix
 			}
 		}
@@ -35,25 +35,25 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 	// zonePrefix will be empty if a hub-router is not defined in the zone
 	// TODO: replace with an error message from the controller before it reaches this point
 	if zonePrefix == "" {
-		log.Error("This zone is a hub zone and requires a hub-router `--hub-router` node before provisioning spokes nodes")
+		log.Error("this zone is a hub zone and requires a hub-router `--hub-router` node before provisioning spokes nodes")
 		os.Exit(1)
 	}
-	if !ac.wireguardPubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the control tower update\n", ac.wireguardPubKey)
+	if !ax.wireguardPubKeyInConfig {
+		log.Printf("Public Key for this node %s was not found in the controller update\n", ax.wireguardPubKey)
 	}
 	// Get a valid netmask from the zone prefix
 	zoneCidr, err := ParseIPNet(zonePrefix)
 	if err != nil {
-		log.Errorf("Failed to parse a valid network the zone prefix %s: %v", zonePrefix, err)
+		log.Errorf("failed to parse a valid network the zone prefix %s: %v", zonePrefix, err)
 		os.Exit(1)
 	}
 	zoneMask, _ := zoneCidr.Mask.Size()
 	// Parse the [Peers] section of the wg config if this node is a zone-router
 	for _, value := range peerListing {
 		// Build the wg config for all peers
-		if ac.hubRouter {
+		if ax.hubRouter {
 			// Config if the node is a bouncer hub
-			if value.PublicKey != ac.wireguardPubKey {
+			if value.PublicKey != ax.wireguardPubKey {
 				peer := wgPeerConfig{
 					value.PublicKey,
 					value.EndpointIP,
@@ -70,8 +70,8 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 			}
 		}
 		// Build the wg config for all peers that are not zone routers (1 peer entry to the router)
-		if !ac.hubRouter && value.HubRouter {
-			if value.PublicKey != ac.wireguardPubKey {
+		if !ax.hubRouter && value.HubRouter {
+			if value.PublicKey != ax.wireguardPubKey {
 				var allowedIPs string
 				if value.ChildPrefix != "" {
 					log.Warnf("Ignoring the child prefix since this is a hub zone")
@@ -94,9 +94,9 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 			}
 		}
 		// Parse the [Interface] section of the wg config if this node is a zone-router
-		if value.PublicKey == ac.wireguardPubKey && ac.hubRouter {
+		if value.PublicKey == ax.wireguardPubKey && ax.hubRouter {
 			localInterface = wgLocalConfig{
-				ac.wireguardPvtKey,
+				ax.wireguardPvtKey,
 				fmt.Sprintf("%s/%d", value.AllowedIPs, zoneMask),
 				listenPort,
 				false,
@@ -106,14 +106,14 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ] HubZone Hub [ %t ]\n",
 				localInterface.Address,
 				listenPort,
-				ac.hubRouter)
+				ax.hubRouter)
 			// set the node unique local interface configuration
-			ac.wgConfig.Interface = localInterface
+			ax.wgConfig.Interface = localInterface
 		}
 		// Parse the [Interface] section of the wg config if this node is not a zone router
-		if value.PublicKey == ac.wireguardPubKey && !ac.hubRouter {
+		if value.PublicKey == ax.wireguardPubKey && !ax.hubRouter {
 			localInterface = wgLocalConfig{
-				ac.wireguardPvtKey,
+				ax.wireguardPvtKey,
 				value.AllowedIPs,
 				listenPort,
 				false,
@@ -123,10 +123,10 @@ func (ac *Aircrew) parseControlTowerHubWireguardConfig(listenPort int, peerListi
 			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ] HubZone Hub [ %t ]\n",
 				localInterface.Address,
 				listenPort,
-				ac.hubRouter)
+				ax.hubRouter)
 			// set the node unique local interface configuration
-			ac.wgConfig.Interface = localInterface
+			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ac.wgConfig.Peer = peers
+	ax.wgConfig.Peer = peers
 }

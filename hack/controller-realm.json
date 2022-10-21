@@ -1,6 +1,6 @@
 {
   "id" : "3fbbfcde-effd-4cba-b6c5-0f0d5e6a1509",
-  "realm" : "controltower",
+  "realm" : "controller",
   "notBefore" : 0,
   "defaultSignatureAlgorithm" : "RS256",
   "revokeRefreshToken" : false,
@@ -70,7 +70,7 @@
       "attributes" : { }
     }, {
       "id" : "0fb63062-4f17-4dc2-84ac-ff6b47632437",
-      "name" : "default-roles-controltower",
+      "name" : "default-roles-controller",
       "description" : "${role_default-roles}",
       "composite" : true,
       "composites" : {
@@ -272,7 +272,7 @@
         "containerId" : "3e366f7d-0a35-486a-b437-8f8a68a7f769",
         "attributes" : { }
       } ],
-      "front-controltower" : [ ],
+      "front-controller" : [ ],
       "account" : [ {
         "id" : "e6fa97be-45bf-429f-b02b-5cc053766b3e",
         "name" : "manage-account-links",
@@ -345,7 +345,7 @@
   "groups" : [ ],
   "defaultRole" : {
     "id" : "0fb63062-4f17-4dc2-84ac-ff6b47632437",
-    "name" : "default-roles-controltower",
+    "name" : "default-roles-controller",
     "description" : "${role_default-roles}",
     "composite" : true,
     "clientRole" : false,
@@ -398,7 +398,7 @@
     } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ ],
-    "realmRoles" : [ "admin", "default-roles-controltower" ],
+    "realmRoles" : [ "admin", "default-roles-controller" ],
     "notBefore" : 0,
     "groups" : [ ]
   }, {
@@ -420,7 +420,7 @@
     } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ "UPDATE_PASSWORD" ],
-    "realmRoles" : [ "user", "default-roles-controltower" ],
+    "realmRoles" : [ "user", "default-roles-controller" ],
     "notBefore" : 0,
     "groups" : [ ]
   }, {
@@ -442,7 +442,7 @@
     } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ "UPDATE_PASSWORD" ],
-    "realmRoles" : [ "default-roles-controltower" ],
+    "realmRoles" : [ "default-roles-controller" ],
     "notBefore" : 0,
     "groups" : [ ]
   }, {
@@ -464,7 +464,7 @@
     } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ "UPDATE_PASSWORD" ],
-    "realmRoles" : [ "default-roles-controltower" ],
+    "realmRoles" : [ "default-roles-controller" ],
     "notBefore" : 0,
     "groups" : [ ]
   } ],
@@ -483,12 +483,12 @@
     "clientId" : "account",
     "name" : "${client_account}",
     "rootUrl" : "${authBaseUrl}",
-    "baseUrl" : "/realms/controltower/account/",
+    "baseUrl" : "/realms/controller/account/",
     "surrogateAuthRequired" : false,
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "/realms/controltower/account/*" ],
+    "redirectUris" : [ "/realms/controller/account/*" ],
     "webOrigins" : [ ],
     "notBefore" : 0,
     "bearerOnly" : false,
@@ -513,12 +513,12 @@
     "clientId" : "account-console",
     "name" : "${client_account-console}",
     "rootUrl" : "${authBaseUrl}",
-    "baseUrl" : "/realms/controltower/account/",
+    "baseUrl" : "/realms/controller/account/",
     "surrogateAuthRequired" : false,
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "/realms/controltower/account/*" ],
+    "redirectUris" : [ "/realms/controller/account/*" ],
     "webOrigins" : [ ],
     "notBefore" : 0,
     "bearerOnly" : false,
@@ -601,7 +601,7 @@
     "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
   }, {
     "id" : "a6cd7657-5ff2-4453-ad23-d8c0f87b0c09",
-    "clientId" : "front-controltower",
+    "clientId" : "front-controller",
     "name" : "",
     "description" : "",
     "rootUrl" : "http://localhost:3000",
@@ -667,12 +667,12 @@
     "clientId" : "security-admin-console",
     "name" : "${client_security-admin-console}",
     "rootUrl" : "${authAdminUrl}",
-    "baseUrl" : "/admin/controltower/console/",
+    "baseUrl" : "/admin/controller/console/",
     "surrogateAuthRequired" : false,
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "/admin/controltower/console/*" ],
+    "redirectUris" : [ "/admin/controller/console/*" ],
     "webOrigins" : [ "+" ],
     "notBefore" : 0,
     "bearerOnly" : false,

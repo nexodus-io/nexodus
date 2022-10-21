@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/redhat-et/jaywalking/internal/controltower"
+	controltower "github.com/redhat-et/apex/internal/apexcontroller"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -14,12 +14,12 @@ import (
 const (
 	DefaultIpamSaveFile = "default-ipam.json"
 	streamPort          = 6379
-	ctLogEnv            = "CONTROLTOWER_LOG_LEVEL"
+	acLogEnv            = "APEX_CONTROLLER_LOG_LEVEL"
 )
 
 func main() {
 	// set the log level
-	env := os.Getenv(ctLogEnv)
+	env := os.Getenv(acLogEnv)
 	if env == "debug" {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -53,7 +53,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			ct, err := controltower.NewControlTower(
+			ct, err := controltower.NewController(
 				context.Background(),
 				cCtx.String("streamer-address"),
 				streamPort,

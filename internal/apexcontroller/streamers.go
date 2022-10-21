@@ -1,4 +1,4 @@
-package controltower
+package apexcontroller
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +24,7 @@ func NewPubsub(client *redis.Client) *streamer {
 // publishPeers a message to the channel
 func (s *streamer) publishPeers(ctx context.Context, channel string, data []messages.Peer) (int64, error) {
 	_, msg := createAllPeerMessage(data)
-	log.Printf("Published new message: %s\n", msg)
+	log.Printf("Published new message to channel %s: %s\n", channel, msg)
 	return s.client.Publish(ctx, channel, msg).Result()
 }
 
@@ -62,9 +62,9 @@ func readyCheckResponder(ctx context.Context, client *redis.Client, readyChan ch
 				return
 			}
 			log.Debugf("Ready check channel message %s", serverStatusRequest)
-			if serverStatusRequest == "controltower-ready-request" {
+			if serverStatusRequest == "controller-ready-request" {
 				if _, err := client.Publish(ctx, messages.HealthcheckReplyChannel, messages.HealthcheckReplyMsg).Result(); err != nil {
-					log.Errorf("Unable to publish healthcheck reply: %s", err)
+					log.Errorf("unable to publish healthcheck reply: %s", err)
 				}
 			}
 		}
@@ -79,7 +79,7 @@ func createAllPeerMessage(postData []messages.Peer) (string, string) {
 
 func (s *streamer) publishErrorMessage(ctx context.Context, channel string, event messages.EventType, code messages.ErrorCode, msg string) (int64, error) {
 	jsonMsg := createErrorMessage(event, code, msg)
-	log.Printf("Published new error message: %s\n", jsonMsg)
+	log.Printf("Published new error message to channel %s : %s\n", channel, jsonMsg)
 	return s.client.Publish(ctx, channel, jsonMsg).Result()
 }
 

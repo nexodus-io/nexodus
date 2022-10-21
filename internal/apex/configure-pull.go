@@ -1,11 +1,11 @@
-package aircrew
+package apex
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -14,56 +14,56 @@ const (
 	persistentKeepalive = "25"
 )
 
-// ParseAircrewControlTowerConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ac *Aircrew) ParseAircrewControlTowerConfig(listenPort int, peerListing []messages.Peer) {
+// ParseWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
+func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 	var hubRouterExists bool
 
 	for _, value := range peerListing {
-		if value.PublicKey == ac.wireguardPubKey {
-			ac.wireguardPubKeyInConfig = true
+		if value.PublicKey == ax.wireguardPubKey {
+			ax.wireguardPubKeyInConfig = true
 		}
 		if value.HubRouter {
 			hubRouterExists = true
 		}
 	}
-	if !ac.wireguardPubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the control tower update\n", ac.wireguardPubKey)
+	if !ax.wireguardPubKeyInConfig {
+		log.Printf("Public Key for this node %s was not found in the controller update\n", ax.wireguardPubKey)
 	}
 	// determine if the peer listing for this node is a hub zone or hub-router
 	for _, value := range peerListing {
-		if value.PublicKey == ac.wireguardPubKey && value.HubRouter {
+		if value.PublicKey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
-			if ac.os == Darwin.String() {
+			if ax.os == Darwin.String() {
 				log.Fatalf("OSX nodes are not supported as bouncer hubs")
 			} else {
 				// Build a hub-router wireguard configuration
-				ac.parseControlTowerHubWireguardConfig(listenPort, peerListing)
+				ax.parseHubWireguardConfig(listenPort, peerListing)
 				return
 			}
 		}
 		if value.HubZone {
 			log.Debug("This zone is a hub-zone")
 			if !hubRouterExists {
-				log.Error("Cannot deploy to a hub-zone if no hub router has joined the zone yet. See `--hub-router`")
+				log.Error("cannot deploy to a hub-zone if no hub router has joined the zone yet. See `--hub-router`")
 				os.Exit(1)
 			}
 			// build a hub-zone wireguard configuration
-			ac.parseControlTowerHubWireguardConfig(listenPort, peerListing)
+			ax.parseHubWireguardConfig(listenPort, peerListing)
 			return
 		}
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
 		// Build the wg config for all peers
-		if value.PublicKey != ac.wireguardPubKey {
+		if value.PublicKey != ax.wireguardPubKey {
 
 			var allowedIPs string
 			if value.ChildPrefix != "" {
 				// check the netlink routing tables for the child prefix and exit if it already exists
-				if ac.os == Linux.String() && routeExists(value.ChildPrefix) {
+				if ax.os == Linux.String() && routeExists(value.ChildPrefix) {
 					log.Errorf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", value.ChildPrefix)
 				}
 				allowedIPs = appendChildPrefix(value.AllowedIPs, value.ChildPrefix)
@@ -85,9 +85,9 @@ func (ac *Aircrew) ParseAircrewControlTowerConfig(listenPort int, peerListing []
 				value.ZoneID)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == ac.wireguardPubKey {
+		if value.PublicKey == ax.wireguardPubKey {
 			localInterface = wgLocalConfig{
-				ac.wireguardPvtKey,
+				ax.wireguardPvtKey,
 				value.AllowedIPs,
 				listenPort,
 				false,
@@ -98,16 +98,16 @@ func (ac *Aircrew) ParseAircrewControlTowerConfig(listenPort int, peerListing []
 				localInterface.Address,
 				WgListenPort)
 			// set the node unique local interface configuration
-			ac.wgConfig.Interface = localInterface
+			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ac.wgConfig.Peer = peers
+	ax.wgConfig.Peer = peers
 }
 
-func (ac *Aircrew) DeployControlTowerWireguardConfig() {
+func (ax *Apex) DeployWireguardConfig() {
 	latestCfg := &wgConfig{
-		Interface: ac.wgConfig.Interface,
-		Peer:      ac.wgConfig.Peer,
+		Interface: ax.wgConfig.Interface,
+		Peer:      ax.wgConfig.Peer,
 	}
 	cfg := ini.Empty(ini.LoadOptions{
 		AllowNonUniqueSections: true,
@@ -116,13 +116,13 @@ func (ac *Aircrew) DeployControlTowerWireguardConfig() {
 	if err != nil {
 		log.Fatal("load ini configuration from struct error")
 	}
-	switch ac.os {
+	switch ax.os {
 	case Linux.String():
 		latestConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 		if err = cfg.SaveTo(latestConfig); err != nil {
-			log.Fatalf("Save latest configuration error: %v\n", err)
+			log.Fatalf("save latest configuration error: %v\n", err)
 		}
-		if ac.wireguardPubKeyInConfig {
+		if ax.wireguardPubKeyInConfig {
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
@@ -138,13 +138,13 @@ func (ac *Aircrew) DeployControlTowerWireguardConfig() {
 	case Darwin.String():
 		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
-			log.Fatalf("Save latest configuration error: %v\n", err)
+			log.Fatalf("save latest configuration error: %v\n", err)
 		}
-		if ac.wireguardPubKeyInConfig {
+		if ax.wireguardPubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
-				log.Debugf("failed to start the wireguard interface: %v\n", err)
+				log.Debugf("Failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
 			wgOut, err = RunCommand("wg-quick", "up", activeDarwinConfig)

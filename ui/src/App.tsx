@@ -25,8 +25,8 @@ import { MyLayout } from "./components/layout";
 
 const config : KeycloakConfig = {
   url: 'http://localhost:8888',
-  realm: 'controltower',
-  clientId: 'front-controltower',
+  realm: 'controller',
+  clientId: 'front-controller',
 };
 
 const initOptions: KeycloakInitOptions = { onLoad: 'login-required' };
@@ -68,7 +68,7 @@ const App = () => {
     <Admin
       authProvider={authProvider.current}
       dataProvider={dataProvider.current}
-      title="Controltower"
+      title="Controller"
       layout={MyLayout}
     >
       <Resource name="peers" list={PeerList} show={PeerShow} icon={PeerIcon} />

@@ -1,4 +1,4 @@
-package controltower
+package apexcontroller
 
 import (
 	"context"
@@ -40,21 +40,21 @@ type Zone struct {
 }
 
 // NewZone creates a new Zone since we also need to create a database for zone IPAM.
-// TODO: Investigate moving the IPAM service out of controltower and access it over grpc.
-func (ct *ControlTower) NewZone(id, name, description, cidr string, hubZone bool) (*Zone, error) {
+// TODO: Investigate moving the IPAM service out of controller and access it over grpc.
+func (ct *Controller) NewZone(id, name, description, cidr string, hubZone bool) (*Zone, error) {
 	dbName := fmt.Sprintf("ipam_%s", strings.ReplaceAll(id, "-", "_"))
-	log.Debugf("creating db %s", dbName)
+	log.Debugf("Creating db %s", dbName)
 
 	result := ct.db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 	if result.Error != nil && !strings.Contains(result.Error.Error(), "already exists") {
 		return nil, result.Error
 	}
-	log.Debugf("created db %s", dbName)
+	log.Debugf("Created db %s", dbName)
 
 	storage, err := goipam.NewPostgresStorage(
 		ct.dbHost,
 		"5432",
-		"controltower",
+		"controller",
 		ct.dbPass,
 		dbName,
 		goipam.SSLModeDisable,
