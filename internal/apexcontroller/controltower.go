@@ -1,4 +1,4 @@
-package controltower
+package apexcontroller
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	goipam "github.com/metal-stack/go-ipam"
-	"github.com/redhat-et/jaywalking/internal/messages"
+	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -26,8 +26,8 @@ const (
 	restPort        = "8080"
 )
 
-// Control tower specific data
-type ControlTower struct {
+// Controller specific data
+type Controller struct {
 	Router       *gin.Engine
 	Client       *redis.Client
 	db           *gorm.DB
@@ -42,10 +42,10 @@ type ControlTower struct {
 	readyChan    chan string
 }
 
-func NewControlTower(ctx context.Context, streamService string, streamPort int, streamPasswd string, dbHost string, dbPass string) (*ControlTower, error) {
+func NewController(ctx context.Context, streamService string, streamPort int, streamPasswd string, dbHost string, dbPass string) (*Controller, error) {
 	streamSocket := fmt.Sprintf("%s:%d", streamService, streamPort)
 	client := NewRedisClient(streamSocket, streamPasswd)
-	dsn := fmt.Sprintf("host=%s user=controltower password=%s dbname=controltower port=5432 sslmode=disable", dbHost, dbPass)
+	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
 
 	var db *gorm.DB
 	connectDb := func() error {
@@ -74,10 +74,10 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 
 	_, err = client.Ping(ctx).Result()
 	if err != nil {
-		log.Fatalf("Unable to connect to the redis instance at %s: %v", streamSocket, err)
+		log.Fatalf("unable to connect to the redis instance at %s: %v", streamSocket, err)
 	}
 
-	ct := &ControlTower{
+	ct := &Controller{
 		Router:       gin.Default(),
 		Client:       client,
 		db:           db,
@@ -109,7 +109,7 @@ func NewControlTower(ctx context.Context, streamService string, streamPort int, 
 	return ct, nil
 }
 
-func (ct *ControlTower) Run() {
+func (ct *Controller) Run() {
 	ctx := context.Background()
 
 	// respond to initial health check from agents initializing
@@ -148,7 +148,7 @@ func (ct *ControlTower) Run() {
 						log.Error(err)
 						if _, err = pubDefault.publishErrorMessage(
 							ctx, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
-							log.Errorf("Unable to publish error message %s", err)
+							log.Errorf("unable to publish error message %s", err)
 						}
 					} else {
 						peers, err := ct.AddPeer(ctx, msgEvent, zone)
@@ -158,7 +158,7 @@ func (ct *ControlTower) Run() {
 								log.Errorf("unable to publish peer list: %s", err)
 							}
 						} else {
-							log.Errorf("Peer was not added: %v", err)
+							log.Errorf("peer was not added: %v", err)
 						}
 					}
 				}
@@ -180,7 +180,7 @@ func (ct *ControlTower) Run() {
 	}()
 }
 
-func (ct *ControlTower) Shutdown(ctx context.Context) error {
+func (ct *Controller) Shutdown(ctx context.Context) error {
 	// Shutdown Ready Checker
 	close(ct.readyChan)
 
@@ -201,7 +201,7 @@ func (ct *ControlTower) Shutdown(ctx context.Context) error {
 }
 
 // setZoneDetails set default zone attributes
-func (ct *ControlTower) CreateDefaultZone() error {
+func (ct *Controller) CreateDefaultZone() error {
 	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 	var zone Zone
 	log.Debug("Checking that Default Zone exists")
@@ -225,7 +225,7 @@ type MsgTypes struct {
 	Peer  Peer
 }
 
-func (ct *ControlTower) zoneExists(ctx context.Context, zoneId string) (*Zone, error) {
+func (ct *Controller) zoneExists(ctx context.Context, zoneId string) (*Zone, error) {
 	var zone Zone
 	res := ct.db.Preload("Peers").First(&zone, "id = ?", zoneId)
 	// todo, the needs to go over an err channel to the agent
@@ -235,7 +235,7 @@ func (ct *ControlTower) zoneExists(ctx context.Context, zoneId string) (*Zone, e
 	return &zone, nil
 
 }
-func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message, zone *Zone) ([]messages.Peer, error) {
+func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zone *Zone) ([]messages.Peer, error) {
 	tx := ct.db.Begin()
 
 	ipamPrefix := zone.IpCidr
@@ -253,7 +253,7 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message, 
 	res := ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			log.Debug("Public Key Not Found. Adding A New One")
+			log.Debug("Public key not found. Adding a new one")
 			key = Device{
 				ID: msgEvent.Peer.PublicKey,
 			}
@@ -273,7 +273,7 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message, 
 		}
 	}
 	if !found {
-		log.Debugf("PublicKey Not In Zone %s. Creating a New Peer", zone.ID)
+		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
 		var ip *goipam.IP
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
@@ -344,7 +344,7 @@ func (ct *ControlTower) AddPeer(ctx context.Context, msgEvent messages.Message, 
 	return peerList, nil
 }
 
-func (ct *ControlTower) MessageHandling(ctx context.Context) {
+func (ct *Controller) MessageHandling(ctx context.Context) {
 
 	pub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
 	sub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
@@ -360,7 +360,7 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 			msg := <-controllerChan
 			msgEvent := messages.HandleMessage(msg)
 			switch msgEvent.Event {
-			// TODO implement error chans
+			// TODO implement error channels
 			case messages.RegisterNodeRequest:
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelController)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
@@ -381,7 +381,7 @@ func (ct *ControlTower) MessageHandling(ctx context.Context) {
 							}
 						} else {
 
-							log.Errorf("Peer was not added: %v", err)
+							log.Errorf("peer was not added: %v", err)
 						}
 					}
 

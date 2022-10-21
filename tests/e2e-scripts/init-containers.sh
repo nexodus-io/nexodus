@@ -19,7 +19,7 @@ start_containers() {
     # TODO: Replace with a proper healthcheck
     sleep 10
 
-    # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the aircrew cmd)
+    # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the apex cmd)
     $DOCKER run -itd \
         --name=node1 \
         --net=apex_default \
@@ -70,10 +70,10 @@ copy_binaries() {
     local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
-    # Node-1 aircrew run default zone
-    cat <<EOF > aircrew-run-node1.sh
+    # Node-1 apex run default zone
+    cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node1_pubkey} \
 --private-key=${node1_pvtkey} \
 --controller=${controller} \
@@ -81,10 +81,10 @@ aircrew \
 --controller-password=${controller_passwd}
 EOF
 
-    # Node-2 aircrew run default zone
-    cat <<EOF > aircrew-run-node2.sh
+    # Node-2 apex run default zone
+    cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node2_pubkey} \
 --private-key=${node2_pvtkey} \
 --controller=${controller} \
@@ -93,27 +93,27 @@ aircrew \
 EOF
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying aircrew-run-node1.sh ==="
-    cat aircrew-run-node1.sh
-    echo "=== Displaying aircrew-run-node2.sh ==="
-    cat aircrew-run-node2.sh
+    echo "=== Displaying apex-run-node1.sh ==="
+    cat apex-run-node1.sh
+    echo "=== Displaying apex-run-node2.sh ==="
+    cat apex-run-node2.sh
 
-    # Copy binaries and scripts (copying the controltower even though we are running it on the VM instead of in a container)
-    $DOCKER cp $(which aircrew) node1:/bin/aircrew
-    $DOCKER cp $(which aircrew) node2:/bin/aircrew
-    $DOCKER cp $(which aircrew) node3:/bin/aircrew
+    # Copy binaries and scripts (copying the controller even though we are running it on the VM instead of in a container)
+    $DOCKER cp $(which apex) node1:/bin/apex
+    $DOCKER cp $(which apex) node2:/bin/apex
+    $DOCKER cp $(which apex) node3:/bin/apex
 
     # Deploy run scripts to nodes
-    $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
-    $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
+    $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
+    $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
 
     # Set permissions in the container
-    $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
-    $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
 
     # Start the agents on both nodes
-    $DOCKER exec node1 /bin/aircrew-run-node1.sh &
-    $DOCKER exec node2 /bin/aircrew-run-node2.sh &
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
 }
 
 verify_connectivity() {
@@ -178,10 +178,10 @@ setup_custom_zone_connectivity() {
     echo -e  "$node1_pvtkey\n\n" | tee node1-private.key
     echo -e  "$node2_pvtkey\n\n" | tee node2-private.key
 
-    # Node-1 aircrew run
-    cat <<EOF > aircrew-run-node1.sh
+    # Node-1 apex run
+    cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -190,10 +190,10 @@ aircrew \
 --controller-password=${controller_passwd}
 EOF
 
-    # Node-2 aircrew run
-    cat <<EOF > aircrew-run-node2.sh
+    # Node-2 apex run
+    cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -202,28 +202,28 @@ aircrew \
 --controller-password=${controller_passwd}
 EOF
 
-    # Kill the aircrew process on both nodes
-    $DOCKER exec node1 killall aircrew
-    $DOCKER exec node2 killall aircrew
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying aircrew-run-node1.sh ==="
-    cat aircrew-run-node1.sh
-    echo "=== Displaying aircrew-run-node2.sh ==="
-    cat aircrew-run-node2.sh
+    echo "=== Displaying apex-run-node1.sh ==="
+    cat apex-run-node1.sh
+    echo "=== Displaying apex-run-node2.sh ==="
+    cat apex-run-node2.sh
 
-    $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
-    $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
+    $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
+    $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
     $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
     $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
-    $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
 
     # Start the agents on both nodes
-    $DOCKER exec node1 /bin/aircrew-run-node1.sh &
-    $DOCKER exec node2 /bin/aircrew-run-node2.sh &
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
     sleep 2
@@ -265,10 +265,10 @@ setup_custom_second_zone_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Node-1 aircrew run
-    cat <<EOF > aircrew-run-node1.sh
+    # Node-1 apex run
+    cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -277,10 +277,10 @@ aircrew \
 --controller-password=${controller_passwd}
 EOF
 
-    # Node-2 aircrew run
-    cat <<EOF > aircrew-run-node2.sh
+    # Node-2 apex run
+    cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-aircrew \
+apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -289,28 +289,28 @@ aircrew \
 --controller-password=${controller_passwd}
 EOF
 
-    # Kill the aircrew process on both nodes
-    $DOCKER exec node1 killall aircrew
-    $DOCKER exec node2 killall aircrew
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying aircrew-run-node1.sh ==="
-    cat aircrew-run-node1.sh
-    echo "=== Displaying aircrew-run-node2.sh ==="
-    cat aircrew-run-node2.sh
+    echo "=== Displaying apex-run-node1.sh ==="
+    cat apex-run-node1.sh
+    echo "=== Displaying apex-run-node2.sh ==="
+    cat apex-run-node2.sh
 
-    $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
-    $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
+    $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
+    $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
     $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
     $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
-    $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
 
     # Start the agents on both nodes
-    $DOCKER exec node1 /bin/aircrew-run-node1.sh &
-    $DOCKER exec node2 /bin/aircrew-run-node2.sh &
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
     sleep 2
@@ -357,14 +357,14 @@ setup_child_prefix_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Kill the aircrew process on both nodes
-    $DOCKER exec node1 killall aircrew
-    $DOCKER exec node2 killall aircrew
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
 
-    # Node-1 aircrew run
-    cat <<EOF > aircrew-run-node1.sh
+    # Node-1 apex run
+    cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-    aircrew --public-key=${node1_pubkey} \
+    apex --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -374,10 +374,10 @@ setup_child_prefix_connectivity() {
     --zone=${zone}
 EOF
 
-    # Node-2 aircrew run
-    cat <<EOF > aircrew-run-node2.sh
+    # Node-2 apex run
+    cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-    aircrew --public-key=${node2_pubkey} \
+    apex --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -388,28 +388,28 @@ EOF
 EOF
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying aircrew-run-node1.sh ==="
-    cat aircrew-run-node1.sh
-    echo "=== Displaying aircrew-run-node2.sh ==="
-    cat aircrew-run-node2.sh
+    echo "=== Displaying apex-run-node1.sh ==="
+    cat apex-run-node1.sh
+    echo "=== Displaying apex-run-node2.sh ==="
+    cat apex-run-node2.sh
 
     # Copy files to the containers
-    $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
-    $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
+    $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
+    $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
     $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
     $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
-    $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
-    $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
 
     # Add loopback addresses the are in the child-prefix cidr range
     $DOCKER exec node1 ip addr add 172.20.1.10/32 dev lo
     $DOCKER exec node2 ip addr add 172.20.3.10/32 dev lo
 
     # Start the agents on both nodes
-    $DOCKER exec node1 /bin/aircrew-run-node1.sh &
-    $DOCKER exec node2 /bin/aircrew-run-node2.sh &
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
 
     # Allow four seconds for the wg0 interface to readdress
     sleep 4
@@ -489,14 +489,14 @@ setup_hub_spoke_connectivity() {
     echo -e  "$node2_pvtkey" | tee node2-private.key
     echo -e  "$node3_pvtkey" | tee node3-private.key
 
-    # Kill the aircrew process on both nodes (no process running on node3 yet)
-    sudo $DOCKER exec node1 killall aircrew
-    sudo $DOCKER exec node2 killall aircrew
+    # Kill the apex process on both nodes (no process running on node3 yet)
+    sudo $DOCKER exec node1 killall apex
+    sudo $DOCKER exec node2 killall apex
 
-    # Node-1 aircrew run
-    cat <<EOF > aircrew-run-node1.sh
+    # Node-1 apex run
+    cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-    aircrew --public-key=${node1_pubkey} \
+    apex --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -505,10 +505,10 @@ setup_hub_spoke_connectivity() {
     --zone=${zone}
 EOF
 
-    # Node-2 aircrew run
-    cat <<EOF > aircrew-run-node2.sh
+    # Node-2 apex run
+    cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-    aircrew --public-key=${node2_pubkey} \
+    apex --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -516,10 +516,10 @@ EOF
     --zone=${zone}
 EOF
 
-    # Node-3 aircrew run
-    cat <<EOF > aircrew-run-node3.sh
+    # Node-3 apex run
+    cat <<EOF > apex-run-node3.sh
 #!/bin/bash
-    aircrew --public-key=${node3_pubkey} \
+    apex --public-key=${node3_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -528,31 +528,31 @@ EOF
 EOF
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying aircrew-run-node1.sh ==="
-    cat aircrew-run-node1.sh
-    echo "=== Displaying aircrew-run-node2.sh ==="
-    cat aircrew-run-node2.sh
-    echo "=== Displaying aircrew-run-node3.sh ==="
-    cat aircrew-run-node3.sh
+    echo "=== Displaying apex-run-node1.sh ==="
+    cat apex-run-node1.sh
+    echo "=== Displaying apex-run-node2.sh ==="
+    cat apex-run-node2.sh
+    echo "=== Displaying apex-run-node3.sh ==="
+    cat apex-run-node3.sh
 
     # Copy files to the containers
-    sudo $DOCKER cp ./aircrew-run-node1.sh node1:/bin/aircrew-run-node1.sh
-    sudo $DOCKER cp ./aircrew-run-node2.sh node2:/bin/aircrew-run-node2.sh
-    sudo $DOCKER cp ./aircrew-run-node3.sh node3:/bin/aircrew-run-node3.sh
+    sudo $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
+    sudo $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
+    sudo $DOCKER cp ./apex-run-node3.sh node3:/bin/apex-run-node3.sh
     sudo $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
     sudo $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
     sudo $DOCKER cp ./node3-private.key node3:/etc/wireguard/private.key
 
     # Set permissions in the container
-    sudo $DOCKER exec node1 chmod +x /bin/aircrew-run-node1.sh
-    sudo $DOCKER exec node2 chmod +x /bin/aircrew-run-node2.sh
-    sudo $DOCKER exec node3 chmod +x /bin/aircrew-run-node3.sh
+    sudo $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
+    sudo $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
+    sudo $DOCKER exec node3 chmod +x /bin/apex-run-node3.sh
 
     # Start the agents on all 3 nodes nodes (currently the hub-router needs to be spun up first)
-    sudo $DOCKER exec node1 /bin/aircrew-run-node1.sh &
+    sudo $DOCKER exec node1 /bin/apex-run-node1.sh &
     sleep 5
-    sudo $DOCKER exec node2 /bin/aircrew-run-node2.sh &
-    sudo $DOCKER exec node3 /bin/aircrew-run-node3.sh &
+    sudo $DOCKER exec node2 /bin/apex-run-node2.sh &
+    sudo $DOCKER exec node3 /bin/apex-run-node3.sh &
 
     # Allow four seconds for the wg0 interface to readdress
     sleep 4

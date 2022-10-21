@@ -4,7 +4,7 @@
 
 *Roads? Where we're going, we don't need roads - Dr Emmett Brown*
 
-Goal of this project is to provide connectivity service between nodes deployed across heterogeneous environment (Edge, Public, Private & Hybrid Cloud), with different level of visibilities like nodes in Cloud VPC, nodes behind NAT etc. This solution is not specific to any platform, but just focuses on providing connectivity between nodes and the container/VM workload running on it. This services provides a solution that is complimentary to the platform specific network solution. Platform network solution can leverage this service to simplify their stack.
+Goal of this project is to provide connectivity service between nodes deployed across heterogeneous environment (Edge, Public, Private & Hybrid Cloud), with different level of visibilities like nodes in Cloud VPC, nodes behind NAT etc. This solution is not specific to any platform, but just focuses on providing connectivity between nodes and the container/VM workload running on it. This services provides a solution that is complimentary to the platform specific network solution. Platform specific network solutions can leverage this service to simplify their stack.
 
 Some of the high level features that this project is planning to provide are:
 - IOT networking to any node anywhere regardless of the platform
@@ -16,7 +16,7 @@ Some of the high level features that this project is planning to provide are:
 - Compliance scenario where a bunch of nodes need to be isolated from one another (PCI)
 - Generic platform agnostic approach for workloads not tied to a platform.
 
-## Aircrew and connectivity scenarios:
+## Apex and connectivity scenarios:
 
 ### 1. Mesh Network between nodes deployed across different VPC and at Edge
 
@@ -31,17 +31,17 @@ Please follow the instructions below to setup the connectivity scenario shown ab
 You can directly build the required binaries from the source code
 
 ```shell
-git clone https://github.com/redhat-et/jaywalking
+git clone https://github.com/redhat-et/apex
 go install ./...
 ```
 to build for Linux OS node
 ```shell
-GOOS=linux GOARCH=amd64 go build -o aircrew-amd64-linux ./cmd/aircrew
+GOOS=linux GOARCH=amd64 go build -o apex-amd64-linux ./cmd/apex
 ```
 
 to build for Mac OS node 
 ```shell
-GOOS=darwin GOARCH=amd64 go build -o aircrew-amd64-darwin ./cmd/aircrew
+GOOS=darwin GOARCH=amd64 go build -o apex-amd64-darwin ./cmd/apex
 ```
 
 Or download a recent binaries to the nodes:
@@ -49,23 +49,23 @@ Or download a recent binaries to the nodes:
 *OSX Binary*
 
 ```shell
-sudo curl https://jaywalking.s3.amazonaws.com/aircrew-amd64-darwin --output /usr/local/sbin/aircrew
-sudo chmod +x /usr/local/sbin/aircrew
+sudo curl https://jaywalking.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
+sudo chmod +x /usr/local/sbin/apex
 ```
 
 *Linux Binary*
 ```shell
-sudo curl https://jaywalking.s3.amazonaws.com/aircrew-amd64-linux --output /usr/local/sbin/aircrew
-sudo chmod +x /usr/local/sbin/aircrew
+sudo curl https://jaywalking.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
+sudo chmod +x /usr/local/sbin/apex
 ```
 
-#### **Start the ControlTower stack**
-- ControlTower stack can run anywhere, as far as the aircrew agents (mentioned below) can reach it.
-- The ControlTower must be running for agents to connect to the tunnel mesh. 
-- If the ControlTower becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. 
-- The same applies to the aircrew agent, if the agent process exits, tunnels are maintained and only new peer joins are affected.
+#### **Start the Apex Controller stack**
+- Controller stack can run anywhere, as far as the apex agents (mentioned below) can reach it.
+- The Controller must be running for agents to connect to the tunnel mesh. 
+- If the Controller becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. 
+- The same applies to the apex (agent), if the agent process exits, tunnels are maintained and only new peer joins are affected.
 
-You can start the ControlTower stack using docker-compose or even podman-compose
+You can start the Controller stack using docker-compose or even podman-compose
 ```shell
 docker-compose build
 docker-compose up -d
@@ -86,9 +86,9 @@ For Windows and Mac adjust the paths to existing directories.
  apt install wireguard-tools
  ```
 
-#### **Start the Aircrew agent**
- Start the aircrew agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the ControlTower. Run the following commands on all the nodes:
- **Note**: If your test nodes does nodes are on internal networks and not on something like EC2 use the `--network-internal` flag  which will use an IP from your host instead of discovering your public NAT address or provide a specific address with `--local-endpoint-ip=x.x.x.x`:
+#### **Start the Apex agent**
+ Start the apex agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the Apex Controller. Run the following commands on all the nodes:
+ **Note**: If your test nodes are on internal networks and not on something like EC2 use the `--network-internal` flag  which will use an IP from your host instead of discovering your public NAT address or provide a specific address with `--local-endpoint-ip=x.x.x.x`:
 
 There are currently 3 scenarios that allow an operator to define how the peers in a mesh are defined. There is a public address or cloud scenario, a private network address option and the ability to define exactly what address a peer will use when being mapped to a public key in the mesh. The following is an example of each:
 
@@ -96,7 +96,7 @@ There are currently 3 scenarios that allow an operator to define how the peers i
 This is currently the default behavior as public CSP to private edge is primary a focus of the project.
 
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
 --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> 
@@ -107,7 +107,7 @@ the following will use an existing IP on the node as the peer endpoint address. 
 create internal peering to other nodes in your network or allow the node to initiate peers
 to public machines in the cloud. (--local-endpoint-ip)
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
 --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -117,7 +117,7 @@ sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
 peers, they can specify the endpoint address that will be distributed to all of the other 
 peers in the mesh. (--internal-network)
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
 --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD>\
@@ -126,7 +126,7 @@ sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
 **NOTES**
 - *By default, the node joins a zone named `default`. A **zone** is simply the isolated wireguard network where all the nodes in that zone is connected as a mesh (as depicted in **Figure 1**).*
 - *The default zone prefix is currently hardcoded to `10.200.1.0/20`. Custom zones and IPAM are in the next example.*
-- *While we pass the private key via CLI in the examples (dev/demo purposes only), we would highly recommend using the cli flag `--private-key-file=/path/to/private.key` or ENV `AIRCREW_PRIVATE_KEY_FILE=/path/to/private.key` in all scenarios where key safety protection is an issue.*
+- *While we pass the private key via CLI in the examples (dev/demo purposes only), we would highly recommend using the cli flag `--private-key-file=/path/to/private.key` or ENV `APEX_PRIVATE_KEY_FILE=/path/to/private.key` in all scenarios where key safety protection is an issue.*
 
 You will now have a flat host routed network between the endpoints. All of the wg0 (wireguard) interfaces can now reach one another. We currently work around NAT with a hacky STUN-like server to automatically discover public addressing for the user.
 
@@ -143,8 +143,8 @@ Follow the below instructions to setup this connectivity scenario. In this scena
 
 **Note:** in the following example, the CIDR ranges can overlap since each zone is a separate peering mesh isolated from one another.
 
-#### **Create the zones via the REST API on the ControlTower**
-In the following curl command, replace localhost with the IP address of the node the ControlTower is running on:
+#### **Create the zones via the REST API on the Apex Controller**
+In the following curl command, replace localhost with the IP address of the node the Controller is running on:
 
 Create zone blue:
 ```shell
@@ -177,11 +177,9 @@ curl -L -X GET 'http://localhost:8080/zones'
 #### **Join the nodes to the zones**
 A node can only belong to one zone at a time for isolation between tenants/security zones.
 
-**Disclaimer:** if the zone does not exist, we do not currently handle an error channel back from the ControlTower, so the agent will just sit there. Tail the ControlTower logs for specifics and debugging.
-
 To join zone blue:
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -189,7 +187,7 @@ sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
 ```
 To join zone red:
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -252,7 +250,7 @@ For simplicity, we are just using the default, built-in zone `default`. You can 
 
 Join node1 to the `default` zone network
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY_A>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_A>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -280,7 +278,7 @@ docker run -it --rm --network=net1 busybox bash
 Join node2 to the `default` zone network
 
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY_B>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_B>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -319,10 +317,10 @@ sudo ip addr add 172.28.0.10/32 dev lo
 ```
 Ping between nodes to the loopbacks, both IPs should be reachable now because those prefixes were added to the routing tables.
 
-To go one step further, a user could then run aircrew on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
+To go one step further, a user could then run apex on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
 
 ```shell
-sudo aircrew --public-key=<NODE_WIREGUARD_PUBLIC_KEY_C>  \
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY_C>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY_C>  \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
@@ -337,7 +335,7 @@ ping 172.24.0.x
 **NOTES:**
 - once you allocate a prefix, it is fixed in IPAM. We do not currently support removing the prefix. If you want to
 add different child prefix, either use a different cidr or delete the persistent state file in the root of where you ran the 
-ControlTower binary named `<zone-name>.json`. For example, `ipam-red.json`.
+Controller binary named `<zone-name>.json`. For example, `ipam-red.json`.
 
 - Containers need to have unique private addresses on the docker network as exemplified above. Overlapping addresses 
 within a zone is not supported because that is a nightmare to troubleshoot, creates major fragility in SDN deployments and is 
@@ -346,7 +344,7 @@ all around insanity. TLDR; IP address management in v4 networks is important whe
 
 ### Additional Features supported by the project, not shown in the above examples:
 
-- You can also run the aircrew command on one node and then run the exact same command and keys on a new node and the assigned address from the ControlTower will move that peering
+- You can also run the apex command on one node and then run the exact same command and keys on a new node and the assigned address from the Apex Controller will move that peering
   from to the new machine you run it on along with updating the mesh as to the new endpoint address.
 - This can be run behind natted networks for remote spoke machines and do not require any incoming ports to be opened to the device. Only one side of the peering needs an open port
   for connections to be initiated. Once the connection is initiated from one side, bi-directional communications can be established. This aspect is especially interesting for IOT/Edge.

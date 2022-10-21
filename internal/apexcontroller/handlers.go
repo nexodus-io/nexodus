@@ -1,4 +1,4 @@
-package controltower
+package apexcontroller
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ type ZoneRequest struct {
 }
 
 // PostZone creates a new zone via a REST call
-func (ct *ControlTower) handlePostZones(c *gin.Context) {
+func (ct *Controller) handlePostZones(c *gin.Context) {
 	var request ZoneRequest
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
@@ -55,7 +55,7 @@ type ZoneJSON struct {
 }
 
 // GetZones responds with the list of all peers as JSON.
-func (ct *ControlTower) handleListZones(c *gin.Context) {
+func (ct *Controller) handleListZones(c *gin.Context) {
 	var zones []Zone
 	result := ct.db.Find(&zones)
 	if result.Error != nil {
@@ -81,7 +81,7 @@ func (ct *ControlTower) handleListZones(c *gin.Context) {
 }
 
 // GetZone responds with a single zone
-func (ct *ControlTower) handleGetZones(c *gin.Context) {
+func (ct *Controller) handleGetZones(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
@@ -107,7 +107,7 @@ func (ct *ControlTower) handleGetZones(c *gin.Context) {
 }
 
 // GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
-func (ct *ControlTower) handleListPeers(c *gin.Context) {
+func (ct *Controller) handleListPeers(c *gin.Context) {
 	peers := make([]Peer, 0)
 	result := ct.db.Find(&peers)
 	if result.Error != nil {
@@ -120,7 +120,7 @@ func (ct *ControlTower) handleListPeers(c *gin.Context) {
 }
 
 // GetPeer locates a peer
-func (ct *ControlTower) handleGetPeers(c *gin.Context) {
+func (ct *Controller) handleGetPeers(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
@@ -141,7 +141,7 @@ type DeviceJSON struct {
 }
 
 // GetPubKeys responds with the list of all peers as JSON. TODO: Currently default zone only
-func (ct *ControlTower) handleListDevices(c *gin.Context) {
+func (ct *Controller) handleListDevices(c *gin.Context) {
 	devices := make([]Device, 0)
 	result := ct.db.Find(&devices)
 	if result.Error != nil {
@@ -163,7 +163,7 @@ func (ct *ControlTower) handleListDevices(c *gin.Context) {
 }
 
 // GetPubKey locates a peer
-func (ct *ControlTower) handleGetDevices(c *gin.Context) {
+func (ct *Controller) handleGetDevices(c *gin.Context) {
 	k := c.Param("id")
 	if k == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "pubkey id is not valid"})

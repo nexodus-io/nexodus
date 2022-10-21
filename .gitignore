@@ -11,10 +11,6 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Built binaries
-cmd/aircrew/bin
-cmd/controltower/bin
-
 # Ops files
 *.pem
 **/peer-inventory/*
@@ -25,6 +21,7 @@ default-ipam.json
 *.idea
 .DS_Store
 
-# test
-aircrew-*.sh
-*.key
+#tests
+./tests/*.json
+./tests/apex-*.sh
+./tests/*.key

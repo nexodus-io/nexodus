@@ -6,10 +6,10 @@ on:
 
 env:
   REGISTRY: quay.io
-  REPOSITORY: jaywalking
-  CONTROLTOWER_IMAGE_NAME: controltower
-  CONTROLTOWER_UI_IMAGE_NAME: controltower-ui
-  AIRCREW_IMAGE_NAME: aircrew
+  REPOSITORY: apex
+  CONTROLLER_IMAGE_NAME: controller
+  CONTROLLER_UI_IMAGE_NAME: controller-ui
+  APEX_IMAGE_NAME: apex
 
 jobs:
   build:
@@ -26,71 +26,71 @@ jobs:
         username: ${{ secrets.QUAY_ROBOT_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
-    - name: Extract metadata (tags, labels) for controltower image
-      id: meta-controltower
+    - name: Extract metadata (tags, labels) for apex controller image
+      id: meta-controller
       uses: docker/metadata-action@v3.6.2
       with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLTOWER_IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_IMAGE_NAME }}
 
-    - name: Build controltower image
-      id: build-controltower
+    - name: Build controller image
+      id: build-controller
       uses: redhat-actions/buildah-build@v2
       with:
-        image: controltower
-        tags: ${{ steps.meta-controltower.outputs.tags }}
-        labels: ${{ steps.meta-controltower.outputs.labels }}
+        image: controller
+        tags: ${{ steps.meta-controller.outputs.tags }}
+        labels: ${{ steps.meta-controller.outputs.labels }}
         containerfiles: |
-          ./Containerfile.controltower
+          ./Containerfile.controller
 
-    - name: Push controltower to quay.io/
+    - name: Push controller to quay.io/
       uses: redhat-actions/push-to-registry@v2
       with:
-        image: ${{ steps.build-controltower.outputs.image }}
-        tags: ${{ steps.build-controltower.outputs.tags }}
+        image: ${{ steps.build-controller.outputs.image }}
+        tags: ${{ steps.build-controller.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
 
-    - name: Extract metadata (tags, labels) for controltower-ui image
-      id: meta-controltower-ui
+    - name: Extract metadata (tags, labels) for controller-ui image
+      id: meta-controller-ui
       uses: docker/metadata-action@v3.6.2
       with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLTOWER_UI_IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_UI_IMAGE_NAME }}
 
-    - name: Build controltower-ui image
-      id: build-controltower-ui
+    - name: Build controller-ui image
+      id: build-controller-ui
       uses: redhat-actions/buildah-build@v2
       with:
-        image: controltower-ui
-        tags: ${{ steps.meta-controltower-ui.outputs.tags }}
-        labels: ${{ steps.meta-controltower-ui.outputs.labels }}
+        image: controller-ui
+        tags: ${{ steps.meta-controller-ui.outputs.tags }}
+        labels: ${{ steps.meta-controller-ui.outputs.labels }}
         containerfiles: |
           ./Containerfile.ui
 
-    - name: Push controltower-ui to quay.io
+    - name: Push controller-ui to quay.io
       uses: redhat-actions/push-to-registry@v2
       with:
-        image: ${{ steps.build-controltower-ui.outputs.image }}
-        tags: ${{ steps.build-controltower-ui.outputs.tags }}
+        image: ${{ steps.build-controller-ui.outputs.image }}
+        tags: ${{ steps.build-controller-ui.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
 
-    - name: Extract metadata (tags, labels) for aircrew image
-      id: meta-aircrew
+    - name: Extract metadata (tags, labels) for apex agent image
+      id: meta-apex
       uses: docker/metadata-action@v3.6.2
       with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.AIRCREW_IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.APEX_IMAGE_NAME }}
 
-    - name: Build aircrew image
-      id: build-aircrew
+    - name: Build apex image
+      id: build-apex
       uses: redhat-actions/buildah-build@v2
       with:
-        image: aircrew
-        tags: ${{ steps.meta-aircrew.outputs.tags }}
-        labels: ${{ steps.meta-aircrew.outputs.labels }}
+        image: apex
+        tags: ${{ steps.meta-apex.outputs.tags }}
+        labels: ${{ steps.meta-apex.outputs.labels }}
         containerfiles: |
-          ./Containerfile.aircrew
+          ./Containerfile.apex
 
-    - name: Push aircrew to quay.io/
+    - name: Push apex to quay.io/
       uses: redhat-actions/push-to-registry@v2
       with:
-        image: ${{ steps.build-aircrew.outputs.image }}
-        tags: ${{ steps.build-aircrew.outputs.tags }}
+        image: ${{ steps.build-apex.outputs.image }}
+        tags: ${{ steps.build-apex.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
