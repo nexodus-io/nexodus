@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"reflect"
 	"sync"
 
 	"github.com/cenkalti/backoff/v4"
@@ -249,6 +250,15 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		hubZone = true
 	}
 
+	// TODO: properly handle existing device entries in the peer table
+	var txPeer []Peer
+	ct.db.Where("device_id =?", msgEvent.Peer.PublicKey).Delete(&txPeer)
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		return nil, err.Error
+	}
+	tx = ct.db.Begin()
+
 	var key Device
 	res := ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
 	if res.Error != nil {
@@ -268,6 +278,13 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	for _, p := range zone.Peers {
 		if p.DeviceID == msgEvent.Peer.PublicKey {
 			found = true
+			// if there are any changes in the peer's elements, remove the stale entry
+			if !reflect.DeepEqual(p, msgEvent.Peer) {
+				log.Debugf("Peer %s was updated", msgEvent.Peer.PublicKey)
+				zone.Peers = deletePeer(p, zone.Peers)
+				found = false
+				break
+			}
 			peer = p
 			break
 		}
@@ -279,8 +296,10 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if msgEvent.Peer.NodeAddress != "" {
 			if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
-				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, msgEvent.Peer.NodeAddress, ipamPrefix)
+				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 				if err != nil {
+					// If the requested address is not available or already released assign another from the pool
+					// (TODO: should we fail the node join rather than giving another pool address?)
 					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
 					ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
 					if err != nil {
@@ -389,6 +408,16 @@ func (ct *Controller) MessageHandling(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// deletePeer removes a peer from the peerlisting and returns the updated listing
+func deletePeer(p Peer, peers []Peer) []Peer {
+	for i, v := range peers {
+		if v == p {
+			return append(peers[0:i], peers[i+1:]...)
+		}
+	}
+	return peers
 }
 
 // cleanCidr ensures a valid IP4/IP6 address is provided and return a proper

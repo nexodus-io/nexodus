@@ -21,6 +21,9 @@ default-ipam.json
 *.idea
 .DS_Store
 
+#vscode
+.vscode/*
+
 #tests
 ./tests/*.json
 ./tests/apex-*.sh
