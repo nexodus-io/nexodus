@@ -1,7 +1,7 @@
 #!/bin/sh
 
 HOST="localhost:8888"
-REALM="controltower"
+REALM="controller"
 USERNAME="$1"
 PASSWORD="$2"
 CLIENTID='api-clients'

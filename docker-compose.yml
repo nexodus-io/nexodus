@@ -24,6 +24,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - keycloak
     build:
       context: .
       dockerfile: ./Containerfile.controller
@@ -59,7 +60,7 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=floofykittens
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://postgres/keycloak
-      - KC_DB_USERNAME=controltower
+      - KC_DB_USERNAME=controller
       - KC_DB_PASSWORD=floofykittens
     volumes:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json

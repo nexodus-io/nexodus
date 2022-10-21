@@ -77,6 +77,21 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 		log.Fatalf("unable to connect to the redis instance at %s: %v", streamSocket, err)
 	}
 
+	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
+	var auth *KeyCloakAuth
+	connectAuth := func() error {
+		var err error
+		auth, err = NewKeyCloakAuth(jwksURL)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	err = backoff.Retry(connectAuth, backoff.NewExponentialBackOff())
+	if err != nil {
+		return nil, err
+	}
+
 	ct := &Controller{
 		Router:       gin.Default(),
 		Client:       client,
@@ -95,13 +110,22 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	ct.Router.Use(cors.New(corsConfig))
-	ct.Router.GET("/peers", ct.handleListPeers)    // http://localhost:8080/peers
-	ct.Router.GET("/peers/:id", ct.handleGetPeers) // http://localhost:8080/peers/:id
-	ct.Router.GET("/zones", ct.handleListZones)    // http://localhost:8080/zones
-	ct.Router.GET("/zones/:id", ct.handleGetZones) // http://localhost:8080/zones/:id
-	ct.Router.POST("/zones", ct.handlePostZones)
-	ct.Router.GET("/devices", ct.handleListDevices)    // http://localhost:8080/devices
-	ct.Router.GET("/devices/:id", ct.handleGetDevices) // http://localhost:8080/devices/:id
+	ct.Router.Use()
+
+	public := ct.Router.Group("/health")
+	public.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "ok"})
+	})
+
+	private := ct.Router.Group("/")
+	private.Use(auth.AuthFunc())
+	private.GET("/peers", ct.handleListPeers)    // http://localhost:8080/peers
+	private.GET("/peers/:id", ct.handleGetPeers) // http://localhost:8080/peers/:id
+	private.GET("/zones", ct.handleListZones)    // http://localhost:8080/zones
+	private.GET("/zones/:id", ct.handleGetZones) // http://localhost:8080/zones/:id
+	private.POST("/zones", ct.handlePostZones)
+	private.GET("/devices", ct.handleListDevices)    // http://localhost:8080/devices
+	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost:8080/devices/:id
 
 	if err := ct.CreateDefaultZone(); err != nil {
 		return nil, err

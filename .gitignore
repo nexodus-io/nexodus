@@ -11,6 +11,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Built binaries
+/dist/*
+
 # Ops files
 *.pem
 **/peer-inventory/*
@@ -25,3 +28,5 @@ default-ipam.json
 ./tests/*.json
 ./tests/apex-*.sh
 ./tests/*.key
+/*.key
+/apex-*.sh
