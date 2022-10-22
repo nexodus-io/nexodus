@@ -118,7 +118,7 @@ func (ax *Apex) Run() {
 	} else {
 		localEndpointIP, err = ax.findLocalEndpointIp()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
 	log.Debugf("This node's endpoint address will be [ %s ]", localEndpointIP)
@@ -274,16 +274,17 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var localEndpointIP string
 	var err error
 	if ax.internalNetwork && ax.os == Darwin.String() {
-		localEndpointIP, err = GetDarwinIPv4()
+		localEndpointIP, err = discoverDarwinIPv4()
 		if err != nil {
 			return "", fmt.Errorf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
 	if ax.internalNetwork && ax.os == Linux.String() {
-		localEndpointIP, err = GetIPv4Linux()
+		linuxIP, err := discoverLinuxAddress(4)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the ip address, please specify using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("unable to determine the Linux node ip address, please specify the address using --local-endpoint-ip: %v", err)
 		}
+		localEndpointIP = linuxIP.String()
 	}
 	// User provided --local-endpoint-ip overrides --internal-network
 	if ax.userProvidedEndpointIP != "" {
