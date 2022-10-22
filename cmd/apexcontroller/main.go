@@ -12,9 +12,8 @@ import (
 )
 
 const (
-	DefaultIpamSaveFile = "default-ipam.json"
-	streamPort          = 6379
-	acLogEnv            = "APEX_CONTROLLER_LOG_LEVEL"
+	streamPort = 6379
+	acLogEnv   = "APEX_CONTROLLER_LOGLEVEL"
 )
 
 func main() {
@@ -25,7 +24,7 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name: "controltower",
+		Name: "apex-controller",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "streamer-address",

@@ -32,7 +32,7 @@ type Peer struct {
 // Zone is a collection of devices that are connected together.
 type Zone struct {
 	ID          string
-	Peers       []Peer
+	Peers       []*Peer
 	Name        string
 	Description string
 	IpCidr      string
@@ -70,7 +70,7 @@ func (ct *Controller) NewZone(id, name, description, cidr string, hubZone bool) 
 
 	zone := &Zone{
 		ID:          id,
-		Peers:       make([]Peer, 0),
+		Peers:       make([]*Peer, 0),
 		Name:        name,
 		Description: description,
 		IpCidr:      cidr,

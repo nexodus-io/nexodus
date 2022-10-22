@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	apexLogEnv = "APEX_LOG_LEVEL"
+	apexLogEnv = "APEX_LOGLEVEL"
 )
 
 func main() {

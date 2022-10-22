@@ -17,8 +17,6 @@
 # Ops files
 *.pem
 **/peer-inventory/*
-endpoints.toml
-default-ipam.json
 
 # misc
 *.idea

@@ -268,6 +268,15 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	// determine if the node joining is a hub-router or in a hub-zone
 	if msgEvent.Peer.HubRouter && zone.HubZone {
 		hubRouter = true
+		// If the zone already has a hub-router, reject the join of a new node trying to be a zone-router
+		var hubRouterAlreadyExists string
+		for _, p := range zone.Peers {
+			// If the node joining is a re-join from the zone-router allow it
+			if p.HubRouter && p.DeviceID != msgEvent.Peer.PublicKey {
+				hubRouterAlreadyExists = p.EndpointIP
+				return nil, fmt.Errorf("hub router already exists on the endpoint %s", hubRouterAlreadyExists)
+			}
+		}
 	}
 	if zone.HubZone {
 		hubZone = true
@@ -286,9 +295,8 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			return nil, res.Error
 		}
 	}
-
 	var found bool
-	var peer Peer
+	var peer *Peer
 	for _, p := range zone.Peers {
 		if p.DeviceID == msgEvent.Peer.PublicKey {
 			found = true
@@ -296,14 +304,54 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			break
 		}
 	}
-	if !found {
+	if found {
+		peer.EndpointIP = msgEvent.Peer.EndpointIP
+		if msgEvent.Peer.NodeAddress != peer.NodeAddress {
+			var ip *goipam.IP
+			if msgEvent.Peer.NodeAddress != "" {
+				if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
+					ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
+					if err != nil {
+						log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
+						ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
+						if err != nil {
+							log.Errorf("failed to acquire an IPAM assigned address %v", err)
+							return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+						}
+					}
+				}
+			} else {
+				var err error
+				ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
+				if err != nil {
+					log.Errorf("failed to acquire an IPAM assigned address %v", err)
+					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+				}
+			}
+			peer.NodeAddress = ip.IP.String()
+			peer.AllowedIPs = ip.IP.String()
+		}
+		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
+			cidr, err := cleanCidr(msgEvent.Peer.ChildPrefix)
+			if err != nil {
+				log.Errorf("invalid child prefix requested: %v", err)
+
+				return nil, fmt.Errorf("invalid child prefix requested: %v", err)
+			}
+			_, err = ct.ipam[zone.ID].NewPrefix(ctx, cidr)
+			if err != nil {
+				log.Errorf("%v\n", err)
+			}
+			peer.ChildPrefix = msgEvent.Peer.ChildPrefix
+		}
+	} else {
 		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
 		var ip *goipam.IP
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if msgEvent.Peer.NodeAddress != "" {
 			if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
-				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, msgEvent.Peer.NodeAddress, ipamPrefix)
+				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 				if err != nil {
 					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
 					ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
@@ -330,7 +378,7 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 				log.Errorf("%v\n", err)
 			}
 		}
-		peer = Peer{
+		peer = &Peer{
 			ID:          uuid.New().String(),
 			DeviceID:    key.ID,
 			ZoneID:      zone.ID,
@@ -343,14 +391,13 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			HubRouter:   hubRouter,
 		}
 		tx.Create(&peer)
+		zone.Peers = append(zone.Peers, peer)
+		tx.Save(&zone)
+		if err := tx.Commit(); err.Error != nil {
+			tx.Rollback()
+			return nil, err.Error
+		}
 	}
-	zone.Peers = append(zone.Peers, peer)
-	tx.Save(&zone)
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		return nil, err.Error
-	}
-
 	var peerList []messages.Peer
 	for _, p := range zone.Peers {
 		peerList = append(peerList, messages.Peer{
