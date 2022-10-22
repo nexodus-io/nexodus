@@ -90,22 +90,8 @@ func CopyFile(src, dst string) error {
 	return err
 }
 
-// GetIPv4Linux returns the first address from hostname -I
-func GetIPv4Linux() (string, error) {
-	out, err := RunCommand("hostname", "-I")
-	if err != nil {
-		return "", err
-	}
-	items := strings.Split(string(out), " ")
-	if len(items) == 0 {
-		return "", fmt.Errorf("failed to exec hostname")
-	}
-
-	return items[0], nil
-}
-
-// GetDarwinIPv4 returns the first address from ipconfig getifaddr en0
-func GetDarwinIPv4() (string, error) {
+// discoverDarwinIPv4 returns the first address from ipconfig getifaddr en0
+func discoverDarwinIPv4() (string, error) {
 	osxIP, err := RunCommand("ipconfig", "getifaddr", "en0")
 	if err != nil {
 		return "", err
@@ -141,16 +127,17 @@ func IsNAT(nodeOS string) (bool, error) {
 	var hostIP string
 	var err error
 	if nodeOS == Darwin.String() {
-		hostIP, err = GetDarwinIPv4()
+		hostIP, err = discoverDarwinIPv4()
 		if err != nil {
 			return false, err
 		}
 	}
 	if nodeOS == Linux.String() {
-		hostIP, err = GetIPv4Linux()
+		linuxIP, err := discoverLinuxAddress(4)
 		if err != nil {
 			return false, err
 		}
+		hostIP = linuxIP.String()
 	}
 	pubIP, err := GetPubIP()
 	if err != nil {

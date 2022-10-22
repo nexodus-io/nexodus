@@ -537,7 +537,7 @@ setup_hub_spoke_connectivity() {
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --local-endpoint-ip=${node1_ip} \
+    --internal-network \
     --hub-router \
     --zone=${zone}
 EOF
@@ -549,7 +549,7 @@ EOF
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --local-endpoint-ip=${node2_ip} \
+    --internal-network \
     --zone=${zone}
 EOF
 
@@ -560,7 +560,7 @@ EOF
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --local-endpoint-ip=${node3_ip} \
+    --internal-network \
     --zone=${zone}
 EOF
 
