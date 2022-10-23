@@ -4,23 +4,25 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vishvananda/netlink"
 )
 
 // supported OS types
 type OperatingSystem string
 
 const (
-	Linux  OperatingSystem = "Linux"
-	Darwin OperatingSystem = "Darwin"
+	Linux   OperatingSystem = "Linux"
+	Darwin  OperatingSystem = "Darwin"
+	Windows OperatingSystem = "Windows"
 )
 
 func (operatingSystem OperatingSystem) String() string {
@@ -29,6 +31,8 @@ func (operatingSystem OperatingSystem) String() string {
 		return "linux"
 	case Darwin:
 		return "darwin"
+	case Windows:
+		return "windows"
 	}
 
 	return "unsupported"
@@ -90,13 +94,21 @@ func CopyFile(src, dst string) error {
 	return err
 }
 
-// discoverDarwinIPv4 returns the first address from ipconfig getifaddr en0
-func discoverDarwinIPv4() (string, error) {
-	osxIP, err := RunCommand("ipconfig", "getifaddr", "en0")
+// discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
+func discoverGenericIPv4(controller string, port int) (string, error) {
+	controllerSocket := fmt.Sprintf("%s:%d", controller, port)
+	conn, err := net.Dial("udp", controllerSocket)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSuffix(osxIP, "\n"), nil
+	conn.Close()
+	ipAddress := conn.LocalAddr().(*net.UDPAddr)
+	if ipAddress != nil {
+		ipPort := strings.Split(ipAddress.String(), ":")
+		log.Debugf("Nodes disovered local address is [%s]", ipPort[0])
+		return ipPort[0], nil
+	}
+	return "", fmt.Errorf("failed obtain the local IP")
 }
 
 // GetPubIP retrieves current global IP address using https://checkip.amazonaws.com/
@@ -123,11 +135,17 @@ func GetPubIP() (string, error) {
 	return strings.TrimSpace(string(ip)), nil
 }
 
-func IsNAT(nodeOS string) (bool, error) {
+func IsNAT(nodeOS, controller string, port int) (bool, error) {
 	var hostIP string
 	var err error
 	if nodeOS == Darwin.String() {
-		hostIP, err = discoverDarwinIPv4()
+		hostIP, err = discoverGenericIPv4(controller, port)
+		if err != nil {
+			return false, err
+		}
+	}
+	if nodeOS == Windows.String() {
+		hostIP, err = discoverGenericIPv4(controller, port)
 		if err != nil {
 			return false, err
 		}
@@ -186,32 +204,25 @@ func ParseIPNet(s string) (*net.IPNet, error) {
 	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
 }
 
-// deleteIface checks to see if  is an interface exists and deletes it
-func linkExists(ifaceName string) bool {
-	if _, err := netlink.LinkByName(ifaceName); err != nil {
-		return false
-	}
-	return true
-}
-
-// delLink deletes the link and assumes it exists
-func delLink(ifaceName string) error {
-	if link, err := netlink.LinkByName(ifaceName); err == nil {
-		if err = netlink.LinkDel(link); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// IfaceUP brings a specified netlink interface up
-func IfaceUP(ifaceName string) error {
-	link, err := netlink.LinkByName(ifaceName)
+// sanitizeWindowsConfig removes incompatible fields from the wg Interface section
+func sanitizeWindowsConfig(file string) {
+	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to find the specified interface %s: %v", ifaceName, err)
+		log.Fatalf("Unable to read the wg0 configuration file %s: %v", file, err)
 	}
-	if err := netlink.LinkSetUp(link); err != nil {
-		return fmt.Errorf("failed to enable the specified interface %s: %v", ifaceName, err)
+	post := regexp.MustCompile("(?m)[\r\n]+^.*Post.*$")
+	regOut := post.ReplaceAllString(string(b), "")
+	post = regexp.MustCompile("(?m)[\r\n]+^.*SaveConfig.*$")
+	regOut = post.ReplaceAllString(regOut, "")
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatalf("Unable to open to the wg0 configuration file %s: %v", file, err)
 	}
-	return nil
+	_, err = f.Write([]byte(regOut))
+	if err != nil {
+		log.Fatalf("Unable to open to the wg0 configuration file %s: %v", file, err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatalf("Unable to write to the wg0 configuration file %s: %v", file, err)
+	}
 }

@@ -117,19 +117,19 @@ func main() {
 			return nil
 		},
 		Action: func(c *cli.Context) error {
-			aircrew, err := apex.NewApex(
+			apex, err := apex.NewApex(
 				context.Background(), c)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			aircrew.Run()
+			apex.Run()
 
 			ch := make(chan os.Signal, 1)
 			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 			<-ch
 
-			if err := aircrew.Shutdown(context.Background()); err != nil {
+			if err := apex.Shutdown(context.Background()); err != nil {
 				log.Fatal(err)
 			}
 			return nil

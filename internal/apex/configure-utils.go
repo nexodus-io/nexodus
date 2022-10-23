@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	WgListenPort     = 51820
-	WgLinuxConfPath  = "/etc/wireguard/"
-	WgDarwinConfPath = "/usr/local/etc/wireguard/"
-	wgConfActive     = "wg0.conf"
-	wgConfLatestRev  = "wg0-latest-rev.conf"
-	wgIface          = "wg0"
+	WgListenPort      = 51820
+	WgLinuxConfPath   = "/etc/wireguard/"
+	WgDarwinConfPath  = "/usr/local/etc/wireguard/"
+	WgWindowsConfPath = "C:/"
+	wgConfActive      = "wg0.conf"
+	wgConfLatestRev   = "wg0-latest-rev.conf"
+	wgIface           = "wg0"
 )
 
 func applyWireguardConf() error {

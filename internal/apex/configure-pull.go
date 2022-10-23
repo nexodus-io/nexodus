@@ -2,12 +2,12 @@ package apex
 
 import (
 	"fmt"
+	"gopkg.in/ini.v1"
 	"os"
 	"path/filepath"
 
 	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/ini.v1"
 )
 
 const (
@@ -36,8 +36,8 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 	for _, value := range peerListing {
 		if value.PublicKey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
-			if ax.os == Darwin.String() {
-				log.Fatalf("OSX nodes are not supported as bouncer hubs")
+			if ax.os == Darwin.String() || ax.os == Windows.String() {
+				log.Fatalf("Linux nodes are the only supported hub router OS")
 			} else {
 				// Build a hub-router wireguard configuration
 				ax.parseHubWireguardConfig(listenPort, peerListing)
@@ -94,7 +94,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 				"",
 				"",
 			}
-			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ]\n",
+			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ]\n",
 				localInterface.Address,
 				WgListenPort)
 			// set the node unique local interface configuration
@@ -144,7 +144,7 @@ func (ax *Apex) DeployWireguardConfig() {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
 			if err != nil {
-				log.Debugf("Failed to start the wireguard interface: %v\n", err)
+				log.Debugf("Failed to down the wireguard interface (this is generally ok): %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
 			wgOut, err = RunCommand("wg-quick", "up", activeDarwinConfig)
@@ -152,11 +152,29 @@ func (ax *Apex) DeployWireguardConfig() {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v", wgOut)
-		} else {
-			log.Printf("Tunnels not built since the node's public key was found in the configuration")
 		}
-		log.Printf("Peer setup complete")
+	case Windows.String():
+		activeWindowsConfig := filepath.Join(WgWindowsConfPath, wgConfActive)
+		if err = cfg.SaveTo(activeWindowsConfig); err != nil {
+			log.Fatalf("save latest configuration error: %v\n", err)
+		}
+		if ax.wireguardPubKeyInConfig {
+			// this will throw an error that can be ignored if an existing interface doesn't exist
+			wgOut, err := RunCommand("wireguard.exe", "/uninstalltunnelservice", wgIface)
+			if err != nil {
+				log.Debugf("Failed to down the wireguard interface (this is generally ok): %v\n", err)
+			}
+			log.Debugf("%v\n", wgOut)
+			// windows implementation does not handle certain fields the osx and linux wg configs can
+			sanitizeWindowsConfig(activeWindowsConfig)
+			wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", activeWindowsConfig)
+			if err != nil {
+				log.Errorf("failed to start the wireguard interface: %v\n", err)
+			}
+			log.Debugf("%v\n", wgOut)
+		}
 	}
+	log.Printf("Peer setup complete")
 }
 
 func appendChildPrefix(nodeAddress, childPrefix string) string {
