@@ -20,7 +20,7 @@ start_containers() {
     $DOCKER_COMPOSE up -d
 
     # allow for all services to come up and be ready
-    timeout 60s bash -c 'until curl -sfL http://localhost:8080/health; do sleep 1; done'
+    timeout 300s bash -c 'until curl -sfL http://localhost:8080/health; do sleep 1; done'
 
     echo "Deploy containers"
     if echo ${node_image} | grep -i fedora; then

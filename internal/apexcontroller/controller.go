@@ -56,7 +56,7 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	}
 	err := backoff.Retry(checkRedis, backoff.NewExponentialBackOff())
 	if err != nil {
-		return fmt.Errorf("Streamer is not ready at %s", st.GetUrl())
+		return nil, fmt.Errorf("Streamer is not ready at %s", st.GetUrl())
 	}
 	log.Debugf("Streamer is ready and reachable")
 
@@ -334,95 +334,52 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	}
 	if found {
 		peer.EndpointIP = msgEvent.Peer.EndpointIP
+
 		if msgEvent.Peer.NodeAddress != peer.NodeAddress {
-			var ip *apiv1.IP
+			var ip string
 			if msgEvent.Peer.NodeAddress != "" {
-				if err := validateIP(msgEvent.Peer.NodeAddress); err != nil {
-					log.Errorf("Requested address was not valid: %v", err)
-					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
-				}
-				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
-					PrefixCidr: ipamPrefix,
-					Ip:         &msgEvent.Peer.NodeAddress,
-				}))
+				var err error
+				ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 				if err != nil {
-					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
-					res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
-						PrefixCidr: ipamPrefix,
-					}))
-					if err != nil {
-						log.Errorf("failed to acquire an IPAM assigned address %v", err)
-						return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
-					}
-					ip = res.Msg.Ip
-				} else {
-					ip = res.Msg.Ip
+					return nil, err
 				}
 			} else {
-				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
-					PrefixCidr: ipamPrefix,
-				}))
-				if err != nil {
-					log.Errorf("failed to acquire an IPAM assigned address %v", err)
-					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+				if peer.NodeAddress != "" {
+					return nil, fmt.Errorf("peer does not have a NodeAddress assigned and did not request one")
 				}
-				ip = res.Msg.Ip
+				ip = peer.NodeAddress
 			}
-			peer.NodeAddress = ip.String()
-			peer.AllowedIPs = ip.String()
+			peer.NodeAddress = ip
+			peer.AllowedIPs = ip
 		}
-		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
-			cidr, err := cleanCidr(msgEvent.Peer.ChildPrefix)
-			if err != nil {
-				log.Errorf("invalid child prefix requested: %v", err)
 
-				return nil, fmt.Errorf("invalid child prefix requested: %v", err)
+		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
+			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
+				return nil, err
 			}
-			_, err = ct.ipam.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
-			if err != nil {
-				log.Errorf("%v\n", err)
-			}
-			peer.ChildPrefix = msgEvent.Peer.ChildPrefix
 		}
 	} else {
 		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
-		var ip *apiv1.IP
+		var ip string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if msgEvent.Peer.NodeAddress != "" {
-			if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
-				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
-					PrefixCidr: ipamPrefix,
-					Ip:         &msgEvent.Peer.NodeAddress,
-				}))
-				if err != nil {
-					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
-					res, err = ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{PrefixCidr: ipamPrefix}))
-					if err != nil {
-						return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
-					}
-				}
-				ip = res.Msg.Ip
+			var err error
+			ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
+			if err != nil {
+				return nil, err
 			}
 		} else {
 			var err error
-			res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
-				PrefixCidr: ipamPrefix,
-			}))
+			ip, err = ct.assignFromPool(ctx, ipamPrefix)
 			if err != nil {
-				return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+				return nil, err
 			}
-			ip = res.Msg.Ip
 		}
 		// allocate a child prefix if requested
 		if msgEvent.Peer.ChildPrefix != "" {
-			cidr, err := cleanCidr(msgEvent.Peer.ChildPrefix)
-			if err != nil {
-				return nil, fmt.Errorf("invalid child prefix requested: %v", err)
-			}
-			_, err = ct.ipam.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
-			if err != nil {
-				log.Errorf("%v\n", err)
+			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
+				return nil, err
 			}
 		}
 		peer = &Peer{
@@ -430,8 +387,8 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			DeviceID:    key.ID,
 			ZoneID:      zone.ID,
 			EndpointIP:  msgEvent.Peer.EndpointIP,
-			AllowedIPs:  ip.String(),
-			NodeAddress: ip.String(),
+			AllowedIPs:  ip,
+			NodeAddress: ip,
 			ChildPrefix: msgEvent.Peer.ChildPrefix,
 			ZonePrefix:  ipamPrefix,
 			HubZone:     hubZone,
@@ -527,4 +484,40 @@ func validateIP(ip string) error {
 		return nil
 	}
 	return fmt.Errorf("%s is not a valid v4 or v6 IP", ip)
+}
+
+func (ct *Controller) assignSpecificNodeAddress(ctx context.Context, ipamPrefix string, nodeAddress string) (string, error) {
+	if err := validateIP(nodeAddress); err != nil {
+		return "", fmt.Errorf("Address %s is not valid, assigning from zone pool: %s", nodeAddress, ipamPrefix)
+	}
+	res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+		PrefixCidr: ipamPrefix,
+		Ip:         &nodeAddress,
+	}))
+	if err != nil {
+		log.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", nodeAddress, err)
+		return ct.assignFromPool(ctx, ipamPrefix)
+	}
+	return res.Msg.Ip.Ip, nil
+}
+
+func (ct *Controller) assignFromPool(ctx context.Context, ipamPrefix string) (string, error) {
+	res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+		PrefixCidr: ipamPrefix,
+	}))
+	if err != nil {
+		log.Errorf("failed to acquire an IPAM assigned address %v", err)
+		return "", fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+	}
+	return res.Msg.Ip.Ip, nil
+}
+
+func (ct *Controller) assignChildPrefix(ctx context.Context, cidr string) error {
+	cidr, err := cleanCidr(cidr)
+	if err != nil {
+		log.Errorf("invalid child prefix requested: %v", err)
+		return fmt.Errorf("invalid child prefix requested: %v", err)
+	}
+	_, err = ct.ipam.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
+	return err
 }
