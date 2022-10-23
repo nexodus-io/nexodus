@@ -2,11 +2,9 @@ package apexcontroller
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	goipam "github.com/metal-stack/go-ipam"
-	log "github.com/sirupsen/logrus"
+	"github.com/bufbuild/connect-go"
+	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 )
 
 // Device is a unique end-user device.
@@ -39,35 +37,11 @@ type Zone struct {
 	HubZone     bool
 }
 
-// NewZone creates a new Zone since we also need to create a database for zone IPAM.
-// TODO: Investigate moving the IPAM service out of controller and access it over grpc.
+// NewZone creates a new Zone and allocates the prefix using IPAM
 func (ct *Controller) NewZone(id, name, description, cidr string, hubZone bool) (*Zone, error) {
-	dbName := fmt.Sprintf("ipam_%s", strings.ReplaceAll(id, "-", "_"))
-	log.Debugf("Creating db %s", dbName)
-
-	result := ct.db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
-	if result.Error != nil && !strings.Contains(result.Error.Error(), "already exists") {
-		return nil, result.Error
-	}
-	log.Debugf("Created db %s", dbName)
-
-	storage, err := goipam.NewPostgresStorage(
-		ct.dbHost,
-		"5432",
-		"controller",
-		ct.dbPass,
-		dbName,
-		goipam.SSLModeDisable,
-	)
-	if err != nil {
+	if _, err := ct.ipam.CreatePrefix(context.Background(), connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr})); err != nil {
 		return nil, err
 	}
-	ct.ipam[id] = goipam.NewWithStorage(storage)
-
-	if _, err = ct.ipam[id].NewPrefix(context.Background(), cidr); err != nil {
-		return nil, err
-	}
-
 	zone := &Zone{
 		ID:          id,
 		Peers:       make([]*Peer, 0),

@@ -22,6 +22,7 @@ require (
 
 require (
 	github.com/avast/retry-go/v4 v4.1.0 // indirect
+	github.com/bufbuild/connect-go v0.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect

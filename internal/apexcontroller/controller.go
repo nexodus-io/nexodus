@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	goipam "github.com/metal-stack/go-ipam"
+	apiv1 "github.com/metal-stack/go-ipam/api/v1"
+	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
 	"github.com/redhat-et/apex/internal/messages"
 	"github.com/redhat-et/apex/internal/streamer"
 	log "github.com/sirupsen/logrus"
@@ -33,7 +35,7 @@ type Controller struct {
 	db           *gorm.DB
 	dbHost       string
 	dbPass       string
-	ipam         map[string]goipam.Ipamer
+	ipam         apiv1connect.IpamServiceClient
 	streamerIp   string
 	streamerPort int
 	streamerPass string
@@ -43,10 +45,22 @@ type Controller struct {
 	readyChan    chan streamer.ReceivedMessage
 }
 
-func NewController(ctx context.Context, streamerIp string, streamerPort int, streamerPass string, dbHost string, dbPass string) (*Controller, error) {
+func NewController(ctx context.Context, streamerIp string, streamerPort int, streamerPass string, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
 	st := streamer.NewStreamer(ctx, streamerIp, streamerPort, streamerPass)
-	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
+	log.Debug("Waiting for Streamer")
+	checkRedis := func() error {
+		if !st.IsReady() {
+			return fmt.Errorf("streamer is not ready")
+		}
+		return nil
+	}
+	err := backoff.Retry(checkRedis, backoff.NewExponentialBackOff())
+	if err != nil {
+		return fmt.Errorf("Streamer is not ready at %s", st.GetUrl())
+	}
+	log.Debugf("Streamer is ready and reachable")
 
+	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
 	var db *gorm.DB
 	connectDb := func() error {
 		var err error
@@ -56,7 +70,8 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		}
 		return nil
 	}
-	err := backoff.Retry(connectDb, backoff.NewExponentialBackOff())
+	log.Debug("Waiting for Postgres")
+	err = backoff.Retry(connectDb, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, err
 	}
@@ -72,10 +87,11 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		return nil, err
 	}
 
-	if !st.IsReady() {
-		log.Fatalf("Streamer is not ready at %s", st.GetUrl())
-	}
-	log.Debugf("Streamer is ready and reachable")
+	ipam := apiv1connect.NewIpamServiceClient(
+		http.DefaultClient,
+		ipamAddress,
+		connect.WithGRPC(),
+	)
 
 	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
 	var auth *KeyCloakAuth
@@ -87,6 +103,7 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		}
 		return nil
 	}
+	log.Debug("Waiting for Keycloak Auth")
 	err = backoff.Retry(connectAuth, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, err
@@ -98,7 +115,7 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		db:           db,
 		dbHost:       dbHost,
 		dbPass:       dbPass,
-		ipam:         make(map[string]goipam.Ipamer),
+		ipam:         ipam,
 		streamerIp:   streamerIp,
 		streamerPort: streamerPort,
 		streamerPass: streamerPass,
@@ -128,7 +145,16 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	private.GET("/devices", ct.handleListDevices)    // http://localhost:8080/devices
 	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost:8080/devices/:id
 
-	if err := ct.CreateDefaultZone(); err != nil {
+	createDefaultZone := func() error {
+		if err := ct.CreateDefaultZone(); err != nil {
+			log.Errorf("Error creating default zone: %s", err)
+			return err
+		}
+		return nil
+	}
+	log.Debug("Waiting for Default Zone to create successfully")
+	err = backoff.Retry(createDefaultZone, backoff.NewExponentialBackOff())
+	if err != nil {
 		return nil, err
 	}
 	return ct, nil
@@ -309,32 +335,41 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	if found {
 		peer.EndpointIP = msgEvent.Peer.EndpointIP
 		if msgEvent.Peer.NodeAddress != peer.NodeAddress {
-			var ip *goipam.IP
+			var ip *apiv1.IP
 			if msgEvent.Peer.NodeAddress != "" {
 				if err := validateIP(msgEvent.Peer.NodeAddress); err != nil {
 					log.Errorf("Requested address was not valid: %v", err)
 					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
-				} else {
-					ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
+				}
+				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+					PrefixCidr: ipamPrefix,
+					Ip:         &msgEvent.Peer.NodeAddress,
+				}))
+				if err != nil {
+					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
+					res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+						PrefixCidr: ipamPrefix,
+					}))
 					if err != nil {
-						log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
-						ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
-						if err != nil {
-							log.Errorf("failed to acquire an IPAM assigned address %v", err)
-							return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
-						}
+						log.Errorf("failed to acquire an IPAM assigned address %v", err)
+						return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 					}
+					ip = res.Msg.Ip
+				} else {
+					ip = res.Msg.Ip
 				}
 			} else {
-				var err error
-				ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
+				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+					PrefixCidr: ipamPrefix,
+				}))
 				if err != nil {
 					log.Errorf("failed to acquire an IPAM assigned address %v", err)
 					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 				}
+				ip = res.Msg.Ip
 			}
-			peer.NodeAddress = ip.IP.String()
-			peer.AllowedIPs = ip.IP.String()
+			peer.NodeAddress = ip.String()
+			peer.AllowedIPs = ip.String()
 		}
 		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
 			cidr, err := cleanCidr(msgEvent.Peer.ChildPrefix)
@@ -343,7 +378,7 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 
 				return nil, fmt.Errorf("invalid child prefix requested: %v", err)
 			}
-			_, err = ct.ipam[zone.ID].NewPrefix(ctx, cidr)
+			_, err = ct.ipam.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
 			if err != nil {
 				log.Errorf("%v\n", err)
 			}
@@ -351,26 +386,33 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		}
 	} else {
 		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
-		var ip *goipam.IP
+		var ip *apiv1.IP
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if msgEvent.Peer.NodeAddress != "" {
 			if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
-				ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
+				res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+					PrefixCidr: ipamPrefix,
+					Ip:         &msgEvent.Peer.NodeAddress,
+				}))
 				if err != nil {
 					log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
-					ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
+					res, err = ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{PrefixCidr: ipamPrefix}))
 					if err != nil {
 						return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 					}
 				}
+				ip = res.Msg.Ip
 			}
 		} else {
 			var err error
-			ip, err = ct.ipam[zone.ID].AcquireIP(ctx, ipamPrefix)
+			res, err := ct.ipam.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+				PrefixCidr: ipamPrefix,
+			}))
 			if err != nil {
 				return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 			}
+			ip = res.Msg.Ip
 		}
 		// allocate a child prefix if requested
 		if msgEvent.Peer.ChildPrefix != "" {
@@ -378,7 +420,7 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			if err != nil {
 				return nil, fmt.Errorf("invalid child prefix requested: %v", err)
 			}
-			_, err = ct.ipam[zone.ID].NewPrefix(ctx, cidr)
+			_, err = ct.ipam.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
 			if err != nil {
 				log.Errorf("%v\n", err)
 			}
@@ -388,8 +430,8 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			DeviceID:    key.ID,
 			ZoneID:      zone.ID,
 			EndpointIP:  msgEvent.Peer.EndpointIP,
-			AllowedIPs:  ip.IP.String(),
-			NodeAddress: ip.IP.String(),
+			AllowedIPs:  ip.String(),
+			NodeAddress: ip.String(),
 			ChildPrefix: msgEvent.Peer.ChildPrefix,
 			ZonePrefix:  ipamPrefix,
 			HubZone:     hubZone,

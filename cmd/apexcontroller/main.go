@@ -50,6 +50,12 @@ func main() {
 				Usage:    "password of db",
 				Required: true,
 			},
+			&cli.StringFlag{
+				Name:     "ipam-address",
+				Value:    "",
+				Usage:    "address of ipam grpc service",
+				Required: true,
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			ct, err := controller.NewController(
@@ -59,6 +65,7 @@ func main() {
 				cCtx.String("streamer-password"),
 				cCtx.String("db-address"),
 				cCtx.String("db-password"),
+				cCtx.String("ipam-address"),
 			)
 			if err != nil {
 				log.Fatal(err)
