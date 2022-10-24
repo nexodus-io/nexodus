@@ -109,3 +109,21 @@ func getDefaultGatewayIface(family int) (string, net.IP, error) {
 	}
 	return "", net.IP{}, fmt.Errorf("failed to get default gateway interface")
 }
+
+// deleteIface checks to see if  is an interface exists and deletes it
+func linkExists(ifaceName string) bool {
+	if _, err := netlink.LinkByName(ifaceName); err != nil {
+		return false
+	}
+	return true
+}
+
+// delLink deletes the link and assumes it exists
+func delLink(ifaceName string) error {
+	if link, err := netlink.LinkByName(ifaceName); err == nil {
+		if err = netlink.LinkDel(link); err != nil {
+			return err
+		}
+	}
+	return nil
+}

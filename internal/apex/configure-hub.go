@@ -103,7 +103,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 				hubPostUp,
 				hubPostDown,
 			}
-			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ] HubZone Hub [ %t ]\n",
+			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				localInterface.Address,
 				listenPort,
 				ax.hubRouter)
@@ -120,7 +120,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 				"",
 				"",
 			}
-			log.Printf("Local Node Configuration - Wireguard Local IP [ %s ] Wireguard Port [ %v ] HubZone Hub [ %t ]\n",
+			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				localInterface.Address,
 				listenPort,
 				ax.hubRouter)

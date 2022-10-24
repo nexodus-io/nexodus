@@ -14,6 +14,7 @@ import (
 
 const (
 	readyRequestTimeout = 10
+	pubSubPort          = 6379
 )
 
 // Message Events
@@ -33,7 +34,7 @@ type Apex struct {
 	requestedIP             string
 	userProvidedEndpointIP  string
 	childPrefix             string
-	internalNetwork         bool
+	publicNetwork           bool
 	hubRouter               bool
 	os                      string
 	wgConfig                wgConfig
@@ -63,10 +64,6 @@ type wgLocalConfig struct {
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 
-	if !IsCommandAvailable("wg") {
-		return nil, fmt.Errorf("wg command not found, is wireguard installed?")
-	}
-
 	if err := checkOS(); err != nil {
 		return nil, err
 	}
@@ -82,9 +79,19 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		requestedIP:            cCtx.String("request-ip"),
 		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
 		childPrefix:            cCtx.String("child-prefix"),
-		internalNetwork:        cCtx.Bool("internal-network"),
+		publicNetwork:          cCtx.Bool("public-network"),
 		hubRouter:              cCtx.Bool("hub-router"),
 		os:                     GetOS(),
+	}
+
+	if ax.os == Windows.String() {
+		if !IsCommandAvailable("wireguard.exe") {
+			return nil, fmt.Errorf("wireguard.exe command not found, is wireguard installed?")
+		}
+	} else {
+		if !IsCommandAvailable("wg") {
+			return nil, fmt.Errorf("wg command not found, is wireguard installed?")
+		}
 	}
 
 	if err := ax.checkUnsupportedConfigs(); err != nil {
@@ -108,22 +115,26 @@ func (ax *Apex) Run() {
 		ax.wireguardPvtKey = pvtKey
 	}
 
-	// this conditional is last since it is expensive to do the public address lookup
 	var localEndpointIP string
-	if !ax.internalNetwork && ax.userProvidedEndpointIP == "" {
+	// User requested ip --request-ip takes precedent
+	if ax.userProvidedEndpointIP != "" {
+		localEndpointIP = ax.userProvidedEndpointIP
+	}
+	if ax.publicNetwork && localEndpointIP == "" {
 		localEndpointIP, err = GetPubIP()
 		if err != nil {
-			log.Warn("Unable to determine the public facing address")
-		}
-	} else {
-		localEndpointIP, err = ax.findLocalEndpointIp()
-		if err != nil {
-			log.Fatalf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+			log.Warn("Unable to determine the public facing address, falling back to the local address")
 		}
 	}
-	log.Debugf("This node's endpoint address will be [ %s ]", localEndpointIP)
+	if localEndpointIP == "" {
+		localEndpointIP, err = ax.findLocalEndpointIp()
+		if err != nil {
+			log.Fatalf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
+		}
+	}
+	log.Infof("This node's endpoint address for building tunnels is [ %s ]", localEndpointIP)
 
-	controller := fmt.Sprintf("%s:6379", ax.controllerIP)
+	controller := fmt.Sprintf("%s:%d", ax.controllerIP, pubSubPort)
 	rc := redis.NewClient(&redis.Options{
 		Addr:     controller,
 		Password: ax.controllerPasswd,
@@ -134,13 +145,14 @@ func (ax *Apex) Run() {
 	if err != nil {
 		log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
 	}
+	log.Debugf("Pubsub is reachable")
 
 	// ping the controller to see if it is responding via the broker, exit the agent on timeout
 	if err := controllerReadyCheck(ctx, rc); err != nil {
 		log.Fatal(err)
 	}
-
 	defer rc.Close()
+	log.Debugf("Controller is responding to health checks")
 
 	//Agent only need to subscribe to it's own zone.
 	sub := rc.Subscribe(ctx, ax.zone)
@@ -222,19 +234,23 @@ func (ax *Apex) Shutdown(ctx context.Context) error {
 func checkOS() error {
 	nodeOS := GetOS()
 	switch nodeOS {
-	case "windows":
-		return fmt.Errorf("OS [%s] is not currently supported\n", GetOS())
 	case Darwin.String():
 		log.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the osx wireguard directory exists
-		if err := CreateDirectory(WgLinuxConfPath); err != nil {
-			return fmt.Errorf("Unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
+		if err := CreateDirectory(WgDarwinConfPath); err != nil {
+			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
+		}
+	case Windows.String():
+		log.Debugf("[%s] operating system detected", nodeOS)
+		// ensure the windows wireguard directory exists
+		if err := CreateDirectory(WgWindowsConfPath); err != nil {
+			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgWindowsConfPath, err)
 		}
 	case Linux.String():
 		log.Debugf("[%s] operating system detected", nodeOS)
-		// ensure the wireguard directory exists
+		// ensure the linux wireguard directory exists
 		if err := CreateDirectory(WgLinuxConfPath); err != nil {
-			return fmt.Errorf("Unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
+			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgLinuxConfPath, err)
 		}
 	default:
 		return fmt.Errorf("OS [%s] is not supported\n", nodeOS)
@@ -242,18 +258,40 @@ func checkOS() error {
 	return nil
 }
 
+// checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Apex) checkUnsupportedConfigs() error {
 	if ax.wireguardPvtKey != "" && ax.wireguardPvtKeyFile != "" {
-		return fmt.Errorf("Please use either --private-key or --private-key-file but not both")
+		return fmt.Errorf("please use either --private-key or --private-key-file but not both")
 	}
 	if ax.wireguardPvtKey == "" && ax.wireguardPvtKeyFile == "" {
-		return fmt.Errorf("Private key or key file location is required: use either --private-key or --private-key-file")
+		return fmt.Errorf("private key or key file location is required: use either --private-key or --private-key-file")
+	}
+	if ax.hubRouter && ax.os == Darwin.String() {
+		log.Fatalf("OSX nodes cannot be a hub-router, only Linux nodes")
+	}
+	if ax.hubRouter && ax.os == Windows.String() {
+		log.Fatalf("Windows nodes cannot be a hub-router, only Linux nodes")
+	}
+	if ax.userProvidedEndpointIP != "" {
+		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
+			log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v", ax.userProvidedEndpointIP, err)
+		}
+	}
+	if ax.requestedIP != "" {
+		if err := ValidateIp(ax.requestedIP); err != nil {
+			log.Fatalf("the IP address passed in --request-ip %s was not valid: %v", ax.requestedIP, err)
+		}
+	}
+	if ax.childPrefix != "" {
+		if err := ValidateCIDR(ax.childPrefix); err != nil {
+			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
+		}
 	}
 	return nil
 }
 
+// readPrivateKey parses the private key for the local configuration from file or CLI
 func (ax *Apex) readPrivateKey() (string, error) {
-	// parse the private key for the local configuration from file or CLI
 	if ax.wireguardPvtKeyFile != "" {
 		if !FileExists(ax.wireguardPvtKeyFile) {
 			return "", fmt.Errorf("private key file doesn't exist : %s", ax.wireguardPvtKeyFile)
@@ -273,26 +311,27 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// in which case the endpoint address will be set to an existing address on the host.
 	var localEndpointIP string
 	var err error
-	if ax.internalNetwork && ax.os == Darwin.String() {
-		localEndpointIP, err = discoverDarwinIPv4()
+	// Darwin network discovery
+	if !ax.publicNetwork && ax.os == Darwin.String() {
+		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("%v", err)
 		}
 	}
-	if ax.internalNetwork && ax.os == Linux.String() {
+	// Windows network discovery
+	if !ax.publicNetwork && ax.os == Windows.String() {
+		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
+		if err != nil {
+			return "", fmt.Errorf("%v", err)
+		}
+	}
+	// Linux network discovery
+	if !ax.publicNetwork && ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(4)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the Linux node ip address, please specify the address using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("%v", err)
 		}
 		localEndpointIP = linuxIP.String()
-	}
-	// User provided --local-endpoint-ip overrides --internal-network
-	if ax.userProvidedEndpointIP != "" {
-		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
-			return "", fmt.Errorf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
-				ax.userProvidedEndpointIP, err)
-		}
-		localEndpointIP = ax.userProvidedEndpointIP
 	}
 	return localEndpointIP, nil
 }

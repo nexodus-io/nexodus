@@ -10,11 +10,12 @@ Some of the high level features that this project is planning to provide are:
 - IOT networking to any node anywhere regardless of the platform
 - Hybrid data center connectivity that circumvents NAT challenges
 - Take a connectivity portion out of platform concerns, reset back to the original K8s days, /32 routed network
-- IP mobility
-- Zero-trust - how do you do zero-trust without a zero trust networking story outside of shift?
+- IP mobility - /32 host routing allows for addresses to be advertised anywhere with convergence times only limited by a round-trip-time to a controller.
+- Zero-trust - how do you do zero-trust without a zero trust networking story outside of shift (this includes distributed policy which is the conerstone of ZTN)?
 - Backend Container connectivity to external nodes that are not part of K8s/docker/podman and have no idea about k8s/docker/podman (across clouds, through NAT and encrypted)
-- Compliance scenario where a bunch of nodes need to be isolated from one another (PCI)
-- Generic platform agnostic approach for workloads not tied to a platform.
+- Compliance scenario where a bunch of nodes need to be isolated from one another outside of a single network administrative domain (PCI).
+- Generic platform agnostic approach for workloads not tied to a platform or even OS.
+- Simple, yet flexible deployment models that provide enterprise auth out of the box with a SaaS approach.
 
 ## Apex and connectivity scenarios:
 
@@ -88,41 +89,44 @@ For Windows and Mac adjust the paths to existing directories.
 
 #### **Start the Apex agent**
  Start the apex agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the Apex Controller. Run the following commands on all the nodes:
- **Note**: If your test nodes are on internal networks and not on something like EC2 use the `--network-internal` flag  which will use an IP from your host instead of discovering your public NAT address or provide a specific address with `--local-endpoint-ip=x.x.x.x`:
+ **Note**: If your test nodes are on public networks such as EC2, you can use the `--public-network` flag which will discovering your public NAT address. Alternatively, have total control over the endpoint IP and provide a specific address with `--local-endpoint-ip=x.x.x.x`:
 
 There are currently 3 scenarios that allow an operator to define how the peers in a mesh are defined. There is a public address or cloud scenario, a private network address option and the ability to define exactly what address a peer will use when being mapped to a public key in the mesh. The following is an example of each:
 
-1. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example).
-This is currently the default behavior as public CSP to private edge is primary a focus of the project.
-
+1. If the node does not have inbound access on UDP port 51820 and a publicly reachable address,
+   the following will use an existing IP on the node as the peer endpoint address. This would
+   create internal peering to other nodes in your network or allow the node to initiate peers
+   to public machines in the cloud. This is the default behavior as the vast majority of enterprise 
+   hosts do not have public addresses with inbound traffic allowed.
 ```shell
 sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
---private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> 
 ```
 
-2. If the node does not have inbound access on UDP port 51820 and a publicly reachable address,
-the following will use an existing IP on the node as the peer endpoint address. This would 
-create internal peering to other nodes in your network or allow the node to initiate peers
-to public machines in the cloud. (--local-endpoint-ip)
+2. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example) the `--public-network`
+   flag will discover the node's public address and advertise to the mesh that discovered public NAT address as the endpoint address.
 ```shell
 sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
---private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
+    --controller=<REDIS_SERVER_ADDRESS> \
+    --controller-password=<REDIS_PASSWORD>\
+    --public-network
+```
+
+3. If an operator wants complete control over what address will be advertised to it's
+   peers, they can specify the endpoint address that will be distributed to all of the other
+   peers in the mesh (`--local-endpoint-ip`).
+
+```shell
+sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
+    --private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD> \
     --local-endpoint-ip=X.X.X.X
 ```
-3.  If an operator wants complete control over what address will be advertised to it's
-peers, they can specify the endpoint address that will be distributed to all of the other 
-peers in the mesh. (--internal-network)
-```shell
-sudo apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY> \
---private-key=<NODE_WIREGUARD_PRIVATE_KEY> \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD>\
-    --internal-network
-```
+
 **NOTES**
 - *By default, the node joins a zone named `default`. A **zone** is simply the isolated wireguard network where all the nodes in that zone is connected as a mesh (as depicted in **Figure 1**).*
 - *The default zone prefix is currently hardcoded to `10.200.1.0/20`. Custom zones and IPAM are in the next example.*

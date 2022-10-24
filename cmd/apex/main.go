@@ -96,10 +96,10 @@ func main() {
 				EnvVars:  []string{"APEX_REQUESTED_CHILD_PREFIX"},
 				Required: false,
 			},
-			&cli.BoolFlag{Name: "internal-network",
-				Usage:    "do not discover the public address for this host, use the local address for peering",
+			&cli.BoolFlag{Name: "public-network",
+				Usage:    "discover the public address for this host",
 				Value:    false,
-				EnvVars:  []string{"APEX_INTERNAL_NETWORK"},
+				EnvVars:  []string{"APEX_PUBLIC_NETWORK"},
 				Required: false,
 			},
 			&cli.BoolFlag{Name: "hub-router",
@@ -117,19 +117,19 @@ func main() {
 			return nil
 		},
 		Action: func(c *cli.Context) error {
-			aircrew, err := apex.NewApex(
+			apex, err := apex.NewApex(
 				context.Background(), c)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			aircrew.Run()
+			apex.Run()
 
 			ch := make(chan os.Signal, 1)
 			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 			<-ch
 
-			if err := aircrew.Shutdown(context.Background()); err != nil {
+			if err := apex.Shutdown(context.Background()); err != nil {
 				log.Fatal(err)
 			}
 			return nil
