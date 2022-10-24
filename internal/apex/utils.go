@@ -68,6 +68,15 @@ func ValidateIp(ip string) error {
 	return fmt.Errorf("%s is not a valid v4 or v6 IP", ip)
 }
 
+// ValidateCIDR ensures a valid IP4/IP6 prefix is provided
+func ValidateCIDR(cidr string) error {
+	_, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid v4 or v6 IP prefix", err)
+	}
+	return nil
+}
+
 func FileToString(file string) string {
 	fileContent, err := os.ReadFile(file)
 	if err != nil {

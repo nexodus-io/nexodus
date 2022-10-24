@@ -34,7 +34,7 @@ type Apex struct {
 	requestedIP             string
 	userProvidedEndpointIP  string
 	childPrefix             string
-	internalNetwork         bool
+	publicNetwork           bool
 	hubRouter               bool
 	os                      string
 	wgConfig                wgConfig
@@ -79,7 +79,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		requestedIP:            cCtx.String("request-ip"),
 		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
 		childPrefix:            cCtx.String("child-prefix"),
-		internalNetwork:        cCtx.Bool("internal-network"),
+		publicNetwork:          cCtx.Bool("public-network"),
 		hubRouter:              cCtx.Bool("hub-router"),
 		os:                     GetOS(),
 	}
@@ -115,17 +115,21 @@ func (ax *Apex) Run() {
 		ax.wireguardPvtKey = pvtKey
 	}
 
-	// this conditional is last since it is expensive to do the public address lookup
 	var localEndpointIP string
-	if !ax.internalNetwork && ax.userProvidedEndpointIP == "" {
+	// User requested ip --request-ip takes precedent
+	if ax.userProvidedEndpointIP != "" {
+		localEndpointIP = ax.userProvidedEndpointIP
+	}
+	if ax.publicNetwork && localEndpointIP == "" {
 		localEndpointIP, err = GetPubIP()
 		if err != nil {
-			log.Warn("Unable to determine the public facing address")
+			log.Warn("Unable to determine the public facing address, falling back to the local address")
 		}
-	} else {
+	}
+	if localEndpointIP == "" {
 		localEndpointIP, err = ax.findLocalEndpointIp()
 		if err != nil {
-			log.Fatalf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+			log.Fatalf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
 	log.Infof("This node's endpoint address for building tunnels is [ %s ]", localEndpointIP)
@@ -268,6 +272,21 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 	if ax.hubRouter && ax.os == Windows.String() {
 		log.Fatalf("Windows nodes cannot be a hub-router, only Linux nodes")
 	}
+	if ax.userProvidedEndpointIP != "" {
+		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
+			log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v", ax.userProvidedEndpointIP, err)
+		}
+	}
+	if ax.requestedIP != "" {
+		if err := ValidateIp(ax.requestedIP); err != nil {
+			log.Fatalf("the IP address passed in --request-ip %s was not valid: %v", ax.requestedIP, err)
+		}
+	}
+	if ax.childPrefix != "" {
+		if err := ValidateCIDR(ax.childPrefix); err != nil {
+			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
+		}
+	}
 	return nil
 }
 
@@ -293,34 +312,26 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var localEndpointIP string
 	var err error
 	// Darwin network discovery
-	if ax.internalNetwork && ax.os == Darwin.String() {
+	if !ax.publicNetwork && ax.os == Darwin.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
-	if ax.internalNetwork && ax.os == Windows.String() {
+	if !ax.publicNetwork && ax.os == Windows.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the ip address of the OSX host en0, please specify using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Linux network discovery
-	if ax.internalNetwork && ax.os == Linux.String() {
+	if !ax.publicNetwork && ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(4)
 		if err != nil {
-			return "", fmt.Errorf("unable to determine the Linux node ip address, please specify the address using --local-endpoint-ip: %v", err)
+			return "", fmt.Errorf("%v", err)
 		}
 		localEndpointIP = linuxIP.String()
-	}
-	// User provided --local-endpoint-ip overrides --internal-network
-	if ax.userProvidedEndpointIP != "" {
-		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
-			return "", fmt.Errorf("the IP address passed in --local-endpoint-ip %s was not valid: %v",
-				ax.userProvidedEndpointIP, err)
-		}
-		localEndpointIP = ax.userProvidedEndpointIP
 	}
 	return localEndpointIP, nil
 }

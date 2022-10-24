@@ -309,7 +309,10 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		if msgEvent.Peer.NodeAddress != peer.NodeAddress {
 			var ip *goipam.IP
 			if msgEvent.Peer.NodeAddress != "" {
-				if err := validateIP(msgEvent.Peer.NodeAddress); err == nil {
+				if err := validateIP(msgEvent.Peer.NodeAddress); err != nil {
+					log.Errorf("Requested address was not valid: %v", err)
+					return nil, fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+				} else {
 					ip, err = ct.ipam[zone.ID].AcquireSpecificIP(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 					if err != nil {
 						log.Errorf("failed to assign the requested address %s, assigning an address from the pool %v\n", msgEvent.Peer.NodeAddress, err)
@@ -392,11 +395,6 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		}
 		tx.Create(&peer)
 		zone.Peers = append(zone.Peers, peer)
-		tx.Save(&zone)
-		if err := tx.Commit(); err.Error != nil {
-			tx.Rollback()
-			return nil, err.Error
-		}
 	}
 	var peerList []messages.Peer
 	for _, p := range zone.Peers {
@@ -411,6 +409,11 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			HubZone:     p.HubZone,
 			ZonePrefix:  p.ZonePrefix,
 		})
+	}
+	tx.Save(&peer)
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		return nil, err.Error
 	}
 	return peerList, nil
 }

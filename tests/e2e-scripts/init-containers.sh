@@ -240,7 +240,7 @@ EOF
     sleep 2
 }
 
-setup_custom_second_zone_connectivity() {
+setup_requested_ip_connectivity() {
     ###########################################################################
     # Description:                                                            #
     # Verify a second custom zone can be created and connected with no        #
@@ -251,13 +251,15 @@ setup_custom_second_zone_connectivity() {
     echo "Test: test the request ip option"
 
     # node1 specific details
-    local node1_requested_ip=100.64.0.101
+    local node1_requested_ip_cycle1=100.64.0.101
+    local node1_requested_ip_cycle2=100.64.1.101
     local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
     local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
-    local node2_requested_ip=100.64.0.102
+    local node2_requested_ip_cycle1=100.64.0.102
+    local node2_requested_ip_cycle2=100.64.1.102
     local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
     local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
@@ -276,28 +278,54 @@ setup_custom_second_zone_connectivity() {
     echo -e  "\n$node1_pvtkey" | tee node1-private.key
     echo -e  "\n$node2_pvtkey" | tee node2-private.key
 
-    # Node-1 apex run
-    cat <<EOF > apex-run-node1.sh
+    # Node-1 cycle-1 apex run
+    cat <<EOF > apex-cycle1-node1.sh
 #!/bin/bash
 apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
---request-ip=${node1_requested_ip} \
+--request-ip=${node1_requested_ip_cycle1} \
 --zone=${zone} \
 --controller-password=${controller_passwd}
 EOF
 
-    # Node-2 apex run
-    cat <<EOF > apex-run-node2.sh
+    # Node-2 cycle-1 apex run
+    cat <<EOF > apex-cycle1-node2.sh
 #!/bin/bash
 apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
---request-ip=${node2_requested_ip} \
+--request-ip=${node2_requested_ip_cycle1} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
+
+    # Node-1 cycle-2 apex run
+    cat <<EOF > apex-cycle2-node1.sh
+#!/bin/bash
+apex \
+--public-key=${node1_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node1_ip} \
+--request-ip=${node1_requested_ip_cycle2} \
+--zone=${zone} \
+--controller-password=${controller_passwd}
+EOF
+
+    # Node-2 cycle-2 apex run
+    cat <<EOF > apex-cycle2-node2.sh
+#!/bin/bash
+apex \
+--public-key=${node2_pubkey} \
+--private-key-file=/etc/wireguard/private.key \
+--controller=${controller} \
+--local-endpoint-ip=${node2_ip} \
+--request-ip=${node2_requested_ip_cycle2} \
 --zone=${zone} \
 --controller-password=${controller_passwd}
 EOF
@@ -307,43 +335,80 @@ EOF
     $DOCKER exec node2 killall apex
 
     # STDOUT the run scripts for debugging
-    echo "=== Displaying apex-run-node1.sh ==="
-    cat apex-run-node1.sh
-    echo "=== Displaying apex-run-node2.sh ==="
-    cat apex-run-node2.sh
+    echo "=== Displaying apex-cycle1-node1.sh ==="
+    cat apex-cycle1-node1.sh
+    echo "=== Displaying apex-cycle1-node2.sh ==="
+    cat apex-cycle1-node2.sh
 
-    $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
-    $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
+    # Copy files and set permissions
+    $DOCKER cp ./apex-cycle1-node1.sh node1:/bin/apex-cycle1-node1.sh
+    $DOCKER cp ./apex-cycle1-node2.sh node2:/bin/apex-cycle1-node2.sh
     $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
     $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
-
-    # Set permissions in the container
-    $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
-    $DOCKER exec node2 chmod +x /bin/apex-run-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-cycle1-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-cycle1-node2.sh
 
     # Start the agents on both nodes
-    $DOCKER exec node1 /bin/apex-run-node1.sh &
-    $DOCKER exec node2 /bin/apex-run-node2.sh &
+    $DOCKER exec node1 /bin/apex-cycle1-node1.sh &
+    $DOCKER exec node2 /bin/apex-cycle1-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
     sleep 2
 
     # Check connectivity between the request ip from node1 > node2
-    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip}; then
-        echo "peer node loopbacks successfully communicated"
+    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip_cycle1}; then
+        echo "peer node updated requested ip successfully communicated"
     else
-        echo "node1 failed to reach node2 loopback, e2e failed"
+        echo "node1 failed to reach node2 updated requested ip , e2e failed"
         exit 1
     fi
     # heck connectivity between the request ip from node2 -> node1
-    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_requested_ip}; then
-        echo "peer node loopbacks successfully communicated"
+    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_requested_ip_cycle1}; then
+        echo "peer node updated requested ip successfully communicated"
     else
-        echo "node2 failed to reach node1 loopback, e2e failed"
+        echo "node2 failed to reach node1 updated requested ip, e2e failed"
+        exit 1
+    fi
+
+    echo "Test: test the requested ip got updated in the peer table and was updated on the endpoint"
+
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
+
+    # STDOUT the run scripts for debugging
+    echo "=== Displaying apex-cycle2-node1.sh ==="
+    cat apex-cycle2-node1.sh
+    echo "=== Displaying apex-cycle2-node2.sh ==="
+    cat apex-cycle2-node2.sh
+
+    $DOCKER cp ./apex-cycle2-node1.sh node1:/bin/apex-cycle2-node1.sh
+    $DOCKER cp ./apex-cycle2-node2.sh node2:/bin/apex-cycle2-node2.sh
+    $DOCKER exec node1 chmod +x /bin/apex-cycle2-node1.sh
+    $DOCKER exec node2 chmod +x /bin/apex-cycle2-node2.sh
+
+    # Start the agents on both nodes
+    $DOCKER exec node1 /bin/apex-cycle2-node1.sh &
+    $DOCKER exec node2 /bin/apex-cycle2-node2.sh &
+
+    # Allow two seconds for the wg0 interface to readdress
+    sleep 2
+
+    # Check connectivity between the request ip from node1 > node2
+    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip_cycle2}; then
+        echo "peer node requested ip successfully communicated"
+    else
+        echo "node1 failed to reach node2 requested ip , e2e failed"
+        exit 1
+    fi
+    # heck connectivity between the request ip from node2 -> node1
+    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_requested_ip_cycle2}; then
+        echo "peer node requested ip successfully communicated"
+    else
+        echo "node2 failed to reach node1 requested ip, e2e failed"
         exit 1
     fi
 }
-
 
 setup_child_prefix_connectivity() {
     ###########################################################################
@@ -395,7 +460,6 @@ setup_child_prefix_connectivity() {
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node1} \
-    --internal-network \
     --request-ip=${requested_ip_node1} \
     --zone=${zone}
 EOF
@@ -409,7 +473,6 @@ EOF
     --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node2} \
     --request-ip=${requested_ip_node2} \
-    --internal-network \
     --zone=${zone}
 EOF
 
@@ -537,7 +600,6 @@ setup_hub_spoke_connectivity() {
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --internal-network \
     --hub-router \
     --zone=${zone}
 EOF
@@ -549,7 +611,6 @@ EOF
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --internal-network \
     --zone=${zone}
 EOF
 
@@ -560,7 +621,6 @@ EOF
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
-    --internal-network \
     --zone=${zone}
 EOF
 
@@ -746,6 +806,7 @@ EOF
     apex --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
+    --public-network \
     --controller-password=${controller_passwd} \
     --zone=${zone}
 EOF
@@ -756,6 +817,7 @@ EOF
     apex --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
+    --public-network \
     --controller-password=${controller_passwd} \
     --zone=${zone}
 EOF
@@ -766,6 +828,7 @@ EOF
     apex --public-key=${node3_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
+    --public-network \
     --controller-password=${controller_passwd} \
     --zone=${zone}
 EOF
@@ -916,7 +979,7 @@ clean_nodes
 setup_custom_zone_connectivity
 verify_connectivity
 clean_nodes
-setup_custom_second_zone_connectivity
+setup_requested_ip_connectivity
 verify_connectivity
 clean_nodes
 setup_child_prefix_connectivity
