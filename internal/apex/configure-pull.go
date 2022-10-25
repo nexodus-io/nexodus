@@ -5,6 +5,7 @@ import (
 	"gopkg.in/ini.v1"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
@@ -165,6 +166,8 @@ func (ax *Apex) DeployWireguardConfig() {
 				log.Debugf("Failed to down the wireguard interface (this is generally ok): %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
+			// sleep for one second to give the wg async exe time to tear down any existing wg0 configuration
+			time.Sleep(time.Second * 1)
 			// windows implementation does not handle certain fields the osx and linux wg configs can
 			sanitizeWindowsConfig(activeWindowsConfig)
 			wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", activeWindowsConfig)
