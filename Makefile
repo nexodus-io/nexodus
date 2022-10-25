@@ -1,4 +1,9 @@
-#Aircrew Targets
+# Common Targets
+all: build-apex-local build-controller-local
+
+clean: clean-apex clean-controller
+
+#Apex Targets
 build-apex-local:
 	go build -o ./dist/apex ./cmd/apex
 build-apex-linux:
@@ -26,3 +31,8 @@ go-lint:
 # Runs the CI e2e tests used in github actions
 run-ci-e2e:
 	./tests/e2e-scripts/init-containers.sh -o $(OS_IMAGE)
+
+.PHONY: all clean \
+	build-apex-local build-apex-linux build-apex-darwin clean-apex \
+	build-controller-local build-controller-linux build-controller-darwin clean-controller \
+	go-lint run-ci-e2e
