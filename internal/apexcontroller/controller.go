@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/cenkalti/backoff/v4"
@@ -24,6 +25,7 @@ const (
 	ipPrefixDefault = "10.200.1.0/20"
 	DefaultZoneName = "default"
 	restPort        = "8080"
+	acAuthEnv       = "APEX_CONTROLLER_NOAUTH"
 )
 
 // Controller specific data
@@ -77,19 +79,28 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 		log.Fatalf("unable to connect to the redis instance at %s: %v", streamSocket, err)
 	}
 
-	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
-	var auth *KeyCloakAuth
-	connectAuth := func() error {
-		var err error
-		auth, err = NewKeyCloakAuth(jwksURL)
-		if err != nil {
-			return err
-		}
-		return nil
+	// option to disable auth convenience for some dev tasks
+	var devEnvDisableAuth bool
+	env := os.Getenv(acAuthEnv)
+	if env != "true" {
+		devEnvDisableAuth = true
 	}
-	err = backoff.Retry(connectAuth, backoff.NewExponentialBackOff())
-	if err != nil {
-		return nil, err
+
+	var auth *KeyCloakAuth
+	if devEnvDisableAuth {
+		jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
+		connectAuth := func() error {
+			var err error
+			auth, err = NewKeyCloakAuth(jwksURL)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		err = backoff.Retry(connectAuth, backoff.NewExponentialBackOff())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ct := &Controller{
@@ -118,6 +129,9 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 	})
 
 	private := ct.Router.Group("/")
+	if !devEnvDisableAuth {
+		private.Use(auth.AuthFunc())
+	}
 	private.Use(auth.AuthFunc())
 	private.GET("/peers", ct.handleListPeers)    // http://localhost:8080/peers
 	private.GET("/peers/:id", ct.handleGetPeers) // http://localhost:8080/peers/:id
