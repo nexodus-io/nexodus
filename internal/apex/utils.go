@@ -213,6 +213,14 @@ func ParseIPNet(s string) (*net.IPNet, error) {
 	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
 }
 
+func parseNetworkStr(cidr string) (string, error) {
+	_, nw, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return "", err
+	}
+	return nw.String(), nil
+}
+
 // sanitizeWindowsConfig removes incompatible fields from the wg Interface section
 func sanitizeWindowsConfig(file string) {
 	b, err := ioutil.ReadFile(file)

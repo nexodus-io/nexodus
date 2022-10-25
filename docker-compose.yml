@@ -36,7 +36,7 @@ services:
       - "--db-address=postgres"
       - "--db-password=floofykittens"
     environment:
-      CONTROLLER_LOG_LEVEL: debug
+      APEX_CONTROLLER_LOGLEVEL: debug
 
   ui:
     image: quay.io/apex/controller-ui

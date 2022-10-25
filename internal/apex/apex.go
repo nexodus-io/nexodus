@@ -33,9 +33,11 @@ type Apex struct {
 	zone                    string
 	requestedIP             string
 	userProvidedEndpointIP  string
+	localEndpointIP         string
 	childPrefix             string
 	publicNetwork           bool
 	hubRouter               bool
+	hubRouterWgIP           string
 	os                      string
 	wgConfig                wgConfig
 }
@@ -132,7 +134,8 @@ func (ax *Apex) Run() {
 			log.Fatalf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
-	log.Infof("This node's endpoint address for building tunnels is [ %s ]", localEndpointIP)
+	ax.localEndpointIP = localEndpointIP
+	log.Infof("This node's endpoint address for building tunnels is [ %s ]", ax.localEndpointIP)
 
 	controller := fmt.Sprintf("%s:%d", ax.controllerIP, pubSubPort)
 	rc := redis.NewClient(&redis.Options{
