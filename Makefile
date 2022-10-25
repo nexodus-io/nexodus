@@ -20,6 +20,11 @@ clean-controller:
 #Lint
 
 go-lint:
+	@if ! which golangci-lint 2>&1 >/dev/null; then \
+		echo "Please install golangci-lint." ; \
+		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
+		exit 1 ; \
+	fi
 	golangci-lint run ./...
 # CI infrastructure setup and tests triggered by actions workflow
 
