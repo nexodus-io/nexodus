@@ -87,7 +87,7 @@ copy_binaries() {
     # Node-1 apex run default zone
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node1_pubkey} \
 --private-key=${node1_pvtkey} \
 --controller=${controller} \
@@ -98,7 +98,7 @@ EOF
     # Node-2 apex run default zone
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node2_pubkey} \
 --private-key=${node2_pvtkey} \
 --controller=${controller} \
@@ -192,7 +192,7 @@ setup_custom_zone_connectivity() {
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -204,7 +204,7 @@ EOF
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -281,7 +281,7 @@ setup_requested_ip_connectivity() {
     # Node-1 cycle-1 apex run
     cat <<EOF > apex-cycle1-node1.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -294,7 +294,7 @@ EOF
     # Node-2 cycle-1 apex run
     cat <<EOF > apex-cycle1-node2.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -307,7 +307,7 @@ EOF
     # Node-1 cycle-2 apex run
     cat <<EOF > apex-cycle2-node1.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node1_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -320,7 +320,7 @@ EOF
     # Node-2 cycle-2 apex run
     cat <<EOF > apex-cycle2-node2.sh
 #!/bin/bash
-apex \
+APEX_LOGLEVEL=debug apex \
 --public-key=${node2_pubkey} \
 --private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
@@ -352,8 +352,8 @@ EOF
     $DOCKER exec node1 /bin/apex-cycle1-node1.sh &
     $DOCKER exec node2 /bin/apex-cycle1-node2.sh &
 
-    # Allow two seconds for the wg0 interface to readdress
-    sleep 2
+    # Allow five seconds for the wg0 interface to readdress
+    sleep 5
 
     # Check connectivity between the request ip from node1 > node2
     if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip_cycle1}; then
@@ -455,7 +455,8 @@ setup_child_prefix_connectivity() {
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-    apex --public-key=${node1_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -467,7 +468,8 @@ EOF
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-    apex --public-key=${node2_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -596,7 +598,8 @@ setup_hub_spoke_connectivity() {
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
-    apex --public-key=${node1_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -607,7 +610,8 @@ EOF
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
-    apex --public-key=${node2_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -617,7 +621,8 @@ EOF
     # Node-3 apex run
     cat <<EOF > apex-run-node3.sh
 #!/bin/bash
-    apex --public-key=${node3_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node3_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -647,12 +652,12 @@ EOF
 
     # Start the agents on all 3 nodes nodes (currently the hub-router needs to be spun up first)
     sudo $DOCKER exec node1 /bin/apex-run-node1.sh &
-    sleep 3
+    sleep 5
     sudo $DOCKER exec node2 /bin/apex-run-node2.sh &
     sudo $DOCKER exec node3 /bin/apex-run-node3.sh &
 
     # Allow four seconds for the wg0 interface to readdress
-    sleep 4
+    sleep 6
     verify_three_node_connectivity
 
     $DOCKER exec node1 killall apex
@@ -754,7 +759,8 @@ cycle_mesh_configurations(){
     do
         cat <<EOF > apex-run-node1-cycle${i}.sh
 #!/bin/bash
-    apex --public-key=${node1_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -765,7 +771,8 @@ EOF
 
         cat <<EOF > apex-run-node2-cycle${i}.sh
 #!/bin/bash
-    apex --public-key=${node2_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -776,7 +783,8 @@ EOF
 
         cat <<EOF > apex-run-node3-cycle${i}.sh
 #!/bin/bash
-    apex --public-key=${node3_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node3_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -803,7 +811,8 @@ EOF
     # Node-1 apex run
     cat <<EOF > apex-pubip-node1.sh
 #!/bin/bash
-    apex --public-key=${node1_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node1_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \
@@ -814,7 +823,8 @@ EOF
     # Node-2 apex run
     cat <<EOF > apex-pubip-node2.sh
 #!/bin/bash
-    apex --public-key=${node2_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node2_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \
@@ -825,7 +835,8 @@ EOF
     # Node-3 apex run
     cat <<EOF > apex-pubip-node3.sh
 #!/bin/bash
-    apex --public-key=${node3_pubkey} \
+APEX_LOGLEVEL=debug apex \
+    --public-key=${node3_pubkey} \
     --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \

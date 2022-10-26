@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	persistentKeepalive = "25"
+	persistentKeepalive    = "25"
+	persistentHubKeepalive = "0"
 )
 
 // ParseWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
@@ -136,6 +137,20 @@ func (ax *Apex) DeployWireguardConfig() {
 				}
 			}
 		}
+		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
+		if ax.hubRouter {
+			var wgPeerIPs []string
+			for _, peer := range ax.wgConfig.Peer {
+				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
+			}
+			if ax.hubRouterWgIP != "" {
+				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
+			}
+			// give the wg0 a second to renegotiate the peering before probing again
+			time.Sleep(time.Second * 1)
+			probePeers(wgPeerIPs)
+		}
+
 	case Darwin.String():
 		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
@@ -154,6 +169,20 @@ func (ax *Apex) DeployWireguardConfig() {
 			}
 			log.Debugf("%v", wgOut)
 		}
+		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
+		if ax.hubRouter {
+			var wgPeerIPs []string
+			for _, peer := range ax.wgConfig.Peer {
+				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
+			}
+			if ax.hubRouterWgIP != "" {
+				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
+			}
+			// give the wg0 a second to renegotiate the peering before probing again
+			time.Sleep(time.Second * 1)
+			probePeers(wgPeerIPs)
+		}
+
 	case Windows.String():
 		activeWindowsConfig := filepath.Join(WgWindowsConfPath, wgConfActive)
 		if err = cfg.SaveTo(activeWindowsConfig); err != nil {
@@ -175,6 +204,19 @@ func (ax *Apex) DeployWireguardConfig() {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
+		}
+		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
+		if ax.hubRouter {
+			var wgPeerIPs []string
+			for _, peer := range ax.wgConfig.Peer {
+				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
+			}
+			if ax.hubRouterWgIP != "" {
+				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
+			}
+			// give the wg0 a second to renegotiate the peering before probing again
+			time.Sleep(time.Second * 1)
+			probePeers(wgPeerIPs)
 		}
 	}
 	log.Printf("Peer setup complete")

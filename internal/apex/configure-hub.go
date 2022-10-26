@@ -2,6 +2,7 @@ package apex
 
 import (
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/redhat-et/apex/internal/messages"
@@ -18,8 +19,10 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
+	var hubRouterEndpointIP string
 	var localInterface wgLocalConfig
 	var zonePrefix string
+	var err error
 
 	for _, value := range peerListing {
 		if value.PublicKey == ax.wireguardPubKey {
@@ -27,6 +30,10 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 		}
 		if value.HubRouter {
 			hubRouterIP = value.AllowedIPs
+			hubRouterEndpointIP, _, err = net.SplitHostPort(value.EndpointIP)
+			if err != nil {
+				log.Errorf("failed to split host:port endpoint pair: %v", err)
+			}
 			if ax.zone == value.ZoneID {
 				zonePrefix = value.ZonePrefix
 			}
@@ -48,9 +55,36 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 		os.Exit(1)
 	}
 	zoneMask, _ := zoneCidr.Mask.Size()
+
+	hubRouterNetAddress := fmt.Sprintf("%s/%d", hubRouterIP, zoneMask)
+	hubRouterNetAddress, err = parseNetworkStr(hubRouterNetAddress)
+	if err != nil {
+		log.Errorf("invalid hub router network found: %v", err)
+	}
+	var peerEndpoints []string
+	var reachablePeers []string
+	if !ax.hubRouter {
+		for _, value := range peerListing {
+			peerIP, _, err := net.SplitHostPort(value.EndpointIP)
+			if err != nil {
+				log.Errorf("failed to split host:port endpoint pair: %v", err)
+			}
+			peerEndpoints = append(peerEndpoints, peerIP)
+		}
+	}
+	// basic discovery of what endpoints are reachable from the spoke peer that
+	// determines whether to drain traffic to the hub or build a p2p peering
+	// TODO: replace with a more in depth discovery than simple reachability
+	reachablePeers = probePeers(peerEndpoints)
+	// remove the hub router from the list since connectivity is required(ish)
+	reachablePeers = removeElement(reachablePeers, hubRouterEndpointIP)
+	// remove the node the agent is running on from the peer list (eg. don't peer to yourself)
+	reachablePeers = removeElement(reachablePeers, ax.localEndpointIP)
+	log.Debugf("reachable endpoint peers by this node are %s", reachablePeers)
+
 	// Parse the [Peers] section of the wg config if this node is a zone-router
 	for _, value := range peerListing {
-		// Build the wg config for all peers
+		// Build the wg config for all peers for the hub-router node
 		if ax.hubRouter {
 			// Config if the node is a bouncer hub
 			if value.PublicKey != ax.wireguardPubKey {
@@ -58,7 +92,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 					value.PublicKey,
 					value.EndpointIP,
 					value.AllowedIPs,
-					persistentKeepalive,
+					persistentHubKeepalive,
 				}
 				peers = append(peers, peer)
 				log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
@@ -69,29 +103,44 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 					value.ZoneID)
 			}
 		}
+		var peerHub wgPeerConfig
 		// Build the wg config for all peers that are not zone routers (1 peer entry to the router)
 		if !ax.hubRouter && value.HubRouter {
 			if value.PublicKey != ax.wireguardPubKey {
-				var allowedIPs string
+				//var allowedIPs string
 				if value.ChildPrefix != "" {
 					log.Warnf("Ignoring the child prefix since this is a hub zone")
-				} else {
-					allowedIPs = value.AllowedIPs
 				}
-				peer := wgPeerConfig{
+				ax.hubRouterWgIP = hubRouterIP
+				peerHub = wgPeerConfig{
 					value.PublicKey,
 					value.EndpointIP,
-					fmt.Sprintf("%s/%d", hubRouterIP, zoneMask),
+					hubRouterNetAddress,
 					persistentKeepalive,
 				}
-				peers = append(peers, peer)
-				log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-					allowedIPs,
-					value.EndpointIP,
-					value.PublicKey,
-					value.NodeAddress,
-					value.ZoneID)
+				peers = append(peers, peerHub)
 			}
+		}
+
+		// Peers that are reachable for spokes
+		peerIP, _, err := net.SplitHostPort(value.EndpointIP)
+		if err != nil {
+			log.Errorf("failed to split host:port endpoint pair: %v", err)
+		}
+		if isReachable(reachablePeers, peerIP) {
+			peer := wgPeerConfig{
+				value.PublicKey,
+				value.EndpointIP,
+				value.AllowedIPs,
+				persistentKeepalive,
+			}
+			peers = append(peers, peer)
+			log.Printf("Spoke Node Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+				value.AllowedIPs,
+				value.EndpointIP,
+				value.PublicKey,
+				value.NodeAddress,
+				value.ZoneID)
 		}
 		// Parse the [Interface] section of the wg config if this node is a zone-router
 		if value.PublicKey == ax.wireguardPubKey && ax.hubRouter {
@@ -129,4 +178,23 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 		}
 	}
 	ax.wgConfig.Peer = peers
+}
+
+func isReachable(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+func removeElement(items []string, item string) []string {
+	var updatedSlice []string
+	for _, i := range items {
+		if i != item {
+			updatedSlice = append(updatedSlice, i)
+		}
+	}
+	return updatedSlice
 }
