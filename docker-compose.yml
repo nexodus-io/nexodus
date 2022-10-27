@@ -31,10 +31,10 @@ services:
     ports:
       - 8080:8080
     command:
-      - "--streamer-address=redis"
-      - "--streamer-password=floofykittens"
-      - "--db-address=postgres"
-      - "--db-password=floofykittens"
+      - "--streamer-address=${STREAMER_IP:-redis}"
+      - "--streamer-password=${STREAMER_PASSWORD:-floofykittens}"
+      - "--db-address=${DB_IP:-postgres}"
+      - "--db-password=${DB_PASSWORD:-floofykittens}"
     environment:
       APEX_CONTROLLER_LOGLEVEL: debug
 
@@ -58,10 +58,10 @@ services:
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=floofykittens
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://postgres/keycloak
-      - KC_DB_USERNAME=controller
-      - KC_DB_PASSWORD=floofykittens
+      - KC_DB=${DB_IP:-postgres}
+      - KC_DB_URL=jdbc:postgresql://${DB_IP:-postgres}/keycloak
+      - KC_DB_USERNAME=${DB_USER:-controller}
+      - KC_DB_PASSWORD=${DB_PASSWORD:-floofykittens}
     volumes:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
