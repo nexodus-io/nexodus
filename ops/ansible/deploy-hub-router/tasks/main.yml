@@ -1,5 +1,5 @@
 ---
-# tasks file for deploy-mesh
+# tasks file for deploy-hub-router
 - name: Update repo cache
   become: yes
   apt:
@@ -25,6 +25,10 @@
     src: verify-connectivity.sh
     dest: /home/{{ ansible_user }}/
     mode: '0755'
+
+- name: Temporary, remove this one a patch is merged resolving this
+  become: yes
+  shell: sysctl -w net.ipv4.ip_forward=1
 
 - name: Create Node Keys
   become: yes
@@ -55,4 +59,6 @@
     --private-key-file={{ private_key_file }} \
     --controller={{ controller_address }} \
     --controller-password={{ controller_password }} \
-    --zone={{ apex_zone_uuid }} > apex-logs.txt 2>&1 &
+    --public-network \
+    --zone={{ apex_zone_uuid }} \
+    --hub-router > apex-logs.txt 2>&1 &

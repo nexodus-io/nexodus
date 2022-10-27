@@ -5,9 +5,9 @@
     name: boto
     state: present
 
-- name: Generate a UUID for the ec2 host
-  shell: uuidgen | head -c 4
-  register: uuid
+#- name: Generate a UUID for the ec2 host (Use this for naming if you want overlapping demos at once)
+#  shell: uuidgen | head -c 4
+#  register: uuid
 
 ### VPC Blue Deployment ###
 - name: Creating Security Group for VPC Blue
@@ -20,9 +20,38 @@
       - proto: all
         cidr_ip: "0.0.0.0/0"
 
+# Hub Router Setup
+- name: Launching Hub Router in VPC Blue
+  amazon.aws.ec2_instance:
+    name: "hub-router-zone-blue"
+    aws_region: "{{ aws_region }}"
+    key_name: "{{ aws_key_name }}"
+    instance_type: "{{ aws_instance_type }}"
+    image_id: "{{ aws_image_id }}"
+    security_group: "{{ secgroup_name_blue }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 25
+          delete_on_termination: true
+          volume_type: standard
+    network:
+      assign_public_ip: true
+    tags:
+      NodeType: "{{ aws_nodetype_tag }}"
+    state: running
+    wait: true
+  register: hubRouterIp
+
+- name: Updating the hub-router node's public ip in inventory
+  lineinfile:
+    path: "{{ inventory_location }}"
+    regexp: "hubRouterNode"
+    line: "[hubRouterNode]\n{{ hubRouterIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ hubRouterIp['instances'][0]['private_ip_address']}} hostname=hubrouter"
+
 - name: Launching EC2 Instances in VPC Blue
   amazon.aws.ec2_instance:
-    name: "wireguard-blue-node-{{ item+1 }}-{{ uuid.stdout }}"
+    name: "apex-demo-blue-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -47,29 +76,35 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "wireguardNodes"
-    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-blue-node-{{ item+1 }}-{{ uuid.stdout }} wireguard_allowed_ips=10.100.1.{{ item+1 }}/32"
+    regexp: "apexNodes"
+    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-blue-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_blue | int) }}"
 
 ### VPC Green Deployment ###
-- name: Creating Security Group for VPC Blue
+- name: Creating Security Group for VPC Green
   amazon.aws.ec2_group:
     name: "{{ secgroup_name_green }}"
     aws_region: "{{ aws_region }}"
     description: "{{ security_group_description }}"
     vpc_id: "{{ vpc_id_green }}"
     rules:
-      - proto: all
-        cidr_ip: "0.0.0.0/0"
+      - proto: icmp
+        from_port: 8
+        to_port: -1
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        ports:
+        - 22
+        cidr_ip: 0.0.0.0/0
 
 - name: Launching EC2 Instances in VPC Green
   amazon.aws.ec2_instance:
-    name: "wireguard-green-node-{{ item+1 }}-{{ uuid.stdout }}"
+    name: "apex-demo-green-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
     image_id: "{{ aws_image_id }}"
-    security_group: "{{ secgroup_name_green }}"
+    security_group: "{{ secgroup_id_green }}"
     volumes:
       - device_name: /dev/sda1
         ebs:
@@ -89,12 +124,59 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "wireguardNodes"
-    line: "[wireguardNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=wireguard-green-node-{{ item+1 }}-{{ uuid.stdout }} wireguard_allowed_ips=10.200.1.{{ item+1 }}/32"
+    regexp: "apexNodes"
+    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-green-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_green | int) }}"
 
+### VPC Red Deployment ###
+- name: Creating Security Group for VPC Red
+  amazon.aws.ec2_group:
+    name: "{{ secgroup_name_red }}"
+    aws_region: "{{ aws_region }}"
+    description: "{{ security_group_description }}"
+    vpc_id: "{{ vpc_id_red }}"
+    rules:
+      - proto: icmp
+        from_port: 8
+        to_port: -1
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        ports:
+          - 22
+        cidr_ip: 0.0.0.0/0
 
-- name: Refresh inventory to ensure new instaces exist in inventory
+- name: Launching EC2 Instances in VPC Red
+  amazon.aws.ec2_instance:
+    name: "apex-demo-red-node-{{ item+1 }}"
+    aws_region: "{{ aws_region }}"
+    key_name: "{{ aws_key_name }}"
+    instance_type: "{{ aws_instance_type }}"
+    image_id: "{{ aws_image_id }}"
+    security_group: "{{ secgroup_id_red }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 25
+          delete_on_termination: true
+          volume_type: standard
+    network:
+      assign_public_ip: true
+    subnet_id: "{{ aws_subnet_red }}"
+    tags:
+      NodeType: "{{ aws_nodetype_tag }}"
+    state: running
+    wait: true
+  register: nodeIP
+  loop: "{{ range(0, node_count_red | int) }}"
+
+- name: Updating the node's public ip in inventory
+  lineinfile:
+    path: "{{ inventory_location }}"
+    regexp: "apexNodes"
+    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-red-node-{{ item+1 }}"
+  loop: "{{ range(0, node_count_red | int) }}"
+
+- name: Refresh inventory to ensure new instances exist in inventory
   meta: refresh_inventory
 
 - name: Pause for 80 seconds to allow the instances to finish booting and become reachable

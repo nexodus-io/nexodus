@@ -16,7 +16,6 @@
 
 # Ops files
 *.pem
-**/peer-inventory/*
 
 # misc
 *.idea
