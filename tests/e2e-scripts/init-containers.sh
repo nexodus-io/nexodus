@@ -23,32 +23,67 @@ start_containers() {
     # allow for all services to come up and be ready
     timeout 300s bash -c 'until curl -sfL http://localhost:8080/health; do sleep 1; done'
 
-    # Start node1 (container image is generic until the cli stabilizes so no arguments, a script below builds the apex cmd)
-    $DOCKER run -itd \
-        --name=node1 \
-        --net=apex_default \
-        --cap-add=SYS_MODULE \
-        --cap-add=NET_ADMIN \
-        --cap-add=NET_RAW \
-        ${node_image}
+    echo "Deploy containers"
+    if echo ${node_image} | grep -i fedora; then
+        echo "Deploying container image ${node_image}"
+         # Start Fedora Containers (requires privileged due to sysctl net.ipv4.ip_forward=1 throwing an exit 1)
+        $DOCKER run -itd \
+            --name=node1 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            --privileged=true \
+            ${node_image}
 
-    # Start node2post
-    $DOCKER run -itd \
-        --name=node2 \
-        --net=apex_default \
-        --cap-add=SYS_MODULE \
-        --cap-add=NET_ADMIN \
-        --cap-add=NET_RAW \
-        ${node_image}
+        # Start node2post
+        $DOCKER run -itd \
+            --name=node2 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            --privileged=true \
+            ${node_image}
 
-    # Start node3post
-    $DOCKER run -itd \
-        --name=node3 \
-        --net=apex_default \
-        --cap-add=SYS_MODULE \
-        --cap-add=NET_ADMIN \
-        --cap-add=NET_RAW \
-        ${node_image}
+        # Start node3post
+        $DOCKER run -itd \
+            --name=node3 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            --privileged=true \
+            ${node_image}
+    else
+        echo "Deploying container image ${node_image}"
+        # Start any other container OS type
+        $DOCKER run -itd \
+            --name=node1 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            ${node_image}
+
+        # Start node2post
+        $DOCKER run -itd \
+            --name=node2 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            ${node_image}
+
+        # Start node3post
+        $DOCKER run -itd \
+            --name=node3 \
+            --net=apex_default \
+            --cap-add=SYS_MODULE \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            ${node_image}
+    fi
 }
 
 teardown() {
