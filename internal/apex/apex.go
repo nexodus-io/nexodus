@@ -175,6 +175,11 @@ func (ax *Apex) Run() {
 		false,
 		ax.hubRouter)
 
+	// a hub router requires ip forwarding, OS type has already been checked
+	if ax.hubRouter {
+		enableForwardingIPv4()
+	}
+
 	// Agent publish the peer register request to controller channel.
 	// If the zone defined is not registered with controller,
 	// controller will send the error message to the peer's zone.

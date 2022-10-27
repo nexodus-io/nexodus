@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -223,7 +222,7 @@ func parseNetworkStr(cidr string) (string, error) {
 
 // sanitizeWindowsConfig removes incompatible fields from the wg Interface section
 func sanitizeWindowsConfig(file string) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatalf("Unable to read the wg0 configuration file %s: %v", file, err)
 	}
@@ -242,4 +241,12 @@ func sanitizeWindowsConfig(file string) {
 	if err := f.Close(); err != nil {
 		log.Fatalf("Unable to write to the wg0 configuration file %s: %v", file, err)
 	}
+}
+
+func enableForwardingIPv4() {
+	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
+	if err != nil {
+		log.Fatalf("failed to enable IP Forwarding for this hub-router: %v\n", err)
+	}
+	log.Debugf("%v", cmdOut)
 }
