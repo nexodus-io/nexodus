@@ -183,3 +183,31 @@ func (ct *Controller) handleGetDevices(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, results)
 }
+
+type DeviceRequest struct {
+	PublicKey string `json:"name"`
+}
+
+// PostZone creates a new zone via a REST call
+func (ct *Controller) handlePostDevices(c *gin.Context) {
+	var request DeviceRequest
+	// Call BindJSON to bind the received JSON
+	if err := c.BindJSON(&request); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	if request.PublicKey == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "the request did not contain a valid public key"})
+		return
+	}
+
+	device := &Device{
+		ID: request.PublicKey,
+	}
+	err := ct.db.Create(device)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	c.IndentedJSON(http.StatusCreated, device)
+}

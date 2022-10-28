@@ -144,6 +144,7 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	private.POST("/zones", ct.handlePostZones)
 	private.GET("/devices", ct.handleListDevices)    // http://localhost:8080/devices
 	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost:8080/devices/:id
+	private.POST("/devices", ct.handlePostDevices)
 
 	createDefaultZone := func() error {
 		if err := ct.CreateDefaultZone(); err != nil {
