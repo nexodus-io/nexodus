@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	controltower "github.com/redhat-et/apex/internal/apexcontroller"
+	controller "github.com/redhat-et/apex/internal/apexcontroller"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -52,7 +52,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			ct, err := controltower.NewController(
+			ct, err := controller.NewController(
 				context.Background(),
 				cCtx.String("streamer-address"),
 				streamPort,

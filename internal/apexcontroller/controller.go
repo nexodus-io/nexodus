@@ -11,10 +11,10 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	goipam "github.com/metal-stack/go-ipam"
 	"github.com/redhat-et/apex/internal/messages"
+	"github.com/redhat-et/apex/internal/streamer"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -29,22 +29,22 @@ const (
 // Controller specific data
 type Controller struct {
 	Router       *gin.Engine
-	Client       *redis.Client
+	Client       *streamer.Streamer
 	db           *gorm.DB
 	dbHost       string
 	dbPass       string
 	ipam         map[string]goipam.Ipamer
-	streamSocket string
-	streamPass   string
+	streamerIp   string
+	streamerPort int
+	streamerPass string
 	wg           sync.WaitGroup
 	server       *http.Server
-	msgChannels  []chan string
-	readyChan    chan string
+	msgChannels  []chan streamer.ReceivedMessage
+	readyChan    chan streamer.ReceivedMessage
 }
 
-func NewController(ctx context.Context, streamService string, streamPort int, streamPasswd string, dbHost string, dbPass string) (*Controller, error) {
-	streamSocket := fmt.Sprintf("%s:%d", streamService, streamPort)
-	client := NewRedisClient(streamSocket, streamPasswd)
+func NewController(ctx context.Context, streamerIp string, streamerPort int, streamerPass string, dbHost string, dbPass string) (*Controller, error) {
+	st := streamer.NewStreamer(ctx, streamerIp, streamerPort, streamerPass)
 	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
 
 	var db *gorm.DB
@@ -72,10 +72,10 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 		return nil, err
 	}
 
-	_, err = client.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("unable to connect to the redis instance at %s: %v", streamSocket, err)
+	if !st.IsReady() {
+		log.Fatalf("Streamer is not ready at %s", st.GetUrl())
 	}
+	log.Debugf("Streamer is ready and reachable")
 
 	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
 	var auth *KeyCloakAuth
@@ -94,17 +94,18 @@ func NewController(ctx context.Context, streamService string, streamPort int, st
 
 	ct := &Controller{
 		Router:       gin.Default(),
-		Client:       client,
+		Client:       st,
 		db:           db,
 		dbHost:       dbHost,
 		dbPass:       dbPass,
 		ipam:         make(map[string]goipam.Ipamer),
-		streamSocket: streamSocket,
-		streamPass:   streamPasswd,
+		streamerIp:   streamerIp,
+		streamerPort: streamerPort,
+		streamerPass: streamerPass,
 		wg:           sync.WaitGroup{},
 		server:       nil,
-		msgChannels:  make([]chan string, 0),
-		readyChan:    make(chan string),
+		msgChannels:  make([]chan streamer.ReceivedMessage, 0),
+		readyChan:    make(chan streamer.ReceivedMessage),
 	}
 
 	corsConfig := cors.DefaultConfig()
@@ -143,17 +144,18 @@ func (ct *Controller) Run() {
 	// TODO: assign each zone it's own channel for better multi-tenancy
 	go ct.MessageHandling(ctx)
 
-	pubDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
-	subDefault := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+	pubDefault := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
+	subDefault := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
 
 	log.Debugf("Listening on channel: %s", messages.ZoneChannelDefault)
 
 	// channel for async messages from the zone subscription for the default zone
-	msgChanDefault := make(chan string)
+	msgChanDefault := make(chan streamer.ReceivedMessage)
 	ct.msgChannels = append(ct.msgChannels, msgChanDefault)
 	ct.wg.Add(1)
 	go func() {
-		subDefault.subscribe(ctx, messages.ZoneChannelDefault, msgChanDefault)
+		subDefault.SubscribeAndReceive(messages.ZoneChannelDefault, msgChanDefault)
+		defer subDefault.CloseSubscription(messages.ZoneChannelDefault)
 		for {
 			msg, ok := <-msgChanDefault
 			if !ok {
@@ -161,7 +163,7 @@ func (ct *Controller) Run() {
 				ct.wg.Done()
 				return
 			}
-			msgEvent := messages.HandleMessage(msg)
+			msgEvent := messages.HandleMessage(msg.Payload)
 			switch msgEvent.Event {
 			case messages.RegisterNodeRequest:
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelDefault)
@@ -170,15 +172,15 @@ func (ct *Controller) Run() {
 					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
 					if err != nil {
 						log.Error(err)
-						if _, err = pubDefault.publishErrorMessage(
-							ctx, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
+						if err = publishErrorMessage(pubDefault,
+							msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
 							log.Errorf("unable to publish error message %s", err)
 						}
 					} else {
 						peers, err := ct.AddPeer(ctx, msgEvent, zone)
 						if err == nil {
 							// publishPeers the latest peer list
-							if _, err := pubDefault.publishPeers(ctx, messages.ZoneChannelDefault, peers); err != nil {
+							if err := publishPeers(pubDefault, messages.ZoneChannelDefault, peers); err != nil {
 								log.Errorf("unable to publish peer list: %s", err)
 							}
 						} else {
@@ -420,19 +422,20 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 
 func (ct *Controller) MessageHandling(ctx context.Context) {
 
-	pub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
-	sub := NewPubsub(NewRedisClient(ct.streamSocket, ct.streamPass))
+	pub := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
+	sub := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
 
 	// channel for async messages from the zone subscription
-	controllerChan := make(chan string)
+	controllerChan := make(chan streamer.ReceivedMessage)
 
 	go func() {
-		sub.subscribe(ctx, messages.ZoneChannelController, controllerChan)
+		sub.SubscribeAndReceive(messages.ZoneChannelController, controllerChan)
+		defer sub.CloseSubscription(messages.ZoneChannelController)
 		log.Debugf("Listening on channel: %s", messages.ZoneChannelController)
 
 		for {
 			msg := <-controllerChan
-			msgEvent := messages.HandleMessage(msg)
+			msgEvent := messages.HandleMessage(msg.Payload)
 			switch msgEvent.Event {
 			// TODO implement error channels
 			case messages.RegisterNodeRequest:
@@ -442,15 +445,15 @@ func (ct *Controller) MessageHandling(ctx context.Context) {
 					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
 					if err != nil {
 						log.Error(err)
-						if _, err = pub.publishErrorMessage(
-							ctx, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
+						if err = publishErrorMessage(
+							pub, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
 							log.Errorf("failed to publish error message %s", err)
 						}
 					} else {
 						peers, err := ct.AddPeer(ctx, msgEvent, zone)
 						if err == nil {
 							// publishPeers the latest peer list
-							if _, err := pub.publishPeers(ctx, msgEvent.Peer.ZoneID, peers); err != nil {
+							if err := publishPeers(pub, msgEvent.Peer.ZoneID, peers); err != nil {
 								log.Errorf("failed to publish peer updates: %s", err)
 							}
 						} else {

@@ -113,10 +113,10 @@ func discoverGenericIPv4(controller string, port int) (string, error) {
 	ipAddress := conn.LocalAddr().(*net.UDPAddr)
 	if ipAddress != nil {
 		ipPort := strings.Split(ipAddress.String(), ":")
-		log.Debugf("Nodes disovered local address is [%s]", ipPort[0])
+		log.Debugf("Nodes discovered local address is [%s]", ipPort[0])
 		return ipPort[0], nil
 	}
-	return "", fmt.Errorf("failed obtain the local IP")
+	return "", fmt.Errorf("failed to obtain the local IP")
 }
 
 // GetPubIP retrieves current global IP address using https://checkip.amazonaws.com/
@@ -224,7 +224,7 @@ func parseNetworkStr(cidr string) (string, error) {
 func sanitizeWindowsConfig(file string) {
 	b, err := os.ReadFile(file)
 	if err != nil {
-		log.Fatalf("Unable to read the wg0 configuration file %s: %v", file, err)
+		log.Fatalf("unable to read the wg0 configuration file %s: %v", file, err)
 	}
 	post := regexp.MustCompile("(?m)[\r\n]+^.*Post.*$")
 	regOut := post.ReplaceAllString(string(b), "")
@@ -232,14 +232,14 @@ func sanitizeWindowsConfig(file string) {
 	regOut = post.ReplaceAllString(regOut, "")
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatalf("Unable to open to the wg0 configuration file %s: %v", file, err)
+		log.Fatalf("unable to open to the wg0 configuration file %s: %v", file, err)
 	}
 	_, err = f.Write([]byte(regOut))
 	if err != nil {
-		log.Fatalf("Unable to open to the wg0 configuration file %s: %v", file, err)
+		log.Fatalf("unable to open to the wg0 configuration file %s: %v", file, err)
 	}
 	if err := f.Close(); err != nil {
-		log.Fatalf("Unable to write to the wg0 configuration file %s: %v", file, err)
+		log.Fatalf("unable to write to the wg0 configuration file %s: %v", file, err)
 	}
 }
 

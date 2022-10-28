@@ -3,11 +3,10 @@ package apex
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/redhat-et/apex/internal/messages"
+	"github.com/redhat-et/apex/internal/streamer"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -137,29 +136,19 @@ func (ax *Apex) Run() {
 	ax.localEndpointIP = localEndpointIP
 	log.Infof("This node's endpoint address for building tunnels is [ %s ]", ax.localEndpointIP)
 
-	controller := fmt.Sprintf("%s:%d", ax.controllerIP, pubSubPort)
-	rc := redis.NewClient(&redis.Options{
-		Addr:     controller,
-		Password: ax.controllerPasswd,
-	})
+	st := streamer.NewStreamer(ctx, ax.controllerIP, pubSubPort, ax.controllerPasswd)
+	defer st.Close()
 
-	// TODO: move to a redis package used by both server and agent
-	_, err = rc.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("Unable to connect to the redis instance at %s: %v", controller, err)
+	if !st.IsReady() {
+		log.Fatalf("Streamer is not ready at %s", st.GetUrl())
 	}
-	log.Debugf("Pubsub is reachable")
+	log.Debugf("Streamer is ready and reachable")
 
 	// ping the controller to see if it is responding via the broker, exit the agent on timeout
-	if err := controllerReadyCheck(ctx, rc); err != nil {
+	if err := controllerReadyCheck(ctx, st); err != nil {
 		log.Fatal(err)
 	}
-	defer rc.Close()
 	log.Debugf("Controller is responding to health checks")
-
-	//Agent only need to subscribe to it's own zone.
-	sub := rc.Subscribe(ctx, ax.zone)
-	defer sub.Close()
 
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, WgListenPort)
 
@@ -180,39 +169,24 @@ func (ax *Apex) Run() {
 		enableForwardingIPv4()
 	}
 
+	//Agent only need to subscribe to it's own zone.
+	agentZoneChan := make(chan streamer.ReceivedMessage)
+
+	st.SubscribeAndReceive(ax.zone, agentZoneChan)
+	defer st.CloseSubscription(ax.zone)
+
 	// Agent publish the peer register request to controller channel.
 	// If the zone defined is not registered with controller,
 	// controller will send the error message to the peer's zone.
-	err = rc.Publish(ctx, messages.ZoneChannelController, peerRegister).Err()
+	err = st.PublishMessage(messages.ZoneChannelController, peerRegister)
 	if err != nil {
 		log.Errorf("failed to publish subscriber message: %v", err)
 	}
-	defer rc.Close()
+
 	for {
-		msg, err := sub.ReceiveMessage(ctx)
-		if err != nil {
-			log.Fatalf("Failed to subscribe to the controller channel: %v", err)
-			os.Exit(1)
-		}
+		msg := <-agentZoneChan
 		// Switch based on the streaming channel
 		switch msg.Channel {
-		case messages.ZoneChannelController:
-			peerListing, err := messages.HandlePeerList(msg.Payload)
-			if err == nil && len(peerListing) > 0 {
-				// Only update the peer list if this node is a member of the zone update
-				if peerListing[0].ZoneID == ax.zone {
-					log.Debugf("Received message: %+v\n", peerListing)
-					ax.ParseWireguardConfig(ax.listenPort, peerListing)
-					ax.DeployWireguardConfig()
-				}
-			}
-		case messages.ZoneChannelDefault:
-			peerListing, err := messages.HandlePeerList(msg.Payload)
-			if err == nil && peerListing != nil {
-				log.Debugf("Received message: %+v\n", peerListing)
-				ax.ParseWireguardConfig(ax.listenPort, peerListing)
-				ax.DeployWireguardConfig()
-			}
 		case ax.zone:
 			controlMsg, err := messages.HandleErrorMessage(msg.Payload)
 
@@ -230,6 +204,8 @@ func (ax *Apex) Run() {
 					ax.DeployWireguardConfig()
 				}
 			}
+		default:
+			log.Errorf("Message received from unknown channel [%s]", msg.Channel)
 		}
 	}
 }
@@ -345,24 +321,19 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 }
 
 // controllerReadyCheck blocks until the controller responds or the request times out
-func controllerReadyCheck(ctx context.Context, client *redis.Client) error {
-	log.Println("checking the readiness of the controller")
-	healthCheckReplyChan := make(chan string)
-	sub := client.Subscribe(ctx, messages.HealthcheckReplyChannel)
-	go func() {
-		for {
-			output, _ := sub.ReceiveMessage(ctx)
-			healthCheckReplyChan <- output.Payload
-		}
-	}()
-	if _, err := client.Publish(ctx, messages.HealthcheckRequestChannel, messages.HealthcheckRequestMsg).Result(); err != nil {
+func controllerReadyCheck(ctx context.Context, st *streamer.Streamer) error {
+	log.Infoln("Checking the readiness of the controller")
+	healthCheckReplyChan := make(chan streamer.ReceivedMessage)
+	st.SubscribeAndReceive(messages.HealthcheckReplyChannel, healthCheckReplyChan)
+	if err := st.PublishMessage(messages.HealthcheckRequestChannel, messages.HealthcheckRequestMsg); err != nil {
 		return err
 	}
+
 	select {
 	case <-healthCheckReplyChan:
 	case <-time.After(readyRequestTimeout * time.Second):
 		return fmt.Errorf("controller was not reachable, ensure it is up and running")
 	}
-	log.Println("controller is available")
+	log.Infoln("Controller is ready and reachable")
 	return nil
 }
