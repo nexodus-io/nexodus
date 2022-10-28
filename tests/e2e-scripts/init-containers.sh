@@ -5,7 +5,6 @@ set -ex
 # Globals
 controller=redis
 controller_passwd=floofykittens
-node_pvtkey_file=/etc/wireguard/private.key
 
 start_containers() {
     ###########################################################################
@@ -199,15 +198,11 @@ setup_custom_zone_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "Test: basic zone creation and connectivity"
+    echo "=== Test: basic zone creation and connectivity ==="
     # node1 specific details
-    local node1_pubkey=AbZ1fPkCbjYAe9D61normbb7urAzMGaRMDVyR5Bmzz4=
-    local node1_pvtkey=8GtvCMlUsFVoadj0B3Y3foy7QbKJB9vcq5R+Mpc7OlE=
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
-    local node2_pubkey=oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=
-    local node2_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone
@@ -220,18 +215,11 @@ setup_custom_zone_connectivity() {
         "CIDR": "10.140.0.0/20"
     }' | jq -r '.ID')
 
-    # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
-    echo -e  "$node1_pvtkey\n\n" | tee node1-private.key
-    echo -e  "$node2_pvtkey\n\n" | tee node2-private.key
-
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node1_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
---local-endpoint-ip=${node1_ip} \
 --zone=${zone} \
 --controller-password=${controller_passwd}
 EOF
@@ -240,10 +228,7 @@ EOF
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node2_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
---local-endpoint-ip=${node2_ip} \
 --zone=${zone} \
 --controller-password=${controller_passwd}
 EOF
@@ -260,8 +245,6 @@ EOF
 
     $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
     $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
-    $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
-    $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
     $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
@@ -283,20 +266,16 @@ setup_requested_ip_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "Test: test the request ip option"
+    echo "=== Test: test the request ip option ==="
 
     # node1 specific details
     local node1_requested_ip_cycle1=100.64.0.101
     local node1_requested_ip_cycle2=100.64.1.101
-    local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
-    local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_requested_ip_cycle1=100.64.0.102
     local node2_requested_ip_cycle2=100.64.1.102
-    local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
-    local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
@@ -309,16 +288,10 @@ setup_requested_ip_connectivity() {
         "CIDR": "100.64.0.0/20"
     }' | jq -r '.ID')
 
-    # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
-    echo -e  "\n$node1_pvtkey" | tee node1-private.key
-    echo -e  "\n$node2_pvtkey" | tee node2-private.key
-
     # Node-1 cycle-1 apex run
     cat <<EOF > apex-cycle1-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node1_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle1} \
@@ -330,8 +303,6 @@ EOF
     cat <<EOF > apex-cycle1-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node2_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle1} \
@@ -343,8 +314,6 @@ EOF
     cat <<EOF > apex-cycle2-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node1_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle2} \
@@ -356,8 +325,6 @@ EOF
     cat <<EOF > apex-cycle2-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
---public-key=${node2_pubkey} \
---private-key-file=/etc/wireguard/private.key \
 --controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle2} \
@@ -375,11 +342,15 @@ EOF
     echo "=== Displaying apex-cycle1-node2.sh ==="
     cat apex-cycle1-node2.sh
 
+    # Delete the key pairs to force a pair regen
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
+
     # Copy files and set permissions
     $DOCKER cp ./apex-cycle1-node1.sh node1:/bin/apex-cycle1-node1.sh
     $DOCKER cp ./apex-cycle1-node2.sh node2:/bin/apex-cycle1-node2.sh
-    $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
-    $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
     $DOCKER exec node1 chmod +x /bin/apex-cycle1-node1.sh
     $DOCKER exec node2 chmod +x /bin/apex-cycle1-node2.sh
 
@@ -405,7 +376,7 @@ EOF
         exit 1
     fi
 
-    echo "Test: test the requested ip got updated in the peer table and was updated on the endpoint"
+    echo "=== Test: test the requested ip got updated in the peer table and was updated on the endpoint ==="
 
     # Kill the apex process on both nodes
     $DOCKER exec node1 killall apex
@@ -453,20 +424,15 @@ setup_child_prefix_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "Test: child prefix and more request ip creation and connectivity"
+    echo "=== Test: child prefix and more request ip creation and connectivity ==="
 
     # node1 specific details
     local requested_ip_node1=192.168.200.100
     local child_prefix_node1=172.20.1.0/24
-    local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
-    local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
-
     # node2 specific details
     local requested_ip_node2=192.168.200.200
     local child_prefix_node2=172.20.3.0/24
-    local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
-    local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
@@ -479,10 +445,6 @@ setup_child_prefix_connectivity() {
         "CIDR": "192.168.200.0/24"
     }' | jq -r '.ID')
 
-    # Create private key files for both nodes (new lines are there to validate the agent handles strip those out)
-    echo -e  "\n$node1_pvtkey" | tee node1-private.key
-    echo -e  "\n$node2_pvtkey" | tee node2-private.key
-
     # Kill the apex process on both nodes
     $DOCKER exec node1 killall apex
     $DOCKER exec node2 killall apex
@@ -491,8 +453,6 @@ setup_child_prefix_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node1_pubkey} \
-    --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node1} \
@@ -504,8 +464,6 @@ EOF
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node2_pubkey} \
-    --private-key-file=/etc/wireguard/private.key  \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node2} \
@@ -522,8 +480,6 @@ EOF
     # Copy files to the containers
     $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
     $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
-    $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
-    $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
 
     # Set permissions in the container
     $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
@@ -532,6 +488,11 @@ EOF
     # Add loopback addresses the are in the child-prefix cidr range
     $DOCKER exec node1 ip addr add 172.20.1.10/32 dev lo
     $DOCKER exec node2 ip addr add 172.20.3.10/32 dev lo
+
+    echo "=== Test: delete one key in the pair and to make sure the agent creates a new pair =="
+    # delete one key on each node
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
 
     # Start the agents on both nodes
     $DOCKER exec node1 /bin/apex-run-node1.sh &
@@ -593,21 +554,13 @@ setup_hub_spoke_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "Test: hub and spoke 3-node creation and connectivity"
+    echo "=== Test: hub and spoke 3-node creation and connectivity ==="
 
     # node1 specific details
-    local node1_pubkey=M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=
-    local node1_pvtkey=4OXhMZdzodfOrmWvZyJRfiDEm+FJSwaEMI4co0XRP18=
     local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
-
     # node2 specific details
-    local node2_pubkey=DUQ+TxqMya3YgRd1eXW/Tcg2+6wIX5uwEKqv6lOScAs=
-    local node2_pvtkey=WBydF4bEIs/uSR06hrsGa4vhgNxgR6rmR68CyOHMK18=
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
-
     # node3 specific details
-    local node3_pubkey=305lmZr0lFYy3E1S6e/GLCup300W5T4mOMnF9SKjmzc=
-    local node3_pvtkey=CCWJ1RfGdFxq9nBCYLa33I6B6IR9EPkMGnyb5gnJ+FI=
     local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
     # Create the new zone
@@ -621,11 +574,6 @@ setup_hub_spoke_connectivity() {
         "Hub-Zone": true
     }' | jq -r '.ID')
 
-    # Create private key files for both nodes
-    echo -e  "$node1_pvtkey" | tee node1-private.key
-    echo -e  "$node2_pvtkey" | tee node2-private.key
-    echo -e  "$node3_pvtkey" | tee node3-private.key
-
     # Kill the apex process on both nodes (no process running on node3 yet)
     sudo $DOCKER exec node1 killall apex
     sudo $DOCKER exec node2 killall apex
@@ -634,8 +582,6 @@ setup_hub_spoke_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node1_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --hub-router \
@@ -646,8 +592,6 @@ EOF
     cat <<EOF > apex-run-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node2_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --zone=${zone}
@@ -657,8 +601,6 @@ EOF
     cat <<EOF > apex-run-node3.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node3_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --zone=${zone}
@@ -676,9 +618,6 @@ EOF
     sudo $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
     sudo $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
     sudo $DOCKER cp ./apex-run-node3.sh node3:/bin/apex-run-node3.sh
-    sudo $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
-    sudo $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
-    sudo $DOCKER cp ./node3-private.key node3:/etc/wireguard/private.key
 
     # Set permissions in the container
     sudo $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
@@ -699,7 +638,7 @@ EOF
     $DOCKER exec node2 killall apex
     $DOCKER exec node3 killall apex
 
-    echo "Test: Terminate the apex agents, redeploy the hub and spoke setup and test connectivity"
+    echo "=== Test: Terminate the apex agents, redeploy the hub and spoke setup and test connectivity ==="
     sudo $DOCKER exec node1 /bin/apex-run-node1.sh &
     sleep 5
     sudo $DOCKER exec node2 /bin/apex-run-node2.sh &
@@ -753,31 +692,14 @@ verify_three_node_connectivity(){
 #                                                                         #
 ###########################################################################
 cycle_mesh_configurations(){
-    echo "Test: cycle configuration mesh stress tests"
+    echo "=== Test: cycle configuration mesh stress tests ==="
 
     # node1 specific details
-    local node1_pubkey=bBAtxEphKIl8lXR3SU88d9slSxlyxmHxLQpHw3oBegc=
-    local node1_pvtkey=wLN//bU622CxzFRH3t2V40aHurYW7Ad/8pc7wCMlS2g=
     local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
-
     # node2 specific details
-    local node2_pubkey=J6SnyIt2cCgPLGEWvoZ6+OB4uNnl9QKejCE+HU9qn2Q=
-    local node2_pvtkey=0NcaqbRNfixztY6izBC2B2NNrIpjj+hAlZLbp8H0NXI=
     local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
-
     # node3 specific details
-    local node3_pubkey=oJlDE1y9xxmR6CIEYCSJAN+8b/RK73TpBYixlFiBJDM=
-    local node3_pvtkey=cGXbnP3WKIYbIbEyFpQ+kziNk/kHBM8VJhslEG8Uj1c=
     local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
-
-    echo -e  "$node1_pvtkey" | tee node1-private.key
-    echo -e  "$node2_pvtkey" | tee node2-private.key
-    echo -e  "$node3_pvtkey" | tee node3-private.key
-
-    # Copy key file to the nodes
-    sudo $DOCKER cp ./node1-private.key node1:/etc/wireguard/private.key
-    sudo $DOCKER cp ./node2-private.key node2:/etc/wireguard/private.key
-    sudo $DOCKER cp ./node3-private.key node3:/etc/wireguard/private.key
 
     # Create the new zone
     local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
@@ -795,8 +717,6 @@ cycle_mesh_configurations(){
         cat <<EOF > apex-run-node1-cycle${i}.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node1_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node1_ip} \
@@ -807,8 +727,6 @@ EOF
         cat <<EOF > apex-run-node2-cycle${i}.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node2_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node2_ip} \
@@ -819,8 +737,6 @@ EOF
         cat <<EOF > apex-run-node3-cycle${i}.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node3_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node3_ip} \
@@ -842,13 +758,11 @@ EOF
     #  back to an internal address and verify connectivity                    #
     ###########################################################################
 
-    echo "Test: deploy nodes using their public NAT addresses"
+    echo "=== Test: deploy nodes using their public NAT addresses ==="
     # Node-1 apex run
     cat <<EOF > apex-pubip-node1.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node1_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \
     --controller-password=${controller_passwd} \
@@ -859,8 +773,6 @@ EOF
     cat <<EOF > apex-pubip-node2.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node2_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \
     --controller-password=${controller_passwd} \
@@ -871,8 +783,6 @@ EOF
     cat <<EOF > apex-pubip-node3.sh
 #!/bin/bash
 APEX_LOGLEVEL=debug apex \
-    --public-key=${node3_pubkey} \
-    --private-key-file=/etc/wireguard/private.key \
     --controller=${controller} \
     --public-network \
     --controller-password=${controller_passwd} \
@@ -899,7 +809,7 @@ EOF
     sudo $DOCKER exec node2 killall apex
     sudo $DOCKER exec node3 killall apex
 
-    echo "Test: Redeploy the stress test cycle after using public EndpointIP addresses"
+    echo "=== Test: Redeploy the stress test cycle after using public EndpointIP addresses ==="
 
     # Deploy the generated configurations
     for i in {1..2}

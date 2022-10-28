@@ -1,6 +1,7 @@
 package apex
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -193,16 +194,6 @@ func FileExists(f string) bool {
 	return true
 }
 
-// ReadKeyFileToString reads the key file and strips any newline chars that create wireguard issues
-func ReadKeyFileToString(s string) (string, error) {
-	buf, err := os.ReadFile(s)
-	if err != nil {
-		return "", fmt.Errorf("unable to read file: %v\n", err)
-	}
-	rawStr := string(buf)
-	return strings.Replace(rawStr, "\n", "", -1), nil
-}
-
 // ParseIPNet return an IPNet from a string
 func ParseIPNet(s string) (*net.IPNet, error) {
 	ip, ipNet, err := net.ParseCIDR(s)
@@ -243,10 +234,36 @@ func sanitizeWindowsConfig(file string) {
 	}
 }
 
+// enableForwardingIPv4 for linux nodes that are hub bouncers
 func enableForwardingIPv4() {
 	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
 	if err != nil {
 		log.Fatalf("failed to enable IP Forwarding for this hub-router: %v\n", err)
 	}
 	log.Debugf("%v", cmdOut)
+}
+
+// writeToFile overwrite the contents of a file
+func writeToFile(s, file string, filePermissions int) {
+	// overwrite the existing file contents
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(filePermissions))
+	if err != nil {
+		log.Warnf("Unable to open a key file to write to: %v", err)
+	}
+
+	defer func(f *os.File) {
+		err = f.Close()
+		if err != nil {
+			log.Warnf("Unable to write key to file [ %s ] %v", file, err)
+		}
+	}(f)
+
+	wr := bufio.NewWriter(f)
+	_, err = wr.WriteString(s)
+	if err != nil {
+		log.Warnf("Unable to write key to file [ %s ] %v", file, err)
+	}
+	if err = wr.Flush(); err != nil {
+		log.Warnf("Unable to write key to file [ %s ] %v", file, err)
+	}
 }

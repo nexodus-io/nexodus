@@ -15,6 +15,8 @@ import (
 const (
 	readyRequestTimeout = 10
 	pubSubPort          = 6379
+	wgBinary            = "wg"
+	wgWinBinary         = "wireguard.exe"
 )
 
 // Message Events
@@ -25,7 +27,6 @@ const (
 type Apex struct {
 	wireguardPubKey         string
 	wireguardPvtKey         string
-	wireguardPvtKeyFile     string
 	wireguardPubKeyInConfig bool
 	controllerIP            string
 	controllerPasswd        string
@@ -73,7 +74,6 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 	ax := &Apex{
 		wireguardPubKey:        cCtx.String("public-key"),
 		wireguardPvtKey:        cCtx.String("private-key"),
-		wireguardPvtKeyFile:    cCtx.String("private-key-file"),
 		controllerIP:           cCtx.String("controller"),
 		controllerPasswd:       cCtx.String("controller-password"),
 		listenPort:             cCtx.Int("listen-port"),
@@ -87,11 +87,11 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 	}
 
 	if ax.os == Windows.String() {
-		if !IsCommandAvailable("wireguard.exe") {
+		if !IsCommandAvailable(wgWinBinary) {
 			return nil, fmt.Errorf("wireguard.exe command not found, is wireguard installed?")
 		}
 	} else {
-		if !IsCommandAvailable("wg") {
+		if !IsCommandAvailable(wgBinary) {
 			return nil, fmt.Errorf("wg command not found, is wireguard installed?")
 		}
 	}
@@ -106,15 +106,9 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 func (ax *Apex) Run() {
 	ctx := context.Background()
 	var err error
-	var pvtKey string
 
-	// parse the private key for the local configuration from file or CLI
-	if ax.wireguardPvtKey == "" && ax.wireguardPvtKeyFile != "" {
-		pvtKey, err = ax.readPrivateKey()
-		if err != nil {
-			log.Fatal(err)
-		}
-		ax.wireguardPvtKey = pvtKey
+	if err := ax.handleKeys(); err != nil {
+		log.Fatal(err)
 	}
 
 	var localEndpointIP string
@@ -268,12 +262,6 @@ func checkOS() error {
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Apex) checkUnsupportedConfigs() error {
-	if ax.wireguardPvtKey != "" && ax.wireguardPvtKeyFile != "" {
-		return fmt.Errorf("please use either --private-key or --private-key-file but not both")
-	}
-	if ax.wireguardPvtKey == "" && ax.wireguardPvtKeyFile == "" {
-		return fmt.Errorf("private key or key file location is required: use either --private-key or --private-key-file")
-	}
 	if ax.hubRouter && ax.os == Darwin.String() {
 		log.Fatalf("OSX nodes cannot be a hub-router, only Linux nodes")
 	}
@@ -296,21 +284,6 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 		}
 	}
 	return nil
-}
-
-// readPrivateKey parses the private key for the local configuration from file or CLI
-func (ax *Apex) readPrivateKey() (string, error) {
-	if ax.wireguardPvtKeyFile != "" {
-		if !FileExists(ax.wireguardPvtKeyFile) {
-			return "", fmt.Errorf("private key file doesn't exist : %s", ax.wireguardPvtKeyFile)
-		}
-		pvtKey, err := ReadKeyFileToString(ax.wireguardPvtKeyFile)
-		if err != nil {
-			return "", fmt.Errorf("failed to read from private key from file %s: %v", ax.wireguardPvtKeyFile, err)
-		}
-		return pvtKey, nil
-	}
-	return "", fmt.Errorf("failed to find private key from user config and key file.")
 }
 
 func (ax *Apex) findLocalEndpointIp() (string, error) {
