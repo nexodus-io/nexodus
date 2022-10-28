@@ -312,12 +312,13 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	}
 
 	var key Device
-	res := ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
+	res := ct.db.First(&key, "public_key = ?", msgEvent.Peer.PublicKey)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			log.Debug("Public key not found. Adding a new one")
 			key = Device{
-				ID: msgEvent.Peer.PublicKey,
+				ID:        uuid.New().String(),
+				PublicKey: msgEvent.Peer.PublicKey,
 			}
 			tx.Create(&key)
 		} else {
@@ -400,8 +401,13 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	}
 	var peerList []messages.Peer
 	for _, p := range zone.Peers {
+		var d Device
+		if res := tx.First(&d, "id = ?", p.DeviceID); res.Error != nil {
+			log.Warnf("Device %s was not found in database", p.DeviceID)
+			continue
+		}
 		peerList = append(peerList, messages.Peer{
-			PublicKey:   p.DeviceID,
+			PublicKey:   d.PublicKey,
 			ZoneID:      p.ZoneID,
 			EndpointIP:  p.EndpointIP,
 			AllowedIPs:  p.AllowedIPs,

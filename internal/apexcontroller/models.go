@@ -9,8 +9,9 @@ import (
 
 // Device is a unique end-user device.
 type Device struct {
-	ID    string
-	Peers []Peer
+	ID        string
+	PublicKey string `gorm:"uniqueIndex"`
+	Peers     []Peer
 }
 
 // Peer is an association between a Device and a Zone.

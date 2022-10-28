@@ -18,7 +18,6 @@ type ZoneRequest struct {
 	HubZone     bool   `json:"hub-zone"`
 }
 
-// PostZone creates a new zone via a REST call
 func (ct *Controller) handlePostZones(c *gin.Context) {
 	var request ZoneRequest
 	// Call BindJSON to bind the received JSON
@@ -54,7 +53,6 @@ type ZoneJSON struct {
 	HubZone     bool     `json:"hub-zone"`
 }
 
-// GetZones responds with the list of all peers as JSON.
 func (ct *Controller) handleListZones(c *gin.Context) {
 	var zones []Zone
 	result := ct.db.Find(&zones)
@@ -80,7 +78,6 @@ func (ct *Controller) handleListZones(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// GetZone responds with a single zone
 func (ct *Controller) handleGetZones(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -106,7 +103,6 @@ func (ct *Controller) handleGetZones(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// GetPeers responds with the list of all peers as JSON. TODO: Currently default zone only
 func (ct *Controller) handleListPeers(c *gin.Context) {
 	peers := make([]Peer, 0)
 	result := ct.db.Find(&peers)
@@ -140,7 +136,6 @@ type DeviceJSON struct {
 	Peers []string `json:"peer-ids"`
 }
 
-// GetPubKeys responds with the list of all peers as JSON. TODO: Currently default zone only
 func (ct *Controller) handleListDevices(c *gin.Context) {
 	devices := make([]Device, 0)
 	result := ct.db.Find(&devices)
@@ -162,7 +157,6 @@ func (ct *Controller) handleListDevices(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// GetPubKey locates a peer
 func (ct *Controller) handleGetDevices(c *gin.Context) {
 	k := c.Param("id")
 	if k == "" {
@@ -188,7 +182,6 @@ type DeviceRequest struct {
 	PublicKey string `json:"name"`
 }
 
-// PostZone creates a new zone via a REST call
 func (ct *Controller) handlePostDevices(c *gin.Context) {
 	var request DeviceRequest
 	// Call BindJSON to bind the received JSON
@@ -202,7 +195,8 @@ func (ct *Controller) handlePostDevices(c *gin.Context) {
 	}
 
 	device := &Device{
-		ID: request.PublicKey,
+		ID:        uuid.New().String(),
+		PublicKey: request.PublicKey,
 	}
 	err := ct.db.Create(device)
 	if err != nil {
