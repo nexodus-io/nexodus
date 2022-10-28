@@ -29,21 +29,14 @@ func main() {
 			&cli.StringFlag{
 				Name:     "public-key",
 				Value:    "",
-				Usage:    "public key for the local host (required)",
+				Usage:    "public key for the local host - agent generates keys by default",
 				EnvVars:  []string{"APEX_PUB_KEY"},
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:     "private-key-file",
-				Value:    "",
-				Usage:    "private key for the local host (recommended - but alternatively pass through --private-key",
-				EnvVars:  []string{"APEX_PRIVATE_KEY_FILE"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "private-key",
 				Value:    "",
-				Usage:    "private key for the local host (demo purposes only - alternatively pass through --private-key-file",
+				Usage:    "private key for the local host (dev purposes only - soon to be removed)",
 				EnvVars:  []string{"APEX_PRIVATE_KEY"},
 				Required: false,
 			},
