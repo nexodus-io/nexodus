@@ -198,15 +198,18 @@ setup_custom_zone_connectivity() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "=== Test: basic zone creation and connectivity ==="
+    echo "=== Test: basic zone creation, connectivity and ipam addressing ==="
     # node1 specific details
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
+    local node1_ip
+    node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
+    local node2_ip
+    node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone
-    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    local zone
+    zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
     -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -254,8 +257,55 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow two seconds for the wg0 interface to readdress
+    # Allow 2 seconds for the wg0 interface to address
     sleep 2
+
+    local node1_ipam_ip
+    node1_ipam_ip=$(sudo $DOCKER exec node1 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1);
+    local node2_ipam_ip
+    node2_ipam_ip=$(sudo $DOCKER exec node2 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1);
+
+    # Check connectivity between the request ip from node1 > node2
+    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node1 failed to reach node2, e2e failed"
+        exit 1
+    fi
+    # heck connectivity between the request ip from node2 -> node1
+    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node2 failed to reach node1, e2e failed"
+        exit 1
+    fi
+
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
+
+    # Start the agents on both nodes
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
+
+    # Allow 3 seconds for the wg0 interface to readdress
+    sleep 3
+
+    echo "=== Test: verify the node got the same IP address from IPAM after a re-join ==="
+    # Check connectivity between the request ip from node1 > node2
+    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node1 failed to reach node2, e2e failed"
+        exit 1
+    fi
+    # heck connectivity between the request ip from node2 -> node1
+    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node2 failed to reach node1, e2e failed"
+        exit 1
+    fi
 }
 
 setup_requested_ip_connectivity() {
@@ -271,15 +321,18 @@ setup_requested_ip_connectivity() {
     # node1 specific details
     local node1_requested_ip_cycle1=100.64.0.101
     local node1_requested_ip_cycle2=100.64.1.101
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
+    local node1_ip
+    node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
 
     # node2 specific details
     local node2_requested_ip_cycle1=100.64.0.102
     local node2_requested_ip_cycle2=100.64.1.102
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
+    local node2_ip
+    node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    local zone
+    zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
     -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -429,14 +482,17 @@ setup_child_prefix_connectivity() {
     # node1 specific details
     local requested_ip_node1=192.168.200.100
     local child_prefix_node1=172.20.1.0/24
-    local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
+    local node1_ip
+    node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
     # node2 specific details
     local requested_ip_node2=192.168.200.200
     local child_prefix_node2=172.20.3.0/24
-    local node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
+    local node2_ip
+    node2_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
 
     # Create the new zone with a CGNAT range
-    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    local zone
+    zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
     -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -557,14 +613,18 @@ setup_hub_spoke_connectivity() {
     echo "=== Test: hub and spoke 3-node creation and connectivity ==="
 
     # node1 specific details
-    local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
+    local node1_ip
+    node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
     # node2 specific details
-    local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
+    local node2_ip
+    node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
     # node3 specific details
-    local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
+    local node3_ip
+    node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
     # Create the new zone
-    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    local zone
+    zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
     -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -695,14 +755,18 @@ cycle_mesh_configurations(){
     echo "=== Test: cycle configuration mesh stress tests ==="
 
     # node1 specific details
-    local node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
+    local node1_ip
+    node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
     # node2 specific details
-    local node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
+    local node2_ip
+    node2_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node2)
     # node3 specific details
-    local node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
+    local node3_ip
+    node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
     # Create the new zone
-    local zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
+    local zone
+    zone=$(curl -fL -X POST 'http://localhost:8080/zones' \
     -H "Authorization: bearer $API_TOKEN" \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -893,7 +957,8 @@ get_token() {
     local CLIENTID='api-clients'
     local CLIENTSECRET='cvXhCRXI2Vld244jjDcnABCMrTEq2rwE'
 
-    local token=$(curl -s -X POST \
+    local token
+    token=$(curl -s -X POST \
         http://$HOST/realms/$REALM/protocol/openid-connect/token \
         -H 'Content-Type: application/x-www-form-urlencoded' \
         -d "username=$USERNAME" \
@@ -931,13 +996,9 @@ start_containers ${os}
 get_token
 copy_binaries
 verify_connectivity
-clean_nodes
 setup_custom_zone_connectivity
-verify_connectivity
-clean_nodes
 setup_requested_ip_connectivity
 verify_connectivity
-clean_nodes
 setup_child_prefix_connectivity
 verify_connectivity
 clean_nodes
