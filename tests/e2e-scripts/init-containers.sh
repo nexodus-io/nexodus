@@ -306,6 +306,36 @@ EOF
         echo "node2 failed to reach node1, e2e failed"
         exit 1
     fi
+
+    # Kill the apex process on both nodes
+    $DOCKER exec node1 killall apex
+    $DOCKER exec node2 killall apex
+
+    echo "=== Test: delete wg0 interface and redeploy ==="
+    clean_nodes
+
+    # Start the agents on both nodes
+    $DOCKER exec node1 /bin/apex-run-node1.sh &
+    $DOCKER exec node2 /bin/apex-run-node2.sh &
+
+    # Allow 3 seconds for the wg0 interface to readdress
+    sleep 3
+
+    echo "=== Test: verify the node got the same IP address from IPAM after a re-join ==="
+    # Check connectivity between the request ip from node1 > node2
+    if $DOCKER exec node1 ping -c 2 -w 2 ${node2_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node1 failed to reach node2, e2e failed"
+        exit 1
+    fi
+    # heck connectivity between the request ip from node2 -> node1
+    if $DOCKER exec node2 ping -c 2 -w 2 ${node1_ipam_ip}; then
+        echo "peer nodes successfully communicated on previously assigned addresses"
+    else
+        echo "node2 failed to reach node1, e2e failed"
+        exit 1
+    fi
 }
 
 setup_requested_ip_connectivity() {
