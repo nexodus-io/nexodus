@@ -56,7 +56,7 @@ function setup() {
             fi
         fi
         info_message "Installing Apex..."
-        sudo curl -fsSL https://jaywalking.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
         sudo chmod +x /usr/local/sbin/apex
         pass_message "Apex is installed successfully."
     fi
@@ -85,7 +85,7 @@ function setup() {
         fi
 
         info_message "Installing Apex..."
-        sudo curl -fsSL https://jaywalking.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
         sudo chmod +x /usr/local/sbin/apex
         pass_message "Apex is installed successfully."
 

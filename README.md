@@ -50,13 +50,13 @@ Or download a recent binaries to the nodes:
 *OSX Binary*
 
 ```shell
-sudo curl https://jaywalking.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
+sudo curl https://apex-net.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
 sudo chmod +x /usr/local/sbin/apex
 ```
 
 *Linux Binary*
 ```shell
-sudo curl https://jaywalking.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
+sudo curl https://apex-net.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
 sudo chmod +x /usr/local/sbin/apex
 ```
 
