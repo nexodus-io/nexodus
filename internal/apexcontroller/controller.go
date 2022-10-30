@@ -344,8 +344,8 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 					return nil, err
 				}
 			} else {
-				if peer.NodeAddress != "" {
-					return nil, fmt.Errorf("peer does not have a NodeAddress assigned and did not request one")
+				if peer.NodeAddress == "" {
+					return nil, fmt.Errorf("peer does not have a node address assigned in the peer table and did not request a specifc address")
 				}
 				ip = peer.NodeAddress
 			}
