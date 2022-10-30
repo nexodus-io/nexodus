@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # fail the script if any errors are encountered
 set -ex
 
@@ -120,7 +120,7 @@ copy_binaries() {
 
     # Node-1 apex run default zone
     cat <<EOF > apex-run-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --public-key=${node1_pubkey} \
 --private-key=${node1_pvtkey} \
@@ -131,7 +131,7 @@ EOF
 
     # Node-2 apex run default zone
     cat <<EOF > apex-run-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --public-key=${node2_pubkey} \
 --private-key=${node2_pvtkey} \
@@ -147,9 +147,9 @@ EOF
     cat apex-run-node2.sh
 
     # Copy binaries and scripts (copying the controller even though we are running it on the VM instead of in a container)
-    $DOCKER cp $(which apex) node1:/bin/apex
-    $DOCKER cp $(which apex) node2:/bin/apex
-    $DOCKER cp $(which apex) node3:/bin/apex
+    $DOCKER cp ./dist/apex node1:/bin/apex
+    $DOCKER cp ./dist/apex node2:/bin/apex
+    $DOCKER cp ./dist/apex node3:/bin/apex
 
     # Deploy run scripts to nodes
     $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
@@ -220,7 +220,7 @@ setup_custom_zone_connectivity() {
 
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --zone=${zone} \
@@ -229,7 +229,7 @@ EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --zone=${zone} \
@@ -373,7 +373,7 @@ setup_requested_ip_connectivity() {
 
     # Node-1 cycle-1 apex run
     cat <<EOF > apex-cycle1-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
@@ -384,7 +384,7 @@ EOF
 
     # Node-2 cycle-1 apex run
     cat <<EOF > apex-cycle1-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
@@ -395,7 +395,7 @@ EOF
 
     # Node-1 cycle-2 apex run
     cat <<EOF > apex-cycle2-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
@@ -406,7 +406,7 @@ EOF
 
     # Node-2 cycle-2 apex run
     cat <<EOF > apex-cycle2-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
 --controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
@@ -537,7 +537,7 @@ setup_child_prefix_connectivity() {
 
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -548,7 +548,7 @@ EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -586,7 +586,7 @@ EOF
 
     # Allow four seconds for the wg0 interface to readdress
     sleep 4
-    
+
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
     if $DOCKER exec node1 ping -c 2 -w 2 172.20.3.10; then
         echo "peer node loopbacks successfully communicated"
@@ -670,7 +670,7 @@ setup_hub_spoke_connectivity() {
 
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -680,7 +680,7 @@ EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -689,7 +689,7 @@ EOF
 
     # Node-3 apex run
     cat <<EOF > apex-run-node3.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -809,7 +809,7 @@ cycle_mesh_configurations(){
     for i in {1..3}
     do
         cat <<EOF > apex-run-node1-cycle${i}.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -819,7 +819,7 @@ APEX_LOGLEVEL=debug apex \
 EOF
 
         cat <<EOF > apex-run-node2-cycle${i}.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -829,7 +829,7 @@ APEX_LOGLEVEL=debug apex \
 EOF
 
         cat <<EOF > apex-run-node3-cycle${i}.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --controller-password=${controller_passwd} \
@@ -855,7 +855,7 @@ EOF
     echo "=== Test: deploy nodes using their public NAT addresses ==="
     # Node-1 apex run
     cat <<EOF > apex-pubip-node1.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --public-network \
@@ -865,7 +865,7 @@ EOF
 
     # Node-2 apex run
     cat <<EOF > apex-pubip-node2.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --public-network \
@@ -875,7 +875,7 @@ EOF
 
     # Node-3 apex run
     cat <<EOF > apex-pubip-node3.sh
-#!/bin/bash
+#!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
     --public-network \
