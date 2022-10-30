@@ -1,0 +1,48 @@
+---
+# tasks file for create-zone
+- name: Update repo cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Install jq
+  become: yes
+  apt:
+    name:
+      - jq
+    state: latest
+
+- name: Create a JWT
+  shell: |
+    curl -sf -X POST \
+        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username={{ apex_auth_uid }}" \
+        -d "password={{ apex_auth_password }}" \
+        -d "grant_type=password" \
+        -d "client_id={{ apex_auth_client_id }}" \
+        -d "client_secret={{ apex_auth_client_secret }}"
+  register: api_token
+
+- name: Print the JWT Token
+  debug:
+    var: (api_token.stdout|from_json).access_token
+
+- name: Create the Zone and register the UUID
+  shell: |
+    curl -fL -X POST 'http://{{ controller_address }}:8080/api/zones' \
+    -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "CIDR": "{{ apex_azone_prefix }}", "Hub-Zone": true}'
+  register: zone_uuid
+
+- name: Print the Zone UUID
+  debug:
+    var: (zone_uuid.stdout|from_json).ID
+
+- name: Associate the User to the Zone
+  shell: |
+    curl -fL -X PATCH 'http://{{ controller_address }}:8080/api/users/me' \
+        -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
+        -H "Content-Type: application/json" \
+        --data-raw '{ "zone-id": "{{ (zone_uuid.stdout|from_json).ID }}" }'

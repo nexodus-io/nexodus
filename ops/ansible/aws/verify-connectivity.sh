@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Parse the wireguard addresses from a file containing all nodes in the mesh
+# Parse the wireguard addresses from the ansible inventory file
 cat $1 | while read output
 do
     ping -c 1 -w 2 "$output" > /dev/null

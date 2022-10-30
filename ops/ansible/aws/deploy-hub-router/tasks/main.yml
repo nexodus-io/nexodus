@@ -1,0 +1,56 @@
+---
+# tasks file for deploy-hub-router
+- name: Update repo cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Install dependencies
+  become: yes
+  apt:
+    name:
+      - wireguard
+    state: latest
+
+- name: Kill any existing apex process from previous runs
+  shell: |
+    sudo killall apex 2> /dev/null
+  ignore_errors: yes
+
+- name: Download the Apex Agent Binary
+  shell: |
+    sudo curl {{ apex_binary }} --output /usr/local/sbin/apex
+    sudo chmod +x /usr/local/sbin/apex
+
+- name: Create a JWT
+  shell: |
+    curl -sf -X POST \
+        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username={{ apex_auth_uid }}" \
+        -d "password={{ apex_auth_password }}" \
+        -d "grant_type=password" \
+        -d "client_id={{ apex_auth_client_id }}" \
+        -d "client_secret={{ apex_auth_client_secret }}"
+  register: api_token
+
+#- name: Print the JWT Token (uncomment for debugging)
+#  debug:
+#    var: (api_token.stdout|from_json).access_token
+
+- name: Copy the verifier script
+  copy:
+    src: verify-connectivity.sh
+    dest: /home/{{ ansible_user }}/
+    mode: '0755'
+
+- name: Attach the Hub Router to the Controller
+  become: yes
+  shell: |
+    APEX_LOGLEVEL=debug apex \
+    --controller={{ controller_address }} \
+    --controller-password={{ controller_password }} \
+    --with-token={{ (api_token.stdout|from_json).access_token }} \
+    --hub-router \
+    --public-network \
+    {{ controller_address }}:8080 > apex-logs.txt 2>&1 &
