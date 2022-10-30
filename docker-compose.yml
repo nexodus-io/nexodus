@@ -45,8 +45,6 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile.controller
-    ports:
-      - 8080:8080
     command:
       - "--streamer-address=${STREAMER_IP:-redis}"
       - "--streamer-password=${STREAMER_PASSWORD:-floofykittens}"
@@ -64,8 +62,6 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile.ui
-    ports:
-      - 3000:3000
 
   keycloak-db:
     image: docker.io/library/postgres
@@ -80,8 +76,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-    ports:
-      - 8888:8080
     environment:
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD-floofykittens}
@@ -93,5 +87,20 @@ services:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
         - start-dev
+        - --proxy=passthrough
         - --import-realm
         - --features=token-exchange
+        - --hostname-url=http://localhost:8080/auth
+        - --hostname-strict=true
+        - --hostname-strict-backchannel=true
+
+  proxy:
+    depends_on:
+     - controller
+     - keycloak
+     - ui
+    ports:
+      - 8080:8080
+    build:
+      context: .
+      dockerfile: ./Containerfile.nginx

@@ -5,5 +5,7 @@ RUN apt-get update -qy && \
     iputils-ping \
     iproute2 \
     wireguard-tools \
+    iptables \
+    psmisc \
     && \
     apt-get clean

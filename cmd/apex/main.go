@@ -62,13 +62,6 @@ func main() {
 				Required: true,
 			},
 			&cli.StringFlag{
-				Name:     "zone",
-				Value:    "00000000-0000-0000-0000-000000000000",
-				Usage:    "the tenancy zone the peer is to join - zone needs to be created before joining (optional)",
-				EnvVars:  []string{"APEX_ZONE"},
-				Required: false,
-			},
-			&cli.StringFlag{
 				Name:     "request-ip",
 				Value:    "",
 				Usage:    "request a specific IP address from Ipam if available (optional)",
@@ -99,6 +92,13 @@ func main() {
 				Usage:    "set if this node is to be the hub in a hub and spoke deployment",
 				Value:    false,
 				EnvVars:  []string{"APEX_HUB_ROUTER"},
+				Required: false,
+			},
+			&cli.StringFlag{
+				Name:     "with-token",
+				Value:    "",
+				Usage:    "access token for apex controller (optional)",
+				EnvVars:  []string{"APEX_ACCESS_TOKEN"},
 				Required: false,
 			},
 		},

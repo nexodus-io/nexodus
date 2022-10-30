@@ -1,6 +1,7 @@
 package apexcontroller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,12 +10,15 @@ import (
 	"github.com/MicahParks/keyfunc"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 const (
 	AuthUserID    = "user-id"
 	AuthUserScope = "scope"
+	UserRecord    = "user"
 )
 
 type KeyCloakAuth struct {
@@ -23,7 +27,6 @@ type KeyCloakAuth struct {
 
 type Claims struct {
 	Scope      string `json:"scope"`
-	UserID     string `json:"sid"`
 	FullName   string `json:"name"`
 	UserName   string `json:"preferred_username"`
 	GivenName  string `json:"given_name"`
@@ -79,7 +82,7 @@ func (a *KeyCloakAuth) AuthFunc() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(*Claims); ok {
-			c.Set(AuthUserID, claims.ID)
+			c.Set(AuthUserID, claims.Subject)
 			c.Set(AuthUserScope, claims.Scope)
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to extract user info from claims"})
@@ -96,4 +99,33 @@ func extractTokenFromAuthHeader(val string) (token string, ok bool) {
 		return "", false
 	}
 	return authHeaderParts[1], true
+}
+
+func (ct *Controller) UserMiddleware(c *gin.Context) {
+	userID, ok := c.Get(AuthUserID)
+	if !ok {
+		// This should never happen since our auth middleware should be called first
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	defaultZoneId := uuid.MustParse("00000000-0000-0000-0000-000000000000").String()
+
+	var user User
+	res := ct.db.Preload("Devices").First(&user, "id = ?", userID)
+	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			user.ID = userID.(string)
+			user.ZoneID = defaultZoneId
+			user.Devices = make([]*Device, 0)
+			ct.db.Create(&user)
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+	}
+
+	c.Set(UserRecord, user)
+
+	c.Next()
 }

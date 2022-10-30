@@ -1,0 +1,4 @@
+FROM docker.io/library/nginx:stable-alpine
+COPY ./hack/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]

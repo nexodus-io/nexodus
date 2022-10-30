@@ -27,4 +27,6 @@ jobs:
         go-version: 1.18
 
     - name: Run e2e
-      run: make OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} run-ci-e2e
+      run: |
+        make OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} e2e
+        [ "$?" = 0 ] || cat docker-compose.log

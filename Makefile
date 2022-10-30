@@ -66,7 +66,7 @@ test-images:
 OS_IMAGE?="quay.io/apex/test:fedora"
 
 # Runs the CI e2e tests used in github actions
-.PHONY: run-ci-e2e
-run-ci-e2e: dist/apex
+.PHONY: e2e
+e2e: dist/apex
 	docker compose build
 	./tests/e2e-scripts/init-containers.sh -o $(OS_IMAGE)

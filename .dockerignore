@@ -20,7 +20,6 @@ apex-amd64-linux
 # Ops files
 ops/
 tests/
-hack/
 docs/
 **/peer-inventory/*
 **/endpoints.toml

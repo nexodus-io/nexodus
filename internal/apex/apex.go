@@ -40,6 +40,8 @@ type Apex struct {
 	hubRouterWgIP           string
 	os                      string
 	wgConfig                wgConfig
+	accessToken             string
+	controllerURL           string
 }
 
 type wgConfig struct {
@@ -65,6 +67,10 @@ type wgLocalConfig struct {
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
+	controllerURL := cCtx.Args().First()
+	if controllerURL == "" {
+		log.Fatal("[controller-url] required")
+	}
 
 	if err := checkOS(); err != nil {
 		return nil, err
@@ -76,12 +82,13 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		controllerIP:           cCtx.String("controller"),
 		controllerPasswd:       cCtx.String("controller-password"),
 		listenPort:             cCtx.Int("listen-port"),
-		zone:                   cCtx.String("zone"),
 		requestedIP:            cCtx.String("request-ip"),
 		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
 		childPrefix:            cCtx.String("child-prefix"),
 		publicNetwork:          cCtx.Bool("public-network"),
 		hubRouter:              cCtx.Bool("hub-router"),
+		accessToken:            cCtx.String("with-token"),
+		controllerURL:          controllerURL,
 		os:                     GetOS(),
 	}
 
@@ -107,6 +114,25 @@ func (ax *Apex) Run() {
 	var err error
 
 	if err := ax.handleKeys(); err != nil {
+		log.Fatal(err)
+	}
+
+	if ax.accessToken == "" {
+		auth := NewAuthenticator(ax.controllerURL)
+		if err := auth.Authenticate(ctx); err != nil {
+			log.Fatal(err)
+		}
+		ax.accessToken, err = auth.Token()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if err := RegisterDevice(ax.controllerURL, ax.wireguardPubKey, ax.accessToken); err != nil {
+		log.Fatal(err)
+	}
+
+	if ax.zone, err = GetZone(ax.controllerURL, ax.accessToken); err != nil {
 		log.Fatal(err)
 	}
 

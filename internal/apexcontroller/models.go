@@ -7,11 +7,18 @@ import (
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 )
 
-// Device is a unique end-user device.
+// User is the owner of a device, and a member of one Zone
+type User struct {
+	ID      string `gorm:"primaryKey"`
+	Devices []*Device
+	ZoneID  string
+}
+
+// Device is a unique, end-user device.
 type Device struct {
-	ID        string
+	ID        string `gorm:"primaryKey"`
+	UserID    string
 	PublicKey string `gorm:"uniqueIndex"`
-	Peers     []Peer
 }
 
 // Peer is an association between a Device and a Zone.
@@ -30,7 +37,7 @@ type Peer struct {
 
 // Zone is a collection of devices that are connected together.
 type Zone struct {
-	ID          string
+	ID          string `gorm:"primaryKey"`
 	Peers       []*Peer
 	Name        string
 	Description string
