@@ -77,6 +77,9 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	}
 
 	// Migrate the schema
+	if err := db.AutoMigrate(&User{}); err != nil {
+		return nil, err
+	}
 	if err := db.AutoMigrate(&Zone{}); err != nil {
 		return nil, err
 	}
@@ -130,20 +133,23 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	ct.Router.Use(cors.New(corsConfig))
 	ct.Router.Use()
 
-	public := ct.Router.Group("/health")
-	public.GET("/", func(c *gin.Context) {
+	ct.Router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
 	private := ct.Router.Group("/")
 	private.Use(auth.AuthFunc())
-	private.GET("/peers", ct.handleListPeers)    // http://localhost:8080/peers
-	private.GET("/peers/:id", ct.handleGetPeers) // http://localhost:8080/peers/:id
-	private.GET("/zones", ct.handleListZones)    // http://localhost:8080/zones
-	private.GET("/zones/:id", ct.handleGetZones) // http://localhost:8080/zones/:id
+	private.Use(ct.UserMiddleware)
+	private.GET("/peers", ct.handleListPeers)    // http://localhost/api/peers
+	private.GET("/peers/:id", ct.handleGetPeers) // http://localhost/api/peers/:id
+	private.GET("/zones", ct.handleListZones)    // http://localhost/api/zones
+	private.GET("/zones/:id", ct.handleGetZones) // http://localhost/api/zones/:id
 	private.POST("/zones", ct.handlePostZones)
-	private.GET("/devices", ct.handleListDevices)    // http://localhost:8080/devices
-	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost:8080/devices/:id
+	private.GET("/devices", ct.handleListDevices)    // http://localhost/api/devices
+	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost/api/devices/:id
+	private.POST("/devices", ct.handlePostDevices)
+	private.GET("/users/:id", ct.handleGetUser)
+	private.PATCH("/users/:id", ct.handlePatchUser)
 
 	createDefaultZone := func() error {
 		if err := ct.CreateDefaultZone(); err != nil {
@@ -195,23 +201,14 @@ func (ct *Controller) Run() {
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelDefault)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
-					if err != nil {
-						log.Error(err)
-						if err = publishErrorMessage(pubDefault,
-							msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
-							log.Errorf("unable to publish error message %s", err)
+					peers, err := ct.AddPeer(ctx, msgEvent)
+					if err == nil {
+						// publishPeers the latest peer list
+						if err := publishPeers(pubDefault, messages.ZoneChannelDefault, peers); err != nil {
+							log.Errorf("unable to publish peer list: %s", err)
 						}
 					} else {
-						peers, err := ct.AddPeer(ctx, msgEvent, zone)
-						if err == nil {
-							// publishPeers the latest peer list
-							if err := publishPeers(pubDefault, messages.ZoneChannelDefault, peers); err != nil {
-								log.Errorf("unable to publish peer list: %s", err)
-							}
-						} else {
-							log.Errorf("peer was not added: %v", err)
-						}
+						log.Errorf("peer was not added: %v", err)
 					}
 				}
 			}
@@ -277,18 +274,27 @@ type MsgTypes struct {
 	Peer  Peer
 }
 
-func (ct *Controller) zoneExists(ctx context.Context, zoneId string) (*Zone, error) {
-	var zone Zone
-	res := ct.db.Preload("Peers").First(&zone, "id = ?", zoneId)
-	// todo, the needs to go over an err channel to the agent
-	if res.Error != nil && errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return &zone, fmt.Errorf("requested zone [ %s ] was not found.", zoneId)
-	}
-	return &zone, nil
-
-}
-func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zone *Zone) ([]messages.Peer, error) {
+func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message) ([]messages.Peer, error) {
 	tx := ct.db.Begin()
+
+	// TODO: This could be written as a single query
+	var device Device
+	if res := tx.Where("public_key = ?", msgEvent.Peer.PublicKey).First(&device); res.Error != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("device with key %s not found: %v", msgEvent.Peer.PublicKey, res.Error)
+	}
+
+	var user User
+	if res := tx.First(&user, "id = ?", device.UserID); res.Error != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("user with id %s not found: %v", device.UserID, res.Error)
+	}
+
+	var zone Zone
+	if res := tx.Preload("Peers").First(&zone, "id = ?", user.ZoneID); res.Error != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("zone with id %s not found: %v", user.ZoneID, res.Error)
+	}
 
 	ipamPrefix := zone.IpCidr
 	var hubZone bool
@@ -300,33 +306,22 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 		var hubRouterAlreadyExists string
 		for _, p := range zone.Peers {
 			// If the node joining is a re-join from the zone-router allow it
-			if p.HubRouter && p.DeviceID != msgEvent.Peer.PublicKey {
+			if p.HubRouter && p.DeviceID != device.ID {
 				hubRouterAlreadyExists = p.EndpointIP
+				tx.Rollback()
 				return nil, fmt.Errorf("hub router already exists on the endpoint %s", hubRouterAlreadyExists)
 			}
 		}
 	}
+
 	if zone.HubZone {
 		hubZone = true
 	}
 
-	var key Device
-	res := ct.db.First(&key, "id = ?", msgEvent.Peer.PublicKey)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			log.Debug("Public key not found. Adding a new one")
-			key = Device{
-				ID: msgEvent.Peer.PublicKey,
-			}
-			tx.Create(&key)
-		} else {
-			return nil, res.Error
-		}
-	}
 	var found bool
 	var peer *Peer
 	for _, p := range zone.Peers {
-		if p.DeviceID == msgEvent.Peer.PublicKey {
+		if p.DeviceID == device.ID {
 			found = true
 			peer = p
 			break
@@ -341,10 +336,12 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 				var err error
 				ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 				if err != nil {
+					tx.Rollback()
 					return nil, err
 				}
 			} else {
 				if peer.NodeAddress == "" {
+					tx.Rollback()
 					return nil, fmt.Errorf("peer does not have a node address assigned in the peer table and did not request a specifc address")
 				}
 				ip = peer.NodeAddress
@@ -355,6 +352,7 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 
 		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
 			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
+				tx.Rollback()
 				return nil, err
 			}
 		}
@@ -367,24 +365,27 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 			var err error
 			ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
 			if err != nil {
+				tx.Rollback()
 				return nil, err
 			}
 		} else {
 			var err error
 			ip, err = ct.assignFromPool(ctx, ipamPrefix)
 			if err != nil {
+				tx.Rollback()
 				return nil, err
 			}
 		}
 		// allocate a child prefix if requested
 		if msgEvent.Peer.ChildPrefix != "" {
 			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
+				tx.Rollback()
 				return nil, err
 			}
 		}
 		peer = &Peer{
 			ID:          uuid.New().String(),
-			DeviceID:    key.ID,
+			DeviceID:    device.ID,
 			ZoneID:      zone.ID,
 			EndpointIP:  msgEvent.Peer.EndpointIP,
 			AllowedIPs:  ip,
@@ -399,8 +400,13 @@ func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message, zo
 	}
 	var peerList []messages.Peer
 	for _, p := range zone.Peers {
+		var d Device
+		if res := tx.First(&d, "id = ?", p.DeviceID); res.Error != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("Device %s was not found in database", p.DeviceID)
+		}
 		peerList = append(peerList, messages.Peer{
-			PublicKey:   p.DeviceID,
+			PublicKey:   d.PublicKey,
 			ZoneID:      p.ZoneID,
 			EndpointIP:  p.EndpointIP,
 			AllowedIPs:  p.AllowedIPs,
@@ -441,26 +447,15 @@ func (ct *Controller) MessageHandling(ctx context.Context) {
 				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelController)
 				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
 				if msgEvent.Peer.PublicKey != "" {
-					zone, err := ct.zoneExists(ctx, msgEvent.Peer.ZoneID)
-					if err != nil {
-						log.Error(err)
-						if err = publishErrorMessage(
-							pub, msgEvent.Peer.ZoneID, messages.Error, messages.ChannelNotRegistered, err.Error()); err != nil {
-							log.Errorf("failed to publish error message %s", err)
+					peers, err := ct.AddPeer(ctx, msgEvent)
+					if err == nil {
+						// publishPeers the latest peer list
+						if err := publishPeers(pub, msgEvent.Peer.ZoneID, peers); err != nil {
+							log.Errorf("failed to publish peer updates: %s", err)
 						}
 					} else {
-						peers, err := ct.AddPeer(ctx, msgEvent, zone)
-						if err == nil {
-							// publishPeers the latest peer list
-							if err := publishPeers(pub, msgEvent.Peer.ZoneID, peers); err != nil {
-								log.Errorf("failed to publish peer updates: %s", err)
-							}
-						} else {
-
-							log.Errorf("peer was not added: %v", err)
-						}
+						log.Errorf("peer was not added: %v", err)
 					}
-
 				}
 			}
 		}

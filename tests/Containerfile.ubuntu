@@ -1,0 +1,11 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qy && \
+    apt-get install --no-install-recommends -qy \
+    iputils-ping \
+    iproute2 \
+    wireguard-tools \
+    iptables \
+    psmisc \
+    && \
+    apt-get clean

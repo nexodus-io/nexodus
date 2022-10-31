@@ -1,0 +1,12 @@
+FROM fedora:36
+RUN dnf update -qy && \
+    dnf install --setopt=install_weak_deps=False -qy \
+    iputils \
+    iproute \
+    psmisc \
+    procps-ng \
+    wireguard-tools \
+    iptables \
+    hostname \
+    && \
+    dnf clean all

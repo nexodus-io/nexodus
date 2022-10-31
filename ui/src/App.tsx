@@ -24,7 +24,7 @@ import { DeviceList, DeviceShow } from "./pages/devices";
 import { MyLayout } from "./components/layout";
 
 const config : KeycloakConfig = {
-  url: 'http://localhost:8888',
+  url: 'http://localhost:8080/auth',
   realm: 'controller',
   clientId: 'front-controller',
 };
@@ -53,7 +53,7 @@ const App = () => {
             authProvider.current = keycloakAuthProvider(keycloakClient, {
                 onPermissions: getPermissions,
             });
-            dataProvider.current = simpleRestProvider('http://localhost:8080', httpClient(keycloakClient), 'X-Total-Count');
+            dataProvider.current = simpleRestProvider('http://localhost:8080/api', httpClient(keycloakClient), 'X-Total-Count');
             setKeycloak(keycloakClient);
         };
         if (!keycloak) {

@@ -149,7 +149,7 @@ In the following curl command, replace localhost with the IP address of the node
 
 Create zone blue:
 ```shell
-curl -L -X POST 'http://localhost:8080/zone' \
+curl -L -X POST 'http://localhost:8080/api/zone' \
 -H 'Content-Type: application/json' \
 --data-raw '{
     "Name": "zone-blue",
@@ -160,7 +160,7 @@ curl -L -X POST 'http://localhost:8080/zone' \
 
 Create zone red:
 ```shell
-curl -L -X POST 'http://localhost:8080/zone' \
+curl -L -X POST 'http://localhost:8080/api/zone' \
 -H 'Content-Type: application/json' \
 --data-raw '{
     "Name": "zone-red",
@@ -172,7 +172,7 @@ curl -L -X POST 'http://localhost:8080/zone' \
 #### **Verify the created zones**
 
 ```shell
-curl -L -X GET 'http://localhost:8080/zones'
+curl -L -X GET 'http://localhost:8080/api/zones'
 ```
 
 #### **Join the nodes to the zones**
@@ -205,7 +205,7 @@ ifconfig
 You can also view the lease state of the IPAM objects with:
 
 ```shell
-curl http://localhost:8080/ipam/leases/zone-blue
+curl http://localhost:8080/api/ipam/leases/zone-blue
 ```
 Curl should respond with output similar to the following
 
@@ -354,7 +354,7 @@ There are currently some supported REST calls:
 **Get all peers:**
 
 ```shell
-curl -s --location --request GET 'http://localhost:8080/peers' | python -m json.tool
+curl -s --location --request GET 'http://localhost:8080/api/peers' | python -m json.tool
 ```
 
 *Output:*
@@ -401,7 +401,7 @@ curl -s --location --request GET 'http://localhost:8080/peers' | python -m json.
 **Get a peer by key:**
 
 ```shell
-curl -s --location --request GET 'http://localhost:8080/peers/M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=' | python -m json.tool
+curl -s --location --request GET 'http://localhost:8080/api/peers/M+BTP8LbMikKLufoTTI7tPL5Jf3SHhNki6SXEXa5Uic=' | python -m json.tool
 ```
 
 *Output:*
@@ -418,7 +418,7 @@ curl -s --location --request GET 'http://localhost:8080/peers/M+BTP8LbMikKLufoTT
 **Get zone details:**
 
 ```shell
-curl --location --request GET 'http://localhost:8080/zones'
+curl --location --request GET 'http://localhost:8080/api/zones'
 ```
 
 *Output:* **(notice the overlapping CIDR address support)**
@@ -441,8 +441,8 @@ curl --location --request GET 'http://localhost:8080/zones'
 **Get the leases of nodes in a particular zone:**
 
 ```shell
-curl --location --request GET 'http://localhost:8080/ipam/leases/zone-blue'
-curl --location --request GET 'http://localhost:8080/ipam/leases/zone-red'
+curl --location --request GET 'http://localhost:8080/api/ipam/leases/zone-blue'
+curl --location --request GET 'http://localhost:8080/api/ipam/leases/zone-red'
 ```
 
 *Output:*

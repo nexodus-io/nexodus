@@ -45,18 +45,3 @@ func createAllPeerMessage(postData []messages.Peer) (string, string) {
 	msg, _ := json.Marshal(postData)
 	return id, string(msg)
 }
-
-func publishErrorMessage(stm *streamer.Streamer, channel string, event messages.EventType, code messages.ErrorCode, msg string) error {
-	jsonMsg := createErrorMessage(event, code, msg)
-	log.Printf("Published new error message to channel %s : %s\n", channel, jsonMsg)
-	return stm.PublishMessage(channel, jsonMsg)
-}
-
-func createErrorMessage(event messages.EventType, code messages.ErrorCode, msg string) string {
-	errMsg := messages.ErrorMessage{}
-	errMsg.Event = event
-	errMsg.Code = code
-	errMsg.Msg = msg
-	jMsg, _ := json.Marshal(&errMsg)
-	return string(jMsg)
-}
