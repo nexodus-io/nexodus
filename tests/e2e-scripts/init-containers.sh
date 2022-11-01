@@ -675,6 +675,12 @@ setup_hub_spoke_connectivity() {
 
     local kitteh_api_token=$(get_token kitteh4 floofykittens)
 
+    # Delete the keys from the previous test
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
+
     # node1 specific details
     local node1_ip
     node1_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
@@ -842,6 +848,14 @@ cycle_mesh_configurations(){
     local node3_ip
     node3_ip=$(sudo $DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node3)
 
+    # Delete the keys from the previous test
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
+    $DOCKER exec node3 rm /etc/wireguard/public.key
+    $DOCKER exec node3 rm /etc/wireguard/private.key
+
     # Create the new zone
     local zone
     zone=$(curl -fL -X POST 'http://localhost:8080/api/zones' \
@@ -860,7 +874,7 @@ cycle_mesh_configurations(){
         --data-raw '{ "zone-id": "'${zone}'" }'
 
     # Create configurations for three nodes
-    for i in {1..3}
+    for i in $(seq 1 3);
     do
         cat <<EOF > apex-run-node1-cycle${i}.sh
 #!/bin/sh
@@ -897,7 +911,7 @@ EOF
     done
 
     # Deploy the generated configurations
-    for i in {1..3}
+    for i in $(seq 1 3);
     do
         cycle_mesh_deploy ${i}
     done
@@ -966,7 +980,7 @@ EOF
     echo "=== Test: Redeploy the stress test cycle after using public EndpointIP addresses ==="
 
     # Deploy the generated configurations
-    for i in {1..2}
+    for i in $(seq 1 3);
     do
         cycle_mesh_deploy ${i}
     done
