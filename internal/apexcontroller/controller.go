@@ -140,13 +140,13 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	private := ct.Router.Group("/")
 	private.Use(auth.AuthFunc())
 	private.Use(ct.UserMiddleware)
-	private.GET("/peers", ct.handleListPeers)    // http://localhost/api/peers
-	private.GET("/peers/:id", ct.handleGetPeers) // http://localhost/api/peers/:id
-	private.GET("/zones", ct.handleListZones)    // http://localhost/api/zones
-	private.GET("/zones/:id", ct.handleGetZones) // http://localhost/api/zones/:id
+	private.GET("/peers", ct.handleListPeers)
+	private.GET("/peers/:id", ct.handleGetPeers)
+	private.GET("/zones", ct.handleListZones)
+	private.GET("/zones/:id", ct.handleGetZones)
 	private.POST("/zones", ct.handlePostZones)
-	private.GET("/devices", ct.handleListDevices)    // http://localhost/api/devices
-	private.GET("/devices/:id", ct.handleGetDevices) // http://localhost/api/devices/:id
+	private.GET("/devices", ct.handleListDevices)
+	private.GET("/devices/:id", ct.handleGetDevices)
 	private.POST("/devices", ct.handlePostDevices)
 	private.GET("/users/:id", ct.handleGetUser)
 	private.PATCH("/users/:id", ct.handlePatchUser)
