@@ -6,10 +6,13 @@ COPY ui/package.json .
 COPY ui/yarn.lock .
 RUN yarn install
 
+ARG VITE_KEYCLOAK_URL=http://localhost:8080/auth
+ARG VITE_KEYCLOAK_REALM=controller
+ARG VITE_KEYCLOAK_CLIENT_ID=front-controller
+ARG VITE_CONTROLLER_URL=http://localhost:8080/api
+
 COPY ui .
 RUN yarn build
-
-CMD [ "yarn", "start", "--host" ]
 
 FROM docker.io/library/nginx:stable-alpine
 COPY --from=builder /app/build /usr/share/nginx/html

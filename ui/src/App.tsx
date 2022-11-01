@@ -6,6 +6,7 @@ import {
   Resource,
 } from 'react-admin';
 import simpleRestProvider from 'ra-data-simple-rest';
+
 // Auth
 import Keycloak, {
   KeycloakConfig,
@@ -13,10 +14,12 @@ import Keycloak, {
   KeycloakInitOptions,
 } from 'keycloak-js';
 import { keycloakAuthProvider, httpClient } from 'ra-keycloak';
+
 // icons
 import DeviceIcon from '@mui/icons-material/Devices';
 import ZoneIcon from '@mui/icons-material/VpnLock';
 import PeerIcon from '@mui/icons-material/Link';
+
 // pages
 import { PeerList, PeerShow } from "./pages/peers";
 import { ZoneCreate, ZoneShow, ZoneList } from "./pages/zones";
@@ -24,9 +27,9 @@ import { DeviceList, DeviceShow } from "./pages/devices";
 import { MyLayout } from "./components/layout";
 
 const config : KeycloakConfig = {
-  url: 'http://localhost:8080/auth',
-  realm: 'controller',
-  clientId: 'front-controller',
+  url: import.meta.env.VITE_KEYCLOAK_URL,
+  realm: import.meta.env.VITE_KEYCLOAK_REALM,
+  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
 };
 
 const initOptions: KeycloakInitOptions = { onLoad: 'login-required' };
@@ -53,7 +56,7 @@ const App = () => {
             authProvider.current = keycloakAuthProvider(keycloakClient, {
                 onPermissions: getPermissions,
             });
-            dataProvider.current = simpleRestProvider('http://localhost:8080/api', httpClient(keycloakClient), 'X-Total-Count');
+            dataProvider.current = simpleRestProvider(import.meta.env.VITE_CONTROLLER_URL, httpClient(keycloakClient), 'X-Total-Count');
             setKeycloak(keycloakClient);
         };
         if (!keycloak) {

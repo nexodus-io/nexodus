@@ -12,14 +12,14 @@ services:
   controller-db:
     image: docker.io/library/postgres
     environment:
-      - POSTGRES_USER=${CONTROLLER_DB_USER:-controller}
-      - POSTGRES_PASSWORD=${CONTROLLER_DB_PASSWORD:-floofykittens}
+      - POSTGRES_USER=${CONTROLLER_DB_USER}
+      - POSTGRES_PASSWORD=${CONTROLLER_DB_PASSWORD}
 
   ipam-db:
     image: docker.io/library/postgres
     environment:
-      - POSTGRES_USER=${IPAM_DB_USER:-ipam}
-      - POSTGRES_PASSWORD=${IPAM_DB_PASSWORD:-floofykittens}
+      - POSTGRES_USER=${IPAM_DB_USER}
+      - POSTGRES_PASSWORD=${IPAM_DB_PASSWORD}
 
   ipam:
     image: ghcr.io/metal-stack/go-ipam
@@ -31,10 +31,10 @@ services:
     command:
     - --grpc-server-endpoint=0.0.0.0:9090
     - postgres
-    - --host=${IPAM_DB_IP:-ipam-db}
+    - --host=${IPAM_DB_HOST}
     - --dbname=ipam
-    - --user=${IPAM_DB_USER:-ipam}
-    - --password=${IPAM_DB_PASSWORD:-floofykittens}
+    - --user=${IPAM_DB_USER}
+    - --password=${IPAM_DB_PASSWORD}
   
   controller:
     image: quay.io/apex/controller
@@ -46,11 +46,11 @@ services:
       context: .
       dockerfile: ./Containerfile.controller
     command:
-      - "--streamer-address=${STREAMER_IP:-redis}"
-      - "--streamer-password=${STREAMER_PASSWORD:-floofykittens}"
-      - "--db-address=${CONTROLLER_DB_IP:-controller-db}"
-      - "--db-password=${CONTROLLER_DB_PASSWORD:-floofykittens}"
-      - "--ipam-address=${IPAM_ADDRESS:-http://ipam:9090}"
+      - "--streamer-address=${STREAMER_HOST}"
+      - "--streamer-password=${STREAMER_PASSWORD}"
+      - "--db-address=${CONTROLLER_DB_HOST}"
+      - "--db-password=${CONTROLLER_DB_PASSWORD}"
+      - "--ipam-address=${IPAM_ADDRESS}"
     environment:
       APEX_CONTROLLER_LOGLEVEL: debug
 
@@ -62,12 +62,17 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile.ui
+      args:
+        - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+        - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
+        - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID}
+        - VITE_CONTROLLER_URL=${VITE_CONTROLLER_URL}
 
   keycloak-db:
     image: docker.io/library/postgres
     environment:
-      - POSTGRES_USER=${KEYCLOAK_DB_USER:-keycloak}
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-floofykittens}
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
 
   keycloak:
     image: quay.io/keycloak/keycloak:latest
@@ -77,12 +82,13 @@ services:
       restart_policy:
         condition: on-failure
     environment:
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER-admin}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD-floofykittens}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://${KEYCLOAK_DB_IP:-keycloak-db}/keycloak
-      - KC_DB_USERNAME=${KEYCLOAK_DB_USER:-keycloak}
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-floofykittens}
+      - KC_DB_URL=jdbc:postgresql://${KEYCLOAK_DB_HOST}/keycloak
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - UI_URL=${UI_URL}
     volumes:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
@@ -90,7 +96,7 @@ services:
         - --proxy=passthrough
         - --import-realm
         - --features=token-exchange
-        - --hostname-url=http://localhost:8080/auth
+        - --hostname-url=${KEYCLOAK_URL}
         - --hostname-strict=true
         - --hostname-strict-backchannel=true
 
