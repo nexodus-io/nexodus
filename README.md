@@ -2,21 +2,21 @@
 
 [![build](https://github.com/redhat-et/apex/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
 
-*Roads? Where we're going, we don't need roads - Dr Emmett Brown*
+*Roads? Where we're going, we don't need roads - Dr. Emmett Brown*
 
-Goal of this project is to provide connectivity service between nodes deployed across heterogeneous environment (Edge, Public, Private & Hybrid Cloud), with different level of visibilities like nodes in Cloud VPC, nodes behind NAT etc. This solution is not specific to any platform, but just focuses on providing connectivity between nodes and the container/VM workload running on it. This services provides a solution that is complimentary to the platform specific network solution. Platform specific network solutions can leverage this service to simplify their stack.
+This project demonstrates an approach for building an IP connectivity-as-a-service solution that provides isolated zone-based connectivity using Wireguard for tunneling.
 
-Some of the high level features that this project is planning to provide are:
-- IOT networking to any node anywhere regardless of the platform
-- Hybrid data center connectivity that circumvents NAT challenges
-- Take a connectivity portion out of platform concerns, reset back to the original K8s days, /32 routed network
-- IP mobility - /32 host routing allows for addresses to be advertised anywhere with convergence times only limited by a round-trip-time to a controller.
-- Zero-trust - how do you do zero-trust without a zero trust networking story outside of shift (this includes distributed policy which is the conerstone of ZTN)?
-- Backend Container connectivity to external nodes that are not part of K8s/docker/podman and have no idea about k8s/docker/podman (across clouds, through NAT and encrypted)
-- Compliance scenario where a bunch of nodes need to be isolated from one another outside of a single network administrative domain (PCI).
-- Generic platform agnostic approach for workloads not tied to a platform or even OS.
-- Simple, yet flexible deployment models that provide enterprise auth out of the box with a SaaS approach.
+## Project Vision
 
+This project aims to provide connectivity between nodes deployed across heterogeneous environments (Edge, Public, Private, and Hybrid Cloud) with different visibilities (nodes in a Cloud VPC, nodes behind NAT, etc.). This solution is not specific to any infrastructure or application platform but focuses on providing IP connectivity between nodes and the container or VM workloads running on those nodes. This service is complementary to platforms-specific networking, as it can be used to expand connectivity to places that the platform could not reach otherwise.
+
+Some of the features and use cases that this project aims to support are:
+- **IoT networking** - connectivity to any node, anywhere
+- **Hybrid data center connectivity** - circumvents NAT challenges
+- **IP mobility** - /32 host routing allows addresses to be advertised anywhere with convergence times only limited by a round-trip time to a controller.
+- **Compliance** - Provide isolated connectivity among a set of nodes, even if they are running across multiple network administrative domains.
+- **Platform Agnostic** - Work independently from the infrastructure platform and support multiple operating systems (Linux, Mac, Windows).
+- **SaaS** - Built with a service-first mindset and provides enterprise auth out of the box
 ## Apex and connectivity scenarios:
 
 ### 1. Mesh Network between nodes deployed across different VPC and at Edge
