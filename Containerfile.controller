@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o controller ./cmd/apexcontroller
 
-FROM scratch
+FROM registry.access.redhat.com/ubi8/ubi
 
 COPY --from=build /src/controller /controller
 EXPOSE 8080
