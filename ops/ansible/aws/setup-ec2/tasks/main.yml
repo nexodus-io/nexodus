@@ -20,7 +20,7 @@
       - proto: all
         cidr_ip: "0.0.0.0/0"
 
-# Hub Router Setup
+### Hub Router Setup ###
 - name: Launching Hub Router in VPC Blue
   amazon.aws.ec2_instance:
     name: "hub-router-zone-blue"

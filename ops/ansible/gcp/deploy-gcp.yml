@@ -1,0 +1,21 @@
+# Run with: ansible-playbook deploy.yml --extra-vars=vars.yml
+
+# Warning: there is something weird with the address allocation.
+# You may need to double-check the actual addresses in the GCP
+# console vs. what is in the inventory here and update them.
+
+# Note: Optionally comment out any sections to pick and choose what gets run
+
+# Deploy the GCP VMs
+- hosts: localhost
+  vars_files:
+    - vars.yml
+  roles:
+    - role: deploy-gcp-vms
+
+# Deploy and start the agent
+- hosts: apexNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: deploy-mesh

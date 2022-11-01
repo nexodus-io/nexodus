@@ -1,0 +1,55 @@
+# ansible notebook, to configure the VMs on GCP
+### Create Compute Engine instances ###
+- name: Create private IP address to the VM instance
+  gcp_compute_address:
+    name: "apex-demo-gce-node-{{ item+1 }}"
+    region: "{{ region }}"
+    project: "{{ gcp_project }}"
+    service_account_file: "{{ gcp_cred_file }}"
+    auth_kind: "{{ gcp_cred_kind }}"
+  register: gce_ip
+  loop: "{{ range(0, node_count | int) }}"
+
+- name: Bring up the instance in the zone
+  gcp_compute_instance:
+    name: apex-gcp-node-d{{ item+1 }}
+    machine_type: "{{ machine_type }}"
+    disks:
+      - auto_delete: true
+        boot: true
+        initialize_params:
+          source_image: "{{ image }}"
+    network_interfaces:
+      - access_configs:
+          - name: External NAT  # public IP
+            nat_ip: "{{ gce_ip }}"
+            type: ONE_TO_ONE_NAT
+    tags:
+      items:
+        - http-server
+        - https-server
+    zone: "{{ zone }}"
+    project: "{{ gcp_project }}"
+    service_account_file: "{{ gcp_cred_file }}"
+    auth_kind: "{{ gcp_cred_kind }}"
+  register: gce
+  loop: "{{ range(0, node_count | int) }}"
+
+- name: "Instance Addresses"
+  debug:
+    msg:
+      - "New Instance Address: "
+  loop: "{{ range(0, node_count | int) }}"
+
+- name: "Instance Addresses"
+  debug:
+    msg:
+      - "New Instance Address: {{ gce_ip['results'][item]['address'] }}"
+  loop: "{{ range(0, node_count | int) }}"
+
+- name: Updating the node's public ip in inventory
+  lineinfile:
+    path: "inventory.txt"
+    regexp: "apexNodes"
+    line: "[apexNodes]\n{{ gce_ip['results'][item]['address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-gce-node-{{ item+1 }}"
+  loop: "{{ range(0, node_count | int) }}"

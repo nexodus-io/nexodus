@@ -1,0 +1,6 @@
+# Stop Apex agents
+- hosts: apexNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: stop-apex-agent

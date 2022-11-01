@@ -1,16 +1,28 @@
 # roles get branched from here
+# Note: Optionally comment out any sections to pick and choose what gets run
+
+# Deploy the VMs
 - hosts: localhost
   vars_files:
     - vars.yml
   roles:
     - role: setup-ec2
 
+# Create a Zone
+- hosts: hubRouterNode
+  vars_files:
+    - vars.yml
+  roles:
+    - role: create-zone
+
+# Deploy and start the hub router
 - hosts: hubRouterNode
   vars_files:
     - vars.yml
   roles:
     - role: deploy-hub-router
 
+# Deploy and start the agent
 - hosts: apexNodes
   vars_files:
     - vars.yml

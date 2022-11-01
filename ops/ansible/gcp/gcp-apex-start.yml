@@ -1,0 +1,6 @@
+# Start Apex agents
+- hosts: apexNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: start-apex-agent

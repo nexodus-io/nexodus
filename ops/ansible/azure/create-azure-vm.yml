@@ -1,0 +1,70 @@
+# Run with: ansible-playbook deploy.yml
+# Login with: `az login` before running.
+- name: Create Azure VM
+  hosts: localhost
+  connection: local
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Create resource group
+      azure_rm_resourcegroup:
+        name: ApexGroup
+        location: eastus
+    - name: Create virtual network
+      azure_rm_virtualnetwork:
+        resource_group: ApexGroup
+        name: apexNet
+        address_prefixes: "192.168.208.0/20"
+    - name: Add subnet
+      azure_rm_subnet:
+        resource_group: ApexGroup
+        name: apexSubnet
+        address_prefix: "192.168.208.0/20"
+        virtual_network: apexNet
+    - name: Create public IP address
+      azure_rm_publicipaddress:
+        resource_group: ApexGroup
+        allocation_method: Dynamic
+        name: "apexPublicDynamicIP-{{ node_name }}"
+      register: output_ip_address
+    - name: Public IP of VM
+      debug:
+        msg: "The public IP is {{ output_ip_address.state.ip_address }}."
+    - name: Create Network Security Group that allows SSH
+      azure_rm_securitygroup:
+        resource_group: ApexGroup
+        name: myNetworkSecurityGroup
+        rules:
+          - name: SSH
+            protocol: Tcp
+            destination_port_range: 22
+            access: Allow
+            priority: 1001
+            direction: Inbound
+          - name: ICMP
+            protocol: Icmp
+            priority: 106
+    - name: Create virtual network interface card
+      azure_rm_networkinterface:
+        resource_group: ApexGroup
+        name: "nic-{{ node_name }}"
+        virtual_network: apexNet
+        subnet: apexSubnet
+        public_ip_name: "apexPublicDynamicIP-{{ node_name }}"
+        security_group: myNetworkSecurityGroup
+    - name: Create VM
+      azure_rm_virtualmachine:
+        resource_group: ApexGroup
+        name: "{{ node_name }}"
+        vm_size: Standard_B1s
+        admin_username: apex
+        ssh_password_enabled: false
+        ssh_public_keys:
+          - path: /home/apex/.ssh/authorized_keys
+            key_data: "{{ ssh_pub_key }}"
+        network_interfaces: "nic-{{ node_name }}"
+        image:
+          offer: 0001-com-ubuntu-server-jammy
+          publisher: Canonical
+          sku: '22_04-lts'
+          version: latest

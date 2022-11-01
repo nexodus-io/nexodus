@@ -1,0 +1,28 @@
+---
+# tasks file for start-apex-agent
+- name: Kill any existing apex process from previous runs
+  become: yes
+  shell: |
+    sudo killall apex 2> /dev/null
+  ignore_errors: yes
+
+- name: Create a JWT
+  shell: |
+    curl -sf -X POST \
+        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username={{ apex_auth_uid }}" \
+        -d "password={{ apex_auth_password }}" \
+        -d "grant_type=password" \
+        -d "client_id={{ apex_auth_client_id }}" \
+        -d "client_secret={{ apex_auth_client_secret }}"
+  register: api_token
+
+- name: Attach the Node Agent to the Controller
+  become: yes
+  shell: |
+    APEX_LOGLEVEL=debug apex \
+    --controller={{ controller_address }} \
+    --controller-password={{ controller_password }} \
+    --with-token={{ (api_token.stdout|from_json).access_token }} \
+    {{ controller_address }}:8080 > apex-logs.txt 2>&1 &
