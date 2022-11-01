@@ -67,8 +67,7 @@ type wgLocalConfig struct {
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
-	controllerURL := cCtx.Args().First()
-	if controllerURL == "" {
+	if cCtx.String("controller") == "" {
 		log.Fatal("[controller-url] required")
 	}
 
@@ -88,7 +87,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		publicNetwork:          cCtx.Bool("public-network"),
 		hubRouter:              cCtx.Bool("hub-router"),
 		accessToken:            cCtx.String("with-token"),
-		controllerURL:          controllerURL,
+		controllerURL:          cCtx.String("controller"),
 		os:                     GetOS(),
 	}
 
