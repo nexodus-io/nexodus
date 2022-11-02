@@ -1,6 +1,6 @@
 module github.com/redhat-et/apex
 
-go 1.18
+go 1.19
 
 require (
 	github.com/MicahParks/keyfunc v1.5.1

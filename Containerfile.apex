@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:1.18-alpine as build
+FROM docker.io/library/golang:1.19-alpine as build
 
 WORKDIR /src
 COPY go.mod .
