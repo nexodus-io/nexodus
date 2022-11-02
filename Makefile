@@ -2,7 +2,7 @@
 all: go-lint apex controller
 
 .PHONY: apex
-apex: dist/apex dist/apex-amd64-linux dist/apex-amd64-darwin dist/apex-arm64-darwin dist/apex-amd64-windows
+apex: dist/apex dist/apex-arm-linux dist/apex-amd64-linux dist/apex-amd64-darwin dist/apex-arm64-darwin dist/apex-amd64-windows
 
 COMMON_DEPS=$(wildcard ./internal/messages/*.go) $(wildcard ./internal/streamer/*.go) go.sum go.mod
 
@@ -15,6 +15,9 @@ dist:
 
 dist/apex: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 go build -o $@ ./cmd/apex
+
+dist/apex-arm-linux: $(APEX_DEPS) | dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o $@ ./cmd/apex
 
 dist/apex-amd64-linux: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apex
