@@ -97,10 +97,11 @@ EOF
             info_message "Wireguard is not installed. Installing WireGuard..."
             if [ "$linuxDistro" == "Ubuntu" ]; then
                 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq --no-install-recommends install wireguard wireguard-tools -y
-            elif [ "$linuxDistro" == "CentOS Stream" ] || [ "$linuxDistro" == "Fedora" ]; then
+            elif [ "$linuxDistro" == "CentOS Stream" ] || [ "$linuxDistro" == "Fedora Linux" ]; then
                 sudo dnf -q install wireguard-tools -y
             else
                 error_message "Currenly only support Ubuntu, Fedora and Centos Stream."
+                exit 1
             fi
 
             if [ "$?" == "0" ]; then 
