@@ -43,7 +43,7 @@ type Controller struct {
 	defaultZone uuid.UUID
 }
 
-func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
+func NewController(ctx context.Context, keyCloakAddr string, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
 	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
 	var db *gorm.DB
 	connectDb := func() error {
@@ -82,7 +82,9 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 
 	log.Debug("Waiting for Keycloak")
 	connectKeycloak := func() error {
-		res, err := http.Get("http://keycloak:8080/auth/health/ready")
+		kcHealthURL := fmt.Sprintf("http://%s:8080/auth/health/ready", keyCloakAddr)
+		log.Debugf("Ready url %s", kcHealthURL)
+		res, err := http.Get(kcHealthURL)
 		if err != nil {
 			return err
 		}
@@ -112,8 +114,8 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 		return nil, err
 	}
 
-	jwksURL := "http://keycloak:8080/auth/realms/controller/protocol/openid-connect/certs"
-
+	jwksURL := fmt.Sprintf("http://%s:8080/auth/realms/controller/protocol/openid-connect/certs", keyCloakAddr)
+	log.Debugf("cert url %s", jwksURL)
 	auth, err := NewKeyCloakAuth(jwksURL)
 	if err != nil {
 		return nil, err
@@ -134,11 +136,11 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 	ct.Router.Use(cors.New(corsConfig))
 	ct.Router.Use()
 
+	private := ct.Router.Group("/api")
 	ct.Router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
-	private := ct.Router.Group("/")
 	private.Use(auth.AuthFunc())
 	private.Use(ct.UserMiddleware)
 	private.GET("/zones", ct.handleListZones)

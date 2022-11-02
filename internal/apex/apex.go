@@ -52,6 +52,7 @@ type Apex struct {
 	wireguardPubKeyInConfig bool
 	controllerIP            string
 	controllerPasswd        string
+	pubSubPort              int
 	listenPort              int
 	zone                    string
 	requestedIP             string
@@ -110,6 +111,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		wireguardPvtKey:        cCtx.String("private-key"),
 		controllerIP:           cCtx.String("controller"),
 		controllerPasswd:       cCtx.String("controller-password"),
+		pubSubPort:             cCtx.Int("controller-port"),
 		listenPort:             cCtx.Int("listen-port"),
 		requestedIP:            cCtx.String("request-ip"),
 		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
