@@ -1,5 +1,48 @@
 # Documentation
 
+## Deploying the Apex Controller
+
+### Using docker-compose or podman-compose
+
+For development and testing purposes, the quickest way to run the controller stack is by using `docker-compose` or `podman-compose`.
+
+If you're using podman on Fedora (or a similar distribution), you may need to run this command before starting the stack. This resolve a volume permissions issue as we will be mounting this file as a volume into one of the containers.
+
+```sh
+chcon -R -t svirt_sandbox_file_t hack/controller-realm.json
+```
+
+In the rest of these commands, you may use `podman-compose` in place of `docker-compose` depending on your environment.
+
+First, to build all required container images:
+
+```sh
+docker-compose build
+```
+
+To bring up the stack:
+
+```sh
+docker-compose up -d
+```
+
+To verify that everything has come up successfully:
+
+```sh
+$ curl http://localhost:8080/api/health
+{"message":"ok"}
+```
+
+To tear everything back down:
+
+```sh
+docker-compose down
+```
+
+### Run on Kubernetes
+
+Coming soon ...
+
 ## Apex and connectivity scenarios:
 
 ### 1. Mesh Network between nodes deployed across different VPC and at Edge
