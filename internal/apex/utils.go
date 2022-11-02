@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 
+	stun "github.com/pion/stun"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -120,28 +120,37 @@ func discoverGenericIPv4(controller string, port int) (string, error) {
 	return "", fmt.Errorf("failed to obtain the local IP")
 }
 
-// GetPubIP retrieves current global IP address using https://checkip.amazonaws.com/
+// GetPubIP retrieves current global IP address using STUN
 func GetPubIP() (string, error) {
-	c := http.DefaultClient
-	req, err := http.NewRequest("GET", "https://checkip.amazonaws.com/", nil)
+	// Creating a "connection" to STUN server.
+	c, err := stun.Dial("udp", "stun.l.google.com:19302")
 	if err != nil {
+		log.Error(err)
 		return "", err
 	}
-	res, err := c.Do(req)
-	if err != nil {
+
+	// Building binding request with random transaction id.
+	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	var ourIP string
+	// Sending request to STUN server, waiting for response message.
+	if err := c.Do(message, func(res stun.Event) {
+		if res.Error != nil {
+			log.Error(res.Error)
+			return
+		}
+		// Decoding XOR-MAPPED-ADDRESS attribute from message.
+		var xorAddr stun.XORMappedAddress
+		if err := xorAddr.GetFrom(res.Message); err != nil {
+			return
+		}
+		log.Debug("STUN: your IP is: ", xorAddr.IP)
+		ourIP = xorAddr.IP.String()
+	}); err != nil {
+		log.Error(err)
 		return "", err
 	}
-	if res.StatusCode >= http.StatusBadRequest {
-		defer func() {
-			_ = res.Body.Close()
-		}()
-		return "", fmt.Errorf("%s: %s %s", res.Status, req.Method, req.URL)
-	}
-	ip, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response from https://checkip.amazonaws.com: %w", err)
-	}
-	return strings.TrimSpace(string(ip)), nil
+
+	return ourIP, nil
 }
 
 func IsNAT(nodeOS, controller string, port int) (bool, error) {

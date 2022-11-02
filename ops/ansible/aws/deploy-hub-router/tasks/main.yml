@@ -52,5 +52,5 @@
     --controller-password={{ controller_password }} \
     --with-token={{ (api_token.stdout|from_json).access_token }} \
     --hub-router \
-    --public-network \
+    --stun \
     {{ controller_address }}:8080 > apex-logs.txt 2>&1 &

@@ -929,7 +929,7 @@ EOF
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
-    --public-network \
+    --stun \
     --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
     proxy:8080
@@ -940,7 +940,7 @@ EOF
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
-    --public-network \
+    --stun \
     --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
     proxy:8080
@@ -951,7 +951,7 @@ EOF
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
     --controller=${controller} \
-    --public-network \
+    --stun \
     --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
     proxy:8080

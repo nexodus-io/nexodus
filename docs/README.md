@@ -116,7 +116,7 @@ For Windows and Mac adjust the paths to existing directories.
 
 #### **Start the Apex agent**
  Start the apex agent on the node you want to join the mesh network and fill in the relevant configuration. IP addressing of the mesh network is managed via the Apex Controller. Run the following commands on all the nodes:
- **Note**: If your test nodes are on public networks such as EC2, you can use the `--public-network` flag which will discovering your public NAT address. Alternatively, have total control over the endpoint IP and provide a specific address with `--local-endpoint-ip=x.x.x.x`:
+ **Note**: If your test nodes are on private networks such as an EC2 VPC, you can use the `--stun` flag which will discovering your public address before NAT occurs. Alternatively, have total control over the endpoint IP and provide a specific address with `--local-endpoint-ip=x.x.x.x`:
 
 There are currently 3 scenarios that allow an operator to define how the peers in a mesh are defined. There is a public address or cloud scenario, a private network address option and the ability to define exactly what address a peer will use when being mapped to a public key in the mesh. The following is an example of each:
 
@@ -131,13 +131,13 @@ sudo apex \
     --controller-password=<REDIS_PASSWORD> 
 ```
 
-2. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example) the `--public-network`
+2. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example) the `--stun`
    flag will discover the node's public address and advertise to the mesh that discovered public NAT address as the endpoint address.
 ```shell
 sudo apex \
     --controller=<REDIS_SERVER_ADDRESS> \
     --controller-password=<REDIS_PASSWORD>\
-    --public-network
+    --stun
 ```
 
 3. If an operator wants complete control over what address will be advertised to it's
