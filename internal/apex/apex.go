@@ -35,7 +35,7 @@ type Apex struct {
 	userProvidedEndpointIP  string
 	localEndpointIP         string
 	childPrefix             string
-	publicNetwork           bool
+	stun                    bool
 	hubRouter               bool
 	hubRouterWgIP           string
 	os                      string
@@ -85,7 +85,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		requestedIP:            cCtx.String("request-ip"),
 		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
 		childPrefix:            cCtx.String("child-prefix"),
-		publicNetwork:          cCtx.Bool("public-network"),
+		stun:                   cCtx.Bool("stun"),
 		hubRouter:              cCtx.Bool("hub-router"),
 		accessToken:            cCtx.String("with-token"),
 		controllerURL:          controllerURL,
@@ -141,7 +141,7 @@ func (ax *Apex) Run() {
 	if ax.userProvidedEndpointIP != "" {
 		localEndpointIP = ax.userProvidedEndpointIP
 	}
-	if ax.publicNetwork && localEndpointIP == "" {
+	if ax.stun && localEndpointIP == "" {
 		localEndpointIP, err = GetPubIP()
 		if err != nil {
 			log.Warn("Unable to determine the public facing address, falling back to the local address")
@@ -295,21 +295,21 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var localEndpointIP string
 	var err error
 	// Darwin network discovery
-	if !ax.publicNetwork && ax.os == Darwin.String() {
+	if !ax.stun && ax.os == Darwin.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
-	if !ax.publicNetwork && ax.os == Windows.String() {
+	if !ax.stun && ax.os == Windows.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.controllerIP, pubSubPort)
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Linux network discovery
-	if !ax.publicNetwork && ax.os == Linux.String() {
+	if !ax.stun && ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(4)
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
