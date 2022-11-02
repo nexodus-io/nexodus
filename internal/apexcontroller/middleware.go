@@ -113,14 +113,13 @@ func (ct *Controller) UserMiddleware(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "bad user id"})
 		return
 	}
-	defaultZoneId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	var user User
 	res := ct.db.First(&user, "id = ?", userID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			user.ID = userID
-			user.ZoneID = defaultZoneId
+			user.ZoneID = ct.defaultZone
 			user.Devices = make([]*Device, 0)
 			ct.db.Create(&user)
 		} else {

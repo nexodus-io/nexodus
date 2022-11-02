@@ -41,7 +41,7 @@ func (ct *Controller) handlePostZones(c *gin.Context) {
 	}
 
 	// Create the zone
-	newZone, err := ct.NewZone(uuid.New().String(), request.Name, request.Description, request.IpCidr, request.HubZone)
+	newZone, err := ct.NewZone(request.Name, request.Description, request.IpCidr, request.HubZone)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ApiError{Error: "unable to create zone"})
 		return

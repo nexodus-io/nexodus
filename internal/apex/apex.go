@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -63,7 +64,8 @@ type Apex struct {
 	wgConfig                wgConfig
 	accessToken             string
 	controllerURL           *url.URL
-	peerMap                 map[string]string
+	peerCache               map[string]Peer
+	keyCache                map[string]string
 }
 
 type wgConfig struct {
@@ -118,7 +120,8 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		accessToken:            cCtx.String("with-token"),
 		controllerURL:          controllerURL,
 		os:                     GetOS(),
-		peerMap:                make(map[string]string),
+		peerCache:              make(map[string]Peer),
+		keyCache:               make(map[string]string),
 	}
 
 	if ax.os == Windows.String() {
@@ -285,8 +288,25 @@ func (ax *Apex) Reconcile() error {
 	}
 
 	log.Debugf("Received message: %+v\n", peerListing)
-	ax.ParseWireguardConfig(ax.listenPort, peerListing)
-	ax.DeployWireguardConfig()
+
+	changed := false
+	for _, p := range peerListing {
+		existing, ok := ax.peerCache[p.ID]
+		if !ok {
+			changed = true
+			ax.peerCache[p.ID] = p
+		}
+		if !reflect.DeepEqual(existing, p) {
+			changed = true
+			ax.peerCache[p.ID] = p
+		}
+	}
+
+	if changed {
+		log.Debugf("Peer listing has changed, recalculating configuration")
+		ax.ParseWireguardConfig(ax.listenPort)
+		ax.DeployWireguardConfig()
+	}
 	return nil
 }
 

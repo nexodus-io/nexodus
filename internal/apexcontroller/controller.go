@@ -33,13 +33,14 @@ const (
 
 // Controller specific data
 type Controller struct {
-	Router *gin.Engine
-	db     *gorm.DB
-	dbHost string
-	dbPass string
-	ipam   apiv1connect.IpamServiceClient
-	wg     sync.WaitGroup
-	server *http.Server
+	Router      *gin.Engine
+	db          *gorm.DB
+	dbHost      string
+	dbPass      string
+	ipam        apiv1connect.IpamServiceClient
+	wg          sync.WaitGroup
+	server      *http.Server
+	defaultZone uuid.UUID
 }
 
 func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
@@ -197,20 +198,23 @@ func (ct *Controller) Shutdown(ctx context.Context) error {
 
 // setZoneDetails set default zone attributes
 func (ct *Controller) CreateDefaultZone() error {
-	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 	var zone Zone
 	log.Debug("Checking that Default Zone exists")
-	res := ct.db.First(&zone, "id = ?", id.String())
+	res := ct.db.Where("name = ?", DefaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		log.Debug("Creating Default Zone")
-		_, err := ct.NewZone(id.String(), DefaultZoneName, "Default Zone", ipPrefixDefault, false)
+		zone, err := ct.NewZone(DefaultZoneName, "Default Zone", ipPrefixDefault, false)
 		if err != nil {
 			return err
 		}
+		log.Debugf("Default Zone UUID is: %s", zone.ID)
+		ct.defaultZone = zone.ID
 		return nil
 	}
 	log.Debug("Default Zone Already Created")
-	return res.Error
+	log.Debugf("Default Zone UUID is: %s", zone.ID)
+	ct.defaultZone = zone.ID
+	return nil
 }
 
 type MsgTypes struct {

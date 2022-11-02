@@ -105,8 +105,6 @@ copy_binaries() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    # default zone id
-    local zone="00000000-0000-0000-0000-000000000000"
 
     # node1 specific details
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
@@ -211,7 +209,7 @@ setup_custom_zone_connectivity() {
         "Name": "zone-blue",
         "Description": "Tenant - Zone Blue",
         "CIDR": "10.140.0.0/20"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh1 into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -376,7 +374,7 @@ setup_requested_ip_connectivity() {
         "Name": "zone-red",
         "Description": "Tenant - Zone Red",
         "CIDR": "100.64.0.0/20"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh2 into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -543,7 +541,7 @@ setup_child_prefix_connectivity() {
         "Name": "prefix-test",
         "Description": "Tenant - Zone prefix-test",
         "CIDR": "192.168.200.0/24"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -689,7 +687,7 @@ setup_hub_spoke_connectivity() {
         "Description": "Hub/Spoke Zone",
         "CIDR": "10.89.0.0/27",
         "Hub-Zone": true
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -845,7 +843,7 @@ cycle_mesh_configurations(){
         "Name": "cycle-zone",
         "Description": "stress tester",
         "CIDR": "10.220.0.0/24"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \

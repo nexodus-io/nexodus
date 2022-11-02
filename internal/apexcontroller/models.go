@@ -18,9 +18,11 @@ type Base struct {
 	DeletedAt *time.Time `sql:"index" json:"-"`
 }
 
-// BeforeCreate populates the ID
+// BeforeCreate populates the ID (if not set)
 func (base *Base) BeforeCreate(tx *gorm.DB) error {
-	base.ID = uuid.New()
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
 	return nil
 }
 
@@ -30,6 +32,16 @@ type User struct {
 	Devices    []*Device   `json:"-"`
 	DeviceList []uuid.UUID `gorm:"-" json:"devices" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
 	ZoneID     uuid.UUID   `json:"zone-id" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
+}
+
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.Devices == nil {
+		u.Devices = make([]*Device, 0)
+	}
+	if u.DeviceList == nil {
+		u.DeviceList = make([]uuid.UUID, 0)
+	}
+	return u.Base.BeforeCreate(tx)
 }
 
 // PatchUser is used to update a user
@@ -80,10 +92,20 @@ type Zone struct {
 	Base
 	Peers       []*Peer     `json:"-"`
 	PeerList    []uuid.UUID `gorm:"-" json:"peers" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
-	Name        string      `json:"name" example:"zone-red"`
+	Name        string      `gorm:"uniqueIndex" json:"name" example:"zone-red"`
 	Description string      `json:"description" example:"The Red Zone"`
 	IpCidr      string      `json:"cidr" example:"172.16.42.0/24"`
 	HubZone     bool        `json:"hub-zone"`
+}
+
+func (z *Zone) BeforeCreate(tx *gorm.DB) error {
+	if z.Peers == nil {
+		z.Peers = make([]*Peer, 0)
+	}
+	if z.PeerList == nil {
+		z.PeerList = make([]uuid.UUID, 0)
+	}
+	return z.Base.BeforeCreate(tx)
 }
 
 type AddZone struct {
@@ -94,20 +116,20 @@ type AddZone struct {
 }
 
 // NewZone creates a new Zone and allocates the prefix using IPAM
-func (ct *Controller) NewZone(id, name, description, cidr string, hubZone bool) (*Zone, error) {
+func (ct *Controller) NewZone(name, description, cidr string, hubZone bool) (Zone, error) {
 	if _, err := ct.ipam.CreatePrefix(context.Background(), connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr})); err != nil {
-		return nil, err
+		return Zone{}, err
 	}
-	zone := &Zone{
+	zone := Zone{
 		Peers:       make([]*Peer, 0),
 		Name:        name,
 		Description: description,
 		IpCidr:      cidr,
 		HubZone:     hubZone,
 	}
-	res := ct.db.Create(zone)
+	res := ct.db.Create(&zone)
 	if res.Error != nil {
-		return nil, res.Error
+		return Zone{}, res.Error
 	}
 	return zone, nil
 }

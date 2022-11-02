@@ -21,16 +21,16 @@ const (
 )
 
 // ParseWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []Peer) {
+func (ax *Apex) ParseWireguardConfig(listenPort int) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 	var hubRouterExists bool
 
-	for _, value := range peerListing {
+	for _, value := range ax.peerCache {
 		var pubkey string
 		var ok bool
-		if pubkey, ok = ax.peerMap[value.ID]; !ok {
+		if pubkey, ok = ax.keyCache[value.ID]; !ok {
 			dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(DEVICE_URL, value.DeviceID))
 			if err != nil {
 				log.Fatalf("unable to create dest url: %s", err)
@@ -61,7 +61,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []Peer) {
 				log.Fatalf("cannot unsmarshal device json: %+v", err)
 			}
 			pubkey = device.PublicKey
-			ax.peerMap[value.ID] = device.PublicKey
+			ax.keyCache[value.ID] = device.PublicKey
 		}
 
 		if pubkey == ax.wireguardPubKey {
@@ -75,15 +75,15 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []Peer) {
 		log.Printf("Public Key for this node %s was not found in the controller update\n", ax.wireguardPubKey)
 	}
 	// determine if the peer listing for this node is a hub zone or hub-router
-	for _, value := range peerListing {
-		pubkey := ax.peerMap[value.ID]
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
 		if pubkey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
 			if ax.os == Darwin.String() || ax.os == Windows.String() {
 				log.Fatalf("Linux nodes are the only supported hub router OS")
 			} else {
 				// Build a hub-router wireguard configuration
-				ax.parseHubWireguardConfig(listenPort, peerListing)
+				ax.parseHubWireguardConfig(listenPort)
 				return
 			}
 		}
@@ -94,13 +94,13 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []Peer) {
 				os.Exit(1)
 			}
 			// build a hub-zone wireguard configuration
-			ax.parseHubWireguardConfig(listenPort, peerListing)
+			ax.parseHubWireguardConfig(listenPort)
 			return
 		}
 	}
 	// Parse the [Peers] section of the wg config
-	for _, value := range peerListing {
-		pubkey := ax.peerMap[value.ID]
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
 		// Build the wg config for all peers
 		if pubkey != ax.wireguardPubKey {
 

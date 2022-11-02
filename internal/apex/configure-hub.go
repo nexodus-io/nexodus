@@ -14,7 +14,7 @@ const (
 )
 
 // parseHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []Peer) {
+func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
@@ -23,8 +23,8 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []Peer) {
 	var zonePrefix string
 	var err error
 
-	for _, value := range peerListing {
-		pubkey := ax.peerMap[value.ID]
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
 		if pubkey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
@@ -64,7 +64,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []Peer) {
 	var peerEndpoints []string
 	var reachablePeers []string
 	if !ax.hubRouter {
-		for _, value := range peerListing {
+		for _, value := range ax.peerCache {
 			peerIP, _, err := net.SplitHostPort(value.EndpointIP)
 			if err != nil {
 				log.Errorf("failed to split host:port endpoint pair: %v", err)
@@ -83,8 +83,8 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []Peer) {
 	log.Debugf("reachable endpoint peers by this node are %s", reachablePeers)
 
 	// Parse the [Peers] section of the wg config if this node is a zone-router
-	for _, value := range peerListing {
-		pubkey := ax.peerMap[value.ID]
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
 		// Build the wg config for all peers for the hub-router node
 		if ax.hubRouter {
 			// Config if the node is a bouncer hub
