@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Provide a "yes" repsonse to the warning prompt as a command line arg.
+YES=""
+
 OS="$(uname -s)"
 info_message() {
     if [ -z "${1}" ]; then
@@ -31,6 +34,31 @@ function setup() {
     if [ $OS != "Darwin" ] && [ $OS != "Linux" ]; then
         error_message "Currently supports Linux and Darwin."
         exit 1
+    fi
+
+    echo "WARNING -- This script will install software on your system. It will:"
+    if [ $OS == "Darwin" ]; then
+        cat <<EOF
+  * Install Homebrew (brew) if not already installed.
+  * Install wireguard-tools with brew.
+  * Download the apex agent and install it to /usr/local/sbin/apex
+EOF
+    elif [ $OS == "Linux" ]; then
+        cat <<EOF
+  * Use sudo to unstall wireguard-tools using the system's package manager.
+  * Use sudo to download the apex agent and instlal it to /usr/local/sbin/apex
+EOF
+    else
+        echo "Please add warning message text for $OS"
+        exit 1
+    fi
+    if [ "${YES}" != "y" ]; then
+        echo -n "Continue? (y/n): "
+        read ANSWER
+        if ! [[ "${ANSWER}" =~ ^(y|Y)$ ]]; then
+            echo "Aborting based on response."
+            exit 1
+        fi
     fi
 
     if [ $OS == "Darwin" ]; then
@@ -145,15 +173,18 @@ function help() {
     printf "\n"
     printf "Usage: %s [-iuh]\n" "$0"
     printf "\t-i Install apex and all required dependencies.\n"
+    printf "\t-y Provide \"yes\" response to install warning prompt in advance.\n"
     printf "\t-u Uninstall apex and it's dependencies. \n"
     printf "\t-h help\n"
     exit 1
 }
 
-while getopts "iuh" opt; do
+OP=""
+while getopts "iuyh" opt; do
     case $opt in
-        i ) setup;;
-        u ) cleanup;;
+        i ) OP="setup";;
+        u ) OP="cleanup";;
+        y ) YES="y";;
         h ) help
         exit 0;;
         *) help
@@ -162,4 +193,12 @@ while getopts "iuh" opt; do
 done
 if [ $# -eq 0 ]; then 
     help;exit 0 
+fi
+if [ "$OP" == "setup" ]; then
+    setup
+elif [ "$OP" == "cleanup" ]; then
+    cleanup
+else
+    help
+    exit 1
 fi
