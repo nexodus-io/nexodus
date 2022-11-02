@@ -93,12 +93,11 @@ services:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
         - start-dev
-        - --proxy=passthrough
+        - --proxy=edge
         - --import-realm
         - --features=token-exchange
-        - --hostname-url=${KEYCLOAK_URL}
-        - --hostname-strict=true
-        - --hostname-strict-backchannel=true
+        - --hostname-url=http:///auth
+        - --hostname-strict=false
 
   proxy:
     depends_on:
