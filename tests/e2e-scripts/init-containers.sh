@@ -198,6 +198,12 @@ setup_custom_zone_connectivity() {
 
     local kitteh_api_token=$(get_token kitteh1 floofykittens)
 
+    # Delete the key pairs to force a pair regen
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
+
     # node1 specific details
     local node1_ip
     node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
@@ -287,6 +293,11 @@ EOF
         exit 1
     fi
 
+    # fail the test if the IPAM address is not the zone prefix
+    if echo ${ip} | grep -v 10.140.; then
+        echo "the ipam assigned address [ ${ip} ] does not match the zone cidr [ 10.140.0.0/20 ]"
+    fi
+
     # Kill the apex process on both nodes
     $DOCKER exec node1 killall apex
     $DOCKER exec node2 killall apex
@@ -295,8 +306,8 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow 3 seconds for the wg0 interface to readdress
-    sleep 3
+    # Allow 4 seconds for the wg0 interface to readdress
+    sleep 4
 
     echo "=== Test: verify the node got the same IP address from IPAM after a re-join ==="
     # Check connectivity between the request ip from node1 > node2

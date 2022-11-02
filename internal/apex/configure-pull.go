@@ -36,6 +36,10 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 	}
 	// determine if the peer listing for this node is a hub zone or hub-router
 	for _, value := range peerListing {
+		// ignore the peer if it is not in this node's zone
+		if value.ZoneID != ax.zone {
+			continue
+		}
 		if value.PublicKey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
 			if ax.os == Darwin.String() || ax.os == Windows.String() {
@@ -59,6 +63,10 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range peerListing {
+		// ignore the peer if it is not in this node's zone
+		if value.ZoneID != ax.zone {
+			continue
+		}
 		// Build the wg config for all peers
 		if value.PublicKey != ax.wireguardPubKey {
 
@@ -86,6 +94,9 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 				value.NodeAddress,
 				value.ZoneID)
 		}
+	}
+	ax.wgConfig.Peer = peers
+	for _, value := range peerListing {
 		// Parse the [Interface] section of the wg config
 		if value.PublicKey == ax.wireguardPubKey {
 			localInterface = wgLocalConfig{
@@ -103,7 +114,6 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ax.wgConfig.Peer = peers
 }
 
 func (ax *Apex) DeployWireguardConfig() {
