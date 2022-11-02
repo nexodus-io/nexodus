@@ -63,7 +63,8 @@ type Apex struct {
 	hubRouterWgIP           string
 	os                      string
 	wgConfig                wgConfig
-	accessToken             string
+	withToken               string
+	auth                    Authenticator
 	controllerURL           *url.URL
 	peerCache               map[string]Peer
 	keyCache                map[string]string
@@ -118,7 +119,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		childPrefix:            cCtx.String("child-prefix"),
 		stun:                   cCtx.Bool("stun"),
 		hubRouter:              cCtx.Bool("hub-router"),
-		accessToken:            cCtx.String("with-token"),
+		withToken:              cCtx.String("with-token"),
 		controllerURL:          controllerURL,
 		os:                     GetOS(),
 		peerCache:              make(map[string]Peer),
@@ -150,24 +151,26 @@ func (ax *Apex) Run() {
 		log.Fatalf("handleKeys: %+v", err)
 	}
 
-	if ax.accessToken == "" {
-		auth := NewAuthenticator(ax.controllerURL)
-		if err := auth.Authenticate(ctx); err != nil {
-			log.Fatalf("authentication error: %+v", err)
-		}
-		ax.accessToken, err = auth.Token()
+	if ax.withToken == "" {
+		ax.auth, err = NewDeviceFlowAuthenticator(ctx, ax.controllerURL)
 		if err != nil {
 			log.Fatalf("authentication error: %+v", err)
 		}
+	} else {
+		ax.auth = &TokenAuthenticator{accessToken: ax.withToken}
 	}
 
+	token, err := ax.auth.Token()
+	if err != nil {
+		log.Fatalf("can't get auth token: %s", err)
+	}
 	var deviceID string
-	if deviceID, err = RegisterDevice(ax.controllerURL, ax.wireguardPubKey, ax.accessToken); err != nil {
+	if deviceID, err = RegisterDevice(ax.controllerURL, ax.wireguardPubKey, token); err != nil {
 		log.Fatalf("device register error: %+v", err)
 	}
 	log.Infof("Device Registered with UUID: %s", deviceID)
 
-	if ax.zone, err = GetZone(ax.controllerURL, ax.accessToken); err != nil {
+	if ax.zone, err = GetZone(ax.controllerURL, token); err != nil {
 		log.Fatalf("get zone error: %+v", err)
 	}
 	log.Infof("Device belongs in zone: %s", ax.zone)
@@ -217,7 +220,7 @@ func (ax *Apex) Run() {
 	if err != nil {
 		log.Fatalf("cannot create register request error: %+v", err)
 	}
-	req.Header.Set("authorization", fmt.Sprintf("bearer %s", ax.accessToken))
+	req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -261,12 +264,15 @@ func (ax *Apex) Reconcile() error {
 	if err != nil {
 		log.Fatalf("unable to create dest url: %s", err)
 	}
-
+	token, err := ax.auth.Token()
+	if err != nil {
+		log.Fatalf("unable to get auth token: %s", err)
+	}
 	req, err := http.NewRequest("GET", dest, nil)
 	if err != nil {
 		return fmt.Errorf("cannot create peer request error: %+v", err)
 	}
-	req.Header.Set("authorization", fmt.Sprintf("bearer %s", ax.accessToken))
+	req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

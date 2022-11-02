@@ -39,7 +39,12 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 			if err != nil {
 				log.Fatalf("cannot create new request: %+v", err)
 			}
-			req.Header.Set("authorization", fmt.Sprintf("bearer %s", ax.accessToken))
+
+			token, err := ax.auth.Token()
+			if err != nil {
+				log.Fatalf("cannot get auth token: %s", err)
+			}
+			req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
 
 			res, err := http.DefaultClient.Do(req)
 			if err != nil {

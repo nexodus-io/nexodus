@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO: These consts witll differ from installation to installation.
@@ -33,33 +35,34 @@ type TokenResponse struct {
 	Interval                int    `json:"interval"`
 }
 
-type Authenticator struct {
-	hostname     *url.URL
-	accessToken  string
-	refreshToken string
+type Authenticator interface {
+	Token() (string, error)
 }
 
-func NewAuthenticator(hostname *url.URL) Authenticator {
-	return Authenticator{
-		hostname:     hostname,
-		accessToken:  "",
-		refreshToken: "",
+type TokenAuthenticator struct {
+	accessToken string
+}
+
+func (a *TokenAuthenticator) Token() (string, error) {
+	return a.accessToken, nil
+}
+
+type DeviceFlowAuthenticator struct {
+	hostname      *url.URL
+	accessToken   string
+	refreshToken  string
+	tokenExpiry   time.Time
+	refreshExpiry time.Time
+}
+
+func NewDeviceFlowAuthenticator(ctx context.Context, hostname *url.URL) (*DeviceFlowAuthenticator, error) {
+	a := &DeviceFlowAuthenticator{
+		hostname: hostname,
 	}
-}
-
-func (a *Authenticator) Token() (string, error) {
-	// TODO: We should handle using the refreshToken if the
-	// current access token has expired.
-	if a.accessToken != "" {
-		return a.accessToken, nil
-	}
-	return "", fmt.Errorf("not authenticated")
-}
-
-func (a *Authenticator) Authenticate(ctx context.Context) error {
+	requestTime := time.Now()
 	token, err := getToken(a.hostname)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Println("Your device must be registered with Apex Controller.")
@@ -67,7 +70,7 @@ func (a *Authenticator) Authenticate(ctx context.Context) error {
 	fmt.Println("Please open the following URL in your browser and enter your one-time code:")
 	dest, err := url.JoinPath(a.hostname.String(), VERIFICATION_URI)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Printf("%s\n", dest)
 
@@ -75,14 +78,64 @@ func (a *Authenticator) Authenticate(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(token.ExpiresIn)*time.Second)
 	defer cancel()
 	go func() {
-		c <- a.pollForResponse(ctx, token)
+		c <- a.pollForResponse(ctx, token, requestTime)
 	}()
 
 	err = <-c
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Println("Authentication succeeded.")
+	return a, nil
+}
+
+func (a *DeviceFlowAuthenticator) Token() (string, error) {
+	if time.Now().After(a.tokenExpiry) {
+		log.Debugf("Access token has expired. Requesting a new one")
+		if time.Now().After(a.refreshExpiry) {
+			return "", fmt.Errorf("refresh token has expired")
+		}
+		if err := a.refreshTokens(); err != nil {
+			return "", err
+		}
+	}
+	if a.accessToken != "" {
+		return a.accessToken, nil
+	}
+	return "", fmt.Errorf("not authenticated")
+}
+
+func (a *DeviceFlowAuthenticator) refreshTokens() error {
+	v := url.Values{}
+	v.Set("client_id", APEX_CLIENT_ID)
+	v.Set("client_secret", APEX_CLIENT_SECRET)
+	v.Set("grant_type", "refresh_token")
+	v.Set("refresh_token", a.refreshToken)
+	dest, err := url.JoinPath(a.hostname.String(), VERIFY_URL)
+	if err != nil {
+		return err
+	}
+	requestTime := time.Now()
+	res, err := http.PostForm(dest, v)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		return err
+	}
+	var r tokenReponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return err
+	}
+	a.accessToken = r.AccessToken
+	a.tokenExpiry = requestTime.Add(time.Duration(r.ExpiresIn) * time.Second)
+	a.refreshToken = r.RefreshToken
+	a.refreshExpiry = requestTime.Add(time.Duration(r.RefreshExpiresIn) * time.Second)
 	return nil
 }
 
@@ -117,21 +170,22 @@ func getToken(hostname *url.URL) (*TokenResponse, error) {
 	return &t, nil
 }
 
-func (a *Authenticator) pollForResponse(ctx context.Context, t *TokenResponse) error {
+type tokenReponse struct {
+	AccessToken      string `json:"access_token"`
+	ExpiresIn        int    `json:"expires_in"`
+	RefreshToken     string `json:"refresh_token"`
+	RefreshExpiresIn int    `json:"refresh_expires_in"`
+}
+
+func (a *DeviceFlowAuthenticator) pollForResponse(ctx context.Context, t *TokenResponse, requestTime time.Time) error {
 	v := url.Values{}
 	v.Set("device_code", t.DeviceCode)
 	v.Set("client_id", APEX_CLIENT_ID)
 	v.Set("client_secret", APEX_CLIENT_SECRET)
 	v.Set("grant_type", GRANT_TYPE)
 
-	type response struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}
-
 	ticker := time.NewTicker(time.Duration(t.Interval) * time.Second)
-
-	var r response
+	var r tokenReponse
 LOOP:
 	for {
 		select {
@@ -165,7 +219,9 @@ LOOP:
 		}
 	}
 	a.accessToken = r.AccessToken
+	a.tokenExpiry = requestTime.Add(time.Duration(r.ExpiresIn) * time.Second)
 	a.refreshToken = r.RefreshToken
+	a.refreshExpiry = requestTime.Add(time.Duration(r.RefreshExpiresIn) * time.Second)
 	return nil
 }
 
