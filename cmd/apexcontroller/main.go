@@ -15,6 +15,22 @@ const (
 	acLogEnv = "APEX_CONTROLLER_LOGLEVEL"
 )
 
+// @title          Apex API
+// @version        1.0
+// @description	This is the APEX API Server.
+
+// @contact.name   The Apex Authors
+// @contact.url    https://github.com/redhat-et/apex/issues
+
+// @license.name  	Apache 2.0
+// @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @securitydefinitions.oauth2.implicit OAuth2Implicit
+// @authorizationurl /auth/realms/controller/protocol/openid-connect/auth
+// @scope.admin Grants read and write access to administrative information
+// @scope.user Grants read and write access to resources owned by this user
+
+// @BasePath  		/api
 func main() {
 	// set the log level
 	env := os.Getenv(acLogEnv)

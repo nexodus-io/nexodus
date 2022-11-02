@@ -17,7 +17,10 @@ import (
 	"github.com/google/uuid"
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
+	_ "github.com/redhat-et/apex/internal/docs"
 	log "github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -148,6 +151,8 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 	private.POST("/devices", ct.handlePostDevices)
 	private.GET("/users/:id", ct.handleGetUser)
 	private.PATCH("/users/:id", ct.handlePatchUser)
+
+	ct.Router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	createDefaultZone := func() error {
 		if err := ct.CreateDefaultZone(); err != nil {

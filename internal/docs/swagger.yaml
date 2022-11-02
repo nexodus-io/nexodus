@@ -1,0 +1,499 @@
+basePath: /api
+definitions:
+  apexcontroller.AddDevice:
+    properties:
+      public-key:
+        example: rZlVfefGshRxO+r9ethv2pODimKlUeP/bO/S47K3WUk=
+        type: string
+    type: object
+  apexcontroller.AddZone:
+    properties:
+      cidr:
+        example: 172.16.42.0/24
+        type: string
+      description:
+        example: The Red Zone
+        type: string
+      hub-zone:
+        type: boolean
+      name:
+        example: zone-red
+        type: string
+    type: object
+  apexcontroller.ApiError:
+    properties:
+      error:
+        example: something bad
+        type: string
+    type: object
+  apexcontroller.Device:
+    properties:
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      public-key:
+        type: string
+      user-id:
+        type: string
+    type: object
+  apexcontroller.PatchUser:
+    properties:
+      zone-id:
+        example: 3f51dda6-06d2-4724-bb73-f09ad3501bcc
+        type: string
+    type: object
+  apexcontroller.Peer:
+    properties:
+      allowed-ips:
+        example: 10.1.1.1
+        type: string
+      child-prefix:
+        example: 172.16.42.0/24
+        type: string
+      device-id:
+        example: fde38e78-a4af-4f44-8f5a-d84ef1846a85
+        type: string
+      endpoint-ip:
+        example: 10.1.1.1
+        type: string
+      hub-router:
+        type: boolean
+      hub-zone:
+        type: boolean
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      node-address:
+        example: 1.2.3.4
+        type: string
+      zone-id:
+        example: 2b655c5b-cfdd-4550-b7f0-a36a590fc97a
+        type: string
+      zone-prefix:
+        example: 10.1.1.0/24
+        type: string
+    type: object
+  apexcontroller.User:
+    properties:
+      devices:
+        example:
+        - 4902c991-3dd1-49a6-9f26-d82496c80aff
+        items:
+          type: string
+        type: array
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      zone-id:
+        example: 94deb404-c4eb-4097-b59d-76b024ff7867
+        type: string
+    type: object
+  apexcontroller.Zone:
+    properties:
+      cidr:
+        example: 172.16.42.0/24
+        type: string
+      description:
+        example: The Red Zone
+        type: string
+      hub-zone:
+        type: boolean
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      name:
+        example: zone-red
+        type: string
+      peers:
+        example:
+        - 4902c991-3dd1-49a6-9f26-d82496c80aff
+        items:
+          type: string
+        type: array
+    type: object
+info:
+  contact:
+    name: The Apex Authors
+    url: https://github.com/redhat-et/apex/issues
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Apex API
+  version: "1.0"
+paths:
+  /devices:
+    get:
+      description: Lists all devices
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Device'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: List Devices
+      tags:
+      - Devices
+    post:
+      description: Adds a new device
+      parameters:
+      - description: Add Device
+        in: body
+        name: device
+        required: true
+        schema:
+          $ref: '#/definitions/apexcontroller.AddDevice'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apexcontroller.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apexcontroller.Device'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Add Devices
+      tags:
+      - Devices
+  /devices/{id}:
+    get:
+      description: Gets a device by its ID
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apexcontroller.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Get Devices
+      tags:
+      - Devices
+  /users/{id}:
+    get:
+      description: Gets a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apexcontroller.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Get User
+      tags:
+      - User
+    patch:
+      description: Changes the users zone
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patch User
+        in: body
+        name: device
+        required: true
+        schema:
+          $ref: '#/definitions/apexcontroller.PatchUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apexcontroller.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Update User
+      tags:
+      - User
+  /zones:
+    get:
+      description: Lists all zones
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Zone'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: List Zones
+      tags:
+      - Zone
+    post:
+      consumes:
+      - application/json
+      description: Creates a named zone with the given CIDR
+      parameters:
+      - description: Add Zone
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/apexcontroller.AddZone'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apexcontroller.Zone'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Create a Zone
+      tags:
+      - Zone
+  /zones/{id}:
+    get:
+      description: Gets a Zone by Zone ID
+      parameters:
+      - description: Zone ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apexcontroller.Zone'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Get Zones
+      tags:
+      - Zone
+  /zones/{id}/peers:
+    get:
+      description: Lists all peers for this zone
+      parameters:
+      - description: Zone ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Peer'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: List Peers
+      tags:
+      - Peers
+  /zones/{zone_id}/peers:
+    post:
+      description: Adds a new Peer in this Zone
+      parameters:
+      - description: Zone ID
+        in: path
+        name: zone_id
+        required: true
+        type: string
+      - description: Add Zone
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/apexcontroller.AddZone'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apexcontroller.Peer'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apexcontroller.Peer'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Add Peer
+      tags:
+      - Peers
+  /zones/{zone_id}/peers/{peer_id}:
+    get:
+      description: Gets a peer in a zone by ID
+      parameters:
+      - description: Zone ID
+        in: path
+        name: zone_id
+        required: true
+        type: string
+      - description: Zone ID
+        in: path
+        name: peer_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Peer'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Get Peer
+      tags:
+      - Peers
+securityDefinitions:
+  OAuth2Implicit:
+    authorizationUrl: /auth/realms/controller/protocol/openid-connect/auth
+    flow: implicit
+    scopes:
+      admin: ' Grants read and write access to administrative information'
+      user: ' Grants read and write access to resources owned by this user'
+    type: oauth2
+swagger: "2.0"

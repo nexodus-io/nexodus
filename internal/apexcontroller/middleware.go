@@ -101,20 +101,25 @@ func extractTokenFromAuthHeader(val string) (token string, ok bool) {
 }
 
 func (ct *Controller) UserMiddleware(c *gin.Context) {
-	userID, ok := c.Get(AuthUserID)
-	if !ok {
+	userIDRaw := c.GetString(AuthUserID)
+	if userIDRaw == "" {
 		// This should never happen since our auth middleware should be called first
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "no user id"})
 		return
 	}
 
-	defaultZoneId := uuid.MustParse("00000000-0000-0000-0000-000000000000").String()
+	userID, err := uuid.Parse(userIDRaw)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "bad user id"})
+		return
+	}
+	defaultZoneId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	var user User
 	res := ct.db.First(&user, "id = ?", userID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			user.ID = userID.(string)
+			user.ID = userID
 			user.ZoneID = defaultZoneId
 			user.Devices = make([]*Device, 0)
 			ct.db.Create(&user)
