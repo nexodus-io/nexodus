@@ -104,8 +104,8 @@ func CopyFile(src, dst string) error {
 }
 
 // discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
-func discoverGenericIPv4(controller string, port int) (string, error) {
-	controllerSocket := fmt.Sprintf("%s:%d", controller, port)
+func discoverGenericIPv4(controller string, port string) (string, error) {
+	controllerSocket := fmt.Sprintf("%s:%s", controller, port)
 	conn, err := net.Dial("udp", controllerSocket)
 	if err != nil {
 		return "", err
@@ -153,7 +153,7 @@ func GetPubIP() (string, error) {
 	return ourIP, nil
 }
 
-func IsNAT(nodeOS, controller string, port int) (bool, error) {
+func IsNAT(nodeOS, controller string, port string) (bool, error) {
 	var hostIP string
 	var err error
 	if nodeOS == Darwin.String() {

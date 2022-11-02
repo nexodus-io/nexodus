@@ -217,13 +217,6 @@ func (ct *Controller) CreateDefaultZone() error {
 	return nil
 }
 
-type MsgTypes struct {
-	ID    string
-	Event string
-	Zone  string
-	Peer  Peer
-}
-
 // cleanCidr ensures a valid IP4/IP6 address is provided and return a proper
 // network prefix if the network address if the network address was not precise.
 // example: if a user provides 192.168.1.1/24 we will infer 192.168.1.0/24.
