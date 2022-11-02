@@ -1,14 +1,6 @@
 version: "3.7"
 
 services:
-  redis:
-    image: docker.io/library/redis
-    ports:
-      - 6379:6379
-    command:
-      - "--requirepass"
-      - "floofykittens"
-
   controller-db:
     image: docker.io/library/postgres
     environment:
@@ -46,8 +38,6 @@ services:
       context: .
       dockerfile: ./Containerfile.controller
     command:
-      - "--streamer-address=${STREAMER_HOST}"
-      - "--streamer-password=${STREAMER_PASSWORD}"
       - "--db-address=${CONTROLLER_DB_HOST}"
       - "--db-password=${CONTROLLER_DB_PASSWORD}"
       - "--ipam-address=${IPAM_ADDRESS}"
@@ -89,6 +79,7 @@ services:
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
       - UI_URL=${UI_URL}
+      - PROXY_ADDRESS_FORWARDING=true
     volumes:
       - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
     command:
@@ -98,6 +89,7 @@ services:
         - --features=token-exchange
         - --hostname-url=http:///auth
         - --hostname-strict=false
+        - --health-enabled=true
 
   proxy:
     depends_on:

@@ -1,12 +1,15 @@
 package apex
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"time"
 
-	"github.com/redhat-et/apex/internal/messages"
-	"github.com/redhat-et/apex/internal/streamer"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -16,12 +19,30 @@ const (
 	pubSubPort          = 6379
 	wgBinary            = "wg"
 	wgWinBinary         = "wireguard.exe"
+	REGISTER_URL        = "/api/zones/%s/peers"
+	DEVICE_URL          = "/api/devices/%s"
 )
 
-// Message Events
-const (
-	registerNodeRequest = "register-node-request"
-)
+// TODO: A nicely typed REST API client library
+// but for now!
+type Peer struct {
+	ID          string `json:"id"`
+	DeviceID    string `json:"device-id"`
+	ZoneID      string `json:"zone-id"`
+	EndpointIP  string `json:"endpoint-ip"`
+	AllowedIPs  string `json:"allowed-ips"`
+	NodeAddress string `json:"node-address"`
+	ChildPrefix string `json:"child-prefix"`
+	HubRouter   bool   `json:"hub-router"`
+	HubZone     bool   `json:"hub-zone"`
+	ZonePrefix  string `json:"zone-prefix"`
+}
+
+type DeviceJSON struct {
+	ID        string `json:"id"`
+	PublicKey string `json:"public-key"`
+	UserID    string `json:"user-id"`
+}
 
 type Apex struct {
 	wireguardPubKey         string
@@ -41,7 +62,8 @@ type Apex struct {
 	os                      string
 	wgConfig                wgConfig
 	accessToken             string
-	controllerURL           string
+	controllerURL           *url.URL
+	peerMap                 map[string]string
 }
 
 type wgConfig struct {
@@ -67,9 +89,15 @@ type wgLocalConfig struct {
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
-	controllerURL := cCtx.Args().First()
-	if controllerURL == "" {
-		log.Fatal("[controller-url] required")
+	controller := cCtx.Args().First()
+	if controller == "" {
+		log.Fatal("<controller-url> required")
+	}
+
+	// check that it's a valid URL
+	controllerURL, err := url.Parse(controller)
+	if err != nil {
+		log.Fatalf("error checking controller url: %+v", err)
 	}
 
 	if err := checkOS(); err != nil {
@@ -90,6 +118,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		accessToken:            cCtx.String("with-token"),
 		controllerURL:          controllerURL,
 		os:                     GetOS(),
+		peerMap:                make(map[string]string),
 	}
 
 	if ax.os == Windows.String() {
@@ -114,27 +143,30 @@ func (ax *Apex) Run() {
 	var err error
 
 	if err := ax.handleKeys(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("handleKeys: %+v", err)
 	}
 
 	if ax.accessToken == "" {
 		auth := NewAuthenticator(ax.controllerURL)
 		if err := auth.Authenticate(ctx); err != nil {
-			log.Fatal(err)
+			log.Fatalf("authentication error: %+v", err)
 		}
 		ax.accessToken, err = auth.Token()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("authentication error: %+v", err)
 		}
 	}
 
-	if err := RegisterDevice(ax.controllerURL, ax.wireguardPubKey, ax.accessToken); err != nil {
-		log.Fatal(err)
+	var deviceID string
+	if deviceID, err = RegisterDevice(ax.controllerURL, ax.wireguardPubKey, ax.accessToken); err != nil {
+		log.Fatalf("device register error: %+v", err)
 	}
+	log.Infof("Device Registered with UUID: %s", deviceID)
 
 	if ax.zone, err = GetZone(ax.controllerURL, ax.accessToken); err != nil {
-		log.Fatal(err)
+		log.Fatalf("get zone error: %+v", err)
 	}
+	log.Infof("Device belongs in zone: %s", ax.zone)
 
 	var localEndpointIP string
 	// User requested ip --request-ip takes precedent
@@ -156,78 +188,106 @@ func (ax *Apex) Run() {
 	ax.localEndpointIP = localEndpointIP
 	log.Infof("This node's endpoint address for building tunnels is [ %s ]", ax.localEndpointIP)
 
-	st := streamer.NewStreamer(ctx, ax.controllerIP, pubSubPort, ax.controllerPasswd)
-	defer st.Close()
-
-	if !st.IsReady() {
-		log.Fatalf("Streamer is not ready at %s", st.GetUrl())
-	}
-	log.Debugf("Streamer is ready and reachable")
-
-	// ping the controller to see if it is responding via the broker, exit the agent on timeout
-	if err := controllerReadyCheck(ctx, st); err != nil {
-		log.Fatal(err)
-	}
-	log.Debugf("Controller is responding to health checks")
-
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, WgListenPort)
 
-	// Create the message describing this peer to be published
-	peerRegister := messages.NewPublishPeerMessage(
-		registerNodeRequest,
-		ax.zone,
-		ax.wireguardPubKey,
-		endpointSocket,
-		ax.requestedIP,
-		ax.childPrefix,
-		"",
-		false,
-		ax.hubRouter)
+	registerRequest := Peer{
+		DeviceID:    deviceID,
+		EndpointIP:  endpointSocket,
+		NodeAddress: ax.requestedIP,
+		ChildPrefix: ax.childPrefix,
+		HubRouter:   ax.hubRouter,
+		HubZone:     false,
+		ZonePrefix:  "",
+	}
+
+	data, err := json.Marshal(registerRequest)
+	if err != nil {
+		log.Fatalf("marshalling error: %+v", err)
+	}
+
+	dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(REGISTER_URL, ax.zone))
+	if err != nil {
+		log.Fatalf("unable to create dest url: %s", err)
+	}
+	req, err := http.NewRequest("POST", dest, bytes.NewReader(data))
+	if err != nil {
+		log.Fatalf("cannot create register request error: %+v", err)
+	}
+	req.Header.Set("authorization", fmt.Sprintf("bearer %s", ax.accessToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatalf("cannot send register request error: %+v", err)
+	}
+
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusCreated {
+		log.Fatalf("unsuccessful register request: %d %s", res.StatusCode, resBody)
+	}
+
+	log.Info("Sucessfully registered with Apex Controller")
 
 	// a hub router requires ip forwarding, OS type has already been checked
 	if ax.hubRouter {
 		enableForwardingIPv4()
 	}
 
-	//Agent only need to subscribe to it's own zone.
-	agentZoneChan := make(chan streamer.ReceivedMessage)
-
-	st.SubscribeAndReceive(ax.zone, agentZoneChan)
-	defer st.CloseSubscription(ax.zone)
-
-	// Agent publish the peer register request to controller channel.
-	// If the zone defined is not registered with controller,
-	// controller will send the error message to the peer's zone.
-	err = st.PublishMessage(messages.ZoneChannelController, peerRegister)
-	if err != nil {
-		log.Errorf("failed to publish subscriber message: %v", err)
+	if err := ax.Reconcile(); err != nil {
+		log.Fatal(err)
 	}
 
-	for {
-		msg := <-agentZoneChan
-		// Switch based on the streaming channel
-		switch msg.Channel {
-		case ax.zone:
-			controlMsg, err := messages.HandleErrorMessage(msg.Payload)
-
-			if err == nil && controlMsg.Event == messages.Error {
-				log.Fatalf("Peer zone %s does not exist at controller : [%s]:%s", ax.zone, controlMsg.Code, controlMsg.Msg)
-			} else {
-				peerListing, err := messages.HandlePeerList(msg.Payload)
-
-				if err != nil {
-					log.Errorf("Unsupported error message received: %v", err)
-				}
-				if peerListing != nil {
-					log.Debugf("Received message: %+v\n", peerListing)
-					ax.ParseWireguardConfig(ax.listenPort, peerListing)
-					ax.DeployWireguardConfig()
-				}
-			}
-		default:
-			log.Errorf("Message received from unknown channel [%s]", msg.Channel)
+	ticker := time.NewTicker(1 * time.Second)
+	for range ticker.C {
+		if err := ax.Reconcile(); err != nil {
+			// TODO: Add smarter reconciliation logic
+			// to handle disconnects and/or timeouts etc...
+			log.Fatal(err)
 		}
 	}
+}
+
+func (ax *Apex) Reconcile() error {
+	dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(REGISTER_URL, ax.zone))
+	if err != nil {
+		log.Fatalf("unable to create dest url: %s", err)
+	}
+
+	req, err := http.NewRequest("GET", dest, nil)
+	if err != nil {
+		return fmt.Errorf("cannot create peer request error: %+v", err)
+	}
+	req.Header.Set("authorization", fmt.Sprintf("bearer %s", ax.accessToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("cannot create peer request error: %+v", err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("cannot read body: %+v", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("http error: %s", string(body))
+	}
+
+	var peerListing []Peer
+	if err := json.Unmarshal(body, &peerListing); err != nil {
+		return fmt.Errorf("cannot unmarshal body: %+v", err)
+	}
+
+	log.Debugf("Received message: %+v\n", peerListing)
+	ax.ParseWireguardConfig(ax.listenPort, peerListing)
+	ax.DeployWireguardConfig()
+	return nil
 }
 
 func (ax *Apex) Shutdown(ctx context.Context) error {
@@ -317,22 +377,4 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 		localEndpointIP = linuxIP.String()
 	}
 	return localEndpointIP, nil
-}
-
-// controllerReadyCheck blocks until the controller responds or the request times out
-func controllerReadyCheck(ctx context.Context, st *streamer.Streamer) error {
-	log.Infoln("Checking the readiness of the controller")
-	healthCheckReplyChan := make(chan streamer.ReceivedMessage)
-	st.SubscribeAndReceive(messages.HealthcheckReplyChannel, healthCheckReplyChan)
-	if err := st.PublishMessage(messages.HealthcheckRequestChannel, messages.HealthcheckRequestMsg); err != nil {
-		return err
-	}
-
-	select {
-	case <-healthCheckReplyChan:
-	case <-time.After(readyRequestTimeout * time.Second):
-		return fmt.Errorf("controller was not reachable, ensure it is up and running")
-	}
-	log.Infoln("Controller is ready and reachable")
-	return nil
 }

@@ -20,7 +20,7 @@ start_containers() {
     $DOCKER_COMPOSE up -d
 
     # allow for all services to come up and be ready
-    timeout 120s bash -c 'until curl -sfL http://localhost:8080/api/health; do sleep 1; done'
+    timeout 300s bash -c 'until curl -sfL http://localhost:8080/api/health; do sleep 1; done'
 
     echo "Deploy containers"
     if echo ${node_image} | grep -i fedora; then
@@ -118,22 +118,18 @@ copy_binaries() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
---controller-password=${controller_passwd} \
 --with-token="${API_TOKEN}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 apex run default zone
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
---controller-password=${controller_passwd} \
 --with-token="${API_TOKEN}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -227,20 +223,16 @@ setup_custom_zone_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Kill the apex process on both nodes
@@ -255,6 +247,12 @@ EOF
 
     $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
     $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
+
+    # Delete the key pairs to force a pair regen
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
 
     # Set permissions in the container
     $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
@@ -390,50 +388,42 @@ setup_requested_ip_connectivity() {
     cat <<EOF > apex-cycle1-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle1} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 cycle-1 apex run
     cat <<EOF > apex-cycle1-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle1} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-1 cycle-2 apex run
     cat <<EOF > apex-cycle2-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle2} \
---controller-password=${controller_passwd} \
 --public-key=${node1_pubkey} \
 --private-key=${node1_privkey} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 cycle-2 apex run
     cat <<EOF > apex-cycle2-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle2} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Kill the apex process on both nodes
@@ -569,24 +559,20 @@ setup_child_prefix_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node1} \
     --request-ip=${requested_ip_node1} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node2} \
     --request-ip=${requested_ip_node2} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -719,31 +705,25 @@ setup_hub_spoke_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --hub-router \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-3 apex run
     cat <<EOF > apex-run-node3.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -879,34 +859,28 @@ cycle_mesh_configurations(){
         cat <<EOF > apex-run-node1-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node1_ip} \
     --request-ip=10.220.10.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
         cat <<EOF > apex-run-node2-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node2_ip} \
     --request-ip=10.220.30.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
         cat <<EOF > apex-run-node3-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node3_ip} \
     --request-ip=10.220.50.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
     done
 
@@ -928,33 +902,27 @@ EOF
     cat <<EOF > apex-pubip-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-pubip-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-3 apex run
     cat <<EOF > apex-pubip-node3.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     sudo $DOCKER cp ./apex-pubip-node1.sh node1:/bin/apex-pubip-node1.sh

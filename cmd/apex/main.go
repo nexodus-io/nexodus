@@ -48,20 +48,6 @@ func main() {
 				Required: false,
 			},
 			&cli.StringFlag{
-				Name:     "controller",
-				Value:    "",
-				Usage:    "address of the controller (required)",
-				EnvVars:  []string{"APEX_CONTROLLER"},
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:     "controller-password",
-				Value:    "",
-				Usage:    "password for the controller (required)",
-				EnvVars:  []string{"APEX_CONTROLLER_PASSWD"},
-				Required: true,
-			},
-			&cli.StringFlag{
 				Name:     "request-ip",
 				Value:    "",
 				Usage:    "request a specific IP address from Ipam if available (optional)",

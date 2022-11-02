@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 HOST="localhost:8080/auth"
 REALM="controller"
 USERNAME="$1"

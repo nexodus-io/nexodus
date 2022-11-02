@@ -18,7 +18,6 @@ import (
 const (
 	AuthUserID    = "user-id"
 	AuthUserScope = "scope"
-	UserRecord    = "user"
 )
 
 type KeyCloakAuth struct {
@@ -83,7 +82,7 @@ func (a *KeyCloakAuth) AuthFunc() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(*Claims); ok {
 			c.Set(AuthUserID, claims.Subject)
-			c.Set(AuthUserScope, claims.Scope)
+			// c.Set(AuthUserScope, claims.Scope)
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to extract user info from claims"})
 			return
@@ -105,14 +104,14 @@ func (ct *Controller) UserMiddleware(c *gin.Context) {
 	userID, ok := c.Get(AuthUserID)
 	if !ok {
 		// This should never happen since our auth middleware should be called first
-		c.Status(http.StatusInternalServerError)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "no user id"})
 		return
 	}
 
 	defaultZoneId := uuid.MustParse("00000000-0000-0000-0000-000000000000").String()
 
 	var user User
-	res := ct.db.Preload("Devices").First(&user, "id = ?", userID)
+	res := ct.db.First(&user, "id = ?", userID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			user.ID = userID.(string)
@@ -120,12 +119,9 @@ func (ct *Controller) UserMiddleware(c *gin.Context) {
 			user.Devices = make([]*Device, 0)
 			ct.db.Create(&user)
 		} else {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "database error finding user"})
 			return
 		}
 	}
-
-	c.Set(UserRecord, user)
-
 	c.Next()
 }

@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 
-	"github.com/redhat-et/apex/internal/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,7 +14,7 @@ const (
 )
 
 // parseHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.Peer) {
+func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []Peer) {
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
@@ -25,7 +24,8 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 	var err error
 
 	for _, value := range peerListing {
-		if value.PublicKey == ax.wireguardPubKey {
+		pubkey := ax.peerMap[value.ID]
+		if pubkey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
 		if value.HubRouter {
@@ -84,12 +84,13 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 
 	// Parse the [Peers] section of the wg config if this node is a zone-router
 	for _, value := range peerListing {
+		pubkey := ax.peerMap[value.ID]
 		// Build the wg config for all peers for the hub-router node
 		if ax.hubRouter {
 			// Config if the node is a bouncer hub
-			if value.PublicKey != ax.wireguardPubKey {
+			if pubkey != ax.wireguardPubKey {
 				peer := wgPeerConfig{
-					value.PublicKey,
+					pubkey,
 					value.EndpointIP,
 					value.AllowedIPs,
 					persistentHubKeepalive,
@@ -98,7 +99,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 				log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
 					value.AllowedIPs,
 					value.EndpointIP,
-					value.PublicKey,
+					pubkey,
 					value.NodeAddress,
 					value.ZoneID)
 			}
@@ -106,14 +107,14 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 		var peerHub wgPeerConfig
 		// Build the wg config for all peers that are not zone routers (1 peer entry to the router)
 		if !ax.hubRouter && value.HubRouter {
-			if value.PublicKey != ax.wireguardPubKey {
+			if pubkey != ax.wireguardPubKey {
 				//var allowedIPs string
 				if value.ChildPrefix != "" {
 					log.Warnf("Ignoring the child prefix since this is a hub zone")
 				}
 				ax.hubRouterWgIP = hubRouterIP
 				peerHub = wgPeerConfig{
-					value.PublicKey,
+					pubkey,
 					value.EndpointIP,
 					hubRouterNetAddress,
 					persistentKeepalive,
@@ -129,7 +130,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 		}
 		if isReachable(reachablePeers, peerIP) {
 			peer := wgPeerConfig{
-				value.PublicKey,
+				pubkey,
 				value.EndpointIP,
 				value.AllowedIPs,
 				persistentKeepalive,
@@ -138,12 +139,12 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 			log.Printf("Spoke Node Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
 				value.AllowedIPs,
 				value.EndpointIP,
-				value.PublicKey,
+				pubkey,
 				value.NodeAddress,
 				value.ZoneID)
 		}
 		// Parse the [Interface] section of the wg config if this node is a zone-router
-		if value.PublicKey == ax.wireguardPubKey && ax.hubRouter {
+		if pubkey == ax.wireguardPubKey && ax.hubRouter {
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
 				fmt.Sprintf("%s/%d", value.AllowedIPs, zoneMask),
@@ -160,7 +161,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int, peerListing []messages.P
 			ax.wgConfig.Interface = localInterface
 		}
 		// Parse the [Interface] section of the wg config if this node is not a zone router
-		if value.PublicKey == ax.wireguardPubKey && !ax.hubRouter {
+		if pubkey == ax.wireguardPubKey && !ax.hubRouter {
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
 				value.AllowedIPs,

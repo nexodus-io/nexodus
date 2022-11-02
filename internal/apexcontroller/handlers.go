@@ -2,6 +2,7 @@ package apexcontroller
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -58,6 +59,7 @@ func (ct *Controller) handleListZones(c *gin.Context) {
 	result := ct.db.Find(&zones)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching zones from db"})
+		return
 	}
 	results := make([]ZoneJSON, 0)
 	for _, z := range zones {
@@ -104,10 +106,22 @@ func (ct *Controller) handleGetZones(c *gin.Context) {
 }
 
 func (ct *Controller) handleListPeers(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("zone"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
+		return
+	}
+	var zone Zone
+	result := ct.db.First(&zone, "id = ?", k.String())
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.Status(http.StatusNotFound)
+		return
+	}
 	peers := make([]Peer, 0)
-	result := ct.db.Find(&peers)
+	result = ct.db.Where("zone_id = ?", zone.ID).Find(&peers)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching peers from db"})
+		return
 	}
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
@@ -115,20 +129,209 @@ func (ct *Controller) handleListPeers(c *gin.Context) {
 	c.JSON(http.StatusOK, peers)
 }
 
-// GetPeer locates a peer
 func (ct *Controller) handleGetPeers(c *gin.Context) {
-	k, err := uuid.Parse(c.Param("id"))
+	k, err := uuid.Parse(c.Param("zone"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
+		return
+	}
+	var zone Zone
+	result := ct.db.First(&zone, "id = ?", k.String())
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
 		return
 	}
 	var peer Peer
-	result := ct.db.First(&peer, "id = ?", k.String())
+	result = ct.db.First(&peer, "id = ?", id.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, peer)
+}
+
+type PeerRequest struct {
+	DeviceID    string `json:"device-id"`
+	EndpointIP  string `json:"endpoint-ip"`
+	AllowedIPs  string `json:"allowed-ips"`
+	NodeAddress string `json:"node-address"`
+	ChildPrefix string `json:"child-prefix"`
+	HubRouter   bool   `json:"hub-router"`
+	HubZone     bool   `json:"hub-zone"`
+	ZonePrefix  string `json:"zone-prefix"`
+}
+
+func (ct *Controller) handlePostPeers(c *gin.Context) {
+	ctx := c.Request.Context()
+	k, err := uuid.Parse(c.Param("zone"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "zone id is not a valid UUID"})
+		return
+	}
+
+	var zone Zone
+	if res := ct.db.Preload("Peers").First(&zone, "id = ?", k.String()); res.Error != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	var request PeerRequest
+
+	if err := c.BindJSON(&request); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	tx := ct.db.Begin()
+
+	var device Device
+	if res := tx.First(&device, "id = ?", request.DeviceID); res.Error != nil {
+		tx.Rollback()
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	var user User
+	if res := tx.First(&user, "id = ?", device.UserID); res.Error != nil {
+		tx.Rollback()
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	if user.ZoneID != zone.ID {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("user id %s is not part of zone %s", user.ID, zone.ID)})
+		return
+	}
+
+	ipamPrefix := zone.IpCidr
+	var hubZone bool
+	var hubRouter bool
+	// determine if the node joining is a hub-router or in a hub-zone
+	if request.HubRouter && zone.HubZone {
+		hubRouter = true
+		// If the zone already has a hub-router, reject the join of a new node trying to be a zone-router
+		var hubRouterAlreadyExists string
+		for _, p := range zone.Peers {
+			// If the node joining is a re-join from the zone-router allow it
+			if p.HubRouter && p.DeviceID != device.ID {
+				hubRouterAlreadyExists = p.EndpointIP
+				tx.Rollback()
+				c.IndentedJSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("hub router already exists on the endpoint %s", hubRouterAlreadyExists)})
+				return
+			}
+		}
+	}
+
+	if zone.HubZone {
+		hubZone = true
+	}
+
+	var found bool
+	var peer *Peer
+	for _, p := range zone.Peers {
+		if p.DeviceID == device.ID {
+			found = true
+			peer = p
+			break
+		}
+	}
+	if found {
+		peer.EndpointIP = request.EndpointIP
+
+		if request.NodeAddress != peer.NodeAddress {
+			var ip string
+			if request.NodeAddress != "" {
+				var err error
+				ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
+				if err != nil {
+					tx.Rollback()
+					log.Error(err)
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "ipam error"})
+					return
+				}
+			} else {
+				if peer.NodeAddress == "" {
+					c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "peer does not have a node address assigned in the peer table and did not request a specifc address"})
+					return
+				}
+				ip = peer.NodeAddress
+			}
+			peer.NodeAddress = ip
+			peer.AllowedIPs = ip
+		}
+
+		if request.ChildPrefix != peer.ChildPrefix {
+			if err := ct.assignChildPrefix(ctx, request.ChildPrefix); err != nil {
+				tx.Rollback()
+				log.Error(err)
+				c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "ipam error"})
+				return
+			}
+		}
+	} else {
+		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
+		var ip string
+		// If this was a static address request
+		// TODO: handle a user requesting an IP not in the IPAM prefix
+		if request.NodeAddress != "" {
+			var err error
+			ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
+			if err != nil {
+				tx.Rollback()
+				log.Error(err)
+				c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "ipam error"})
+				return
+			}
+		} else {
+			var err error
+			ip, err = ct.assignFromPool(ctx, ipamPrefix)
+			if err != nil {
+				tx.Rollback()
+				log.Error(err)
+				c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "ipam error"})
+				return
+			}
+		}
+		// allocate a child prefix if requested
+		if request.ChildPrefix != "" {
+			if err := ct.assignChildPrefix(ctx, request.ChildPrefix); err != nil {
+				tx.Rollback()
+				log.Error(err)
+				c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "ipam error"})
+				return
+			}
+		}
+		peer = &Peer{
+			ID:          uuid.New().String(),
+			DeviceID:    device.ID,
+			ZoneID:      zone.ID,
+			EndpointIP:  request.EndpointIP,
+			AllowedIPs:  ip,
+			NodeAddress: ip,
+			ChildPrefix: request.ChildPrefix,
+			ZonePrefix:  ipamPrefix,
+			HubZone:     hubZone,
+			HubRouter:   hubRouter,
+		}
+		tx.Create(peer)
+		zone.Peers = append(zone.Peers, peer)
+		tx.Save(&zone)
+	}
+	tx.Save(&peer)
+
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		log.Error(err.Error)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusCreated, peer)
 }
 
 type DeviceJSON struct {
@@ -142,6 +345,7 @@ func (ct *Controller) handleListDevices(c *gin.Context) {
 	result := ct.db.Find(&devices)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
+		return
 	}
 	results := make([]DeviceJSON, 0)
 	for _, d := range devices {
@@ -193,41 +397,41 @@ func (ct *Controller) handlePostDevices(c *gin.Context) {
 		return
 	}
 
-	userRaw, ok := c.Get(UserRecord)
-	if !ok {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "no user record in context"})
+	userId := c.GetString(AuthUserID)
+	var user User
+	if res := ct.db.Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
 		return
 	}
 
-	user, ok := userRaw.(User)
-	if !ok {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "user in context is not correct type"})
-		return
-	}
-
-	var d Device
-	res := ct.db.Where("public_key == ?", request.PublicKey).First(d)
+	var device Device
+	res := ct.db.Where("public_key = ?", request.PublicKey).First(&device)
 	if res.Error == nil {
-		// implicit ok for already exists condition
-		c.Status(http.StatusOK)
+		r := DeviceJSON{
+			ID:        device.ID,
+			PublicKey: device.PublicKey,
+			UserID:    device.UserID,
+		}
+		c.IndentedJSON(http.StatusConflict, r)
 		return
 	}
 	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
 	}
 
-	device := &Device{
+	device = Device{
 		ID:        uuid.New().String(),
 		PublicKey: request.PublicKey,
 		UserID:    user.ID,
 	}
 
-	if res := ct.db.Create(device); res.Error != nil {
+	if res := ct.db.Create(&device); res.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": res.Error})
 		return
 	}
 
-	user.Devices = append(user.Devices, device)
+	user.Devices = append(user.Devices, &device)
 	ct.db.Save(&user)
 
 	result := DeviceJSON{
@@ -263,21 +467,12 @@ func (ct *Controller) handlePatchUser(c *gin.Context) {
 
 	var user User
 	if userId == "me" {
-		userRaw, ok := c.Get(UserRecord)
-		if !ok {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "no user record in context"})
-			return
-		}
+		userId = c.GetString(AuthUserID)
+	}
 
-		user, ok = userRaw.(User)
-		if !ok {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "user in context is not correct type"})
-		}
-	} else {
-		if res := ct.db.First(&user, "id = ?", userId); res.Error != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": res.Error})
-			return
-		}
+	if res := ct.db.First(&user, "id = ?", userId); res.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": res.Error})
+		return
 	}
 
 	var zone Zone
@@ -308,21 +503,12 @@ func (ct *Controller) handleGetUser(c *gin.Context) {
 
 	var user User
 	if userId == "me" {
-		userRaw, ok := c.Get(UserRecord)
-		if !ok {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "no user record in context"})
-			return
-		}
+		userId = c.GetString(AuthUserID)
+	}
 
-		user, ok = userRaw.(User)
-		if !ok {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "user in context is not correct type"})
-		}
-	} else {
-		if res := ct.db.Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": res.Error})
-			return
-		}
+	if res := ct.db.Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": res.Error})
+		return
 	}
 
 	var devices []string

@@ -16,17 +16,12 @@ docker-compose build
 docker-compose up -d
 ```
 
-These commands will build all the required binaries/images and start all the component of the controller stack (redis server, postgres db, keycloak instance, UI and controller).
+These commands will build all the required binaries/images and start all the component of the controller stack (postgres db, keycloak instance, UI and controller).
 
-If you already have a running redis server instance and wants to use that, you can specify following environment variable to point the stack to that remote redis server
+If you would like to edit any of the defaults in the stack (i.e to make the keycloak and ui accessible from outside localhost), you can edit the `.env` file or create a copy and pass that to `docker compose`
 
-```shell
-STREAMER_IP=<redis-ip-address> STREAMER_PASSWORD=<redis-password> docker-compose up -d
-```
-
-Similarly if want to connect to any existing postgres instance
-```shell
-DB_IP=<db-ip> DB_USER=<db-user-name> DB_PASSWORD=<db-password> docker-compose up -d
+```console
+docker compose --env-file .env.testing up -d
 ```
 
 ### On Remote Machine hosted somewhere in your intranet)
@@ -132,20 +127,16 @@ docker run --name postgres -e POSTGRES_USER=<USERNAME> -e POSTGRES_PASSWORD=<PAS
 2) controller instance (connects to postgres db instance for persistent storage)
 ```shell
 CONTROLLER_LOG_LEVEL=debug ./controller  \
-    --streamer-address <REDIS_SERVER_ADDRESS> \
-    --streamer-password <REDIS_PASSWD> \
     --db-address <POSTGRES_ADDR> \
-    --db-password <POSTGRES_PASS>    
-
+    --db-password <POSTGRES_PASS>
 ```
 
 Start the agent on a node with debug logging. This is just an example command which starts the agent and connect the node to default zone. If you are testing different connectivity scenarios as mentioned in the main [readme](../README.md), you need to invoke the agent with relevant configuration options:
 ```shell
 sudo APEX_LOG_LEVEL=debug ./apex --public-key=<NODE_WIREGUARD_PUBLIC_KEY>  \
     --private-key=<NODE_WIREGUARD_PRIVATE_KEY>  \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --zone=default 
+    --zone=default \
+    <CONTROLLER_URL>
 ```
 
 ##  Cleanup the dev environment

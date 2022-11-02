@@ -28,3 +28,6 @@
 /*.key
 /apex-*.sh
 docker-compose.log
+
+# config
+.env.*

@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	streamPort = 6379
-	acLogEnv   = "APEX_CONTROLLER_LOGLEVEL"
+	acLogEnv = "APEX_CONTROLLER_LOGLEVEL"
 )
 
 func main() {
@@ -26,18 +25,6 @@ func main() {
 	app := &cli.App{
 		Name: "apex-controller",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "streamer-address",
-				Value:    "",
-				Usage:    "address of message bus",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:     "streamer-password",
-				Value:    "",
-				Usage:    "password of message bus",
-				Required: true,
-			},
 			&cli.StringFlag{
 				Name:     "db-address",
 				Value:    "",
@@ -60,9 +47,6 @@ func main() {
 		Action: func(cCtx *cli.Context) error {
 			ct, err := controller.NewController(
 				context.Background(),
-				cCtx.String("streamer-address"),
-				streamPort,
-				cCtx.String("streamer-password"),
 				cCtx.String("db-address"),
 				cCtx.String("db-password"),
 				cCtx.String("ipam-address"),
