@@ -100,7 +100,7 @@ EOF
             elif [ "$linuxDistro" == "CentOS Stream" ] || [ "$linuxDistro" == "Fedora Linux" ]; then
                 sudo dnf -q install wireguard-tools -y
             else
-                error_message "Currenly only support Ubuntu, Fedora and Centos Stream."
+                error_message "This script only support installing wireguard-tools on Ubuntu, Fedora and Centos Stream. Please install wireguard-tools and try again."
                 exit 1
             fi
 
