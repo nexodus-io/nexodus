@@ -18,6 +18,7 @@ import (
 
 const (
 	readyRequestTimeout = 10
+	pollInterval        = 5 * time.Second
 	pubSubPort          = 6379
 	wgBinary            = "wg"
 	wgWinBinary         = "wireguard.exe"
@@ -249,7 +250,7 @@ func (ax *Apex) Run() {
 		log.Fatal(err)
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(pollInterval)
 	for range ticker.C {
 		if err := ax.Reconcile(); err != nil {
 			// TODO: Add smarter reconciliation logic
