@@ -1,5 +1,36 @@
 # Documentation
 
+- [Documentation](#documentation)
+  - [Concepts](#concepts)
+  - [Deploying the Apex Controller](#deploying-the-apex-controller)
+    - [Using docker-compose or podman-compose](#using-docker-compose-or-podman-compose)
+    - [Run on Kubernetes](#run-on-kubernetes)
+  - [The Apex Agent](#the-apex-agent)
+    - [Installing the Agent](#installing-the-agent)
+    - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
+    - [Verifying Agent Setup](#verifying-agent-setup)
+    - [Verifying Zone Connectivity](#verifying-zone-connectivity)
+  - [Apex and connectivity scenarios:](#apex-and-connectivity-scenarios)
+    - [1. Mesh Network between nodes deployed across different VPC and at Edge](#1-mesh-network-between-nodes-deployed-across-different-vpc-and-at-edge)
+      - [**Setup the node that is getting onboarded to the mesh:**](#setup-the-node-that-is-getting-onboarded-to-the-mesh)
+      - [**Start the Apex Controller stack**](#start-the-apex-controller-stack)
+      - [**Generate private/public key pair for nodes**](#generate-privatepublic-key-pair-for-nodes)
+      - [**Start the Apex agent**](#start-the-apex-agent)
+    - [2. Multiple mesh network between nodes deployed across different VPC and at Edge (Multi-Tenancy)](#2-multiple-mesh-network-between-nodes-deployed-across-different-vpc-and-at-edge-multi-tenancy)
+      - [**Create the zones via the REST API on the Apex Controller**](#create-the-zones-via-the-rest-api-on-the-apex-controller)
+      - [**Verify the created zones**](#verify-the-created-zones)
+      - [**Join the nodes to the zones**](#join-the-nodes-to-the-zones)
+    - [3. Mesh network between containers running on connected nodes](#3-mesh-network-between-containers-running-on-connected-nodes)
+    - [Additional Features supported by the project, not shown in the above examples:](#additional-features-supported-by-the-project-not-shown-in-the-above-examples)
+    - [REST API](#rest-api)
+    - [Cleanup](#cleanup)
+
+## Concepts
+
+- **Zone** - An isolated network connectivity domain. Apex supports multiple, isolated Zones.
+- **Controller** - The Controller is the hosted service that handles authentication, authorization, management of zones, enrollment of nodes, and coordination among nodes to allow them to peer with other nodes.
+- **Agent** - The Agent runs on any node which wants to join an Apex Zone.
+
 ## Deploying the Apex Controller
 
 ### Using docker-compose or podman-compose
@@ -42,6 +73,68 @@ docker-compose down
 ### Run on Kubernetes
 
 Coming soon ...
+
+## The Apex Agent
+
+### Installing the Agent
+
+The Apex agent is run on any node that will join an Apex Zone to communicate with other peers in that zone. This agent communicates with the Apex Controller and manages local wireguard configuration.
+
+The `hack/apex_installer.sh` script will download the latest build of `apex` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `apex` from source.
+
+```sh
+hack/apex_installer.sh
+```
+
+### Running the Agent for Interactive Enrollment
+
+As the project is still in such early development, it is expected that `apex` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
+
+```sh
+$ sudo ./apex <CONTROLLER_API_IP>:<CONTROLLER_API_PORT>
+Your device must be registered with Apex Controller.
+Your one-time code is: ????-????
+Please open the following URL in your browser and enter your one-time code:
+http://HOST:PORT/auth/realms/controller/device
+```
+
+Once enrollment is completed in the web UI, the agent will show progress.
+
+```text
+Authentication succeeded.
+...
+INFO[0570] Peer setup complete
+```
+
+### Verifying Agent Setup
+
+Once the Agent has been started successfully, you should see a wireguard interface with an address assigned. For example, on Linux:
+
+```sh
+$ ip address show wg0
+161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/none
+    inet 10.200.0.1/32 scope global wg0
+       valid_lft forever preferred_lft forever
+```
+
+### Verifying Zone Connectivity
+
+Once more than one node has enrolled in the same Apex Zone, you will see additional routes populated for reaching other node's endpoints in the same Zone. For example, we have just added a second node to this zone. The new node's address in the Apex Zone is 10.200.0.2. On Linux, we can check the routing table and see:
+
+```sh
+$ ip route
+...
+10.200.0.2 dev wg0 scope link
+```
+
+You should now be able to reach that node over the wireguard tunnel.
+
+```sh
+$ ping -c 1 10.200.0.2
+PING 10.200.0.2 (10.200.0.2) 56(84) bytes of data.
+64 bytes from 10.200.0.2: icmp_seq=1 ttl=64 time=7.63 ms
+```
 
 ## Apex and connectivity scenarios:
 
