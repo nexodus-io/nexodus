@@ -77,10 +77,7 @@ node 10.180.0.5 is up
 - This will redirect to a web page to enter the pass code provided from registration (also under daily development).
 
 ```
-sudo apex 
-    --controller=<CONTROLLER_ADDRESS>  \
-    --controller-password=<CONTROLLER_ADDRESS> \
-    <CONTROLLER_ADDRESS>:8080
+sudo apex <CONTROLLER_URL>
 ```
 
 You can view the apex logs on each deployed image with `cat ~/apex-logs.txt`

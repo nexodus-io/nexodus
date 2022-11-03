@@ -9,7 +9,7 @@
 - name: Create a JWT
   shell: |
     curl -sf -X POST \
-        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
+       {{ controller_address }}/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username={{ apex_auth_uid }}" \
         -d "password={{ apex_auth_password }}" \
@@ -22,7 +22,5 @@
   become: yes
   shell: |
     APEX_LOGLEVEL=debug apex \
-    --controller={{ controller_address }} \
-    --controller-password={{ controller_password }} \
     --with-token={{ (api_token.stdout|from_json).access_token }} \
-    {{ controller_address }}:8080 > apex-logs.txt 2>&1 &
+    {{ controller_address }} > apex-logs.txt 2>&1 &

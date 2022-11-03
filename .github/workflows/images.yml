@@ -10,6 +10,7 @@ env:
   CONTROLLER_IMAGE_NAME: controller
   CONTROLLER_UI_IMAGE_NAME: controller-ui
   APEX_IMAGE_NAME: apex
+  KEYCLOAK_IMAGE_NAME: keycloak
 
 jobs:
   build:
@@ -93,4 +94,27 @@ jobs:
       with:
         image: ${{ steps.build-apex.outputs.image }}
         tags: ${{ steps.build-apex.outputs.tags }}
+        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+
+    - name: Extract metadata (tags, labels) for keycloak image
+      id: meta-keycloak
+      uses: docker/metadata-action@v3.6.2
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.KEYCLOAK_IMAGE_NAME }}
+
+    - name: Build keycloak image
+      id: build-keycloak
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: keycloak
+        tags: ${{ steps.meta-keycloak.outputs.tags }}
+        labels: ${{ steps.meta-keycloak.outputs.labels }}
+        containerfiles: |
+          ./Containerfile.keycloak
+
+    - name: Push keycloak to quay.io/
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: ${{ steps.build-keycloak.outputs.image }}
+        tags: ${{ steps.build-keycloak.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}

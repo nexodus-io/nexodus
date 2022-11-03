@@ -1,13 +1,17 @@
 package apex
 
 import (
+	"encoding/json"
 	"fmt"
-	"gopkg.in/ini.v1"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/redhat-et/apex/internal/messages"
+	"gopkg.in/ini.v1"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,14 +21,55 @@ const (
 )
 
 // ParseWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer) {
+func (ax *Apex) ParseWireguardConfig(listenPort int) {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
 	var hubRouterExists bool
 
-	for _, value := range peerListing {
-		if value.PublicKey == ax.wireguardPubKey {
+	for _, value := range ax.peerCache {
+		var pubkey string
+		var ok bool
+		if pubkey, ok = ax.keyCache[value.ID]; !ok {
+			dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(DEVICE_URL, value.DeviceID))
+			if err != nil {
+				log.Fatalf("unable to create dest url: %s", err)
+			}
+			req, err := http.NewRequest("GET", dest, nil)
+			if err != nil {
+				log.Fatalf("cannot create new request: %+v", err)
+			}
+
+			token, err := ax.auth.Token()
+			if err != nil {
+				log.Fatalf("cannot get auth token: %s", err)
+			}
+			req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
+
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				log.Fatalf("cannot send request: %+v", err)
+			}
+			defer res.Body.Close()
+
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				log.Fatalf("cannot read body: %+v", err)
+			}
+
+			if res.StatusCode != http.StatusOK {
+				log.Fatalf("http error: %d %s", res.StatusCode, string(body))
+			}
+
+			var device DeviceJSON
+			if err := json.Unmarshal(body, &device); err != nil {
+				log.Fatalf("cannot unsmarshal device json: %+v", err)
+			}
+			pubkey = device.PublicKey
+			ax.keyCache[value.ID] = device.PublicKey
+		}
+
+		if pubkey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
 		if value.HubRouter {
@@ -35,14 +80,15 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 		log.Printf("Public Key for this node %s was not found in the controller update\n", ax.wireguardPubKey)
 	}
 	// determine if the peer listing for this node is a hub zone or hub-router
-	for _, value := range peerListing {
-		if value.PublicKey == ax.wireguardPubKey && value.HubRouter {
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
+		if pubkey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
 			if ax.os == Darwin.String() || ax.os == Windows.String() {
 				log.Fatalf("Linux nodes are the only supported hub router OS")
 			} else {
 				// Build a hub-router wireguard configuration
-				ax.parseHubWireguardConfig(listenPort, peerListing)
+				ax.parseHubWireguardConfig(listenPort)
 				return
 			}
 		}
@@ -53,14 +99,15 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 				os.Exit(1)
 			}
 			// build a hub-zone wireguard configuration
-			ax.parseHubWireguardConfig(listenPort, peerListing)
+			ax.parseHubWireguardConfig(listenPort)
 			return
 		}
 	}
 	// Parse the [Peers] section of the wg config
-	for _, value := range peerListing {
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.ID]
 		// Build the wg config for all peers
-		if value.PublicKey != ax.wireguardPubKey {
+		if pubkey != ax.wireguardPubKey {
 
 			var allowedIPs string
 			if value.ChildPrefix != "" {
@@ -73,7 +120,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 				allowedIPs = value.AllowedIPs
 			}
 			peer := wgPeerConfig{
-				value.PublicKey,
+				pubkey,
 				value.EndpointIP,
 				allowedIPs,
 				persistentKeepalive,
@@ -82,12 +129,12 @@ func (ax *Apex) ParseWireguardConfig(listenPort int, peerListing []messages.Peer
 			log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
 				allowedIPs,
 				value.EndpointIP,
-				value.PublicKey,
+				pubkey,
 				value.NodeAddress,
 				value.ZoneID)
 		}
 		// Parse the [Interface] section of the wg config
-		if value.PublicKey == ax.wireguardPubKey {
+		if pubkey == ax.wireguardPubKey {
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
 				value.AllowedIPs,
@@ -129,11 +176,11 @@ func (ax *Apex) DeployWireguardConfig() {
 			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
 				if err = applyWireguardConf(); err != nil {
-					log.Fatal(err)
+					log.Fatalf("cannot apply wg config: %+v", err)
 				}
 			} else {
 				if err = updateWireguardConfig(); err != nil {
-					log.Fatal(err)
+					log.Fatalf("cannot update wg config: %+v", err)
 				}
 			}
 		}

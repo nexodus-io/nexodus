@@ -58,7 +58,10 @@ go-lint: $(APEX_DEPS) $(CONTROLLER_DEPS)
 		exit 1 ; \
 	fi
 	golangci-lint run ./...
-# CI infrastructure setup and tests triggered by actions workflow
+
+.PHONY: gen-docs
+gen-docs:
+	swag init -g ./cmd/apexcontroller/main.go -o ./internal/docs
 
 .PHONY: test-images
 test-images:

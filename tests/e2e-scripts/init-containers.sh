@@ -20,7 +20,7 @@ start_containers() {
     $DOCKER_COMPOSE up -d
 
     # allow for all services to come up and be ready
-    timeout 120s bash -c 'until curl -sfL http://localhost:8080/api/health; do sleep 1; done'
+    timeout 300s bash -c 'until curl -sfL http://localhost:8080/api/health; do sleep 1; done'
 
     echo "Deploy containers"
     if echo ${node_image} | grep -i fedora; then
@@ -105,8 +105,6 @@ copy_binaries() {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    # default zone id
-    local zone="00000000-0000-0000-0000-000000000000"
 
     # node1 specific details
     local node1_ip=$($DOCKER inspect --format "{{ .NetworkSettings.Networks.apex_default.IPAddress }}" node1)
@@ -118,22 +116,18 @@ copy_binaries() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
---controller-password=${controller_passwd} \
 --with-token="${API_TOKEN}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 apex run default zone
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
---controller-password=${controller_passwd} \
 --with-token="${API_TOKEN}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -215,7 +209,7 @@ setup_custom_zone_connectivity() {
         "Name": "zone-blue",
         "Description": "Tenant - Zone Blue",
         "CIDR": "10.140.0.0/20"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh1 into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -227,20 +221,16 @@ setup_custom_zone_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Kill the apex process on both nodes
@@ -255,6 +245,12 @@ EOF
 
     $DOCKER cp ./apex-run-node1.sh node1:/bin/apex-run-node1.sh
     $DOCKER cp ./apex-run-node2.sh node2:/bin/apex-run-node2.sh
+
+    # Delete the key pairs to force a pair regen
+    $DOCKER exec node1 rm /etc/wireguard/public.key
+    $DOCKER exec node1 rm /etc/wireguard/private.key
+    $DOCKER exec node2 rm /etc/wireguard/public.key
+    $DOCKER exec node2 rm /etc/wireguard/private.key
 
     # Set permissions in the container
     $DOCKER exec node1 chmod +x /bin/apex-run-node1.sh
@@ -378,7 +374,7 @@ setup_requested_ip_connectivity() {
         "Name": "zone-red",
         "Description": "Tenant - Zone Red",
         "CIDR": "100.64.0.0/20"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh2 into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -390,50 +386,42 @@ setup_requested_ip_connectivity() {
     cat <<EOF > apex-cycle1-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle1} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 cycle-1 apex run
     cat <<EOF > apex-cycle1-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle1} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-1 cycle-2 apex run
     cat <<EOF > apex-cycle2-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node1_ip} \
 --request-ip=${node1_requested_ip_cycle2} \
---controller-password=${controller_passwd} \
 --public-key=${node1_pubkey} \
 --private-key=${node1_privkey} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Node-2 cycle-2 apex run
     cat <<EOF > apex-cycle2-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
---controller=${controller} \
 --local-endpoint-ip=${node2_ip} \
 --request-ip=${node2_requested_ip_cycle2} \
---controller-password=${controller_passwd} \
 --with-token="${kitteh_api_token}" \
-proxy:8080
+http://proxy:8080
 EOF
 
     # Kill the apex process on both nodes
@@ -553,7 +541,7 @@ setup_child_prefix_connectivity() {
         "Name": "prefix-test",
         "Description": "Tenant - Zone prefix-test",
         "CIDR": "192.168.200.0/24"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -569,24 +557,20 @@ setup_child_prefix_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node1} \
     --request-ip=${requested_ip_node1} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --child-prefix=${child_prefix_node2} \
     --request-ip=${requested_ip_node2} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -703,7 +687,7 @@ setup_hub_spoke_connectivity() {
         "Description": "Hub/Spoke Zone",
         "CIDR": "10.89.0.0/27",
         "Hub-Zone": true
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -719,31 +703,25 @@ setup_hub_spoke_connectivity() {
     cat <<EOF > apex-run-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --hub-router \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-run-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-3 apex run
     cat <<EOF > apex-run-node3.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # STDOUT the run scripts for debugging
@@ -865,7 +843,7 @@ cycle_mesh_configurations(){
         "Name": "cycle-zone",
         "Description": "stress tester",
         "CIDR": "10.220.0.0/24"
-    }' | jq -r '.ID')
+    }' | jq -r '.id')
 
     # Set kitteh into the new zone
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
@@ -879,34 +857,28 @@ cycle_mesh_configurations(){
         cat <<EOF > apex-run-node1-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node1_ip} \
     --request-ip=10.220.10.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
         cat <<EOF > apex-run-node2-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node2_ip} \
     --request-ip=10.220.30.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
         cat <<EOF > apex-run-node3-cycle${i}.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
-    --controller-password=${controller_passwd} \
     --local-endpoint-ip=${node3_ip} \
     --request-ip=10.220.50.${i} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
     done
 
@@ -928,33 +900,27 @@ EOF
     cat <<EOF > apex-pubip-node1.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-2 apex run
     cat <<EOF > apex-pubip-node2.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     # Node-3 apex run
     cat <<EOF > apex-pubip-node3.sh
 #!/bin/sh
 APEX_LOGLEVEL=debug apex \
-    --controller=${controller} \
     --stun \
-    --controller-password=${controller_passwd} \
     --with-token="${kitteh_api_token}" \
-    proxy:8080
+    http://proxy:8080
 EOF
 
     sudo $DOCKER cp ./apex-pubip-node1.sh node1:/bin/apex-pubip-node1.sh

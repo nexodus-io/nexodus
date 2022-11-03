@@ -12,10 +12,25 @@ import (
 )
 
 const (
-	streamPort = 6379
-	acLogEnv   = "APEX_CONTROLLER_LOGLEVEL"
+	acLogEnv = "APEX_CONTROLLER_LOGLEVEL"
 )
 
+// @title          Apex API
+// @version        1.0
+// @description	This is the APEX API Server.
+
+// @contact.name   The Apex Authors
+// @contact.url    https://github.com/redhat-et/apex/issues
+
+// @license.name  	Apache 2.0
+// @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @securitydefinitions.oauth2.implicit OAuth2Implicit
+// @authorizationurl /auth/realms/controller/protocol/openid-connect/auth
+// @scope.admin Grants read and write access to administrative information
+// @scope.user Grants read and write access to resources owned by this user
+
+// @BasePath  		/api
 func main() {
 	// set the log level
 	env := os.Getenv(acLogEnv)
@@ -26,18 +41,6 @@ func main() {
 	app := &cli.App{
 		Name: "apex-controller",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "streamer-address",
-				Value:    "",
-				Usage:    "address of message bus",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:     "streamer-password",
-				Value:    "",
-				Usage:    "password of message bus",
-				Required: true,
-			},
 			&cli.StringFlag{
 				Name:     "db-address",
 				Value:    "",
@@ -60,9 +63,6 @@ func main() {
 		Action: func(cCtx *cli.Context) error {
 			ct, err := controller.NewController(
 				context.Background(),
-				cCtx.String("streamer-address"),
-				streamPort,
-				cCtx.String("streamer-password"),
 				cCtx.String("db-address"),
 				cCtx.String("db-password"),
 				cCtx.String("ipam-address"),

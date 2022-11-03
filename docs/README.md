@@ -219,17 +219,13 @@ There are currently 3 scenarios that allow an operator to define how the peers i
    to public machines in the cloud. This is the default behavior as the vast majority of enterprise 
    hosts do not have public addresses with inbound traffic allowed.
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> 
+sudo apex <CONTROLLER_URL>
 ```
 
 2. If the node has access from the Internet allowed in on UDP port 51820 (AWS EC2 for example) the `--stun`
    flag will discover the node's public address and advertise to the mesh that discovered public NAT address as the endpoint address.
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD>\
+sudo apex <CONTROLLER_URL> \
     --stun
 ```
 
@@ -238,9 +234,7 @@ sudo apex \
    peers in the mesh (`--local-endpoint-ip`).
 
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
+sudo apex <CONTROLLER_URL> \
     --local-endpoint-ip=X.X.X.X
 ```
 
@@ -294,22 +288,22 @@ curl -L -X POST 'http://localhost:8080/api/zone' \
 curl -L -X GET 'http://localhost:8080/api/zones'
 ```
 
+#### **Add users to selected zone**
+
+```shell
+curl -L -X PATCH -d '{ "zone-id": "$ZONE_ID" } "http://localhost:8080/api/users/${user-id}"
+```
+
 #### **Join the nodes to the zones**
-A node can only belong to one zone at a time for isolation between tenants/security zones.
+Zone association is computed based on the User ID given to register the device
 
 To join zone blue:
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --zone=zone-blue 
+sudo apex <CONTROLLER_URL> --with-token=$ZONE_BLUE_USER_TOKEN
 ```
 To join zone red:
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --zone=zone-red 
+sudo apex <CONTROLLER_URL> --with-token=$ZONE_RED_USER_TOKEN
 ```
 
 Once you have more than one node in a zone, the nodes can now ping one another on using the wireguard interfaces. Get the address by running following command on the node:
@@ -368,11 +362,8 @@ For simplicity, we are just using the default, built-in zone `default`. You can 
 
 Join node1 to the `default` zone network
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --child-prefix=172.24.0.0/24 \
-    --zone=default 
+sudo apex <CONTROLLER_URL> \
+    --child-prefix=172.24.0.0/24
 ```
 
 Create the container network:
@@ -395,11 +386,8 @@ docker run -it --rm --network=net1 busybox bash
 Join node2 to the `default` zone network
 
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --child-prefix=172.28.0.0/24 \
-    --zone=default
+sudo apex <CONTROLLER_URL> \
+    --child-prefix=172.28.0.0/24
 ```
 
 Setup a docker network and start a node on it:
@@ -436,10 +424,7 @@ Ping between nodes to the loopbacks, both IPs should be reachable now because th
 To go one step further, a user could then run apex on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
 
 ```shell
-sudo apex \
-    --controller=<REDIS_SERVER_ADDRESS> \
-    --controller-password=<REDIS_PASSWORD> \
-    --zone=default
+sudo apex <CONTROLLER_URL>
 ```
 Ping to prefixes on both the other nodes should be successful now.
 ```

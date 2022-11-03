@@ -2,8 +2,10 @@ package apexcontroller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -15,9 +17,10 @@ import (
 	"github.com/google/uuid"
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
-	"github.com/redhat-et/apex/internal/messages"
-	"github.com/redhat-et/apex/internal/streamer"
+	_ "github.com/redhat-et/apex/internal/docs"
 	log "github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -30,36 +33,17 @@ const (
 
 // Controller specific data
 type Controller struct {
-	Router       *gin.Engine
-	Client       *streamer.Streamer
-	db           *gorm.DB
-	dbHost       string
-	dbPass       string
-	ipam         apiv1connect.IpamServiceClient
-	streamerIp   string
-	streamerPort int
-	streamerPass string
-	wg           sync.WaitGroup
-	server       *http.Server
-	msgChannels  []chan streamer.ReceivedMessage
-	readyChan    chan streamer.ReceivedMessage
+	Router      *gin.Engine
+	db          *gorm.DB
+	dbHost      string
+	dbPass      string
+	ipam        apiv1connect.IpamServiceClient
+	wg          sync.WaitGroup
+	server      *http.Server
+	defaultZone uuid.UUID
 }
 
-func NewController(ctx context.Context, streamerIp string, streamerPort int, streamerPass string, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
-	st := streamer.NewStreamer(ctx, streamerIp, streamerPort, streamerPass)
-	log.Debug("Waiting for Streamer")
-	checkRedis := func() error {
-		if !st.IsReady() {
-			return fmt.Errorf("streamer is not ready")
-		}
-		return nil
-	}
-	err := backoff.Retry(checkRedis, backoff.NewExponentialBackOff())
-	if err != nil {
-		return nil, fmt.Errorf("Streamer is not ready at %s", st.GetUrl())
-	}
-	log.Debugf("Streamer is ready and reachable")
-
+func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddress string) (*Controller, error) {
 	dsn := fmt.Sprintf("host=%s user=controller password=%s dbname=controller port=5432 sslmode=disable", dbHost, dbPass)
 	var db *gorm.DB
 	connectDb := func() error {
@@ -71,7 +55,7 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		return nil
 	}
 	log.Debug("Waiting for Postgres")
-	err = backoff.Retry(connectDb, backoff.NewExponentialBackOff())
+	err := backoff.Retry(connectDb, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, err
 	}
@@ -96,36 +80,53 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 		connect.WithGRPC(),
 	)
 
-	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
-	var auth *KeyCloakAuth
-	connectAuth := func() error {
-		var err error
-		auth, err = NewKeyCloakAuth(jwksURL)
+	log.Debug("Waiting for Keycloak")
+	connectKeycloak := func() error {
+		res, err := http.Get("http://keycloak:8080/auth/health/ready")
 		if err != nil {
 			return err
 		}
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		var response map[string]interface{}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return err
+		}
+
+		if _, ok := response["status"]; !ok {
+			return fmt.Errorf("no status")
+		}
+
+		if response["status"] != "UP" {
+			return fmt.Errorf("not ready")
+		}
 		return nil
 	}
-	log.Debug("Waiting for Keycloak Auth")
-	err = backoff.Retry(connectAuth, backoff.NewExponentialBackOff())
+
+	err = backoff.Retry(connectKeycloak, backoff.NewExponentialBackOff())
+	if err != nil {
+		return nil, err
+	}
+
+	jwksURL := "http://keycloak:8080/auth/realms/controller/protocol/openid-connect/certs"
+
+	auth, err := NewKeyCloakAuth(jwksURL)
 	if err != nil {
 		return nil, err
 	}
 
 	ct := &Controller{
-		Router:       gin.Default(),
-		Client:       st,
-		db:           db,
-		dbHost:       dbHost,
-		dbPass:       dbPass,
-		ipam:         ipam,
-		streamerIp:   streamerIp,
-		streamerPort: streamerPort,
-		streamerPass: streamerPass,
-		wg:           sync.WaitGroup{},
-		server:       nil,
-		msgChannels:  make([]chan streamer.ReceivedMessage, 0),
-		readyChan:    make(chan streamer.ReceivedMessage),
+		Router: gin.Default(),
+		db:     db,
+		dbHost: dbHost,
+		dbPass: dbPass,
+		ipam:   ipam,
+		wg:     sync.WaitGroup{},
+		server: nil,
 	}
 
 	corsConfig := cors.DefaultConfig()
@@ -140,16 +141,19 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 	private := ct.Router.Group("/")
 	private.Use(auth.AuthFunc())
 	private.Use(ct.UserMiddleware)
-	private.GET("/peers", ct.handleListPeers)
-	private.GET("/peers/:id", ct.handleGetPeers)
 	private.GET("/zones", ct.handleListZones)
-	private.GET("/zones/:id", ct.handleGetZones)
 	private.POST("/zones", ct.handlePostZones)
+	private.GET("/zones/:zone", ct.handleGetZones)
+	private.GET("/zones/:zone/peers", ct.handleListPeers)
+	private.POST("/zones/:zone/peers", ct.handlePostPeers)
+	private.GET("/zones/:zone/peers/:id", ct.handleGetPeers)
 	private.GET("/devices", ct.handleListDevices)
 	private.GET("/devices/:id", ct.handleGetDevices)
 	private.POST("/devices", ct.handlePostDevices)
 	private.GET("/users/:id", ct.handleGetUser)
 	private.PATCH("/users/:id", ct.handlePatchUser)
+
+	ct.Router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	createDefaultZone := func() error {
 		if err := ct.CreateDefaultZone(); err != nil {
@@ -167,54 +171,6 @@ func NewController(ctx context.Context, streamerIp string, streamerPort int, str
 }
 
 func (ct *Controller) Run() {
-	ctx := context.Background()
-
-	// respond to initial health check from agents initializing
-	readyCheckResponder(ctx, ct.Client, ct.readyChan, &ct.wg)
-
-	// Handle all messages for zones other than the default zone
-	// TODO: assign each zone it's own channel for better multi-tenancy
-	go ct.MessageHandling(ctx)
-
-	pubDefault := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
-	subDefault := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
-
-	log.Debugf("Listening on channel: %s", messages.ZoneChannelDefault)
-
-	// channel for async messages from the zone subscription for the default zone
-	msgChanDefault := make(chan streamer.ReceivedMessage)
-	ct.msgChannels = append(ct.msgChannels, msgChanDefault)
-	ct.wg.Add(1)
-	go func() {
-		subDefault.SubscribeAndReceive(messages.ZoneChannelDefault, msgChanDefault)
-		defer subDefault.CloseSubscription(messages.ZoneChannelDefault)
-		for {
-			msg, ok := <-msgChanDefault
-			if !ok {
-				log.Infof("Shutting down default message channel")
-				ct.wg.Done()
-				return
-			}
-			msgEvent := messages.HandleMessage(msg.Payload)
-			switch msgEvent.Event {
-			case messages.RegisterNodeRequest:
-				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelDefault)
-				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
-				if msgEvent.Peer.PublicKey != "" {
-					peers, err := ct.AddPeer(ctx, msgEvent)
-					if err == nil {
-						// publishPeers the latest peer list
-						if err := publishPeers(pubDefault, messages.ZoneChannelDefault, peers); err != nil {
-							log.Errorf("unable to publish peer list: %s", err)
-						}
-					} else {
-						log.Errorf("peer was not added: %v", err)
-					}
-				}
-			}
-		}
-	}()
-
 	ct.server = &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%s", restPort),
 		Handler: ct.Router,
@@ -230,19 +186,10 @@ func (ct *Controller) Run() {
 }
 
 func (ct *Controller) Shutdown(ctx context.Context) error {
-	// Shutdown Ready Checker
-	close(ct.readyChan)
-
 	// Shutdown REST API
 	if err := ct.server.Shutdown(ctx); err != nil {
 		return err
 	}
-
-	// Shutdown Message Handlers
-	for _, c := range ct.msgChannels {
-		close(c)
-	}
-
 	// Wait for everything to wind down
 	ct.wg.Wait()
 
@@ -251,215 +198,23 @@ func (ct *Controller) Shutdown(ctx context.Context) error {
 
 // setZoneDetails set default zone attributes
 func (ct *Controller) CreateDefaultZone() error {
-	id := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 	var zone Zone
 	log.Debug("Checking that Default Zone exists")
-	res := ct.db.First(&zone, "id = ?", id.String())
+	res := ct.db.Where("name = ?", DefaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		log.Debug("Creating Default Zone")
-		_, err := ct.NewZone(id.String(), DefaultZoneName, "Default Zone", ipPrefixDefault, false)
+		zone, err := ct.NewZone(DefaultZoneName, "Default Zone", ipPrefixDefault, false)
 		if err != nil {
 			return err
 		}
+		log.Debugf("Default Zone UUID is: %s", zone.ID)
+		ct.defaultZone = zone.ID
 		return nil
 	}
 	log.Debug("Default Zone Already Created")
-	return res.Error
-}
-
-type MsgTypes struct {
-	ID    string
-	Event string
-	Zone  string
-	Peer  Peer
-}
-
-func (ct *Controller) AddPeer(ctx context.Context, msgEvent messages.Message) ([]messages.Peer, error) {
-	tx := ct.db.Begin()
-
-	// TODO: This could be written as a single query
-	var device Device
-	if res := tx.Where("public_key = ?", msgEvent.Peer.PublicKey).First(&device); res.Error != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("device with key %s not found: %v", msgEvent.Peer.PublicKey, res.Error)
-	}
-
-	var user User
-	if res := tx.First(&user, "id = ?", device.UserID); res.Error != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("user with id %s not found: %v", device.UserID, res.Error)
-	}
-
-	var zone Zone
-	if res := tx.Preload("Peers").First(&zone, "id = ?", user.ZoneID); res.Error != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("zone with id %s not found: %v", user.ZoneID, res.Error)
-	}
-
-	ipamPrefix := zone.IpCidr
-	var hubZone bool
-	var hubRouter bool
-	// determine if the node joining is a hub-router or in a hub-zone
-	if msgEvent.Peer.HubRouter && zone.HubZone {
-		hubRouter = true
-		// If the zone already has a hub-router, reject the join of a new node trying to be a zone-router
-		var hubRouterAlreadyExists string
-		for _, p := range zone.Peers {
-			// If the node joining is a re-join from the zone-router allow it
-			if p.HubRouter && p.DeviceID != device.ID {
-				hubRouterAlreadyExists = p.EndpointIP
-				tx.Rollback()
-				return nil, fmt.Errorf("hub router already exists on the endpoint %s", hubRouterAlreadyExists)
-			}
-		}
-	}
-
-	if zone.HubZone {
-		hubZone = true
-	}
-
-	var found bool
-	var peer *Peer
-	for _, p := range zone.Peers {
-		if p.DeviceID == device.ID {
-			found = true
-			peer = p
-			break
-		}
-	}
-	if found {
-		peer.EndpointIP = msgEvent.Peer.EndpointIP
-
-		if msgEvent.Peer.NodeAddress != peer.NodeAddress {
-			var ip string
-			if msgEvent.Peer.NodeAddress != "" {
-				var err error
-				ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
-				if err != nil {
-					tx.Rollback()
-					return nil, err
-				}
-			} else {
-				if peer.NodeAddress == "" {
-					tx.Rollback()
-					return nil, fmt.Errorf("peer does not have a node address assigned in the peer table and did not request a specifc address")
-				}
-				ip = peer.NodeAddress
-			}
-			peer.NodeAddress = ip
-			peer.AllowedIPs = ip
-		}
-
-		if msgEvent.Peer.ChildPrefix != peer.ChildPrefix {
-			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		}
-	} else {
-		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
-		var ip string
-		// If this was a static address request
-		// TODO: handle a user requesting an IP not in the IPAM prefix
-		if msgEvent.Peer.NodeAddress != "" {
-			var err error
-			ip, err = ct.assignSpecificNodeAddress(ctx, ipamPrefix, msgEvent.Peer.NodeAddress)
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		} else {
-			var err error
-			ip, err = ct.assignFromPool(ctx, ipamPrefix)
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		}
-		// allocate a child prefix if requested
-		if msgEvent.Peer.ChildPrefix != "" {
-			if err := ct.assignChildPrefix(ctx, msgEvent.Peer.ChildPrefix); err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		}
-		peer = &Peer{
-			ID:          uuid.New().String(),
-			DeviceID:    device.ID,
-			ZoneID:      zone.ID,
-			EndpointIP:  msgEvent.Peer.EndpointIP,
-			AllowedIPs:  ip,
-			NodeAddress: ip,
-			ChildPrefix: msgEvent.Peer.ChildPrefix,
-			ZonePrefix:  ipamPrefix,
-			HubZone:     hubZone,
-			HubRouter:   hubRouter,
-		}
-		tx.Create(&peer)
-		zone.Peers = append(zone.Peers, peer)
-	}
-	var peerList []messages.Peer
-	for _, p := range zone.Peers {
-		var d Device
-		if res := tx.First(&d, "id = ?", p.DeviceID); res.Error != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("Device %s was not found in database", p.DeviceID)
-		}
-		peerList = append(peerList, messages.Peer{
-			PublicKey:   d.PublicKey,
-			ZoneID:      p.ZoneID,
-			EndpointIP:  p.EndpointIP,
-			AllowedIPs:  p.AllowedIPs,
-			NodeAddress: p.NodeAddress,
-			ChildPrefix: p.ChildPrefix,
-			HubRouter:   p.HubRouter,
-			HubZone:     p.HubZone,
-			ZonePrefix:  p.ZonePrefix,
-		})
-	}
-	tx.Save(&peer)
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		return nil, err.Error
-	}
-	return peerList, nil
-}
-
-func (ct *Controller) MessageHandling(ctx context.Context) {
-
-	pub := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
-	sub := streamer.NewStreamer(ctx, ct.streamerIp, ct.streamerPort, ct.streamerPass)
-
-	// channel for async messages from the zone subscription
-	controllerChan := make(chan streamer.ReceivedMessage)
-
-	go func() {
-		sub.SubscribeAndReceive(messages.ZoneChannelController, controllerChan)
-		defer sub.CloseSubscription(messages.ZoneChannelController)
-		log.Debugf("Listening on channel: %s", messages.ZoneChannelController)
-
-		for {
-			msg := <-controllerChan
-			msgEvent := messages.HandleMessage(msg.Payload)
-			switch msgEvent.Event {
-			// TODO implement error channels
-			case messages.RegisterNodeRequest:
-				log.Debugf("Register node msg received on channel [ %s ]\n", messages.ZoneChannelController)
-				log.Debugf("Received registration request: %+v\n", msgEvent.Peer)
-				if msgEvent.Peer.PublicKey != "" {
-					peers, err := ct.AddPeer(ctx, msgEvent)
-					if err == nil {
-						// publishPeers the latest peer list
-						if err := publishPeers(pub, msgEvent.Peer.ZoneID, peers); err != nil {
-							log.Errorf("failed to publish peer updates: %s", err)
-						}
-					} else {
-						log.Errorf("peer was not added: %v", err)
-					}
-				}
-			}
-		}
-	}()
+	log.Debugf("Default Zone UUID is: %s", zone.ID)
+	ct.defaultZone = zone.ID
+	return nil
 }
 
 // cleanCidr ensures a valid IP4/IP6 address is provided and return a proper
