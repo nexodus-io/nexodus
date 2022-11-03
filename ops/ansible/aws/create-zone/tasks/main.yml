@@ -15,7 +15,7 @@
 - name: Create a JWT
   shell: |
     curl -sf -X POST \
-        {{ controller_address }}/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
+        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username={{ apex_auth_uid }}" \
         -d "password={{ apex_auth_password }}" \
@@ -30,7 +30,7 @@
 
 - name: Create the Zone and register the UUID
   shell: |
-    curl -fL -X POST '{{ controller_address }}/api/zones' \
+    curl -fL -X POST 'http://{{ controller_address }}:8080/api/zones' \
     -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
     -H "Content-Type: application/json" \
     --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "CIDR": "{{ apex_azone_prefix }}", "Hub-Zone": true}'
@@ -38,11 +38,11 @@
 
 - name: Print the Zone UUID
   debug:
-    var: (zone_uuid.stdout|from_json).ID
+    var: (zone_uuid.stdout|from_json).id
 
 - name: Associate the User to the Zone
   shell: |
-    curl -fL -X PATCH '{{ controller_address }}/api/users/me' \
+    curl -fL -X PATCH 'http://{{ controller_address }}:8080/api/users/me' \
         -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
         -H "Content-Type: application/json" \
-        --data-raw '{ "zone-id": "{{ (zone_uuid.stdout|from_json).ID }}" }'
+        --data-raw '{ "zone-id": "{{ (zone_uuid.stdout|from_json).id }}" }'
