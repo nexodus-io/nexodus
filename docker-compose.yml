@@ -65,7 +65,10 @@ services:
       - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
 
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/apex/keycloak:latest
+    build:
+      context: .
+      dockerfile: ./Containerfile.keycloak
     depends_on:
       - keycloak-db
     deploy:
@@ -79,17 +82,15 @@ services:
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
       - UI_URL=${UI_URL}
-      - PROXY_ADDRESS_FORWARDING=true
-    volumes:
-      - ./hack/controller-realm.json:/opt/keycloak/data/import/controller-realm.json
+      - KC_PROXY=passthrough
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=true
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KC_HTTP_ENABLED=true
     command:
-        - start-dev
-        - --proxy=edge
+        - start
+        - --optimized
         - --import-realm
-        - --features=token-exchange
-        - --hostname-url=http:///auth
-        - --hostname-strict=false
-        - --health-enabled=true
 
   proxy:
     depends_on:

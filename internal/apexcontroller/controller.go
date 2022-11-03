@@ -82,7 +82,7 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 
 	log.Debug("Waiting for Keycloak")
 	connectKeycloak := func() error {
-		res, err := http.Get("http://keycloak:8080/health/ready")
+		res, err := http.Get("http://keycloak:8080/auth/health/ready")
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func NewController(ctx context.Context, dbHost string, dbPass string, ipamAddres
 		return nil, err
 	}
 
-	jwksURL := "http://keycloak:8080/realms/controller/protocol/openid-connect/certs"
+	jwksURL := "http://keycloak:8080/auth/realms/controller/protocol/openid-connect/certs"
 
 	auth, err := NewKeyCloakAuth(jwksURL)
 	if err != nil {
