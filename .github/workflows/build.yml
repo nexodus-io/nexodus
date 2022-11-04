@@ -7,7 +7,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -18,6 +17,10 @@ jobs:
       with:
         go-version: 1.19
 
+    - name: Build
+      run: |
+        go build ./...
+
     - name: Unit tests
       run: |
         go test -v ./...
@@ -26,45 +29,99 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         version: v1.50.0
+  build:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        arch: ["amd64", "arm64", "arm"]
+        exclude:
+        - os: macos-latest
+          arch: arm
+        - os: windows-latest
+          arch: arm
+        - os: windows-latest
+          arch: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      GOARCH: ${{ matrix.arch }}
+      JOB_NAME: "apex-${{ matrix.os }}-${{ matrix.arch }}"
+    steps:
+    - uses: actions/checkout@v3
 
-  build-linux:
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+
+    - name: Test
+      run: |
+        go test -v ./...
+
+    - name: Build
+      id: build-apex
+      run: |
+        go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
+        echo "artifact-name=apex-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: apex
+        path: ${{ steps.build-apex.outputs.artifact-name }}
+
+  e2e:
+    needs: lint
+    name: e2e-integration
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment: ["wireguard", "fedora-wireguard"]
+    env:
+      JOB_NAME: "apex-e2e-${{ matrix.deployment }}"
+      DEPLOYMENT: ${{ matrix.deployment }}
     steps:
-    - uses: actions/checkout@v3
+    - name: checkout
+      uses: actions/checkout@v2
 
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: 1.19
 
-    - name: Build
+    - name: Run e2e
       run: |
-        go build -v ./...
+        make OS_IMAGE=quay.io/networkstatic/${{ matrix.DEPLOYMENT }} e2e
 
-  build-osx:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - name: Archive logs
+      uses: actions/upload-artifact@v3
+      if: always()
       with:
-        go-version: 1.19
+        name: ci-logs
+        path: docker-compose.log
 
-    - name: Build
-      run: |
-        go build -v ./...
-
-  build-windows:
-    runs-on: windows-latest
+  deploy:
+    needs: [ "build", "e2e" ]
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-
-    - name: Build
-      run: |
-        go build -v ./...
+      - name: download binary artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: apex
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          role-session-name: apex-ci-deploy
+          aws-region: us-east-1
+      - name:  copy binaries to s3
+        run: |
+          aws s3 sync . s3://apex-net/
