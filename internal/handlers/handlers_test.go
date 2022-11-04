@@ -83,7 +83,7 @@ func TestQuerySort(t *testing.T) {
 
 func TestQueryRange(t *testing.T) {
 	q := Query{Range: `[ 0, 24 ]`}
-	expectedPageSize := 24
+	expectedPageSize := 25
 	expectedOffset := 0
 	actualPageSize, actualOffset, err := q.GetRange()
 	assert.NoError(t, err)

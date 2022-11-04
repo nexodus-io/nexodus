@@ -83,7 +83,7 @@ func (suite *HandlerTestSuite) TestListZones() {
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
-			"/", `/?filter={"name":["default"}`,
+			"/", `/?filter={"name":"default"}`,
 			suite.api.ListZones, nil,
 		)
 		assert.NoError(err)
