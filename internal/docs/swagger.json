@@ -143,6 +143,126 @@
                 }
             }
         },
+        "/peers": {
+            "get": {
+                "description": "Lists all peers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Peers"
+                ],
+                "summary": "List Peers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apexcontroller.Peer"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/peers/{peer_id}": {
+            "get": {
+                "description": "Gets a peer",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Peers"
+                ],
+                "summary": "Get Peer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Zone ID",
+                        "name": "peer_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apexcontroller.Peer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Lists all users",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "List Users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apexcontroller.User"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apexcontroller.ApiError"
+                        }
+                    }
+                }
+            }
+        },
         "/users/{id}": {
             "get": {
                 "description": "Gets a user",
@@ -615,6 +735,15 @@
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "peers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "97d5214a-8c51-4772-b492-53de034740c5"
+                    ]
                 },
                 "public-key": {
                     "type": "string"

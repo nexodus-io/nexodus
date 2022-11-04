@@ -91,7 +91,7 @@ func (ct *Controller) handleListZones(c *gin.Context) {
 // @Failure      404  {object}  ApiError
 // @Router       /zones/{id} [get]
 func (ct *Controller) handleGetZones(c *gin.Context) {
-	k, err := uuid.Parse(c.Param("id"))
+	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ApiError{Error: "zone id is not a valid UUID"})
 		return
@@ -108,7 +108,7 @@ func (ct *Controller) handleGetZones(c *gin.Context) {
 	c.JSON(http.StatusOK, zone)
 }
 
-// handleListPeers lists all peers in a zone
+// handleListZonePeers lists all peers in a zone
 // @Summary      List Peers
 // @Description  Lists all peers for this zone
 // @Tags         Peers
@@ -120,7 +120,7 @@ func (ct *Controller) handleGetZones(c *gin.Context) {
 // @Failure		 401  {object}  ApiError
 // @Failure		 500  {object}  ApiError
 // @Router       /zones/{id}/peers [get]
-func (ct *Controller) handleListPeers(c *gin.Context) {
+func (ct *Controller) handleListZonePeers(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ApiError{Error: "zone id is not a valid UUID"})
@@ -144,7 +144,7 @@ func (ct *Controller) handleListPeers(c *gin.Context) {
 	c.JSON(http.StatusOK, peers)
 }
 
-// handleGetPeers gets a peer in a zone
+// handleGetZonePeers gets a peer in a zone
 // @Summary      Get Peer
 // @Description  Gets a peer in a zone by ID
 // @Tags         Peers
@@ -158,7 +158,7 @@ func (ct *Controller) handleListPeers(c *gin.Context) {
 // @Failure      404  {object}  ApiError
 // @Failure		 500  {object}  ApiError
 // @Router       /zones/{zone_id}/peers/{peer_id} [get]
-func (ct *Controller) handleGetPeers(c *gin.Context) {
+func (ct *Controller) handleGetZonePeers(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ApiError{Error: "zone id is not a valid UUID"})
@@ -184,7 +184,7 @@ func (ct *Controller) handleGetPeers(c *gin.Context) {
 	c.JSON(http.StatusOK, peer)
 }
 
-// handlePostPeers adds a new peer in a zone
+// handlePostZonePeers adds a new peer in a zone
 // @Summary      Add Peer
 // @Description  Adds a new Peer in this Zone
 // @Tags         Peers
@@ -200,7 +200,7 @@ func (ct *Controller) handleGetPeers(c *gin.Context) {
 // @Failure      409  {object}  Peer
 // @Failure		 500  {object}  ApiError
 // @Router       /zones/{zone_id}/peers [post]
-func (ct *Controller) handlePostPeers(c *gin.Context) {
+func (ct *Controller) handlePostZonePeers(c *gin.Context) {
 	ctx := c.Request.Context()
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
@@ -351,6 +351,8 @@ func (ct *Controller) handlePostPeers(c *gin.Context) {
 		tx.Create(peer)
 		zone.Peers = append(zone.Peers, peer)
 		tx.Save(&zone)
+		device.Peers = append(device.Peers, peer)
+		tx.Save(&device)
 	}
 	tx.Save(&peer)
 
@@ -364,6 +366,57 @@ func (ct *Controller) handlePostPeers(c *gin.Context) {
 	c.JSON(http.StatusCreated, peer)
 }
 
+// handleListPeers lists all peers
+// @Summary      List Peers
+// @Description  Lists all peers
+// @Tags         Peers
+// @Accepts		 json
+// @Produce      json
+// @Success      200  {object}  []Peer
+// @Failure		 401  {object}  ApiError
+// @Failure		 500  {object}  ApiError
+// @Router       /peers [get]
+func (ct *Controller) handleListPeers(c *gin.Context) {
+	peers := make([]Peer, 0)
+	result := ct.db.Find(&peers)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, ApiError{Error: "database error"})
+		return
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(peers)))
+	c.JSON(http.StatusOK, peers)
+}
+
+// handleGetPeers gets a peer
+// @Summary      Get Peer
+// @Description  Gets a peer
+// @Tags         Peers
+// @Accepts		 json
+// @Produce      json
+// @Param		 peer_id path   string true "Zone ID"
+// @Success      200  {object}  []Peer
+// @Failure      400  {object}  ApiError
+// @Failure		 401  {object}  ApiError
+// @Failure      404  {object}  ApiError
+// @Failure		 500  {object}  ApiError
+// @Router       /peers/{peer_id} [get]
+func (ct *Controller) handleGetPeers(c *gin.Context) {
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ApiError{Error: "peer id is not a valid UUID"})
+		return
+	}
+	var peer Peer
+	result := ct.db.First(&peer, "id = ?", k)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, ApiError{Error: "peer not found"})
+		return
+	}
+	c.JSON(http.StatusOK, peer)
+}
+
 // handleListDevices lists all devices
 // @Summary      List Devices
 // @Description  Lists all devices
@@ -374,11 +427,18 @@ func (ct *Controller) handlePostPeers(c *gin.Context) {
 // @Failure		 401  {object}  ApiError
 // @Router       /devices [get]
 func (ct *Controller) handleListDevices(c *gin.Context) {
-	devices := make([]Device, 0)
-	result := ct.db.Find(&devices)
+	devices := make([]*Device, 0)
+	result := ct.db.Preload("Peers").Find(&devices)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
+	}
+	for _, d := range devices {
+		peers := make([]uuid.UUID, 0)
+		for _, p := range d.Peers {
+			peers = append(peers, p.ID)
+		}
+		d.PeerList = peers
 	}
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
@@ -386,7 +446,7 @@ func (ct *Controller) handleListDevices(c *gin.Context) {
 	c.JSON(http.StatusOK, devices)
 }
 
-// handleGetDevices lists all devices
+// handleGetDevices gets a devices
 // @Summary      Get Devices
 // @Description  Gets a device by its ID
 // @Tags         Devices
@@ -405,11 +465,16 @@ func (ct *Controller) handleGetDevices(c *gin.Context) {
 		return
 	}
 	var device Device
-	result := ct.db.Debug().First(&device, "id = ?", k)
+	result := ct.db.Preload("Peers").First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
 	}
+	peers := make([]uuid.UUID, 0)
+	for _, p := range device.Peers {
+		peers = append(peers, p.ID)
+	}
+	device.PeerList = peers
 	c.JSON(http.StatusOK, device)
 }
 
@@ -558,4 +623,33 @@ func (ct *Controller) handleGetUser(c *gin.Context) {
 	user.DeviceList = devices
 
 	c.JSON(http.StatusOK, user)
+}
+
+// handleListUsers lists users
+// @Summary      List Users
+// @Description  Lists all users
+// @Tags         User
+// @Accepts		 json
+// @Produce      json
+// @Success      200  {object}  []User
+// @Failure		 401  {object}  ApiError
+// @Router       /users [get]
+func (ct *Controller) handleListUsers(c *gin.Context) {
+	users := make([]*User, 0)
+	result := ct.db.Preload("Devices").Find(&users)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
+		return
+	}
+	for _, u := range users {
+		var devices []uuid.UUID
+		for _, d := range u.Devices {
+			devices = append(devices, d.ID)
+		}
+		u.DeviceList = devices
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
+	c.Header("X-Total-Count", strconv.Itoa(len(users)))
+	c.JSON(http.StatusOK, users)
 }

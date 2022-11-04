@@ -4,6 +4,8 @@ import {
   AuthProvider,
   DataProvider,
   Resource,
+  ListGuesser,
+  ShowGuesser,
 } from 'react-admin';
 import simpleRestProvider from 'ra-data-simple-rest';
 
@@ -18,11 +20,12 @@ import { keycloakAuthProvider, httpClient } from 'ra-keycloak';
 // icons
 import DeviceIcon from '@mui/icons-material/Devices';
 import ZoneIcon from '@mui/icons-material/VpnLock';
-import PeerIcon from '@mui/icons-material/Link';
+import UserIcon from '@mui/icons-material/People';
 
 // pages
-import { PeerList, PeerShow } from "./pages/peers";
 import { ZoneCreate, ZoneShow, ZoneList } from "./pages/zones";
+import { PeerShow, PeerList } from "./pages/peers";
+import { UserShow, UserList } from "./pages/users";
 import { DeviceList, DeviceShow } from "./pages/devices";
 import { MyLayout } from "./components/layout";
 
@@ -74,9 +77,10 @@ const App = () => {
       title="Controller"
       layout={MyLayout}
     >
-      <Resource name="peers" list={PeerList} show={PeerShow} icon={PeerIcon} />
-      <Resource name="zones" list={ZoneList} show={ZoneShow} create={ZoneCreate} icon={ZoneIcon} />
+      <Resource name="users" list={UserList} show={UserShow} icon={UserIcon} />
       <Resource name="devices" list={DeviceList} show={DeviceShow} icon={DeviceIcon} />
+      <Resource name="zones" list={ZoneList} show={ZoneShow} create={ZoneCreate} icon={ZoneIcon} />
+      <Resource name="peers" list={PeerList} show={PeerShow} icon={UserIcon} />
     </Admin>
   );
 };

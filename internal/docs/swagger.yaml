@@ -31,6 +31,12 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      peers:
+        example:
+        - 97d5214a-8c51-4772-b492-53de034740c5
+        items:
+          type: string
+        type: array
       public-key:
         type: string
       user-id:
@@ -206,6 +212,85 @@ paths:
       summary: Get Devices
       tags:
       - Devices
+  /peers:
+    get:
+      description: Lists all peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Peer'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: List Peers
+      tags:
+      - Peers
+  /peers/{peer_id}:
+    get:
+      description: Gets a peer
+      parameters:
+      - description: Zone ID
+        in: path
+        name: peer_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.Peer'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: Get Peer
+      tags:
+      - Peers
+  /users:
+    get:
+      description: Lists all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apexcontroller.User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apexcontroller.ApiError'
+      summary: List Users
+      tags:
+      - User
   /users/{id}:
     get:
       description: Gets a user
