@@ -163,7 +163,7 @@ verify_connectivity() {
     #   None                                                                  #
     ###########################################################################
     # Allow for convergence
-    sleep 4
+    sleep 10
     # Check connectivity between node1 -> node2
     if $DOCKER exec node1 ping -c 2 -w 2 $($DOCKER exec node2 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1); then
         echo "peer nodes successfully communicated"
@@ -260,8 +260,8 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow 2 seconds for the wg0 interface to address
-    sleep 2
+    # Allow 10 seconds for the wg0 interface to address
+    sleep 10
 
     local node1_ipam_ip
     node1_ipam_ip=$(sudo $DOCKER exec node1 ip --brief address show wg0 | awk '{print $3}' | cut -d "/" -f1);
@@ -291,8 +291,8 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow 3 seconds for the wg0 interface to readdress
-    sleep 3
+    # Allow 10 seconds for the wg0 interface to readdress
+    sleep 10
 
     echo "=== Test: verify the node got the same IP address from IPAM after a re-join ==="
     # Check connectivity between the request ip from node1 > node2
@@ -321,8 +321,8 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow 3 seconds for the wg0 interface to readdress
-    sleep 3
+    # Allow 10 seconds for the wg0 interface to readdress
+    sleep 10
 
     echo "=== Test: verify the node got the same IP address from IPAM after a re-join ==="
     # Check connectivity between the request ip from node1 > node2
@@ -450,8 +450,8 @@ EOF
     $DOCKER exec node1 /bin/apex-cycle1-node1.sh &
     $DOCKER exec node2 /bin/apex-cycle1-node2.sh &
 
-    # Allow five seconds for the wg0 interface to readdress
-    sleep 5
+    # Allow 10 seconds for the wg0 interface to readdress
+    sleep 10
 
     # Check connectivity between the request ip from node1 > node2
     if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip_cycle1}; then
@@ -490,7 +490,7 @@ EOF
     $DOCKER exec node2 /bin/apex-cycle2-node2.sh &
 
     # Allow two seconds for the wg0 interface to readdress
-    sleep 2
+    sleep 10
 
     # Check connectivity between the request ip from node1 > node2
     if $DOCKER exec node1 ping -c 2 -w 2 ${node2_requested_ip_cycle2}; then
@@ -599,8 +599,8 @@ EOF
     $DOCKER exec node1 /bin/apex-run-node1.sh &
     $DOCKER exec node2 /bin/apex-run-node2.sh &
 
-    # Allow four seconds for the wg0 interface to readdress
-    sleep 4
+    # Allow ten seconds for the wg0 interface to readdress
+    sleep 10
 
     # Check connectivity between node1  child prefix loopback-> node2 child prefix loopback
     if $DOCKER exec node1 ping -c 2 -w 2 172.20.3.10; then
@@ -744,12 +744,12 @@ EOF
 
     # Start the agents on all 3 nodes nodes (currently the hub-router needs to be spun up first)
     sudo $DOCKER exec node1 /bin/apex-run-node1.sh &
-    sleep 5
+    sleep 10
     sudo $DOCKER exec node2 /bin/apex-run-node2.sh &
     sudo $DOCKER exec node3 /bin/apex-run-node3.sh &
 
-    # Allow four seconds for the wg0 interface to readdress
-    sleep 6
+    # Allow ten seconds for the wg0 interface to readdress
+    sleep 10
     verify_three_node_connectivity
 
     $DOCKER exec node1 killall apex
@@ -758,7 +758,7 @@ EOF
 
     echo "=== Test: Terminate the apex agents, redeploy the hub and spoke setup and test connectivity ==="
     sudo $DOCKER exec node1 /bin/apex-run-node1.sh &
-    sleep 5
+    sleep 10
     sudo $DOCKER exec node2 /bin/apex-run-node2.sh &
     sudo $DOCKER exec node3 /bin/apex-run-node3.sh &
     sleep 10
@@ -766,7 +766,7 @@ EOF
     sudo $DOCKER exec node1 cat /etc/wireguard/wg0.conf
     sudo $DOCKER exec node2 cat /etc/wireguard/wg0.conf
     sudo $DOCKER exec node3 cat /etc/wireguard/wg0.conf
-    sleep 5
+    sleep 10
     verify_three_node_connectivity
 
     $DOCKER exec node1 killall apex
@@ -936,7 +936,7 @@ EOF
     sudo $DOCKER exec node1 /bin/apex-pubip-node1.sh &
     sudo $DOCKER exec node2 /bin/apex-pubip-node2.sh &
     sudo $DOCKER exec node3 /bin/apex-pubip-node3.sh &
-    sleep 4
+    sleep 10
 
     # Kill processes because they are public unreachable addresses
     sudo $DOCKER exec node1 killall apex
@@ -1000,22 +1000,21 @@ cycle_mesh_deploy() {
         echo "node1 failed to reach node3, e2e failed"
         exit 1
     fi
-    sudo $DOCKER exec node1 killall apex
-    sudo $DOCKER exec node2 killall apex
-    sudo $DOCKER exec node3 killall apex
-
     # Count the occurrences of [Peer] in wg0.conf (should be 2 for a 3 node peering)
     wg_conf_peer_count=$(sudo $DOCKER exec node1 grep Peer /etc/wireguard/wg0.conf | wc -l)
-    if ((wg_conf_peer_count != 2)); then
+    if [ $wg_conf_peer_count -ne 2 ]; then
       echo "The peer count in wg0.conf  on node1 should be 2"
+      exit 1
     fi
     wg_conf_peer_count=$(sudo $DOCKER exec node2 grep Peer /etc/wireguard/wg0.conf | wc -l)
-    if ((wg_conf_peer_count != 2)); then
+    if [ $wg_conf_peer_count -ne 2 ]; then
       echo "The peer count in wg0.conf  on node2 should be 2"
+      exit 1
     fi
     wg_conf_peer_count=$(sudo $DOCKER exec node2 grep Peer /etc/wireguard/wg0.conf | wc -l)
-    if ((wg_conf_peer_count != 2)); then
+    if [ $wg_conf_peer_count -ne 2 ]; then
       echo "The peer count in wg0.conf on node3 should be 2"
+      exit 1
     fi
 }
 
