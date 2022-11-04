@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/redhat-et/apex/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -18,7 +19,16 @@ func NewDatabase(
 ) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		host, user, password, dbname, port, sslmode)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	var db *gorm.DB
+	connectDb := func() error {
+		var err error
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	err := backoff.Retry(connectDb, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, err
 	}
