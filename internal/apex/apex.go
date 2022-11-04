@@ -1,17 +1,16 @@
 package apex
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"reflect"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redhat-et/apex/internal/client"
+	"github.com/redhat-et/apex/internal/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -24,27 +23,6 @@ const (
 	REGISTER_URL       = "/api/zones/%s/peers"
 	DEVICE_URL         = "/api/devices/%s"
 )
-
-// TODO: A nicely typed REST API client library
-// but for now!
-type Peer struct {
-	ID          string `json:"id"`
-	DeviceID    string `json:"device_id"`
-	ZoneID      string `json:"zone_id"`
-	EndpointIP  string `json:"endpoint_ip"`
-	AllowedIPs  string `json:"allowed_ips"`
-	NodeAddress string `json:"node_address"`
-	ChildPrefix string `json:"child_prefix"`
-	HubRouter   bool   `json:"hub_router"`
-	HubZone     bool   `json:"hub_zone"`
-	ZonePrefix  string `json:"zone_prefix"`
-}
-
-type DeviceJSON struct {
-	ID        string `json:"id"`
-	PublicKey string `json:"public_key"`
-	UserID    string `json:"user_id"`
-}
 
 type Apex struct {
 	wireguardPubKey         string
@@ -63,11 +41,10 @@ type Apex struct {
 	hubRouterWgIP           string
 	os                      string
 	wgConfig                wgConfig
-	withToken               string
-	auth                    Authenticator
+	client                  client.Client
 	controllerURL           *url.URL
-	peerCache               map[string]Peer
-	keyCache                map[string]string
+	peerCache               map[uuid.UUID]models.Peer
+	keyCache                map[uuid.UUID]string
 	wgLocalAddress          string
 }
 
@@ -95,10 +72,26 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		log.Fatal("<controller-url> required")
 	}
 
-	// check that it's a valid URL
 	controllerURL, err := url.Parse(controller)
 	if err != nil {
-		log.Fatalf("error checking controller url: %+v", err)
+		log.Fatalf("error: <controller-url> is not a valid URL: %s", err)
+	}
+
+	withToken := cCtx.String("with-token")
+	var auth client.Authenticator
+	if withToken == "" {
+		var err error
+		auth, err = client.NewDeviceFlowAuthenticator(ctx, controllerURL)
+		if err != nil {
+			log.Fatalf("authentication error: %+v", err)
+		}
+	} else {
+		auth = client.NewTokenAuthenticator(withToken)
+	}
+
+	client, err := client.NewClient(controller, auth)
+	if err != nil {
+		log.Fatalf("error creating client: %+v", err)
 	}
 
 	if err := checkOS(); err != nil {
@@ -116,11 +109,9 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		childPrefix:            cCtx.String("child-prefix"),
 		stun:                   cCtx.Bool("stun"),
 		hubRouter:              cCtx.Bool("hub-router"),
-		withToken:              cCtx.String("with-token"),
-		controllerURL:          controllerURL,
+		client:                 client,
 		os:                     GetOS(),
-		peerCache:              make(map[string]Peer),
-		keyCache:               make(map[string]string),
+		peerCache:              make(map[uuid.UUID]models.Peer),
 		wgLocalAddress:         "",
 	}
 
@@ -142,36 +133,24 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 }
 
 func (ax *Apex) Run() {
-	ctx := context.Background()
 	var err error
 
 	if err := ax.handleKeys(); err != nil {
 		log.Fatalf("handleKeys: %+v", err)
 	}
 
-	if ax.withToken == "" {
-		ax.auth, err = NewDeviceFlowAuthenticator(ctx, ax.controllerURL)
-		if err != nil {
-			log.Fatalf("authentication error: %+v", err)
-		}
-	} else {
-		ax.auth = &TokenAuthenticator{accessToken: ax.withToken}
-	}
-
-	token, err := ax.auth.Token()
+	device, err := ax.client.CreateDevice(ax.wireguardPubKey)
 	if err != nil {
-		log.Fatalf("can't get auth token: %s", err)
-	}
-	var deviceID string
-	if deviceID, err = RegisterDevice(ax.controllerURL, ax.wireguardPubKey, token); err != nil {
 		log.Fatalf("device register error: %+v", err)
 	}
-	log.Infof("Device Registered with UUID: %s", deviceID)
+	log.Infof("Device Registered with UUID: %s", device.ID)
 
-	if ax.zone, err = GetZone(ax.controllerURL, token); err != nil {
+	user, err := ax.client.GetCurrentUser()
+	if err != nil {
 		log.Fatalf("get zone error: %+v", err)
 	}
-	log.Infof("Device belongs in zone: %s", ax.zone)
+	log.Infof("Device belongs in zone: %s", user.ZoneID)
+	ax.zone = user.ZoneID.String()
 
 	var localEndpointIP string
 	// User requested ip --request-ip takes precedent
@@ -195,47 +174,17 @@ func (ax *Apex) Run() {
 
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, WgListenPort)
 
-	registerRequest := Peer{
-		DeviceID:    deviceID,
-		EndpointIP:  endpointSocket,
-		NodeAddress: ax.requestedIP,
-		ChildPrefix: ax.childPrefix,
-		HubRouter:   ax.hubRouter,
-		HubZone:     false,
-		ZonePrefix:  "",
-	}
-
-	data, err := json.Marshal(registerRequest)
+	_, err = ax.client.CreatePeerInZone(
+		user.ZoneID,
+		device.ID,
+		endpointSocket,
+		ax.requestedIP,
+		ax.childPrefix,
+		ax.hubRouter,
+	)
 	if err != nil {
-		log.Fatalf("marshalling error: %+v", err)
+		log.Fatalf("error creating peer: %+v", err)
 	}
-
-	dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(REGISTER_URL, ax.zone))
-	if err != nil {
-		log.Fatalf("unable to create dest url: %s", err)
-	}
-	req, err := http.NewRequest("POST", dest, bytes.NewReader(data))
-	if err != nil {
-		log.Fatalf("cannot create register request error: %+v", err)
-	}
-	req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatalf("cannot send register request error: %+v", err)
-	}
-
-	defer res.Body.Close()
-
-	resBody, err := io.ReadAll(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if res.StatusCode != http.StatusCreated {
-		log.Fatalf("unsuccessful register request: %d %s", res.StatusCode, resBody)
-	}
-
 	log.Info("Sucessfully registered with Apex Controller")
 
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
@@ -244,13 +193,13 @@ func (ax *Apex) Run() {
 		hubRouterIpTables()
 	}
 
-	if err := ax.Reconcile(); err != nil {
+	if err := ax.Reconcile(user.ZoneID); err != nil {
 		log.Fatal(err)
 	}
 
 	ticker := time.NewTicker(pollInterval)
 	for range ticker.C {
-		if err := ax.Reconcile(); err != nil {
+		if err := ax.Reconcile(user.ZoneID); err != nil {
 			// TODO: Add smarter reconciliation logic
 			// to handle disconnects and/or timeouts etc...
 			log.Fatal(err)
@@ -258,42 +207,11 @@ func (ax *Apex) Run() {
 	}
 }
 
-func (ax *Apex) Reconcile() error {
-	dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(REGISTER_URL, ax.zone))
+func (ax *Apex) Reconcile(zoneID uuid.UUID) error {
+	peerListing, err := ax.client.GetZonePeers(zoneID)
 	if err != nil {
-		log.Fatalf("unable to create dest url: %s", err)
+		return err
 	}
-	token, err := ax.auth.Token()
-	if err != nil {
-		log.Fatalf("unable to get auth token: %s", err)
-	}
-	req, err := http.NewRequest("GET", dest, nil)
-	if err != nil {
-		return fmt.Errorf("cannot create peer request error: %+v", err)
-	}
-	req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("cannot create peer request error: %+v", err)
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("cannot read body: %+v", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("http error: %s", string(body))
-	}
-
-	var peerListing []Peer
-	if err := json.Unmarshal(body, &peerListing); err != nil {
-		return fmt.Errorf("cannot unmarshal body: %+v", err)
-	}
-
-	log.Debugf("Received message: %+v\n", peerListing)
 
 	changed := false
 	for _, p := range peerListing {

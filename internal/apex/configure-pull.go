@@ -1,12 +1,8 @@
 package apex
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,41 +28,10 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 		var pubkey string
 		var ok bool
 		if pubkey, ok = ax.keyCache[value.ID]; !ok {
-			dest, err := url.JoinPath(ax.controllerURL.String(), fmt.Sprintf(DEVICE_URL, value.DeviceID))
+			device, err := ax.client.GetDevice(value.DeviceID)
 			if err != nil {
-				log.Fatalf("unable to create dest url: %s", err)
+				log.Fatalf("unable to get devic %s: %s", value.DeviceID, err)
 			}
-			req, err := http.NewRequest("GET", dest, nil)
-			if err != nil {
-				log.Fatalf("cannot create new request: %+v", err)
-			}
-
-			token, err := ax.auth.Token()
-			if err != nil {
-				log.Fatalf("cannot get auth token: %s", err)
-			}
-			req.Header.Set("authorization", fmt.Sprintf("bearer %s", token))
-
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				log.Fatalf("cannot send request: %+v", err)
-			}
-			defer res.Body.Close()
-
-			body, err := io.ReadAll(res.Body)
-			if err != nil {
-				log.Fatalf("cannot read body: %+v", err)
-			}
-
-			if res.StatusCode != http.StatusOK {
-				log.Fatalf("http error: %d %s", res.StatusCode, string(body))
-			}
-
-			var device DeviceJSON
-			if err := json.Unmarshal(body, &device); err != nil {
-				log.Fatalf("cannot unsmarshal device json: %+v", err)
-			}
-			pubkey = device.PublicKey
 			ax.keyCache[value.ID] = device.PublicKey
 		}
 

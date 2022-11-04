@@ -1,7 +1,6 @@
-package apex
+package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,8 +21,6 @@ const (
 	VERIFICATION_URI   = "/auth/realms/controller/device"
 	VERIFY_URL         = "/auth/realms/controller/protocol/openid-connect/token"
 	GRANT_TYPE         = "urn:ietf:params:oauth:grant-type:device_code"
-	REGISTER_DEVICE    = "/api/devices"
-	USER_URL           = "/api/users/me"
 )
 
 type TokenResponse struct {
@@ -41,6 +38,12 @@ type Authenticator interface {
 
 type TokenAuthenticator struct {
 	accessToken string
+}
+
+func NewTokenAuthenticator(token string) Authenticator {
+	return &TokenAuthenticator{
+		accessToken: token,
+	}
 }
 
 func (a *TokenAuthenticator) Token() (string, error) {
@@ -223,87 +226,4 @@ LOOP:
 	a.refreshToken = r.RefreshToken
 	a.refreshExpiry = requestTime.Add(time.Duration(r.RefreshExpiresIn) * time.Second)
 	return nil
-}
-
-func RegisterDevice(hostname *url.URL, publicKey string, accessToken string) (string, error) {
-	body, err := json.Marshal(map[string]string{
-		"public-key": publicKey,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	dest, err := url.JoinPath(hostname.String(), REGISTER_DEVICE)
-	if err != nil {
-		return "", err
-	}
-
-	r, err := http.NewRequest("POST", dest, bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	r.Header.Set("authorization", fmt.Sprintf("bearer %s", accessToken))
-
-	res, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	resBody, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusConflict {
-		return "", fmt.Errorf("http error: %d %s", res.StatusCode, string(resBody))
-	}
-
-	var data DeviceJSON
-	if err := json.Unmarshal(resBody, &data); err != nil {
-		return "", err
-	}
-
-	return data.ID, nil
-}
-
-func GetZone(hostname *url.URL, accessToken string) (string, error) {
-	dest, err := url.JoinPath(hostname.String(), USER_URL)
-	if err != nil {
-		return "", err
-	}
-	r, err := http.NewRequest("GET", dest, nil)
-	if err != nil {
-		return "", err
-	}
-	r.Header.Set("authorization", fmt.Sprintf("bearer %s", accessToken))
-
-	res, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return "", err
-	}
-
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http error: %s", string(body))
-	}
-
-	type UserJSON struct {
-		ID      string   `json:"id"`
-		Devices []string `json:"devices"`
-		ZoneID  string   `json:"zone-id"`
-	}
-
-	var u UserJSON
-	if err := json.Unmarshal(body, &u); err != nil {
-		return "", err
-	}
-
-	return u.ZoneID, nil
 }

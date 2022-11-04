@@ -29,7 +29,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 			if err != nil {
 				log.Errorf("failed to split host:port endpoint pair: %v", err)
 			}
-			if ax.zone == value.ZoneID {
+			if ax.zone == value.ZoneID.String() {
 				zonePrefix = value.ZonePrefix
 			}
 		}
