@@ -110,6 +110,7 @@ jobs:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
+    environment: image-repositories
     if: github.ref == 'refs/heads/main'
     steps:
       - name: download binary artifacts
