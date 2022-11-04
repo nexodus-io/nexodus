@@ -62,7 +62,7 @@ jobs:
     - name: Build
       id: build-apex
       run: |
-        go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
+        CGO_ENABLED=0 go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
         echo "artifact-name=apex-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
       shell: bash
 
