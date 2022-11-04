@@ -291,7 +291,7 @@ curl -L -X GET 'http://localhost:8080/api/zones'
 #### **Add users to selected zone**
 
 ```shell
-curl -L -X PATCH -d '{ "zone-id": "$ZONE_ID" } "http://localhost:8080/api/users/${user-id}"
+curl -L -X PATCH -d '{ "zone_id": "$ZONE_ID" } "http://localhost:8080/api/users/${user-id}"
 ```
 
 #### **Join the nodes to the zones**

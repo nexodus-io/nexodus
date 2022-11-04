@@ -30,14 +30,14 @@ export const ZoneShow = () => (
             <TextField label="Name" source="name" />
             <TextField label="Description" source="description" />
             <TextField label="CIDR" source="cidr" />
-            <BooleanField label="Hub Zone" source="hub-zone" />
+            <BooleanField label="Hub Zone" source="hub_zone" />
             <ReferenceArrayField label="Peers" source="peers" reference="peers">
                 <Datagrid rowClick="show" bulkActionButtons={false} >
                     <ReferenceField label="ID" source="id" reference="peers" link="show"/>
-                    <ReferenceField label="Device" source="device-id" reference='devices' link="show"/>
-                    <TextField label="Endpoint IP" source="endpoint-ip" />
-                    <TextField label="Node Address" source="node-address" />
-                    <BooleanField label="Hub Router" source="hub-router" />
+                    <ReferenceField label="Device" source="device_id" reference='devices' link="show"/>
+                    <TextField label="Endpoint IP" source="endpoint_ip" />
+                    <TextField label="Node Address" source="node_address" />
+                    <BooleanField label="Hub Router" source="hub_router" />
                 </Datagrid>
             </ReferenceArrayField>
         </SimpleShowLayout>

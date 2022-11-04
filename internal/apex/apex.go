@@ -29,21 +29,21 @@ const (
 // but for now!
 type Peer struct {
 	ID          string `json:"id"`
-	DeviceID    string `json:"device-id"`
-	ZoneID      string `json:"zone-id"`
-	EndpointIP  string `json:"endpoint-ip"`
-	AllowedIPs  string `json:"allowed-ips"`
-	NodeAddress string `json:"node-address"`
-	ChildPrefix string `json:"child-prefix"`
-	HubRouter   bool   `json:"hub-router"`
-	HubZone     bool   `json:"hub-zone"`
-	ZonePrefix  string `json:"zone-prefix"`
+	DeviceID    string `json:"device_id"`
+	ZoneID      string `json:"zone_id"`
+	EndpointIP  string `json:"endpoint_ip"`
+	AllowedIPs  string `json:"allowed_ips"`
+	NodeAddress string `json:"node_address"`
+	ChildPrefix string `json:"child_prefix"`
+	HubRouter   bool   `json:"hub_router"`
+	HubZone     bool   `json:"hub_zone"`
+	ZonePrefix  string `json:"zone_prefix"`
 }
 
 type DeviceJSON struct {
 	ID        string `json:"id"`
-	PublicKey string `json:"public-key"`
-	UserID    string `json:"user-id"`
+	PublicKey string `json:"public_key"`
+	UserID    string `json:"user_id"`
 }
 
 type Apex struct {

@@ -215,7 +215,7 @@ setup_custom_zone_connectivity() {
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
         -H "Authorization: bearer $kitteh_api_token" \
         -H 'Content-Type: application/json' \
-        --data-raw '{ "zone-id": "'${zone}'" }'
+        --data-raw '{ "zone_id": "'${zone}'" }'
 
     # Node-1 apex run
     cat <<EOF > apex-run-node1.sh
@@ -380,7 +380,7 @@ setup_requested_ip_connectivity() {
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
         -H "Authorization: bearer $kitteh_api_token" \
         -H 'Content-Type: application/json' \
-        --data-raw '{ "zone-id": "'${zone}'" }'
+        --data-raw '{ "zone_id": "'${zone}'" }'
 
     # Node-1 cycle-1 apex run
     cat <<EOF > apex-cycle1-node1.sh
@@ -547,7 +547,7 @@ setup_child_prefix_connectivity() {
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
         -H "Authorization: bearer $kitteh_api_token" \
         -H 'Content-Type: application/json' \
-        --data-raw '{ "zone-id": "'${zone}'" }'
+        --data-raw '{ "zone_id": "'${zone}'" }'
 
     # Kill the apex process on both nodes
     $DOCKER exec node1 killall apex
@@ -693,7 +693,7 @@ setup_hub_spoke_connectivity() {
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
         -H "Authorization: bearer $kitteh_api_token" \
         -H 'Content-Type: application/json' \
-        --data-raw '{ "zone-id": "'${zone}'" }'
+        --data-raw '{ "zone_id": "'${zone}'" }'
 
     # Kill the apex process on both nodes (no process running on node3 yet)
     sudo $DOCKER exec node1 killall apex
@@ -849,7 +849,7 @@ cycle_mesh_configurations(){
     curl -fL -X PATCH 'http://localhost:8080/api/users/me' \
         -H "Authorization: bearer $kitteh_api_token" \
         -H 'Content-Type: application/json' \
-        --data-raw '{ "zone-id": "'${zone}'" }'
+        --data-raw '{ "zone_id": "'${zone}'" }'
 
     # Create configurations for three nodes
     for i in $(seq 1 3);

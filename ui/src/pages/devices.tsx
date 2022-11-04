@@ -15,8 +15,8 @@ export const DeviceList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
             <TextField label = "ID" source="id" />
-            <ReferenceField label = "User" source="user-id" reference="users" link="show"/>
-            <TextField label = "Public Key" source="public-key" />
+            <ReferenceField label = "User" source="user_id" reference="users" link="show"/>
+            <TextField label = "Public Key" source="public_key" />
             <ReferenceArrayField label="Peers" source="peers" reference="peers">
                 <SingleFieldList linkType="show">
                     <ChipField source="id" />
@@ -30,12 +30,12 @@ export const DeviceShow = () => (
     <Show>
         <SimpleShowLayout>
             <TextField label="ID" source="id" />
-            <ReferenceField label = "User" source="user-id" reference="users" link="show"/>
-            <TextField label = "Public Key" source="public-key" />
+            <ReferenceField label = "User" source="user_id" reference="users" link="show"/>
+            <TextField label = "Public Key" source="public_key" />
             <ReferenceArrayField label="Peers" source="peers" reference="peers">
                 <Datagrid rowClick="show" bulkActionButtons={false}>
                     <TextField label="ID" source="id" />
-                    <TextField label="IP Address" source="allowed-ips" />
+                    <TextField label="IP Address" source="allowed_ips" />
                 </Datagrid>
             </ReferenceArrayField>
         </SimpleShowLayout>
