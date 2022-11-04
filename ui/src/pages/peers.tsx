@@ -22,7 +22,7 @@ export const PeerShow= () => (
     <Show>
         <SimpleShowLayout>
             <TextField label="ID" source="id" />
-            <ReferenceField label="Device" source="device-id" reference='devices' />
+            <ReferenceField label="Device" source="device-id" reference='devices' link="show" />
             <TextField label="Endpoint IP" source="endpoint-ip" />
             <TextField label="Allowed IPs" source="allowed-ips" />
             <ReferenceField label="Zone ID" source="zone-id" reference='zones' link="show" />

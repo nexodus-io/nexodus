@@ -1,5 +1,5 @@
 
-import {
+import { 
     Datagrid,
     List,
     TextField,
@@ -7,17 +7,15 @@ import {
     Show,
     SimpleShowLayout,
     SingleFieldList,
-    ChipField,
-    ReferenceField,
+    ChipField
 } from 'react-admin';
 
-export const DeviceList = () => (
+export const UserList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
             <TextField label = "ID" source="id" />
-            <ReferenceField label = "User" source="user-id" reference="users" link="show"/>
-            <TextField label = "Public Key" source="public-key" />
-            <ReferenceArrayField label="Peers" source="peers" reference="peers">
+            <TextField label = "Zone ID" source="zone-id" />
+            <ReferenceArrayField label="Devices" source="devices" reference="devices">
                 <SingleFieldList linkType="show">
                     <ChipField source="id" />
                 </SingleFieldList>
@@ -26,16 +24,14 @@ export const DeviceList = () => (
     </List>
 );
 
-export const DeviceShow = () => (
+export const UserShow = () => (
     <Show>
         <SimpleShowLayout>
-            <TextField label="ID" source="id" />
-            <ReferenceField label = "User" source="user-id" reference="users" link="show"/>
-            <TextField label = "Public Key" source="public-key" />
-            <ReferenceArrayField label="Peers" source="peers" reference="peers">
+            <TextField label = "ID" source="id" />
+            <TextField label = "Zone ID" source="zone-id" />
+            <ReferenceArrayField label="Devices" source="devices" reference="devices">
                 <Datagrid rowClick="show" bulkActionButtons={false}>
                     <TextField label="ID" source="id" />
-                    <TextField label="IP Address" source="allowed-ips" />
                 </Datagrid>
             </ReferenceArrayField>
         </SimpleShowLayout>
