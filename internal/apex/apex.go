@@ -17,13 +17,12 @@ import (
 )
 
 const (
-	readyRequestTimeout = 10
-	pollInterval        = 5 * time.Second
-	pubSubPort          = 6379
-	wgBinary            = "wg"
-	wgWinBinary         = "wireguard.exe"
-	REGISTER_URL        = "/api/zones/%s/peers"
-	DEVICE_URL          = "/api/devices/%s"
+	pollInterval       = 5 * time.Second
+	wgConfiPermissions = 0600
+	wgBinary           = "wg"
+	wgWinBinary        = "wireguard.exe"
+	REGISTER_URL       = "/api/zones/%s/peers"
+	DEVICE_URL         = "/api/devices/%s"
 )
 
 // TODO: A nicely typed REST API client library

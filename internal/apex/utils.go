@@ -276,3 +276,11 @@ func writeToFile(s, file string, filePermissions int) {
 		log.Warnf("Unable to write key to file [ %s ] %v", file, err)
 	}
 }
+
+func wgConfPermissions(f string) error {
+	err := os.Chmod(f, wgConfiPermissions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
