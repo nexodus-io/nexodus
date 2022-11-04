@@ -16,12 +16,11 @@ import (
 )
 
 const (
-	pollInterval       = 5 * time.Second
-	wgConfiPermissions = 0600
-	wgBinary           = "wg"
-	wgWinBinary        = "wireguard.exe"
-	REGISTER_URL       = "/api/zones/%s/peers"
-	DEVICE_URL         = "/api/devices/%s"
+	pollInterval = 5 * time.Second
+	wgBinary     = "wg"
+	wgWinBinary  = "wireguard.exe"
+	REGISTER_URL = "/api/zones/%s/peers"
+	DEVICE_URL   = "/api/devices/%s"
 )
 
 type Apex struct {
@@ -31,7 +30,7 @@ type Apex struct {
 	controllerIP            string
 	controllerPasswd        string
 	listenPort              int
-	zone                    string
+	zone                    uuid.UUID
 	requestedIP             string
 	userProvidedEndpointIP  string
 	localEndpointIP         string
@@ -43,9 +42,11 @@ type Apex struct {
 	wgConfig                wgConfig
 	client                  client.Client
 	controllerURL           *url.URL
-	peerCache               map[uuid.UUID]models.Peer
-	keyCache                map[uuid.UUID]string
-	wgLocalAddress          string
+	// caches peers by their UUID
+	peerCache map[uuid.UUID]models.Peer
+	// maps device_ids to public keys
+	keyCache       map[uuid.UUID]string
+	wgLocalAddress string
 }
 
 type wgConfig struct {
@@ -112,6 +113,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		client:                 client,
 		os:                     GetOS(),
 		peerCache:              make(map[uuid.UUID]models.Peer),
+		keyCache:               make(map[uuid.UUID]string),
 		wgLocalAddress:         "",
 	}
 
@@ -150,7 +152,7 @@ func (ax *Apex) Run() {
 		log.Fatalf("get zone error: %+v", err)
 	}
 	log.Infof("Device belongs in zone: %s", user.ZoneID)
-	ax.zone = user.ZoneID.String()
+	ax.zone = user.ZoneID
 
 	var localEndpointIP string
 	// User requested ip --request-ip takes precedent
@@ -181,6 +183,8 @@ func (ax *Apex) Run() {
 		ax.requestedIP,
 		ax.childPrefix,
 		ax.hubRouter,
+		false,
+		"",
 	)
 	if err != nil {
 		log.Fatalf("error creating peer: %+v", err)
@@ -193,7 +197,7 @@ func (ax *Apex) Run() {
 		hubRouterIpTables()
 	}
 
-	if err := ax.Reconcile(user.ZoneID); err != nil {
+	if err := ax.Reconcile(ax.zone); err != nil {
 		log.Fatal(err)
 	}
 

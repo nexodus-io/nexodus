@@ -20,9 +20,10 @@ import (
 type OperatingSystem string
 
 const (
-	Linux   OperatingSystem = "Linux"
-	Darwin  OperatingSystem = "Darwin"
-	Windows OperatingSystem = "Windows"
+	Linux               OperatingSystem = "Linux"
+	Darwin              OperatingSystem = "Darwin"
+	Windows             OperatingSystem = "Windows"
+	wgConfigPermissions                 = 0600
 )
 
 func (operatingSystem OperatingSystem) String() string {
@@ -278,7 +279,7 @@ func writeToFile(s, file string, filePermissions int) {
 }
 
 func wgConfPermissions(f string) error {
-	err := os.Chmod(f, wgConfiPermissions)
+	err := os.Chmod(f, wgConfigPermissions)
 	if err != nil {
 		return err
 	}

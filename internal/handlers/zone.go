@@ -69,13 +69,13 @@ func (api *API) CreateZone(c *gin.Context) {
 	c.JSON(http.StatusCreated, newZone)
 }
 
-func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) (uuid.UUID, error) {
+func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 	var zone models.Zone
 	res := api.db.Where("name = ?", defaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		log.Debug("Creating Default Zone")
 		if err := api.ipam.AssignPrefix(ctx, defaultZonePrefix); err != nil {
-			return uuid.Nil, err
+			return err
 		}
 		zone.Name = defaultZoneName
 		zone.Description = defaultZoneDescription
@@ -83,7 +83,8 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) (uuid.UUID, er
 		api.db.Save(&zone)
 	}
 	log.Debugf("Default Zone UUID is: %s", zone.ID)
-	return zone.ID, nil
+	api.defaultZoneID = zone.ID
+	return nil
 }
 
 // ListZones lists all zones

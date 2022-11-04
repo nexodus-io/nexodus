@@ -24,21 +24,22 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 	var localInterface wgLocalConfig
 	var hubRouterExists bool
 
-	for _, value := range ax.peerCache {
+	for _, peer := range ax.peerCache {
 		var pubkey string
 		var ok bool
-		if pubkey, ok = ax.keyCache[value.ID]; !ok {
-			device, err := ax.client.GetDevice(value.DeviceID)
+		if pubkey, ok = ax.keyCache[peer.DeviceID]; !ok {
+			device, err := ax.client.GetDevice(peer.DeviceID)
 			if err != nil {
-				log.Fatalf("unable to get devic %s: %s", value.DeviceID, err)
+				log.Fatalf("unable to get device %s: %s", peer.DeviceID, err)
 			}
-			ax.keyCache[value.ID] = device.PublicKey
+			ax.keyCache[peer.DeviceID] = device.PublicKey
+			pubkey = device.PublicKey
 		}
 
 		if pubkey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
-		if value.HubRouter {
+		if peer.HubRouter {
 			hubRouterExists = true
 		}
 	}
@@ -47,7 +48,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 	}
 	// determine if the peer listing for this node is a hub zone or hub-router
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.ID]
+		pubkey := ax.keyCache[value.DeviceID]
 		if pubkey == ax.wireguardPubKey && value.HubRouter {
 			log.Debug("This node is a hub-router")
 			if ax.os == Darwin.String() || ax.os == Windows.String() {
@@ -71,7 +72,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 	}
 	// Parse the [Peers] section of the wg config
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.ID]
+		pubkey := ax.keyCache[value.DeviceID]
 		// Build the wg config for all peers
 		if pubkey != ax.wireguardPubKey {
 			var allowedIPs string

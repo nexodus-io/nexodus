@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -40,7 +41,10 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	}()
 
 	ipamClient := ipam.NewIPAM(util.TestIPAMClientAddr)
-	suite.api = NewAPI(db, ipamClient)
+	suite.api, err = NewAPI(context.Background(), db, ipamClient)
+	if err != nil {
+		suite.T().Fatal(err)
+	}
 }
 
 func (suite *HandlerTestSuite) BeforeTest(_, _ string) {

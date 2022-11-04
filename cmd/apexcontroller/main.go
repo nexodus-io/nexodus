@@ -84,7 +84,11 @@ func main() {
 
 			ipam := ipam.NewIPAM(cCtx.String("ipam-address"))
 
-			api := handlers.NewAPI(db, ipam)
+			api, err := handlers.NewAPI(cCtx.Context, db, ipam)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			router, err := routers.NewRouter(api, cCtx.String("keycloak-address"))
 			if err != nil {
 				log.Fatal(err)
@@ -96,7 +100,7 @@ func main() {
 			}
 
 			go func() {
-				server.ListenAndServe()
+				_ = server.ListenAndServe()
 			}()
 
 			ch := make(chan os.Signal, 1)

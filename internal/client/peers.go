@@ -12,18 +12,18 @@ import (
 )
 
 const (
-	ZONE_PEERS = "/api/zone/%s/peers"
+	ZONE_PEERS = "/api/zones/%s/peers"
 )
 
-func (c *Client) CreatePeerInZone(zoneID uuid.UUID, deviceID uuid.UUID, endpointIP string, requestedIP string, childPrefix string, hubRouter bool) (models.Peer, error) {
+func (c *Client) CreatePeerInZone(zoneID uuid.UUID, deviceID uuid.UUID, endpointIP string, requestedIP string, childPrefix string, hubRouter bool, hubZone bool, zonePrefix string) (models.Peer, error) {
 	registerRequest := models.AddPeer{
 		DeviceID:    deviceID,
 		EndpointIP:  endpointIP,
 		NodeAddress: requestedIP,
 		ChildPrefix: childPrefix,
 		HubRouter:   hubRouter,
-		HubZone:     false,
-		ZonePrefix:  "",
+		HubZone:     hubZone,
+		ZonePrefix:  zonePrefix,
 	}
 	body, err := json.Marshal(registerRequest)
 	if err != nil {

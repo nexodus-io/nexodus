@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	TestIPAMClientAddr = "http://localhost:59090"
+	TestIPAMClientAddr = "http://localhost:9090"
 )
 
 func NewTestDatabase() (*gorm.DB, error) {
@@ -37,7 +37,7 @@ func NewTestIPAMServer() *http.Server {
 	mux.Handle(apiv1connect.NewIpamServiceHandler(service.New(zlog.Sugar(), ipam)))
 
 	server := &http.Server{
-		Addr:              "localhost:59090",
+		Addr:              "localhost:9090",
 		Handler:           h2c.NewHandler(mux, &http2.Server{}),
 		ReadHeaderTimeout: 1 * time.Minute,
 	}

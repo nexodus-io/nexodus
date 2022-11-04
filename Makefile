@@ -4,11 +4,11 @@ all: go-lint apex controller
 .PHONY: apex
 apex: dist/apex dist/apex-arm-linux dist/apex-amd64-linux dist/apex-amd64-darwin dist/apex-arm64-darwin dist/apex-amd64-windows
 
-COMMON_DEPS=$(wildcard ./internal/messages/*.go) $(wildcard ./internal/streamer/*.go) go.sum go.mod
+COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
-APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go) $(wildcard internal/apex/*.go)
+APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
 
-CONTROLLER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexcontroller/*.go) $(wildcard internal/apexcontroller/*.go)
+CONTROLLER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexcontroller/*.go)
 
 dist:
 	mkdir -p $@

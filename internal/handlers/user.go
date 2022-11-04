@@ -16,25 +16,19 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 		userID := c.GetString(gin.AuthUserKey)
 		id, err := uuid.Parse(userID)
 		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, fmt.Errorf("bad user id"))
+			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("bad user id"))
 			return
 		}
 		var user models.User
 		res := api.db.First(&user, "id = ?", id)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				if api.defaultZoneID == uuid.Nil {
-					if api.defaultZoneID, err = api.CreateDefaultZoneIfNotExists(c.Request.Context()); err != nil {
-						c.AbortWithError(http.StatusBadRequest, err)
-						return
-					}
-				}
 				user.ID = id
 				user.ZoneID = api.defaultZoneID
 				user.Devices = make([]*models.Device, 0)
 				api.db.Create(&user)
 			} else {
-				c.AbortWithError(http.StatusBadRequest, fmt.Errorf("bad user id"))
+				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", userID))
 				return
 			}
 		}

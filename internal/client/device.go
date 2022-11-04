@@ -55,7 +55,7 @@ func (c *Client) CreateDevice(publicKey string) (models.Device, error) {
 
 func (c *Client) GetDevice(deviceID uuid.UUID) (models.Device, error) {
 	dest := c.baseURL.JoinPath(fmt.Sprintf(DEVICE, deviceID.String())).String()
-	r, err := http.NewRequest(http.MethodPost, dest, nil)
+	r, err := http.NewRequest(http.MethodGet, dest, nil)
 	if err != nil {
 		return models.Device{}, err
 	}
