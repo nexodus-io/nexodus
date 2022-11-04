@@ -33,6 +33,9 @@ func applyWireguardConf() error {
 	if err := CopyFile(latestRevConfig, activeConfig); err != nil {
 		return err
 	}
+	if err := wgConfPermissions(activeConfig); err != nil {
+		return fmt.Errorf("failed to start the wireguard config permissions: %v", err)
+	}
 	wgOut, err := RunCommand("wg-quick", "up", activeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to start the wireguard interface: %v", err)

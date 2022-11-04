@@ -171,6 +171,9 @@ func (ax *Apex) DeployWireguardConfig() {
 		if err = cfg.SaveTo(latestConfig); err != nil {
 			log.Fatalf("save latest configuration error: %v\n", err)
 		}
+		if err := wgConfPermissions(latestConfig); err != nil {
+			log.Errorf("failed to set the wireguard config permissions: %v", err)
+		}
 		if ax.wireguardPubKeyInConfig {
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
@@ -179,6 +182,9 @@ func (ax *Apex) DeployWireguardConfig() {
 					log.Fatalf("cannot apply wg config: %+v", err)
 				}
 			} else {
+				if err := wgConfPermissions(activeConfig); err != nil {
+					log.Errorf("failed to set the wireguard config permissions: %v", err)
+				}
 				if err = updateWireguardConfig(); err != nil {
 					log.Fatalf("cannot update wg config: %+v", err)
 				}
@@ -203,6 +209,9 @@ func (ax *Apex) DeployWireguardConfig() {
 		if err = cfg.SaveTo(activeDarwinConfig); err != nil {
 			log.Fatalf("save latest configuration error: %v\n", err)
 		}
+		if err := wgConfPermissions(activeDarwinConfig); err != nil {
+			log.Errorf("failed to set the wireguard config permissions: %v", err)
+		}
 		if ax.wireguardPubKeyInConfig {
 			// this will throw an error that can be ignored if an existing interface doesn't exist
 			wgOut, err := RunCommand("wg-quick", "down", wgIface)
@@ -215,19 +224,6 @@ func (ax *Apex) DeployWireguardConfig() {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v", wgOut)
-		}
-		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
-		if ax.hubRouter {
-			var wgPeerIPs []string
-			for _, peer := range ax.wgConfig.Peer {
-				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
-			}
-			if ax.hubRouterWgIP != "" {
-				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
-			}
-			// give the wg0 a second to renegotiate the peering before probing again
-			time.Sleep(time.Second * 1)
-			probePeers(wgPeerIPs)
 		}
 
 	case Windows.String():
@@ -251,19 +247,6 @@ func (ax *Apex) DeployWireguardConfig() {
 				log.Errorf("failed to start the wireguard interface: %v\n", err)
 			}
 			log.Debugf("%v\n", wgOut)
-		}
-		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
-		if ax.hubRouter {
-			var wgPeerIPs []string
-			for _, peer := range ax.wgConfig.Peer {
-				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
-			}
-			if ax.hubRouterWgIP != "" {
-				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
-			}
-			// give the wg0 a second to renegotiate the peering before probing again
-			time.Sleep(time.Second * 1)
-			probePeers(wgPeerIPs)
 		}
 	}
 	log.Printf("Peer setup complete")
