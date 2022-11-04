@@ -1,5 +1,7 @@
 #!/bin/sh
 
+trap "echo; exit" INT
+
 # Parse the wireguard addresses from the ansible inventory file
 cat $1 | while read output
 do
