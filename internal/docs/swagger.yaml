@@ -1,12 +1,37 @@
 basePath: /api
 definitions:
-  apexcontroller.AddDevice:
+  models.AddDevice:
     properties:
-      public-key:
+      public_key:
         example: rZlVfefGshRxO+r9ethv2pODimKlUeP/bO/S47K3WUk=
         type: string
     type: object
-  apexcontroller.AddZone:
+  models.AddPeer:
+    properties:
+      allowed_ips:
+        example: 10.1.1.1
+        type: string
+      child_prefix:
+        example: 172.16.42.0/24
+        type: string
+      device_id:
+        example: 6a6090ad-fa47-4549-a144-02124757ab8f
+        type: string
+      endpoint_ip:
+        example: 10.1.1.1
+        type: string
+      hub_router:
+        type: boolean
+      hub_zone:
+        type: boolean
+      node_address:
+        example: 1.2.3.4
+        type: string
+      zone_prefix:
+        example: 10.1.1.0/24
+        type: string
+    type: object
+  models.AddZone:
     properties:
       cidr:
         example: 172.16.42.0/24
@@ -14,19 +39,19 @@ definitions:
       description:
         example: The Red Zone
         type: string
-      hub-zone:
+      hub_zone:
         type: boolean
       name:
         example: zone-red
         type: string
     type: object
-  apexcontroller.ApiError:
+  models.ApiError:
     properties:
       error:
         example: something bad
         type: string
     type: object
-  apexcontroller.Device:
+  models.Device:
     properties:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -37,49 +62,49 @@ definitions:
         items:
           type: string
         type: array
-      public-key:
+      public_key:
         type: string
-      user-id:
+      user_id:
         type: string
     type: object
-  apexcontroller.PatchUser:
+  models.PatchUser:
     properties:
-      zone-id:
+      zone_id:
         example: 3f51dda6-06d2-4724-bb73-f09ad3501bcc
         type: string
     type: object
-  apexcontroller.Peer:
+  models.Peer:
     properties:
-      allowed-ips:
+      allowed_ips:
         example: 10.1.1.1
         type: string
-      child-prefix:
+      child_prefix:
         example: 172.16.42.0/24
         type: string
-      device-id:
+      device_id:
         example: fde38e78-a4af-4f44-8f5a-d84ef1846a85
         type: string
-      endpoint-ip:
+      endpoint_ip:
         example: 10.1.1.1
         type: string
-      hub-router:
+      hub_router:
         type: boolean
-      hub-zone:
+      hub_zone:
         type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      node-address:
+      node_address:
         example: 1.2.3.4
         type: string
-      zone-id:
+      zone_id:
         example: 2b655c5b-cfdd-4550-b7f0-a36a590fc97a
         type: string
-      zone-prefix:
+      zone_prefix:
         example: 10.1.1.0/24
         type: string
     type: object
-  apexcontroller.User:
+  models.User:
     properties:
       devices:
         example:
@@ -90,11 +115,11 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      zone-id:
+      zone_id:
         example: 94deb404-c4eb-4097-b59d-76b024ff7867
         type: string
     type: object
-  apexcontroller.Zone:
+  models.Zone:
     properties:
       cidr:
         example: 172.16.42.0/24
@@ -102,7 +127,7 @@ definitions:
       description:
         example: The Red Zone
         type: string
-      hub-zone:
+      hub_zone:
         type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -137,12 +162,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Device'
+              $ref: '#/definitions/models.Device'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: List Devices
       tags:
       - Devices
@@ -154,36 +179,36 @@ paths:
         name: device
         required: true
         schema:
-          $ref: '#/definitions/apexcontroller.AddDevice'
+          $ref: '#/definitions/models.AddDevice'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/apexcontroller.Device'
+            $ref: '#/definitions/models.Device'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/apexcontroller.Device'
+            $ref: '#/definitions/models.Device'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Add Devices
       tags:
       - Devices
   /devices/{id}:
     get:
-      description: Gets a device by its ID
+      description: Gets a device by ID
       parameters:
       - description: Device ID
         in: path
@@ -196,19 +221,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apexcontroller.Device'
+            $ref: '#/definitions/models.Device'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Get Devices
       tags:
       - Devices
@@ -222,16 +247,16 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Peer'
+              $ref: '#/definitions/models.Peer'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: List Peers
       tags:
       - Peers
@@ -251,24 +276,24 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Peer'
+              $ref: '#/definitions/models.Peer'
             type: array
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Get Peer
       tags:
       - Peers
@@ -282,12 +307,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.User'
+              $ref: '#/definitions/models.User'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: List Users
       tags:
       - User
@@ -306,23 +331,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apexcontroller.User'
+            $ref: '#/definitions/models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Get User
       tags:
       - User
@@ -339,26 +364,26 @@ paths:
         name: device
         required: true
         schema:
-          $ref: '#/definitions/apexcontroller.PatchUser'
+          $ref: '#/definitions/models.PatchUser'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apexcontroller.User'
+            $ref: '#/definitions/models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Update User
       tags:
       - User
@@ -372,16 +397,16 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Zone'
+              $ref: '#/definitions/models.Zone'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: List Zones
       tags:
       - Zone
@@ -395,26 +420,26 @@ paths:
         name: zone
         required: true
         schema:
-          $ref: '#/definitions/apexcontroller.AddZone'
+          $ref: '#/definitions/models.AddZone'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/apexcontroller.Zone'
+            $ref: '#/definitions/models.Zone'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Create a Zone
       tags:
       - Zone
@@ -433,19 +458,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apexcontroller.Zone'
+            $ref: '#/definitions/models.Zone'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Get Zones
       tags:
       - Zone
@@ -465,20 +490,20 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Peer'
+              $ref: '#/definitions/models.Peer'
             type: array
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: List Peers
       tags:
       - Peers
@@ -491,43 +516,43 @@ paths:
         name: zone_id
         required: true
         type: string
-      - description: Add Zone
+      - description: Add Peer
         in: body
-        name: zone
+        name: peer
         required: true
         schema:
-          $ref: '#/definitions/apexcontroller.AddZone'
+          $ref: '#/definitions/models.AddPeer'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/apexcontroller.Peer'
+            $ref: '#/definitions/models.Peer'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/apexcontroller.Peer'
+            $ref: '#/definitions/models.Peer'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Add Peer
       tags:
       - Peers
@@ -552,24 +577,24 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/apexcontroller.Peer'
+              $ref: '#/definitions/models.Peer'
             type: array
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/apexcontroller.ApiError'
+            $ref: '#/definitions/models.ApiError'
       summary: Get Peer
       tags:
       - Peers

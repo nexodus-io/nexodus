@@ -43,11 +43,11 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 // @Accepts		 json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
-// @Param        device  body   PatchUser  true "Patch User"
-// @Success      200  {object}  User
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      500  {object}  ApiError
+// @Param        device  body   models.PatchUser  true "Patch User"
+// @Success      200  {object}  models.User
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
 // @Router       /users/{id} [patch]
 func (api *API) PatchUser(c *gin.Context) {
 	userId := c.Param("id")
@@ -92,11 +92,11 @@ func (api *API) PatchUser(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
-// @Success      200  {object}  User
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      404  {object}  ApiError
-// @Failure      500  {object}  ApiError
+// @Success      200  {object}  models.User
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
 // @Router       /users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
 	userId := c.Param("id")
@@ -130,8 +130,8 @@ func (api *API) GetUser(c *gin.Context) {
 // @Tags         User
 // @Accepts		 json
 // @Produce      json
-// @Success      200  {object}  []User
-// @Failure		 401  {object}  ApiError
+// @Success      200  {object}  []models.User
+// @Failure		 401  {object}  models.ApiError
 // @Router       /users [get]
 func (api *API) ListUsers(c *gin.Context) {
 	users := make([]*models.User, 0)

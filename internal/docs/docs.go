@@ -39,14 +39,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Device"
+                                "$ref": "#/definitions/models.Device"
                             }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -67,7 +67,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.AddDevice"
+                            "$ref": "#/definitions/models.AddDevice"
                         }
                     }
                 ],
@@ -75,31 +75,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Device"
+                            "$ref": "#/definitions/models.Device"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Device"
+                            "$ref": "#/definitions/models.Device"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -107,7 +107,7 @@ const docTemplate = `{
         },
         "/devices/{id}": {
             "get": {
-                "description": "Gets a device by its ID",
+                "description": "Gets a device by ID",
                 "produces": [
                     "application/json"
                 ],
@@ -128,25 +128,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Device"
+                            "$ref": "#/definitions/models.Device"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -168,20 +168,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Peer"
+                                "$ref": "#/definitions/models.Peer"
                             }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -212,32 +212,32 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Peer"
+                                "$ref": "#/definitions/models.Peer"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -259,14 +259,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.User"
+                                "$ref": "#/definitions/models.User"
                             }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -295,31 +295,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.User"
+                            "$ref": "#/definitions/models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -347,7 +347,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.PatchUser"
+                            "$ref": "#/definitions/models.PatchUser"
                         }
                     }
                 ],
@@ -355,25 +355,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.User"
+                            "$ref": "#/definitions/models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -395,20 +395,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Zone"
+                                "$ref": "#/definitions/models.Zone"
                             }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -432,7 +432,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.AddZone"
+                            "$ref": "#/definitions/models.AddZone"
                         }
                     }
                 ],
@@ -440,25 +440,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Zone"
+                            "$ref": "#/definitions/models.Zone"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -487,25 +487,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Zone"
+                            "$ref": "#/definitions/models.Zone"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -536,26 +536,26 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Peer"
+                                "$ref": "#/definitions/models.Peer"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -580,12 +580,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Add Zone",
-                        "name": "zone",
+                        "description": "Add Peer",
+                        "name": "peer",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.AddZone"
+                            "$ref": "#/definitions/models.AddPeer"
                         }
                     }
                 ],
@@ -593,43 +593,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Peer"
+                            "$ref": "#/definitions/models.Peer"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.Peer"
+                            "$ref": "#/definitions/models.Peer"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -667,32 +667,32 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apexcontroller.Peer"
+                                "$ref": "#/definitions/models.Peer"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/apexcontroller.ApiError"
+                            "$ref": "#/definitions/models.ApiError"
                         }
                     }
                 }
@@ -700,16 +700,51 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "apexcontroller.AddDevice": {
+        "models.AddDevice": {
             "type": "object",
             "properties": {
-                "public-key": {
+                "public_key": {
                     "type": "string",
                     "example": "rZlVfefGshRxO+r9ethv2pODimKlUeP/bO/S47K3WUk="
                 }
             }
         },
-        "apexcontroller.AddZone": {
+        "models.AddPeer": {
+            "type": "object",
+            "properties": {
+                "allowed_ips": {
+                    "type": "string",
+                    "example": "10.1.1.1"
+                },
+                "child_prefix": {
+                    "type": "string",
+                    "example": "172.16.42.0/24"
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "6a6090ad-fa47-4549-a144-02124757ab8f"
+                },
+                "endpoint_ip": {
+                    "type": "string",
+                    "example": "10.1.1.1"
+                },
+                "hub_router": {
+                    "type": "boolean"
+                },
+                "hub_zone": {
+                    "type": "boolean"
+                },
+                "node_address": {
+                    "type": "string",
+                    "example": "1.2.3.4"
+                },
+                "zone_prefix": {
+                    "type": "string",
+                    "example": "10.1.1.0/24"
+                }
+            }
+        },
+        "models.AddZone": {
             "type": "object",
             "properties": {
                 "cidr": {
@@ -720,7 +755,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "The Red Zone"
                 },
-                "hub-zone": {
+                "hub_zone": {
                     "type": "boolean"
                 },
                 "name": {
@@ -729,7 +764,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apexcontroller.ApiError": {
+        "models.ApiError": {
             "type": "object",
             "properties": {
                 "error": {
@@ -738,7 +773,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apexcontroller.Device": {
+        "models.Device": {
             "type": "object",
             "properties": {
                 "id": {
@@ -754,67 +789,67 @@ const docTemplate = `{
                         "97d5214a-8c51-4772-b492-53de034740c5"
                     ]
                 },
-                "public-key": {
+                "public_key": {
                     "type": "string"
                 },
-                "user-id": {
+                "user_id": {
                     "type": "string"
                 }
             }
         },
-        "apexcontroller.PatchUser": {
+        "models.PatchUser": {
             "type": "object",
             "properties": {
-                "zone-id": {
+                "zone_id": {
                     "type": "string",
                     "example": "3f51dda6-06d2-4724-bb73-f09ad3501bcc"
                 }
             }
         },
-        "apexcontroller.Peer": {
+        "models.Peer": {
             "type": "object",
             "properties": {
-                "allowed-ips": {
+                "allowed_ips": {
                     "type": "string",
                     "example": "10.1.1.1"
                 },
-                "child-prefix": {
+                "child_prefix": {
                     "type": "string",
                     "example": "172.16.42.0/24"
                 },
-                "device-id": {
+                "device_id": {
                     "type": "string",
                     "example": "fde38e78-a4af-4f44-8f5a-d84ef1846a85"
                 },
-                "endpoint-ip": {
+                "endpoint_ip": {
                     "type": "string",
                     "example": "10.1.1.1"
                 },
-                "hub-router": {
+                "hub_router": {
                     "type": "boolean"
                 },
-                "hub-zone": {
+                "hub_zone": {
                     "type": "boolean"
                 },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
-                "node-address": {
+                "node_address": {
                     "type": "string",
                     "example": "1.2.3.4"
                 },
-                "zone-id": {
+                "zone_id": {
                     "type": "string",
                     "example": "2b655c5b-cfdd-4550-b7f0-a36a590fc97a"
                 },
-                "zone-prefix": {
+                "zone_prefix": {
                     "type": "string",
                     "example": "10.1.1.0/24"
                 }
             }
         },
-        "apexcontroller.User": {
+        "models.User": {
             "type": "object",
             "properties": {
                 "devices": {
@@ -830,13 +865,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
-                "zone-id": {
+                "zone_id": {
                     "type": "string",
                     "example": "94deb404-c4eb-4097-b59d-76b024ff7867"
                 }
             }
         },
-        "apexcontroller.Zone": {
+        "models.Zone": {
             "type": "object",
             "properties": {
                 "cidr": {
@@ -847,7 +882,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "The Red Zone"
                 },
-                "hub-zone": {
+                "hub_zone": {
                     "type": "boolean"
                 },
                 "id": {

@@ -16,8 +16,8 @@ import (
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
-// @Success      200  {object}  []Device
-// @Failure		 401  {object}  ApiError
+// @Success      200  {object}  []models.Device
+// @Failure		 401  {object}  models.ApiError
 // @Router       /devices [get]
 func (api *API) ListDevices(c *gin.Context) {
 	devices := make([]*models.Device, 0)
@@ -43,10 +43,10 @@ func (api *API) ListDevices(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
-// @Success      200  {object}  Device
-// @Failure		 401  {object}  ApiError
-// @Failure      400  {object}  ApiError
-// @Failure      404  {object}  ApiError
+// @Success      200  {object}  models.Device
+// @Failure		 401  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
 // @Router       /devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
@@ -74,12 +74,12 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
-// @Param        device  body   AddDevice  true "Add Device"
-// @Success      201  {object}  Device
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      409  {object}  Device
-// @Failure      500  {object}  ApiError
+// @Param        device  body   models.AddDevice  true "Add Device"
+// @Success      201  {object}  models.Device
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      409  {object}  models.Device
+// @Failure      500  {object}  models.ApiError
 // @Router       /devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
 	var request models.AddDevice

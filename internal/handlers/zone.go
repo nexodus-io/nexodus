@@ -25,11 +25,11 @@ const (
 // @Tags         Zone
 // @Accept       json
 // @Produce      json
-// @Param        zone  body     AddZone  true  "Add Zone"
-// @Success      201  {object}  Zone
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      500  {object}  ApiError
+// @Param        zone  body     models.AddZone  true  "Add Zone"
+// @Success      201  {object}  models.Zone
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
 // @Router       /zones [post]
 func (api *API) CreateZone(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -93,9 +93,9 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 // @Tags         Zone
 // @Accepts		 json
 // @Produce      json
-// @Success      200  {object}  []Zone
-// @Failure		 401  {object}  ApiError
-// @Failure		 500  {object}  ApiError
+// @Success      200  {object}  []models.Zone
+// @Failure		 401  {object}  models.ApiError
+// @Failure		 500  {object}  models.ApiError
 // @Router       /zones [get]
 func (api *API) ListZones(c *gin.Context) {
 	var zones []models.Zone
@@ -119,10 +119,10 @@ func (api *API) ListZones(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param		 id   path      string true "Zone ID"
-// @Success      200  {object}  Zone
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      404  {object}  ApiError
+// @Success      200  {object}  models.Zone
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
 // @Router       /zones/{id} [get]
 func (api *API) GetZones(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("zone"))
@@ -149,10 +149,10 @@ func (api *API) GetZones(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param		 id   path       string true "Zone ID"
-// @Success      200  {object}  []Peer
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure		 500  {object}  ApiError
+// @Success      200  {object}  []models.Peer
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{id}/peers [get]
 func (api *API) ListPeersInZone(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("zone"))
@@ -186,11 +186,11 @@ func (api *API) ListPeersInZone(c *gin.Context) {
 // @Produce      json
 // @Param		 zone_id path   string true "Zone ID"
 // @Param		 peer_id path   string true "Zone ID"
-// @Success      200  {object}  []Peer
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      404  {object}  ApiError
-// @Failure		 500  {object}  ApiError
+// @Success      200  {object}  []models.Peer
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
+// @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{zone_id}/peers/{peer_id} [get]
 func (api *API) GetPeerInZone(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("zone"))

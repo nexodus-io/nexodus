@@ -18,9 +18,9 @@ import (
 // @Tags         Peers
 // @Accepts		 json
 // @Produce      json
-// @Success      200  {object}  []Peer
-// @Failure		 401  {object}  ApiError
-// @Failure		 500  {object}  ApiError
+// @Success      200  {object}  []models.Peer
+// @Failure		 401  {object}  models.ApiError
+// @Failure		 500  {object}  models.ApiError
 // @Router       /peers [get]
 func (api *API) ListPeers(c *gin.Context) {
 	peers := make([]models.Peer, 0)
@@ -39,11 +39,11 @@ func (api *API) ListPeers(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param		 peer_id path   string true "Zone ID"
-// @Success      200  {object}  []Peer
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure      404  {object}  ApiError
-// @Failure		 500  {object}  ApiError
+// @Success      200  {object}  []models.Peer
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
+// @Failure		 500  {object}  models.ApiError
 // @Router       /peers/{peer_id} [get]
 func (api *API) GetPeers(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
@@ -67,14 +67,14 @@ func (api *API) GetPeers(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Param		 zone_id path   string true "Zone ID"
-// @Param		 zone    body   AddZone true "Add Zone"
-// @Success      201  {object}  Peer
-// @Failure      400  {object}  ApiError
-// @Failure		 401  {object}  ApiError
-// @Failure		 403  {object}  ApiError
-// @Failure      404  {object}  ApiError
-// @Failure      409  {object}  Peer
-// @Failure		 500  {object}  ApiError
+// @Param		 peer    body   models.AddPeer true "Add Peer"
+// @Success      201  {object}  models.Peer
+// @Failure      400  {object}  models.ApiError
+// @Failure		 401  {object}  models.ApiError
+// @Failure		 403  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
+// @Failure      409  {object}  models.Peer
+// @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{zone_id}/peers [post]
 func (api *API) CreatePeerInZone(c *gin.Context) {
 	ctx := c.Request.Context()
