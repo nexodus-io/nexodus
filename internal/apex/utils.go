@@ -284,3 +284,123 @@ func wgConfPermissions(f string) error {
 	}
 	return nil
 }
+
+// getInterfaceByIP will looks ip an interface by the IP provided
+func getInterfaceByIP(ip net.IP) (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, iface := range interfaces {
+		if addrs, err := iface.Addrs(); err == nil {
+			for _, addr := range addrs {
+				if ifaceIP, _, err := net.ParseCIDR(addr.String()); err == nil {
+					if ifaceIP.Equal(ip) {
+						return iface.Name, nil
+					}
+				} else {
+					continue
+				}
+			}
+		} else {
+			continue
+		}
+	}
+	return "", fmt.Errorf("no interface was found for the ip %s", ip)
+}
+
+func setupDarwinIface(localAddress string) error {
+
+	_, err := RunCommand("wireguard-go", darwinIface)
+	if err != nil {
+		log.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
+	}
+	// wg syncconf on the wg0 interface with the wg0.conf config passed
+	darwinWgConf := fmt.Sprintf("%s%s", WgDarwinConfPath, wgConfActive)
+	_, err = RunCommand("wg", "syncconf", darwinIface, darwinWgConf)
+	if err != nil {
+		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+	}
+	_, err = RunCommand("ifconfig", darwinIface, "inet", localAddress, localAddress, "alias")
+	if err != nil {
+		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+	}
+	_, err = RunCommand("ifconfig", darwinIface, "up")
+	if err != nil {
+		log.Errorf("failed to bring up the %s interface: %v\n", darwinIface, err)
+	}
+
+	return nil
+}
+
+// setupLinuxInterface TODO replace with netlink calls
+func setupLinuxInterface(localAddress string) {
+	// create the wireguard ip link interface
+	_, err := RunCommand("ip", "link", "add", wgIface, "type", "wireguard")
+	if err != nil {
+		log.Errorf("failed to create the ip link interface: %v\n", err)
+	}
+	// wg syncconf on the wg0 interface with the wg0.conf config passed
+	linuxWgConf := fmt.Sprintf("%s%s", WgLinuxConfPath, wgConfActive)
+	_, err = RunCommand("wg", "syncconf", wgIface, linuxWgConf)
+	if err != nil {
+		log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+	}
+	// assign the local wg address to the wg0 interface
+	_, err = RunCommand("ip", "address", "add", localAddress, "dev", wgIface)
+	if err != nil {
+		log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+	}
+	// bring the wg0 interface up
+	_, err = RunCommand("ip", "link", "set", wgIface, "up")
+	if err != nil {
+		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+	}
+}
+
+// addLinuxRoute todo: temporary, replace with netlink
+func addLinuxChildPrefixRoute(prefix string) error {
+	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", wgIface)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// addDarwinChildPrefixRoute todo: check if it exists
+func addDarwinChildPrefixRoute(prefix string) error {
+	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", darwinIface)
+	if err != nil {
+		log.Debugf("child-prefix route was added: %v", err)
+	}
+	return nil
+}
+
+// ifaceEsists returns true if the input matches a net interface
+func ifaceEsists(iface string) bool {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		log.Fatalf("unable to list the host's interfaces %v", err)
+	}
+	for _, i := range interfaces {
+		if i.Name == iface {
+			return true
+		}
+	}
+	return false
+}
+
+// deleteDarwinIface these commands all fail silently so no errors are returned
+func deleteDarwinIface(iface string) {
+	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
+	_, err := RunCommand("rm", "-f", tunSock)
+	if err != nil {
+		log.Debugf("failed to delete darwin interface: %v", err)
+	}
+	// /var/run/wireguard/wg0.name doesnt currently exist since utun8 isnt mapped to wg0 (fails silently)
+	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", wgIface)
+	_, err = RunCommand("rm", "-f", wgName)
+	if err != nil {
+		log.Tracef("failed to delete darwin interface: %v", err)
+	}
+}

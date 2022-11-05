@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"gopkg.in/ini.v1"
-
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/ini.v1"
 )
 
 const (
@@ -108,12 +109,23 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 		pubkey := ax.keyCache[value.ID]
 		// Build the wg config for all peers
 		if pubkey != ax.wireguardPubKey {
-
 			var allowedIPs string
 			if value.ChildPrefix != "" {
 				// check the netlink routing tables for the child prefix and exit if it already exists
 				if ax.os == Linux.String() && routeExists(value.ChildPrefix) {
 					log.Errorf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", value.ChildPrefix)
+				} else {
+					if ax.os == Linux.String() {
+						if err := addLinuxChildPrefixRoute(value.ChildPrefix); err != nil {
+							log.Infof("error adding the child prefix route: %v", err)
+						}
+					}
+				}
+				// add osx child prefix
+				if ax.os == Darwin.String() {
+					if err := addDarwinChildPrefixRoute(value.ChildPrefix); err != nil {
+						log.Infof("error adding the child prefix route: %v", err)
+					}
 				}
 				allowedIPs = appendChildPrefix(value.AllowedIPs, value.ChildPrefix)
 			} else {
@@ -135,16 +147,28 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 		}
 		// Parse the [Interface] section of the wg config
 		if pubkey == ax.wireguardPubKey {
+			if ax.wgLocalAddress != value.NodeAddress {
+				log.Infof("New local interface address assigned %s", value.NodeAddress)
+				// replace the interface with the newly assigned interface
+				if ax.os == Linux.String() && linkExists(wgIface) {
+					if err := delLink(wgIface); err != nil {
+						// not a fatal error since if this is on startup it could be absent
+						log.Debugf("failed to delete netlink interface %s: %v", wgIface, err)
+					}
+				}
+				if ax.os == Darwin.String() {
+					if ifaceEsists(darwinIface) {
+						deleteDarwinIface(darwinIface)
+					}
+				}
+			}
+			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				value.AllowedIPs,
 				listenPort,
-				false,
-				"",
-				"",
 			}
 			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ]\n",
-				localInterface.Address,
+				ax.wgLocalAddress,
 				WgListenPort)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
@@ -178,17 +202,22 @@ func (ax *Apex) DeployWireguardConfig() {
 			// If no config exists, copy the latest config rev to /etc/wireguard/wg0.tomlConf
 			activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 			if _, err = os.Stat(activeConfig); err != nil {
-				if err = applyWireguardConf(); err != nil {
+				if err = ax.overwriteWgConfig(); err != nil {
 					log.Fatalf("cannot apply wg config: %+v", err)
 				}
 			} else {
 				if err := wgConfPermissions(activeConfig); err != nil {
 					log.Errorf("failed to set the wireguard config permissions: %v", err)
 				}
-				if err = updateWireguardConfig(); err != nil {
+				if err = ax.updateWireguardConfig(); err != nil {
 					log.Fatalf("cannot update wg config: %+v", err)
 				}
 			}
+			setupLinuxInterface(ax.wgLocalAddress)
+		}
+		// add routes for each peer candidate
+		for _, peer := range latestCfg.Peer {
+			ax.handlePeerRoute(peer)
 		}
 		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
 		if ax.hubRouter {
@@ -213,17 +242,13 @@ func (ax *Apex) DeployWireguardConfig() {
 			log.Errorf("failed to set the wireguard config permissions: %v", err)
 		}
 		if ax.wireguardPubKeyInConfig {
-			// this will throw an error that can be ignored if an existing interface doesn't exist
-			wgOut, err := RunCommand("wg-quick", "down", wgIface)
-			if err != nil {
-				log.Debugf("Failed to down the wireguard interface (this is generally ok): %v\n", err)
+			if err := setupDarwinIface(ax.wgLocalAddress); err != nil {
+				log.Tracef("%v", err)
 			}
-			log.Debugf("%v\n", wgOut)
-			wgOut, err = RunCommand("wg-quick", "up", activeDarwinConfig)
-			if err != nil {
-				log.Errorf("failed to start the wireguard interface: %v\n", err)
-			}
-			log.Debugf("%v", wgOut)
+		}
+		// add routes for each peer candidate
+		for _, peer := range latestCfg.Peer {
+			ax.handlePeerRoute(peer)
 		}
 
 	case Windows.String():
@@ -254,4 +279,81 @@ func (ax *Apex) DeployWireguardConfig() {
 
 func appendChildPrefix(nodeAddress, childPrefix string) string {
 	return fmt.Sprintf("%s, %s", nodeAddress, childPrefix)
+}
+
+// handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
+// TODO: routes need to be looked up if the exists, netlink etc.
+// TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
+func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
+	//var prefix string
+	switch ax.os {
+	case Darwin.String():
+		// Darwin maps to a tunX address which needs to be discovered
+		netName, err := getInterfaceByIP(net.ParseIP(ax.wgLocalAddress))
+		if err != nil {
+			log.Debugf("failed to find the darwin interface with the address [ %s ] %v", ax.wgLocalAddress, err)
+		}
+		// If child prefix split the two prefixes (host /32 and child prefix
+		if strings.Contains(wgPeerConfig.AllowedIPs, ",") {
+			prefix := strings.Split(wgPeerConfig.AllowedIPs, ",")
+			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix[0], "-interface", netName)
+			if err != nil {
+				log.Tracef("no route deleted: %v", err)
+			}
+			_, err = RunCommand("route", "-q", "-n", "add", "-inet", prefix[0], "-interface", netName)
+			if err != nil {
+				log.Tracef("child prefix route add failed: %v", err)
+			}
+
+			_, err = RunCommand("route", "-q", "-n", "delete", "-inet", prefix[1], "-interface", netName)
+			if err != nil {
+				log.Tracef("no route deleted: %v", err)
+			}
+			_, err = RunCommand("route", "-q", "-n", "add", "-inet", prefix[1], "-interface", netName)
+			if err != nil {
+				log.Tracef("child prefix route add failed: %v", err)
+			}
+		} else {
+			// add the /32 host routes
+			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", wgPeerConfig.AllowedIPs, "-interface", netName)
+			if err != nil {
+				log.Tracef("no route was deleted: %v", err)
+			}
+			_, err = RunCommand("route", "-q", "-n", "add", "-inet", wgPeerConfig.AllowedIPs, "-interface", netName)
+			if err != nil {
+				log.Tracef("no route was added: %v", err)
+			}
+		}
+	case Linux.String():
+
+		if strings.Contains(wgPeerConfig.AllowedIPs, ",") {
+			prefix := strings.Split(wgPeerConfig.AllowedIPs, ",")
+			_, err := RunCommand("ip", "route", "del", prefix[0], "dev", wgIface)
+			if err != nil {
+				log.Tracef("no route deleted: %v", err)
+			}
+			_, err = RunCommand("ip", "route", "add", prefix[0], "dev", wgIface)
+			if err != nil {
+				log.Tracef("child prefix route add failed: %v", err)
+			}
+			_, err = RunCommand("ip", "route", "del", prefix[1], "dev", wgIface)
+			if err != nil {
+				log.Tracef("no route deleted: %v", err)
+			}
+			_, err = RunCommand("ip", "route", "add", prefix[1], "dev", wgIface)
+			if err != nil {
+				log.Tracef("child prefix route add failed: %v", err)
+			}
+		} else {
+			// add the /32 host routes
+			_, err := RunCommand("ip", "route", "del", wgPeerConfig.AllowedIPs, "dev", wgIface)
+			if err != nil {
+				log.Tracef("no route deleted: %v", err)
+			}
+			_, err = RunCommand("ip", "route", "add", wgPeerConfig.AllowedIPs, "dev", wgIface)
+			if err != nil {
+				log.Tracef("route add failed: %v", err)
+			}
+		}
+	}
 }

@@ -68,6 +68,7 @@ type Apex struct {
 	controllerURL           *url.URL
 	peerCache               map[string]Peer
 	keyCache                map[string]string
+	wgLocalAddress          string
 }
 
 type wgConfig struct {
@@ -85,11 +86,7 @@ type wgPeerConfig struct {
 
 type wgLocalConfig struct {
 	PrivateKey string
-	Address    string
 	ListenPort int
-	SaveConfig bool
-	PostUp     string
-	PostDown   string
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
@@ -124,6 +121,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		os:                     GetOS(),
 		peerCache:              make(map[string]Peer),
 		keyCache:               make(map[string]string),
+		wgLocalAddress:         "",
 	}
 
 	if ax.os == Windows.String() {
@@ -240,9 +238,10 @@ func (ax *Apex) Run() {
 
 	log.Info("Sucessfully registered with Apex Controller")
 
-	// a hub router requires ip forwarding, OS type has already been checked
+	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.hubRouter {
 		enableForwardingIPv4()
+		hubRouterIpTables()
 	}
 
 	if err := ax.Reconcile(); err != nil {
@@ -330,6 +329,9 @@ func checkOS() error {
 		// ensure the osx wireguard directory exists
 		if err := CreateDirectory(WgDarwinConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
+		}
+		if ifaceEsists(darwinIface) {
+			deleteDarwinIface(darwinIface)
 		}
 	case Windows.String():
 		log.Debugf("[%s] operating system detected", nodeOS)
