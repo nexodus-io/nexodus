@@ -44,7 +44,11 @@ services:
       - "--ipam-address=${IPAM_ADDRESS}"
     environment:
       APEX_CONTROLLER_LOGLEVEL: debug
-
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.controller.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.controller.entrypoints=web"
+      - "traefik.http.services.my-controller.loadbalancer.server.port=8080"
   ui:
     image: quay.io/apex/controller-ui:latest
     depends_on:
@@ -58,6 +62,11 @@ services:
         - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
         - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID}
         - VITE_CONTROLLER_URL=${VITE_CONTROLLER_URL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.ui.entrypoints=web"
+      - "traefik.http.services.ui.loadbalancer.server.port=3000"
 
   keycloak-db:
     image: docker.io/library/postgres
@@ -92,14 +101,27 @@ services:
         - start
         - --optimized
         - --import-realm
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
   proxy:
     depends_on:
      - controller
      - keycloak
      - ui
+    image: traefik:v2.9
+    command:
+      - --api.insecure=true
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:8080
+      - --entrypoints.traefik.address=:8888
     ports:
-      - 8080:8080
-    build:
-      context: .
-      dockerfile: ./Containerfile.nginx
+      - "8080:8080"
+      - "8888:8888"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+

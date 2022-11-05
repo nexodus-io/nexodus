@@ -62,11 +62,11 @@ func NewRouter(api *handlers.API, keycloakAddress string) (*gin.Engine, error) {
 	corsConfig.AllowAllOrigins = true
 	r.Use(cors.New(corsConfig))
 
-	r.GET("/health", func(c *gin.Context) {
+	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
-	private := r.Group("/")
+	private := r.Group("/api")
 	{
 		private.Use(auth.AuthFunc())
 		private.Use(api.CreateUserIfNotExists())
@@ -90,7 +90,7 @@ func NewRouter(api *handlers.API, keycloakAddress string) (*gin.Engine, error) {
 		private.PATCH("/users/:id", api.PatchUser)
 	}
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return r, nil
 }
