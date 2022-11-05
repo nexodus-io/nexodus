@@ -8,11 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	hubPostUp   = "iptables -A FORWARD -i wg0 -o wg0 -j ACCEPT"
-	hubPostDown = "iptables -D FORWARD -i wg0 -o wg0 -j ACCEPT"
-)
-
 // parseHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
 func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 
@@ -145,16 +140,21 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 		}
 		// Parse the [Interface] section of the wg config if this node is a zone-router
 		if pubkey == ax.wireguardPubKey && ax.hubRouter {
+			if ax.wgLocalAddress != value.NodeAddress {
+				log.Infof("New local interface address assigned %s", value.NodeAddress)
+				if ax.os == Linux.String() && linkExists(wgIface) {
+					if err = delLink(wgIface); err != nil {
+						log.Infof("Failed to delete %s: %v", wgIface, err)
+					}
+				}
+			}
+			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				fmt.Sprintf("%s/%d", value.AllowedIPs, zoneMask),
 				listenPort,
-				false,
-				hubPostUp,
-				hubPostDown,
 			}
 			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
-				localInterface.Address,
+				ax.wgLocalAddress,
 				listenPort,
 				ax.hubRouter)
 			// set the node unique local interface configuration
@@ -162,16 +162,22 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 		}
 		// Parse the [Interface] section of the wg config if this node is not a zone router
 		if pubkey == ax.wireguardPubKey && !ax.hubRouter {
+			// if the local node address changed replace it on wg0
+			if ax.wgLocalAddress != value.NodeAddress {
+				log.Infof("New local interface address assigned %s", value.NodeAddress)
+				if ax.os == Linux.String() && linkExists(wgIface) {
+					if err = delLink(wgIface); err != nil {
+						log.Infof("Failed to delete %s: %v", wgIface, err)
+					}
+				}
+			}
+			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				value.AllowedIPs,
 				listenPort,
-				false,
-				"",
-				"",
 			}
 			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
-				localInterface.Address,
+				ax.wgLocalAddress,
 				listenPort,
 				ax.hubRouter)
 			// set the node unique local interface configuration
@@ -198,4 +204,11 @@ func removeElement(items []string, item string) []string {
 		}
 	}
 	return updatedSlice
+}
+
+func hubRouterIpTables() {
+	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", wgIface, "-j", "ACCEPT")
+	if err != nil {
+		log.Debugf("the hub router iptable rule was not added: %v", err)
+	}
 }

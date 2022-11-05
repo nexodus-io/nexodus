@@ -18,15 +18,10 @@ const (
 	wgConfActive      = "wg0.conf"
 	wgConfLatestRev   = "wg0-latest-rev.conf"
 	wgIface           = "wg0"
+	darwinIface       = "utun8"
 )
 
-func applyWireguardConf() error {
-	// TODO: deleting the interface is a hammer and creates disruption
-	if linkExists(wgIface) {
-		if err := delLink(wgIface); err != nil {
-			return fmt.Errorf("unable to delete the existing wireguard interface: %v", err)
-		}
-	}
+func (ax *Apex) overwriteWgConfig() error {
 	activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 	latestRevConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 	// copy the latest config rev to wg0.conf
@@ -36,17 +31,12 @@ func applyWireguardConf() error {
 	if err := wgConfPermissions(activeConfig); err != nil {
 		return fmt.Errorf("failed to start the wireguard config permissions: %v", err)
 	}
-	wgOut, err := RunCommand("wg-quick", "up", activeConfig)
-	if err != nil {
-		return fmt.Errorf("failed to start the wireguard interface: %v", err)
-	}
-	log.Debugf("%v\n", wgOut)
 	return nil
 }
 
 // updateWireguardConfig strip and diff the latest rev to the active config
 // TODO: use syncconf and manually track routes instead of wg-quick managing them?
-func updateWireguardConfig() error {
+func (ax *Apex) updateWireguardConfig() error {
 	activeConfig := filepath.Join(WgLinuxConfPath, wgConfActive)
 	latestRevConfig := filepath.Join(WgLinuxConfPath, wgConfLatestRev)
 	// If no config exists, copy the latest rev config to /etc/wireguard/wg0-latest-rev.conf
@@ -70,7 +60,7 @@ func updateWireguardConfig() error {
 	// TODO: WARNING!!! THIS IS A HACK SINCE unmarshallWireguardCfg()
 	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
 	if !strings.Contains(stripActiveCfg, "[Peer") {
-		err := applyWireguardConf()
+		err := ax.overwriteWgConfig()
 		if err != nil {
 			return err
 		}
@@ -80,7 +70,7 @@ func updateWireguardConfig() error {
 	// CANNOT HANDLE AN EMPTY [Peers] SECTION. THIS MATCHES [Peer.xxx]
 	if !strings.Contains(stripLatestRevCfg, "[Peer") {
 		log.Print("No peers found in the latest config")
-		err := applyWireguardConf()
+		err := ax.overwriteWgConfig()
 		if err != nil {
 			return err
 		}
@@ -95,36 +85,17 @@ func updateWireguardConfig() error {
 	if err != nil {
 		return err
 	}
-	// unmarshall the active and latest configurations from file.
-	// diff the old and new config to see if the local config [Interface] address has changed
-	// This is hacky because wg conf commands do not show [Interface].Address since that is
-	// only a wg-quick relevant configuration and not wg. TODO: part of how we want to manage wg
-	activeLocalConfig, err := unmarshallWireguardCfg(FileToString(activeConfig))
-	if err != nil {
-		return err
-	}
-	revisedLocalConfig, err := unmarshallWireguardCfg(FileToString(latestRevConfig))
-	if err != nil {
-		return err
-	}
-	// check if the Address field in the [Interface] section has changed
-	if activeLocalConfig.Interface.Address != revisedLocalConfig.Interface.Address {
-		log.Print("Local interface configuration change detected")
-		if err := applyWireguardConf(); err != nil {
+
+	// diff the unordered list of [Peers] configuration peers and rebuild the tunnel if there has been a change
+	if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
+		log.Print("Peers configuration change detected")
+		if err := ax.overwriteWgConfig(); err != nil {
 			return err
 		}
-	} else {
-		// diff the unordered list of [Peers] configuration peers and rebuild the tunnel if there has been a change
-		if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
-			log.Print("Peers configuration change detected")
-			if err := applyWireguardConf(); err != nil {
-				return err
-			}
-		}
 	}
-	// if there is no wg0 interface, apply the configuration
+	// if there is no wg0 interface, write the configuration, for mac just do it everytime
 	if !linkExists(wgIface) {
-		if err := applyWireguardConf(); err != nil {
+		if err := ax.overwriteWgConfig(); err != nil {
 			return err
 		}
 	}

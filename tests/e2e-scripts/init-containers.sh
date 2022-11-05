@@ -1060,7 +1060,7 @@ if [ -z "$DOCKER" ]; then
     DOCKER=docker
 fi
 if [ -z "$DOCKER_COMPOSE" ]; then
-    DOCKER_COMPOSE=docker-compose
+    DOCKER_COMPOSE="docker compose"
 fi
 
 echo -e "Job running with OS Image: ${os}"
