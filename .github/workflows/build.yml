@@ -57,7 +57,7 @@ jobs:
 
     - name: Test
       run: |
-        go test -v ./...
+        go test -v ./internal/apex/...
 
     - name: Build
       id: build-apex

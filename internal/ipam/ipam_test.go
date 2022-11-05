@@ -26,7 +26,9 @@ func (suite *IpamTestSuite) SetupSuite() {
 	suite.wg.Add(1)
 	go func() {
 		defer suite.wg.Done()
-		_ = suite.server.ListenAndServe()
+		if err := suite.server.ListenAndServe(); err != nil {
+			suite.T().Logf("ERROR: %s", err)
+		}
 	}()
 }
 

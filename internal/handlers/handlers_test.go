@@ -37,7 +37,9 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	suite.wg.Add(1)
 	go func() {
 		defer suite.wg.Done()
-		_ = suite.ipam.ListenAndServe()
+		if err := suite.ipam.ListenAndServe(); err != nil {
+			suite.T().Logf("ERROR: %s", err)
+		}
 	}()
 
 	ipamClient := ipam.NewIPAM(util.TestIPAMClientAddr)

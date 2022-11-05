@@ -100,7 +100,9 @@ func main() {
 			}
 
 			go func() {
-				_ = server.ListenAndServe()
+				if err = server.ListenAndServe(); err != nil {
+					log.Fatal(err)
+				}
 			}()
 
 			ch := make(chan os.Signal, 1)
