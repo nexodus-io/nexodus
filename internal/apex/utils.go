@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	stun "github.com/pion/stun"
+	"github.com/pion/stun"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -310,16 +310,9 @@ func getInterfaceByIP(ip net.IP) (string, error) {
 }
 
 func setupDarwinIface(localAddress string) error {
-
 	_, err := RunCommand("wireguard-go", darwinIface)
 	if err != nil {
 		log.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
-	}
-	// wg syncconf on the wg0 interface with the wg0.conf config passed
-	darwinWgConf := fmt.Sprintf("%s%s", WgDarwinConfPath, wgConfActive)
-	_, err = RunCommand("wg", "syncconf", darwinIface, darwinWgConf)
-	if err != nil {
-		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
 	}
 	_, err = RunCommand("ifconfig", darwinIface, "inet", localAddress, localAddress, "alias")
 	if err != nil {
@@ -329,36 +322,58 @@ func setupDarwinIface(localAddress string) error {
 	if err != nil {
 		log.Errorf("failed to bring up the %s interface: %v\n", darwinIface, err)
 	}
-
+	// wg syncconf on the wg0 interface with the wg0.conf config passed
+	darwinWgConf := fmt.Sprintf("%s%s", WgDarwinConfPath, wgConfActive)
+	_, err = RunCommand("wg", "setconf", darwinIface, darwinWgConf)
+	if err != nil {
+		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+	}
 	return nil
 }
 
 // setupLinuxInterface TODO replace with netlink calls
-func setupLinuxInterface(localAddress string) {
+// this is called if this is the first run or if the local node
+// address got assigned a new address by the controller
+func (ax *Apex) setupLinuxInterface() {
+	// delete the wireguard ip link interface if it exists
+	if ifaceExists(wgIface) {
+		_, err := RunCommand("ip", "link", "del", wgIface)
+		if err != nil {
+			log.Debugf("failed to delete the ip link interface: %v\n", err)
+		}
+	}
 	// create the wireguard ip link interface
 	_, err := RunCommand("ip", "link", "add", wgIface, "type", "wireguard")
 	if err != nil {
 		log.Errorf("failed to create the ip link interface: %v\n", err)
 	}
-	// wg syncconf on the wg0 interface with the wg0.conf config passed
-	linuxWgConf := fmt.Sprintf("%s%s", WgLinuxConfPath, wgConfActive)
-	_, err = RunCommand("wg", "syncconf", wgIface, linuxWgConf)
+	// start the wireguard listener
+	_, err = RunCommand("wg", "set", wgIface, "listen-port", "51820", "private-key", linuxPrivateKeyFile)
 	if err != nil {
-		log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+		log.Errorf("failed to start the wireguard listener: %v\n", err)
 	}
-	// assign the local wg address to the wg0 interface
-	_, err = RunCommand("ip", "address", "add", localAddress, "dev", wgIface)
+	// give the wg interface an address
+	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
 	if err != nil {
-		log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+		log.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
+		wgIP := getIPv4Iface(wgIface)
+		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", wgIface)
+		if err != nil {
+			log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+		}
+		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
+		if err != nil {
+			log.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+		}
 	}
 	// bring the wg0 interface up
 	_, err = RunCommand("ip", "link", "set", wgIface, "up")
 	if err != nil {
-		log.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+		log.Errorf("failed to bring up the wg interface: %v\n", err)
 	}
 }
 
-// addLinuxRoute todo: temporary, replace with netlink
+// addLinuxChildPrefixRoute todo: temporary, replace with netlink
 func addLinuxChildPrefixRoute(prefix string) error {
 	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", wgIface)
 	if err != nil {
@@ -376,22 +391,18 @@ func addDarwinChildPrefixRoute(prefix string) error {
 	return nil
 }
 
-// ifaceEsists returns true if the input matches a net interface
-func ifaceEsists(iface string) bool {
-	interfaces, err := net.Interfaces()
+// ifaceExists returns true if the input matches a net interface
+func ifaceExists(iface string) bool {
+	_, err := net.InterfaceByName(iface)
 	if err != nil {
-		log.Fatalf("unable to list the host's interfaces %v", err)
+		log.Trace(err)
+		return false
 	}
-	for _, i := range interfaces {
-		if i.Name == iface {
-			return true
-		}
-	}
-	return false
+	return true
 }
 
 // deleteDarwinIface these commands all fail silently so no errors are returned
-func deleteDarwinIface(iface string) {
+func deleteDarwinIface() {
 	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
 	_, err := RunCommand("rm", "-f", tunSock)
 	if err != nil {
@@ -403,4 +414,29 @@ func deleteDarwinIface(iface string) {
 	if err != nil {
 		log.Tracef("failed to delete darwin interface: %v", err)
 	}
+}
+
+// stripStrSpaces strip spaces from a string
+func stripStrSpaces(s string) string {
+	return strings.ReplaceAll(s, " ", "")
+}
+
+// getIPv4Iface get the IP of the specified net interface
+func getIPv4Iface(ifname string) net.IP {
+	interfaces, _ := net.Interfaces()
+	for _, inter := range interfaces {
+		if inter.Name == ifname {
+			if addrs, err := inter.Addrs(); err == nil {
+				for _, addr := range addrs {
+					switch ip := addr.(type) {
+					case *net.IPNet:
+						if ip.IP.DefaultMask() != nil {
+							return ip.IP
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
