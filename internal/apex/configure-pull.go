@@ -145,11 +145,11 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 				value.NodeAddress,
 				value.ZoneID)
 		}
-		// Parse the [Interface] section of the wg config
+		// check if the controller has assigned a new address
 		if pubkey == ax.wireguardPubKey {
+			// replace the interface with the newly assigned interface
 			if ax.wgLocalAddress != value.NodeAddress {
 				log.Infof("New local interface address assigned %s", value.NodeAddress)
-				// replace the interface with the newly assigned interface
 				if ax.os == Linux.String() && linkExists(wgIface) {
 					if err := delLink(wgIface); err != nil {
 						// not a fatal error since if this is on startup it could be absent
@@ -157,8 +157,8 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 					}
 				}
 				if ax.os == Darwin.String() {
-					if ifaceEsists(darwinIface) {
-						deleteDarwinIface(darwinIface)
+					if ifaceExists(darwinIface) {
+						deleteDarwinIface()
 					}
 				}
 			}
@@ -213,25 +213,37 @@ func (ax *Apex) DeployWireguardConfig() {
 					log.Fatalf("cannot update wg config: %+v", err)
 				}
 			}
-			setupLinuxInterface(ax.wgLocalAddress)
+		}
+		// if the local address changed, flush and readdress the wg iface
+		if ax.wgLocalAddress != getIPv4Iface(wgIface).String() {
+			ax.setupLinuxInterface()
+		}
+		// this is probably unnecessary but leaving it until we reconcile the routing tables.
+		// old routes dont currently get purged until we handle deletes. This adds very little
+		// observable latency so far as the next function adds them back TODO: reconcile route tabless
+		_, err := RunCommand("ip", "route", "flush", "dev", "wg0")
+		if err != nil {
+			log.Debugf("Failed to flush the wg0 routes: %v\n", err)
 		}
 		// add routes for each peer candidate
 		for _, peer := range latestCfg.Peer {
 			ax.handlePeerRoute(peer)
 		}
-		// initiate some traffic to peers, not necessary for p2p only due to PersistentKeepalive
-		if ax.hubRouter {
-			var wgPeerIPs []string
-			for _, peer := range ax.wgConfig.Peer {
-				wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
-			}
-			if ax.hubRouterWgIP != "" {
-				wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
-			}
-			// give the wg0 a second to renegotiate the peering before probing again
-			time.Sleep(time.Second * 1)
-			probePeers(wgPeerIPs)
+		// add tunnels for each candidate peer
+		for _, peer := range latestCfg.Peer {
+			ax.handlePeerTunnel(peer)
 		}
+		// initiate some traffic to peers, maybe not necessary for p2p only due to PersistentKeepalive
+		var wgPeerIPs []string
+		for _, peer := range ax.wgConfig.Peer {
+			wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
+		}
+		if ax.hubRouterWgIP != "" {
+			wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
+		}
+		// give the wg0 a second to renegotiate the peering before probing
+		time.Sleep(time.Second * 1)
+		probePeers(wgPeerIPs)
 
 	case Darwin.String():
 		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
@@ -249,6 +261,10 @@ func (ax *Apex) DeployWireguardConfig() {
 		// add routes for each peer candidate
 		for _, peer := range latestCfg.Peer {
 			ax.handlePeerRoute(peer)
+		}
+		// add tunnels for each peer candidate
+		for _, peer := range latestCfg.Peer {
+			ax.handlePeerTunnel(peer)
 		}
 
 	case Windows.String():
@@ -353,6 +369,44 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 			_, err = RunCommand("ip", "route", "add", wgPeerConfig.AllowedIPs, "dev", wgIface)
 			if err != nil {
 				log.Tracef("route add failed: %v", err)
+			}
+		}
+	}
+}
+
+// handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
+// TODO: routes need to be looked up if the exists, netlink etc.
+// TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
+func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
+	allowedIPs := stripStrSpaces(wgPeerConfig.AllowedIPs)
+	switch ax.os {
+	case Darwin.String():
+		// remove a prior entry for the peer (fails silently)
+		_, err := RunCommand("wg", "set", darwinIface, "peer", wgPeerConfig.PublicKey, "remove")
+		if err != nil {
+			log.Errorf("peer tunnel removal failed: %v", err)
+		}
+		// insert the peer
+		_, err = RunCommand("wg", "set", darwinIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "persistent-keepalive", "20", "endpoint", wgPeerConfig.Endpoint)
+		if err != nil {
+			log.Errorf("peer tunnel addition failed: %v", err)
+		}
+	case Linux.String():
+		// remove a prior entry for the peer
+		_, err := RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "remove")
+		if err != nil {
+			log.Errorf("peer tunnel removal failed: %v", err)
+		}
+		// bouncers to not get a persistent keepalive
+		if ax.hubRouter {
+			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "endpoint", wgPeerConfig.Endpoint)
+			if err != nil {
+				log.Errorf("peer tunnel addition failed: %v", err)
+			}
+		} else {
+			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "persistent-keepalive", "20", "endpoint", wgPeerConfig.Endpoint)
+			if err != nil {
+				log.Errorf("peer tunnel addition failed: %v", err)
 			}
 		}
 	}

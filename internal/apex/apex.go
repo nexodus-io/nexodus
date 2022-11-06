@@ -330,8 +330,8 @@ func checkOS() error {
 		if err := CreateDirectory(WgDarwinConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
-		if ifaceEsists(darwinIface) {
-			deleteDarwinIface(darwinIface)
+		if ifaceExists(darwinIface) {
+			deleteDarwinIface()
 		}
 	case Windows.String():
 		log.Debugf("[%s] operating system detected", nodeOS)
@@ -372,6 +372,18 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 	if ax.childPrefix != "" {
 		if err := ValidateCIDR(ax.childPrefix); err != nil {
 			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
+		}
+	}
+	// replace the interface with the newly assigned interface
+	if ax.os == Linux.String() && linkExists(wgIface) {
+		if err := delLink(wgIface); err != nil {
+			// not a fatal error since if this is on startup it could be absent
+			log.Debugf("failed to delete netlink interface %s: %v", wgIface, err)
+		}
+	}
+	if ax.os == Darwin.String() {
+		if ifaceExists(darwinIface) {
+			deleteDarwinIface()
 		}
 	}
 	return nil
