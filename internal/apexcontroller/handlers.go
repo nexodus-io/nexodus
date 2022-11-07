@@ -272,6 +272,7 @@ func (ct *Controller) handlePostZonePeers(c *gin.Context) {
 		}
 	}
 	if found {
+		peer.ReflexiveIPv4 = request.ReflexiveIPv4
 		peer.EndpointIP = request.EndpointIP
 
 		if request.NodeAddress != peer.NodeAddress {
@@ -338,15 +339,16 @@ func (ct *Controller) handlePostZonePeers(c *gin.Context) {
 			}
 		}
 		peer = &Peer{
-			DeviceID:    device.ID,
-			ZoneID:      zone.ID,
-			EndpointIP:  request.EndpointIP,
-			AllowedIPs:  ip,
-			NodeAddress: ip,
-			ChildPrefix: request.ChildPrefix,
-			ZonePrefix:  ipamPrefix,
-			HubZone:     hubZone,
-			HubRouter:   hubRouter,
+			DeviceID:      device.ID,
+			ZoneID:        zone.ID,
+			EndpointIP:    request.EndpointIP,
+			AllowedIPs:    ip,
+			NodeAddress:   ip,
+			ChildPrefix:   request.ChildPrefix,
+			ZonePrefix:    ipamPrefix,
+			HubZone:       hubZone,
+			HubRouter:     hubRouter,
+			ReflexiveIPv4: request.ReflexiveIPv4,
 		}
 		tx.Create(peer)
 		zone.Peers = append(zone.Peers, peer)

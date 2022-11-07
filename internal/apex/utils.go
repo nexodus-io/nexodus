@@ -120,10 +120,10 @@ func discoverGenericIPv4(controller string, port string) (string, error) {
 	return "", fmt.Errorf("failed to obtain the local IP")
 }
 
-// GetPubIP retrieves current global IP address using STUN
-func GetPubIP() (string, error) {
+// GetPubIPv4 retrieves current global IP address using STUN
+func GetPubIPv4() (string, error) {
 	// Creating a "connection" to STUN server.
-	c, err := stun.Dial("udp", "stun.l.google.com:19302")
+	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -175,7 +175,7 @@ func IsNAT(nodeOS, controller string, port string) (bool, error) {
 		}
 		hostIP = linuxIP.String()
 	}
-	pubIP, err := GetPubIP()
+	pubIP, err := GetPubIPv4()
 	if err != nil {
 		return false, err
 	}

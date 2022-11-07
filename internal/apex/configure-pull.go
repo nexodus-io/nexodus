@@ -301,7 +301,6 @@ func appendChildPrefix(nodeAddress, childPrefix string) string {
 // TODO: routes need to be looked up if the exists, netlink etc.
 // TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
 func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
-	//var prefix string
 	switch ax.os {
 	case Darwin.String():
 		// Darwin maps to a tunX address which needs to be discovered
