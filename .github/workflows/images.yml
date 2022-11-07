@@ -33,7 +33,7 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_IMAGE_NAME }}
-        tag: |
+        tags: |
           type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build controller image
@@ -58,7 +58,7 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_UI_IMAGE_NAME }}
-        tag: |
+        tags: |
           type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build controller-ui image
@@ -83,7 +83,7 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.APEX_IMAGE_NAME }}
-        tag: |
+        tags: |
           type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build apex image
@@ -108,7 +108,7 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.KEYCLOAK_IMAGE_NAME }}
-        tag: |
+        tags: |
           type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build keycloak image
