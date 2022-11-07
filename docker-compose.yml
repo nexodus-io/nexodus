@@ -38,6 +38,7 @@ services:
       context: .
       dockerfile: ./Containerfile.controller
     command:
+      - "--keycloak-address=keycloak"
       - "--db-address=${CONTROLLER_DB_HOST}"
       - "--db-password=${CONTROLLER_DB_PASSWORD}"
       - "--ipam-address=${IPAM_ADDRESS}"
