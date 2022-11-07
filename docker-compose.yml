@@ -37,6 +37,9 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile.controller
+    deploy:
+      restart_policy:
+        condition: on-failure
     command:
       - "--keycloak-address=keycloak"
       - "--db-address=${CONTROLLER_DB_HOST}"
