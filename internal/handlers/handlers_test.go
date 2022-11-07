@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -35,10 +37,14 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	suite.ipam = util.NewTestIPAMServer()
 	suite.wg = &sync.WaitGroup{}
 	suite.wg.Add(1)
+
+	listener, err := net.Listen("tcp", "[::1]:9090")
+	suite.Require().NoError(err)
+
 	go func() {
 		defer suite.wg.Done()
-		if err := suite.ipam.ListenAndServe(); err != nil {
-			suite.T().Logf("ERROR: %s", err)
+		if err := suite.ipam.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+			suite.T().Logf("unexpected error starting ipam server: %s", err)
 		}
 	}()
 

@@ -2,6 +2,8 @@ package ipam
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
 	"sync"
 
@@ -24,10 +26,13 @@ func (suite *IpamTestSuite) SetupSuite() {
 	suite.ipam = NewIPAM(util.TestIPAMClientAddr)
 	suite.wg = sync.WaitGroup{}
 	suite.wg.Add(1)
+	listener, err := net.Listen("tcp", "[::1]:9090")
+	suite.Require().NoError(err)
+
 	go func() {
 		defer suite.wg.Done()
-		if err := suite.server.ListenAndServe(); err != nil {
-			suite.T().Logf("ERROR: %s", err)
+		if err := suite.server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+			suite.T().Logf("unexpected error starting ipam server: %s", err)
 		}
 	}()
 }
