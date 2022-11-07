@@ -5,6 +5,9 @@
   - [Deploying the Apex Controller](#deploying-the-apex-controller)
     - [Using docker-compose](#using-docker-compose)
     - [Run on Kubernetes](#run-on-kubernetes)
+      - [Apex deployment on minikube (for local dev):](#apex-deployment-on-minikube-for-local-dev)
+      - [Apex deployment on Kubernetes Cluster:](#apex-deployment-on-kubernetes-cluster)
+      - [Apex deployment on OpenShift:](#apex-deployment-on-openshift)
   - [The Apex Agent](#the-apex-agent)
     - [Installing the Agent](#installing-the-agent)
     - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
@@ -19,6 +22,7 @@
     - [2. Multiple mesh network between nodes deployed across different VPC and at Edge (Multi-Tenancy)](#2-multiple-mesh-network-between-nodes-deployed-across-different-vpc-and-at-edge-multi-tenancy)
       - [**Create the zones via the REST API on the Apex Controller**](#create-the-zones-via-the-rest-api-on-the-apex-controller)
       - [**Verify the created zones**](#verify-the-created-zones)
+      - [**Add users to selected zone**](#add-users-to-selected-zone)
       - [**Join the nodes to the zones**](#join-the-nodes-to-the-zones)
     - [3. Mesh network between containers running on connected nodes](#3-mesh-network-between-containers-running-on-connected-nodes)
     - [Additional Features supported by the project, not shown in the above examples:](#additional-features-supported-by-the-project-not-shown-in-the-above-examples)
@@ -69,7 +73,65 @@ docker-compose down
 
 ### Run on Kubernetes
 
-Coming soon ...
+#### Apex deployment on minikube (for local dev):
+If you want to hack the code, and want to deploy the code locally on your laptop/dev environment. Follow -> [apex minikube deployment ](hack/minikube/README.md).
+
+#### Apex deployment on Kubernetes Cluster:
+If you want to run it on Kubernetes cluster running on VM somewhere in your data center or Kubernetes deployed over bunch of VM in Cloud, follow these instruction. These instructions assume that you don't have a support for LoadBalancer service type.
+
+Deploy `ingress-nginx` ingress controller maintained by Kubernetes, to enable Ingress.
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.4.0/deploy/static/provider/cloud/deploy.yaml
+```
+
+Wait till ingress controller moves to ready state.
+
+```shell
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=120s
+```
+
+Clone the apex repo, or copy the manifest files `apex.yaml` and `apex-ingress.yaml` from `/deploy/` to where you have kubectl that can reach the cluster.
+
+```shell
+git clone https://github.com/redhat-et/apex.git
+cd ./apex/deploy
+```
+
+Find out the IP address of the host where nginx controller pod (e.g ingress-nginx-controller-xxxxxxxx) is running. 
+
+Fire the following command to replace the environment variable in the [apex.yaml](./deploy/apex.yaml) and deploy the apex stack. Replace the HOST_IP with the nginx controller node ip.
+
+```shell
+sed -e "s|UI_URL_VALUE|http://<HOST_IP>|g" ./apex.yaml | kubectl apply -f -
+```
+
+Wait till all the apex pods are up and running
+
+```shell
+kubectl wait --for=condition=Ready pods --all -n apex --timeout=120s
+```
+
+Deploy the apex ingress objects 
+
+```shell
+kubectl apply -f apex-ingress.yaml
+```
+
+If your Kubernetes cluster is running on Cloud VMs where the HOST_IP is public IP (stun address), to forward the traffic from the public IP to the nginx controller, you will have to enable the port-forwarding on the nginx controller node
+
+```shell
+kubectl port-forward --address 0.0.0.0 --namespace=ingress-nginx service/ingress-nginx-controller 80:80
+```
+
+Now you should be able to access the apex UI using `http://<HOST_IP>:80/`
+
+#### Apex deployment on OpenShift:
+Coming soon..
+
 
 ## The Apex Agent
 
