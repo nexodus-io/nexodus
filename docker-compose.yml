@@ -64,7 +64,7 @@ services:
         - VITE_CONTROLLER_URL=${VITE_CONTROLLER_URL}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ui.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.ui.rule=PathPrefix(`/`) && !PathPrefix(`/api`) && !PathPrefix(`/auth`)"
       - "traefik.http.routers.ui.entrypoints=web"
       - "traefik.http.services.ui.loadbalancer.server.port=3000"
 
