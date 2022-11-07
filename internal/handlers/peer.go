@@ -148,6 +148,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		}
 	}
 	if found {
+		peer.ReflexiveIPv4 = request.ReflexiveIPv4
 		peer.EndpointIP = request.EndpointIP
 
 		if request.NodeAddress != peer.NodeAddress {
@@ -223,6 +224,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			ZonePrefix:  ipamPrefix,
 			HubZone:     hubZone,
 			HubRouter:   hubRouter,
+			ReflexiveIPv4: request.ReflexiveIPv4,
 		}
 		tx.Create(peer)
 		zone.Peers = append(zone.Peers, peer)

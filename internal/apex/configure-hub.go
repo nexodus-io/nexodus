@@ -123,7 +123,9 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 		if err != nil {
 			log.Errorf("failed to split host:port endpoint pair: %v", err)
 		}
-		if isReachable(reachablePeers, peerIP) {
+		// if the endpoint is both reachable and share the same STUN address, assume they are mesh candidates
+		if isReachable(reachablePeers, peerIP) && ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
+			log.Debugf("ICE candidate match for direct peering is [ %s ] with a STUN Address of [ %s ]", value.NodeAddress, value.ReflexiveIPv4)
 			peer := wgPeerConfig{
 				pubkey,
 				value.EndpointIP,

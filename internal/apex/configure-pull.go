@@ -187,10 +187,10 @@ func (ax *Apex) DeployWireguardConfig() {
 		// this is probably unnecessary but leaving it until we reconcile the routing tables.
 		// old routes dont currently get purged until we handle deletes. This adds very little
 		// observable latency so far as the next function adds them back TODO: reconcile route tabless
-		_, err := RunCommand("ip", "route", "flush", "dev", "wg0")
-		if err != nil {
-			log.Debugf("Failed to flush the wg0 routes: %v\n", err)
-		}
+		//_, err := RunCommand("ip", "route", "flush", "dev", "wg0")
+		//if err != nil {
+		//	log.Debugf("Failed to flush the wg0 routes: %v\n", err)
+		//}
 		// add routes for each peer candidate
 		for _, peer := range latestCfg.Peer {
 			ax.handlePeerRoute(peer)
@@ -267,7 +267,6 @@ func appendChildPrefix(nodeAddress, childPrefix string) string {
 // TODO: routes need to be looked up if the exists, netlink etc.
 // TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
 func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
-	//var prefix string
 	switch ax.os {
 	case Darwin.String():
 		// Darwin maps to a tunX address which needs to be discovered
