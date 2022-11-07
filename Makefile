@@ -4,11 +4,11 @@ all: go-lint apex controller
 .PHONY: apex
 apex: dist/apex dist/apex-arm-linux dist/apex-amd64-linux dist/apex-amd64-darwin dist/apex-arm64-darwin dist/apex-amd64-windows
 
-COMMON_DEPS=$(wildcard ./internal/messages/*.go) $(wildcard ./internal/streamer/*.go) go.sum go.mod
+COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
-APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go) $(wildcard internal/apex/*.go)
+APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
 
-CONTROLLER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexcontroller/*.go) $(wildcard internal/apexcontroller/*.go)
+CONTROLLER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexcontroller/*.go)
 
 dist:
 	mkdir -p $@
@@ -65,9 +65,9 @@ gen-docs:
 
 .PHONY: test-images
 test-images:
-	docker build -f tests/Containerfile.alpine -t quay.io/apex/test:alpine tests
-	docker build -f tests/Containerfile.fedora -t quay.io/apex/test:fedora tests
-	docker build -f tests/Containerfile.ubuntu -t quay.io/apex/test:ubuntu tests
+	docker build -f Containerfile.test -t quay.io/apex/test:alpine --target alpine .
+	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
+	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
 
 OS_IMAGE?="quay.io/apex/test:fedora"
 
@@ -76,3 +76,8 @@ OS_IMAGE?="quay.io/apex/test:fedora"
 e2e: dist/apex
 	docker compose build
 	./tests/e2e-scripts/init-containers.sh -o $(OS_IMAGE)
+
+.PHONY: e2e
+go-e2e: dist/apex test-images
+	docker compose up --build -d
+	go test -v --tags=integration ./integration-tests/...

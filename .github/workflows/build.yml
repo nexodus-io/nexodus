@@ -57,7 +57,7 @@ jobs:
 
     - name: Test
       run: |
-        go test -v ./...
+        go test -v ./internal/apex/...
 
     - name: Build
       id: build-apex
@@ -101,7 +101,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: ci-logs
+        name: ${{ matrix.deployment }}-logs
         path: docker-compose.log
 
   deploy:

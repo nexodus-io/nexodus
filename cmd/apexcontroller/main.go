@@ -1,12 +1,15 @@
 package main
 
 import (
-	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	controller "github.com/redhat-et/apex/internal/apexcontroller"
+	"github.com/redhat-et/apex/internal/database"
+	"github.com/redhat-et/apex/internal/handlers"
+	"github.com/redhat-et/apex/internal/ipam"
+	"github.com/redhat-et/apex/internal/routers"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -67,27 +70,46 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			ct, err := controller.NewController(
-				context.Background(),
-				cCtx.String("keycloak-address"),
+			db, err := database.NewDatabase(
 				cCtx.String("db-address"),
+				"controller",
 				cCtx.String("db-password"),
-				cCtx.String("ipam-address"),
+				"controller",
+				5432,
+				"disable",
 			)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			ct.Run()
+			ipam := ipam.NewIPAM(cCtx.String("ipam-address"))
+
+			api, err := handlers.NewAPI(cCtx.Context, db, ipam)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			router, err := routers.NewRouter(api, cCtx.String("keycloak-address"))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			server := &http.Server{
+				Addr:    "0.0.0.0:8080",
+				Handler: router,
+			}
+
+			go func() {
+				if err = server.ListenAndServe(); err != nil {
+					log.Fatal(err)
+				}
+			}()
 
 			ch := make(chan os.Signal, 1)
 			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 			<-ch
 
-			if err := ct.Shutdown(context.Background()); err != nil {
-				log.Fatal(err)
-			}
-			return nil
+			return server.Close()
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

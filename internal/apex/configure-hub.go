@@ -19,7 +19,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 	var err error
 
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.ID]
+		pubkey := ax.keyCache[value.DeviceID]
 		if pubkey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
@@ -79,7 +79,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 
 	// Parse the [Peers] section of the wg config if this node is a zone-router
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.ID]
+		pubkey := ax.keyCache[value.DeviceID]
 		// Build the wg config for all peers for the hub-router node
 		if ax.hubRouter {
 			// Config if the node is a bouncer hub

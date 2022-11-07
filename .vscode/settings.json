@@ -16,4 +16,5 @@
         "Warnln"
     ],
     "go.lintTool":"golangci-lint",
+    "go.buildTags": "integration"
 }

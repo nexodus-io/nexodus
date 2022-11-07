@@ -45,4 +45,4 @@
     curl -fL -X PATCH 'http://{{ controller_address }}:8080/api/users/me' \
         -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
         -H "Content-Type: application/json" \
-        --data-raw '{ "zone-id": "{{ (zone_uuid.stdout|from_json).id }}" }'
+        --data-raw '{ "zone_id": "{{ (zone_uuid.stdout|from_json).id }}" }'

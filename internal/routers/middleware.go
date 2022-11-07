@@ -1,7 +1,6 @@
-package apexcontroller
+package routers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,14 +9,7 @@ import (
 	"github.com/MicahParks/keyfunc"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
-)
-
-const (
-	AuthUserID    = "user-id"
-	AuthUserScope = "scope"
 )
 
 type KeyCloakAuth struct {
@@ -81,7 +73,7 @@ func (a *KeyCloakAuth) AuthFunc() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(*Claims); ok {
-			c.Set(AuthUserID, claims.Subject)
+			c.Set(gin.AuthUserKey, claims.Subject)
 			// c.Set(AuthUserScope, claims.Scope)
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to extract user info from claims"})
@@ -98,34 +90,4 @@ func extractTokenFromAuthHeader(val string) (token string, ok bool) {
 		return "", false
 	}
 	return authHeaderParts[1], true
-}
-
-func (ct *Controller) UserMiddleware(c *gin.Context) {
-	userIDRaw := c.GetString(AuthUserID)
-	if userIDRaw == "" {
-		// This should never happen since our auth middleware should be called first
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "no user id"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDRaw)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "bad user id"})
-		return
-	}
-
-	var user User
-	res := ct.db.First(&user, "id = ?", userID)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			user.ID = userID
-			user.ZoneID = ct.defaultZone
-			user.Devices = make([]*Device, 0)
-			ct.db.Create(&user)
-		} else {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "database error finding user"})
-			return
-		}
-	}
-	c.Next()
 }
