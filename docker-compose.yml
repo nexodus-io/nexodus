@@ -29,7 +29,7 @@ services:
     - --password=${IPAM_DB_PASSWORD}
   
   controller:
-    image: quay.io/apex/controller
+    image: quay.io/apex/controller:latest
     depends_on:
       - controller-db
       - ipam
@@ -45,7 +45,7 @@ services:
       APEX_CONTROLLER_LOGLEVEL: debug
 
   ui:
-    image: quay.io/apex/controller-ui
+    image: quay.io/apex/controller-ui:latest
     depends_on:
      - controller
      - keycloak
