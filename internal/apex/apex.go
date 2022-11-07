@@ -47,6 +47,7 @@ type Apex struct {
 	// maps device_ids to public keys
 	keyCache       map[uuid.UUID]string
 	wgLocalAddress string
+	nodeReflexiveAddress    string
 }
 
 type wgConfig struct {
@@ -114,7 +115,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		os:                     GetOS(),
 		peerCache:              make(map[uuid.UUID]models.Peer),
 		keyCache:               make(map[uuid.UUID]string),
-		wgLocalAddress:         "",
+		controllerURL:          controllerURL,
 	}
 
 	if ax.os == Windows.String() {
@@ -130,6 +131,8 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 	if err := ax.checkUnsupportedConfigs(); err != nil {
 		return nil, err
 	}
+
+	ax.nodePrep()
 
 	return ax, nil
 }
@@ -160,7 +163,7 @@ func (ax *Apex) Run() {
 		localEndpointIP = ax.userProvidedEndpointIP
 	}
 	if ax.stun && localEndpointIP == "" {
-		localEndpointIP, err = GetPubIP()
+		localEndpointIP, err = GetPubIPv4()
 		if err != nil {
 			log.Warn("Unable to determine the public facing address, falling back to the local address")
 		}
@@ -296,7 +299,13 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
 		}
 	}
-	// replace the interface with the newly assigned interface
+	return nil
+}
+
+// nodePrep add basic gathering and node condition checks here
+func (ax *Apex) nodePrep() {
+
+	// remove and existing wg interfaces
 	if ax.os == Linux.String() && linkExists(wgIface) {
 		if err := delLink(wgIface); err != nil {
 			// not a fatal error since if this is on startup it could be absent
@@ -308,8 +317,27 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 			deleteDarwinIface()
 		}
 	}
-	return nil
+
+	// discover the server reflexive address per ICE RFC8445 = (lol public address)
+	stunAddr, err := GetPubIPv4()
+	if err != nil {
+		log.Infof("failed to query the stun server: %v", err)
+	} else {
+		var stunPresent bool
+		if stunAddr != "" {
+			stunPresent = true
+		}
+		if stunPresent {
+			if err := ValidateIp(stunAddr); err == nil {
+				ax.nodeReflexiveAddress = stunAddr
+				log.Infof("the public facing ipv4 NAT address found for the host is: [ %s ]", stunAddr)
+			}
+		} else {
+			log.Infof("no public facing NAT address found for the host")
+		}
+	}
 }
+
 
 func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
