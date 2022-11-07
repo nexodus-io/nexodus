@@ -12,6 +12,23 @@
       - jq
     state: latest
 
+- name: Kill any existing apex process from previous runs
+  shell: |
+    sudo killall apex 2> /dev/null
+  ignore_errors: yes
+
+# Optionally clean all remnants of a previous run
+#- name: Delete wg0
+#  become: yes
+#  shell: |
+#    sudo ip link del wg0
+#  ignore_errors: yes
+
+- name: Download the Apex Agent Binary
+  shell: |
+    sudo curl {{ apex_binary }} --output /usr/local/sbin/apex
+    sudo chmod +x /usr/local/sbin/apex
+
 - name: Create a JWT
   shell: |
     curl -sf -X POST \
@@ -33,7 +50,7 @@
     curl -fL -X POST 'http://{{ controller_address }}:8080/api/zones' \
     -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
     -H "Content-Type: application/json" \
-    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "CIDR": "{{ apex_azone_prefix }}", "Hub-Zone": true}'
+    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "cidr": "{{ apex_azone_prefix }}", "hub_zone": true}'
   register: zone_uuid
 
 - name: Print the Zone UUID

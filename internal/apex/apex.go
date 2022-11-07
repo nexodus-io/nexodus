@@ -45,9 +45,9 @@ type Apex struct {
 	// caches peers by their UUID
 	peerCache map[uuid.UUID]models.Peer
 	// maps device_ids to public keys
-	keyCache       map[uuid.UUID]string
-	wgLocalAddress string
-	nodeReflexiveAddress    string
+	keyCache             map[uuid.UUID]string
+	wgLocalAddress       string
+	nodeReflexiveAddress string
 }
 
 type wgConfig struct {
@@ -337,7 +337,6 @@ func (ax *Apex) nodePrep() {
 		}
 	}
 }
-
 
 func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).

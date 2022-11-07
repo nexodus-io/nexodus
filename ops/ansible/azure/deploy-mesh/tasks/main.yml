@@ -11,12 +11,19 @@
     name:
       - wireguard
       - jq
+      - fping
     state: latest
 
 - name: Kill any existing apex process from previous runs
   shell: |
     sudo killall apex 2> /dev/null
   ignore_errors: yes
+
+#- name: Delete wg0
+#  become: yes
+#  shell: |
+#    sudo ip link del wg0
+#  ignore_errors: yes
 
 - name: Create a JWT
   shell: |
@@ -49,6 +56,6 @@
 - name: Attach the Node Agent to the Controller
   become: yes
   shell: |
-    apex \
+    APEX_LOGLEVEL=debug apex \
     --with-token={{ (api_token.stdout|from_json).access_token }} \
     http://{{ controller_address }}:8080 > apex-logs.txt 2>&1 &
