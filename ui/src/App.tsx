@@ -4,8 +4,6 @@ import {
   AuthProvider,
   DataProvider,
   Resource,
-  ListGuesser,
-  ShowGuesser,
 } from 'react-admin';
 import simpleRestProvider from 'ra-data-simple-rest';
 
@@ -23,11 +21,12 @@ import ZoneIcon from '@mui/icons-material/VpnLock';
 import UserIcon from '@mui/icons-material/People';
 
 // pages
-import { ZoneCreate, ZoneShow, ZoneList } from "./pages/zones";
-import { PeerShow, PeerList } from "./pages/peers";
-import { UserShow, UserList } from "./pages/users";
-import { DeviceList, DeviceShow } from "./pages/devices";
-import { MyLayout } from "./components/layout";
+import { ZoneCreate, ZoneShow, ZoneList } from "./pages/Zones";
+import { PeerShow, PeerList } from "./pages/Peers";
+import { UserShow, UserList } from "./pages/Users";
+import { DeviceList, DeviceShow } from "./pages/Devices";
+import Dashboard from './pages/Dashboard';
+import Layout from "./layout/Layout";
 
 const config : KeycloakConfig = {
   url: import.meta.env.VITE_KEYCLOAK_URL,
@@ -72,10 +71,11 @@ const App = () => {
 
   return (
     <Admin
+      dashboard={Dashboard}
       authProvider={authProvider.current}
       dataProvider={dataProvider.current}
       title="Controller"
-      layout={MyLayout}
+      layout={Layout}
     >
       <Resource name="users" list={UserList} show={UserShow} icon={UserIcon} />
       <Resource name="devices" list={DeviceList} show={DeviceShow} icon={DeviceIcon} />
