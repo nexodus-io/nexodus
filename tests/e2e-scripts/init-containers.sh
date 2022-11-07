@@ -17,7 +17,7 @@ start_containers() {
 
     local node_image=${1}
 
-    $DOCKER_COMPOSE up -d
+    $DOCKER_COMPOSE up --build -d
 
     # allow for all services to come up and be ready
     timeout 300s bash -c 'until curl -sfL http://localhost:8080/api/health; do sleep 1; done'

@@ -11,6 +11,7 @@ env:
   CONTROLLER_UI_IMAGE_NAME: controller-ui
   APEX_IMAGE_NAME: apex
   KEYCLOAK_IMAGE_NAME: keycloak
+  IMAGE_TAG: latest
 
 jobs:
   build:
@@ -32,6 +33,8 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_IMAGE_NAME }}
+        tag: |
+          type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build controller image
       id: build-controller
@@ -55,6 +58,8 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_UI_IMAGE_NAME }}
+        tag: |
+          type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build controller-ui image
       id: build-controller-ui
@@ -78,6 +83,8 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.APEX_IMAGE_NAME }}
+        tag: |
+          type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build apex image
       id: build-apex
@@ -101,6 +108,8 @@ jobs:
       uses: docker/metadata-action@v3.6.2
       with:
         images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.KEYCLOAK_IMAGE_NAME }}
+        tag: |
+          type=raw,value=${{ env.IMAGE_TAG }}
 
     - name: Build keycloak image
       id: build-keycloak
