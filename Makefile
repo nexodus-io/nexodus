@@ -2,7 +2,7 @@
 all: go-lint apex controller
 
 .PHONY: apex
-apex: dist/apex dist/apex-arm-linux dist/apex-amd64-linux dist/apex-amd64-darwin dist/apex-arm64-darwin dist/apex-amd64-windows
+apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64 dist/apex-darwin-arm64 dist/apex-windows-amd64
 
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
@@ -16,19 +16,19 @@ dist:
 dist/apex: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 go build -o $@ ./cmd/apex
 
-dist/apex-arm-linux: $(APEX_DEPS) | dist
+dist/apex-linux-arm: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o $@ ./cmd/apex
 
-dist/apex-amd64-linux: $(APEX_DEPS) | dist
+dist/apex-linux-amd64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apex
 
-dist/apex-amd64-darwin: $(APEX_DEPS) | dist
+dist/apex-darwin-amd64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apex
 
-dist/apex-arm64-darwin: $(APEX_DEPS) | dist
+dist/apex-darwin-arm64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
 
-dist/apex-amd64-windows: $(APEX_DEPS) | dist
+dist/apex-windows-amd64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
 
 .PHONY: clean
@@ -36,18 +36,18 @@ clean:
 	rm -rf dist
 
 .PHONY: controller
-controller: dist/apexcontroller dist/apexcontroller-amd64-linux dist/apexcontroller-amd64-darwin dist/apexcontroller-arm64-darwin
+controller: dist/apexcontroller dist/apexcontroller-linux-amd64 dist/apexcontroller-darwin-amd64 dist/apexcontroller-darwin-arm64
 
 dist/apexcontroller: $(CONTROLLER_DEPS) | dist
 	CGO_ENABLED=0 go build -o $@ ./cmd/apexcontroller
 
-dist/apexcontroller-amd64-linux: $(CONTROLLER_DEPS) | dist
+dist/apexcontroller-linux-amd64: $(CONTROLLER_DEPS) | dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apexcontroller
 
-dist/apexcontroller-amd64-darwin: $(CONTROLLER_DEPS) | dist
+dist/apexcontroller-darwin-amd64: $(CONTROLLER_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apexcontroller
 
-dist/apexcontroller-arm64-darwin: $(CONTROLLER_DEPS) | dist
+dist/apexcontroller-darwin-arm64: $(CONTROLLER_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apexcontroller
 
 .PHONY: go-lint
