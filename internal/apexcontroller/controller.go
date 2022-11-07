@@ -115,7 +115,6 @@ func NewController(ctx context.Context, keyCloakAddr string, dbHost string, dbPa
 	}
 
 	jwksURL := fmt.Sprintf("http://%s:8080/auth/realms/controller/protocol/openid-connect/certs", keyCloakAddr)
-	log.Debugf("cert url %s", jwksURL)
 	auth, err := NewKeyCloakAuth(jwksURL)
 	if err != nil {
 		return nil, err
@@ -137,7 +136,7 @@ func NewController(ctx context.Context, keyCloakAddr string, dbHost string, dbPa
 	ct.Router.Use()
 
 	private := ct.Router.Group("/api")
-	ct.Router.GET("/health", func(c *gin.Context) {
+	ct.Router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
