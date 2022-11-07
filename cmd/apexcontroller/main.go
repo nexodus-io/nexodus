@@ -42,6 +42,12 @@ func main() {
 		Name: "apex-controller",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:     "keycloak-address",
+				Value:    "keycloak.apex.svc.cluster.local",
+				Usage:    "address of keycloak service",
+				Required: false,
+			},
+			&cli.StringFlag{
 				Name:     "db-address",
 				Value:    "",
 				Usage:    "address of db",
@@ -63,6 +69,7 @@ func main() {
 		Action: func(cCtx *cli.Context) error {
 			ct, err := controller.NewController(
 				context.Background(),
+				cCtx.String("keycloak-address"),
 				cCtx.String("db-address"),
 				cCtx.String("db-password"),
 				cCtx.String("ipam-address"),
