@@ -66,7 +66,7 @@ spec:
             cpu: 100m
             memory: 200Mi
       - name: keycloak
-        image: quay.io/apex/keycloak:main
+        image: quay.io/apex/keycloak:latest
         imagePullPolicy: Always
         args:
         - start
@@ -250,7 +250,7 @@ spec:
             cpu: 100m
             memory: 200Mi
       - name: controller
-        image: quay.io/apex/controller:main
+        image: quay.io/apex/controller:latest
         imagePullPolicy: Always
         args:
         - --db-address=localhost
@@ -313,7 +313,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: quay.io/apex/controller-ui:main
+        image: quay.io/apex/controller-ui:latest
         imagePullPolicy: Always
         env:
         - name: VITE_KEYCLOAK_URL
