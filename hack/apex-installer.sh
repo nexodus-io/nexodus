@@ -84,7 +84,7 @@ EOF
             fi
         fi
         info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-amd64-darwin --output /usr/local/sbin/apex
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-darwin-amd64 --output /usr/local/sbin/apex
         sudo chmod +x /usr/local/sbin/apex
         pass_message "Apex is installed successfully."
     fi
@@ -114,7 +114,7 @@ EOF
         fi
 
         info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-amd64-linux --output /usr/local/sbin/apex
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-linux-amd64 --output /usr/local/sbin/apex
         sudo chmod +x /usr/local/sbin/apex
         pass_message "Apex is installed successfully."
 
