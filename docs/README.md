@@ -3,7 +3,7 @@
 - [Documentation](#documentation)
   - [Concepts](#concepts)
   - [Deploying the Apex Controller](#deploying-the-apex-controller)
-    - [Using docker-compose or podman-compose](#using-docker-compose-or-podman-compose)
+    - [Using docker-compose](#using-docker-compose)
     - [Run on Kubernetes](#run-on-kubernetes)
   - [The Apex Agent](#the-apex-agent)
     - [Installing the Agent](#installing-the-agent)
@@ -33,17 +33,14 @@
 
 ## Deploying the Apex Controller
 
-### Using docker-compose or podman-compose
+### Using docker-compose
 
-For development and testing purposes, the quickest way to run the controller stack is by using `docker-compose` or `podman-compose`.
+> **_NOTE:_** These instructions do not work with `podman-compose`. Instead of
+> fixing `podman` compatibility, we will be moving exclusively to kubernetes as
+> a local development platform using `kind` or `minikube`. Once those
+> instructions are ready, `docker-compose` support will be removed.
 
-If you're using podman on Fedora (or a similar distribution), you may need to run this command before starting the stack. This resolve a volume permissions issue as we will be mounting this file as a volume into one of the containers.
-
-```sh
-chcon -R -t svirt_sandbox_file_t hack/controller-realm.json
-```
-
-In the rest of these commands, you may use `podman-compose` in place of `docker-compose` depending on your environment.
+For development and testing purposes, the quickest way to run the controller stack is by using `docker-compose`.
 
 First, to build all required container images:
 
@@ -185,7 +182,7 @@ sudo chmod +x /usr/local/sbin/apex
 - If the Controller becomes unavailable, agent nodes continue functioning, only new nodes cannot join the mesh while it is down. 
 - The same applies to the apex (agent), if the agent process exits, tunnels are maintained and only new peer joins are affected.
 
-You can start the Controller stack using docker-compose or even podman-compose
+You can start the Controller stack using docker-compose
 ```shell
 docker-compose build
 docker-compose up -d
