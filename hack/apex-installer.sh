@@ -41,12 +41,12 @@ function setup() {
         cat <<EOF
   * Install Homebrew (brew) if not already installed.
   * Install wireguard-tools with brew.
-  * Download the apex agent and install it to /usr/local/sbin/apex
+  * Download the apex agent and install it to /usr/local/bin/apex
 EOF
     elif [ $OS == "Linux" ]; then
         cat <<EOF
-  * Use sudo to unstall wireguard-tools using the system's package manager.
-  * Use sudo to download the apex agent and instlal it to /usr/local/sbin/apex
+  * Use sudo to uninstall wireguard-tools using the system's package manager.
+  * Use sudo to download the apex agent and install it to /usr/local/sbin/apex
 EOF
     else
         echo "Please add warning message text for $OS"
@@ -84,8 +84,8 @@ EOF
             fi
         fi
         info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-darwin-amd64 --output /usr/local/sbin/apex
-        sudo chmod +x /usr/local/sbin/apex
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apex-darwin-amd64 --output /usr/local/bin/apex
+        sudo chmod +x /usr/local/bin/apex
         pass_message "Apex is installed successfully."
     fi
 
@@ -141,7 +141,7 @@ function cleanup() {
             info_message 'echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"'
         fi
 
-        sudo rm -f /usr/local/sbin/apex
+        sudo rm -f /usr/local/bin/apex
         pass_message "Apex is uninstalled successfully."
     
     elif [ $OS == "Linux" ]; then
