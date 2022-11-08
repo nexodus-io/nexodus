@@ -9,12 +9,14 @@ import {
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome"
 import {IconProp} from "@fortawesome/fontawesome-svg-core"
 import {faApple, faWindows, faLinux} from "@fortawesome/free-brands-svg-icons"
+import {faDownload} from "@fortawesome/free-solid-svg-icons"
 
 import CardImage from "../apex.png"
-
+  
 const Dashboard = () => {
 
     return (
+    <div>
         <Card>
             <CardMedia
                 component="img"
@@ -25,7 +27,26 @@ const Dashboard = () => {
             <CardHeader title="Welcome to Apex" />
             <CardContent>
                 Apex is a connectivity-as-a-service solution.
-                To get started, please download the client.
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader title="Download Apex Installer" />
+            <CardContent>
+                Aped Installer installs all the dependencies and setup apex agent.
+            </CardContent>
+            <CardActions>
+                <Button 
+                    size="small"
+                    startIcon={<FontAwesomeIcon icon={faDownload as IconProp}/>}
+                    href="https://apex-net.s3.amazonaws.com/installer/apex-installer.sh"
+                    >Apex Installer
+                </Button>
+            </CardActions>
+        </Card>        
+        <Card>
+            <CardHeader title="Download Apex Binaries" />
+            <CardContent>
+                If you want to run client binaries directly on your system, please download the here.
             </CardContent>
             <CardActions>
                 <Button
@@ -60,7 +81,8 @@ const Dashboard = () => {
                 >Download (arm)</Button>
             </CardActions>
         </Card>
-    );
+    </div>
+);
 };
 
 export default Dashboard;
