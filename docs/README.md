@@ -77,9 +77,9 @@ docker-compose down
 If you want to hack the code, and want to deploy the code locally on your laptop/dev environment. Follow -> [apex minikube deployment ](hack/minikube/README.md).
 
 #### Apex deployment on Kubernetes Cluster:
-If you want to run it on Kubernetes cluster running on VM somewhere in your data center or Kubernetes deployed over bunch of VM in Cloud, follow these instruction. These instructions assume that you don't have a support for LoadBalancer service type.
+If you want to run it on Kubernetes cluster running on VM somewhere in your data center or Kubernetes deployed over bunch of VM in Cloud, follow these instruction.These instructions assume that you don't have a support for LoadBalancer service type. 
 
-Deploy `ingress-nginx` ingress controller maintained by Kubernetes, to enable Ingress.
+Default kubernetes deployment doesn't have Ingress controller installed, so we need to deploy one. Following instructions are for `ingress-nginx` ingress controller maintained by Kubernetes, that we used to test in our local test environment.
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.4.0/deploy/static/provider/cloud/deploy.yaml
