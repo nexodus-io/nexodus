@@ -188,6 +188,7 @@ func (ax *Apex) Run() {
 		ax.hubRouter,
 		false,
 		"",
+		ax.nodeReflexiveAddress,
 	)
 	if err != nil {
 		log.Fatalf("error creating peer: %+v", err)
