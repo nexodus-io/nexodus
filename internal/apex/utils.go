@@ -121,7 +121,6 @@ func discoverGenericIPv4(controller string, port string) (string, error) {
 	return "", fmt.Errorf("failed to obtain the local IP")
 }
 
-
 // GetPubIPv4 retrieves current global IP address using STUN
 func GetPubIPv4() (string, error) {
 	// Creating a "connection" to STUN server.

@@ -184,13 +184,6 @@ func (ax *Apex) DeployWireguardConfig() {
 		if ax.wgLocalAddress != getIPv4Iface(wgIface).String() {
 			ax.setupLinuxInterface()
 		}
-		// this is probably unnecessary but leaving it until we reconcile the routing tables.
-		// old routes dont currently get purged until we handle deletes. This adds very little
-		// observable latency so far as the next function adds them back TODO: reconcile route tabless
-		//_, err := RunCommand("ip", "route", "flush", "dev", "wg0")
-		//if err != nil {
-		//	log.Debugf("Failed to flush the wg0 routes: %v\n", err)
-		//}
 		// add routes for each peer candidate
 		for _, peer := range latestCfg.Peer {
 			ax.handlePeerRoute(peer)

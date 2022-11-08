@@ -10,12 +10,20 @@
   apt:
     name:
       - wireguard
+      - fping
     state: latest
 
 - name: Kill any existing apex process from previous runs
   shell: |
     sudo killall apex 2> /dev/null
   ignore_errors: yes
+
+# Optionally clean all remnants of a previous run
+#- name: Delete wg0
+#  become: yes
+#  shell: |
+#    sudo ip link del wg0
+#  ignore_errors: yes
 
 - name: Download the Apex Agent Binary
   shell: |
@@ -47,7 +55,7 @@
 - name: Attach the Hub Router to the Controller
   become: yes
   shell: |
-    apex \
+    APEX_LOGLEVEL=debug apex \
     --hub-router \
     --stun \
     --with-token={{ (api_token.stdout|from_json).access_token }} \

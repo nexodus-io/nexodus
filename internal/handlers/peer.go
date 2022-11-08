@@ -215,15 +215,15 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			}
 		}
 		peer = &models.Peer{
-			DeviceID:    device.ID,
-			ZoneID:      zone.ID,
-			EndpointIP:  request.EndpointIP,
-			AllowedIPs:  ip,
-			NodeAddress: ip,
-			ChildPrefix: request.ChildPrefix,
-			ZonePrefix:  ipamPrefix,
-			HubZone:     hubZone,
-			HubRouter:   hubRouter,
+			DeviceID:      device.ID,
+			ZoneID:        zone.ID,
+			EndpointIP:    request.EndpointIP,
+			AllowedIPs:    ip,
+			NodeAddress:   ip,
+			ChildPrefix:   request.ChildPrefix,
+			ZonePrefix:    ipamPrefix,
+			HubZone:       hubZone,
+			HubRouter:     hubRouter,
 			ReflexiveIPv4: request.ReflexiveIPv4,
 		}
 		tx.Create(peer)
