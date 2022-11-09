@@ -1,5 +1,8 @@
 # ![Apex](assets/logo.svg)
 
+> **Warning**: This project is currently a PoC. It's an experiment to try out
+> some new ideas. Do not rely on this as it could be abandoned at any time.
+
 [![build](https://github.com/redhat-et/apex/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
 
 > *Roads? Where we're going, we don't need roads - Dr. Emmett Brown*
