@@ -189,7 +189,7 @@ func IsNAT(nodeOS, controller string, port string) (bool, error) {
 // CreateDirectory create a directory if one does not exist
 func CreateDirectory(path string) error {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(path, os.ModePerm)
+		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("failed to create the directory %s: %v", path, err)
 		}

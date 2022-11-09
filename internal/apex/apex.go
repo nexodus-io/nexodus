@@ -18,6 +18,7 @@ import (
 const (
 	pollInterval = 5 * time.Second
 	wgBinary     = "wg"
+	wgGoBinary   = "wireguard-go"
 	wgWinBinary  = "wireguard.exe"
 	REGISTER_URL = "/api/zones/%s/peers"
 	DEVICE_URL   = "/api/devices/%s"
@@ -69,6 +70,10 @@ type wgLocalConfig struct {
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
+	if err := binaryChecks(); err != nil {
+		return nil, err
+	}
+
 	controller := cCtx.Args().First()
 	if controller == "" {
 		log.Fatal("<controller-url> required")
@@ -116,16 +121,6 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		peerCache:              make(map[uuid.UUID]models.Peer),
 		keyCache:               make(map[uuid.UUID]string),
 		controllerURL:          controllerURL,
-	}
-
-	if ax.os == Windows.String() {
-		if !IsCommandAvailable(wgWinBinary) {
-			return nil, fmt.Errorf("wireguard.exe command not found, is wireguard installed?")
-		}
-	} else {
-		if !IsCommandAvailable(wgBinary) {
-			return nil, fmt.Errorf("wg command not found, is wireguard installed?")
-		}
 	}
 
 	if err := ax.checkUnsupportedConfigs(); err != nil {
@@ -375,4 +370,23 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 		localEndpointIP = linuxIP.String()
 	}
 	return localEndpointIP, nil
+}
+
+// binaryChecks validate the required binaries are available
+func binaryChecks() error {
+	if GetOS() == Windows.String() {
+		if !IsCommandAvailable(wgWinBinary) {
+			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
+		}
+	} else {
+		if !IsCommandAvailable(wgBinary) {
+			return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
+		}
+	}
+	if GetOS() == Darwin.String() {
+		if !IsCommandAvailable(wgGoBinary) {
+			return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
+		}
+	}
+	return nil
 }
