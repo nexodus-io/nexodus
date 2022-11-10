@@ -417,11 +417,6 @@ func deleteDarwinIface() {
 	}
 }
 
-// stripStrSpaces strip spaces from a string
-func stripStrSpaces(s string) string {
-	return strings.ReplaceAll(s, " ", "")
-}
-
 // getIPv4Iface get the IP of the specified net interface
 func getIPv4Iface(ifname string) net.IP {
 	interfaces, _ := net.Interfaces()

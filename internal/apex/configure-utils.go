@@ -151,17 +151,5 @@ func diffWireguardConfigs(activeCfg, revCfg []wgPeerConfig) bool {
 			return false
 		}
 	}
-	// look for any allowed IPs changes in existing peers
-	for _, xElem := range activeCfg {
-		xMap[xElem.AllowedIPs]++
-	}
-	for _, yElem := range revCfg {
-		yMap[yElem.AllowedIPs]++
-	}
-	for xAllowedIPsKey, xAllowedIPsVal := range xMap {
-		if yMap[xAllowedIPsKey] != xAllowedIPsVal {
-			return false
-		}
-	}
 	return true
 }
