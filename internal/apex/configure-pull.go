@@ -1,7 +1,6 @@
 package apex
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -75,7 +74,6 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 		pubkey := ax.keyCache[value.DeviceID]
 		// Build the wg config for all peers
 		if pubkey != ax.wireguardPubKey {
-			var allowedIPs string
 			if value.ChildPrefix != "" {
 				// check the netlink routing tables for the child prefix and exit if it already exists
 				if ax.os == Linux.String() && routeExists(value.ChildPrefix) {
@@ -93,19 +91,17 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 						log.Infof("error adding the child prefix route: %v", err)
 					}
 				}
-				allowedIPs = appendChildPrefix(value.AllowedIPs, value.ChildPrefix)
-			} else {
-				allowedIPs = value.AllowedIPs
+				value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 			}
 			peer := wgPeerConfig{
 				pubkey,
 				value.EndpointIP,
-				allowedIPs,
+				value.AllowedIPs,
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
 			log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-				allowedIPs,
+				value.AllowedIPs,
 				value.EndpointIP,
 				pubkey,
 				value.NodeAddress,
@@ -180,7 +176,7 @@ func (ax *Apex) DeployWireguardConfig() {
 				}
 			}
 		}
-		// if the local address changed, flush and readdress the wg iface
+		// if the local wireguard address changed, delete and re-address the wg iface
 		if ax.wgLocalAddress != getIPv4Iface(wgIface).String() {
 			ax.setupLinuxInterface()
 		}
@@ -192,17 +188,6 @@ func (ax *Apex) DeployWireguardConfig() {
 		for _, peer := range latestCfg.Peer {
 			ax.handlePeerTunnel(peer)
 		}
-		// initiate some traffic to peers, maybe not necessary for p2p only due to PersistentKeepalive
-		var wgPeerIPs []string
-		for _, peer := range ax.wgConfig.Peer {
-			wgPeerIPs = append(wgPeerIPs, peer.AllowedIPs)
-		}
-		if ax.hubRouterWgIP != "" {
-			wgPeerIPs = append(wgPeerIPs, ax.hubRouterWgIP)
-		}
-		// give the wg0 a second to renegotiate the peering before probing
-		time.Sleep(time.Second * 1)
-		probePeers(wgPeerIPs)
 
 	case Darwin.String():
 		activeDarwinConfig := filepath.Join(WgDarwinConfPath, wgConfActive)
@@ -252,10 +237,6 @@ func (ax *Apex) DeployWireguardConfig() {
 	log.Printf("Peer setup complete")
 }
 
-func appendChildPrefix(nodeAddress, childPrefix string) string {
-	return fmt.Sprintf("%s, %s", nodeAddress, childPrefix)
-}
-
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 // TODO: routes need to be looked up if the exists, netlink etc.
 // TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
@@ -268,63 +249,26 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 			log.Debugf("failed to find the darwin interface with the address [ %s ] %v", ax.wgLocalAddress, err)
 		}
 		// If child prefix split the two prefixes (host /32 and child prefix
-		if strings.Contains(wgPeerConfig.AllowedIPs, ",") {
-			prefix := strings.Split(wgPeerConfig.AllowedIPs, ",")
-			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix[0], "-interface", netName)
+		for _, allowedIP := range wgPeerConfig.AllowedIPs {
+			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", netName)
 			if err != nil {
 				log.Tracef("no route deleted: %v", err)
 			}
-			_, err = RunCommand("route", "-q", "-n", "add", "-inet", prefix[0], "-interface", netName)
+			_, err = RunCommand("route", "-q", "-n", "add", "-inet", allowedIP, "-interface", netName)
 			if err != nil {
 				log.Tracef("child prefix route add failed: %v", err)
-			}
-
-			_, err = RunCommand("route", "-q", "-n", "delete", "-inet", prefix[1], "-interface", netName)
-			if err != nil {
-				log.Tracef("no route deleted: %v", err)
-			}
-			_, err = RunCommand("route", "-q", "-n", "add", "-inet", prefix[1], "-interface", netName)
-			if err != nil {
-				log.Tracef("child prefix route add failed: %v", err)
-			}
-		} else {
-			// add the /32 host routes
-			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", wgPeerConfig.AllowedIPs, "-interface", netName)
-			if err != nil {
-				log.Tracef("no route was deleted: %v", err)
-			}
-			_, err = RunCommand("route", "-q", "-n", "add", "-inet", wgPeerConfig.AllowedIPs, "-interface", netName)
-			if err != nil {
-				log.Tracef("no route was added: %v", err)
 			}
 		}
+
 	case Linux.String():
 
-		if strings.Contains(wgPeerConfig.AllowedIPs, ",") {
-			prefix := strings.Split(wgPeerConfig.AllowedIPs, ",")
-			_, err := RunCommand("ip", "route", "del", prefix[0], "dev", wgIface)
+		for _, allowedIP := range wgPeerConfig.AllowedIPs {
+
+			_, err := RunCommand("ip", "route", "del", allowedIP, "dev", wgIface)
 			if err != nil {
 				log.Tracef("no route deleted: %v", err)
 			}
-			_, err = RunCommand("ip", "route", "add", prefix[0], "dev", wgIface)
-			if err != nil {
-				log.Tracef("child prefix route add failed: %v", err)
-			}
-			_, err = RunCommand("ip", "route", "del", prefix[1], "dev", wgIface)
-			if err != nil {
-				log.Tracef("no route deleted: %v", err)
-			}
-			_, err = RunCommand("ip", "route", "add", prefix[1], "dev", wgIface)
-			if err != nil {
-				log.Tracef("child prefix route add failed: %v", err)
-			}
-		} else {
-			// add the /32 host routes
-			_, err := RunCommand("ip", "route", "del", wgPeerConfig.AllowedIPs, "dev", wgIface)
-			if err != nil {
-				log.Tracef("no route deleted: %v", err)
-			}
-			_, err = RunCommand("ip", "route", "add", wgPeerConfig.AllowedIPs, "dev", wgIface)
+			_, err = RunCommand("ip", "route", "add", allowedIP, "dev", wgIface)
 			if err != nil {
 				log.Tracef("route add failed: %v", err)
 			}
@@ -336,7 +280,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 // TODO: routes need to be looked up if the exists, netlink etc.
 // TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
 func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
-	allowedIPs := stripStrSpaces(wgPeerConfig.AllowedIPs)
+	allowedIPs := allowedIPsString(wgPeerConfig.AllowedIPs)
 	switch ax.os {
 	case Darwin.String():
 		// remove a prior entry for the peer (fails silently)
@@ -368,4 +312,9 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 			}
 		}
 	}
+}
+
+// allowedIPsString joins the allowedIPs slice into the format required for wg set peer x,y,z
+func allowedIPsString(ips []string) string {
+	return strings.Join(ips, ",")
 }

@@ -170,7 +170,10 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				ip = peer.NodeAddress
 			}
 			peer.NodeAddress = ip
-			peer.AllowedIPs = ip
+
+			// update the peer entry with the latest AllowedIPs
+			peer.AllowedIPs = request.AllowedIPs
+			peer.AllowedIPs = append(peer.AllowedIPs, ip)
 		}
 
 		if request.ChildPrefix != peer.ChildPrefix {
@@ -183,12 +186,12 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		}
 	} else {
 		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
-		var ip string
+		var ipamIP string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.NodeAddress != "" {
 			var err error
-			ip, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
+			ipamIP, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
 			if err != nil {
 				tx.Rollback()
 				log.Error(err)
@@ -197,7 +200,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			}
 		} else {
 			var err error
-			ip, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
 			if err != nil {
 				tx.Rollback()
 				log.Error(err)
@@ -214,12 +217,14 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				return
 			}
 		}
+		var allowedIPs []string
+		allowedIPs = append(allowedIPs, ipamIP)
 		peer = &models.Peer{
 			DeviceID:      device.ID,
 			ZoneID:        zone.ID,
 			EndpointIP:    request.EndpointIP,
-			AllowedIPs:    ip,
-			NodeAddress:   ip,
+			AllowedIPs:    allowedIPs,
+			NodeAddress:   ipamIP,
 			ChildPrefix:   request.ChildPrefix,
 			ZonePrefix:    ipamPrefix,
 			HubZone:       hubZone,

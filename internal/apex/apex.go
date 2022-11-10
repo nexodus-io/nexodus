@@ -59,7 +59,7 @@ type wgConfig struct {
 type wgPeerConfig struct {
 	PublicKey           string
 	Endpoint            string
-	AllowedIPs          string
+	AllowedIPs          []string
 	PersistentKeepAlive string
 	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
 }
@@ -188,7 +188,7 @@ func (ax *Apex) Run() {
 	if err != nil {
 		log.Fatalf("error creating peer: %+v", err)
 	}
-	log.Info("Sucessfully registered with Apex Controller")
+	log.Info("Successfully registered with Apex Controller")
 
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.hubRouter {

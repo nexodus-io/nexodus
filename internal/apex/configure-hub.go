@@ -24,7 +24,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 			ax.wireguardPubKeyInConfig = true
 		}
 		if value.HubRouter {
-			hubRouterIP = value.AllowedIPs
+			hubRouterIP = value.AllowedIPs[0]
 			hubRouterEndpointIP, _, err = net.SplitHostPort(value.EndpointIP)
 			if err != nil {
 				log.Errorf("failed to split host:port endpoint pair: %v", err)
@@ -53,6 +53,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 
 	hubRouterNetAddress := fmt.Sprintf("%s/%d", hubRouterIP, zoneMask)
 	hubRouterNetAddress, err = parseNetworkStr(hubRouterNetAddress)
+	hubRouterAllowedIP := []string{hubRouterNetAddress}
 	if err != nil {
 		log.Errorf("invalid hub router network found: %v", err)
 	}
@@ -111,7 +112,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 				peerHub = wgPeerConfig{
 					pubkey,
 					value.EndpointIP,
-					hubRouterNetAddress,
+					hubRouterAllowedIP,
 					persistentKeepalive,
 				}
 				peers = append(peers, peerHub)
