@@ -13,6 +13,7 @@ export const PeerList = () => (
             <TextField label="Allowed IPs" source="allowed_ips" />
             <ReferenceField label="Zone ID" source="zone_id" reference='zones' link="show" />
             <TextField label="Node Address" source="node_address" />
+            <TextField label="STUN Address" source="reflexive_ip4" />
             <TextField label="Child Prefix" source="child_prefix" />
         </Datagrid>
     </List>
@@ -27,6 +28,7 @@ export const PeerShow= () => (
             <TextField label="Allowed IPs" source="allowed_ips" />
             <ReferenceField label="Zone ID" source="zone_id" reference='zones' link="show" />
             <TextField label="Node Address" source="node_address" />
+            <TextField label="STUN Address" source="reflexive_ip4" />
             <TextField label="Child Prefix" source="child_prefix" />
         </SimpleShowLayout>
     </Show>

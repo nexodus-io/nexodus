@@ -14,7 +14,7 @@ type Peer struct {
 	HubRouter     bool      `json:"hub_router"`
 	HubZone       bool      `json:"hub_zone"`
 	ZonePrefix    string    `json:"zone_prefix" example:"10.1.1.0/24"`
-	ReflexiveIPv4 string    `json:"reflexive-ip4"`
+	ReflexiveIPv4 string    `json:"reflexive_ip4"`
 }
 
 // AddPeer are the fields required to add a new Peer
@@ -27,5 +27,5 @@ type AddPeer struct {
 	HubRouter     bool      `json:"hub_router"`
 	HubZone       bool      `json:"hub_zone"`
 	ZonePrefix    string    `json:"zone_prefix" example:"10.1.1.0/24"`
-	ReflexiveIPv4 string    `json:"reflexive-ip4"`
+	ReflexiveIPv4 string    `json:"reflexive_ip4"`
 }
