@@ -187,7 +187,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ax.wgConfig.Peer = peers
+	ax.wgConfig.Peers = peers
 }
 
 func isReachable(s []string, str string) bool {

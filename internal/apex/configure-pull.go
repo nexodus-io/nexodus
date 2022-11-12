@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redhat-et/apex/internal/models"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 )
@@ -136,13 +138,13 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ax.wgConfig.Peer = peers
+	ax.wgConfig.Peers = peers
 }
 
-func (ax *Apex) DeployWireguardConfig() {
+func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) {
 	latestCfg := &wgConfig{
 		Interface: ax.wgConfig.Interface,
-		Peer:      ax.wgConfig.Peer,
+		Peers:     ax.wgConfig.Peers,
 	}
 	cfg := ini.Empty(ini.LoadOptions{
 		AllowNonUniqueSections: true,
@@ -176,17 +178,33 @@ func (ax *Apex) DeployWireguardConfig() {
 				}
 			}
 		}
-		// if the local wireguard address changed, delete and re-address the wg iface
+		// initialize the wireguard interface if it does not have an address
 		if ax.wgLocalAddress != getIPv4Iface(wgIface).String() {
 			ax.setupLinuxInterface()
 		}
-		// add routes for each peer candidate
-		for _, peer := range latestCfg.Peer {
-			ax.handlePeerRoute(peer)
+
+		// add routes and tunnels for all peer candidates without checking cache since it has not been built yet
+		if firstTime {
+			for _, peer := range latestCfg.Peers {
+				ax.handlePeerRoute(peer)
+				ax.handlePeerTunnel(peer)
+			}
 		}
-		// add tunnels for each candidate peer
-		for _, peer := range latestCfg.Peer {
-			ax.handlePeerTunnel(peer)
+		// add routes and tunnels for the new peers only according to the cache diff
+		for _, newPeer := range newPeers {
+			if newPeer.ID != uuid.Nil {
+				device, err := ax.client.GetDevice(newPeer.DeviceID)
+				if err != nil {
+					log.Errorf("unable to get device %s: %s", newPeer.DeviceID, err)
+				}
+				// add routes for each peer candidate
+				for _, peer := range latestCfg.Peers {
+					if peer.PublicKey == device.PublicKey {
+						ax.handlePeerRoute(peer)
+						ax.handlePeerTunnel(peer)
+					}
+				}
+			}
 		}
 
 	case Darwin.String():
@@ -203,11 +221,11 @@ func (ax *Apex) DeployWireguardConfig() {
 			}
 		}
 		// add routes for each peer candidate
-		for _, peer := range latestCfg.Peer {
+		for _, peer := range latestCfg.Peers {
 			ax.handlePeerRoute(peer)
 		}
 		// add tunnels for each peer candidate
-		for _, peer := range latestCfg.Peer {
+		for _, peer := range latestCfg.Peers {
 			ax.handlePeerTunnel(peer)
 		}
 
@@ -239,7 +257,6 @@ func (ax *Apex) DeployWireguardConfig() {
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 // TODO: routes need to be looked up if the exists, netlink etc.
-// TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
 func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 	switch ax.os {
 	case Darwin.String():
@@ -259,11 +276,8 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 				log.Tracef("child prefix route add failed: %v", err)
 			}
 		}
-
 	case Linux.String():
-
 		for _, allowedIP := range wgPeerConfig.AllowedIPs {
-
 			_, err := RunCommand("ip", "route", "del", allowedIP, "dev", wgIface)
 			if err != nil {
 				log.Tracef("no route deleted: %v", err)
@@ -278,7 +292,6 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 // TODO: routes need to be looked up if the exists, netlink etc.
-// TODO: AllowedIPs should be a slice, currently child-prefix is two routes seperated by a comma
 func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 	allowedIPs := allowedIPsString(wgPeerConfig.AllowedIPs)
 	switch ax.os {
