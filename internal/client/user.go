@@ -1,11 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
 )
 
@@ -43,4 +45,32 @@ func (c *Client) GetCurrentUser() (models.User, error) {
 	}
 
 	return u, nil
+}
+
+// PatchAddUserToZone patches a user into a zone
+func (c *Client) PatchAddUserToZone(zoneID string) (models.PatchUser, error) {
+	dest := c.baseURL.JoinPath(CURRENT_USER).String()
+	zoneUUID, _ := uuid.Parse(zoneID)
+	user := models.PatchUser{
+		ZoneID: zoneUUID,
+	}
+	userJSON, _ := json.Marshal(user)
+
+	req, err := http.NewRequest(http.MethodPatch, dest, bytes.NewBuffer(userJSON))
+	if err != nil {
+		return models.PatchUser{}, err
+	}
+
+	res, err := c.do(req)
+	if err != nil {
+		return models.PatchUser{}, err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return models.PatchUser{}, fmt.Errorf("failed to patch the user into the zone: %s", zoneID)
+	}
+
+	return models.PatchUser{}, nil
 }
