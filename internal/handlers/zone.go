@@ -142,7 +142,7 @@ func (api *API) GetZones(c *gin.Context) {
 	c.JSON(http.StatusOK, zone)
 }
 
-// ListZonePeers lists all peers in a zone
+// ListPeersInZone lists all peers in a zone
 // @Summary      List Peers
 // @Description  Lists all peers for this zone
 // @Tags         Peers
@@ -178,7 +178,7 @@ func (api *API) ListPeersInZone(c *gin.Context) {
 	c.JSON(http.StatusOK, peers)
 }
 
-// GetZonePeers gets a peer in a zone
+// GetPeerInZone gets a peer in a zone
 // @Summary      Get Peer
 // @Description  Gets a peer in a zone by ID
 // @Tags         Peers

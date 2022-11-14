@@ -20,8 +20,6 @@ const (
 	wgBinary     = "wg"
 	wgGoBinary   = "wireguard-go"
 	wgWinBinary  = "wireguard.exe"
-	REGISTER_URL = "/api/zones/%s/peers"
-	DEVICE_URL   = "/api/devices/%s"
 )
 
 type Apex struct {
@@ -53,7 +51,7 @@ type Apex struct {
 
 type wgConfig struct {
 	Interface wgLocalConfig
-	Peer      []wgPeerConfig `ini:",nonunique"`
+	Peers     []wgPeerConfig `ini:"Peer,nonunique"`
 }
 
 type wgPeerConfig struct {
@@ -61,7 +59,6 @@ type wgPeerConfig struct {
 	Endpoint            string
 	AllowedIPs          []string
 	PersistentKeepAlive string
-	// AllowedIPs []string `delim:","` TODO: support an AllowedIPs slice here
 }
 
 type wgLocalConfig struct {
@@ -196,13 +193,13 @@ func (ax *Apex) Run() {
 		hubRouterIpTables()
 	}
 
-	if err := ax.Reconcile(ax.zone); err != nil {
+	if err := ax.Reconcile(ax.zone, true); err != nil {
 		log.Fatal(err)
 	}
 
 	ticker := time.NewTicker(pollInterval)
 	for range ticker.C {
-		if err := ax.Reconcile(user.ZoneID); err != nil {
+		if err := ax.Reconcile(user.ZoneID, false); err != nil {
 			// TODO: Add smarter reconciliation logic
 			// to handle disconnects and/or timeouts etc...
 			log.Fatal(err)
@@ -210,29 +207,48 @@ func (ax *Apex) Run() {
 	}
 }
 
-func (ax *Apex) Reconcile(zoneID uuid.UUID) error {
+func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 	peerListing, err := ax.client.GetZonePeers(zoneID)
 	if err != nil {
 		return err
 	}
-
+	var newPeers []models.Peer
+	if firstTime {
+		// Initial peer list processing branches from here
+		log.Debugf("Initializing peers for the first time")
+		for _, p := range peerListing {
+			existing, ok := ax.peerCache[p.ID]
+			if !ok {
+				ax.peerCache[p.ID] = p
+				newPeers = append(newPeers, p)
+			}
+			if !reflect.DeepEqual(existing, p) {
+				ax.peerCache[p.ID] = p
+				newPeers = append(newPeers, p)
+			}
+		}
+		ax.ParseWireguardConfig(ax.listenPort)
+		ax.DeployWireguardConfig(newPeers, firstTime)
+	}
+	// all subsequent peer listings updates get branched from here
 	changed := false
 	for _, p := range peerListing {
 		existing, ok := ax.peerCache[p.ID]
 		if !ok {
 			changed = true
 			ax.peerCache[p.ID] = p
+			newPeers = append(newPeers, p)
 		}
 		if !reflect.DeepEqual(existing, p) {
 			changed = true
 			ax.peerCache[p.ID] = p
+			newPeers = append(newPeers, p)
 		}
 	}
-
 	if changed {
-		log.Debugf("Peer listing has changed, recalculating configuration")
+		log.Debugf("Peers listing has changed, recalculating configuration")
 		ax.ParseWireguardConfig(ax.listenPort)
-		ax.DeployWireguardConfig()
+		ax.DeployWireguardConfig(newPeers, false)
 	}
 	return nil
 }

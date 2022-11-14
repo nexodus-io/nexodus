@@ -87,7 +87,7 @@ func (ax *Apex) updateWireguardConfig() error {
 	}
 
 	// diff the unordered list of [Peers] configuration peers and rebuild the tunnel if there has been a change
-	if !diffWireguardConfigs(activePeers.Peer, revisedPeers.Peer) {
+	if !diffWireguardConfigs(activePeers.Peers, revisedPeers.Peers) {
 		log.Print("Peers configuration change detected")
 		if err := ax.overwriteWgConfig(); err != nil {
 			return err
