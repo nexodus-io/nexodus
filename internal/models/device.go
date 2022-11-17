@@ -12,6 +12,7 @@ type Device struct {
 	PublicKey string      `gorm:"uniqueIndex" json:"public_key"`
 	Peers     []*Peer     `json:"-"`
 	PeerList  []uuid.UUID `gorm:"-" json:"peers" example:"97d5214a-8c51-4772-b492-53de034740c5"`
+	Hostname  string      `json:"hostname" example:"myhost"`
 }
 
 func (d *Device) BeforeCreate(tx *gorm.DB) error {
@@ -27,4 +28,5 @@ func (d *Device) BeforeCreate(tx *gorm.DB) error {
 // AddDevice is the information needed to add a new Device.
 type AddDevice struct {
 	PublicKey string `json:"public_key" example:"rZlVfefGshRxO+r9ethv2pODimKlUeP/bO/S47K3WUk="`
+	Hostname  string `json:"hostname" example:"myhost"`
 }

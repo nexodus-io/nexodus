@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"reflect"
 	"time"
 
@@ -47,6 +48,7 @@ type Apex struct {
 	keyCache             map[uuid.UUID]string
 	wgLocalAddress       string
 	nodeReflexiveAddress string
+	hostname             string
 }
 
 type wgConfig struct {
@@ -102,6 +104,11 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		return nil, err
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("Error retrieving hostname: %+v", err)
+	}
+
 	ax := &Apex{
 		wireguardPubKey:        cCtx.String("public-key"),
 		wireguardPvtKey:        cCtx.String("private-key"),
@@ -118,6 +125,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		peerCache:              make(map[uuid.UUID]models.Peer),
 		keyCache:               make(map[uuid.UUID]string),
 		controllerURL:          controllerURL,
+		hostname:               hostname,
 	}
 
 	if err := ax.checkUnsupportedConfigs(); err != nil {
@@ -136,7 +144,7 @@ func (ax *Apex) Run() {
 		log.Fatalf("handleKeys: %+v", err)
 	}
 
-	device, err := ax.client.CreateDevice(ax.wireguardPubKey)
+	device, err := ax.client.CreateDevice(ax.wireguardPubKey, ax.hostname)
 	if err != nil {
 		log.Fatalf("device register error: %+v", err)
 	}

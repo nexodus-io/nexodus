@@ -14,7 +14,7 @@ import {
 export const DeviceList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
-            <TextField label = "ID" source="id" />
+            <TextField label = "Hostname" source="hostname" />
             <ReferenceField label = "User" source="user_id" reference="users" link="show"/>
             <TextField label = "Public Key" source="public_key" />
             <ReferenceArrayField label="Peers" source="peers" reference="peers">
@@ -30,6 +30,7 @@ export const DeviceShow = () => (
     <Show>
         <SimpleShowLayout>
             <TextField label="ID" source="id" />
+            <TextField label = "Hostname" source="hostname" />
             <ReferenceField label = "User" source="user_id" reference="users" link="show"/>
             <TextField label = "Public Key" source="public_key" />
             <ReferenceArrayField label="Peers" source="peers" reference="peers">
