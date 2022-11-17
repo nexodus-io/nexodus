@@ -58,7 +58,7 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 
 	req, err := http.NewRequest(http.MethodPatch, dest, bytes.NewBuffer(userJSON))
 	if err != nil {
-		return models.PatchUser{}, err
+		return models.User{}, err
 	}
 
 	res, err := c.do(req)
