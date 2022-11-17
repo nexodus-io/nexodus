@@ -11,6 +11,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// key for username in gin.Context
+const AuthUserName string = "_apex.UserName"
+
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString(gin.AuthUserKey)
@@ -19,6 +22,7 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("bad user id"))
 			return
 		}
+		userName := c.GetString(AuthUserName)
 		var user models.User
 		res := api.db.First(&user, "id = ?", id)
 		if res.Error != nil {
@@ -26,11 +30,16 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 				user.ID = id
 				user.ZoneID = api.defaultZoneID
 				user.Devices = make([]*models.Device, 0)
+				user.UserName = userName
 				api.db.Create(&user)
 			} else {
 				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", userID))
 				return
 			}
+		}
+		// Check if the UserName has changed since the last time we saw this user
+		if user.UserName != userName {
+			api.db.Model(&user).Update("UserName", userName)
 		}
 		c.Next()
 	}
