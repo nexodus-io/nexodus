@@ -15,7 +15,6 @@ import {
 export const ZoneList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
-            <TextField label="ID" source="id" />
             <TextField label="Name" source="name" />
             <TextField label="Description" source="description" />
             <TextField label="CIDR" source="cidr" />
