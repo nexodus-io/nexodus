@@ -51,7 +51,7 @@ func (c *Client) GetCurrentUser() (models.User, error) {
 func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 	dest := c.baseURL.JoinPath(CURRENT_USER).String()
 	user := models.PatchUser{
-		ZoneID: zoneUUID,
+		ZoneID: zoneID,
 	}
 	userJSON, _ := json.Marshal(user)
 
