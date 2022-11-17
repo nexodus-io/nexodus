@@ -16,9 +16,10 @@ const (
 	DEVICE  = "/api/devices/%s"
 )
 
-func (c *Client) CreateDevice(publicKey string) (models.Device, error) {
+func (c *Client) CreateDevice(publicKey string, hostname string) (models.Device, error) {
 	body, err := json.Marshal(models.AddDevice{
 		PublicKey: publicKey,
+		Hostname:  hostname,
 	})
 	if err != nil {
 		return models.Device{}, err

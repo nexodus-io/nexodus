@@ -114,6 +114,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 	device = models.Device{
 		PublicKey: request.PublicKey,
 		UserID:    user.ID,
+		Hostname:  request.Hostname,
 	}
 
 	if res := api.db.Create(&device); res.Error != nil {
