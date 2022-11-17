@@ -50,7 +50,6 @@ func (c *Client) GetCurrentUser() (models.User, error) {
 // MoveCurrentUserToZone moves the current user into a given zone
 func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 	dest := c.baseURL.JoinPath(CURRENT_USER).String()
-	zoneUUID, _ := uuid.Parse(zoneID)
 	user := models.PatchUser{
 		ZoneID: zoneUUID,
 	}
