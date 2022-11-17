@@ -32,7 +32,7 @@ const Dashboard = () => {
         <Card>
             <CardHeader title="Download Apex Installer" />
             <CardContent>
-                Aped Installer installs all the dependencies and setup apex agent.
+                Apex Installer installs all the dependencies and setup apex agent.
             </CardContent>
             <CardActions>
                 <Button 
