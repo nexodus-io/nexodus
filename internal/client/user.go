@@ -47,8 +47,8 @@ func (c *Client) GetCurrentUser() (models.User, error) {
 	return u, nil
 }
 
-// PatchAddUserToZone patches a user into a zone
-func (c *Client) PatchAddUserToZone(zoneID string) (models.PatchUser, error) {
+// MoveCurrentUserToZone moves the current user into a given zone
+func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 	dest := c.baseURL.JoinPath(CURRENT_USER).String()
 	zoneUUID, _ := uuid.Parse(zoneID)
 	user := models.PatchUser{
