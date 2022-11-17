@@ -32,7 +32,7 @@ const Dashboard = () => {
         <Card>
             <CardHeader title="Download Apex Installer" />
             <CardContent>
-                Apex Installer installs all the dependencies and setup apex agent.
+                Apex Installer installs the apex agent and its dependencies.
             </CardContent>
             <CardActions>
                 <Button 
@@ -46,7 +46,7 @@ const Dashboard = () => {
         <Card>
             <CardHeader title="Download Apex Binaries" />
             <CardContent>
-                If you want to run client binaries directly on your system, please download the here.
+                If you want to download only the apex agent to run on your system, please download it here.
             </CardContent>
             <CardActions>
                 <Button
