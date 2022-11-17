@@ -68,6 +68,10 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 
 	defer res.Body.Close()
 
+        body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return models.User{}, err
+	}
 	if res.StatusCode != http.StatusOK {
 		return models.User{}, fmt.Errorf("failed to patch the user into the zone: %s", zoneID)
 	}
