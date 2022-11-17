@@ -10,6 +10,7 @@ import {
     Show,
     SimpleShowLayout,
     BooleanField,
+    BooleanInput,
 } from 'react-admin';
 
 export const ZoneList = () => (
@@ -50,6 +51,7 @@ export const ZoneCreate = () => (
             <TextInput label="Name" source="name" />
             <TextInput label="Description" source="description" />
             <TextInput label="CIDR" source="cidr" />
+            <BooleanInput label="Hub Zone" source="hub_zone" />
         </SimpleForm>
     </Create>
 );
