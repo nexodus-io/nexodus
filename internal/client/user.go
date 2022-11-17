@@ -63,7 +63,7 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 
 	res, err := c.do(req)
 	if err != nil {
-		return models.PatchUser{}, err
+		return models.User{}, err
 	}
 
 	defer res.Body.Close()
