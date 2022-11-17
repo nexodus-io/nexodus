@@ -18,16 +18,18 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/redhat-et/apex/internal/client"
 	"github.com/stretchr/testify/require"
 )
 
 const (
+	controller   = "http://localhost:8080"
 	clientId     = "api-clients"
 	clientSecret = "cvXhCRXI2Vld244jjDcnABCMrTEq2rwE"
 )
 
 func healthcheck() error {
-	res, err := http.Get("http://localhost:8080/api/health")
+	res, err := http.Get(fmt.Sprintf("%s/api/health", controller))
 	if err != nil {
 		return err
 	}
@@ -82,7 +84,7 @@ func GetToken(username, password string) (string, error) {
 	v.Set("client_secret", clientSecret)
 	v.Set("grant_type", "password")
 
-	res, err := http.PostForm("http://localhost:8080/auth/realms/controller/protocol/openid-connect/token", v)
+	res, err := http.PostForm(fmt.Sprintf("%s/auth/realms/controller/protocol/openid-connect/token", controller), v)
 	if err != nil {
 		return "", err
 	}
@@ -105,6 +107,15 @@ func GetToken(username, password string) (string, error) {
 		return "", fmt.Errorf("no access token in reponse")
 	}
 	return token.(string), nil
+}
+
+func newClient(token string) (client.Client, error) {
+	auth := client.NewTokenAuthenticator(token)
+	client, err := client.NewClient(controller, auth)
+	if err != nil {
+		return client, err
+	}
+	return client, nil
 }
 
 func getWg0IP(ctx context.Context, container *dockertest.Resource) (string, error) {
@@ -156,4 +167,33 @@ func ping(ctx context.Context, container *dockertest.Resource, address string) e
 		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
 	return err
+}
+
+// containerExec TODO: this will be for deleting keys, restarting apex and creating general chaos
+func containerExec(ctx context.Context, container *dockertest.Resource, cmd []string) (string, error) {
+	var execOut string
+	err := backoff.Retry(func() error {
+		stdout := new(bytes.Buffer)
+		stderr := new(bytes.Buffer)
+		code, err := container.Exec(
+			cmd,
+			dockertest.ExecOptions{
+				StdOut: stdout,
+				StdErr: stderr,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			return fmt.Errorf("exit code %d. stderr: %s", code, stderr.String())
+		}
+		execOut = stdout.String()
+		return nil
+	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
+	if err != nil {
+		return "", err
+	}
+
+	return execOut, err
 }
