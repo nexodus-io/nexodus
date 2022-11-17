@@ -14,7 +14,7 @@ ARG VITE_CONTROLLER_URL=/api
 COPY ui .
 RUN yarn build
 
-FROM docker.io/library/nginx:stable-alpine
+FROM docker.io/nginxinc/nginx-unprivileged:latest
 COPY --from=builder /app/build /usr/share/nginx/html
 COPY ./ui/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 3000

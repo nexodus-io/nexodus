@@ -23,6 +23,10 @@ metadata:
   namespace: apex
   annotations:
     nginx.ingress.kubernetes.io/server-snippet: |
+          location /api {
+          return 302 /api/;
+      }
+
 spec:
   ingressClassName: nginx
   rules:
