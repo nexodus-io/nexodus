@@ -67,7 +67,7 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 
 	defer res.Body.Close()
 
-        body, err := io.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -75,10 +75,10 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 		return models.User{}, fmt.Errorf("failed to patch the user into the zone: %s", zoneID)
 	}
 
-        var u models.User
+	var u models.User
 	if err := json.Unmarshal(body, &u); err != nil {
 		return models.User{}, err
 	}
-	
+
 	return u, nil
 }

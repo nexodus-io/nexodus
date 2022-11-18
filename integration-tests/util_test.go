@@ -172,28 +172,39 @@ func ping(ctx context.Context, container *dockertest.Resource, address string) e
 // containerExec TODO: this will be for deleting keys, restarting apex and creating general chaos
 func containerExec(ctx context.Context, container *dockertest.Resource, cmd []string) (string, error) {
 	var execOut string
-	err := backoff.Retry(func() error {
-		stdout := new(bytes.Buffer)
-		stderr := new(bytes.Buffer)
-		code, err := container.Exec(
-			cmd,
-			dockertest.ExecOptions{
-				StdOut: stdout,
-				StdErr: stderr,
-			},
-		)
-		if err != nil {
-			return err
-		}
-		if code != 0 {
-			return fmt.Errorf("exit code %d. stderr: %s", code, stderr.String())
-		}
-		execOut = stdout.String()
-		return nil
-	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	code, err := container.Exec(
+		cmd,
+		dockertest.ExecOptions{
+			StdOut: stdout,
+			StdErr: stderr,
+		},
+	)
+	if code != 0 {
+		return "", fmt.Errorf("exit code %d. stderr: %s", code, stderr.String())
+	}
 	if err != nil {
 		return "", err
 	}
 
 	return execOut, err
+}
+
+// CreateNetwork creates a docker test network
+func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.Network {
+	net, err := suite.pool.CreateNetwork(name, func(config *docker.CreateNetworkOptions) {
+		config.Driver = "bridge"
+		config.IPAM = &docker.IPAMOptions{
+			Driver: "default",
+			Config: []docker.IPAMConfig{
+				{
+					Subnet: cidr,
+				},
+			},
+		}
+	})
+	require.NoError(suite.T(), err)
+
+	return net
 }
