@@ -312,9 +312,10 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 		if err != nil {
 			log.Errorf("peer tunnel removal failed: %v", err)
 		}
-		// bouncers to not get a persistent keepalive
+		// bouncers to not get a persistent keepalive or specific endpoints since
+		// the source ports from peers need to be dynamic for symmetric NAT.
 		if ax.hubRouter {
-			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "endpoint", wgPeerConfig.Endpoint)
+			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs)
 			if err != nil {
 				log.Errorf("peer tunnel addition failed: %v", err)
 			}
