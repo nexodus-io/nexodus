@@ -44,24 +44,32 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	token, err := GetToken("admin", "floofykittens")
 	require.NoError(err)
 
-	node1 := suite.CreateNode("node1",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
-		},
-	)
+	// create the nodes
+	node1 := suite.CreateNode("node1", []string{})
 	defer node1.Close()
-
-	node2 := suite.CreateNode("node2",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
-		},
-	)
+	node2 := suite.CreateNode("node2", []string{})
 	defer node2.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
 	node1IP, err := getWg0IP(ctx, node1)
 	require.NoError(err)
 	node2IP, err := getWg0IP(ctx, node2)
@@ -73,6 +81,52 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 
 	suite.T().Logf("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
+	assert.NoError(err)
+
+	//kill the apex process on both nodes
+	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
+	require.NoError(err)
+	_, err = containerExec(ctx, node2, []string{"killall", "apex"})
+	require.NoError(err)
+
+	// delete only the public key on node1
+	_, err = containerExec(ctx, node1, []string{"rm", "/etc/wireguard/public.key"})
+	require.NoError(err)
+	// delete the entire wireguard directory on node2
+	_, err = containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	require.NoError(err)
+
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	// give wg0 time to re-address
+	time.Sleep(time.Second * 5)
+	// IPs will be new since the keys were deleted, retrieve the new addresses
+	newNode1IP, err := getWg0IP(ctx, node1)
+	require.NoError(err)
+	newNode2IP, err := getWg0IP(ctx, node2)
+	require.NoError(err)
+
+	suite.T().Logf("Pinging %s from node1", newNode2IP)
+	err = ping(ctx, node1, newNode2IP)
+	assert.NoError(err)
+
+	suite.T().Logf("Pinging %s from node2", newNode1IP)
+	err = ping(ctx, node2, newNode1IP)
 	assert.NoError(err)
 }
 
@@ -86,27 +140,35 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 	token, err := GetToken("admin", "floofykittens")
 	require.NoError(err)
 
-	node1 := suite.CreateNode("node1",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--request-ip=%s", node1IP),
-			"http://host.docker.internal:8080",
-		},
-	)
+	// create the nodes
+	node1 := suite.CreateNode("node1", []string{})
 	defer node1.Close()
-
-	node2 := suite.CreateNode("node2",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--request-ip=%s", node2IP),
-			"http://host.docker.internal:8080",
-		},
-	)
+	node2 := suite.CreateNode("node2", []string{})
 	defer node2.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node1IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node2IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	// ping the requested IP address (--request-ip)
 	suite.T().Logf("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
@@ -130,33 +192,75 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	assert.NoError(err)
 
 	// patch the new user into the zone
-	_, err = c.PatchAddUserToZone(zoneID.ID.String())
+	_, err = c.MoveCurrentUserToZone(zoneID.ID)
 	assert.NoError(err)
 
 	node1IP := "10.140.0.101"
 	node2IP := "10.140.0.102"
 
-	node1 := suite.CreateNode("node1",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--request-ip=%s", node1IP),
-			"http://host.docker.internal:8080",
-		},
-	)
+	// create the nodes
+	node1 := suite.CreateNode("node1", []string{})
 	defer node1.Close()
-
-	node2 := suite.CreateNode("node2",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--request-ip=%s", node2IP),
-			"http://host.docker.internal:8080",
-		},
-	)
+	node2 := suite.CreateNode("node2", []string{})
 	defer node2.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node1IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node2IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	// ping the requested IP address (--request-ip)
+	suite.T().Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, node2IP)
+	assert.NoError(err)
+
+	suite.T().Logf("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, node1IP)
+	assert.NoError(err)
+
+	//kill the apex process on both nodes
+	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
+	require.NoError(err)
+	_, err = containerExec(ctx, node2, []string{"killall", "apex"})
+	require.NoError(err)
+
+	// restart apex and ensure the nodes receive the same re-quested address
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node1IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--request-ip=%s", node2IP),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	// ping the requested IP address (--request-ip)
 	suite.T().Logf("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
@@ -181,37 +285,47 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert.NoError(err)
 
 	// patch the new user into the zone
-	_, err = c.PatchAddUserToZone(zoneID.ID.String())
+	_, err = c.MoveCurrentUserToZone(zoneID.ID)
 	assert.NoError(err)
 
-	// create three nodes, the first node being a relay node
-	node1 := suite.CreateNode("node1",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			"--hub-router",
-			"http://host.docker.internal:8080",
-		},
-	)
+	// create the nodes
+	node1 := suite.CreateNode("node1", []string{})
 	defer node1.Close()
-
-	node2 := suite.CreateNode("node2",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
-		},
-	)
+	node2 := suite.CreateNode("node2", []string{})
+	defer node2.Close()
+	node3 := suite.CreateNode("node3", []string{})
 	defer node2.Close()
 
-	node3 := suite.CreateNode("node3",
-		[]string{
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			"--hub-router",
 			fmt.Sprintf("--with-token=%s", token),
 			"http://host.docker.internal:8080",
-		},
-	)
-	defer node3.Close()
+		})
+	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	// Ensure the relay node has time to register before joining spokes since it is required for hub-zones
+	time.Sleep(time.Second * 10)
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node3, []string{
+			"/bin/apex",
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
 
 	node1IP, err := getWg0IP(ctx, node1)
 	require.NoError(err)
@@ -252,7 +366,7 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	assert.NoError(err)
 
 	// patch the new user into the zone
-	_, err = c.PatchAddUserToZone(zoneID.ID.String())
+	_, err = c.MoveCurrentUserToZone(zoneID.ID)
 	assert.NoError(err)
 
 	node1LoopbackNet := "172.16.10.101/32"
@@ -260,26 +374,33 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	node1ChildPrefix := "172.16.10.0/24"
 	node2ChildPrefix := "172.16.20.0/24"
 
-	node1 := suite.CreateNode("node1",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
-			"http://host.docker.internal:8080",
-		},
-	)
+	// create the nodes
+	node1 := suite.CreateNode("node1", []string{})
 	defer node1.Close()
-
-	node2 := suite.CreateNode("node2",
-		[]string{
-			fmt.Sprintf("--with-token=%s", token),
-			fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
-			"http://host.docker.internal:8080",
-		},
-	)
+	node2 := suite.CreateNode("node2", []string{})
 	defer node2.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
+
+	// start apex on the nodes
+	go func() {
+		_, err = containerExec(ctx, node1, []string{
+			"/bin/apex",
+			fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
+
+	go func() {
+		_, err = containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://host.docker.internal:8080",
+		})
+	}()
 
 	// add loopbacks to the containers that are contained in the node's child prefix
 	_, err = containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
