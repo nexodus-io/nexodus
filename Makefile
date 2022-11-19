@@ -1,5 +1,5 @@
 .PHONY: all
-all: go-lint apex controller
+all: go-lint apex apiserver
 
 .PHONY: apex
 apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64 dist/apex-darwin-arm64 dist/apex-windows-amd64
@@ -7,8 +7,6 @@ apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
 APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
-
-CONTROLLER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexcontroller/*.go)
 
 dist:
 	mkdir -p $@
@@ -35,23 +33,8 @@ dist/apex-windows-amd64: $(APEX_DEPS) | dist
 clean:
 	rm -rf dist
 
-.PHONY: controller
-controller: dist/apexcontroller dist/apexcontroller-linux-amd64 dist/apexcontroller-darwin-amd64 dist/apexcontroller-darwin-arm64
-
-dist/apexcontroller: $(CONTROLLER_DEPS) | dist
-	CGO_ENABLED=0 go build -o $@ ./cmd/apexcontroller
-
-dist/apexcontroller-linux-amd64: $(CONTROLLER_DEPS) | dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apexcontroller
-
-dist/apexcontroller-darwin-amd64: $(CONTROLLER_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apexcontroller
-
-dist/apexcontroller-darwin-arm64: $(CONTROLLER_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apexcontroller
-
 .PHONY: go-lint
-go-lint: $(APEX_DEPS) $(CONTROLLER_DEPS)
+go-lint: $(APEX_DEPS) $(APISERVER_DEPS)
 	@if ! which golangci-lint 2>&1 >/dev/null; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
@@ -61,7 +44,7 @@ go-lint: $(APEX_DEPS) $(CONTROLLER_DEPS)
 
 .PHONY: gen-docs
 gen-docs:
-	swag init -g ./cmd/apexcontroller/main.go -o ./internal/docs
+	swag init -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: test-images
 test-images:
@@ -77,7 +60,7 @@ e2e: dist/apex
 	docker compose build
 	./tests/e2e-scripts/init-containers.sh -o $(OS_IMAGE)
 
-.PHONY: e2e
+.PHONY: go-e2e
 go-e2e: dist/apex test-images
 	docker compose up --build -d
 	go test -v --tags=integration ./integration-tests/...

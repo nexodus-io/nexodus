@@ -1,0 +1,22 @@
+{
+	http_port 8080
+}
+
+apex.local:8080 {
+	reverse_proxy ui:3000
+}
+
+api.apex.local:8080 {
+	@web {
+		header User-Agent *Mozilla*
+	}
+	@notweb {
+		not header User-Agent *Mozilla*
+	}
+	reverse_proxy @web bff:8080
+	reverse_proxy @notweb apiserver:8080
+}
+
+auth.apex.local:8080 {
+	reverse_proxy dex:8080
+}

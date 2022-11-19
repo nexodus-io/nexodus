@@ -14,10 +14,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	acLogEnv = "APEX_CONTROLLER_LOGLEVEL"
-)
-
 // @title          Apex API
 // @version        1.0
 // @description	This is the APEX API Server.
@@ -35,47 +31,76 @@ const (
 
 // @BasePath  		/api
 func main() {
-	// set the log level
-	env := os.Getenv(acLogEnv)
-	if env == "debug" {
-		log.SetLevel(log.DebugLevel)
-	}
-
 	app := &cli.App{
 		Name: "apex-controller",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "keycloak-address",
-				Value:    "keycloak.apex.svc.cluster.local",
-				Usage:    "address of keycloak service",
-				Required: false,
+			&cli.BoolFlag{
+				Name:    "debug",
+				Value:   false,
+				Usage:   "enable debug logging",
+				EnvVars: []string{"APEX_DEBUG"},
 			},
 			&cli.StringFlag{
-				Name:     "db-address",
-				Value:    "",
-				Usage:    "address of db",
-				Required: true,
+				Name:    "oidc-url",
+				Value:   "http://keycloak:8080/realms/apex",
+				Usage:   "address of oidc provider",
+				EnvVars: []string{"APEX_OIDC_URL"},
 			},
 			&cli.StringFlag{
-				Name:     "db-password",
-				Value:    "",
-				Usage:    "password of db",
-				Required: true,
+				Name:    "oidc-client-id",
+				Usage:   "oidc client id",
+				Value:   "apex-web",
+				EnvVars: []string{"APEX_OIDC_CLIENT_ID"},
 			},
 			&cli.StringFlag{
-				Name:     "ipam-address",
-				Value:    "",
-				Usage:    "address of ipam grpc service",
-				Required: true,
+				Name:    "db-host",
+				Value:   "apiserver-db",
+				Usage:   "db host",
+				EnvVars: []string{"APEX_DB_HOST"},
+			},
+			&cli.StringFlag{
+				Name:    "db-port",
+				Value:   "5432",
+				Usage:   "db port",
+				EnvVars: []string{"APEX_DB_PORT"},
+			},
+			&cli.StringFlag{
+				Name:    "db-user",
+				Value:   "apiserver",
+				Usage:   "db user",
+				EnvVars: []string{"APEX_DB_USER"},
+			},
+			&cli.StringFlag{
+				Name:    "db-password",
+				Value:   "secret",
+				Usage:   "db password",
+				EnvVars: []string{"APEX_DB_PASSWORD"},
+			},
+			&cli.StringFlag{
+				Name:    "db-name",
+				Value:   "apiserver",
+				Usage:   "db name",
+				EnvVars: []string{"APEX_DB_NAME"},
+			},
+			&cli.StringFlag{
+				Name:    "ipam-address",
+				Value:   "ipam:9090",
+				Usage:   "address of ipam grpc service",
+				EnvVars: []string{"APEX_IPAM_URL"},
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			// set the log level
+			if cCtx.Bool("debug") {
+				log.SetLevel(log.DebugLevel)
+			}
+
 			db, err := database.NewDatabase(
-				cCtx.String("db-address"),
-				"controller",
+				cCtx.String("db-host"),
+				cCtx.String("db-user"),
 				cCtx.String("db-password"),
-				"controller",
-				5432,
+				cCtx.String("db-name"),
+				cCtx.String("db-port"),
 				"disable",
 			)
 			if err != nil {
@@ -89,7 +114,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			router, err := routers.NewRouter(api, cCtx.String("keycloak-address"))
+			router, err := routers.NewAPIRouter(cCtx.Context, api, cCtx.String("oidc-client-id"), cCtx.String("oidc-url"))
 			if err != nil {
 				log.Fatal(err)
 			}

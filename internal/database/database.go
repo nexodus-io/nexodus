@@ -14,10 +14,10 @@ func NewDatabase(
 	user string,
 	password string,
 	dbname string,
-	port int,
+	port string,
 	sslmode string,
 ) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		host, user, password, dbname, port, sslmode)
 	var db *gorm.DB
 	connectDb := func() error {

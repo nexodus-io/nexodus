@@ -15,8 +15,8 @@ import (
 // TODO: These consts witll differ from installation to installation.
 // Need to find a way to provide these dynamically (config file) etc...
 const (
-	APEX_CLIENT_ID     = "apex-cli"
-	APEX_CLIENT_SECRET = "QkskUDQenfXRxWx9UA0TeuwmOnHilHtQ"
+	APEX_CLIENT_ID     = "apex-web"
+	APEX_CLIENT_SECRET = "kP83W0XnJyYipwuqlVZdQSbuN2JxtqAe"
 	LOGIN_URL          = "/auth/realms/controller/protocol/openid-connect/auth/device"
 	VERIFICATION_URI   = "/auth/realms/controller/device"
 	VERIFY_URL         = "/auth/realms/controller/protocol/openid-connect/token"

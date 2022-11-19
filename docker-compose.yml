@@ -1,17 +1,13 @@
 version: "3.7"
 
 services:
-  controller-db:
-    image: docker.io/library/postgres
-    environment:
-      - POSTGRES_USER=${CONTROLLER_DB_USER}
-      - POSTGRES_PASSWORD=${CONTROLLER_DB_PASSWORD}
-
   ipam-db:
     image: docker.io/library/postgres
     environment:
       - POSTGRES_USER=${IPAM_DB_USER}
       - POSTGRES_PASSWORD=${IPAM_DB_PASSWORD}
+    networks:
+      - default
 
   ipam:
     image: ghcr.io/metal-stack/go-ipam
@@ -21,110 +17,98 @@ services:
       restart_policy:
         condition: on-failure
     command:
-    - --grpc-server-endpoint=0.0.0.0:9090
-    - postgres
-    - --host=${IPAM_DB_HOST}
-    - --dbname=ipam
-    - --user=${IPAM_DB_USER}
-    - --password=${IPAM_DB_PASSWORD}
-  
-  controller:
-    image: quay.io/apex/controller:latest
+      - --grpc-server-endpoint=0.0.0.0:9090
+      - postgres
+      - --host=${IPAM_DB_HOST}
+      - --dbname=ipam
+      - --user=${IPAM_DB_USER}
+      - --password=${IPAM_DB_PASSWORD}
+    networks:
+      - default
+
+  apiserver-db:
+    image: docker.io/library/postgres
+    environment:
+      - POSTGRES_USER=${APISERVER_DB_USER}
+      - POSTGRES_PASSWORD=${APISERVER_DB_PASSWORD}
+    networks:
+      - default
+
+  apiserver:
+    image: quay.io/apex/apiserver:latest
     depends_on:
-      - controller-db
+      - apiserver-db
       - ipam
-      - keycloak
+      - dex
     build:
       context: .
-      dockerfile: ./Containerfile.controller
+      dockerfile: ./Containerfile.apiserver
     deploy:
       restart_policy:
         condition: on-failure
-    command:
-      - "--keycloak-address=keycloak"
-      - "--db-address=${CONTROLLER_DB_HOST}"
-      - "--db-password=${CONTROLLER_DB_PASSWORD}"
-      - "--ipam-address=${IPAM_ADDRESS}"
     environment:
-      APEX_CONTROLLER_LOGLEVEL: debug
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.controller.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.controller.entrypoints=web"
-      - "traefik.http.services.my-controller.loadbalancer.server.port=8080"
+      APEX_DEBUG: 1
+      APEX_DB_HOST: ${APISERVER_DB_HOST}
+      APEX_DB_NAME: ${APISERVER_DB_USER}
+      APEX_DB_USER: ${APISERVER_DB_USER}
+      APEX_DB_PASSWORD: ${APISERVER_DB_PASSWORD}
+      APEX_IPAM_URL: ${IPAM_ADDRESS}
+      APEX_OIDC_URL: ${APEX_OIDC_URL}
+      APEX_OIDC_CLIENT_ID: ${APEX_OIDC_CLIENT_ID}
+      APEX_OIDC_CLIENT_SECRET: ${APEX_OIDC_CLIENT_SECRET}
+    networks:
+      - default
+
   ui:
-    image: quay.io/apex/controller-ui:latest
+    image: quay.io/apex/apiserver-ui:latest
     depends_on:
-     - controller
+     - apiserver
      - keycloak
     build:
       context: .
       dockerfile: ./Containerfile.ui
-      args:
-        - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
-        - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
-        - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID}
-        - VITE_CONTROLLER_URL=${VITE_CONTROLLER_URL}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ui.rule=PathPrefix(`/`) && !PathPrefix(`/api`) && !PathPrefix(`/auth`)"
-      - "traefik.http.routers.ui.entrypoints=web"
-      - "traefik.http.services.ui.loadbalancer.server.port=3000"
+    networks:
+      - default
 
-  keycloak-db:
-    image: docker.io/library/postgres
-    environment:
-      - POSTGRES_USER=${KEYCLOAK_DB_USER}
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-
-  keycloak:
-    image: quay.io/apex/keycloak:latest
-    build:
-      context: .
-      dockerfile: ./Containerfile.keycloak
+  bff:
     depends_on:
-      - keycloak-db
-    deploy:
-      restart_policy:
-        condition: on-failure
+      - apiserver
+      - dex
+    image: quay.io/go-oidc-agent/go-oidc-agent:latest
     environment:
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://${KEYCLOAK_DB_HOST}/keycloak
-      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - UI_URL=${UI_URL}
-      - KC_PROXY=passthrough
-      - KC_HOSTNAME_STRICT=false
-      - KC_HOSTNAME_STRICT_BACKCHANNEL=true
-      - KC_HOSTNAME_STRICT_HTTPS=false
-      - KC_HTTP_ENABLED=true
+      OIDC_PROVIDER: ${APEX_OIDC_URL}
+      OIDC_CLIENT_ID: ${APEX_OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${APEX_OIDC_CLIENT_SECRET}
+      REDIRECT_URL: ${UI_URL}/#/login
+      ORIGINS: ${UI_URL}
+      DOMAIN: ${API_URL}
+      BACKEND: http://apiserver:8080
+    networks:
+      - default
+
+  dex:
+    image: ghcr.io/dexidp/dex:v2.35.2
+    volumes:
+      - ./hack/auth.yaml:/etc/dex/config.yaml:ro,z
     command:
-        - start
-        - --optimized
-        - --import-realm
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=PathPrefix(`/auth`)"
-      - "traefik.http.routers.keycloak.entrypoints=web"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+      - dex
+      - serve
+      - /etc/dex/config.yaml
+    networks:
+      default:
+        aliases:
+          - auth.apex.local
 
   proxy:
     depends_on:
-     - controller
-     - keycloak
+     - apiserver
+     - dex
      - ui
-    image: traefik:v2.9
-    command:
-      - --api.insecure=true
-      - --providers.docker
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:8080
-      - --entrypoints.traefik.address=:8888
+    image: docker.io/library/caddy:2.6-alpine
     ports:
       - "8080:8080"
-      - "8888:8888"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
 
+networks:
+  default:
