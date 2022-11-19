@@ -4,6 +4,7 @@
 package integration_tests
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -47,12 +48,14 @@ func healthcheck() error {
 	return nil
 }
 
-func (suite *ApexIntegrationSuite) CreateNode(name string, args []string) *dockertest.Resource {
+// CreateNode creates a container
+func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []string) *dockertest.Resource {
 	options := &dockertest.RunOptions{
 		Repository: "quay.io/apex/test",
 		Tag:        "ubuntu",
 		Tty:        true,
 		Name:       name,
+		NetworkID:  network,
 		Cmd:        args,
 		CapAdd: []string{
 			"SYS_MODULE",
@@ -71,11 +74,12 @@ func (suite *ApexIntegrationSuite) CreateNode(name string, args []string) *docke
 	}
 	node, err := suite.pool.RunWithOptions(options, hostConfig)
 	require.NoError(suite.T(), err)
-	err = node.Expire(60)
+	err = node.Expire(120)
 	require.NoError(suite.T(), err)
 	return node
 }
 
+// GetToken creates a new auth token
 func GetToken(username, password string) (string, error) {
 	v := url.Values{}
 	v.Set("username", username)
@@ -118,13 +122,13 @@ func newClient(token string) (client.Client, error) {
 	return client, nil
 }
 
-func getWg0IP(ctx context.Context, container *dockertest.Resource) (string, error) {
+func getContainerIfaceIP(ctx context.Context, dev string, container *dockertest.Resource) (string, error) {
 	var cidr string
 	err := backoff.Retry(func() error {
 		stdout := new(bytes.Buffer)
 		stderr := new(bytes.Buffer)
 		code, err := container.Exec(
-			[]string{"ip", "--brief", "-4", "address", "show", "wg0"},
+			[]string{"ip", "--brief", "-4", "address", "show", dev},
 			dockertest.ExecOptions{
 				StdOut: stdout,
 				StdErr: stderr,
@@ -171,7 +175,6 @@ func ping(ctx context.Context, container *dockertest.Resource, address string) e
 
 // containerExec TODO: this will be for deleting keys, restarting apex and creating general chaos
 func containerExec(ctx context.Context, container *dockertest.Resource, cmd []string) (string, error) {
-	var execOut string
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 	code, err := container.Exec(
@@ -188,10 +191,10 @@ func containerExec(ctx context.Context, container *dockertest.Resource, cmd []st
 		return "", err
 	}
 
-	return execOut, err
+	return stdout.String(), err
 }
 
-// CreateNetwork creates a docker test network
+// CreateNetwork creates a docker network
 func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.Network {
 	net, err := suite.pool.CreateNetwork(name, func(config *docker.CreateNetworkOptions) {
 		config.Driver = "bridge"
@@ -207,4 +210,22 @@ func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.
 	require.NoError(suite.T(), err)
 
 	return net
+}
+
+// lineCount for validating peer counts
+func lineCount(s string) (int, error) {
+	r := bufio.NewReader(strings.NewReader(s))
+	count := 0
+	for {
+		_, _, err := r.ReadLine()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+		count++
+	}
+
+	return count, nil
 }
