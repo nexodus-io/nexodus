@@ -12,6 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// key for username in gin.Context
+const AuthUserName string = "_apex.UserName"
+
 type KeyCloakAuth struct {
 	jwks *keyfunc.JWKS
 }
@@ -74,6 +77,7 @@ func (a *KeyCloakAuth) AuthFunc() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(*Claims); ok {
 			c.Set(gin.AuthUserKey, claims.Subject)
+			c.Set(AuthUserName, claims.UserName)
 			// c.Set(AuthUserScope, claims.Scope)
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to extract user info from claims"})

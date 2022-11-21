@@ -11,6 +11,7 @@ type User struct {
 	Devices    []*Device   `json:"-"`
 	DeviceList []uuid.UUID `gorm:"-" json:"devices" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
 	ZoneID     uuid.UUID   `json:"zone_id" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
+	UserName   string      `json:"username" example:"admin"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
