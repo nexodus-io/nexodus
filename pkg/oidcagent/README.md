@@ -12,3 +12,7 @@ It is heavily influenced by [oauth-agent-node-express](https://github.com/curity
 There are also some omissions, which will need addressing before this can be used in production.
 
 1. CORS
+
+# Example Deployment
+
+![design](./docs/go-oidc-agent-deployment.png)
