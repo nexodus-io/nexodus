@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc"
@@ -346,11 +346,22 @@ func (o *OidcAgent) Proxy(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	c.Header("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
-	path := strings.TrimPrefix(c.Request.URL.Path, "/api")
-	dest := o.backend.JoinPath(path)
-	c.Redirect(http.StatusFound, dest.String())
+	// Use a static token source to avoid automatically
+	// refreshing the token - this needs to be handled
+	// by the frontend
+	src := oauth2.StaticTokenSource(&token)
+	client := oauth2.NewClient(c.Request.Context(), src)
+	proxy := httputil.NewSingleHostReverseProxy(o.backend)
+	// Use the client transport
+	proxy.Transport = client.Transport
+	proxy.Director = func(req *http.Request) {
+		req.Header = c.Request.Header
+		req.Host = o.backend.Host
+		req.URL.Scheme = o.backend.Scheme
+		req.URL.Host = o.backend.Host
+		req.URL.Path = c.Param("proxyPath")
+	}
+	proxy.ServeHTTP(c.Writer, c.Request)
 }
 
 func createSessionStorage(c *gin.Context) (session.Store, error) {

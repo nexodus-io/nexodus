@@ -36,6 +36,7 @@ func (f *FakeOauthConfig) AuthCodeURL(state string, opts ...oauth2.AuthCodeOptio
 func (f *FakeOauthConfig) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return f.ExchangeFn(ctx, code, opts...)
 }
+
 func (f *FakeOauthConfig) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
 	return f.TokenSourceFn(ctx, t)
 }
