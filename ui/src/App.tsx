@@ -77,9 +77,9 @@ const App = () => {
       title="Controller"
       layout={Layout}
     >
-      <Resource name="users" list={UserList} show={UserShow} icon={UserIcon} />
-      <Resource name="devices" list={DeviceList} show={DeviceShow} icon={DeviceIcon} />
-      <Resource name="zones" list={ZoneList} show={ZoneShow} create={ZoneCreate} icon={ZoneIcon} />
+      <Resource name="users" list={UserList} show={UserShow} icon={UserIcon} recordRepresentation={(record) => `${record.username}`} />
+      <Resource name="devices" list={DeviceList} show={DeviceShow} icon={DeviceIcon} recordRepresentation={(record) => `${record.hostname}`} />
+      <Resource name="zones" list={ZoneList} show={ZoneShow} create={ZoneCreate} icon={ZoneIcon} recordRepresentation={(record) => `${record.name}`} />
       <Resource name="peers" list={PeerList} show={PeerShow} icon={UserIcon} />
     </Admin>
   );
