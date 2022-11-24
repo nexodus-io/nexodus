@@ -81,3 +81,9 @@ e2e: dist/apex
 go-e2e: dist/apex test-images
 	docker compose up --build -d
 	go test -v --tags=integration ./integration-tests/...
+
+.PHONY: recompose
+recompose: dist/apex
+	docker-compose down
+	docker-compose build
+	docker-compose up -d
