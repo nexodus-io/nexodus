@@ -30,6 +30,13 @@ To use this you must first add 3 domains to your `/etc/hosts`.
 
 To start the example, run `docker compose up -d`.
 
+> **Note** Podman Compatibility
+> This will work on podman-compose also, but you will need to add the following to your `containers.conf` file
+> ```conf
+> [containers]
+> base_hosts_file="none
+> ```
+
 You can then browse to `http://widgets.local:8080`, which will redirect you to the login page.
 
 The login page will call the backend to find the login URL, and then redirect you to `http://auth.widgetcorp.local` where you can login with `admin@widgetcorp.com` and the password `admin`.
