@@ -35,7 +35,7 @@ spec:
     targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: keycloak
   namespace: apex
@@ -51,6 +51,8 @@ spec:
       app.kubernetes.io/component: keycloak
       app.kubernetes.io/instance: keycloak
       app.kubernetes.io/name: keycloak
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -80,7 +82,7 @@ spec:
           name: postgresdb
       - name: keycloak
         image: quay.io/apex/keycloak:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         args:
         - start
         - --optimized
@@ -166,7 +168,7 @@ spec:
       storage: 5Gi  # Sets volume size
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: ipam
   namespace: apex
@@ -182,6 +184,8 @@ spec:
       app.kubernetes.io/component: ipam
       app.kubernetes.io/instance: ipam
       app.kubernetes.io/name: ipam
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -211,7 +215,7 @@ spec:
           name: postgresdb
       - name: ipam
         image: ghcr.io/metal-stack/go-ipam
-        imagePullPolicy: IfNotPresent     
+        imagePullPolicy: Always     
         args:
         - --grpc-server-endpoint=0.0.0.0:9090
         - postgres
@@ -269,7 +273,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: controller
   namespace: apex
@@ -285,6 +289,8 @@ spec:
       app.kubernetes.io/component: controller
       app.kubernetes.io/instance: controller
       app.kubernetes.io/name: controller
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -314,7 +320,7 @@ spec:
           name: postgresdb
       - name: controller
         image: quay.io/apex/controller:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         args:
         - --db-address=localhost
         - --db-password=floofykittens
@@ -371,6 +377,8 @@ spec:
       app.kubernetes.io/component: frontend
       app.kubernetes.io/instance: frontend
       app.kubernetes.io/name: frontend
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -380,8 +388,8 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: quay.io/apex/controller-ui:k8s
-        imagePullPolicy: IfNotPresent
+        image: quay.io/apex/controller-ui:latest
+        imagePullPolicy: Always
         env:
         - name: VITE_KEYCLOAK_URL
           value: /auth

@@ -1,0 +1,16 @@
+﻿apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: update-deployments
+  namespace: apex
+spec:
+  steps:
+    - args:
+        - |-
+          oc rollout restart statefulset keycloak controller ipam
+          oc rollout restart deployment frontend
+      command:
+        - /bin/bash
+        - '-c'
+      image: 'image-registry.openshift-image-registry.svc:5000/openshift/cli:latest'
+      name: pull-latest-images

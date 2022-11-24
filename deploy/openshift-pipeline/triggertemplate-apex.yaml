@@ -1,0 +1,26 @@
+﻿apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: apex
+  namespace: apex
+spec:
+  params:
+    - description: The quay image repository url
+      name: image-repo-url
+    - default: latest
+      description: Recently updated image tag
+      name: image-updated-tags
+    - description: The quay repository name
+      name: image-repo-name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        generateName: deploy-apex-
+      spec:
+        pipelineRef:
+          name: deploy-apex
+        serviceAccountName: pipeline
+        workspaces:
+          - emptyDir: {}
+            name: shared-workspace
