@@ -1,0 +1,20 @@
+﻿kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: el-apex
+  namespace: apex
+  labels:
+    app.kubernetes.io/managed-by: EventListener
+    app.kubernetes.io/part-of: Triggers
+    eventlistener: apex
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  host: el-apex-apex.apps.smaug.na.operate-first.cloud
+  to:
+    kind: Service
+    name: el-apex
+    weight: 100
+  port:
+    targetPort: http-listener
+  wildcardPolicy: None

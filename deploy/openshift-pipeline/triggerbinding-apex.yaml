@@ -1,0 +1,13 @@
+﻿apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: apex
+  namespace: apex
+spec:
+  params:
+    - name: image-repo-url
+      value: $(body.docker_url)
+    - name: image-repo-name
+      value: $(body.repository)
+    - name: image-updated-tags
+      value: $(body.updated_tags)

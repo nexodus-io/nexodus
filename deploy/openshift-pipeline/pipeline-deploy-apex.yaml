@@ -1,0 +1,13 @@
+﻿apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: deploy-apex
+  namespace: apex
+spec:
+  tasks:
+    - name: update-deployments
+      taskRef:
+        kind: Task
+        name: update-deployments
+  workspaces:
+    - name: shared-workspace

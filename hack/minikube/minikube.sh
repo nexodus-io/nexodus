@@ -48,6 +48,10 @@ function up() {
         exit 1
     fi
 
+
+    info_message "Creating Apex namespace..."
+    kubectl create namespace apex
+
     info_message "Deploying Apex stack..."
     sed -e "s|UI_URL_VALUE|http://${uri_ip}|g" ../../deploy/apex.yaml | kubectl apply -f -
 
@@ -55,7 +59,7 @@ function up() {
     kubectl wait --for=condition=Ready pods --all -n apex --timeout=120s
     
     info_message "Deploying Apex Ingress..."
-    kubectl apply -f ../../deploy/apex-ingress.yaml
+    sed  '/<HOST_DNS>/d' ../../deploy/apex-ingress.yaml | kubectl apply -f -
     pass_message "All the resources are deployed on the Minikube cluster"
 }
 
