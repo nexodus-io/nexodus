@@ -6,10 +6,12 @@ import (
 	"net/url"
 
 	"github.com/coreos/go-oidc"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
 type OidcAgent struct {
+	logger         *zap.SugaredLogger
 	domain         string
 	trustedOrigins []string
 	clientID       string
@@ -19,6 +21,7 @@ type OidcAgent struct {
 	verifier       IDTokenVerifier
 	endSessionURL  string
 	backend        *url.URL
+	cookieKey      string
 }
 
 type OauthConfig interface {
@@ -36,6 +39,7 @@ type IDTokenVerifier interface {
 }
 
 func NewOidcAgent(ctx context.Context,
+	logger *zap.Logger,
 	oidcProvider string,
 	clientID string,
 	clientSecret string,
@@ -44,6 +48,7 @@ func NewOidcAgent(ctx context.Context,
 	domain string,
 	origins []string,
 	backend string,
+	cookieKey string,
 ) (*OidcAgent, error) {
 	provider, err := oidc.NewProvider(ctx, oidcProvider)
 	if err != nil {
@@ -77,14 +82,17 @@ func NewOidcAgent(ctx context.Context,
 	}
 
 	auth := &OidcAgent{
+		logger:         logger.Sugar(),
 		domain:         domain,
 		trustedOrigins: origins,
 		clientID:       clientID,
 		redirectURL:    redirectURL,
 		oauthConfig:    config,
+		provider:       provider,
 		verifier:       verifier,
 		endSessionURL:  claims.EndSessionURL,
 		backend:        backendURL,
+		cookieKey:      cookieKey,
 	}
 	return auth, nil
 }

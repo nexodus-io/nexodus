@@ -1,18 +1,47 @@
 go-oidc-agent
 =============
 
+![Release][badge1] ![License][badge2] ![Build][badge3] ![Coverage][badge4] ![Go Report Card][badge5]
+
 `go-oidc-agent` is a small binary designed to act as a Backend-For-Frontend, handling the OIDC authentication on behalf of the frontend app.
 
 It is heavily influenced by [oauth-agent-node-express](https://github.com/curityio/oauth-agent-node-express) with the following notable differences:
 
 1. It's written in Go
-1. The session storage (used for tokens) is swappable thanks to `go-session/session` so it can use encrypted cookies, memcached etc...
+1. The session storage (used for tokens) is swappable so it can use encrypted cookies, memcached etc...
 1. It acts as a proxy for request from the frontend the configured backend API, adding the necessary authentication credentials.
 
 There are also some omissions, which will need addressing before this can be used in production.
 
-1. CORS
+1. CSRF Token Support
 
-# Example Deployment
+# Design
 
 ![design](./docs/go-oidc-agent-deployment.png)
+
+# Example
+
+There is a working example in the `examples` directory.
+To use this you must first add 3 domains to your `/etc/hosts`.
+
+- `auth.widgetcorp.local` - The Auth Server
+- `widgets.local` - Your Frontend
+- `api.widgets.local` - Backend For Frontend
+
+To start the example, run `docker compose up -d`.
+
+You can then browse to `http://widgets.local:8080`, which will redirect you to the login page.
+
+The login page will call the backend to find the login URL, and then redirect you to `http://auth.widgetcorp.local` where you can login with `admin@widgetcorp.com` and the password `admin`.
+
+On successful login, you're redirected back to the frontend.
+The frontend sends the received code to the backend where it's exchanged for a token that can be used to access the API. This token is stored in an encrypted cookie.
+
+Once you're fully authenticated, the frontend may then call the `/api` enpdoint of the backend. This proxies requests to the `apiserver` with the credentials from the securecookie injected.
+
+
+[badge1]: https://img.shields.io/github/v/release/redhat-et/go-oidc-agent?style=for-the-badge
+[badge2]: https://img.shields.io/github/license/redhat-et/go-oidc-agent?style=for-the-badge
+[badge3]: https://img.shields.io/github/workflow/status/redhat-et/go-oidc-agent/build?style=for-the-badge
+[badge4]: https://img.shields.io/coverallsCoverage/github/redhat-et/go-oidc-agent?branch=main&style=for-the-badge
+[badge5]: https://goreportcard.com/badge/github.com/redhat-et/go-oidc-agent?style=for-the-badge

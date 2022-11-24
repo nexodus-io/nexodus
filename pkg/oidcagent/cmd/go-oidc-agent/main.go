@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/go-oidc"
 	agent "github.com/redhat-et/go-oidc-agent"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,12 +20,19 @@ const (
 	OriginsArg          = "origins"
 	DomainArg           = "domain"
 	BackendArg          = "backend"
+	CookieKeyArg        = "cookie-key"
 )
 
 func main() {
 	app := &cli.App{
 		Name: "go-oidc-agent",
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "debug",
+				Usage:   "Enable Debug Logging",
+				Value:   false,
+				EnvVars: []string{"DEBUG"},
+			},
 			&cli.StringFlag{
 				Name:    OidcProviderArg,
 				Usage:   "OIDC Provider URL",
@@ -39,7 +47,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    OidcClientSecretArg,
-				Usage:   "OIDC Provider URL",
+				Usage:   "OIDC Client Secret",
 				Value:   "secret",
 				EnvVars: []string{"OIDC_CLIENT_SECRET"},
 			},
@@ -73,6 +81,12 @@ func main() {
 				Value:   "backend.example.com",
 				EnvVars: []string{"BACKEND"},
 			},
+			&cli.StringFlag{
+				Name:    CookieKeyArg,
+				Usage:   "Key to the cookie jar.",
+				Value:   "p2s5v8y/B?E(G+KbPeShVmYq3t6w9z$C",
+				EnvVars: []string{"COOKIE_KEY"},
+			},
 		},
 		Action: run,
 	}
@@ -83,6 +97,7 @@ func main() {
 }
 
 func run(cCtx *cli.Context) error {
+	debug := cCtx.Bool("debug")
 	oidcProvider := cCtx.String(OidcProviderArg)
 	clientID := cCtx.String(OidcClientIDArg)
 	clientSecret := cCtx.String(OidcClientSecretArg)
@@ -91,14 +106,31 @@ func run(cCtx *cli.Context) error {
 	origins := cCtx.StringSlice(OriginsArg)
 	domain := cCtx.String(DomainArg)
 	backend := cCtx.String(BackendArg)
+	cookieKey := cCtx.String(CookieKeyArg)
 
+	var logger *zap.Logger
+	var err error
+	if debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
 	if len(origins) == 0 {
 		log.Fatal("at least 1 origin is required.")
 	}
 	scopes := []string{oidc.ScopeOpenID, "profile", "email"}
 	scopes = append(scopes, additionalScopes...)
 
-	auth, err := agent.NewOidcAgent(cCtx.Context, oidcProvider, clientID, clientSecret, redirectURL, scopes, domain, origins, backend)
+	auth, err := agent.NewOidcAgent(
+		cCtx.Context, logger, oidcProvider,
+		clientID, clientSecret, redirectURL,
+		scopes, domain, origins, backend, cookieKey)
 	if err != nil {
 		log.Fatal(err)
 	}

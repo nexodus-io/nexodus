@@ -10,19 +10,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func NewFakeOidcAgent() *OidcAgent {
-	return &OidcAgent{
-		domain:         "https://example.com",
-		trustedOrigins: []string{"https://example.com"},
-		clientID:       "test-client",
-		redirectURL:    "https://example.com",
-		oauthConfig:    nil,
-		provider:       nil,
-		verifier:       nil,
-		endSessionURL:  "https://auth.example.com/logout",
-	}
-}
-
 type FakeOauthConfig struct {
 	AuthCodeURLFn func(state string, opts ...oauth2.AuthCodeOption) string
 	ExchangeFn    func(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error)

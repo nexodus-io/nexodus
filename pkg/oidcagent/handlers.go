@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/go-session/session"
 	"golang.org/x/oauth2"
 )
 
 const (
-	SessionStorage = "session"
+	SessionStorage = "apex_session"
 	TokenKey       = "token"
 	IDTokenKey     = "id_token"
 )
@@ -38,6 +38,7 @@ func randString(nByte int) (string, error) {
 // @Success      200  {object}  LoginStartResponse
 // @Router       /login/start [post]
 func (o *OidcAgent) LoginStart(c *gin.Context) {
+	logger := o.logger
 	state, err := randString(16)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -50,8 +51,15 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", o.domain, false, true)
-	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", o.domain, false, true)
+	logger = logger.With(
+		"state", state,
+		"nonce", nonce,
+	)
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	logger.Debug("set cookies")
 	c.JSON(http.StatusOK, LoginStartReponse{
 		AuthorizationRequestURL: o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce)),
 	})
@@ -79,6 +87,9 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 		return
 	}
 
+	logger := o.logger
+	logger.Debug("handling login end request")
+
 	values := requestURL.Query()
 	code := values.Get("code")
 	state := values.Get("state")
@@ -87,6 +98,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	failed := state != "" && queryErr != ""
 
 	if failed {
+		logger.Debug("login failed")
 		var status int
 		if queryErr == "login_required" {
 			status = http.StatusUnauthorized
@@ -101,63 +113,84 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 
 	loggedIn := false
 	if handleAuth {
+		logger.Debug("login success")
 		originalState, err := c.Cookie("state")
 		if err != nil {
+			logger.With(
+				"error", err,
+			).Debug("unable to access state cookie")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		c.SetCookie("state", "", -1, "/", o.domain, false, true)
+
+		c.SetCookie("state", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
 		if state != originalState {
+			logger.With(
+				"error", err,
+			).Debug("state does not match")
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
 
 		nonce, err := c.Cookie("nonce")
 		if err != nil {
+			logger.With(
+				"error", err,
+			).Debug("unable to get nonce cookie")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		c.SetCookie("nonce", "", -1, "/", o.domain, false, true)
+		c.SetCookie("nonce", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
 
 		oauth2Token, err := o.oauthConfig.Exchange(c.Request.Context(), code)
 		if err != nil {
+			logger.With(
+				"error", err,
+			).Debug("unable to exchange token")
 			_ = c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
 
 		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 		if !ok {
+			logger.With(
+				"ok", ok,
+			).Debug("unable to get id_token")
 			_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("no id_token field in oauth2 token"))
 			return
 		}
 
 		idToken, err := o.verifier.Verify(c.Request.Context(), rawIDToken)
 		if err != nil {
+			logger.With(
+				"error", err,
+			).Debug("unable to verify id_token")
 			_ = c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
 
 		if idToken.Nonce != nonce {
+			logger.Debug("nonce does not match")
 			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("nonce did not match"))
 			return
 		}
 
-		store, err := createSessionStorage(c)
-		if err != nil {
+		session := sessions.Default(c)
+		session.Set(TokenKey, *oauth2Token)
+		session.Set(IDTokenKey, rawIDToken)
+		if err := session.Save(); err != nil {
+			logger.With("error", err).Debug("can't save session storage")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		store.Set(TokenKey, *oauth2Token)
-		store.Set(IDTokenKey, rawIDToken)
-		if err := store.Save(); err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
+		logger.Debug("user is logged in")
 		loggedIn = true
 	} else {
+		logger.Debug("checking if user is logged in")
 		loggedIn = isLoggedIn(c)
 	}
 
+	logger.With("logged_in", loggedIn).Debug("complete")
 	res := LoginEndResponse{
 		Handled:  handleAuth,
 		LoggedIn: loggedIn,
@@ -173,14 +206,10 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 // @Success      200	{object}	UserInfo
 // @Router       /user_info [get]
 func (o *OidcAgent) UserInfo(c *gin.Context) {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	tokenRaw := session.Get(TokenKey)
+	if tokenRaw == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	tokenRaw, ok := store.Get(TokenKey)
-	if !ok {
-		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	token, ok := tokenRaw.(oauth2.Token)
@@ -209,7 +238,7 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
+	o.logger.With("claims", claims).Debug("got claims from id_token")
 	res := UserInfoResponse{
 		Subject:           info.Subject,
 		PreferredUsername: claims.Username,
@@ -230,14 +259,10 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 // @Success      200	{object}	map[string]interface{}
 // @Router       /claims [get]
 func (o *OidcAgent) Claims(c *gin.Context) {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	idTokenRaw := session.Get(IDTokenKey)
+	if idTokenRaw == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	idTokenRaw, ok := store.Get(IDTokenKey)
-	if !ok {
-		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	idToken, err := o.verifier.Verify(c.Request.Context(), idTokenRaw.(string))
@@ -263,14 +288,10 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 // @Success      200	{object}	Claims
 // @Router       /refresh [get]
 func (o *OidcAgent) Refresh(c *gin.Context) {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	tokenRaw := session.Get(TokenKey)
+	if tokenRaw == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	tokenRaw, ok := store.Get(TokenKey)
-	if !ok {
-		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	token, ok := tokenRaw.(oauth2.Token)
@@ -285,8 +306,8 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 		return
 	}
 
-	store.Set(TokenKey, *newToken)
-	if err := store.Save(); err != nil {
+	session.Set(TokenKey, *newToken)
+	if err := session.Save(); err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -302,19 +323,16 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 // @Success      200	{object}	LogoutResponse
 // @Router       /logout [post]
 func (o *OidcAgent) Logout(c *gin.Context) {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	idToken := session.Get(IDTokenKey)
+	if idToken == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	idToken, ok := store.Get(IDTokenKey)
-	if !ok {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
 
-	err = session.Destroy(c.Request.Context(), c.Writer, c.Request)
-	if err != nil {
+	session.Delete(IDTokenKey)
+	session.Delete(TokenKey)
+	if err := session.Save(); err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -331,14 +349,10 @@ func (o *OidcAgent) Logout(c *gin.Context) {
 }
 
 func (o *OidcAgent) Proxy(c *gin.Context) {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	tokenRaw := session.Get(TokenKey)
+	if tokenRaw == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	tokenRaw, ok := store.Get(TokenKey)
-	if !ok {
-		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	token, ok := tokenRaw.(oauth2.Token)
@@ -352,6 +366,7 @@ func (o *OidcAgent) Proxy(c *gin.Context) {
 	src := oauth2.StaticTokenSource(&token)
 	client := oauth2.NewClient(c.Request.Context(), src)
 	proxy := httputil.NewSingleHostReverseProxy(o.backend)
+
 	// Use the client transport
 	proxy.Transport = client.Transport
 	proxy.Director = func(req *http.Request) {
@@ -364,32 +379,10 @@ func (o *OidcAgent) Proxy(c *gin.Context) {
 	proxy.ServeHTTP(c.Writer, c.Request)
 }
 
-func createSessionStorage(c *gin.Context) (session.Store, error) {
-	store, err := session.Start(c.Request.Context(), c.Writer, c.Request)
-	if err != nil {
-		return nil, err
-	}
-	c.Set(SessionStorage, store)
-	return store, nil
-}
-
-func getSessionStorage(c *gin.Context) (session.Store, error) {
-	storeRaw, ok := c.Get(SessionStorage)
-	if !ok {
-		return nil, fmt.Errorf("no session storage found")
-	}
-	store, ok := storeRaw.(session.Store)
-	if !ok {
-		return nil, fmt.Errorf("no session storage found")
-	}
-	return store, nil
-}
-
 func isLoggedIn(c *gin.Context) bool {
-	store, err := getSessionStorage(c)
-	if err != nil {
+	session := sessions.Default(c)
+	if s := session.Get(TokenKey); s == nil {
 		return false
 	}
-	_, ok := store.Get(TokenKey)
-	return ok
+	return true
 }

@@ -1,0 +1,75 @@
+services:
+  auth:
+    image: ghcr.io/dexidp/dex:v2.35.2
+    volumes:
+      - ./examples/auth/config.yaml:/etc/dex/config.yaml
+    command:
+      - dex
+      - serve
+      - /etc/dex/config.yaml
+    networks:
+      default:
+        aliases:
+          - auth.widgetcorp.local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.widgetcorp.local`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=8080"
+  apiserver:
+    depends_on: [ auth ]
+    build:
+      context: .
+      dockerfile: Containerfile.test
+    networks:
+      default:
+  frontend:
+    build:
+      context: ./examples/frontend
+      dockerfile: Containerfile
+    networks:
+      default:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`widgets.local`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+  bff:
+    depends_on: [ auth ]
+    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    build:
+      context: .
+      dockerfile: Containerfile
+    environment:
+      OIDC_PROVIDER: http://auth.widgetcorp.local:8080
+      OIDC_CLIENT_ID: widgets-app
+      OIDC_CLIENT_SECRET: ZXhhbXBsZS1hcHAtc2VjcmV0
+      REDIRECT_URL: http://widgets.local:8080/#/login
+      ORIGINS: http://widgets.local:8080
+      DOMAIN: api.widgets.local
+      BACKEND: http://apiserver:8080
+    networks:
+      default:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bff.rule=Host(`api.widgets.local`)"
+      - "traefik.http.routers.bff.entrypoints=web"
+      - "traefik.http.services.bff.loadbalancer.server.port=8080"
+  proxy:
+    image: traefik:v2.9
+    command:
+      - --api.insecure=true
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:8080
+      - --entrypoints.traefik.address=:8888
+    ports:
+      - "8080:8080"
+      - "8888:8888"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default:
+
+networks:
+  default:

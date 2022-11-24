@@ -13,15 +13,18 @@ import (
 	"unsafe"
 
 	"github.com/coreos/go-oidc"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/go-session/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
 func TestLoginStart(t *testing.T) {
 	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
 		oauthConfig: &FakeOauthConfig{
 			AuthCodeURLFn: func(state string, opts ...oauth2.AuthCodeOption) string {
 				return "https://auth.example.com/auth?state=foo&client_id=bar"
@@ -53,7 +56,9 @@ func TestLoginStart(t *testing.T) {
 }
 
 func TestLoginEnd_AuthErrorLoginRequired(t *testing.T) {
-	auth := &OidcAgent{}
+	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
+	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST("/login/end", auth.LoginEnd)
@@ -70,7 +75,9 @@ func TestLoginEnd_AuthErrorLoginRequired(t *testing.T) {
 }
 
 func TestLoginEnd_AuthErrorOther(t *testing.T) {
-	auth := &OidcAgent{}
+	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
+	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST("/login/end", auth.LoginEnd)
@@ -88,6 +95,7 @@ func TestLoginEnd_AuthErrorOther(t *testing.T) {
 
 func TestLoginEnd_HandleLogin(t *testing.T) {
 	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
 		verifier: &FakeIDTokenVerifier{
 			VerifyFn: func(ctx context.Context, rawIDToken string) (*oidc.IDToken, error) {
 				t := &oidc.IDToken{
@@ -110,6 +118,8 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	cookieStore := cookie.NewStore([]byte("secretstorage"))
+	r.Use(sessions.Sessions(SessionStorage, cookieStore))
 	r.POST("/login/end", auth.LoginEnd)
 	loginEndRequest := LoginEndRequest{
 		RequestURL: "https://example.com?state=foo&code=kittens",
@@ -140,32 +150,31 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	assert.Equal(t, true, response.LoggedIn)
 	assert.Equal(t, true, response.Handled)
 
-	store, err := session.Start(req.Context(), w, req)
+	store, err := cookieStore.Get(req, SessionStorage)
 	require.NoError(t, err)
 
-	_, ok := store.Get(IDTokenKey)
+	_, ok := store.Values[IDTokenKey]
 	assert.True(t, ok)
 
-	_, ok = store.Get(TokenKey)
+	_, ok = store.Values[TokenKey]
 	assert.True(t, ok)
 }
 
 func TestLoginEnd_LoggedIn(t *testing.T) {
-	auth := &OidcAgent{}
+	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
+	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	cookieStore := cookie.NewStore([]byte("secretstorage"))
+	r.Use(sessions.Sessions(SessionStorage, cookieStore))
 	r.Use(func(c *gin.Context) {
-		store, err := createSessionStorage(c)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
+		session := sessions.Default(c)
 		t := oauth2.Token{
 			AccessToken: "kittens",
 		}
-		store.Set(TokenKey, t)
-		err = store.Save()
-		if err != nil {
+		session.Set(TokenKey, t)
+		if err := session.Save(); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -196,9 +205,13 @@ func TestLoginEnd_LoggedIn(t *testing.T) {
 }
 
 func TestLoginEnd_NotLoggedIn(t *testing.T) {
-	auth := &OidcAgent{}
+	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
+	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	cookieStore := cookie.NewStore([]byte("secretstorage"))
+	r.Use(sessions.Sessions(SessionStorage, cookieStore))
 	r.POST("/login/end", auth.LoginEnd)
 	loginEndRequest := LoginEndRequest{
 		RequestURL: "https://example.com",
@@ -223,9 +236,13 @@ func TestLoginEnd_NotLoggedIn(t *testing.T) {
 }
 
 func TestUserInfo_NotLoggedIn(t *testing.T) {
-	auth := &OidcAgent{}
+	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
+	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	cookieStore := cookie.NewStore([]byte("secretstorage"))
+	r.Use(sessions.Sessions(SessionStorage, cookieStore))
 	r.GET("/user_info", auth.UserInfo)
 	req, _ := http.NewRequest("GET", "/user_info", nil)
 	w := httptest.NewRecorder()
@@ -235,6 +252,7 @@ func TestUserInfo_NotLoggedIn(t *testing.T) {
 
 func TestUserInfo_LoggedIn(t *testing.T) {
 	auth := &OidcAgent{
+		logger: zap.NewExample().Sugar(),
 		oauthConfig: &FakeOauthConfig{
 			TokenSourceFn: func(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
 				return nil
@@ -267,18 +285,15 @@ func TestUserInfo_LoggedIn(t *testing.T) {
 		},
 	}
 	r := gin.New()
+	cookieStore := cookie.NewStore([]byte("secretstorage"))
+	r.Use(sessions.Sessions(SessionStorage, cookieStore))
 	r.Use(func(c *gin.Context) {
-		store, err := createSessionStorage(c)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
+		session := sessions.Default(c)
 		t := oauth2.Token{
 			AccessToken: "kittens",
 		}
-		store.Set(TokenKey, t)
-		err = store.Save()
-		if err != nil {
+		session.Set(TokenKey, t)
+		if err := session.Save(); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}

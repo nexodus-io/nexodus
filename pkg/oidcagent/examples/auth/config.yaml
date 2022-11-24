@@ -1,0 +1,36 @@
+issuer: http://auth.widgetcorp.local:8080
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:8080
+
+
+expiry:
+  deviceRequests: "5m"
+  signingKeys: "6h"
+  idTokens: "24h"
+  refreshTokens:
+    reuseInterval: "3s"
+    validIfNotUsedFor: "2160h" # 90 days
+    absoluteLifetime: "3960h" # 165 days
+
+
+oauth2:
+  responseTypes: ["code", "token", "id_token"]
+
+staticClients:
+  - id: widgets-app
+    redirectURIs:
+      - 'http://widgets.local:8080/#/login'
+    name: 'Widgets App'
+    secret: ZXhhbXBsZS1hcHAtc2VjcmV0
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: "admin@widgetcorp.com"
+    hash: "$2y$10$tyx9xlhirDtjl3zQw6RLee212AluaUC2O0sMSIs6VEu.ehtBed36G"
+    username: "admin"
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
