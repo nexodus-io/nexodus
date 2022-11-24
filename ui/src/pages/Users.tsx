@@ -7,17 +7,18 @@ import {
     Show,
     SimpleShowLayout,
     SingleFieldList,
-    ChipField
+    ChipField,
+    ReferenceField
 } from 'react-admin';
 
 export const UserList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
             <TextField label = "Username" source="username" />
-            <TextField label = "Zone ID" source="zone_id" />
+            <ReferenceField source="zone_id" reference="zones" />
             <ReferenceArrayField label="Devices" source="devices" reference="devices">
                 <SingleFieldList linkType="show">
-                    <ChipField source="id" />
+                    <ChipField source="hostname" />
                 </SingleFieldList>
             </ReferenceArrayField>
         </Datagrid>
@@ -29,9 +30,10 @@ export const UserShow = () => (
         <SimpleShowLayout>
             <TextField label = "ID" source="id" />
             <TextField label = "Username" source="username" />
-            <TextField label = "Zone ID" source="zone_id" />
+            <ReferenceField label = "Zone" source="zone_id" reference="zones" />
             <ReferenceArrayField label="Devices" source="devices" reference="devices">
                 <Datagrid rowClick="show" bulkActionButtons={false}>
+                    <TextField label="Hostname" source="hostname" />
                     <TextField label="ID" source="id" />
                 </Datagrid>
             </ReferenceArrayField>

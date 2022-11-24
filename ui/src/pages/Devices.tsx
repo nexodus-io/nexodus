@@ -7,19 +7,29 @@ import {
     Show,
     SimpleShowLayout,
     SingleFieldList,
-    ChipField,
     ReferenceField,
+    useRecordContext,
+    useGetOne,
+    Loading
 } from 'react-admin';
+
+const ZoneNameFromPeer = () => {
+    const peer = useRecordContext();
+    if (!peer) return null;
+    const { data: zone, isLoading, error } = useGetOne('zones', { id: peer.zone_id });
+    if (isLoading) { return <Loading />; }
+    if (error) { return <p>ERROR</p>; }
+    return <div>{zone.name}</div>;
+};
 
 export const DeviceList = () => (
     <List>
         <Datagrid rowClick="show" bulkActionButtons={false}>
             <TextField label = "Hostname" source="hostname" />
             <ReferenceField label = "User" source="user_id" reference="users" link="show"/>
-            <TextField label = "Public Key" source="public_key" />
-            <ReferenceArrayField label="Peers" source="peers" reference="peers">
+            <ReferenceArrayField label="Peered Zones" source="peers" reference="peers">
                 <SingleFieldList linkType="show">
-                    <ChipField source="id" />
+                    <ZoneNameFromPeer />
                 </SingleFieldList>
             </ReferenceArrayField>
         </Datagrid>
