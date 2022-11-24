@@ -1,34 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: frontend
-  namespace: apex
-spec:
-  ingressClassName: nginx
-  rules:
-  - http:
-      paths:
-      - pathType: Prefix
-        path: "/"
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 3000
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
   name: controller
   namespace: apex
-  annotations:
-    nginx.ingress.kubernetes.io/server-snippet: |
-          location /api {
-          return 302 /api/;
-      }
-
 spec:
-  ingressClassName: nginx
   rules:
   - http:
       paths:
@@ -39,22 +14,6 @@ spec:
             name: controller
             port:
               number: 8080
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: keycloak
-  namespace: apex
-  annotations:
-    nginx.ingress.kubernetes.io/server-snippet: |
-      location /auth {
-          return 302 /auth/;
-      }
-spec:
-  ingressClassName: nginx
-  rules:
-  - http:
-      paths:
       - pathType: Prefix
         path: "/auth/"
         backend:
@@ -62,3 +21,11 @@ spec:
             name: keycloak
             port:
               number: 8080
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 3000
+    host: <HOST_DNS>              

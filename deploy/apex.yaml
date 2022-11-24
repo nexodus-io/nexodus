@@ -1,10 +1,19 @@
+kind: PersistentVolumeClaim
 apiVersion: v1
-kind: Namespace
 metadata:
-  name: apex
+  name: keycloak-postgres-pv-claim
+  namespace: apex
   labels:
-    app.kubernetes.io/instance: apex
-    app.kubernetes.io/name: apex
+    app.kubernetes.io/component: keycloak
+    app.kubernetes.io/instance: keycloak
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: apex
+spec:
+  accessModes:
+    - ReadWriteOnce  # Sets read and write access
+  resources:
+    requests:
+      storage: 5Gi  # Sets volume size
 ---
 apiVersion: v1
 kind: Service
@@ -26,7 +35,7 @@ spec:
     targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: keycloak
   namespace: apex
@@ -42,6 +51,8 @@ spec:
       app.kubernetes.io/component: keycloak
       app.kubernetes.io/instance: keycloak
       app.kubernetes.io/name: keycloak
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -51,8 +62,8 @@ spec:
     spec:
       containers:
       - name: keycloak-db
-        image: docker.io/library/postgres
-        imagePullPolicy: Always    
+        image: quay.io/apex/postgres:latest
+        imagePullPolicy: IfNotPresent    
         env:
         - name: POSTGRES_PASSWORD
           value: floofykittens
@@ -65,6 +76,10 @@ spec:
           limits:
             cpu: 100m
             memory: 200Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql
+          subPath: data
+          name: postgresdb
       - name: keycloak
         image: quay.io/apex/keycloak:latest
         imagePullPolicy: Always
@@ -88,7 +103,7 @@ spec:
         - name: UI_URL
           value: UI_URL_VALUE
         - name: KC_LOG_LEVEL
-          value: debug
+          value: info
         - name: KC_PROXY
           value: edge
         - name: KC_HOSTNAME_STRICT
@@ -111,6 +126,10 @@ spec:
             cpu: 100m
             memory: 200Mi
       restartPolicy: Always
+      volumes:
+        - name: postgresdb
+          persistentVolumeClaim:
+            claimName: keycloak-postgres-pv-claim
 ---
 apiVersion: v1
 kind: Service
@@ -131,8 +150,25 @@ spec:
   - port: 9090
     targetPort: 9090
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: ipam-postgres-pv-claim
+  namespace: apex
+  labels:
+    app.kubernetes.io/component: ipam
+    app.kubernetes.io/instance: ipam
+    app.kubernetes.io/name: ipam
+    app.kubernetes.io/part-of: apex
+spec:
+  accessModes:
+    - ReadWriteOnce  # Sets read and write access
+  resources:
+    requests:
+      storage: 5Gi  # Sets volume size
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: ipam
   namespace: apex
@@ -148,6 +184,8 @@ spec:
       app.kubernetes.io/component: ipam
       app.kubernetes.io/instance: ipam
       app.kubernetes.io/name: ipam
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -157,8 +195,8 @@ spec:
     spec:
       containers:
       - name: ipam-db
-        image: docker.io/library/postgres
-        imagePullPolicy: Always
+        image: quay.io/apex/postgres:latest
+        imagePullPolicy: IfNotPresent
         env:
         - name: POSTGRES_PASSWORD
           value: floofykittens
@@ -171,6 +209,10 @@ spec:
           limits:
             cpu: 100m
             memory: 200Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql
+          subPath: data
+          name: postgresdb
       - name: ipam
         image: ghcr.io/metal-stack/go-ipam
         imagePullPolicy: Always     
@@ -189,6 +231,27 @@ spec:
             cpu: 100m
             memory: 200Mi
       restartPolicy: Always
+      volumes:
+        - name: postgresdb
+          persistentVolumeClaim:
+            claimName: ipam-postgres-pv-claim
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: controller-postgres-pv-claim
+  namespace: apex
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: controller
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/part-of: apex
+spec:
+  accessModes:
+    - ReadWriteOnce  # Sets read and write access
+  resources:
+    requests:
+      storage: 5Gi  # Sets volume size
 ---
 apiVersion: v1
 kind: Service
@@ -210,7 +273,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: controller
   namespace: apex
@@ -226,6 +289,8 @@ spec:
       app.kubernetes.io/component: controller
       app.kubernetes.io/instance: controller
       app.kubernetes.io/name: controller
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -235,8 +300,8 @@ spec:
     spec:
       containers:
       - name: controller-db
-        image: docker.io/library/postgres
-        imagePullPolicy: Always
+        image: quay.io/apex/postgres:latest
+        imagePullPolicy: IfNotPresent
         env:
         - name: POSTGRES_PASSWORD
           value: floofykittens
@@ -249,6 +314,10 @@ spec:
           limits:
             cpu: 100m
             memory: 200Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql
+          subPath: data
+          name: postgresdb
       - name: controller
         image: quay.io/apex/controller:latest
         imagePullPolicy: Always
@@ -267,6 +336,10 @@ spec:
             cpu: 100m
             memory: 200Mi
       restartPolicy: Always
+      volumes:
+        - name: postgresdb
+          persistentVolumeClaim:
+            claimName: controller-postgres-pv-claim
 ---
 apiVersion: v1
 kind: Service
@@ -304,6 +377,8 @@ spec:
       app.kubernetes.io/component: frontend
       app.kubernetes.io/instance: frontend
       app.kubernetes.io/name: frontend
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
