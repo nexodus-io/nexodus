@@ -20,6 +20,7 @@ type OidcAgent struct {
 	provider       OpenIDConnectProvider
 	verifier       IDTokenVerifier
 	endSessionURL  string
+	deviceAuthURL  string
 	backend        *url.URL
 	cookieKey      string
 }
@@ -31,6 +32,7 @@ type OauthConfig interface {
 }
 
 type OpenIDConnectProvider interface {
+	Endpoint() oauth2.Endpoint
 	UserInfo(ctx context.Context, tokenSource oauth2.TokenSource) (*oidc.UserInfo, error)
 }
 
@@ -56,6 +58,7 @@ func NewOidcAgent(ctx context.Context,
 	}
 
 	var claims struct {
+		DeviceAuthURL string `json:"device_authorization_endpoint"`
 		EndSessionURL string `json:"end_session_endpoint"`
 	}
 	err = provider.Claims(&claims)
@@ -91,6 +94,7 @@ func NewOidcAgent(ctx context.Context,
 		provider:       provider,
 		verifier:       verifier,
 		endSessionURL:  claims.EndSessionURL,
+		deviceAuthURL:  claims.DeviceAuthURL,
 		backend:        backendURL,
 		cookieKey:      cookieKey,
 	}

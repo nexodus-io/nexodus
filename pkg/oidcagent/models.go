@@ -25,3 +25,9 @@ type UserInfoResponse struct {
 	FamilyName        string `json:"family_name"`
 	Picture           string `json:"picture"`
 }
+
+type DeviceStartReponse struct {
+	DeviceAuthURL string `json:"device_authorization_endpoint"`
+	TokenEndpoint string `json:"token_endpoint"`
+	ClientID      string `json:"client_id"`
+}

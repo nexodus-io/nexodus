@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/coreos/go-oidc"
+	"github.com/gin-gonic/gin"
 	agent "github.com/redhat-et/go-oidc-agent"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -21,6 +23,7 @@ const (
 	DomainArg           = "domain"
 	BackendArg          = "backend"
 	CookieKeyArg        = "cookie-key"
+	FlowArg             = "flow"
 )
 
 func main() {
@@ -32,6 +35,18 @@ func main() {
 				Usage:   "Enable Debug Logging",
 				Value:   false,
 				EnvVars: []string{"DEBUG"},
+			},
+			&cli.StringFlag{
+				Name:  FlowArg,
+				Usage: "OAuth2 Flow",
+				Value: "authorization",
+				Action: func(ctx *cli.Context, s string) error {
+					if s != "authorization" && s != "device" {
+						return fmt.Errorf("flag 'flow' value should be one of 'authorization' or 'device'")
+					}
+					return nil
+				},
+				EnvVars: []string{"OIDC_FLOW"},
 			},
 			&cli.StringFlag{
 				Name:    OidcProviderArg,
@@ -107,6 +122,7 @@ func run(cCtx *cli.Context) error {
 	domain := cCtx.String(DomainArg)
 	backend := cCtx.String(BackendArg)
 	cookieKey := cCtx.String(CookieKeyArg)
+	flow := cCtx.String(FlowArg)
 
 	var logger *zap.Logger
 	var err error
@@ -121,7 +137,7 @@ func run(cCtx *cli.Context) error {
 	defer func() {
 		_ = logger.Sync()
 	}()
-	if len(origins) == 0 {
+	if len(origins) == 0 && flow != "device" {
 		log.Fatal("at least 1 origin is required.")
 	}
 	scopes := []string{oidc.ScopeOpenID, "profile", "email"}
@@ -134,6 +150,12 @@ func run(cCtx *cli.Context) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	r := agent.NewRouter(auth)
+	var r *gin.Engine
+	if flow == "authorization" {
+		r = agent.NewCodeFlowRouter(auth)
+	} else {
+		r = agent.NewDeviceFlowRouter(auth)
+	}
+
 	return http.ListenAndServe("0.0.0.0:8080", r)
 }

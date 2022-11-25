@@ -334,6 +334,37 @@ func TestLogout(t *testing.T) {
 	t.Skip("todo")
 }
 
+func TestDeviceStart(t *testing.T) {
+	auth := &OidcAgent{
+		logger:        zap.NewExample().Sugar(),
+		deviceAuthURL: "http://auth.example.com/device",
+		clientID:      "cli-app",
+		provider: &FakeOpenIDConnectProvider{
+			EndpointFn: func() oauth2.Endpoint {
+				return oauth2.Endpoint{TokenURL: "http://auth.example.com/token"}
+			},
+		},
+	}
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/login/start", auth.DeviceStart)
+	req, _ := http.NewRequest("POST", "/login/start", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	data, err := io.ReadAll(w.Body)
+	require.NoError(t, err)
+
+	var response DeviceStartReponse
+	err = json.Unmarshal(data, &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, "http://auth.example.com/device", response.DeviceAuthURL)
+	assert.Equal(t, "http://auth.example.com/token", response.TokenEndpoint)
+	assert.Equal(t, "cli-app", response.ClientID)
+}
+
 func setUnexportedField(field reflect.Value, value interface{}) {
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).
 		Elem().

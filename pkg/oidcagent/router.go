@@ -14,7 +14,7 @@ func init() {
 	gob.Register(oauth2.Token{})
 }
 
-func NewRouter(auth *OidcAgent) *gin.Engine {
+func NewCodeFlowRouter(auth *OidcAgent) *gin.Engine {
 	r := gin.Default()
 	r.Use(auth.OriginVerifier())
 
@@ -31,6 +31,13 @@ func NewRouter(auth *OidcAgent) *gin.Engine {
 	r.GET("/user_info", auth.UserInfo)
 	r.GET("/claims", auth.Claims)
 	r.POST("/logout", auth.Logout)
-	r.Any("/api/*proxyPath", auth.Proxy)
+	r.Any("/api/*proxyPath", auth.CodeFlowProxy)
+	return r
+}
+
+func NewDeviceFlowRouter(auth *OidcAgent) *gin.Engine {
+	r := gin.Default()
+	r.POST("/login/start", auth.DeviceStart)
+	r.Any("/api/*proxyPath", auth.DeviceFlowProxy)
 	return r
 }

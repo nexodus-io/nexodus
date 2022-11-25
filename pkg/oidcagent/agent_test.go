@@ -29,7 +29,12 @@ func (f *FakeOauthConfig) TokenSource(ctx context.Context, t *oauth2.Token) oaut
 }
 
 type FakeOpenIDConnectProvider struct {
+	EndpointFn func() oauth2.Endpoint
 	UserInfoFn func(ctx context.Context, tokenSource oauth2.TokenSource) (*oidc.UserInfo, error)
+}
+
+func (f *FakeOpenIDConnectProvider) Endpoint() oauth2.Endpoint {
+	return f.EndpointFn()
 }
 
 func (f *FakeOpenIDConnectProvider) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource) (*oidc.UserInfo, error) {

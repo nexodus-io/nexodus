@@ -348,7 +348,7 @@ func (o *OidcAgent) Logout(c *gin.Context) {
 	})
 }
 
-func (o *OidcAgent) Proxy(c *gin.Context) {
+func (o *OidcAgent) CodeFlowProxy(c *gin.Context) {
 	session := sessions.Default(c)
 	tokenRaw := session.Get(TokenKey)
 	if tokenRaw == nil {
@@ -385,4 +385,24 @@ func isLoggedIn(c *gin.Context) bool {
 		return false
 	}
 	return true
+}
+
+func (o *OidcAgent) DeviceStart(c *gin.Context) {
+	c.JSON(http.StatusOK, DeviceStartReponse{
+		DeviceAuthURL: o.deviceAuthURL,
+		TokenEndpoint: o.provider.Endpoint().TokenURL,
+		ClientID:      o.clientID,
+	})
+}
+
+func (o *OidcAgent) DeviceFlowProxy(c *gin.Context) {
+	proxy := httputil.NewSingleHostReverseProxy(o.backend)
+	proxy.Director = func(req *http.Request) {
+		req.Header = c.Request.Header
+		req.Host = o.backend.Host
+		req.URL.Scheme = o.backend.Scheme
+		req.URL.Host = o.backend.Host
+		req.URL.Path = c.Param("proxyPath")
+	}
+	proxy.ServeHTTP(c.Writer, c.Request)
 }
