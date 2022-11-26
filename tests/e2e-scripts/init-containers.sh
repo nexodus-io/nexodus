@@ -686,7 +686,7 @@ setup_hub_spoke_connectivity() {
         "Name": "hub-spoke-zone",
         "Description": "Hub/Spoke Zone",
         "CIDR": "10.89.0.0/27",
-        "Hub-Zone": true
+        "hub_zone": true
     }' | jq -r '.id')
 
     # Set kitteh into the new zone
