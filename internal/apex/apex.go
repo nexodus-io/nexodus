@@ -83,11 +83,15 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		log.Fatalf("error: <controller-url> is not a valid URL: %s", err)
 	}
 
+	// Force controller URL be api.${DOMAIN}
+	controllerURL.Host = "api." + controllerURL.Host
+	controllerURL.Path = ""
+
 	withToken := cCtx.String("with-token")
 	var auth client.Authenticator
 	if withToken == "" {
 		var err error
-		auth, err = client.NewDeviceFlowAuthenticator(ctx, controllerURL)
+		auth, err = client.NewDeviceFlowAuthenticator(ctx, *controllerURL)
 		if err != nil {
 			log.Fatalf("authentication error: %+v", err)
 		}
@@ -95,7 +99,7 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		auth = client.NewTokenAuthenticator(withToken)
 	}
 
-	client, err := client.NewClient(controller, auth)
+	client, err := client.NewClient(controllerURL.String(), auth)
 	if err != nil {
 		log.Fatalf("error creating client: %+v", err)
 	}

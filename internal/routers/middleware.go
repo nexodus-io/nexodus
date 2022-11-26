@@ -22,9 +22,8 @@ type Claims struct {
 }
 
 // Naive JWS Key validation
-func ValidateJWT(verifier *oidc.IDTokenVerifier) func(*gin.Context) {
+func ValidateJWT(verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
 	return func(c *gin.Context) {
-		log.Debug("validate jwt")
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
@@ -47,6 +46,13 @@ func ValidateJWT(verifier *oidc.IDTokenVerifier) func(*gin.Context) {
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
+		}
+
+		for _, audience := range token.Audience {
+			if audience != clientIdWeb && audience != clientIdCli {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
 		}
 
 		log.Debug("getting claims")

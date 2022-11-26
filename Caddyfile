@@ -13,8 +13,8 @@ api.apex.local:8080 {
 	@notweb {
 		not header User-Agent *Mozilla*
 	}
-	reverse_proxy @web bff:8080
-	reverse_proxy @notweb apiserver:8080
+	reverse_proxy @web bff-web:8080
+	reverse_proxy @notweb bff-cli:8080
 }
 
 auth.apex.local:8080 {

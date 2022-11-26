@@ -12,7 +12,12 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewAPIRouter(ctx context.Context, api *handlers.API, clientID, oidcURL string) (*gin.Engine, error) {
+func NewAPIRouter(
+	ctx context.Context,
+	api *handlers.API,
+	clientIdWeb string,
+	clientIdCli string,
+	oidcURL string) (*gin.Engine, error) {
 	r := gin.Default()
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
@@ -23,13 +28,15 @@ func NewAPIRouter(ctx context.Context, api *handlers.API, clientID, oidcURL stri
 		return nil, err
 	}
 	config := &oidc.Config{
-		ClientID: clientID,
+		// Client ID checks are skipped since we perform these later
+		// in the ValidateJWT function
+		SkipClientIDCheck: true,
 	}
 	verifier := provider.Verifier(config)
 
 	private := r.Group("/")
 	{
-		private.Use(ValidateJWT(verifier))
+		private.Use(ValidateJWT(verifier, clientIdWeb, clientIdCli))
 		private.Use(api.CreateUserIfNotExists())
 		// Zones
 		private.GET("/zones", api.ListZones)

@@ -54,8 +54,8 @@ services:
       APEX_DB_PASSWORD: ${APISERVER_DB_PASSWORD}
       APEX_IPAM_URL: ${IPAM_ADDRESS}
       APEX_OIDC_URL: ${APEX_OIDC_URL}
-      APEX_OIDC_CLIENT_ID: ${APEX_OIDC_CLIENT_ID}
-      APEX_OIDC_CLIENT_SECRET: ${APEX_OIDC_CLIENT_SECRET}
+      APEX_OIDC_CLIENT_ID_WEB: ${APEX_OIDC_CLIENT_ID}
+      APEX_OIDC_CLIENT_ID_CLI: ${APEX_OIDC_CLIENT_ID_CLI}
     networks:
       - default
 
@@ -70,18 +70,33 @@ services:
     networks:
       - default
 
-  bff:
+  bff-web:
     depends_on:
       - apiserver
       - dex
     image: quay.io/go-oidc-agent/go-oidc-agent:latest
     environment:
+      DEBUG: 1
       OIDC_PROVIDER: ${APEX_OIDC_URL}
       OIDC_CLIENT_ID: ${APEX_OIDC_CLIENT_ID}
       OIDC_CLIENT_SECRET: ${APEX_OIDC_CLIENT_SECRET}
       REDIRECT_URL: ${UI_URL}/#/login
       ORIGINS: ${UI_URL}
       DOMAIN: ${API_URL}
+      BACKEND: http://apiserver:8080
+    networks:
+      - default
+
+  bff-cli:
+    depends_on:
+      - apiserver
+      - dex
+    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    environment:
+      DEBUG: 1
+      OIDC_PROVIDER: ${APEX_OIDC_URL}
+      OIDC_CLIENT_ID: ${APEX_OIDC_CLIENT_ID_CLI}
+      OIDC_FLOW: device
       BACKEND: http://apiserver:8080
     networks:
       - default

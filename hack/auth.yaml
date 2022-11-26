@@ -24,6 +24,11 @@ staticClients:
       - 'http://apex.local:8080/#/login'
     name: 'Apex Web Frontend'
     secret: kP83W0XnJyYipwuqlVZdQSbuN2JxtqAe
+  - id: apex-cli
+    redirectURIs:
+      - '/device/callback'
+    name: 'Apex CLI Frontend'
+    public: true
 
 enablePasswordDB: true
 

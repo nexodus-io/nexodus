@@ -47,10 +47,16 @@ func main() {
 				EnvVars: []string{"APEX_OIDC_URL"},
 			},
 			&cli.StringFlag{
-				Name:    "oidc-client-id",
-				Usage:   "oidc client id",
+				Name:    "oidc-client-id-web",
 				Value:   "apex-web",
-				EnvVars: []string{"APEX_OIDC_CLIENT_ID"},
+				Usage:   "OIDC client id for web",
+				EnvVars: []string{"APEX_OIDC_CLIENT_ID_WEB"},
+			},
+			&cli.StringFlag{
+				Name:    "oidc-client-id-cli",
+				Value:   "apex-web",
+				Usage:   "OIDC client id for cli",
+				EnvVars: []string{"APEX_OIDC_CLIENT_ID_CLI"},
 			},
 			&cli.StringFlag{
 				Name:    "db-host",
@@ -114,7 +120,13 @@ func main() {
 				log.Fatal(err)
 			}
 
-			router, err := routers.NewAPIRouter(cCtx.Context, api, cCtx.String("oidc-client-id"), cCtx.String("oidc-url"))
+			router, err := routers.NewAPIRouter(
+				cCtx.Context,
+				api,
+				cCtx.String("oidc-client-id-web"),
+				cCtx.String("oidc-client-id-cli"),
+				cCtx.String("oidc-url"),
+			)
 			if err != nil {
 				log.Fatal(err)
 			}

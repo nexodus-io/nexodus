@@ -9,18 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	agent "github.com/redhat-et/go-oidc-agent"
 	log "github.com/sirupsen/logrus"
-)
-
-// TODO: These consts witll differ from installation to installation.
-// Need to find a way to provide these dynamically (config file) etc...
-const (
-	APEX_CLIENT_ID     = "apex-web"
-	APEX_CLIENT_SECRET = "kP83W0XnJyYipwuqlVZdQSbuN2JxtqAe"
-	LOGIN_URL          = "/auth/realms/controller/protocol/openid-connect/auth/device"
-	VERIFICATION_URI   = "/auth/realms/controller/device"
-	VERIFY_URL         = "/auth/realms/controller/protocol/openid-connect/token"
-	GRANT_TYPE         = "urn:ietf:params:oauth:grant-type:device_code"
 )
 
 type TokenResponse struct {
@@ -51,31 +41,31 @@ func (a *TokenAuthenticator) Token() (string, error) {
 }
 
 type DeviceFlowAuthenticator struct {
-	hostname      *url.URL
+	clientID      string
+	deviceURL     string
+	tokenURL      string
 	accessToken   string
 	refreshToken  string
 	tokenExpiry   time.Time
 	refreshExpiry time.Time
 }
 
-func NewDeviceFlowAuthenticator(ctx context.Context, hostname *url.URL) (*DeviceFlowAuthenticator, error) {
-	a := &DeviceFlowAuthenticator{
-		hostname: hostname,
+func NewDeviceFlowAuthenticator(ctx context.Context, hostname url.URL) (*DeviceFlowAuthenticator, error) {
+	a := &DeviceFlowAuthenticator{}
+
+	if err := a.startLogin(hostname); err != nil {
+		return nil, err
 	}
 	requestTime := time.Now()
-	token, err := getToken(a.hostname)
+	token, err := a.getToken()
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Your device must be registered with Apex Controller.")
+	fmt.Println("Your device must be registered with Apex.")
 	fmt.Printf("Your one-time code is: %s\n", token.UserCode)
-	fmt.Println("Please open the following URL in your browser and enter your one-time code:")
-	dest, err := url.JoinPath(a.hostname.String(), VERIFICATION_URI)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("%s\n", dest)
+	fmt.Println("Please open the following URL in your browser to sign in:")
+	fmt.Printf("%s\n", token.VerificationURIComplete)
 
 	c := make(chan error, 1)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(token.ExpiresIn)*time.Second)
@@ -90,6 +80,35 @@ func NewDeviceFlowAuthenticator(ctx context.Context, hostname *url.URL) (*Device
 	}
 	fmt.Println("Authentication succeeded.")
 	return a, nil
+}
+
+func (a *DeviceFlowAuthenticator) startLogin(hostname url.URL) error {
+	dest := hostname
+	dest.Path = "/login/start"
+	res, err := http.Post(dest.String(), "application/json", nil)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("request %s failed with %d", dest.String(), res.StatusCode)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	var resp agent.DeviceStartReponse
+	if err = json.Unmarshal(body, &resp); err != nil {
+		return err
+	}
+
+	a.clientID = resp.ClientID
+	a.deviceURL = resp.DeviceAuthURL
+	a.tokenURL = resp.TokenEndpoint
+
+	return nil
 }
 
 func (a *DeviceFlowAuthenticator) Token() (string, error) {
@@ -110,16 +129,11 @@ func (a *DeviceFlowAuthenticator) Token() (string, error) {
 
 func (a *DeviceFlowAuthenticator) refreshTokens() error {
 	v := url.Values{}
-	v.Set("client_id", APEX_CLIENT_ID)
-	v.Set("client_secret", APEX_CLIENT_SECRET)
+	v.Set("client_id", a.clientID)
 	v.Set("grant_type", "refresh_token")
 	v.Set("refresh_token", a.refreshToken)
-	dest, err := url.JoinPath(a.hostname.String(), VERIFY_URL)
-	if err != nil {
-		return err
-	}
 	requestTime := time.Now()
-	res, err := http.PostForm(dest, v)
+	res, err := http.PostForm(a.tokenURL, v)
 	if err != nil {
 		return err
 	}
@@ -142,15 +156,11 @@ func (a *DeviceFlowAuthenticator) refreshTokens() error {
 	return nil
 }
 
-func getToken(hostname *url.URL) (*TokenResponse, error) {
+func (a *DeviceFlowAuthenticator) getToken() (*TokenResponse, error) {
 	v := url.Values{}
-	v.Set("client_id", APEX_CLIENT_ID)
-	v.Set("client_secret", APEX_CLIENT_SECRET)
-	dest, err := url.JoinPath(hostname.String(), LOGIN_URL)
-	if err != nil {
-		return nil, err
-	}
-	res, err := http.PostForm(dest, v)
+	v.Set("client_id", a.clientID)
+	v.Set("scope", "openid profile email")
+	res, err := http.PostForm(a.deviceURL, v)
 	if err != nil {
 		return nil, err
 	}
@@ -178,16 +188,28 @@ type tokenReponse struct {
 	ExpiresIn        int    `json:"expires_in"`
 	RefreshToken     string `json:"refresh_token"`
 	RefreshExpiresIn int    `json:"refresh_expires_in"`
+	Error            string `json:"error"`
 }
+
+const (
+	errAuthorizationPending = "authorization_pending"
+	errSlowDown             = "slow_down"
+	errAccessDenied         = "access_denied"
+	errExpiredToken         = "expired_token"
+)
 
 func (a *DeviceFlowAuthenticator) pollForResponse(ctx context.Context, t *TokenResponse, requestTime time.Time) error {
 	v := url.Values{}
 	v.Set("device_code", t.DeviceCode)
-	v.Set("client_id", APEX_CLIENT_ID)
-	v.Set("client_secret", APEX_CLIENT_SECRET)
-	v.Set("grant_type", GRANT_TYPE)
+	v.Set("client_id", a.clientID)
+	v.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
-	ticker := time.NewTicker(time.Duration(t.Interval) * time.Second)
+	interval := t.Interval
+	if interval == 0 {
+		// Pick a reasonable default if none is set
+		interval = 5
+	}
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	var r tokenReponse
 LOOP:
 	for {
@@ -195,11 +217,7 @@ LOOP:
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			dest, err := url.JoinPath(a.hostname.String(), VERIFY_URL)
-			if err != nil {
-				continue
-			}
-			res, err := http.PostForm(dest, v)
+			res, err := http.PostForm(a.tokenURL, v)
 			if err != nil {
 				continue
 			}
@@ -209,7 +227,17 @@ LOOP:
 				continue
 			}
 			if res.StatusCode != http.StatusOK {
-				continue
+				if err := json.Unmarshal(body, &r); err != nil {
+					continue
+				}
+				if r.Error == errSlowDown {
+					interval += 5
+					ticker.Reset(time.Duration(interval) * time.Second)
+					continue
+				}
+				if r.Error == errAccessDenied || r.Error == errExpiredToken {
+					return fmt.Errorf("failed to get token: %s", r.Error)
+				}
 			}
 
 			if err := json.Unmarshal(body, &r); err != nil {
