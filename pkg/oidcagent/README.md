@@ -31,7 +31,9 @@ To use this you must first add 3 domains to your `/etc/hosts`.
 To start the example, run `docker compose up -d`.
 
 > **Note** Podman Compatibility
-> This will work on podman-compose also, but you will need to add the following to your `containers.conf` file
+> This will work on podman-compose also, but you will need to.
+> - Install the latest [development version](https://github.com/containers/podman-compose#installation)
+> - Add the following to your `containers.conf` file
 > ```conf
 > [containers]
 > base_hosts_file="none
