@@ -1,4 +1,15 @@
-import { Datagrid, List, ReferenceField, Show, SimpleShowLayout, TextField, ReferenceInput } from 'react-admin';
+import {
+    Datagrid,
+    List,
+    ReferenceField,
+    Show,
+    SimpleShowLayout,
+    TextField,
+    ReferenceInput,
+    useRecordContext,
+    useGetOne,
+    Loading,
+} from 'react-admin';
 
 const peerFilters =  [
     <ReferenceInput source="device_id" label="Device" reference="devices" />,
@@ -18,8 +29,18 @@ export const PeerList = () => (
     </List>
 );
 
+const PeerTitle = () => {
+    const peer = useRecordContext();
+    if (!peer) return null;
+    const { data: zone, isLoading, error } = useGetOne('zones', { id: peer.zone_id });
+    const { data: device, isLoading: isLoading2, error: error2 } = useGetOne('devices', { id: peer.device_id });
+    if (isLoading || isLoading2) { return <Loading />; }
+    if (error || error2) { return <p>ERROR</p>; }
+    return <div>Peer: Device {device.hostname} to Zone {zone.name}</div>;
+};
+
 export const PeerShow= () => (
-    <Show>
+    <Show title={<PeerTitle />}>
         <SimpleShowLayout>
             <TextField label="ID" source="id" />
             <ReferenceField label="Device" source="device_id" reference='devices' link="show" />
