@@ -55,6 +55,13 @@ func main() {
 				Required: false,
 			},
 			&cli.StringFlag{
+				Name:     "vpn",
+				Value:    "wireguard",
+				Usage:    "vpn provider - options are wireguard or ipsec",
+				EnvVars:  []string{"APEX_VPN"},
+				Required: false,
+			},
+			&cli.StringFlag{
 				Name:     "local-endpoint-ip",
 				Value:    "",
 				Usage:    "specify the endpoint address of this node instead of being discovered (optional)",
@@ -85,6 +92,13 @@ func main() {
 				Value:    "",
 				Usage:    "access token for apex controller (optional)",
 				EnvVars:  []string{"APEX_ACCESS_TOKEN"},
+				Required: false,
+			},
+			&cli.StringFlag{
+				Name:     "psk",
+				Value:    "",
+				Usage:    "pre-shared key for ipsec IKEv2 setup",
+				EnvVars:  []string{"APEX_PSK"},
 				Required: false,
 			},
 		},

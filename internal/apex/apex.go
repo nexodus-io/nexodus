@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redhat-et/apex/internal/apex/ipsec"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/redhat-et/apex/internal/models"
 	log "github.com/sirupsen/logrus"
@@ -17,10 +18,11 @@ import (
 )
 
 const (
-	pollInterval = 5 * time.Second
-	wgBinary     = "wg"
-	wgGoBinary   = "wireguard-go"
-	wgWinBinary  = "wireguard.exe"
+	pollInterval     = 5 * time.Second
+	wgBinary         = "wg"
+	wgGoBinary       = "wireguard-go"
+	wgWinBinary      = "wireguard.exe"
+	ipsecLinuxBinary = "ipsec"
 )
 
 type Apex struct {
@@ -45,10 +47,13 @@ type Apex struct {
 	// caches peers by their UUID
 	peerCache map[uuid.UUID]models.Peer
 	// maps device_ids to public keys
-	keyCache             map[uuid.UUID]string
-	wgLocalAddress       string
-	nodeReflexiveAddress string
-	hostname             string
+	keyCache                 map[uuid.UUID]string
+	wgLocalAddress           string
+	nodeReflexiveAddress     string
+	hostname                 string
+	vpn                      string
+	endpointLocalAddressIPv4 string
+	ikePSK                   string
 }
 
 type wgConfig struct {
@@ -69,7 +74,9 @@ type wgLocalConfig struct {
 }
 
 func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
-	if err := binaryChecks(); err != nil {
+
+	vpnProvider := cCtx.String("vpn")
+	if err := binaryChecks(vpnProvider); err != nil {
 		return nil, err
 	}
 
@@ -100,8 +107,10 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		log.Fatalf("error creating client: %+v", err)
 	}
 
-	if err := checkOS(); err != nil {
-		return nil, err
+	if vpnProvider == Wireguard.String() {
+		if err := checkOS(); err != nil {
+			return nil, err
+		}
 	}
 
 	hostname, err := os.Hostname()
@@ -120,6 +129,8 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		childPrefix:            cCtx.String("child-prefix"),
 		stun:                   cCtx.Bool("stun"),
 		hubRouter:              cCtx.Bool("hub-router"),
+		ikePSK:                 cCtx.String("psk"),
+		vpn:                    vpnProvider,
 		client:                 client,
 		os:                     GetOS(),
 		peerCache:              make(map[uuid.UUID]models.Peer),
@@ -175,6 +186,7 @@ func (ax *Apex) Run() {
 		}
 	}
 	ax.localEndpointIP = localEndpointIP
+	ax.endpointLocalAddressIPv4 = localEndpointIP
 	log.Infof("This node's endpoint address for building tunnels is [ %s ]", ax.localEndpointIP)
 
 	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, WgListenPort)
@@ -189,20 +201,40 @@ func (ax *Apex) Run() {
 		false,
 		"",
 		ax.nodeReflexiveAddress,
+		ax.endpointLocalAddressIPv4,
 	)
 	if err != nil {
 		log.Fatalf("error creating peer: %+v", err)
 	}
 	log.Info("Successfully registered with Apex Controller")
 
-	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
+	// a hub router requires ip forwarding and iptables rules, OS type
+	// has already been checked since linux is required for relay nodes
 	if ax.hubRouter {
 		enableForwardingIPv4()
-		hubRouterIpTables()
+		if ax.vpn == Wireguard.String() {
+			hubRouterIpTables()
+		}
+		if ax.vpn == IPSec.String() {
+			if err := ax.BuildIPSecRelayConfig(); err != nil {
+				log.Fatalf("%v", err)
+			}
+		}
 	}
 
 	if err := ax.Reconcile(ax.zone, true); err != nil {
 		log.Fatal(err)
+	}
+
+	if !ax.hubRouter {
+		go func() {
+			relayStateTicker := time.NewTicker(time.Second * 20)
+			for range relayStateTicker.C {
+				ax.Keepalive()
+				// TODO: check for systemd issues/failures
+				// ax.IpsecHealthCheck()
+			}
+		}()
 	}
 
 	ticker := time.NewTicker(pollInterval)
@@ -235,8 +267,19 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 				newPeers = append(newPeers, p)
 			}
 		}
-		ax.ParseWireguardConfig(ax.listenPort)
-		ax.DeployWireguardConfig(newPeers, firstTime)
+		if ax.vpn == Wireguard.String() {
+			ax.ParseWireguardConfig(ax.listenPort)
+			ax.DeployWireguardConfig(newPeers, firstTime)
+		}
+
+		if ax.vpn == IPSec.String() {
+			ax.BuildIPSecPeerConfig()
+			ax.IpsecSecrets()
+			// TODO: handle systemd restart timeouts
+			if err = ipsec.RestartIPSecSystemd(); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 	// all subsequent peer listings updates get branched from here
 	changed := false
@@ -255,8 +298,19 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 	}
 	if changed {
 		log.Debugf("Peers listing has changed, recalculating configuration")
-		ax.ParseWireguardConfig(ax.listenPort)
-		ax.DeployWireguardConfig(newPeers, false)
+		if ax.vpn == Wireguard.String() {
+			ax.ParseWireguardConfig(ax.listenPort)
+			ax.DeployWireguardConfig(newPeers, firstTime)
+		}
+
+		if ax.vpn == IPSec.String() {
+			ax.BuildIPSecPeerConfig()
+			ax.IpsecSecrets()
+			// TODO: handle systemd restart timeouts
+			if err = ipsec.RestartIPSecSystemd(); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 	return nil
 }
@@ -317,6 +371,16 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 	if ax.childPrefix != "" {
 		if err := ValidateCIDR(ax.childPrefix); err != nil {
 			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
+		}
+	}
+	if ax.requestedIP != "" && ax.vpn == IPSec.String() {
+		if err := ValidateIp(ax.requestedIP); err != nil {
+			log.Fatal("request-ip not currently supported for IPSec")
+		}
+	}
+	if ax.ikePSK == "" && ax.vpn == IPSec.String() {
+		if err := ValidateIp(ax.requestedIP); err != nil {
+			log.Fatal("--psk pre-shared key is currently required for IPSec IKE (cert support pending)")
 		}
 	}
 	return nil
@@ -397,20 +461,33 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 }
 
 // binaryChecks validate the required binaries are available
-func binaryChecks() error {
-	if GetOS() == Windows.String() {
-		if !IsCommandAvailable(wgWinBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
+func binaryChecks(vpn string) error {
+
+	switch vpn {
+	case "wireguard":
+		if GetOS() == Windows.String() {
+			if !IsCommandAvailable(wgWinBinary) {
+				return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
+			}
+		} else {
+			if !IsCommandAvailable(wgBinary) {
+				return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
+			}
 		}
-	} else {
-		if !IsCommandAvailable(wgBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
+		if GetOS() == Darwin.String() {
+			if !IsCommandAvailable(wgGoBinary) {
+				return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
+			}
+		}
+	case "ipsec":
+		if GetOS() == Linux.String() {
+			if !IsCommandAvailable(ipsecLinuxBinary) {
+				return fmt.Errorf("%s command not found, is strongswan installed?", ipsecLinuxBinary)
+			}
+		} else {
+			return fmt.Errorf("OS %s not currently supported", GetOS())
 		}
 	}
-	if GetOS() == Darwin.String() {
-		if !IsCommandAvailable(wgGoBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
-		}
-	}
+
 	return nil
 }

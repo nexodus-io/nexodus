@@ -4,7 +4,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -293,7 +292,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 // TODO: routes need to be looked up if the exists, netlink etc.
 func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
-	allowedIPs := allowedIPsString(wgPeerConfig.AllowedIPs)
+	allowedIPs := AllowedIPsString(wgPeerConfig.AllowedIPs)
 	switch ax.os {
 	case Darwin.String():
 		// remove a prior entry for the peer (fails silently)
@@ -326,9 +325,4 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 			}
 		}
 	}
-}
-
-// allowedIPsString joins the allowedIPs slice into the format required for wg set peer x,y,z
-func allowedIPsString(ips []string) string {
-	return strings.Join(ips, ",")
 }

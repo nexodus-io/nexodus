@@ -16,13 +16,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// supported OS types
+// OperatingSystem supported OS types
 type OperatingSystem string
 
 const (
 	Linux               OperatingSystem = "Linux"
 	Darwin              OperatingSystem = "Darwin"
 	Windows             OperatingSystem = "Windows"
+	Wireguard           VpnProviders    = "Wireguard"
+	IPSec               VpnProviders    = "IPSec"
 	wgConfigPermissions                 = 0600
 )
 
@@ -34,6 +36,20 @@ func (operatingSystem OperatingSystem) String() string {
 		return "darwin"
 	case Windows:
 		return "windows"
+	}
+
+	return "unsupported"
+}
+
+// VpnProviders supported VPN provider types
+type VpnProviders string
+
+func (vpnProviders VpnProviders) String() string {
+	switch vpnProviders {
+	case IPSec:
+		return "ipsec"
+	case Wireguard:
+		return "wireguard"
 	}
 
 	return "unsupported"
@@ -78,10 +94,11 @@ func ValidateCIDR(cidr string) error {
 	return nil
 }
 
+// FileToString reads file contents to a string
 func FileToString(file string) string {
 	fileContent, err := os.ReadFile(file)
 	if err != nil {
-		log.Errorf("unable to read the file [%s] %v\n", file, err)
+		log.Debugf("unable to read the file [%s] %v\n", file, err)
 		return ""
 	}
 	return string(fileContent)
@@ -197,6 +214,7 @@ func CreateDirectory(path string) error {
 	return nil
 }
 
+// FileExists checks if a file exists
 func FileExists(f string) bool {
 	if _, err := os.Stat(f); err != nil {
 		return false
@@ -435,4 +453,9 @@ func getIPv4Iface(ifname string) net.IP {
 		}
 	}
 	return nil
+}
+
+// AllowedIPsString joins the allowedIPs slice into the format required for wg set peer x,y,z
+func AllowedIPsString(ips []string) string {
+	return strings.Join(ips, ",")
 }
