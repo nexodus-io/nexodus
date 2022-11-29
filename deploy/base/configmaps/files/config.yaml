@@ -1,4 +1,4 @@
-issuer: http://auth.apex.local
+issuer: <AUTH_HOST>
 
 storage:
   type: memory
@@ -19,15 +19,15 @@ oauth2:
   responseTypes: ["code", "token", "id_token"]
 
 staticClients:
-  - id: apex-web
+  - idEnv: WEB_CLIENT_ID
     redirectURIs:
-      - 'http://apex.local/#/login'
-    name: 'Apex Web Frontend'
-    secret: kP83W0XnJyYipwuqlVZdQSbuN2JxtqAe
-  - id: apex-cli
+      - "<HOST>/#/login"
+    name: "Apex Web Frontend"
+    secretEnv: WEB_CLIENT_SECRET
+  - idEnv: CLI_CLIENT_ID
     redirectURIs:
-      - '/device/callback'
-    name: 'Apex CLI Frontend'
+      - "/device/callback"
+    name: "Apex CLI Frontend"
     public: true
 
 enablePasswordDB: true

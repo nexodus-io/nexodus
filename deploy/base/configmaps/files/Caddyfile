@@ -1,0 +1,10 @@
+:8080 {
+        @web {
+                header User-Agent *Mozilla*
+        }
+        @notweb {
+                not header User-Agent *Mozilla*
+        }
+        reverse_proxy @web backend-web:8080
+        reverse_proxy @notweb backend-cli:8080
+}

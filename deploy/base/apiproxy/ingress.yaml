@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apiproxy
+spec:
+  rules:
+    - host: <API_HOST>
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: apiproxy
+                port:
+                  number: 8080

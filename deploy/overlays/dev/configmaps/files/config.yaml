@@ -23,7 +23,7 @@ staticClients:
     redirectURIs:
       - 'http://apex.local/#/login'
     name: 'Apex Web Frontend'
-    secret: kP83W0XnJyYipwuqlVZdQSbuN2JxtqAe
+    secretEnv: WEB_CLIENT_SECRET
   - id: apex-cli
     redirectURIs:
       - '/device/callback'

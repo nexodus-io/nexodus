@@ -8,6 +8,8 @@ COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
 APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
 
+TAG=$(shell git rev-parse HEAD)
+
 dist:
 	mkdir -p $@
 
@@ -70,3 +72,10 @@ recompose: dist/apex
 	docker-compose down
 	docker-compose build
 	docker-compose up -d
+
+.PHONY: images
+images:
+	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
+	docker build -f Containerfile.frontend -t quay.io/apex/frontend:$(TAG) .
+	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
+	docker tag quay.io/apex/frontend:$(TAG) quay.io/apex/frontend:latest

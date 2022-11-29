@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   ipam-db:
-    image: docker.io/library/postgres
+    image: docker.io/library/postgres:15.1-alpine
     environment:
       - POSTGRES_USER=${IPAM_DB_USER}
       - POSTGRES_PASSWORD=${IPAM_DB_PASSWORD}
@@ -10,7 +10,7 @@ services:
       - default
 
   ipam:
-    image: ghcr.io/metal-stack/go-ipam
+    image: ghcr.io/metal-stack/go-ipam:v1.11.3
     depends_on:
       - ipam-db
     deploy:
@@ -27,7 +27,7 @@ services:
       - default
 
   apiserver-db:
-    image: docker.io/library/postgres
+    image: docker.io/library/postgres:15.1-alpine
     environment:
       - POSTGRES_USER=${APISERVER_DB_USER}
       - POSTGRES_PASSWORD=${APISERVER_DB_PASSWORD}
@@ -59,14 +59,14 @@ services:
     networks:
       - default
 
-  ui:
-    image: quay.io/apex/apiserver-ui:latest
+  frontend:
+    image: quay.io/apex/frontend:latest
     depends_on:
      - apiserver
      - keycloak
     build:
       context: .
-      dockerfile: ./Containerfile.ui
+      dockerfile: ./Containerfile.frontend
     networks:
       - default
 
@@ -74,7 +74,7 @@ services:
     depends_on:
       - apiserver
       - dex
-    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    image: quay.io/go-oidc-agent/go-oidc-agent:2d47eec2d27c3eaa0221ddbb0a07c8ca55dbe4bf
     environment:
       DEBUG: 1
       OIDC_PROVIDER: ${APEX_OIDC_URL}
@@ -91,7 +91,7 @@ services:
     depends_on:
       - apiserver
       - dex
-    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    image: quay.io/go-oidc-agent/go-oidc-agent:2d47eec2d27c3eaa0221ddbb0a07c8ca55dbe4bf
     environment:
       DEBUG: 1
       OIDC_PROVIDER: ${APEX_OIDC_URL}
