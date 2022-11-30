@@ -8,40 +8,27 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// parseHubWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
+// parseHubWireguardConfig parse peerlisting to build the wireguard local interface and peers
 func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
-	var hubRouterEndpointIP string
 	var localInterface wgLocalConfig
 	var zonePrefix string
 	var err error
 
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.DeviceID]
-		if pubkey == ax.wireguardPubKey {
-			ax.wireguardPubKeyInConfig = true
-		}
 		if value.HubRouter {
 			hubRouterIP = value.AllowedIPs[0]
-			hubRouterEndpointIP, _, err = net.SplitHostPort(value.EndpointIP)
-			if err != nil {
-				log.Errorf("failed to split host:port endpoint pair: %v", err)
-			}
 			if ax.zone == value.ZoneID {
 				zonePrefix = value.ZonePrefix
 			}
 		}
 	}
 	// zonePrefix will be empty if a hub-router is not defined in the zone
-	// TODO: replace with an error message from the controller before it reaches this point
 	if zonePrefix == "" {
 		log.Error("this zone is a hub zone and requires a hub-router `--hub-router` node before provisioning spokes nodes")
 		os.Exit(1)
-	}
-	if !ax.wireguardPubKeyInConfig {
-		log.Printf("Public Key for this node %s was not found in the controller update\n", ax.wireguardPubKey)
 	}
 	// Get a valid netmask from the zone prefix
 	zoneCidr, err := ParseIPNet(zonePrefix)
@@ -50,63 +37,29 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 		os.Exit(1)
 	}
 	zoneMask, _ := zoneCidr.Mask.Size()
-
 	hubRouterNetAddress := fmt.Sprintf("%s/%d", hubRouterIP, zoneMask)
 	hubRouterNetAddress, err = parseNetworkStr(hubRouterNetAddress)
 	hubRouterAllowedIP := []string{hubRouterNetAddress}
 	if err != nil {
 		log.Errorf("invalid hub router network found: %v", err)
 	}
-	var peerEndpoints []string
-	var reachablePeers []string
-	if !ax.hubRouter {
-		for _, value := range ax.peerCache {
-			peerIP, _, err := net.SplitHostPort(value.EndpointIP)
-			if err != nil {
-				log.Errorf("failed to split host:port endpoint pair: %v", err)
-			}
-			peerEndpoints = append(peerEndpoints, peerIP)
-		}
-	}
-	// basic discovery of what endpoints are reachable from the spoke peer that
-	// determines whether to drain traffic to the hub or build a p2p peering
-	// TODO: replace with a more in depth discovery than simple reachability
-	reachablePeers = probePeers(peerEndpoints)
-	// remove the hub router from the list since connectivity is required(ish)
-	reachablePeers = removeElement(reachablePeers, hubRouterEndpointIP)
-	// remove the node the agent is running on from the peer list (eg. don't peer to yourself)
-	reachablePeers = removeElement(reachablePeers, ax.localEndpointIP)
-	log.Debugf("reachable endpoint peers by this node are %s", reachablePeers)
-
-	// Parse the [Peers] section of the wg config if this node is a zone-router
+	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.peerCache {
-		pubkey := ax.keyCache[value.DeviceID]
-		// Build the wg config for all peers for the hub-router node
-		if ax.hubRouter {
-			// Config if the node is a bouncer hub
-			if pubkey != ax.wireguardPubKey {
-				peer := wgPeerConfig{
-					pubkey,
-					value.EndpointIP,
-					value.AllowedIPs,
-					persistentHubKeepalive,
-				}
-				peers = append(peers, peer)
-				log.Printf("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-					value.AllowedIPs,
-					value.EndpointIP,
-					pubkey,
-					value.NodeAddress,
-					value.ZoneID)
-			}
+		_, peerPort, err := net.SplitHostPort(value.EndpointIP)
+		if err != nil {
+			log.Debugf("failed parse the endpoint address for node (likely still converging) : %v\n", err)
+			continue
 		}
+
+		pubkey := ax.keyCache[value.DeviceID]
 		var peerHub wgPeerConfig
-		// Build the wg config for all peers that are not zone routers (1 peer entry to the router)
+		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
+		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.hubRouter && value.HubRouter {
 			if pubkey != ax.wireguardPubKey {
-				//var allowedIPs string
 				if value.ChildPrefix != "" {
-					log.Warnf("Ignoring the child prefix since this is a hub zone")
+					ax.addChildPrefixRoute(value.ChildPrefix)
+					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 				}
 				ax.hubRouterWgIP = hubRouterIP
 				peerHub = wgPeerConfig{
@@ -118,30 +71,89 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 				peers = append(peers, peerHub)
 			}
 		}
-
-		// Peers that are reachable for spokes
-		peerIP, _, err := net.SplitHostPort(value.EndpointIP)
-		if err != nil {
-			log.Errorf("failed to split host:port endpoint pair: %v", err)
-		}
-		// if the endpoint is both reachable and share the same STUN address, assume they are mesh candidates
-		if isReachable(reachablePeers, peerIP) && ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
-			log.Debugf("ICE candidate match for direct peering is [ %s ] with a STUN Address of [ %s ]", value.NodeAddress, value.ReflexiveIPv4)
-			peer := wgPeerConfig{
-				pubkey,
-				value.EndpointIP,
-				value.AllowedIPs,
-				persistentKeepalive,
+		// Build the wg config for all peers if this node is the zone's hub-router.
+		if ax.hubRouter {
+			// Config if the node is a relay
+			if pubkey != ax.wireguardPubKey {
+				if value.ChildPrefix != "" {
+					ax.addChildPrefixRoute(value.ChildPrefix)
+					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
+				}
+				peer := wgPeerConfig{
+					pubkey,
+					value.EndpointIP,
+					value.AllowedIPs,
+					persistentHubKeepalive,
+				}
+				peers = append(peers, peer)
+				log.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+					value.AllowedIPs,
+					value.EndpointIP,
+					pubkey,
+					value.NodeAddress,
+					value.ZoneID)
 			}
-			peers = append(peers, peer)
-			log.Printf("Spoke Node Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-				value.AllowedIPs,
-				value.EndpointIP,
-				pubkey,
-				value.NodeAddress,
-				value.ZoneID)
 		}
-		// Parse the [Interface] section of the wg config if this node is a zone-router
+		// if both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
+		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
+			if pubkey != ax.wireguardPubKey {
+				directLocalPeerEndpointSocket := fmt.Sprintf("%s:%s", value.EnpointLocalAddressIPv4, peerPort)
+				log.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
+				// the symmetric NAT peer
+				if value.ChildPrefix != "" {
+					ax.addChildPrefixRoute(value.ChildPrefix)
+					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
+				}
+				peer := wgPeerConfig{
+					pubkey,
+					directLocalPeerEndpointSocket,
+					value.AllowedIPs,
+					persistentKeepalive,
+				}
+				peers = append(peers, peer)
+				log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+					value.AllowedIPs,
+					directLocalPeerEndpointSocket,
+					pubkey,
+					value.NodeAddress,
+					value.ZoneID)
+			}
+		} else {
+			// the bulk of the peers will be added here except for local address peers. Endpoint sockets added here are likely
+			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
+			if pubkey != ax.wireguardPubKey {
+				// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
+				// symmetric nat node, do not add peers as it will relay and not mesh
+				if !ax.symmetricNat {
+					if !value.SymmetricNat {
+						if !value.HubRouter {
+							if value.ChildPrefix != "" {
+								ax.addChildPrefixRoute(value.ChildPrefix)
+								value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
+							}
+							peer := wgPeerConfig{
+								pubkey,
+								value.EndpointIP,
+								value.AllowedIPs,
+								persistentKeepalive,
+							}
+							peers = append(peers, peer)
+							log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+								value.AllowedIPs,
+								value.EndpointIP,
+								pubkey,
+								value.NodeAddress,
+								value.ZoneID)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Deal with the wireguard local interface
+	for _, value := range ax.peerCache {
+		pubkey := ax.keyCache[value.DeviceID]
 		if pubkey == ax.wireguardPubKey && ax.hubRouter {
 			if ax.wgLocalAddress != value.NodeAddress {
 				log.Infof("New local interface address assigned %s", value.NodeAddress)
@@ -156,7 +168,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 				ax.wireguardPvtKey,
 				listenPort,
 			}
-			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
+			log.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				ax.wgLocalAddress,
 				listenPort,
 				ax.hubRouter)
@@ -179,7 +191,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 				ax.wireguardPvtKey,
 				listenPort,
 			}
-			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
+			log.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				ax.wgLocalAddress,
 				listenPort,
 				ax.hubRouter)
@@ -190,28 +202,29 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 	ax.wgConfig.Peers = peers
 }
 
-func isReachable(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
-
-func removeElement(items []string, item string) []string {
-	var updatedSlice []string
-	for _, i := range items {
-		if i != item {
-			updatedSlice = append(updatedSlice, i)
-		}
-	}
-	return updatedSlice
-}
-
+// hubRouterIpTables iptables for the relay node
 func hubRouterIpTables() {
 	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", wgIface, "-j", "ACCEPT")
 	if err != nil {
 		log.Debugf("the hub router iptable rule was not added: %v", err)
+	}
+}
+
+func (ax *Apex) addChildPrefixRoute(ChildPrefix string) {
+	if ax.os == Linux.String() && routeExists(ChildPrefix) {
+		log.Debugf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", ChildPrefix)
+		return
+	}
+	if ax.os == Linux.String() {
+		if err := addLinuxChildPrefixRoute(ChildPrefix); err != nil {
+			log.Infof("error adding the child prefix route: %v", err)
+		}
+	}
+	// add osx child prefix
+	if ax.os == Darwin.String() {
+		if err := addDarwinChildPrefixRoute(ChildPrefix); err != nil {
+			// TODO: setting to debug until the child prefix is looked up on Darwin
+			log.Debugf("error adding the child prefix route: %v", err)
+		}
 	}
 }

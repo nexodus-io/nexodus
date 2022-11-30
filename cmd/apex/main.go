@@ -42,7 +42,7 @@ func main() {
 			},
 			&cli.IntFlag{
 				Name:     "listen-port",
-				Value:    51820,
+				Value:    0,
 				Usage:    "port wireguard is to listen for incoming peers on",
 				EnvVars:  []string{"APEX_LISTEN_PORT"},
 				Required: false,
@@ -78,6 +78,12 @@ func main() {
 				Usage:    "set if this node is to be the hub in a hub and spoke deployment",
 				Value:    false,
 				EnvVars:  []string{"APEX_HUB_ROUTER"},
+				Required: false,
+			},
+			&cli.BoolFlag{Name: "relay-only",
+				Usage:    "set if this node is unable to NAT hole punch in a hub zone (Apex will set this automatically if symmetric NAT is detected)",
+				Value:    false,
+				EnvVars:  []string{"APEX_RELAY_ONLY"},
 				Required: false,
 			},
 			&cli.StringFlag{

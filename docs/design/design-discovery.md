@@ -43,7 +43,7 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
 ## Current and Future Discovery Plans
 
 > **Warning**
-> Current peer discovery is still in an early POC state.
+> Current peer discovery is still in an early POC state. All discovery scenarios are subject to change.
 
 ### Nodes without a firewall and/or NAT device between them (currently supported)
 
@@ -51,7 +51,7 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
 - This means that when both nodes share the same public or "reflexive address" (as defined in the above figure), Apex assumes that other peers are likely to have direct access to one another. Each peer has their stun/reflexive address in the peer listing received from the controller.
 - Next, the Apex agent will look up the "Local Address" (see Figure 1) of a peer candidate in the peer listing and attempt to probe for connectivity. If this probing succeeds, we consider it a likely candidate match, and both peers set up the connection to one another with a /32 host route and wireguard tunnel.
 
-### Nodes with a firewall and/or NAT device between them (currently in progress)
+### Nodes with a firewall and/or NAT device between them (currently supported)
 
 ```
                                +---------+
@@ -69,13 +69,14 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
                       /                             \
                      /                               \
                  +-------+                       +-------+
-                 | Agent |                       | Agent |
-                 |   L   |                       |   R   |
+                 | Agent | Encrypted Connection  | Agent |
+                 |   L   | ====================  |   R   |
                  +-------+                       +-------+
 ```
 
-*Figure 2 - NAT traversal connecting directly via reflexive addresses sockets learned via STUN*
+*Figure 2. NAT traversal connecting directly via reflexive addresses sockets learned via STUN*
 
+- Current discovery of valid sockets is gathered from a relay node that all peers can attach to. That state is distributed to all peer nodes (except for symmetric NAT nodes that will use the relay to reach all other nodes).
 - Two endpoints that do not match the initial local address peering, will attempt to peer via the STUN method (see the ICE RFC or the STUN [RFC3489](https://www.ietf.org/rfc/rfc3489.txt) for further details regarding the STUN protocol). A STUN request can be used to open a source UDP port on the NAT device front-ending the endpoint.
 - A STUN server allows nodes to discover their public address, the type of NAT they are behind and the Internet side port associated by the NAT with a particular local port. This information is used to set up a UDP connection between the two peers behind the NAT device.
 - That UDP source port will remain open for some unknown period of time (depending on the NAT device).

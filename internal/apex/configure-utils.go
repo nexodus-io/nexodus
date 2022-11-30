@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	WgListenPort      = 51820
+	WgDefaultPort     = 51820
 	WgLinuxConfPath   = "/etc/wireguard/"
 	WgDarwinConfPath  = "/usr/local/etc/wireguard/"
 	WgWindowsConfPath = "C:/"
