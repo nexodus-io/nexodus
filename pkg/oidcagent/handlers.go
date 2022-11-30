@@ -390,7 +390,7 @@ func isLoggedIn(c *gin.Context) bool {
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
 	c.JSON(http.StatusOK, DeviceStartReponse{
 		DeviceAuthURL: o.deviceAuthURL,
-		TokenEndpoint: o.provider.Endpoint().TokenURL,
+		Issuer:        o.oidcIssuer,
 		ClientID:      o.clientID,
 	})
 }

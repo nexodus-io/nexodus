@@ -337,6 +337,7 @@ func TestLogout(t *testing.T) {
 func TestDeviceStart(t *testing.T) {
 	auth := &OidcAgent{
 		logger:        zap.NewExample().Sugar(),
+		oidcIssuer:    "http://auth.example.com",
 		deviceAuthURL: "http://auth.example.com/device",
 		clientID:      "cli-app",
 		provider: &FakeOpenIDConnectProvider{
@@ -361,7 +362,7 @@ func TestDeviceStart(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "http://auth.example.com/device", response.DeviceAuthURL)
-	assert.Equal(t, "http://auth.example.com/token", response.TokenEndpoint)
+	assert.Equal(t, "http://auth.example.com", response.Issuer)
 	assert.Equal(t, "cli-app", response.ClientID)
 }
 

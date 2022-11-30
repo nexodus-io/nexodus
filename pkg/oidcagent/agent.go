@@ -17,6 +17,7 @@ type OidcAgent struct {
 	clientID       string
 	redirectURL    string
 	oauthConfig    OauthConfig
+	oidcIssuer     string
 	provider       OpenIDConnectProvider
 	verifier       IDTokenVerifier
 	endSessionURL  string
@@ -91,6 +92,7 @@ func NewOidcAgent(ctx context.Context,
 		clientID:       clientID,
 		redirectURL:    redirectURL,
 		oauthConfig:    config,
+		oidcIssuer:     oidcProvider,
 		provider:       provider,
 		verifier:       verifier,
 		endSessionURL:  claims.EndSessionURL,

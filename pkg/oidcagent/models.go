@@ -27,7 +27,9 @@ type UserInfoResponse struct {
 }
 
 type DeviceStartReponse struct {
+	// TODO: Remove this once golang/oauth2 supports device flow
+	// and when coreos/go-oidc adds device_authorization_endpoint discovery
 	DeviceAuthURL string `json:"device_authorization_endpoint"`
-	TokenEndpoint string `json:"token_endpoint"`
+	Issuer        string `json:"issuer"`
 	ClientID      string `json:"client_id"`
 }
