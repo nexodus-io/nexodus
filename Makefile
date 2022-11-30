@@ -56,7 +56,7 @@ test-images:
 
 OS_IMAGE?="quay.io/apex/test:fedora"
 
-.PHONY: go-e2e
+.PHONY: e2e
 e2e: dist/apex test-images
 	./hack/run_e2e.sh
 

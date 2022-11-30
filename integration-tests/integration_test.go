@@ -35,15 +35,16 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	assert := suite.Assert()
 	require := suite.Require()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+
 	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "podman", []string{})
+	node1 := suite.CreateNode("node1", "bridge", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "podman", []string{})
+	node2 := suite.CreateNode("node2", "bridge", []string{})
 	defer node2.Close()
 
 	// start apex on the nodes
@@ -51,7 +52,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 		_, err = containerExec(ctx, node1, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -59,7 +60,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 		_, err = containerExec(ctx, node2, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -94,7 +95,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 		_, err = containerExec(ctx, node1, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -102,7 +103,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 		_, err = containerExec(ctx, node2, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -130,15 +131,15 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 
 	node1IP := "10.200.0.101"
 	node2IP := "10.200.0.102"
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "podman", []string{})
+	node1 := suite.CreateNode("node1", "bridge", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "podman", []string{})
+	node2 := suite.CreateNode("node2", "bridge", []string{})
 	defer node2.Close()
 
 	// start apex on the nodes
@@ -147,7 +148,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node1IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -156,7 +157,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node2IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -174,7 +175,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh1@apex.local", "floofykittens")
 	require.NoError(err)
@@ -193,9 +194,9 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	node2IP := "10.140.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "podman", []string{})
+	node1 := suite.CreateNode("node1", "bridge", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "podman", []string{})
+	node2 := suite.CreateNode("node2", "bridge", []string{})
 	defer node2.Close()
 
 	// start apex on the nodes
@@ -204,7 +205,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node1IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -213,7 +214,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node2IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -239,7 +240,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node1IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -248,7 +249,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 			"/bin/apex",
 			fmt.Sprintf("--request-ip=%s", node2IP),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -266,7 +267,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh2@apex.local", "floofykittens")
 	require.NoError(err)
@@ -283,12 +284,12 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "podman", []string{})
+	node1 := suite.CreateNode("node1", "bridge", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "podman", []string{})
+	node2 := suite.CreateNode("node2", "bridge", []string{})
 	defer node2.Close()
-	node3 := suite.CreateNode("node3", "podman", []string{})
-	defer node2.Close()
+	node3 := suite.CreateNode("node3", "bridge", []string{})
+	defer node3.Close()
 
 	// start apex on the nodes
 	go func() {
@@ -296,7 +297,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 			"/bin/apex",
 			"--hub-router",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -306,7 +307,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 		_, err = containerExec(ctx, node2, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -314,7 +315,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 		_, err = containerExec(ctx, node3, []string{
 			"/bin/apex",
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -346,7 +347,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh3@apex.local", "floofykittens")
 	require.NoError(err)
@@ -368,9 +369,9 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "podman", []string{})
+	node1 := suite.CreateNode("node1", "bridge", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "podman", []string{})
+	node2 := suite.CreateNode("node2", "bridge", []string{})
 	defer node2.Close()
 
 	// start apex on the nodes
@@ -379,7 +380,7 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 			"/bin/apex",
 			fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -388,7 +389,7 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 			"/bin/apex",
 			fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
 			fmt.Sprintf("--with-token=%s", token),
-			"http://host.docker.internal:8080",
+			"http://apex.local",
 		})
 	}()
 
@@ -446,21 +447,24 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 
 	net1 := "net1"
 	net2 := "net2"
-	defaultNSNet := "podman"
+	defaultNSNet := "bridge"
 	docker0 := "172.17.0.1"
 	relayNodeName := "relay"
 	net1Spoke1Name := "net1-spoke1"
 	net2Spoke1Name := "net2-spoke1"
 	net1Spoke2Name := "net1-spoke2"
 	net2Spoke2Name := "net2-spoke2"
-	controllerURL := "http://172.17.0.1:8080"
+	controllerURL := "http://apex.local"
 
 	// launch a relay node in the default namespace that all spokes can reach
 	relayNode := suite.CreateNode(relayNodeName, defaultNSNet, []string{})
 	defer relayNode.Close()
 
-	_ = suite.CreateNetwork("net1", "100.64.11.0/24")
-	_ = suite.CreateNetwork("net2", "100.64.12.0/24")
+	dNet1 := suite.CreateNetwork(net1, "100.64.11.0/24")
+	defer dNet1.Close()
+
+	dNet2 := suite.CreateNetwork(net2, "100.64.12.0/24")
+	defer dNet2.Close()
 
 	// launch nat nodes
 	natNodeNet1 := suite.CreateNode("net1-nat", net1, []string{})
@@ -468,7 +472,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	natNodeNet2 := suite.CreateNode("net2-nat", net2, []string{})
 	defer natNodeNet2.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	// attach nat nodes to the spoke networks
@@ -491,13 +495,13 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 
 	// create spoke nodes
 	net1SpokeNode1 := suite.CreateNode(net1Spoke1Name, net1, []string{})
-	defer natNodeNet1.Close()
+	defer net1SpokeNode1.Close()
 	net2SpokeNode1 := suite.CreateNode(net2Spoke1Name, net2, []string{})
-	defer natNodeNet2.Close()
+	defer net2SpokeNode1.Close()
 	net1SpokeNode2 := suite.CreateNode(net1Spoke2Name, net1, []string{})
-	defer natNodeNet1.Close()
+	defer net1SpokeNode2.Close()
 	net2SpokeNode2 := suite.CreateNode(net2Spoke2Name, net2, []string{})
-	defer natNodeNet2.Close()
+	defer net2SpokeNode2.Close()
 
 	// delete the default route pointing to the nat gateway
 	_, err = containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "del", "default"})
@@ -523,10 +527,10 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	suite.T().Logf("Validate NAT Infra: Pinging %s from net2-spoke1", docker0)
 	err = ping(ctx, net2SpokeNode1, docker0)
 	assert.NoError(err)
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net1-spoke1", docker0)
+	suite.T().Logf("Validate NAT Infra: Pinging %s from net1-spoke2", docker0)
 	err = ping(ctx, net1SpokeNode2, docker0)
 	assert.NoError(err)
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net2-spoke1", docker0)
+	suite.T().Logf("Validate NAT Infra: Pinging %s from net2-spoke2", docker0)
 	err = ping(ctx, net2SpokeNode2, docker0)
 	assert.NoError(err)
 

@@ -34,6 +34,10 @@ up() {
     kubectl rollout status -n apex deployment backend-web --timeout=90s
     kubectl rollout status -n apex deployment backend-cli --timeout=90s
     kubectl rollout status -n apex deployment apiproxy --timeout=90s
+
+    kubectl wait --for=condition=Ready pods --all -n apex --timeout=120s
+    # give k8s a little longer to come up
+    sleep 5
 }
 
 down() {

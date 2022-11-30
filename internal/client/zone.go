@@ -42,7 +42,7 @@ func (c *Client) CreateZone(name, description, cidr string, hubZone bool) (model
 	}
 
 	if res.StatusCode != http.StatusCreated {
-		return models.Zone{}, fmt.Errorf("failed to create the zone")
+		return models.Zone{}, fmt.Errorf("failed to create the zone. %s", string(resBody))
 	}
 
 	var data models.Zone

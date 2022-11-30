@@ -44,7 +44,7 @@ func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []strin
 		},
 	}
 	hostConfig := func(config *docker.HostConfig) {
-		//config.AutoRemove = true
+		// config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{
 			Name: "no",
 		}
@@ -183,7 +183,6 @@ func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.
 		}
 	})
 	require.NoError(suite.T(), err)
-
 	return net
 }
 
