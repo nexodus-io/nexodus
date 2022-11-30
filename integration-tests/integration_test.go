@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/ory/dockertest/v3"
 	"github.com/redhat-et/apex/internal/apex"
 	"github.com/stretchr/testify/require"
@@ -26,12 +25,6 @@ func (suite *ApexIntegrationSuite) SetupSuite() {
 	var err error
 	suite.pool, err = dockertest.NewPool("")
 	require.NoError(suite.T(), err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	err = backoff.Retry(healthcheck, backoff.WithContext(backoff.NewExponentialBackOff(), ctx))
-	require.NoError(suite.T(), err)
 }
 
 func TestApexIntegrationSuite(t *testing.T) {
@@ -42,17 +35,16 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	assert := suite.Assert()
 	require := suite.Require()
 
-	token, err := GetToken("admin", "floofykittens")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
+	node1 := suite.CreateNode("node1", "podman", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
+	node2 := suite.CreateNode("node2", "podman", []string{})
 	defer node2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	// start apex on the nodes
 	go func() {
@@ -78,11 +70,11 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 
 	suite.T().Logf("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	assert.NoError(err)
+	require.NoError(err)
 
 	suite.T().Logf("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
-	assert.NoError(err)
+	require.NoError(err)
 
 	//kill the apex process on both nodes
 	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
@@ -138,17 +130,16 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 
 	node1IP := "10.200.0.101"
 	node2IP := "10.200.0.102"
-	token, err := GetToken("admin", "floofykittens")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
+	node1 := suite.CreateNode("node1", "podman", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
+	node2 := suite.CreateNode("node2", "podman", []string{})
 	defer node2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
 
 	// start apex on the nodes
 	go func() {
@@ -183,30 +174,29 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	token, err := GetToken("kitteh1", "floofykittens")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := getToken(ctx, "kitteh1@apex.local", "floofykittens")
 	require.NoError(err)
 
-	c, err := newClient(token)
+	c, err := newClient(ctx, token)
 	require.NoError(err)
 	// create a new zone
 	zoneID, err := c.CreateZone("zone-blue", "zone full of blue things", "10.140.0.0/24", false)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// patch the new user into the zone
 	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	assert.NoError(err)
+	require.NoError(err)
 
 	node1IP := "10.140.0.101"
 	node2IP := "10.140.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
+	node1 := suite.CreateNode("node1", "podman", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
+	node2 := suite.CreateNode("node2", "podman", []string{})
 	defer node2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	// start apex on the nodes
 	go func() {
@@ -276,30 +266,29 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	token, err := GetToken("kitteh2", "floofykittens")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := getToken(ctx, "kitteh2@apex.local", "floofykittens")
 	require.NoError(err)
 
-	c, err := newClient(token)
+	c, err := newClient(ctx, token)
 	require.NoError(err)
 
 	// create a new zone
 	zoneID, err := c.CreateZone("zone-relay", "zone with a relay hub", "10.162.0.0/24", true)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// patch the new user into the zone
 	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
+	node1 := suite.CreateNode("node1", "podman", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
+	node2 := suite.CreateNode("node2", "podman", []string{})
 	defer node2.Close()
-	node3 := suite.CreateNode("node3", "bridge", []string{})
+	node3 := suite.CreateNode("node3", "podman", []string{})
 	defer node2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
 
 	// start apex on the nodes
 	go func() {
@@ -357,19 +346,21 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
-	token, err := GetToken("kitteh3", "floofykittens")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := getToken(ctx, "kitteh3@apex.local", "floofykittens")
 	require.NoError(err)
 
-	c, err := newClient(token)
+	c, err := newClient(ctx, token)
 	require.NoError(err)
 
 	// create a new zone
 	zoneID, err := c.CreateZone("zone-child-prefix", "zone full of toddler prefixes", "100.64.100.0/24", false)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// patch the new user into the zone
 	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	assert.NoError(err)
+	require.NoError(err)
 
 	node1LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNet := "172.16.20.102/32"
@@ -377,13 +368,10 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
+	node1 := suite.CreateNode("node1", "podman", []string{})
 	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
+	node2 := suite.CreateNode("node2", "podman", []string{})
 	defer node2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-	defer cancel()
 
 	// start apex on the nodes
 	go func() {
@@ -406,9 +394,9 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 
 	// add loopbacks to the containers that are contained in the node's child prefix
 	_, err = containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
-	assert.NoError(err)
+	require.NoError(err)
 
 	// parse the loopback ip from the loopback prefix
 	node1LoopbackIP, _, _ := net.ParseCIDR(node1LoopbackNet)
@@ -458,7 +446,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 
 	net1 := "net1"
 	net2 := "net2"
-	defaultNSNet := "bridge"
+	defaultNSNet := "podman"
 	docker0 := "172.17.0.1"
 	relayNodeName := "relay"
 	net1Spoke1Name := "net1-spoke1"
@@ -542,19 +530,19 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	err = ping(ctx, net2SpokeNode2, docker0)
 	assert.NoError(err)
 
-	token, err := GetToken("kitteh4", "floofykittens")
+	token, err := getToken(ctx, "kitteh4@apex.local", "floofykittens")
 	require.NoError(err)
 
-	c, err := newClient(token)
+	c, err := newClient(ctx, token)
 	require.NoError(err)
 
 	// create a new zone
 	zoneID, err := c.CreateZone("zone-nat-relay", "nat test zone", "10.29.0.0/24", true)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// patch the new user into the zone
 	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// start apex on the nodes
 	go func() {

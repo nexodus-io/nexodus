@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: backend-web
-          image: quay.io/go-oidc-agent/go-oidc-agent:2d47eec2d27c3eaa0221ddbb0a07c8ca55dbe4bf
+          image: quay.io/go-oidc-agent/go-oidc-agent:b98e1621e73404c5de21f47c7c5e6fab091e5d17
           imagePullPolicy: IfNotPresent
           env:
             - name: DEBUG

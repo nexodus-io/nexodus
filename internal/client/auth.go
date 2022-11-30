@@ -10,10 +10,10 @@ import (
 	"time"
 
 	agent "github.com/redhat-et/go-oidc-agent"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 )
 
-type TokenResponse struct {
+type deviceFlowResponse struct {
 	DeviceCode              string `json:"device_code"`
 	UserCode                string `json:"user_code"`
 	VerificationURI         string `json:"verification_uri"`
@@ -22,145 +22,66 @@ type TokenResponse struct {
 	Interval                int    `json:"interval"`
 }
 
-type Authenticator interface {
-	Token() (string, error)
-}
-
-type TokenAuthenticator struct {
-	accessToken string
-}
-
-func NewTokenAuthenticator(token string) Authenticator {
-	return &TokenAuthenticator{
-		accessToken: token,
-	}
-}
-
-func (a *TokenAuthenticator) Token() (string, error) {
-	return a.accessToken, nil
-}
-
-type DeviceFlowAuthenticator struct {
-	clientID      string
-	deviceURL     string
-	tokenURL      string
-	accessToken   string
-	refreshToken  string
-	tokenExpiry   time.Time
-	refreshExpiry time.Time
-}
-
-func NewDeviceFlowAuthenticator(ctx context.Context, hostname url.URL) (*DeviceFlowAuthenticator, error) {
-	a := &DeviceFlowAuthenticator{}
-
-	if err := a.startLogin(hostname); err != nil {
-		return nil, err
-	}
+func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clientID string) (*oauth2.Token, error) {
 	requestTime := time.Now()
-	token, err := a.getToken()
+	d, err := startDeviceFlow(deviceEndpoint, clientID)
 	if err != nil {
 		return nil, err
 	}
 
 	fmt.Println("Your device must be registered with Apex.")
-	fmt.Printf("Your one-time code is: %s\n", token.UserCode)
+	fmt.Printf("Your one-time code is: %s\n", d.UserCode)
 	fmt.Println("Please open the following URL in your browser to sign in:")
-	fmt.Printf("%s\n", token.VerificationURIComplete)
+	fmt.Printf("%s\n", d.VerificationURIComplete)
 
+	var token *oauth2.Token
 	c := make(chan error, 1)
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(token.ExpiresIn)*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(d.ExpiresIn)*time.Second)
 	defer cancel()
 	go func() {
-		c <- a.pollForResponse(ctx, token, requestTime)
+		token, err = pollForResponse(ctx, clientID, tokenEndpoint, d, requestTime)
+		c <- err
 	}()
 
 	err = <-c
 	if err != nil {
 		return nil, err
 	}
+
 	fmt.Println("Authentication succeeded.")
-	return a, nil
+
+	return token, nil
 }
 
-func (a *DeviceFlowAuthenticator) startLogin(hostname url.URL) error {
+func startLogin(hostname url.URL) (*agent.DeviceStartReponse, error) {
 	dest := hostname
 	dest.Path = "/login/start"
 	res, err := http.Post(dest.String(), "application/json", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("request %s failed with %d", dest.String(), res.StatusCode)
+		return nil, fmt.Errorf("request %s failed with %d", dest.String(), res.StatusCode)
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var resp agent.DeviceStartReponse
 	if err = json.Unmarshal(body, &resp); err != nil {
-		return err
+		return nil, err
 	}
-
-	a.clientID = resp.ClientID
-	a.deviceURL = resp.DeviceAuthURL
-	a.tokenURL = resp.TokenEndpoint
-
-	return nil
+	return &resp, nil
 }
 
-func (a *DeviceFlowAuthenticator) Token() (string, error) {
-	if time.Now().After(a.tokenExpiry) {
-		log.Debugf("Access token has expired. Requesting a new one")
-		if time.Now().After(a.refreshExpiry) {
-			return "", fmt.Errorf("refresh token has expired")
-		}
-		if err := a.refreshTokens(); err != nil {
-			return "", err
-		}
-	}
-	if a.accessToken != "" {
-		return a.accessToken, nil
-	}
-	return "", fmt.Errorf("not authenticated")
-}
-
-func (a *DeviceFlowAuthenticator) refreshTokens() error {
+func startDeviceFlow(deviceEndpoint string, clientID string) (*deviceFlowResponse, error) {
 	v := url.Values{}
-	v.Set("client_id", a.clientID)
-	v.Set("grant_type", "refresh_token")
-	v.Set("refresh_token", a.refreshToken)
-	requestTime := time.Now()
-	res, err := http.PostForm(a.tokenURL, v)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != http.StatusOK {
-		return err
-	}
-	var r tokenReponse
-	if err := json.Unmarshal(body, &r); err != nil {
-		return err
-	}
-	a.accessToken = r.AccessToken
-	a.tokenExpiry = requestTime.Add(time.Duration(r.ExpiresIn) * time.Second)
-	a.refreshToken = r.RefreshToken
-	a.refreshExpiry = requestTime.Add(time.Duration(r.RefreshExpiresIn) * time.Second)
-	return nil
-}
-
-func (a *DeviceFlowAuthenticator) getToken() (*TokenResponse, error) {
-	v := url.Values{}
-	v.Set("client_id", a.clientID)
+	v.Set("client_id", clientID)
 	v.Set("scope", "openid profile email")
-	res, err := http.PostForm(a.deviceURL, v)
+	res, err := http.PostForm(deviceEndpoint, v)
 	if err != nil {
 		return nil, err
 	}
@@ -175,20 +96,12 @@ func (a *DeviceFlowAuthenticator) getToken() (*TokenResponse, error) {
 		return nil, fmt.Errorf("http error: %s", string(body))
 	}
 
-	var t TokenResponse
+	var t deviceFlowResponse
 	if err := json.Unmarshal(body, &t); err != nil {
 		return nil, err
 	}
 
 	return &t, nil
-}
-
-type tokenReponse struct {
-	AccessToken      string `json:"access_token"`
-	ExpiresIn        int    `json:"expires_in"`
-	RefreshToken     string `json:"refresh_token"`
-	RefreshExpiresIn int    `json:"refresh_expires_in"`
-	Error            string `json:"error"`
 }
 
 const (
@@ -198,10 +111,10 @@ const (
 	errExpiredToken         = "expired_token"
 )
 
-func (a *DeviceFlowAuthenticator) pollForResponse(ctx context.Context, t *TokenResponse, requestTime time.Time) error {
+func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *deviceFlowResponse, requestTime time.Time) (*oauth2.Token, error) {
 	v := url.Values{}
 	v.Set("device_code", t.DeviceCode)
-	v.Set("client_id", a.clientID)
+	v.Set("client_id", clientID)
 	v.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
 	interval := t.Interval
@@ -210,48 +123,50 @@ func (a *DeviceFlowAuthenticator) pollForResponse(ctx context.Context, t *TokenR
 		interval = 5
 	}
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	var r tokenReponse
-LOOP:
+	var token oauth2.Token
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		case <-ticker.C:
-			res, err := http.PostForm(a.tokenURL, v)
+			res, err := http.PostForm(tokenURL, v)
 			if err != nil {
+				// possible transient connection error, continue retrying
 				continue
 			}
 			defer res.Body.Close()
 			body, err := io.ReadAll(res.Body)
 			if err != nil {
+				// possible transient connection error, continue retrying
 				continue
 			}
 			if res.StatusCode != http.StatusOK {
+				type errorResponse struct {
+					Error string `json:"error"`
+				}
+				var r errorResponse
 				if err := json.Unmarshal(body, &r); err != nil {
-					continue
+					return nil, err
 				}
-				if r.Error == errSlowDown {
-					interval += 5
-					ticker.Reset(time.Duration(interval) * time.Second)
+				if token.Extra("error") != nil {
+					if token.Extra("error").(string) == errSlowDown {
+						// adjust interval and continue retrying
+						interval += 5
+						ticker.Reset(time.Duration(interval) * time.Second)
+						continue
+					} else if token.Extra("error").(string) == errAccessDenied || token.Extra("error").(string) == errExpiredToken {
+						return nil, fmt.Errorf("failed to get token: %s", r.Error)
+					}
+					// error was either authorization_pending or something else
+					// continue to poll for a token
 					continue
-				}
-				if r.Error == errAccessDenied || r.Error == errExpiredToken {
-					return fmt.Errorf("failed to get token: %s", r.Error)
 				}
 			}
 
-			if err := json.Unmarshal(body, &r); err != nil {
-				continue
+			if err := json.Unmarshal(body, &token); err != nil {
+				return nil, err
 			}
-
-			if r.AccessToken != "" {
-				break LOOP
-			}
+			return &token, nil
 		}
 	}
-	a.accessToken = r.AccessToken
-	a.tokenExpiry = requestTime.Add(time.Duration(r.ExpiresIn) * time.Second)
-	a.refreshToken = r.RefreshToken
-	a.refreshExpiry = requestTime.Add(time.Duration(r.RefreshExpiresIn) * time.Second)
-	return nil
 }

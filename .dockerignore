@@ -1,4 +1,3 @@
-dist
 ui/node_modules
 docker-compose.yml
 Makefile

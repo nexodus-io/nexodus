@@ -37,7 +37,7 @@ func (c *Client) CreatePeerInZone(zoneID uuid.UUID, deviceID uuid.UUID, endpoint
 		return models.Peer{}, err
 	}
 
-	res, err := c.do(r)
+	res, err := c.client.Do(r)
 	if err != nil {
 		return models.Peer{}, err
 	}
@@ -67,7 +67,7 @@ func (c *Client) GetZonePeers(zoneID uuid.UUID) ([]models.Peer, error) {
 		return nil, err
 	}
 
-	res, err := c.do(req)
+	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

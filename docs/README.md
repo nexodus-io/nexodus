@@ -3,7 +3,6 @@
 - [Documentation](#documentation)
   - [Concepts](#concepts)
   - [Deploying the Apex Controller](#deploying-the-apex-controller)
-    - [Using docker-compose](#using-docker-compose)
     - [Run on Kubernetes](#run-on-kubernetes)
   - [The Apex Agent](#the-apex-agent)
     - [Installing the Agent](#installing-the-agent)
@@ -33,43 +32,35 @@
 
 ## Deploying the Apex Controller
 
-### Using docker-compose
-
-> **_NOTE:_** These instructions do not work with `podman-compose`. Instead of
-> fixing `podman` compatibility, we will be moving exclusively to kubernetes as
-> a local development platform using `kind` or `minikube`. Once those
-> instructions are ready, `docker-compose` support will be removed.
-
-For development and testing purposes, the quickest way to run the controller stack is by using `docker-compose`.
-
-First, to build all required container images:
-
-```sh
-docker-compose build
-```
-
-To bring up the stack:
-
-```sh
-docker-compose up -d
-```
-
-To verify that everything has come up successfully:
-
-```sh
-$ curl http://localhost:8080/api/health
-{"message":"ok"}
-```
-
-To tear everything back down:
-
-```sh
-docker-compose down
-```
-
 ### Run on Kubernetes
 
-Coming soon ...
+#### Add required DNS entries
+
+The development Apex stack requires 3 hostnames to be reachable:
+
+- `auth.apex.local` - for the authentication service
+- `api.apex.local` - for the backend apis
+- `apex.local` - for the frontend
+
+To add these on your own machine:
+```console
+echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+```
+
+#### Deploy using KIND
+
+You should first ensure that you have `kind` and `kubectl` installed.
+If not, you can follow the instructions in the [KIND Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/).
+
+```console
+./hack/kind/kind.sh
+```
+
+This will install:
+  - `apex-dev` kind cluster
+  - `ingress-nginx` ingress controller
+  - a rewrite rule in coredns to allow `auth.apex.local` to resolve inside the k8s cluster
+  - the `apex` stack
 
 ## The Apex Agent
 

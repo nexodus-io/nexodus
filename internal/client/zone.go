@@ -30,7 +30,7 @@ func (c *Client) CreateZone(name, description, cidr string, hubZone bool) (model
 		return models.Zone{}, err
 	}
 
-	res, err := c.do(req)
+	res, err := c.client.Do(req)
 	if err != nil {
 		return models.Zone{}, err
 	}
@@ -48,6 +48,38 @@ func (c *Client) CreateZone(name, description, cidr string, hubZone bool) (model
 	var data models.Zone
 	if err := json.Unmarshal(resBody, &data); err != nil {
 		return models.Zone{}, err
+	}
+
+	return data, nil
+}
+
+// ListZone lists all zones
+func (c *Client) ListZones() ([]models.Zone, error) {
+	dest := c.baseURL.JoinPath(ZONES).String()
+
+	req, err := http.NewRequest(http.MethodGet, dest, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to create the zone: %d", res.StatusCode)
+	}
+
+	var data []models.Zone
+	if err := json.Unmarshal(resBody, &data); err != nil {
+		return nil, err
 	}
 
 	return data, nil

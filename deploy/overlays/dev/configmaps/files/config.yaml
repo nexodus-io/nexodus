@@ -17,6 +17,7 @@ expiry:
 
 oauth2:
   responseTypes: ["code", "token", "id_token"]
+  passwordConnector: local
 
 staticClients:
   - id: apex-web

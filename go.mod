@@ -10,7 +10,7 @@ require (
 	github.com/metal-stack/go-ipam v1.11.2
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pion/stun v0.3.5
-	github.com/redhat-et/go-oidc-agent v0.0.2-0.20221126005819-2d47eec2d27c
+	github.com/redhat-et/go-oidc-agent v0.0.2-0.20221130160039-b98e1621e734
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/files v0.0.0-20220728132757-551d4a08d97a
@@ -20,6 +20,7 @@ require (
 	github.com/vishvananda/netlink v1.1.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/net v0.2.0
+	golang.org/x/oauth2 v0.2.0
 	golang.org/x/sys v0.2.0
 	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/postgres v1.4.4
@@ -52,7 +53,6 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	golang.org/x/oauth2 v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
@@ -76,7 +76,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
-	github.com/goccy/go-json v0.9.11 // indirect
+	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

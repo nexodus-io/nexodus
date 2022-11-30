@@ -31,7 +31,7 @@ func (c *Client) CreateDevice(publicKey string, hostname string) (models.Device,
 		return models.Device{}, err
 	}
 
-	res, err := c.do(r)
+	res, err := c.client.Do(r)
 	if err != nil {
 		return models.Device{}, err
 	}
@@ -61,7 +61,7 @@ func (c *Client) GetDevice(deviceID uuid.UUID) (models.Device, error) {
 		return models.Device{}, err
 	}
 
-	res, err := c.do(r)
+	res, err := c.client.Do(r)
 	if err != nil {
 		return models.Device{}, err
 	}

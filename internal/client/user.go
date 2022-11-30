@@ -23,7 +23,7 @@ func (c *Client) GetCurrentUser() (models.User, error) {
 		return models.User{}, err
 	}
 
-	res, err := c.do(r)
+	res, err := c.client.Do(r)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -60,7 +60,7 @@ func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
 		return models.User{}, err
 	}
 
-	res, err := c.do(req)
+	res, err := c.client.Do(req)
 	if err != nil {
 		return models.User{}, err
 	}
