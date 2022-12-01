@@ -59,11 +59,10 @@ func NewClient(ctx context.Context, addr string, options ...Option) (*Client, er
 	var token *oauth2.Token
 	var rawIdToken interface{}
 	if c.options.deviceFlow {
-		token, err = newDeviceFlowToken(ctx, resp.DeviceAuthURL, provider.Endpoint().TokenURL, resp.ClientID)
+		token, rawIdToken, err = newDeviceFlowToken(ctx, resp.DeviceAuthURL, provider.Endpoint().TokenURL, resp.ClientID)
 		if err != nil {
 			return nil, err
 		}
-		rawIdToken = token.Extra("id_token")
 	} else if c.options.token == "" {
 		token, err = config.PasswordCredentialsToken(ctx, c.options.username, c.options.password)
 		if err != nil {

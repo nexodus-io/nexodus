@@ -22,11 +22,11 @@ type deviceFlowResponse struct {
 	Interval                int    `json:"interval"`
 }
 
-func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clientID string) (*oauth2.Token, error) {
+func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clientID string) (*oauth2.Token, interface{}, error) {
 	requestTime := time.Now()
 	d, err := startDeviceFlow(deviceEndpoint, clientID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fmt.Println("Your device must be registered with Apex.")
@@ -35,22 +35,23 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 	fmt.Printf("%s\n", d.VerificationURIComplete)
 
 	var token *oauth2.Token
+	var idToken interface{}
 	c := make(chan error, 1)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(d.ExpiresIn)*time.Second)
 	defer cancel()
 	go func() {
-		token, err = pollForResponse(ctx, clientID, tokenEndpoint, d, requestTime)
+		token, idToken, err = pollForResponse(ctx, clientID, tokenEndpoint, d, requestTime)
 		c <- err
 	}()
 
 	err = <-c
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fmt.Println("Authentication succeeded.")
 
-	return token, nil
+	return token, idToken, nil
 }
 
 func startLogin(hostname url.URL) (*agent.DeviceStartReponse, error) {
@@ -111,7 +112,7 @@ const (
 	errExpiredToken         = "expired_token"
 )
 
-func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *deviceFlowResponse, requestTime time.Time) (*oauth2.Token, error) {
+func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *deviceFlowResponse, requestTime time.Time) (*oauth2.Token, interface{}, error) {
 	v := url.Values{}
 	v.Set("device_code", t.DeviceCode)
 	v.Set("client_id", clientID)
@@ -127,7 +128,7 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		case <-ticker.C:
 			res, err := http.PostForm(tokenURL, v)
 			if err != nil {
@@ -146,16 +147,16 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 				}
 				var r errorResponse
 				if err := json.Unmarshal(body, &r); err != nil {
-					return nil, err
+					return nil, "", err
 				}
-				if token.Extra("error") != nil {
-					if token.Extra("error").(string) == errSlowDown {
+				if r.Error != "" {
+					if r.Error == errSlowDown {
 						// adjust interval and continue retrying
 						interval += 5
 						ticker.Reset(time.Duration(interval) * time.Second)
 						continue
-					} else if token.Extra("error").(string) == errAccessDenied || token.Extra("error").(string) == errExpiredToken {
-						return nil, fmt.Errorf("failed to get token: %s", r.Error)
+					} else if r.Error == errAccessDenied || r.Error == errExpiredToken {
+						return nil, nil, fmt.Errorf("failed to get token: %s", r.Error)
 					}
 					// error was either authorization_pending or something else
 					// continue to poll for a token
@@ -164,9 +165,14 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 			}
 
 			if err := json.Unmarshal(body, &token); err != nil {
-				return nil, err
+				return nil, "", err
 			}
-			return &token, nil
+			var tokenRaw map[string]interface{}
+			if err = json.Unmarshal(body, &tokenRaw); err != nil {
+				return nil, "", err
+			}
+			idToken := tokenRaw["id_token"]
+			return &token, idToken, nil
 		}
 	}
 }
