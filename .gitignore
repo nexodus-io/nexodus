@@ -28,3 +28,4 @@ docker-compose.log
 
 # config
 .env.*
+coredns.yaml

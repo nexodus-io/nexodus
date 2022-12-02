@@ -7,10 +7,8 @@ on:
 env:
   REGISTRY: quay.io
   REPOSITORY: apex
-  CONTROLLER_IMAGE_NAME: controller
-  CONTROLLER_UI_IMAGE_NAME: controller-ui
-  APEX_IMAGE_NAME: apex
-  KEYCLOAK_IMAGE_NAME: keycloak
+  APISERVER_IMAGE_NAME: apiserver
+  APISERVER_UI_IMAGE_NAME: frontend
   IMAGE_TAG: latest
 
 jobs:
@@ -28,102 +26,35 @@ jobs:
         username: ${{ secrets.QUAY_ROBOT_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
-    - name: Extract metadata (tags, labels) for apex controller image
-      id: meta-controller
-      uses: docker/metadata-action@v3.6.2
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_IMAGE_NAME }}
-        tags: |
-          type=raw,value=${{ env.IMAGE_TAG }}
-
-    - name: Build controller image
-      id: build-controller
+    - name: Build apiserver image
+      id: build-apiserver
       uses: redhat-actions/buildah-build@v2
       with:
-        image: controller
-        tags: ${{ steps.meta-controller.outputs.tags }}
-        labels: ${{ steps.meta-controller.outputs.labels }}
+        image: apiserver
+        tags: latest ${{ github.sha }} ${{github.ref_name}}
         containerfiles: |
-          ./Containerfile.controller
+          ./Containerfile.apiserver
 
-    - name: Push controller to quay.io/
+    - name: Push apiserver to quay.io/
       uses: redhat-actions/push-to-registry@v2
       with:
-        image: ${{ steps.build-controller.outputs.image }}
-        tags: ${{ steps.build-controller.outputs.tags }}
+        image: ${{ steps.build-apiserver.outputs.image }}
+        tags: ${{ steps.build-apiserver.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
 
-    - name: Extract metadata (tags, labels) for controller-ui image
-      id: meta-controller-ui
-      uses: docker/metadata-action@v3.6.2
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.CONTROLLER_UI_IMAGE_NAME }}
-        tags: |
-          type=raw,value=${{ env.IMAGE_TAG }}
-
-    - name: Build controller-ui image
-      id: build-controller-ui
+    - name: Build frontend image
+      id: build-frontend
       uses: redhat-actions/buildah-build@v2
       with:
-        image: controller-ui
-        tags: ${{ steps.meta-controller-ui.outputs.tags }}
-        labels: ${{ steps.meta-controller-ui.outputs.labels }}
+        image: apiserver-ui
+        tags: latest ${{ github.sha }} ${{github.ref_name}}
+        labels: ${{ steps.meta-apiserver-ui.outputs.labels }}
         containerfiles: |
-          ./Containerfile.ui
+          ./Containerfile.frontend
 
-    - name: Push controller-ui to quay.io
+    - name: Push frontend to quay.io
       uses: redhat-actions/push-to-registry@v2
       with:
-        image: ${{ steps.build-controller-ui.outputs.image }}
-        tags: ${{ steps.build-controller-ui.outputs.tags }}
-        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
-
-    - name: Extract metadata (tags, labels) for apex agent image
-      id: meta-apex
-      uses: docker/metadata-action@v3.6.2
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.APEX_IMAGE_NAME }}
-        tags: |
-          type=raw,value=${{ env.IMAGE_TAG }}
-
-    - name: Build apex image
-      id: build-apex
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: apex
-        tags: ${{ steps.meta-apex.outputs.tags }}
-        labels: ${{ steps.meta-apex.outputs.labels }}
-        containerfiles: |
-          ./Containerfile.apex
-
-    - name: Push apex to quay.io/
-      uses: redhat-actions/push-to-registry@v2
-      with:
-        image: ${{ steps.build-apex.outputs.image }}
-        tags: ${{ steps.build-apex.outputs.tags }}
-        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
-
-    - name: Extract metadata (tags, labels) for keycloak image
-      id: meta-keycloak
-      uses: docker/metadata-action@v3.6.2
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.KEYCLOAK_IMAGE_NAME }}
-        tags: |
-          type=raw,value=${{ env.IMAGE_TAG }}
-
-    - name: Build keycloak image
-      id: build-keycloak
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: keycloak
-        tags: ${{ steps.meta-keycloak.outputs.tags }}
-        labels: ${{ steps.meta-keycloak.outputs.labels }}
-        containerfiles: |
-          ./Containerfile.keycloak
-
-    - name: Push keycloak to quay.io/
-      uses: redhat-actions/push-to-registry@v2
-      with:
-        image: ${{ steps.build-keycloak.outputs.image }}
-        tags: ${{ steps.build-keycloak.outputs.tags }}
+        image: ${{ steps.build-frontend.outputs.image }}
+        tags: ${{ steps.build-frontend.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}

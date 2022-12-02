@@ -11,42 +11,17 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/coreos/go-oidc"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
-
-const (
-	controller   = "http://localhost:8080"
-	clientId     = "api-clients"
-	clientSecret = "cvXhCRXI2Vld244jjDcnABCMrTEq2rwE"
-)
-
-func healthcheck() error {
-	res, err := http.Get(fmt.Sprintf("%s/api/health", controller))
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("got %d, wanted 200", res.StatusCode)
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(string(body), "ok") {
-		return fmt.Errorf("service is not healthy")
-	}
-	return nil
-}
 
 // CreateNode creates a container
 func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []string) *dockertest.Resource {
@@ -63,11 +38,13 @@ func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []strin
 			"NET_RAW",
 		},
 		ExtraHosts: []string{
-			"host.docker.internal:host-gateway",
+			"apex.local:host-gateway",
+			"api.apex.local:host-gateway",
+			"auth.apex.local:host-gateway",
 		},
 	}
 	hostConfig := func(config *docker.HostConfig) {
-		//config.AutoRemove = true
+		// config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{
 			Name: "no",
 		}
@@ -79,47 +56,8 @@ func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []strin
 	return node
 }
 
-// GetToken creates a new auth token
-func GetToken(username, password string) (string, error) {
-	v := url.Values{}
-	v.Set("username", username)
-	v.Set("password", password)
-	v.Set("client_id", clientId)
-	v.Set("client_secret", clientSecret)
-	v.Set("grant_type", "password")
-
-	res, err := http.PostForm(fmt.Sprintf("%s/auth/realms/controller/protocol/openid-connect/token", controller), v)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return "", err
-	}
-	var r map[string]interface{}
-	if err := json.Unmarshal(body, &r); err != nil {
-		return "", err
-	}
-	token, ok := r["access_token"]
-	if !ok {
-		return "", fmt.Errorf("no access token in reponse")
-	}
-	return token.(string), nil
-}
-
-func newClient(token string) (client.Client, error) {
-	auth := client.NewTokenAuthenticator(token)
-	client, err := client.NewClient(controller, auth)
-	if err != nil {
-		return client, err
-	}
-	return client, nil
+func newClient(ctx context.Context, token string) (*client.Client, error) {
+	return client.NewClient(ctx, "http://api.apex.local", client.WithToken(token))
 }
 
 func getContainerIfaceIP(ctx context.Context, dev string, container *dockertest.Resource) (string, error) {
@@ -194,6 +132,43 @@ func containerExec(ctx context.Context, container *dockertest.Resource, cmd []st
 	return stdout.String(), err
 }
 
+func getToken(ctx context.Context, username, password string) (string, error) {
+	provider, err := oidc.NewProvider(ctx, "http://auth.apex.local")
+	if err != nil {
+		return "", err
+	}
+	config := oauth2.Config{
+		ClientID: "apex-cli",
+		//ClientSecret: "dhEN2dsqyUg5qmaDAdqi4CmH",
+		Endpoint: provider.Endpoint(),
+		Scopes:   []string{"openid", "profile", "email"},
+	}
+
+	token, err := config.PasswordCredentialsToken(ctx, username, password)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := json.Marshal(token)
+	if err != nil {
+		return "", err
+	}
+
+	var rawToken map[string]interface{}
+	if err := json.Unmarshal(data, &rawToken); err != nil {
+		return "", err
+	}
+
+	rawToken["id_token"] = token.Extra("id_token")
+
+	data, err = json.Marshal(rawToken)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), err
+}
+
 // CreateNetwork creates a docker network
 func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.Network {
 	net, err := suite.pool.CreateNetwork(name, func(config *docker.CreateNetworkOptions) {
@@ -208,7 +183,6 @@ func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.
 		}
 	})
 	require.NoError(suite.T(), err)
-
 	return net
 }
 

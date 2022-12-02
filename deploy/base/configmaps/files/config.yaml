@@ -1,0 +1,59 @@
+issuer: <AUTH_HOST>
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:8080
+
+expiry:
+  deviceRequests: "5m"
+  signingKeys: "6h"
+  idTokens: "24h"
+  refreshTokens:
+    reuseInterval: "3s"
+    validIfNotUsedFor: "2160h" # 90 days
+    absoluteLifetime: "3960h" # 165 days
+
+oauth2:
+  responseTypes: ["code", "token", "id_token"]
+
+staticClients:
+  - idEnv: WEB_CLIENT_ID
+    redirectURIs:
+      - "<HOST>/#/login"
+    name: "Apex Web Frontend"
+    secretEnv: WEB_CLIENT_SECRET
+  - idEnv: CLI_CLIENT_ID
+    redirectURIs:
+      - "/device/callback"
+    name: "Apex CLI Frontend"
+    public: true
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: "admin@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "admin"
+    userID: "10a31cfa-4181-4815-9aa2-f74e122412ee"
+  - email: "kitteh1@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "kitteh1"
+    userID: "189d32dc-0d64-42c1-b34d-ae2daea0cc22"
+  - email: "kitteh2@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "kitteh2"
+    userID: "05e5fdff-ed73-48fd-ad10-b9d457f1f1bb"
+  - email: "kitteh3@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "kitteh3"
+    userID: "32b869d6-f633-41be-ac72-40efe86d55f7"
+  - email: "kitteh4@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "kitteh4"
+    userID: "885c1d57-8ff9-406c-a15a-388b77bf7409"
+  - email: "kitteh5@apex.local"
+    hash: "$2y$10$BdXJbB0M2dsCzZQSYZBkT.GNaClwAuqG2Tv/qJUW8S4cy6AIIc.5a"
+    username: "kitteh5"
+    userID: "306d0921-44bd-45e8-a7de-f90dfb32abf7"

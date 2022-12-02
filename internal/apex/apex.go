@@ -40,7 +40,7 @@ type Apex struct {
 	hubRouterWgIP           string
 	os                      string
 	wgConfig                wgConfig
-	client                  client.Client
+	client                  *client.Client
 	controllerURL           *url.URL
 	// caches peers by their UUID
 	peerCache map[uuid.UUID]models.Peer
@@ -83,19 +83,19 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 		log.Fatalf("error: <controller-url> is not a valid URL: %s", err)
 	}
 
+	// Force controller URL be api.${DOMAIN}
+	controllerURL.Host = "api." + controllerURL.Host
+	controllerURL.Path = ""
+
 	withToken := cCtx.String("with-token")
-	var auth client.Authenticator
+	var option client.Option
 	if withToken == "" {
-		var err error
-		auth, err = client.NewDeviceFlowAuthenticator(ctx, controllerURL)
-		if err != nil {
-			log.Fatalf("authentication error: %+v", err)
-		}
+		option = client.WithDeviceFlow()
 	} else {
-		auth = client.NewTokenAuthenticator(withToken)
+		option = client.WithToken(withToken)
 	}
 
-	client, err := client.NewClient(controller, auth)
+	client, err := client.NewClient(ctx, controllerURL.String(), option)
 	if err != nil {
 		log.Fatalf("error creating client: %+v", err)
 	}

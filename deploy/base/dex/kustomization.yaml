@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+generatorOptions:
+  disableNameSuffixHash: true
+resources:
+  - deployment.yaml
+  - ingress.yaml
+  - service.yaml
+secretGenerator:
+  - name: dex-secrets
+    literals:
+      - web-client-id=apex-web
+      - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
+      - cli-client-id=apex-cli
+commonLabels:
+  app.kubernetes.io/component: dex
+  app.kubernetes.io/instance: dex
+  app.kubernetes.io/name: dex

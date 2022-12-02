@@ -1,0 +1,17 @@
+FROM docker.io/library/golang:1.19-alpine as build
+
+WORKDIR /src
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o apiserver ./cmd/apiserver
+
+FROM registry.access.redhat.com/ubi8/ubi
+
+COPY --from=build /src/apiserver /apiserver
+EXPOSE 8080
+ENTRYPOINT [ "/apiserver" ]

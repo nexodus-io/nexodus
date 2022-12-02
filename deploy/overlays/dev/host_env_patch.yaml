@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-web
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend-web
+          env:
+            - name: REDIRECT_URL
+              value: http://apex.local/#/login
+            - name: ORIGINS
+              value: http://apex.local

@@ -16,12 +16,7 @@ const AuthUserName string = "_apex.UserName"
 
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetString(gin.AuthUserKey)
-		id, err := uuid.Parse(userID)
-		if err != nil {
-			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("bad user id"))
-			return
-		}
+		id := c.GetString(gin.AuthUserKey)
 		userName := c.GetString(AuthUserName)
 		var user models.User
 		res := api.db.First(&user, "id = ?", id)
@@ -33,7 +28,7 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 				user.UserName = userName
 				api.db.Create(&user)
 			} else {
-				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", userID))
+				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", id))
 				return
 			}
 		}

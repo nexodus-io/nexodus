@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - ingress.yaml
+  - service.yaml
+commonLabels:
+  app.kubernetes.io/component: frontend
+  app.kubernetes.io/instance: frontend
+  app.kubernetes.io/name: frontend

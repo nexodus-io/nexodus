@@ -1,23 +1,16 @@
 package routers
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/MicahParks/keyfunc"
+	"github.com/coreos/go-oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 )
 
 // key for username in gin.Context
 const AuthUserName string = "_apex.UserName"
-
-type KeyCloakAuth struct {
-	jwks *keyfunc.JWKS
-}
 
 type Claims struct {
 	Scope      string `json:"scope"`
@@ -25,73 +18,54 @@ type Claims struct {
 	UserName   string `json:"preferred_username"`
 	GivenName  string `json:"given_name"`
 	FamilyName string `json:"family_name"`
-	jwt.RegisteredClaims
+	Subject    string `json:"sub"`
 }
 
-func NewKeyCloakAuth(url string) (*KeyCloakAuth, error) {
-	// Create the keyfunc options. Use an error handler that logs. Refresh the JWKS when a JWT signed by an unknown KID
-	// is found or at the specified interval. Rate limit these refreshes. Timeout the initial JWKS refresh request after
-	// 10 seconds. This timeout is also used to create the initial context.Context for keyfunc.Get.
-	options := keyfunc.Options{
-		RefreshErrorHandler: func(err error) {
-			log.Printf("There was an error with the jwt.Keyfunc\nError: %s", err.Error())
-		},
-		RefreshInterval:   time.Hour,
-		RefreshRateLimit:  time.Minute * 5,
-		RefreshTimeout:    time.Second * 10,
-		RefreshUnknownKID: true,
-	}
-
-	jwks, err := keyfunc.Get(url, options)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create JWKS from resource at the given URL.\nError: %s", err.Error())
-	}
-	return &KeyCloakAuth{jwks: jwks}, nil
-}
-
-func (a *KeyCloakAuth) AuthFunc() gin.HandlerFunc {
+// Naive JWS Key validation
+func ValidateJWT(verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
 	return func(c *gin.Context) {
-		header := c.Request.Header.Get("Authorization")
-		if header == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "no Authorization header present"})
-			return
-		}
-
-		jwtB64, ok := extractTokenFromAuthHeader(header)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to get token from header"})
-			return
-		}
-
-		token, err := jwt.ParseWithClaims(jwtB64, &Claims{}, a.jwks.Keyfunc)
-		if err != nil {
-			log.Errorf("Failed to parse the JWT. %s", err.Error())
+		authz := c.Request.Header.Get("Authorization")
+		if authz == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		if !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
+		parts := strings.Split(authz, " ")
+		if len(parts) != 2 {
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		if claims, ok := token.Claims.(*Claims); ok {
-			c.Set(gin.AuthUserKey, claims.Subject)
-			c.Set(AuthUserName, claims.UserName)
-			// c.Set(AuthUserScope, claims.Scope)
-		} else {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to extract user info from claims"})
+		if strings.ToLower(parts[0]) != "bearer" {
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
+		log.Debug("verifying token")
+		token, err := verifier.Verify(c.Request.Context(), parts[1])
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		for _, audience := range token.Audience {
+			if audience != clientIdWeb && audience != clientIdCli {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+		}
+
+		log.Debug("getting claims")
+		var claims Claims
+		if err := token.Claims(&claims); err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		log.Debugf("claims: %+v", claims)
+		c.Set(gin.AuthUserKey, claims.Subject)
+		c.Set(AuthUserName, claims.UserName)
+		// c.Set(AuthUserScope, claims.Scope)
+		log.Debugf("user-id is %s", claims.Subject)
 		c.Next()
 	}
-}
-
-func extractTokenFromAuthHeader(val string) (token string, ok bool) {
-	authHeaderParts := strings.Split(val, " ")
-	if len(authHeaderParts) != 2 || !strings.EqualFold(authHeaderParts[0], "bearer") {
-		return "", false
-	}
-	return authHeaderParts[1], true
 }

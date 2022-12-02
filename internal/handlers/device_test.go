@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
 )
 
@@ -37,7 +36,7 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	assert.NoError(err)
 
 	assert.Equal(newDevice.PublicKey, actual.PublicKey)
-	assert.Equal(uuid.MustParse(TestUserID), actual.UserID)
+	assert.Equal(TestUserID, actual.UserID)
 
 	_, res, err = suite.ServeRequest(
 		http.MethodGet,

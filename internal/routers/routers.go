@@ -1,74 +1,42 @@
 package routers
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
+	"context"
 	"net/http"
 
-	"github.com/cenkalti/backoff"
-	"github.com/gin-contrib/cors"
+	"github.com/coreos/go-oidc"
 	"github.com/gin-gonic/gin"
 	_ "github.com/redhat-et/apex/internal/docs"
 	"github.com/redhat-et/apex/internal/handlers"
-	log "github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewRouter(api *handlers.API, keycloakAddress string) (*gin.Engine, error) {
+func NewAPIRouter(
+	ctx context.Context,
+	api *handlers.API,
+	clientIdWeb string,
+	clientIdCli string,
+	oidcURL string) (*gin.Engine, error) {
 	r := gin.Default()
-
-	log.Debug("Waiting for Keycloak")
-	connectKeycloak := func() error {
-		res, err := http.Get(fmt.Sprintf("http://%s:8080/auth/health/ready", keycloakAddress))
-		if err != nil {
-			return err
-		}
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
-
-		var response map[string]interface{}
-		if err := json.Unmarshal(body, &response); err != nil {
-			return err
-		}
-
-		if _, ok := response["status"]; !ok {
-			return fmt.Errorf("no status")
-		}
-
-		if response["status"] != "UP" {
-			return fmt.Errorf("not ready")
-		}
-		return nil
-	}
-
-	err := backoff.Retry(connectKeycloak, backoff.NewExponentialBackOff())
-	if err != nil {
-		return nil, err
-	}
-
-	jwksURL := fmt.Sprintf("http://%s:8080/auth/realms/controller/protocol/openid-connect/certs", keycloakAddress)
-
-	auth, err := NewKeyCloakAuth(jwksURL)
-	if err != nil {
-		return nil, err
-	}
-
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowAllOrigins = true
-	r.Use(cors.New(corsConfig))
-
-	r.GET("/api/health", func(c *gin.Context) {
+	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
-	private := r.Group("/api")
+	provider, err := oidc.NewProvider(ctx, oidcURL)
+	if err != nil {
+		return nil, err
+	}
+	config := &oidc.Config{
+		// Client ID checks are skipped since we perform these later
+		// in the ValidateJWT function
+		SkipClientIDCheck: true,
+	}
+	verifier := provider.Verifier(config)
+
+	private := r.Group("/")
 	{
-		private.Use(auth.AuthFunc())
+		private.Use(ValidateJWT(verifier, clientIdWeb, clientIdCli))
 		private.Use(api.CreateUserIfNotExists())
 		// Zones
 		private.GET("/zones", api.ListZones)

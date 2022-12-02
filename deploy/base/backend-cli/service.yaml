@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-cli
+  labels:
+    app.kubernetes.io/component: backend-cli
+    app.kubernetes.io/instance: backend-cli
+    app.kubernetes.io/name: backend-cli
+spec:
+  selector:
+    app.kubernetes.io/component: backend-cli
+    app.kubernetes.io/instance: backend-cli
+    app.kubernetes.io/name: backend-cli
+  ports:
+    - port: 8080
+      targetPort: 8080

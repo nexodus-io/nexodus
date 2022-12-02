@@ -8,7 +8,7 @@ import (
 // Device is a unique, end-user device.
 type Device struct {
 	Base
-	UserID    uuid.UUID   `json:"user_id"`
+	UserID    string      `json:"user_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	PublicKey string      `gorm:"uniqueIndex" json:"public_key"`
 	Peers     []*Peer     `json:"-"`
 	PeerList  []uuid.UUID `gorm:"-" json:"peers" example:"97d5214a-8c51-4772-b492-53de034740c5"`
