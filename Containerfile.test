@@ -1,11 +1,14 @@
 FROM alpine:3.16 as alpine
-RUN apk add --no-cache iputils wireguard-tools iptables psmisc
+RUN apk add --no-cache iputils wireguard-tools iptables psmisc ca-certificates
 COPY ./dist/apex /bin/apex
-ENTRYPOINT [ "/bin/sh" ]
+COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+RUN /usr/sbin/update-ca-certificates
+ENTRYPOINT [ "/bin/sleep", "infinity" ]
 
 FROM fedora:36 as fedora
 RUN dnf update -qy && \
     dnf install --setopt=install_weak_deps=False -qy \
+    ca-certificates \
     iputils \
     iproute \
     psmisc \
@@ -16,18 +19,26 @@ RUN dnf update -qy && \
     && \
     dnf clean all
 COPY ./dist/apex /bin/apex
-ENTRYPOINT [ "/bin/sh" ]
+COPY ./.certs/rootCA.pem /etc/pki/ca-trust/source/anchors/rootCA.crt
+RUN /usr/bin/update-ca-trust
+ENTRYPOINT [ "/bin/sleep", "infinity" ]
 
 FROM ubuntu:22.04 as ubuntu
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qy && \
     apt-get install --no-install-recommends -qy \
+    ca-certificates \
     iputils-ping \
     iproute2 \
     wireguard-tools \
     iptables \
+    traceroute \
+    tcpdump \
+    conntrack \
     psmisc \
     && \
     apt-get clean
 COPY ./dist/apex /bin/apex
-ENTRYPOINT [ "/bin/sh" ]
+COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+RUN /usr/sbin/update-ca-certificates
+ENTRYPOINT [ "/bin/sleep", "infinity" ]

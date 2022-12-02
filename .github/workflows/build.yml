@@ -96,9 +96,32 @@ jobs:
       with:
         go-version: 1.19
 
+    - name: Install deps
+      run: |
+        sudo apt-get -qy install libnss3-tools
+
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+
+    - name: Install mkcert
+      run: |
+        brew install mkcert
+
     - name: Add hosts to /etc/hosts
       run: |
         echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+
+    - name: Build Images
+      run: |
+        make images
+
+    - name: Setup KIND
+      run: |
+        ./hack/kind/kind.sh up
+        mkdir -p $(pwd)/.certs
+        kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(pwd)/.certs/rootCA.pem
+        CAROOT=$(pwd)/.certs mkcert -install
 
     - name: Run e2e
       run: |

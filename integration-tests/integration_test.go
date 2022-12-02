@@ -7,120 +7,150 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/redhat-et/apex/internal/apex"
-	"github.com/stretchr/testify/require"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
+
+var providerType testcontainers.ProviderType
+var defaultNetwork string
+var hostDNSName string
+var ipamDriver string
+
+func init() {
+	if os.Getenv("APEX_TEST_PODMAN") != "" {
+		fmt.Println("Using podman")
+		providerType = testcontainers.ProviderPodman
+		defaultNetwork = "podman"
+		ipamDriver = "host-local"
+		hostDNSName = "10.88.0.1"
+	} else {
+		fmt.Println("Using docker")
+		providerType = testcontainers.ProviderDocker
+		defaultNetwork = "bridge"
+		ipamDriver = "default"
+		hostDNSName = "172.17.0.1"
+	}
+}
 
 type ApexIntegrationSuite struct {
 	suite.Suite
-	pool *dockertest.Pool
-}
-
-func (suite *ApexIntegrationSuite) SetupSuite() {
-	var err error
-	suite.pool, err = dockertest.NewPool("")
-	require.NoError(suite.T(), err)
+	logger *zap.SugaredLogger
 }
 
 func TestApexIntegrationSuite(t *testing.T) {
 	suite.Run(t, new(ApexIntegrationSuite))
 }
 
+func (suite *ApexIntegrationSuite) SetupSuite() {
+	logger := zaptest.NewLogger(suite.T())
+	suite.logger = logger.Sugar()
+}
+
 func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	assert := suite.Assert()
 	require := suite.Require()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 
 	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
-	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
-	defer node2.Close()
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
 	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
 	require.NoError(err)
 
-	suite.T().Logf("Pinging %s from node1", node2IP)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	require.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node1IP)
+	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
 	require.NoError(err)
 
-	suite.T().Log("killing apex and re-joining nodes with new keys")
+	suite.logger.Info("killing apex and re-joining nodes with new keys")
 	//kill the apex process on both nodes
-	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
 	require.NoError(err)
-	_, err = containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
 	require.NoError(err)
 
 	// delete only the public key on node1
-	_, err = containerExec(ctx, node1, []string{"rm", "/etc/wireguard/public.key"})
+	_, err = suite.containerExec(ctx, node1, []string{"rm", "/etc/wireguard/public.key"})
 	require.NoError(err)
 	// delete the entire wireguard directory on node2
-	_, err = containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	_, err = suite.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
 	require.NoError(err)
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
 
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
-
-	// give wg0 time to re-address
-	time.Sleep(time.Second * 5)
-	// IPs will be new since the keys were deleted, retrieve the new addresses
-	newNode1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
-	require.NoError(err)
-	newNode2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	var newNode1IP string
+	err = backoff.Retry(
+		func() error {
+			var err error
+			newNode1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
+			if err != nil {
+				return err
+			}
+			if newNode1IP == node1IP {
+				return fmt.Errorf("new node1IP is the same as old ip")
+			}
+			return nil
+		},
+		backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx),
+	)
 	require.NoError(err)
 
-	suite.T().Logf("Pinging %s from node1", newNode2IP)
+	var newNode2IP string
+	err = backoff.Retry(
+		func() error {
+			var err error
+			newNode2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
+			if err != nil {
+				return err
+			}
+			if newNode2IP == node2IP {
+				return fmt.Errorf("new node1IP is the same as old ip")
+			}
+			return nil
+		},
+		backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx),
+	)
+	require.NoError(err)
+
+	suite.logger.Infof("Pinging %s from node1", newNode2IP)
 	err = ping(ctx, node1, newNode2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", newNode1IP)
+	suite.logger.Infof("Pinging %s from node2", newNode1IP)
 	err = ping(ctx, node2, newNode1IP)
 	assert.NoError(err)
 }
@@ -132,42 +162,42 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 
 	node1IP := "10.200.0.101"
 	node2IP := "10.200.0.102"
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
-	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
-	defer node2.Close()
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node1IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node2IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node1IP),
+	)
+	go suite.runApex(ctx, node2,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node2IP),
+	)
 
 	// ping the requested IP address (--request-ip)
-	suite.T().Logf("Pinging %s from node1", node2IP)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node1IP)
+	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
 	assert.NoError(err)
 }
@@ -176,7 +206,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh1@apex.local", "floofykittens")
 	require.NoError(err)
@@ -195,72 +226,64 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	node2IP := "10.140.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
-	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
-	defer node2.Close()
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node1IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node1IP),
+	)
 
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node2IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node2,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node2IP),
+	)
 
 	// ping the requested IP address (--request-ip)
-	suite.T().Logf("Pinging %s from node1", node2IP)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node1IP)
+	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
 	assert.NoError(err)
 
-	suite.T().Log("killing apex and re-joining nodes")
+	suite.logger.Info("killing apex and re-joining nodes")
 	//kill the apex process on both nodes
-	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
 	require.NoError(err)
-	_, err = containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
 	require.NoError(err)
 
 	// restart apex and ensure the nodes receive the same re-quested address
-	suite.T().Log("Restarting Apex on two spoke nodes and re-joining")
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node1IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	suite.logger.Info("Restarting Apex on two spoke nodes and re-joining")
+	go suite.runApex(ctx, node1,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node1IP),
+	)
 
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--request-ip=%s", node2IP),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node2,
+		fmt.Sprintf("--with-token=%s", token),
+		fmt.Sprintf("--request-ip=%s", node2IP),
+	)
 
 	// ping the requested IP address (--request-ip)
-	suite.T().Logf("Pinging %s from node1", node2IP)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node1IP)
+	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
 	assert.NoError(err)
 }
@@ -269,7 +292,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh2@apex.local", "floofykittens")
 	require.NoError(err)
@@ -286,40 +310,35 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	require.NoError(err)
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
-	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
-	defer node2.Close()
-	node3 := suite.CreateNode("node3", "bridge", []string{})
-	defer node3.Close()
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node3.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			"--hub-router",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1,
+		"--hub-router",
+		fmt.Sprintf("--with-token=%s", token),
+	)
 
 	// Ensure the relay node has time to register before joining spokes since it is required for hub-zones
 	time.Sleep(time.Second * 10)
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, node3, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node3, fmt.Sprintf("--with-token=%s", token))
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -328,19 +347,19 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	node3IP, err := getContainerIfaceIP(ctx, "wg0", node3)
 	require.NoError(err)
 
-	suite.T().Logf("Pinging %s from node1", node2IP)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node1", node3IP)
+	suite.logger.Infof("Pinging %s from node1", node3IP)
 	err = ping(ctx, node1, node3IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node3", node1IP)
+	suite.logger.Infof("Pinging %s from node3", node1IP)
 	err = ping(ctx, node3, node2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node3IP)
+	suite.logger.Infof("Pinging %s from node2", node3IP)
 	err = ping(ctx, node2, node3IP)
 	assert.NoError(err)
 }
@@ -349,7 +368,8 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh3@apex.local", "floofykittens")
 	require.NoError(err)
@@ -371,45 +391,45 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode("node1", "bridge", []string{})
-	defer node1.Close()
-	node2 := suite.CreateNode("node2", "bridge", []string{})
-	defer node2.Close()
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, node1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node1,
+		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
+		fmt.Sprintf("--with-token=%s", token),
+	)
 
-	go func() {
-		_, err = containerExec(ctx, node2, []string{
-			"/bin/apex",
-			fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
-			fmt.Sprintf("--with-token=%s", token),
-			"http://apex.local",
-		})
-	}()
+	go suite.runApex(ctx, node2,
+		fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
+		fmt.Sprintf("--with-token=%s", token),
+	)
 
 	// add loopbacks to the containers that are contained in the node's child prefix
-	_, err = containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
+	_, err = suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
 	require.NoError(err)
-	_, err = containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
+	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 
 	// parse the loopback ip from the loopback prefix
 	node1LoopbackIP, _, _ := net.ParseCIDR(node1LoopbackNet)
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2LoopbackNet)
 
-	suite.T().Logf("Pinging %s from node1", node2LoopbackIP)
+	suite.logger.Infof("Pinging %s from node1", node2LoopbackIP)
 	err = ping(ctx, node1, node2LoopbackIP.String())
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s from node2", node1LoopbackIP)
+	suite.logger.Infof("Pinging %s from node2", node1LoopbackIP)
 	err = ping(ctx, node2, node1LoopbackIP.String())
 	assert.NoError(err)
 }
@@ -442,96 +462,137 @@ punch and can only peer directly to one another.
 */
 // TestRelayNAT tests end to end and spoke to spoke in an easy NAT environment
 func (suite *ApexIntegrationSuite) TestRelayNAT() {
+	suite.T().Skip("This test is broken on podman since netavark does some magic masquerading to prevent it working. It's also not too healthy on docker either")
+	parentCtx := context.Background()
 	assert := suite.Assert()
 	require := suite.Require()
 
 	net1 := "net1"
 	net2 := "net2"
-	defaultNSNet := "bridge"
-	docker0 := "172.17.0.1"
 	relayNodeName := "relay"
 	net1Spoke1Name := "net1-spoke1"
 	net2Spoke1Name := "net2-spoke1"
 	net1Spoke2Name := "net1-spoke2"
 	net2Spoke2Name := "net2-spoke2"
-	controllerURL := "http://apex.local"
 
-	// launch a relay node in the default namespace that all spokes can reach
-	relayNode := suite.CreateNode(relayNodeName, defaultNSNet, []string{})
-	defer relayNode.Close()
-
-	dNet1 := suite.CreateNetwork(net1, "100.64.11.0/24")
-	defer dNet1.Close()
-
-	dNet2 := suite.CreateNetwork(net2, "100.64.12.0/24")
-	defer dNet2.Close()
-
-	// launch nat nodes
-	natNodeNet1 := suite.CreateNode("net1-nat", net1, []string{})
-	defer natNodeNet1.Close()
-	natNodeNet2 := suite.CreateNode("net2-nat", net2, []string{})
-	defer natNodeNet2.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
 	defer cancel()
 
-	// attach nat nodes to the spoke networks
-	_, err := apex.RunCommand("docker", "network", "connect", defaultNSNet, "net1-nat")
-	require.NoError(err)
-	_, err = apex.RunCommand("docker", "network", "connect", defaultNSNet, "net2-nat")
-	require.NoError(err)
+	// launch a relay node in the default namespace that all spokes can reach
+	relayNode := suite.CreateNode(ctx, relayNodeName, []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := relayNode.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+
+	dNet1 := suite.CreateNetwork(ctx, net1, "100.64.11.0/24")
+	suite.T().Cleanup(func() {
+		if err := dNet1.Remove(parentCtx); err != nil {
+			suite.logger.Infof("failed to remove network: %v", err)
+		}
+	})
+
+	dNet2 := suite.CreateNetwork(ctx, net2, "100.64.12.0/24")
+	suite.T().Cleanup(func() {
+		if err := dNet2.Remove(parentCtx); err != nil {
+			suite.logger.Infof("failed to remove network: %v", err)
+		}
+	})
+
+	// launch nat nodes
+	natNodeNet1 := suite.CreateNode(ctx, "net1-nat", []string{net1, defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := natNodeNet1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	natNodeNet2 := suite.CreateNode(ctx, "net2-nat", []string{net2, defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := natNodeNet2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+
+	ctx, cancel = context.WithTimeout(parentCtx, 120*time.Second)
+	defer cancel()
 
 	// register the nat node interfaces which will be the gateways for spoke nodes
 	gatewayNet1, err := getContainerIfaceIP(ctx, "eth0", natNodeNet1)
 	require.NoError(err)
+
 	gatewayNet2, err := getContainerIfaceIP(ctx, "eth0", natNodeNet2)
 	require.NoError(err)
 
 	// enable masquerading on the nat nodes
-	_, err = containerExec(ctx, natNodeNet1, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
+	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-A", "FORWARD", "-i", "eth0", "-o", "eth1", "-j", "ACCEPT"})
 	require.NoError(err)
-	_, err = containerExec(ctx, natNodeNet2, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
+	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-A", "FORWARD", "-i", "eth1", "-o", "eth0", "-j", "ACCEPT"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-A", "FORWARD", "-i", "eth0", "-o", "eth1", "-j", "ACCEPT"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-A", "FORWARD", "-i", "eth1", "-o", "eth0", "-j", "ACCEPT"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
 	require.NoError(err)
 
 	// create spoke nodes
-	net1SpokeNode1 := suite.CreateNode(net1Spoke1Name, net1, []string{})
-	defer net1SpokeNode1.Close()
-	net2SpokeNode1 := suite.CreateNode(net2Spoke1Name, net2, []string{})
-	defer net2SpokeNode1.Close()
-	net1SpokeNode2 := suite.CreateNode(net1Spoke2Name, net1, []string{})
-	defer net1SpokeNode2.Close()
-	net2SpokeNode2 := suite.CreateNode(net2Spoke2Name, net2, []string{})
-	defer net2SpokeNode2.Close()
+	net1SpokeNode1 := suite.CreateNode(ctx, net1Spoke1Name, []string{net1})
+	suite.T().Cleanup(func() {
+		if err := net1SpokeNode1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	net2SpokeNode1 := suite.CreateNode(ctx, net2Spoke1Name, []string{net2})
+	suite.T().Cleanup(func() {
+		if err := net2SpokeNode1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	net1SpokeNode2 := suite.CreateNode(ctx, net1Spoke2Name, []string{net1})
+	suite.T().Cleanup(func() {
+		if err := net1SpokeNode2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	net2SpokeNode2 := suite.CreateNode(ctx, net2Spoke2Name, []string{net2})
+	suite.T().Cleanup(func() {
+		if err := net2SpokeNode2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
 
 	// delete the default route pointing to the nat gateway
-	_, err = containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "del", "default"})
+	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "flush", "default"})
 	require.NoError(err)
-	_, err = containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "del", "default"})
+	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "flush", "default"})
 	require.NoError(err)
-	_, err = containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
+	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
 	require.NoError(err)
-	_, err = containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
+	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
 	require.NoError(err)
-	_, err = containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "del", "default"})
+	_, err = suite.containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "flush", "default"})
 	require.NoError(err)
-	_, err = containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "del", "default"})
+	_, err = suite.containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "flush", "default"})
 	require.NoError(err)
-	_, err = containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
+	_, err = suite.containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
 	require.NoError(err)
-	_, err = containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
+	_, err = suite.containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
 	require.NoError(err)
 
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net1-spoke1", docker0)
-	err = ping(ctx, net1SpokeNode1, docker0)
+	suite.logger.Infof("Validate NAT Infra: Pinging %s from net1-spoke1", hostDNSName)
+	err = ping(ctx, net1SpokeNode1, hostDNSName)
 	assert.NoError(err)
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net2-spoke1", docker0)
-	err = ping(ctx, net2SpokeNode1, docker0)
+	suite.logger.Infof("Validate NAT Infra: Pinging %s from net2-spoke1", hostDNSName)
+	err = ping(ctx, net2SpokeNode1, hostDNSName)
 	assert.NoError(err)
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net1-spoke2", docker0)
-	err = ping(ctx, net1SpokeNode2, docker0)
+	suite.logger.Infof("Validate NAT Infra: Pinging %s from net1-spoke2", hostDNSName)
+	err = ping(ctx, net1SpokeNode2, hostDNSName)
 	assert.NoError(err)
-	suite.T().Logf("Validate NAT Infra: Pinging %s from net2-spoke2", docker0)
-	err = ping(ctx, net2SpokeNode2, docker0)
+	suite.logger.Infof("Validate NAT Infra: Pinging %s from net2-spoke2", hostDNSName)
+	err = ping(ctx, net2SpokeNode2, hostDNSName)
 	assert.NoError(err)
 
 	token, err := getToken(ctx, "kitteh4@apex.local", "floofykittens")
@@ -549,52 +610,29 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	require.NoError(err)
 
 	// start apex on the nodes
-	go func() {
-		_, err = containerExec(ctx, relayNode, []string{
-			"/bin/apex",
-			"--hub-router",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
+	go suite.runApex(ctx, relayNode,
+		"--hub-router",
+		fmt.Sprintf("--with-token=%s", token),
+	)
 
 	// ensure the relay node has time to register before joining spokes since it is required for hub-zones
 	time.Sleep(time.Second * 10)
-	go func() {
-		_, err = containerExec(ctx, net1SpokeNode1, []string{
-			"/bin/apex",
-			"--relay-only",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, net2SpokeNode1, []string{
-			"/bin/apex",
-			"--relay-only",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, net1SpokeNode2, []string{
-			"/bin/apex",
-			"--relay-only",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
-
-	go func() {
-		_, err = containerExec(ctx, net2SpokeNode2, []string{
-			"/bin/apex",
-			"--relay-only",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
+	go suite.runApex(ctx, net1SpokeNode1,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
+	go suite.runApex(ctx, net2SpokeNode1,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
+	go suite.runApex(ctx, net1SpokeNode2,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
+	go suite.runApex(ctx, net2SpokeNode2,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
 	time.Sleep(time.Second * 10)
 
 	relayNodeIP, err := getContainerIfaceIP(ctx, "wg0", relayNode)
@@ -608,87 +646,80 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	net2SpokeNode2IP, err := getContainerIfaceIP(ctx, "wg0", net2SpokeNode2)
 	require.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from %s", net1Spoke1Name, net1SpokeNode1IP, relayNodeName)
+	suite.logger.Infof("Pinging %s %s from %s", net1Spoke1Name, net1SpokeNode1IP, relayNodeName)
 	err = ping(ctx, relayNode, net1SpokeNode1IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from %s", net2Spoke1Name, net2SpokeNode1IP, relayNodeName)
+	suite.logger.Infof("Pinging %s %s from %s", net2Spoke1Name, net2SpokeNode1IP, relayNodeName)
 	err = ping(ctx, relayNode, net2SpokeNode1IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke1Name)
+	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke1Name)
 	err = ping(ctx, net1SpokeNode1, relayNodeIP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke1Name)
+	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke1Name)
 	err = ping(ctx, net2SpokeNode1, relayNodeIP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke2Name)
+	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke2Name)
 	err = ping(ctx, net1SpokeNode2, relayNodeIP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke2Name)
+	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke2Name)
 	err = ping(ctx, net2SpokeNode2, relayNodeIP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", net1Spoke1Name, net1SpokeNode1IP, net1Spoke2Name)
+	suite.logger.Infof("Pinging %s %s from node %s", net1Spoke1Name, net1SpokeNode1IP, net1Spoke2Name)
 	err = ping(ctx, net1SpokeNode2, net1SpokeNode1IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", net2Spoke1Name, net2SpokeNode1IP, net2Spoke2Name)
+	suite.logger.Infof("Pinging %s %s from node %s", net2Spoke1Name, net2SpokeNode1IP, net2Spoke2Name)
 	err = ping(ctx, net2SpokeNode2, net2SpokeNode1IP)
 	assert.NoError(err)
 
 	// dump the wg state from the relay node.
-	wgShow, err := containerExec(ctx, relayNode, []string{"wg", "show", "wg0", "dump"})
+	wgShow, err := suite.containerExec(ctx, relayNode, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
-	suite.T().Logf("Relay node wireguard state: \n%s", wgShow)
+	suite.logger.Infof("Relay node wireguard state: \n%s", wgShow)
 
-	suite.T().Log("killing apex and re-joining nodes")
+	suite.logger.Info("killing apex and re-joining nodes")
 
 	// kill the apex process on both nodes
-	_, err = containerExec(ctx, net1SpokeNode1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "apex"})
 	require.NoError(err)
-	_, err = containerExec(ctx, net2SpokeNode1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "apex"})
 	require.NoError(err)
 
 	// restart the process on two nodes and verify re-joining
-	suite.T().Log("Restarting apex on two spoke nodes and re-joining")
-	go func() {
-		_, err = containerExec(ctx, net1SpokeNode1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
+	suite.logger.Info("Restarting apex on two spoke nodes and re-joining")
+	go suite.runApex(ctx, net1SpokeNode1,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
+	go suite.runApex(ctx, net2SpokeNode1,
+		"--relay-only",
+		fmt.Sprintf("--with-token=%s", token),
+	)
 
-	go func() {
-		_, err = containerExec(ctx, net2SpokeNode1, []string{
-			"/bin/apex",
-			fmt.Sprintf("--with-token=%s", token),
-			controllerURL,
-		})
-	}()
-
-	suite.T().Logf("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net1Spoke1Name)
+	suite.logger.Infof("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net1Spoke1Name)
 	err = ping(ctx, net1SpokeNode1, net1SpokeNode2IP)
 	assert.NoError(err)
 
 	// validate the re-joined nodes can communicate
-	suite.T().Logf("Pinging %s %s from node %s", net2Spoke2Name, net2SpokeNode2IP, net2Spoke1Name)
+	suite.logger.Infof("Pinging %s %s from node %s", net2Spoke2Name, net2SpokeNode2IP, net2Spoke1Name)
 	err = ping(ctx, net2SpokeNode1, net2SpokeNode2IP)
 	assert.NoError(err)
 
 	// verify there are (n) lines in the wg show output on a spoke node in each network
-	wgSpokeShow, err := containerExec(ctx, net1SpokeNode1, []string{"wg", "show", "wg0", "dump"})
+	wgSpokeShow, err := suite.containerExec(ctx, net1SpokeNode1, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
 	lc, err := lineCount(wgSpokeShow)
 	require.NoError(err)
 	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 
 	// verify there are (n) lines in the wg show output on a spoke node in each network
-	wgSpokeShow, err = containerExec(ctx, net2SpokeNode1, []string{"wg", "show", "wg0", "dump"})
+	wgSpokeShow, err = suite.containerExec(ctx, net2SpokeNode1, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
 	lc, err = lineCount(wgSpokeShow)
 	require.NoError(err)

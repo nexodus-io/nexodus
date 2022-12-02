@@ -43,22 +43,41 @@ spec:
           image: quay.io/apex/apiserver:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: APEX_APISERVER_LOGLEVEL
-              value: debug
             - name: APEX_DEBUG
-              value: "1"
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_DEBUG
             - name: APEX_DB_HOST
-              value: localhost
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_DB_HOST
             - name: APEX_DB_NAME
-              value: apiserver
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_DB_NAME
             - name: APEX_DB_USER
-              value: apiserver
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_DB_USER
             - name: APEX_DB_PASSWORD
-              value: floofykittens
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_DB_PASSWORD
             - name: APEX_IPAM_URL
-              value: http://ipam:9090
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_IPAM_URL
             - name: APEX_OIDC_URL
-              value: <AUTH_HOST>
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_OIDC_URL
             - name: APEX_OIDC_CLIENT_ID_WEB
               valueFrom:
                 secretKeyRef:

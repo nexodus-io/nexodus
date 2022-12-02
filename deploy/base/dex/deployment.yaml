@@ -2,10 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dex
-  labels:
-    app.kubernetes.io/component: dex
-    app.kubernetes.io/instance: dex
-    app.kubernetes.io/name: dex
 spec:
   replicas: 1
   selector:
@@ -34,21 +30,40 @@ spec:
               cpu: 100m
               memory: 200Mi
           env:
+            - name: WEB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dex-secrets
+                  key: web-client-id
+                  optional: false
             - name: WEB_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: dex-secrets
                   key: web-client-secret
                   optional: false
+            - name: CLI_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dex-secrets
+                  key: cli-client-id
+                  optional: false
           args:
             - dex
             - serve
             - /etc/dex/config.yaml
           volumeMounts:
-          - name: config
-            mountPath: /etc/dex
-      restartPolicy: Always
+            - name: config
+              mountPath: /etc/dex
+            - name: cert
+              mountPath: "/etc/dex/tls"
+              readOnly: true
       volumes:
         - name: config
           configMap:
             name: dex
+        - name: cert
+          secret:
+            secretName: dex-cert
+            optional: false
+      restartPolicy: Always

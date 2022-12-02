@@ -2,21 +2,40 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
-  - configmaps
-patchesStrategicMerge:
-  - api_host_env_patch.yaml
-  - auth_host_env_patch.yaml
-  - host_env_patch.yaml
+components:
+  - ../../components/selfsigned-ca
 patchesJson6902:
   - target:
       kind: Ingress
       name: apiproxy
-    path: api_host_ingress_patch.yaml
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.apex.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.apex.local
   - target:
       kind: Ingress
       name: dex
-    path: auth_host_ingress_patch.yaml
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.apex.local
+  - target:
+      kind: Certificate
+      name: dex-cert
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: auth.apex.local
   - target:
       kind: Ingress
       name: frontend
-    path: host_ingress_patch.yaml
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: apex.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: apex.local

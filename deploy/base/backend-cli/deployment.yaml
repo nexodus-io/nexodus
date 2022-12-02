@@ -24,9 +24,15 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: DEBUG
-              value: "1"
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: DEBUG
             - name: OIDC_PROVIDER
-              value: <AUTH_HOST>
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: OIDC_PROVIDER
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -34,9 +40,15 @@ spec:
                   key: cli-client-id
                   optional: false
             - name: OIDC_FLOW
-              value: device
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: OIDC_FLOW
             - name: BACKEND
-              value: http://apiserver:8080
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: BACKEND
           resources:
             requests:
               cpu: 100m

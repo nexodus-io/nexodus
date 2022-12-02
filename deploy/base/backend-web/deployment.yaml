@@ -24,9 +24,15 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: DEBUG
-              value: "1"
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: DEBUG
             - name: OIDC_PROVIDER
-              value: <AUTH_HOST>
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: OIDC_PROVIDER
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -40,13 +46,25 @@ spec:
                   key: web-client-secret
                   optional: false
             - name: REDIRECT_URL
-              value: <HOST>/#/login
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: REDIRECT_URL
             - name: ORIGINS
-              value: <HOST>
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: ORIGINS
             - name: DOMAIN
-              value: <API_HOST>
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: DOMAIN
             - name: BACKEND
-              value: http://apiserver:8080
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: BACKEND
           resources:
             requests:
               cpu: 100m

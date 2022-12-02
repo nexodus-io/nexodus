@@ -6,8 +6,6 @@ resources:
   - apiserver
   - backend-cli
   - backend-web
-  # configmaps must be implemented in overlays
-  # - configmaps
   - dex
   - frontend
   - ipam
