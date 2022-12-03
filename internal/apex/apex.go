@@ -3,7 +3,6 @@ package apex
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/url"
 	"os"
 	"reflect"
@@ -363,24 +362,17 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// Otherwise, discover what the public of the node is and provide that to the peers unless the --internal flag was set,
 	// in which case the endpoint address will be set to an existing address on the host.
 	var localEndpointIP string
+	var err error
 	// Darwin network discovery
 	if !ax.stun && ax.os == Darwin.String() {
-		controllerHost, controllerPort, err := net.SplitHostPort(ax.controllerURL.Host)
-		if err != nil {
-			log.Errorf("failed to split host:port endpoint pair: %v", err)
-		}
-		localEndpointIP, err = discoverGenericIPv4(controllerHost, controllerPort)
+		localEndpointIP, err = discoverGenericIPv4(ax.controllerURL.Host, "80")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
 	if !ax.stun && ax.os == Windows.String() {
-		controllerHost, controllerPort, err := net.SplitHostPort(ax.controllerURL.Host)
-		if err != nil {
-			log.Errorf("failed to split host:port endpoint pair: %v", err)
-		}
-		localEndpointIP, err = discoverGenericIPv4(controllerHost, controllerPort)
+		localEndpointIP, err = discoverGenericIPv4(ax.controllerURL.Host, "80")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
