@@ -17,7 +17,28 @@
     sudo killall apex 2> /dev/null
   ignore_errors: yes
 
-# Optionally clean all remnants of a previous run
+- name: Delete hosts file
+  become: yes
+  shell: |
+    sudo rm -rf /etc/hosts
+    sudo touch /etc/hosts
+  ignore_errors: yes
+
+- name: Add controller host entry
+  become: yes
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    block: |
+      127.0.0.1 localhost
+      ::1 ip6-localhost ip6-loopback
+      fe00::0 ip6-localnet
+      ff00::0 ip6-mcastprefix
+      ff02::1 ip6-allnodes
+      ff02::2 ip6-allrouters
+      ff02::3 ip6-allhosts
+      {{ controller_address }} auth.apex.local api.apex.local apex.local
+
+# Optionally clean all remnants of a previous run (agent will do this as well)
 #- name: Delete wg0
 #  become: yes
 #  shell: |
@@ -31,35 +52,35 @@
 
 - name: Create a JWT
   shell: |
-    curl -sf -X POST \
-        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username={{ apex_auth_uid }}" \
-        -d "password={{ apex_auth_password }}" \
-        -d "grant_type=password" \
-        -d "client_id={{ apex_auth_client_id }}" \
-        -d "client_secret={{ apex_auth_client_secret }}"
+    curl -s -f -X POST \
+      {{ apex_oidc_url }}/token \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      -d "username={{ apex_auth_uid }}" \
+      -d "password={{ apex_auth_password }}" \
+      -d "scope=openid profile email" \
+      -d "grant_type=password" \
+      -d "client_id={{ apex_oidc_client_id_cli }}"
   register: api_token
 
 - name: Print the JWT Token
   debug:
-    var: (api_token.stdout|from_json).access_token
+    var: api_token.stdout
 
 - name: Create the Zone and register the UUID
   shell: |
-    curl -fL -X POST 'http://{{ controller_address }}:8080/api/zones' \
+    curl -fL -X POST '{{ apex_api_url }}/api/zones' \
     -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
     -H "Content-Type: application/json" \
-    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "cidr": "{{ apex_azone_prefix }}", "hub_zone": true}'
+    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "cidr": "{{ apex_zone_prefix }}", "hub_zone": true}'
   register: zone_uuid
 
 - name: Print the Zone UUID
   debug:
     var: (zone_uuid.stdout|from_json).id
 
-- name: Associate the User to the Zone
+- name: Patch the User to the Zone
   shell: |
-    curl -fL -X PATCH 'http://{{ controller_address }}:8080/api/users/me' \
+    curl -fL -X PATCH '{{ apex_api_url }}/api/users/me' \
         -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
         -H "Content-Type: application/json" \
         --data-raw '{ "zone_id": "{{ (zone_uuid.stdout|from_json).id }}" }'
