@@ -11,6 +11,7 @@
     name:
       - wireguard
       - fping
+      - iperf3
     state: latest
 
 - name: Kill any existing apex process from previous runs
@@ -18,12 +19,33 @@
     sudo killall apex 2> /dev/null
   ignore_errors: yes
 
-# Optionally clean all remnants of a previous run
+# Optionally clean all remnants of a previous run (the agent will do this as well)
 #- name: Delete wg0
 #  become: yes
 #  shell: |
 #    sudo ip link del wg0
 #  ignore_errors: yes
+
+- name: Delete hosts file
+  become: yes
+  shell: |
+    sudo rm -rf /etc/hosts
+    sudo touch /etc/hosts
+  ignore_errors: yes
+
+- name: Add controller host entry
+  become: yes
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    block: |
+      127.0.0.1 localhost
+      ::1 ip6-localhost ip6-loopback
+      fe00::0 ip6-localnet
+      ff00::0 ip6-mcastprefix
+      ff02::1 ip6-allnodes
+      ff02::2 ip6-allrouters
+      ff02::3 ip6-allhosts
+      {{ controller_address }} auth.apex.local api.apex.local apex.local
 
 - name: Download the Apex Agent Binary
   shell: |
@@ -32,19 +54,19 @@
 
 - name: Create a JWT
   shell: |
-    curl -sf -X POST \
-        http://{{ controller_address }}:8080/auth/realms/{{ apex_auth_realm }}/protocol/openid-connect/token \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username={{ apex_auth_uid }}" \
-        -d "password={{ apex_auth_password }}" \
-        -d "grant_type=password" \
-        -d "client_id={{ apex_auth_client_id }}" \
-        -d "client_secret={{ apex_auth_client_secret }}"
+    curl -s -f -X POST \
+      {{ apex_oidc_url }}/token \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      -d "username={{ apex_auth_uid }}" \
+      -d "password={{ apex_auth_password }}" \
+      -d "scope=openid profile email" \
+      -d "grant_type=password" \
+      -d "client_id={{ apex_oidc_client_id_cli }}"
   register: api_token
 
-#- name: Print the JWT Token (uncomment for debugging)
-#  debug:
-#    var: (api_token.stdout|from_json).access_token
+- name: Print the JWT Token (uncomment for debugging)
+  debug:
+    var: api_token.stdout
 
 - name: Copy the verifier script
   copy:
@@ -58,5 +80,5 @@
     APEX_LOGLEVEL=debug apex \
     --hub-router \
     --stun \
-    --with-token={{ (api_token.stdout|from_json).access_token }} \
-    http://{{ controller_address }}:8080 > apex-logs.txt 2>&1 &
+    --with-token='{{ api_token.stdout }}' \
+    {{ apex_url }} > apex-logs.txt 2>&1 &

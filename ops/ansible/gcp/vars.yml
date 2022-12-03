@@ -13,12 +13,14 @@ ansible_user: apex
 
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-controller_password: floofykittens
 apex_binary: https://apex-net.s3.amazonaws.com/apex-amd64-linux
+apex_zone_name: zone-hub
+apex_zone_prefix: 10.185.0.0/20
 
 ### Apex Auth ###
-apex_auth_uid: kitteh5
+apex_auth_uid: kitteh1@apex.local
 apex_auth_password: floofykittens
-apex_auth_client_id: api-clients
-apex_auth_client_secret: cvXhCRXI2Vld244jjDcnABCMrTEq2rwE
-apex_auth_realm: controller
+apex_oidc_client_id_cli: apex-cli
+apex_oidc_url: http://auth.apex.local
+apex_api_url: http://api.apex.local
+apex_url: http://apex.local
