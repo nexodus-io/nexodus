@@ -1,0 +1,10 @@
+# Support for multiple zones.
+# Currently set to apply to 0% of users (completely disabled).
+multi-zone:
+  percentage: 0
+  "true": true
+  "false": false
+  default: false
+  trackEvents: false
+  disable: false
+  rollout: null

@@ -1,0 +1,5 @@
+retriever:
+  kind: http
+  url: https://raw.githubusercontent.com/russellb/apex/feature-flags/deploy/default_flags.yaml
+exporter:
+  kind: log

@@ -9,5 +9,6 @@ resources:
   - dex
   - frontend
   - ipam
+  - goff-proxy
 commonLabels:
   app.kubernetes.io/part-of: apex

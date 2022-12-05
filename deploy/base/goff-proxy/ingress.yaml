@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: goff-proxy
+  annotations:
+    cert-manager.io/issuer: apex-issuer
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - goff-proxy.apex.local
+      secretName: apex-goff-proxy-cert
+  rules:
+    - host: goff-proxy.apex.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: goff-proxy
+                port:
+                  number: 80

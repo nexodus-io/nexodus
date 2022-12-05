@@ -40,11 +40,12 @@ The development Apex stack requires 3 hostnames to be reachable:
 
 - `auth.apex.local` - for the authentication service
 - `api.apex.local` - for the backend apis
+- `goff-proxy.apex.local` - for the feature flags service
 - `apex.local` - for the frontend
 
 To add these on your own machine:
 ```console
-echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1 auth.apex.local api.apex.local goff-proxy.apex.local apex.local" | sudo tee -a /etc/hosts
 ```
 
 #### Deploy using KIND

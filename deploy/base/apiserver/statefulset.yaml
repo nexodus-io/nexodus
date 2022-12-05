@@ -97,8 +97,15 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
+          volumeMounts:
+            - name: goff-flags
+              mountPath: /goff/flags.yaml
+              subPath: flags.yaml
       restartPolicy: Always
       volumes:
         - name: postgresdb
           persistentVolumeClaim:
             claimName: apiserver-postgres-pv-claim
+        - name: goff-flags
+          configMap:
+            name: goff-flags

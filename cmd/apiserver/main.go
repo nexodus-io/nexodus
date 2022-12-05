@@ -1,19 +1,24 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/redhat-et/apex/internal/database"
 	"github.com/redhat-et/apex/internal/handlers"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/routers"
-	"go.uber.org/zap"
+	ffclient "github.com/thomaspoignant/go-feature-flag"
 
+	//"github.com/thomaspoignant/go-feature-flag/retriever/httpretriever"
+	"github.com/thomaspoignant/go-feature-flag/retriever/fileretriever"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 // @title          Apex API
@@ -95,6 +100,13 @@ func main() {
 				Usage:   "address of ipam grpc service",
 				EnvVars: []string{"APEX_IPAM_URL"},
 			},
+			// &cli.StringFlag{
+			// 	// TODO change the deafult to the main repo post-merge
+			// 	Name:    "fflag-url",
+			// 	Value:   "https://raw.githubusercontent.com/russellb/apex/feature-flags/deploy/default_flags.yaml",
+			// 	Usage:   "URL for a feature flags yaml file - see docs/feature-flags.md for details.",
+			// 	EnvVars: []string{"APEX_FFLAG_URL"},
+			// },
 		},
 		Action: func(cCtx *cli.Context) error {
 			ctx := cCtx.Context
@@ -121,6 +133,26 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			err = ffclient.Init(ffclient.Config{
+				PollingInterval: 10 * time.Second,
+				Logger:          zap.NewStdLog(logger),
+				Context:         context.Background(),
+				Retriever: &fileretriever.Retriever{
+					Path: "/goff/flags.yaml",
+				},
+				// TODO Move back to the httpretriever. This is better because it allows
+				// the feature flags to be dynamically reloaded without restarting the apiserver.
+				// See issue #231 for why this is disabled.
+				//Retriever: &httpretriever.Retriever{
+				//	URL:     cCtx.String("fflag-url"),
+				//	Timeout: 3 * time.Second,
+				//},
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer ffclient.Close()
 
 			ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
 

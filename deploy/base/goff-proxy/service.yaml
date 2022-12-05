@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: goff-proxy
+spec:
+  selector:
+    app.kubernetes.io/instance: goff-proxy
+    app.kubernetes.io/name: goff-proxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: 1031

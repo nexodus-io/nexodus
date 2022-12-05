@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+configMapGenerator:
+  - name: goff-proxy
+    files:
+      - files/goff-proxy.yaml
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+commonLabels:
+  app.kubernetes.io/component: goff-proxy
+  app.kubernetes.io/instance: goff-proxy
+  app.kubernetes.io/name: goff-proxy

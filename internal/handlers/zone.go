@@ -9,7 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
-
+	ffclient "github.com/thomaspoignant/go-feature-flag"
+	"github.com/thomaspoignant/go-feature-flag/ffuser"
 	"gorm.io/gorm"
 )
 
@@ -33,6 +34,17 @@ const (
 // @Router       /zones [post]
 func (api *API) CreateZone(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	user := ffuser.NewUser(c.GetString(gin.AuthUserKey))
+	multiZoneEnabled, err := ffclient.BoolVariation("multi-zone", user, false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		return
+	}
+	if !multiZoneEnabled {
+		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-zone support is disabled"})
+	}
+
 	var request models.AddZone
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {

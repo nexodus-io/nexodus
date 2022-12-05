@@ -12,6 +12,9 @@ configMapGenerator:
       - APEX_DB_PASSWORD=floofykittens
       - APEX_IPAM_URL=http://ipam:9090
       - APEX_OIDC_URL=https://auth.apex.local
+  - name: goff-flags
+    files:
+      - files/flags.yaml
 resources:
   - persistentvolumeclaim.yaml
   - service.yaml
