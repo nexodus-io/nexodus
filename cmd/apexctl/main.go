@@ -21,7 +21,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "host",
-				Value: "http://api.apex.local",
+				Value: "https://api.apex.local",
 				Usage: "api server",
 			},
 			&cli.StringFlag{

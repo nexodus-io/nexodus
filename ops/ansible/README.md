@@ -37,9 +37,9 @@ apex_azone_prefix: 10.185.0.0/24
 apex_auth_uid: kitteh1@apex.local
 apex_auth_password: floofykittens
 apex_oidc_client_id_cli: apex-cli
-apex_oidc_url: http://auth.apex.local
-apex_api_url: http://api.apex.local
-apex_url: http://apex.local
+apex_oidc_url: https://auth.apex.local
+apex_api_url: https://api.apex.local
+apex_url: https://apex.local
 ```
 - Run the playbook (the apex binary is stored in an S3 bucket and pulled down by ansible)
 

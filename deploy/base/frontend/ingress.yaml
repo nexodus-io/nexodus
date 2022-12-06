@@ -2,9 +2,16 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: frontend
+  annotations:
+    cert-manager.io/issuer: apex-issuer
 spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - apex.local
+      secretName: apex-frontend-cert
   rules:
-    - host: <HOST>
+    - host: apex.local
       http:
         paths:
           - pathType: Prefix

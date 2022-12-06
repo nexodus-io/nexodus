@@ -1,5 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: backend-cli
+    literals:
+      - DEBUG=1
+      - OIDC_PROVIDER=https://auth.apex.local
+      - OIDC_FLOW=device
+      - DOMAIN=api.apex.local
+      - BACKEND=http://apiserver:8080
 resources:
   - deployment.yaml
   - service.yaml
@@ -7,3 +17,4 @@ commonLabels:
   app.kubernetes.io/component: backend-cli
   app.kubernetes.io/instance: backend-cli
   app.kubernetes.io/name: backend-cli
+

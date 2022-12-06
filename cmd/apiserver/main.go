@@ -41,7 +41,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "oidc-url",
-				Value:   "http://keycloak:8080/realms/apex",
+				Value:   "https://auth.apex.local",
 				Usage:   "address of oidc provider",
 				EnvVars: []string{"APEX_OIDC_URL"},
 			},
@@ -95,6 +95,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			ctx := cCtx.Context
 			// set the log level
 			if cCtx.Bool("debug") {
 				log.SetLevel(log.DebugLevel)
@@ -114,13 +115,13 @@ func main() {
 
 			ipam := ipam.NewIPAM(cCtx.String("ipam-address"))
 
-			api, err := handlers.NewAPI(cCtx.Context, db, ipam)
+			api, err := handlers.NewAPI(ctx, db, ipam)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			router, err := routers.NewAPIRouter(
-				cCtx.Context,
+				ctx,
 				api,
 				cCtx.String("oidc-client-id-web"),
 				cCtx.String("oidc-client-id-cli"),

@@ -53,7 +53,7 @@ You should first ensure that you have `kind` and `kubectl` installed.
 If not, you can follow the instructions in the [KIND Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
 ```console
-./hack/kind/kind.sh
+./hack/kind/kind.sh up
 ```
 
 This will install:
@@ -61,6 +61,26 @@ This will install:
   - `ingress-nginx` ingress controller
   - a rewrite rule in coredns to allow `auth.apex.local` to resolve inside the k8s cluster
   - the `apex` stack
+
+To bring the cluster down again:
+
+```console
+./hack/kind/kind.sh down
+```
+
+### HTTPS
+
+You will need to extract the CA certificate and add it to your system trust store:
+
+```console
+mkdir -p .certs
+kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > ./certs/rootCA.pem
+```
+
+Installation of this certificate is best left to [`mkcert`](https://github.com/FiloSottile/mkcert)
+```console
+CAROOT=$(pwd)/.certs mkcert -install
+```
 
 ## The Apex Agent
 
@@ -571,4 +591,27 @@ sudo ip link del wg0
 *Mac-OSX:*
 ```shell
 sudo wg-quick down wg0
+```
+
+### Running the integration tests
+
+#### Using Docker
+
+You can simply:
+```console
+make e2e
+```
+#### Using podman
+
+Since the test containers require CAP_NET_ADMIN only rootful podman can be used.
+To run the tests requires a little more gymnastics.
+This assumes you have `podman-docker` installed since testcontainers relies on mounting `/var/run/docker.sock` inside the reaper container.
+
+```console
+# Build test images in rootful podman
+sudo make test-images
+# Compile integration tests
+go test -c --tags=integration ./integration-tests/...
+# Run integration tests using rootful podman
+sudo APEX_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 ```

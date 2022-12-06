@@ -7,20 +7,24 @@ up() {
     kubectl cluster-info --context kind-apex-dev
 
     # Deploy Ingress Controller
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+    kubectl apply -f ./deploy/kind-ingress.yaml
     kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=90s
 
     # Add rewrite to CoreDNS
     kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
     sed -i '22i \
-            rewrite name auth.apex.local dex.apex.svc.cluster.local' coredns.yaml 
+            rewrite name auth.apex.local dex.apex.svc.cluster.local' coredns.yaml
     kubectl replace -n kube-system -f coredns.yaml
     rm coredns.yaml
     kubectl rollout restart -n kube-system deployment/coredns
     kubectl rollout status -n kube-system deployment coredns --timeout=90s
 
-    # Build images and copy to kind
-    make images
+    # Install cert-manager
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
+    kubectl rollout status -n cert-manager deploy/cert-manager --timeout=90s
+    kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=90s
+
+    # Copy images to kind
     kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
     kind load --name apex-dev docker-image quay.io/apex/frontend:latest
 

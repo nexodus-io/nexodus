@@ -58,13 +58,7 @@ OS_IMAGE?="quay.io/apex/test:fedora"
 
 .PHONY: e2e
 e2e: dist/apex test-images
-	./hack/run_e2e.sh
-
-.PHONY: recompose
-recompose: dist/apex
-	docker-compose down
-	docker-compose build
-	docker-compose up -d
+	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: images
 images:

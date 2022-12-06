@@ -1,10 +1,14 @@
-issuer: http://auth.apex.local
+issuer: https://auth.apex.apps.smaug.na.operate-first.cloud
 
 storage:
-  type: memory
+  type: kubernetes
+  config:
+    inCluster: true
 
 web:
-  http: 0.0.0.0:8080
+  https: 0.0.0.0:5554
+  tlsCert: /etc/dex/tls/tls.crt
+  tlsKey: /etc/dex/tls/tls.key
 
 expiry:
   deviceRequests: "5m"
@@ -17,18 +21,17 @@ expiry:
 
 oauth2:
   responseTypes: ["code", "token", "id_token"]
-  passwordConnector: local
 
 staticClients:
-  - id: apex-web
+  - idEnv: WEB_CLIENT_ID
     redirectURIs:
-      - 'http://apex.local/#/login'
-    name: 'Apex Web Frontend'
+      - "https://apex.apps.smaug.na.operate-first.cloud/#/login"
+    name: "Apex Web Frontend"
     secretEnv: WEB_CLIENT_SECRET
-  - id: apex-cli
+  - idEnv: CLI_CLIENT_ID
     redirectURIs:
-      - '/device/callback'
-    name: 'Apex CLI Frontend'
+      - "/device/callback"
+    name: "Apex CLI Frontend"
     public: true
 
 enablePasswordDB: true

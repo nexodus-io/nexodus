@@ -5,7 +5,6 @@ package integration_tests
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,95 +15,90 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/coreos/go-oidc"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
+	"github.com/docker/docker/api/types/network"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"golang.org/x/oauth2"
 )
 
 // CreateNode creates a container
-func (suite *ApexIntegrationSuite) CreateNode(name, network string, args []string) *dockertest.Resource {
-	options := &dockertest.RunOptions{
-		Repository: "quay.io/apex/test",
-		Tag:        "ubuntu",
-		Tty:        true,
-		Name:       name,
-		NetworkID:  network,
-		Cmd:        args,
+func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string) testcontainers.Container {
+	req := testcontainers.ContainerRequest{
+		Image:    "quay.io/apex/test:ubuntu",
+		Name:     name,
+		Networks: networks,
 		CapAdd: []string{
 			"SYS_MODULE",
 			"NET_ADMIN",
 			"NET_RAW",
 		},
 		ExtraHosts: []string{
-			"apex.local:host-gateway",
-			"api.apex.local:host-gateway",
-			"auth.apex.local:host-gateway",
+			fmt.Sprintf("apex.local:%s", hostDNSName),
+			fmt.Sprintf("api.apex.local:%s", hostDNSName),
+			fmt.Sprintf("auth.apex.local:%s", hostDNSName),
 		},
+		AutoRemove: true,
 	}
-	hostConfig := func(config *docker.HostConfig) {
-		// config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	}
-	node, err := suite.pool.RunWithOptions(options, hostConfig)
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ProviderType:     providerType,
+		ContainerRequest: req,
+		Started:          true,
+	})
 	require.NoError(suite.T(), err)
-	err = node.Expire(120)
-	require.NoError(suite.T(), err)
-	return node
+	return ctr
 }
 
 func newClient(ctx context.Context, token string) (*client.Client, error) {
 	return client.NewClient(ctx, "http://api.apex.local", client.WithToken(token))
 }
 
-func getContainerIfaceIP(ctx context.Context, dev string, container *dockertest.Resource) (string, error) {
-	var cidr string
+func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
+	var ip string
 	err := backoff.Retry(func() error {
-		stdout := new(bytes.Buffer)
-		stderr := new(bytes.Buffer)
-		code, err := container.Exec(
+		code, outputRaw, err := ctr.Exec(
+			ctx,
 			[]string{"ip", "--brief", "-4", "address", "show", dev},
-			dockertest.ExecOptions{
-				StdOut: stdout,
-				StdErr: stderr,
-			},
 		)
 		if err != nil {
 			return err
 		}
-		if code != 0 {
-			return fmt.Errorf("exit code %d. stderr: %s", code, stderr.String())
+		output, err := io.ReadAll(outputRaw)
+		if err != nil {
+			return err
 		}
-		cidr = strings.Fields(stdout.String())[2]
+		if code != 0 {
+			return fmt.Errorf("exit code %d. output: %s", code, string(output))
+		}
+		cidr := strings.Fields(string(output))[2]
+		if err != nil {
+			return err
+		}
+		ipAddr, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return err
+		}
+		ip = ipAddr.String()
 		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
-	if err != nil {
-		return "", err
-	}
-	ip, _, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return "", err
-	}
-
-	return ip.String(), err
+	return ip, err
 }
 
-func ping(ctx context.Context, container *dockertest.Resource, address string) error {
+func ping(ctx context.Context, ctr testcontainers.Container, address string) error {
 	err := backoff.Retry(func() error {
-		stdout := new(bytes.Buffer)
-		code, err := container.Exec(
-			[]string{"ping", "-c", "2", "-w", "2", address}, dockertest.ExecOptions{
-				StdOut: stdout,
-			},
+		code, outputRaw, err := ctr.Exec(
+			ctx,
+			[]string{"ping", "-c", "2", "-w", "2", address},
 		)
 		if err != nil {
 			return err
 		}
+		output, err := io.ReadAll(outputRaw)
+		if err != nil {
+			return err
+		}
 		if code != 0 {
-			return fmt.Errorf("exit code %d. stdout: %s", code, stdout.String())
+			return fmt.Errorf("exit code %d. stdout: %s", code, string(output))
 		}
 		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
@@ -112,28 +106,31 @@ func ping(ctx context.Context, container *dockertest.Resource, address string) e
 }
 
 // containerExec TODO: this will be for deleting keys, restarting apex and creating general chaos
-func containerExec(ctx context.Context, container *dockertest.Resource, cmd []string) (string, error) {
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-	code, err := container.Exec(
+func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
+	code, outputRaw, err := container.Exec(
+		ctx,
 		cmd,
-		dockertest.ExecOptions{
-			StdOut: stdout,
-			StdErr: stderr,
-		},
 	)
-	if code != 0 {
-		return "", fmt.Errorf("exit code %d. stderr: %s", code, stderr.String())
-	}
 	if err != nil {
 		return "", err
 	}
+	nodeName, _ := container.Name(ctx)
+	if cmd[0] != "/bin/apex" {
+		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
+	}
+	output, err := io.ReadAll(outputRaw)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("exit code %d. stderr: %s", code, string(output))
+	}
 
-	return stdout.String(), err
+	return string(output), err
 }
 
 func getToken(ctx context.Context, username, password string) (string, error) {
-	provider, err := oidc.NewProvider(ctx, "http://auth.apex.local")
+	provider, err := oidc.NewProvider(ctx, "https://auth.apex.local")
 	if err != nil {
 		return "", err
 	}
@@ -170,18 +167,26 @@ func getToken(ctx context.Context, username, password string) (string, error) {
 }
 
 // CreateNetwork creates a docker network
-func (suite *ApexIntegrationSuite) CreateNetwork(name, cidr string) *dockertest.Network {
-	net, err := suite.pool.CreateNetwork(name, func(config *docker.CreateNetworkOptions) {
-		config.Driver = "bridge"
-		config.IPAM = &docker.IPAMOptions{
-			Driver: "default",
-			Config: []docker.IPAMConfig{
-				{
-					Subnet: cidr,
+func (suite *ApexIntegrationSuite) CreateNetwork(ctx context.Context, name, cidr string) testcontainers.Network {
+	req := testcontainers.GenericNetworkRequest{
+		ProviderType: providerType,
+		NetworkRequest: testcontainers.NetworkRequest{
+			Name:   name,
+			Driver: "bridge",
+			IPAM: &network.IPAM{
+				Driver: ipamDriver,
+				Config: []network.IPAMConfig{
+					{
+						Subnet: cidr,
+					},
 				},
 			},
-		}
-	})
+		},
+	}
+	net, err := testcontainers.GenericNetwork(
+		ctx,
+		req,
+	)
 	require.NoError(suite.T(), err)
 	return net
 }
@@ -202,4 +207,25 @@ func lineCount(s string) (int, error) {
 	}
 
 	return count, nil
+}
+
+func (suite *ApexIntegrationSuite) runApex(ctx context.Context, node testcontainers.Container, args ...string) {
+	cmd := []string{"/bin/apex"}
+	cmd = append(cmd, args...)
+	cmd = append(cmd, "https://apex.local")
+	nodeName, _ := node.Name(ctx)
+	out, err := suite.containerExec(ctx, node, cmd)
+	if suite.T().Failed() {
+		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
+		suite.logger.Errorf("output:\n%s", out)
+		suite.logger.Errorf("%+v", err)
+	}
+}
+
+func networkAddr(n *net.IPNet) net.IP {
+	network := net.ParseIP("0.0.0.0").To4()
+	for i := 0; i < len(n.IP); i++ {
+		network[i] = n.IP[i] & n.Mask[i]
+	}
+	return network
 }

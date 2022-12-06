@@ -1,5 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: apiserver
+    literals:
+      - APEX_DEBUG=1
+      - APEX_DB_HOST=localhost
+      - APEX_DB_NAME=apiserver
+      - APEX_DB_USER=apiserver
+      - APEX_DB_PASSWORD=floofykittens
+      - APEX_IPAM_URL=http://ipam:9090
+      - APEX_OIDC_URL=https://auth.apex.local
 resources:
   - persistentvolumeclaim.yaml
   - service.yaml

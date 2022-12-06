@@ -25,7 +25,10 @@
 /*.key
 /apex-*.sh
 docker-compose.log
+!Containerfile.test
+*.test
 
 # config
 .env.*
 coredns.yaml
+.certs

@@ -1,0 +1,71 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+namespace: apex
+resources:
+  - issuer.yaml
+patchesJson6902:
+  - target:
+      Kind: Ingress
+      Name: apiproxy
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: apex-issuer
+  - target:
+      Kind: Ingress
+      Name: dex
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1issuer
+      - op: remove
+        path: /spec/tls
+      - op: add
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+        value: true
+  - target:
+      Kind: Ingress
+      Name: frontend
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: apex-issuer
+  - target:
+      Kind: Certificate
+      Name: dex-cert
+    patch: |-
+      - op: replace
+        path: /spec/issuerRef/name
+        value: apex-issuer
+      - op: replace
+        path: /spec/issuerRef/kind
+        value: Issuer
+  - target:
+      Kind: Deployment
+      Name: backend-cli
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      Kind: Deployment
+      Name: backend-web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      Kind: StatefulSet
+      Name: apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/1/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes/1
+        value: {"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}

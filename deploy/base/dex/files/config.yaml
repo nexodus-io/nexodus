@@ -1,10 +1,12 @@
-issuer: <AUTH_HOST>
+issuer: https://auth.apex.local
 
 storage:
   type: memory
 
 web:
-  http: 0.0.0.0:8080
+  https: 0.0.0.0:5554
+  tlsCert: /etc/dex/tls/tls.crt
+  tlsKey: /etc/dex/tls/tls.key
 
 expiry:
   deviceRequests: "5m"
@@ -17,11 +19,12 @@ expiry:
 
 oauth2:
   responseTypes: ["code", "token", "id_token"]
+  passwordConnector: local
 
 staticClients:
   - idEnv: WEB_CLIENT_ID
     redirectURIs:
-      - "<HOST>/#/login"
+      - "https://apex.local/#/login"
     name: "Apex Web Frontend"
     secretEnv: WEB_CLIENT_SECRET
   - idEnv: CLI_CLIENT_ID
