@@ -9,15 +9,17 @@ import (
 	"github.com/bufbuild/connect-go"
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type IPAM struct {
+	logger *zap.SugaredLogger
 	client apiv1connect.IpamServiceClient
 }
 
-func NewIPAM(ipamAddress string) IPAM {
+func NewIPAM(logger *zap.SugaredLogger, ipamAddress string) IPAM {
 	return IPAM{
+		logger: logger,
 		client: apiv1connect.NewIpamServiceClient(
 			http.DefaultClient,
 			ipamAddress,
@@ -34,7 +36,7 @@ func (i *IPAM) AssignSpecificNodeAddress(ctx context.Context, ipamPrefix string,
 		Ip:         &nodeAddress,
 	}))
 	if err != nil {
-		log.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", nodeAddress, err)
+		i.logger.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", nodeAddress, err)
 		return i.AssignFromPool(ctx, ipamPrefix)
 	}
 	return res.Msg.Ip.Ip, nil
@@ -45,7 +47,7 @@ func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, e
 		PrefixCidr: ipamPrefix,
 	}))
 	if err != nil {
-		log.Errorf("failed to acquire an IPAM assigned address %v", err)
+		i.logger.Errorf("failed to acquire an IPAM assigned address %v", err)
 		return "", fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 	}
 	return res.Msg.Ip.Ip, nil
@@ -54,7 +56,7 @@ func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, e
 func (i *IPAM) AssignPrefix(ctx context.Context, cidr string) error {
 	cidr, err := cleanCidr(cidr)
 	if err != nil {
-		log.Errorf("invalid prefix requested: %v", err)
+		i.logger.Errorf("invalid prefix requested: %v", err)
 		return fmt.Errorf("invalid prefix requested: %v", err)
 	}
 	_, err = i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))

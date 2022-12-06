@@ -10,10 +10,12 @@ import (
 	"github.com/redhat-et/apex/internal/handlers"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/zap"
 )
 
 func NewAPIRouter(
 	ctx context.Context,
+	logger *zap.SugaredLogger,
 	api *handlers.API,
 	clientIdWeb string,
 	clientIdCli string,
@@ -36,7 +38,7 @@ func NewAPIRouter(
 
 	private := r.Group("/")
 	{
-		private.Use(ValidateJWT(verifier, clientIdWeb, clientIdCli))
+		private.Use(ValidateJWT(logger, verifier, clientIdWeb, clientIdCli))
 		private.Use(api.CreateUserIfNotExists())
 		// Zones
 		private.GET("/zones", api.ListZones)

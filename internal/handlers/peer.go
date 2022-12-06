@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
-	log "github.com/sirupsen/logrus"
+
 	"gorm.io/gorm"
 )
 
@@ -160,7 +160,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				ip, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
 				if err != nil {
 					tx.Rollback()
-					log.Error(err)
+					api.logger.Error(err)
 					c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 					return
 				}
@@ -181,13 +181,13 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		if request.ChildPrefix != peer.ChildPrefix {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
-				log.Error(err)
+				api.logger.Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 				return
 			}
 		}
 	} else {
-		log.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
+		api.logger.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
 		var ipamIP string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
@@ -196,7 +196,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			ipamIP, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
 			if err != nil {
 				tx.Rollback()
-				log.Error(err)
+				api.logger.Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 				return
 			}
@@ -205,7 +205,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
 			if err != nil {
 				tx.Rollback()
-				log.Error(err)
+				api.logger.Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 				return
 			}
@@ -214,7 +214,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		if request.ChildPrefix != "" {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
-				log.Error(err)
+				api.logger.Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 				return
 			}
@@ -245,7 +245,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 
 	if err := tx.Commit(); err.Error != nil {
 		tx.Rollback()
-		log.Error(err.Error)
+		api.logger.Error(err.Error)
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
 	}

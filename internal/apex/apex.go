@@ -13,7 +13,7 @@ import (
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/redhat-et/apex/internal/models"
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -28,7 +28,6 @@ type Apex struct {
 	wireguardPvtKey         string
 	wireguardPubKeyInConfig bool
 	controllerIP            string
-	controllerPasswd        string
 	listenPort              int
 	zone                    uuid.UUID
 	requestedIP             string
@@ -51,6 +50,7 @@ type Apex struct {
 	nodeReflexiveAddress string
 	hostname             string
 	symmetricNat         bool
+	logger               *zap.SugaredLogger
 }
 
 type wgConfig struct {
@@ -70,26 +70,32 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
+func NewApex(ctx context.Context, logger *zap.SugaredLogger,
+	controller string,
+	withToken string,
+	wgListenPort int,
+	wireguardPubKey string,
+	wireguardPvtKey string,
+	requestedIP string,
+	userProvidedEndpointIP string,
+	childPrefix string,
+	stun bool,
+	hubRouter bool,
+	relayOnly bool,
+) (*Apex, error) {
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
 
-	controller := cCtx.Args().First()
-	if controller == "" {
-		log.Fatal("<controller-url> required")
-	}
-
 	controllerURL, err := url.Parse(controller)
 	if err != nil {
-		log.Fatalf("error: <controller-url> is not a valid URL: %s", err)
+		return nil, err
 	}
 
 	// Force controller URL be api.${DOMAIN}
 	controllerURL.Host = "api." + controllerURL.Host
 	controllerURL.Path = ""
 
-	withToken := cCtx.String("with-token")
 	var option client.Option
 	if withToken == "" {
 		option = client.WithDeviceFlow()
@@ -99,49 +105,44 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 
 	client, err := client.NewClient(ctx, controllerURL.String(), option)
 	if err != nil {
-		log.Fatalf("error creating client: %+v", err)
+		return nil, err
 	}
 
-	if err := checkOS(); err != nil {
+	if err := checkOS(logger); err != nil {
 		return nil, err
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatalf("Error retrieving hostname: %+v", err)
+		return nil, err
 	}
 
-	var wgListenPort int
-	if cCtx.Int("listen-port") == 0 {
+	if wgListenPort == 0 {
 		wgListenPort = getWgListenPort()
 	}
 
 	ax := &Apex{
-		wireguardPubKey:        cCtx.String("public-key"),
-		wireguardPvtKey:        cCtx.String("private-key"),
-		controllerIP:           cCtx.String("controller"),
-		controllerPasswd:       cCtx.String("controller-password"),
+		wireguardPubKey:        wireguardPubKey,
+		wireguardPvtKey:        wireguardPvtKey,
+		controllerIP:           controller,
 		listenPort:             wgListenPort,
-		requestedIP:            cCtx.String("request-ip"),
-		userProvidedEndpointIP: cCtx.String("local-endpoint-ip"),
-		childPrefix:            cCtx.String("child-prefix"),
-		stun:                   cCtx.Bool("stun"),
-		hubRouter:              cCtx.Bool("hub-router"),
+		requestedIP:            requestedIP,
+		userProvidedEndpointIP: userProvidedEndpointIP,
+		childPrefix:            childPrefix,
+		stun:                   stun,
+		hubRouter:              hubRouter,
 		client:                 client,
 		os:                     GetOS(),
 		peerCache:              make(map[uuid.UUID]models.Peer),
 		keyCache:               make(map[uuid.UUID]string),
 		controllerURL:          controllerURL,
 		hostname:               hostname,
+		symmetricNat:           relayOnly,
+		logger:                 logger,
 	}
 
 	if ax.hubRouter {
 		ax.listenPort = WgDefaultPort
-	}
-
-	if cCtx.Bool("relay-only") {
-		log.Infof("Relay-only mode active")
-		ax.symmetricNat = true
 	}
 
 	if err := ax.checkUnsupportedConfigs(); err != nil {
@@ -153,24 +154,24 @@ func NewApex(ctx context.Context, cCtx *cli.Context) (*Apex, error) {
 	return ax, nil
 }
 
-func (ax *Apex) Run() {
+func (ax *Apex) Run() error {
 	var err error
 
 	if err := ax.handleKeys(); err != nil {
-		log.Fatalf("handleKeys: %+v", err)
+		return fmt.Errorf("handleKeys: %+v", err)
 	}
 
 	device, err := ax.client.CreateDevice(ax.wireguardPubKey, ax.hostname)
 	if err != nil {
-		log.Fatalf("device register error: %+v", err)
+		return fmt.Errorf("device register error: %+v", err)
 	}
-	log.Infof("Device Registered with UUID: %s", device.ID)
+	ax.logger.Infof("Device Registered with UUID: %s", device.ID)
 
 	user, err := ax.client.GetCurrentUser()
 	if err != nil {
-		log.Fatalf("get zone error: %+v", err)
+		return fmt.Errorf("get zone error: %+v", err)
 	}
-	log.Infof("Device belongs in zone: %s", user.ZoneID)
+	ax.logger.Infof("Device belongs in zone: %s", user.ZoneID)
 	ax.zone = user.ZoneID
 
 	var localEndpointIP string
@@ -179,15 +180,15 @@ func (ax *Apex) Run() {
 		localEndpointIP = ax.userProvidedEndpointIP
 	}
 	if ax.stun && localEndpointIP == "" {
-		localEndpointIP, err = GetPubIPv4()
+		localEndpointIP, err = GetPubIPv4(ax.logger)
 		if err != nil {
-			log.Warn("Unable to determine the public facing address, falling back to the local address")
+			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		}
 	}
 	if localEndpointIP == "" {
 		localEndpointIP, err = ax.findLocalEndpointIp()
 		if err != nil {
-			log.Fatalf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
+			return fmt.Errorf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
 		}
 	}
 	ax.endpointIP = localEndpointIP
@@ -209,18 +210,20 @@ func (ax *Apex) Run() {
 		ax.symmetricNat,
 	)
 	if err != nil {
-		log.Fatalf("error creating peer: %+v", err)
+		return fmt.Errorf("error creating peer: %+v", err)
 	}
-	log.Info("Successfully registered with Apex Controller")
+	ax.logger.Info("Successfully registered with Apex Controller")
 
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.hubRouter {
-		enableForwardingIPv4()
+		if err := enableForwardingIPv4(ax.logger); err != nil {
+			return err
+		}
 		hubRouterIpTables()
 	}
 
 	if err := ax.Reconcile(ax.zone, true); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// send keepalives to all peers on a ticker
@@ -238,8 +241,10 @@ func (ax *Apex) Run() {
 		go func() {
 			relayStateTicker := time.NewTicker(time.Second * 30)
 			for range relayStateTicker.C {
-				log.Debugf("Reconciling peers from relay state")
-				ax.relayStateReconcile(user.ZoneID)
+				ax.logger.Debugf("Reconciling peers from relay state")
+				if err := ax.relayStateReconcile(user.ZoneID); err != nil {
+					ax.logger.Error(err)
+				}
 			}
 		}()
 	}
@@ -249,13 +254,14 @@ func (ax *Apex) Run() {
 		if err := ax.Reconcile(user.ZoneID, false); err != nil {
 			// TODO: Add smarter reconciliation logic
 			// to handle disconnects and/or timeouts etc...
-			log.Fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (ax *Apex) Keepalive() {
-	log.Trace("Sending Keepalive")
+	ax.logger.Debug("Sending Keepalive")
 	var peerEndpoints []string
 	if !ax.hubRouter {
 		for _, value := range ax.peerCache {
@@ -276,7 +282,7 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 	var newPeers []models.Peer
 	if firstTime {
 		// Initial peer list processing branches from here
-		log.Debugf("Initializing peers for the first time")
+		ax.logger.Debugf("Initializing peers for the first time")
 		for _, p := range peerListing {
 			existing, ok := ax.peerCache[p.ID]
 			if !ok {
@@ -288,8 +294,12 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 				newPeers = append(newPeers, p)
 			}
 		}
-		ax.ParseWireguardConfig()
-		ax.DeployWireguardConfig(newPeers, firstTime)
+		if err := ax.ParseWireguardConfig(); err != nil {
+			return err
+		}
+		if err := ax.DeployWireguardConfig(newPeers, firstTime); err != nil {
+			return err
+		}
 	}
 	// all subsequent peer listings updates get branched from here
 	changed := false
@@ -307,16 +317,20 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 		}
 	}
 	if changed {
-		log.Debugf("Peers listing has changed, recalculating configuration")
-		ax.ParseWireguardConfig()
-		ax.DeployWireguardConfig(newPeers, false)
+		ax.logger.Debugf("Peers listing has changed, recalculating configuration")
+		if err := ax.ParseWireguardConfig(); err != nil {
+			return err
+		}
+		if err := ax.DeployWireguardConfig(newPeers, false); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // relayStateReconcile collect state from the relay node and rejoin nodes with the dynamic state
-func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) {
-	log.Debugf("Reconciling peers from relay state")
+func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
+	ax.logger.Debugf("Reconciling peers from relay state")
 	peerListing, err := ax.client.GetZonePeers(zoneID)
 	if err != nil {
 		log.Errorf("Error getting a peer listing: %v", err)
@@ -337,12 +351,12 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) {
 	for _, peer := range peerListing {
 		// if the peer is behind a symmetric NAT, skip to the next peer
 		if peer.SymmetricNat {
-			log.Debugf("skipping symmetric NAT node %s", peer.EndpointIP)
+			ax.logger.Debugf("skipping symmetric NAT node %s", peer.EndpointIP)
 			continue
 		}
 		device, err := ax.client.GetDevice(peer.DeviceID)
 		if err != nil {
-			log.Fatalf("unable to get device %s: %s", peer.DeviceID, err)
+			return fmt.Errorf("unable to get device %s: %s", peer.DeviceID, err)
 		}
 		_, ok := relayData[device.PublicKey]
 		if ok {
@@ -362,6 +376,7 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) {
 			}
 		}
 	}
+	return nil
 }
 
 func (ax *Apex) Shutdown(ctx context.Context) error {
@@ -369,26 +384,26 @@ func (ax *Apex) Shutdown(ctx context.Context) error {
 }
 
 // Check OS and report error if the OS is not supported.
-func checkOS() error {
+func checkOS(logger *zap.SugaredLogger) error {
 	nodeOS := GetOS()
 	switch nodeOS {
 	case Darwin.String():
-		log.Debugf("[%s] operating system detected", nodeOS)
+		logger.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the osx wireguard directory exists
 		if err := CreateDirectory(WgDarwinConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
-		if ifaceExists(darwinIface) {
+		if ifaceExists(logger, darwinIface) {
 			deleteDarwinIface()
 		}
 	case Windows.String():
-		log.Debugf("[%s] operating system detected", nodeOS)
+		logger.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the windows wireguard directory exists
 		if err := CreateDirectory(WgWindowsConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgWindowsConfPath, err)
 		}
 	case Linux.String():
-		log.Debugf("[%s] operating system detected", nodeOS)
+		logger.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the linux wireguard directory exists
 		if err := CreateDirectory(WgLinuxConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgLinuxConfPath, err)
@@ -402,24 +417,24 @@ func checkOS() error {
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Apex) checkUnsupportedConfigs() error {
 	if ax.hubRouter && ax.os == Darwin.String() {
-		log.Fatalf("OSX nodes cannot be a hub-router, only Linux nodes")
+		return fmt.Errorf("OSX nodes cannot be a hub-router, only Linux nodes")
 	}
 	if ax.hubRouter && ax.os == Windows.String() {
-		log.Fatalf("Windows nodes cannot be a hub-router, only Linux nodes")
+		return fmt.Errorf("Windows nodes cannot be a hub-router, only Linux nodes")
 	}
 	if ax.userProvidedEndpointIP != "" {
 		if err := ValidateIp(ax.userProvidedEndpointIP); err != nil {
-			log.Fatalf("the IP address passed in --local-endpoint-ip %s was not valid: %v", ax.userProvidedEndpointIP, err)
+			return fmt.Errorf("the IP address passed in --local-endpoint-ip %s was not valid: %v", ax.userProvidedEndpointIP, err)
 		}
 	}
 	if ax.requestedIP != "" {
 		if err := ValidateIp(ax.requestedIP); err != nil {
-			log.Fatalf("the IP address passed in --request-ip %s was not valid: %v", ax.requestedIP, err)
+			return fmt.Errorf("the IP address passed in --request-ip %s was not valid: %v", ax.requestedIP, err)
 		}
 	}
 	if ax.childPrefix != "" {
 		if err := ValidateCIDR(ax.childPrefix); err != nil {
-			log.Fatalf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
+			return fmt.Errorf("the CIDR prefix passed in --child-prefix %s was not valid: %v", ax.childPrefix, err)
 		}
 	}
 	return nil
@@ -432,17 +447,17 @@ func (ax *Apex) nodePrep() {
 	if ax.os == Linux.String() && linkExists(wgIface) {
 		if err := delLink(wgIface); err != nil {
 			// not a fatal error since if this is on startup it could be absent
-			log.Debugf("failed to delete netlink interface %s: %v", wgIface, err)
+			ax.logger.Debugf("failed to delete netlink interface %s: %v", wgIface, err)
 		}
 	}
 	if ax.os == Darwin.String() {
-		if ifaceExists(darwinIface) {
+		if ifaceExists(ax.logger, darwinIface) {
 			deleteDarwinIface()
 		}
 	}
 
 	// discover the server reflexive address per ICE RFC8445 = (lol public address)
-	stunAddr, err := GetPubIPv4()
+	stunAddr, err := GetPubIPv4(ax.logger)
 	if err != nil {
 		log.Infof("failed to query the stun server: %v", err)
 	} else {
@@ -480,21 +495,21 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var err error
 	// Darwin network discovery
 	if !ax.stun && ax.os == Darwin.String() {
-		localEndpointIP, err = discoverGenericIPv4(ax.controllerURL.Host, "80")
+		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "80")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
 	if !ax.stun && ax.os == Windows.String() {
-		localEndpointIP, err = discoverGenericIPv4(ax.controllerURL.Host, "80")
+		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "80")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Linux network discovery
 	if !ax.stun && ax.os == Linux.String() {
-		linuxIP, err := discoverLinuxAddress(4)
+		linuxIP, err := discoverLinuxAddress(ax.logger, 4)
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
