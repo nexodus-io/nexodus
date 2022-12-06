@@ -13,7 +13,26 @@
       - jq
       - fping
       - iperf3
+      - mkcert
     state: latest
+
+- name: Create the certs dir
+  shell: |
+    mkdir -p .certs
+
+- name: Copy rootCA.pem
+  copy:
+    src: ./rootCA.pem
+    dest: .certs/
+    mode: 0644
+
+- name: Create the certs dir
+  shell: |
+    mkdir -p .certs
+
+- name: mkcert
+  shell: |
+    CAROOT=/home/{{ ansible_user }}/.certs mkcert -install
 
 - name: Kill any existing apex process from previous runs
   shell: |
