@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +11,8 @@ import (
 	"github.com/redhat-et/apex/internal/handlers"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/routers"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -96,9 +98,16 @@ func main() {
 		},
 		Action: func(cCtx *cli.Context) error {
 			ctx := cCtx.Context
+			var logger *zap.Logger
+			var err error
 			// set the log level
 			if cCtx.Bool("debug") {
-				log.SetLevel(log.DebugLevel)
+				logger, err = zap.NewDevelopment()
+			} else {
+				logger, err = zap.NewProduction()
+			}
+			if err != nil {
+				log.Fatal(err)
 			}
 
 			db, err := database.NewDatabase(
@@ -113,15 +122,16 @@ func main() {
 				log.Fatal(err)
 			}
 
-			ipam := ipam.NewIPAM(cCtx.String("ipam-address"))
+			ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
 
-			api, err := handlers.NewAPI(ctx, db, ipam)
+			api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			router, err := routers.NewAPIRouter(
 				ctx,
+				logger.Sugar(),
 				api,
 				cCtx.String("oidc-client-id-web"),
 				cCtx.String("oidc-client-id-cli"),

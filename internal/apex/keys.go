@@ -37,7 +37,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		log.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(darwinPublicKeyFile, darwinPrivateKeyFile); err != nil {
-			log.Fatalf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
 		log.Debugf("New keys were written to [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
 		return nil
@@ -53,7 +53,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		log.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(windowsPublicKeyFile, windowsPrivateKeyFile); err != nil {
-			log.Fatalf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
 		log.Debugf("New keys were written to [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
 		return nil
@@ -69,7 +69,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		log.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(linuxPublicKeyFile, linuxPrivateKeyFile); err != nil {
-			log.Fatalf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
 		log.Debugf("New keys were written to [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
 		return nil
@@ -97,8 +97,8 @@ func (ax *Apex) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 	// TODO remove this debug statement at some point
 	log.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
 	// write the new keys to disk
-	writeToFile(ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
-	writeToFile(ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+	writeToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
+	writeToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
 
 	return nil
 }

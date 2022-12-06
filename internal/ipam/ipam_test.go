@@ -12,10 +12,13 @@ import (
 	"github.com/redhat-et/apex/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 type IpamTestSuite struct {
 	suite.Suite
+	logger *zap.SugaredLogger
 	ipam   IPAM
 	server *http.Server
 	wg     sync.WaitGroup
@@ -23,7 +26,8 @@ type IpamTestSuite struct {
 
 func (suite *IpamTestSuite) SetupSuite() {
 	suite.server = util.NewTestIPAMServer()
-	suite.ipam = NewIPAM(util.TestIPAMClientAddr)
+	suite.logger = zaptest.NewLogger(suite.T()).Sugar()
+	suite.ipam = NewIPAM(suite.logger, util.TestIPAMClientAddr)
 	suite.wg = sync.WaitGroup{}
 	suite.wg.Add(1)
 	listener, err := net.Listen("tcp", "[::1]:9090")

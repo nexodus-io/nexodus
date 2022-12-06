@@ -6,15 +6,16 @@ import (
 	"net"
 
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 )
 
 // routeExists currently only used for darwin build purposes
-func routeExists(s string) bool {
-	return false
+func routeExists(s string) (bool, error) {
+	return false, nil
 }
 
 // discoverLinuxAddress only used for darwin build purposes
-func discoverLinuxAddress(family int) (net.IP, error) {
+func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	return nil, nil
 }
 

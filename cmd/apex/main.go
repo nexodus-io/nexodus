@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/redhat-et/apex/internal/apex"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -17,10 +18,18 @@ const (
 
 func main() {
 	// set the log level
-	env := os.Getenv(apexLogEnv)
-	if env == "debug" {
-		log.SetLevel(log.DebugLevel)
+	debug := os.Getenv(apexLogEnv)
+	var logger *zap.Logger
+	var err error
+	if debug != "" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// flags are stored in the global flags variable
 	app := &cli.App{
 		Name:  "apex",
@@ -101,14 +110,34 @@ func main() {
 			}
 			return nil
 		},
-		Action: func(c *cli.Context) error {
+		Action: func(cCtx *cli.Context) error {
+
+			controller := cCtx.Args().First()
+			if controller == "" {
+				log.Fatal("<controller-url> required")
+			}
+
 			apex, err := apex.NewApex(
-				context.Background(), c)
+				context.Background(), logger.Sugar(),
+				controller,
+				cCtx.String("with-token"),
+				cCtx.Int("listen-port"),
+				cCtx.String("public-key"),
+				cCtx.String("private-key"),
+				cCtx.String("request-ip"),
+				cCtx.String("local-endpoint-ip"),
+				cCtx.String("child-prefix"),
+				cCtx.Bool("stun"),
+				cCtx.Bool("hub-router"),
+				cCtx.Bool("relay-only"),
+			)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			apex.Run()
+			if err := apex.Run(); err != nil {
+				log.Fatal(err)
+			}
 
 			ch := make(chan os.Signal, 1)
 			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)

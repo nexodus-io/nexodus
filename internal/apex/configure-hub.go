@@ -211,7 +211,11 @@ func hubRouterIpTables() {
 }
 
 func (ax *Apex) addChildPrefixRoute(ChildPrefix string) {
-	if ax.os == Linux.String() && routeExists(ChildPrefix) {
+	routeExists, err := routeExists(ChildPrefix)
+	if err != nil {
+		ax.logger.Warn(err)
+	}
+	if ax.os == Linux.String() && routeExists {
 		log.Debugf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", ChildPrefix)
 		return
 	}
@@ -222,7 +226,7 @@ func (ax *Apex) addChildPrefixRoute(ChildPrefix string) {
 	}
 	// add osx child prefix
 	if ax.os == Darwin.String() {
-		if err := addDarwinChildPrefixRoute(ChildPrefix); err != nil {
+		if err := addDarwinChildPrefixRoute(ax.logger, ChildPrefix); err != nil {
 			// TODO: setting to debug until the child prefix is looked up on Darwin
 			log.Debugf("error adding the child prefix route: %v", err)
 		}

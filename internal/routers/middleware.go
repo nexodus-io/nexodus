@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/go-oidc"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // key for username in gin.Context
@@ -22,7 +22,7 @@ type Claims struct {
 }
 
 // Naive JWS Key validation
-func ValidateJWT(verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
+func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
 	return func(c *gin.Context) {
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
@@ -41,7 +41,7 @@ func ValidateJWT(verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli
 			return
 		}
 
-		log.Debug("verifying token")
+		logger.Debug("verifying token")
 		token, err := verifier.Verify(c.Request.Context(), parts[1])
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
@@ -55,17 +55,17 @@ func ValidateJWT(verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli
 			}
 		}
 
-		log.Debug("getting claims")
+		logger.Debug("getting claims")
 		var claims Claims
 		if err := token.Claims(&claims); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		log.Debugf("claims: %+v", claims)
+		logger.Debugf("claims: %+v", claims)
 		c.Set(gin.AuthUserKey, claims.Subject)
 		c.Set(AuthUserName, claims.UserName)
 		// c.Set(AuthUserScope, claims.Scope)
-		log.Debugf("user-id is %s", claims.Subject)
+		logger.Debugf("user-id is %s", claims.Subject)
 		c.Next()
 	}
 }

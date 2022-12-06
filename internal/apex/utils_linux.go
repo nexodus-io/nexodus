@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"net"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
 
 // routeExists checks the netlink routes for the destination prefix
-func routeExists(prefix string) bool {
+func routeExists(prefix string) (bool, error) {
 	destNet, err := ParseIPNet(prefix)
 	if err != nil {
-		log.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
+		return false, fmt.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
 	}
 	destRoute := &netlink.Route{Dst: destNet}
 	family := netlink.FAMILY_V6
@@ -24,17 +24,16 @@ func routeExists(prefix string) bool {
 	}
 	match, err := netlink.RouteListFiltered(family, destRoute, netlink.RT_FILTER_DST)
 	if err != nil {
-		log.Errorf("error retrieving netlink routes: %v", err)
-		return true
+		return true, fmt.Errorf("error retrieving netlink routes: %v", err)
 	}
 	if len(match) > 0 {
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
-func discoverLinuxAddress(family int) (net.IP, error) {
-	iface, _, err := getDefaultGatewayIface(family)
+func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
+	iface, _, err := getDefaultGatewayIface(logger, family)
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
@@ -72,7 +71,7 @@ func getNetworkInterfaceIPs(iface string) ([]*net.IPNet, error) {
 }
 
 // getDefaultGatewayIface returns the interface that contains the default gateway
-func getDefaultGatewayIface(family int) (string, net.IP, error) {
+func getDefaultGatewayIface(logger *zap.SugaredLogger, family int) (string, net.IP, error) {
 	filter := &netlink.Route{Dst: nil}
 	routes, err := netlink.RouteListFiltered(family, filter, netlink.RT_FILTER_DST)
 	if err != nil {
@@ -83,27 +82,27 @@ func getDefaultGatewayIface(family int) (string, net.IP, error) {
 		if len(r.MultiPath) == 0 {
 			ifaceLink, err := netlink.LinkByIndex(r.LinkIndex)
 			if err != nil {
-				log.Warningf("Failed to get interface link for route %v : %v", r, err)
+				logger.Warnf("Failed to get interface link for route %v : %v", r, err)
 				continue
 			}
 			if r.Gw == nil {
-				log.Warningf("Failed to get gateway for route %v : %v", r, err)
+				logger.Warnf("Failed to get gateway for route %v : %v", r, err)
 				continue
 			}
-			log.Infof("Found default gateway interface %s %s", ifaceLink.Attrs().Name, r.Gw.String())
+			logger.Infof("Found default gateway interface %s %s", ifaceLink.Attrs().Name, r.Gw.String())
 			return ifaceLink.Attrs().Name, r.Gw, nil
 		}
 		for _, nh := range r.MultiPath {
 			intfLink, err := netlink.LinkByIndex(nh.LinkIndex)
 			if err != nil {
-				log.Warningf("Failed to get interface link for route %v : %v", nh, err)
+				logger.Warnf("Failed to get interface link for route %v : %v", nh, err)
 				continue
 			}
 			if nh.Gw == nil {
-				log.Warningf("Failed to get gateway for multipath route %v : %v", nh, err)
+				logger.Warnf("Failed to get gateway for multipath route %v : %v", nh, err)
 				continue
 			}
-			log.Infof("Found default gateway interface %s %s", intfLink.Attrs().Name, nh.Gw.String())
+			logger.Infof("Found default gateway interface %s %s", intfLink.Attrs().Name, nh.Gw.String())
 			return intfLink.Attrs().Name, nh.Gw, nil
 		}
 	}

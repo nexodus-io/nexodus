@@ -15,6 +15,8 @@ import (
 	"github.com/redhat-et/apex/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 const (
@@ -23,9 +25,10 @@ const (
 
 type HandlerTestSuite struct {
 	suite.Suite
-	ipam *http.Server
-	wg   *sync.WaitGroup
-	api  *API
+	logger *zap.SugaredLogger
+	ipam   *http.Server
+	wg     *sync.WaitGroup
+	api    *API
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
@@ -34,6 +37,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 		suite.T().Fatal(err)
 	}
 
+	suite.logger = zaptest.NewLogger(suite.T()).Sugar()
 	suite.ipam = util.NewTestIPAMServer()
 	suite.wg = &sync.WaitGroup{}
 	suite.wg.Add(1)
@@ -48,8 +52,8 @@ func (suite *HandlerTestSuite) SetupSuite() {
 		}
 	}()
 
-	ipamClient := ipam.NewIPAM(util.TestIPAMClientAddr)
-	suite.api, err = NewAPI(context.Background(), db, ipamClient)
+	ipamClient := ipam.NewIPAM(suite.logger, util.TestIPAMClientAddr)
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

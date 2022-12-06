@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
-	log "github.com/sirupsen/logrus"
+
 	"gorm.io/gorm"
 )
 
@@ -65,7 +65,7 @@ func (api *API) CreateZone(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create zone"})
 		return
 	}
-	log.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
+	api.logger.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
 	c.JSON(http.StatusCreated, newZone)
 }
 
@@ -73,7 +73,7 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 	var zone models.Zone
 	res := api.db.Where("name = ?", defaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		log.Debug("Creating Default Zone")
+		api.logger.Debug("Creating Default Zone")
 		if err := api.ipam.AssignPrefix(ctx, defaultZonePrefix); err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 		zone.IpCidr = defaultZonePrefix
 		api.db.Save(&zone)
 	}
-	log.Debugf("Default Zone UUID is: %s", zone.ID)
+	api.logger.Debugf("Default Zone UUID is: %s", zone.ID)
 	api.defaultZoneID = zone.ID
 	return nil
 }
