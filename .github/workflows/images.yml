@@ -46,9 +46,9 @@ jobs:
       id: build-frontend
       uses: redhat-actions/buildah-build@v2
       with:
-        image: apiserver-ui
+        image: frontend
         tags: latest ${{ github.sha }} ${{github.ref_name}}
-        labels: ${{ steps.meta-apiserver-ui.outputs.labels }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
         containerfiles: |
           ./Containerfile.frontend
 
