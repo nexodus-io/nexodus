@@ -39,7 +39,7 @@ func probePeers(peers []string) []string {
 		result[i] = <-c
 		if result[i].status {
 			reachablePeers = append(reachablePeers, result[i].peer)
-			log.Debugf("peer [ %s ] is reachable", result[i].peer)
+			log.Tracef("peer [ %s ] is reachable", result[i].peer)
 		} else {
 			log.Debugf("peer [ %s ] is not reachable", result[i].peer)
 		}

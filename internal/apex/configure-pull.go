@@ -1,6 +1,7 @@
 package apex
 
 import (
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,12 +15,13 @@ import (
 )
 
 const (
-	persistentKeepalive    = "25"
+	// wg keepalives are disabled and managed by the agent
+	persistentKeepalive    = "0"
 	persistentHubKeepalive = "0"
 )
 
 // ParseWireguardConfig parse peerlisting to build the wireguard [Interface] and [Peer] sections
-func (ax *Apex) ParseWireguardConfig(listenPort int) {
+func (ax *Apex) ParseWireguardConfig() {
 
 	var peers []wgPeerConfig
 	var localInterface wgLocalConfig
@@ -56,7 +58,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 				log.Fatalf("Linux nodes are the only supported hub router OS")
 			} else {
 				// Build a hub-router wireguard configuration
-				ax.parseHubWireguardConfig(listenPort)
+				ax.parseHubWireguardConfig(ax.listenPort)
 				return
 			}
 		}
@@ -67,7 +69,7 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 				os.Exit(1)
 			}
 			// build a hub-zone wireguard configuration
-			ax.parseHubWireguardConfig(listenPort)
+			ax.parseHubWireguardConfig(ax.listenPort)
 			return
 		}
 	}
@@ -129,11 +131,11 @@ func (ax *Apex) ParseWireguardConfig(listenPort int) {
 			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				listenPort,
+				ax.listenPort,
 			}
 			log.Printf("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ]\n",
 				ax.wgLocalAddress,
-				WgListenPort)
+				ax.listenPort)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
 		}
@@ -197,9 +199,9 @@ func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) {
 				if err != nil {
 					log.Errorf("unable to get device %s: %s", newPeer.DeviceID, err)
 				}
-				// add routes for each peer candidate
+				// add routes for each peer candidate (unless the key matches the local nodes key)
 				for _, peer := range latestCfg.Peers {
-					if peer.PublicKey == device.PublicKey {
+					if peer.PublicKey == device.PublicKey && device.PublicKey != ax.wireguardPubKey {
 						ax.handlePeerRoute(peer)
 						ax.handlePeerTunnel(peer)
 					}
@@ -293,6 +295,13 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 // TODO: routes need to be looked up if the exists, netlink etc.
 func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
+	// validate the endpoint host:port pair parses.
+	// temporary: currently if relay state has not converged the endpoint can be registered as (none)
+	_, _, err := net.SplitHostPort(wgPeerConfig.Endpoint)
+	if err != nil {
+		log.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
+		return
+	}
 	allowedIPs := allowedIPsString(wgPeerConfig.AllowedIPs)
 	switch ax.os {
 	case Darwin.String():
@@ -302,7 +311,7 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 			log.Errorf("peer tunnel removal failed: %v", err)
 		}
 		// insert the peer
-		_, err = RunCommand("wg", "set", darwinIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "persistent-keepalive", "20", "endpoint", wgPeerConfig.Endpoint)
+		_, err = RunCommand("wg", "set", darwinIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "endpoint", wgPeerConfig.Endpoint)
 		if err != nil {
 			log.Errorf("peer tunnel addition failed: %v", err)
 		}
@@ -320,7 +329,7 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 				log.Errorf("peer tunnel addition failed: %v", err)
 			}
 		} else {
-			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "persistent-keepalive", "20", "endpoint", wgPeerConfig.Endpoint)
+			_, err = RunCommand("wg", "set", wgIface, "peer", wgPeerConfig.PublicKey, "allowed-ips", allowedIPs, "endpoint", wgPeerConfig.Endpoint)
 			if err != nil {
 				log.Errorf("peer tunnel addition failed: %v", err)
 			}
@@ -331,4 +340,11 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 // allowedIPsString joins the allowedIPs slice into the format required for wg set peer x,y,z
 func allowedIPsString(ips []string) string {
 	return strings.Join(ips, ",")
+}
+
+func getWgListenPort() int {
+	min := 32768
+	max := 61000
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min) + min
 }

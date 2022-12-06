@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pion/stun"
@@ -348,10 +349,19 @@ func (ax *Apex) setupLinuxInterface() {
 	if err != nil {
 		log.Errorf("failed to create the ip link interface: %v\n", err)
 	}
-	// start the wireguard listener
-	_, err = RunCommand("wg", "set", wgIface, "listen-port", "51820", "private-key", linuxPrivateKeyFile)
-	if err != nil {
-		log.Errorf("failed to start the wireguard listener: %v\n", err)
+	// start the wireguard listener on a well-known port if it is the hub-router as all
+	// nodes need to be able to reach this node for state distribution if hole punching.
+	if ax.hubRouter {
+		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
+		if err != nil {
+			log.Errorf("failed to start the wireguard listener: %v\n", err)
+		}
+	} else {
+		// start the wireguard listener
+		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
+		if err != nil {
+			log.Errorf("failed to start the wireguard listener: %v\n", err)
+		}
 	}
 	// give the wg interface an address
 	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)

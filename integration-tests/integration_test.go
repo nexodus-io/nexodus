@@ -77,6 +77,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	err = ping(ctx, node2, node1IP)
 	require.NoError(err)
 
+	suite.T().Log("killing apex and re-joining nodes with new keys")
 	//kill the apex process on both nodes
 	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
 	require.NoError(err)
@@ -227,6 +228,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	err = ping(ctx, node2, node1IP)
 	assert.NoError(err)
 
+	suite.T().Log("killing apex and re-joining nodes")
 	//kill the apex process on both nodes
 	_, err = containerExec(ctx, node1, []string{"killall", "apex"})
 	require.NoError(err)
@@ -415,12 +417,10 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 /*
 The following test sets up a NAT scenario that emulates
 two networks that are behind  NAT devices and validates
-connectivity between all nodes.
-
+connectivity between local nodes and the relay node.
 Spoke nodes within the same network should peer directly
-to one another and spoke nodes that are not directly
-reachable through their local addresses get relayed
-through the relay node.
+to one another. This validates nodes that cannot UDP hole
+punch and can only peer directly to one another.
 
 	           +----------+
 	           |  Relay   |
@@ -563,6 +563,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	go func() {
 		_, err = containerExec(ctx, net1SpokeNode1, []string{
 			"/bin/apex",
+			"--relay-only",
 			fmt.Sprintf("--with-token=%s", token),
 			controllerURL,
 		})
@@ -571,6 +572,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	go func() {
 		_, err = containerExec(ctx, net2SpokeNode1, []string{
 			"/bin/apex",
+			"--relay-only",
 			fmt.Sprintf("--with-token=%s", token),
 			controllerURL,
 		})
@@ -579,6 +581,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	go func() {
 		_, err = containerExec(ctx, net1SpokeNode2, []string{
 			"/bin/apex",
+			"--relay-only",
 			fmt.Sprintf("--with-token=%s", token),
 			controllerURL,
 		})
@@ -587,10 +590,12 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	go func() {
 		_, err = containerExec(ctx, net2SpokeNode2, []string{
 			"/bin/apex",
+			"--relay-only",
 			fmt.Sprintf("--with-token=%s", token),
 			controllerURL,
 		})
 	}()
+	time.Sleep(time.Second * 10)
 
 	relayNodeIP, err := getContainerIfaceIP(ctx, "wg0", relayNode)
 	require.NoError(err)
@@ -609,14 +614,6 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 
 	suite.T().Logf("Pinging %s %s from %s", net2Spoke1Name, net2SpokeNode1IP, relayNodeName)
 	err = ping(ctx, relayNode, net2SpokeNode1IP)
-	assert.NoError(err)
-
-	suite.T().Logf("Pinging %s %s from node %s", net1Spoke1Name, net1SpokeNode1IP, net2Spoke1Name)
-	err = ping(ctx, net2SpokeNode1, net1SpokeNode1IP)
-	assert.NoError(err)
-
-	suite.T().Logf("Pinging %s %s from node %s", net2Spoke1Name, net2SpokeNode1IP, net1Spoke1Name)
-	err = ping(ctx, net1SpokeNode1, net2SpokeNode1IP)
 	assert.NoError(err)
 
 	suite.T().Logf("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke1Name)
@@ -643,19 +640,12 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	err = ping(ctx, net2SpokeNode2, net2SpokeNode1IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", net2Spoke2Name, net2SpokeNode2IP, net1Spoke2Name)
-	err = ping(ctx, net1SpokeNode2, net2SpokeNode2IP)
-	assert.NoError(err)
-
-	suite.T().Logf("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net2Spoke1Name)
-	err = ping(ctx, net2SpokeNode1, net1SpokeNode2IP)
-	assert.NoError(err)
-	// dump the wg state from the relay node. Likely temporary but
-	// important to show what is being tested here by displaying
-	// sockets being opened from an outside NAT interface.
+	// dump the wg state from the relay node.
 	wgShow, err := containerExec(ctx, relayNode, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
 	suite.T().Logf("Relay node wireguard state: \n%s", wgShow)
+
+	suite.T().Log("killing apex and re-joining nodes")
 
 	// kill the apex process on both nodes
 	_, err = containerExec(ctx, net1SpokeNode1, []string{"killall", "apex"})
@@ -681,13 +671,13 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 		})
 	}()
 
-	// validate the re-joined nodes can communicate
-	suite.T().Logf("Pinging %s %s from node %s", net2Spoke1Name, net2SpokeNode1IP, net1Spoke1Name)
-	err = ping(ctx, net1SpokeNode1, net2SpokeNode1IP)
+	suite.T().Logf("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net1Spoke1Name)
+	err = ping(ctx, net1SpokeNode1, net1SpokeNode2IP)
 	assert.NoError(err)
 
-	suite.T().Logf("Pinging %s %s from node %s", net1Spoke1Name, net1SpokeNode1IP, net2Spoke1Name)
-	err = ping(ctx, net2SpokeNode1, net1SpokeNode1IP)
+	// validate the re-joined nodes can communicate
+	suite.T().Logf("Pinging %s %s from node %s", net2Spoke2Name, net2SpokeNode2IP, net2Spoke1Name)
+	err = ping(ctx, net2SpokeNode1, net2SpokeNode2IP)
 	assert.NoError(err)
 
 	// verify there are (n) lines in the wg show output on a spoke node in each network
@@ -695,12 +685,12 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	require.NoError(err)
 	lc, err := lineCount(wgSpokeShow)
 	require.NoError(err)
-	assert.Equal(3, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 3, lc, wgSpokeShow)
+	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 
 	// verify there are (n) lines in the wg show output on a spoke node in each network
 	wgSpokeShow, err = containerExec(ctx, net2SpokeNode1, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
 	lc, err = lineCount(wgSpokeShow)
 	require.NoError(err)
-	assert.Equal(3, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 3, lc, wgSpokeShow)
+	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 }

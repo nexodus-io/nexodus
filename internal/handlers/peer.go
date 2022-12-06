@@ -149,7 +149,9 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 	}
 	if found {
 		peer.ReflexiveIPv4 = request.ReflexiveIPv4
+		peer.EnpointLocalAddressIPv4 = request.EnpointLocalAddressIPv4
 		peer.EndpointIP = request.EndpointIP
+		peer.SymmetricNat = request.SymmetricNat
 
 		if request.NodeAddress != peer.NodeAddress {
 			var ip string
@@ -220,16 +222,18 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		var allowedIPs []string
 		allowedIPs = append(allowedIPs, ipamIP)
 		peer = &models.Peer{
-			DeviceID:      device.ID,
-			ZoneID:        zone.ID,
-			EndpointIP:    request.EndpointIP,
-			AllowedIPs:    allowedIPs,
-			NodeAddress:   ipamIP,
-			ChildPrefix:   request.ChildPrefix,
-			ZonePrefix:    ipamPrefix,
-			HubZone:       hubZone,
-			HubRouter:     hubRouter,
-			ReflexiveIPv4: request.ReflexiveIPv4,
+			DeviceID:                device.ID,
+			ZoneID:                  zone.ID,
+			EndpointIP:              request.EndpointIP,
+			AllowedIPs:              allowedIPs,
+			NodeAddress:             ipamIP,
+			ChildPrefix:             request.ChildPrefix,
+			ZonePrefix:              ipamPrefix,
+			HubZone:                 hubZone,
+			HubRouter:               hubRouter,
+			ReflexiveIPv4:           request.ReflexiveIPv4,
+			EnpointLocalAddressIPv4: request.EnpointLocalAddressIPv4,
+			SymmetricNat:            request.SymmetricNat,
 		}
 		tx.Create(peer)
 		zone.Peers = append(zone.Peers, peer)
