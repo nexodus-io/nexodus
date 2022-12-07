@@ -105,7 +105,7 @@ func ping(ctx context.Context, ctr testcontainers.Container, address string) err
 	return err
 }
 
-// containerExec TODO: this will be for deleting keys, restarting apex and creating general chaos
+// containerExec exec container commands
 func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
 	code, outputRaw, err := container.Exec(
 		ctx,
@@ -228,4 +228,57 @@ func networkAddr(n *net.IPNet) net.IP {
 		network[i] = n.IP[i] & n.Mask[i]
 	}
 	return network
+}
+
+// wgDump dump wg sessions for failed test debugging
+func (suite *ApexIntegrationSuite) wgDump(ctx context.Context, container testcontainers.Container) string {
+	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"wg", "show", "wg0", "dump"})
+	if err != nil {
+		return ""
+	}
+
+	return wgSpokeShow
+}
+
+// routesDump dump routes for failed test debugging
+func (suite *ApexIntegrationSuite) routesDump(ctx context.Context, container testcontainers.Container) string {
+	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"ip", "route"})
+	if err != nil {
+		return ""
+	}
+
+	return wgSpokeShow
+}
+
+// gatherFail gather details on a failed test for debugging
+func (suite *ApexIntegrationSuite) gatherFail(ctx context.Context, containers ...testcontainers.Container) string {
+	var gatherOut []string
+
+	for _, c := range containers {
+		ip, _ := getContainerIfaceIP(ctx, "wg0", c)
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s wg0 IP:\n %s, ", nodeName, ip)
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		ip, _ := getContainerIfaceIP(ctx, "eth0", c)
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s eth0 IP:\n %s, ", nodeName, ip)
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s wg-dump:\n %s, ", nodeName, suite.wgDump(ctx, c))
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s routes:\n %s, ", nodeName, suite.routesDump(ctx, c))
+		gatherOut = append(gatherOut, routes)
+	}
+
+	return strings.Join(gatherOut, "\n")
 }
