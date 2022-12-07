@@ -9,8 +9,16 @@ import (
 	"github.com/bufbuild/connect-go"
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+var tracer trace.Tracer
+
+func init() {
+	tracer = otel.Tracer("github.com/redhat-et/apex/internal/ipam")
+}
 
 type IPAM struct {
 	logger *zap.SugaredLogger
@@ -27,7 +35,9 @@ func NewIPAM(logger *zap.SugaredLogger, ipamAddress string) IPAM {
 		)}
 }
 
-func (i *IPAM) AssignSpecificNodeAddress(ctx context.Context, ipamPrefix string, nodeAddress string) (string, error) {
+func (i *IPAM) AssignSpecificNodeAddress(parent context.Context, ipamPrefix string, nodeAddress string) (string, error) {
+	ctx, span := tracer.Start(parent, "AssignSpecificNodeAddress")
+	defer span.End()
 	if err := validateIP(nodeAddress); err != nil {
 		return "", fmt.Errorf("Address %s is not valid", nodeAddress)
 	}
@@ -42,7 +52,9 @@ func (i *IPAM) AssignSpecificNodeAddress(ctx context.Context, ipamPrefix string,
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, error) {
+func (i *IPAM) AssignFromPool(parent context.Context, ipamPrefix string) (string, error) {
+	ctx, span := tracer.Start(parent, "AssignFromPool")
+	defer span.End()
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
 	}))
@@ -53,7 +65,9 @@ func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, e
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignPrefix(ctx context.Context, cidr string) error {
+func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
+	ctx, span := tracer.Start(parent, "CreateDefaultZoneIfNotExists")
+	defer span.End()
 	cidr, err := cleanCidr(cidr)
 	if err != nil {
 		i.logger.Errorf("invalid prefix requested: %v", err)

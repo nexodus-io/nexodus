@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -24,7 +25,7 @@ func NewTestDatabase() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := database.Migrate(db); err != nil {
+	if err := database.Migrate(context.Background(), db); err != nil {
 		return nil, err
 	}
 	return db, nil

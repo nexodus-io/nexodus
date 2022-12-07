@@ -8,5 +8,6 @@ spec:
     app.kubernetes.io/instance: apiserver
     app.kubernetes.io/name: apiserver
   ports:
-    - port: 8080
+    - name: web
+      port: 8080
       targetPort: 8080

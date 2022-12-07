@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - apiserver-service-monitor.yaml
+  - jaeger.yaml
+  - prometheus-service.yaml
+  - grafana.yaml
+  - grafana-datasource.yaml
+  - grafana-dashboard.yaml

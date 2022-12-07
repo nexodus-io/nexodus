@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
@@ -20,8 +22,10 @@ import (
 // @Failure		 401  {object}  models.ApiError
 // @Router       /devices [get]
 func (api *API) ListDevices(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
+	defer span.End()
 	devices := make([]*models.Device, 0)
-	result := api.db.Preload("Peers").Scopes(FilterAndPaginate(&models.Device{}, c)).Find(&devices)
+	result := api.db.WithContext(ctx).Preload("Peers").Scopes(FilterAndPaginate(&models.Device{}, c)).Find(&devices)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
@@ -49,13 +53,17 @@ func (api *API) ListDevices(c *gin.Context) {
 // @Failure      404  {object}  models.ApiError
 // @Router       /devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetDevice", trace.WithAttributes(
+		attribute.String("id", c.Param("id")),
+	))
+	defer span.End()
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "id is not valid"})
 		return
 	}
 	var device models.Device
-	result := api.db.Preload("Peers").First(&device, "id = ?", k)
+	result := api.db.WithContext(ctx).Preload("Peers").First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
@@ -82,6 +90,8 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Failure      500  {object}  models.ApiError
 // @Router       /devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "CreateDevice")
+	defer span.End()
 	var request models.AddDevice
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
@@ -95,13 +105,13 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 	userId := c.GetString(gin.AuthUserKey)
 	var user models.User
-	if res := api.db.Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+	if res := api.db.WithContext(ctx).Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "user not found"})
 		return
 	}
 
 	var device models.Device
-	res := api.db.Where("public_key = ?", request.PublicKey).First(&device)
+	res := api.db.WithContext(ctx).Where("public_key = ?", request.PublicKey).First(&device)
 	if res.Error == nil {
 		c.JSON(http.StatusConflict, device)
 		return
@@ -117,13 +127,15 @@ func (api *API) CreateDevice(c *gin.Context) {
 		Hostname:  request.Hostname,
 	}
 
-	if res := api.db.Create(&device); res.Error != nil {
+	if res := api.db.WithContext(ctx).Create(&device); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
 		return
 	}
-
+	span.SetAttributes(
+		attribute.String("id", device.ID.String()),
+	)
 	user.Devices = append(user.Devices, &device)
-	api.db.Save(&user)
+	api.db.WithContext(ctx).Save(&user)
 
 	c.JSON(http.StatusCreated, device)
 }

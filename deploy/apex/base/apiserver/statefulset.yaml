@@ -90,6 +90,16 @@ spec:
                   name: dex-secrets
                   key: cli-client-id
                   optional: false
+            - name: APEX_TRACE_ENDPOINT_OTLP
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_TRACE_ENDPOINT_OTLP
+            - name: APEX_TRACE_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_TRACE_INSECURE
           resources:
             requests:
               cpu: 100m

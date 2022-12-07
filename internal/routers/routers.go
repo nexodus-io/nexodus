@@ -3,15 +3,22 @@ package routers
 import (
 	"context"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	_ "github.com/redhat-et/apex/internal/docs"
 	"github.com/redhat-et/apex/internal/handlers"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
 )
+
+const name = "github.com/redhat-et/apex/internal/routers"
 
 func NewAPIRouter(
 	ctx context.Context,
@@ -20,7 +27,27 @@ func NewAPIRouter(
 	clientIdWeb string,
 	clientIdCli string,
 	oidcURL string) (*gin.Engine, error) {
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+
+	p := ginprometheus.NewPrometheus("apiserver")
+	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
+		url := c.Request.URL.Path
+		for _, p := range c.Params {
+			if p.Key == "id" {
+				url = strings.Replace(url, p.Value, ":id", 1)
+				break
+			}
+			// If zone cardinality is too big we'll replace here too
+		}
+		return url
+	}
+	p.Use(r)
+
+	r.Use(ginzap.Ginzap(logger.Desugar(), time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
+	r.Use(otelgin.Middleware(name))
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
@@ -61,6 +88,5 @@ func NewAPIRouter(
 	}
 
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 	return r, nil
 }

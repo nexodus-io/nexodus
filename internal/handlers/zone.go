@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"gorm.io/gorm"
 )
@@ -32,7 +34,8 @@ const (
 // @Failure      500  {object}  models.ApiError
 // @Router       /zones [post]
 func (api *API) CreateZone(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, span := tracer.Start(c.Request.Context(), "CreateZone")
+	defer span.End()
 	var request models.AddZone
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
@@ -60,18 +63,21 @@ func (api *API) CreateZone(c *gin.Context) {
 		IpCidr:      request.IpCidr,
 		HubZone:     request.HubZone,
 	}
-	res := api.db.Create(&newZone)
+	res := api.db.WithContext(ctx).Create(&newZone)
 	if res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create zone"})
 		return
 	}
+	span.SetAttributes(attribute.String("id", newZone.ID.String()))
 	api.logger.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
 	c.JSON(http.StatusCreated, newZone)
 }
 
-func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
+func (api *API) CreateDefaultZoneIfNotExists(parent context.Context) error {
+	ctx, span := tracer.Start(parent, "CreateDefaultZoneIfNotExists")
+	defer span.End()
 	var zone models.Zone
-	res := api.db.Where("name = ?", defaultZoneName).First(&zone)
+	res := api.db.WithContext(ctx).Where("name = ?", defaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		api.logger.Debug("Creating Default Zone")
 		if err := api.ipam.AssignPrefix(ctx, defaultZonePrefix); err != nil {
@@ -80,7 +86,7 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 		zone.Name = defaultZoneName
 		zone.Description = defaultZoneDescription
 		zone.IpCidr = defaultZonePrefix
-		api.db.Save(&zone)
+		api.db.WithContext(ctx).Save(&zone)
 	}
 	api.logger.Debugf("Default Zone UUID is: %s", zone.ID)
 	api.defaultZoneID = zone.ID
@@ -98,15 +104,17 @@ func (api *API) CreateDefaultZoneIfNotExists(ctx context.Context) error {
 // @Failure		 500  {object}  models.ApiError
 // @Router       /zones [get]
 func (api *API) ListZones(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListZones")
+	defer span.End()
 	var zones []models.Zone
-	result := api.db.Scopes(FilterAndPaginate(&models.Zone{}, c)).Find(&zones)
+	result := api.db.WithContext(ctx).Scopes(FilterAndPaginate(&models.Zone{}, c)).Find(&zones)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "error fetching zones from db"})
 		return
 	}
 	for _, z := range zones {
 		var peers []uuid.UUID
-		api.db.Model(&models.Peer{}).Where("zone_id = ?", z.ID).Pluck("id", &peers)
+		api.db.WithContext(ctx).Model(&models.Peer{}).Where("zone_id = ?", z.ID).Pluck("id", &peers)
 		z.PeerList = peers
 	}
 	c.JSON(http.StatusOK, zones)
@@ -125,19 +133,24 @@ func (api *API) ListZones(c *gin.Context) {
 // @Failure      404  {object}  models.ApiError
 // @Router       /zones/{id} [get]
 func (api *API) GetZones(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetZones",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not a valid UUID"})
 		return
 	}
 	var zone models.Zone
-	result := api.db.First(&zone, "id = ?", k.String())
+	result := api.db.WithContext(ctx).First(&zone, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "zone not found"})
 		return
 	}
 	var peers []uuid.UUID
-	api.db.Model(&models.Peer{}).Where("zone_id = ?", zone.ID).Pluck("id", &peers)
+	api.db.WithContext(ctx).Model(&models.Peer{}).Where("zone_id = ?", zone.ID).Pluck("id", &peers)
 	zone.PeerList = peers
 	c.JSON(http.StatusOK, zone)
 }
@@ -155,19 +168,21 @@ func (api *API) GetZones(c *gin.Context) {
 // @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{id}/peers [get]
 func (api *API) ListPeersInZone(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListPeersInZone")
+	defer span.End()
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not a valid UUID"})
 		return
 	}
 	var zone models.Zone
-	result := api.db.First(&zone, "id = ?", k.String())
+	result := api.db.WithContext(ctx).First(&zone, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "zone not found"})
 		return
 	}
 	peers := make([]models.Peer, 0)
-	result = api.db.Where("zone_id = ?", zone.ID).Find(&peers)
+	result = api.db.WithContext(ctx).Where("zone_id = ?", zone.ID).Find(&peers)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "error fetching peers from db"})
 		return
@@ -193,13 +208,19 @@ func (api *API) ListPeersInZone(c *gin.Context) {
 // @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{zone_id}/peers/{peer_id} [get]
 func (api *API) GetPeerInZone(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetPeerInZone",
+		trace.WithAttributes(
+			attribute.String("zone", c.Param("zone")),
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not a valid UUID"})
 		return
 	}
 	var zone models.Zone
-	result := api.db.First(&zone, "id = ?", k.String())
+	result := api.db.WithContext(ctx).First(&zone, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "zone not found"})
 		return
@@ -210,7 +231,7 @@ func (api *API) GetPeerInZone(c *gin.Context) {
 		return
 	}
 	var peer models.Peer
-	result = api.db.First(&peer, "id = ?", id.String())
+	result = api.db.WithContext(ctx).First(&peer, "id = ?", id.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "peer not found"})
 		return

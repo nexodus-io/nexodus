@@ -9,6 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"gorm.io/gorm"
 )
 
@@ -23,8 +26,10 @@ import (
 // @Failure		 500  {object}  models.ApiError
 // @Router       /peers [get]
 func (api *API) ListPeers(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListPeers")
+	defer span.End()
 	peers := make([]models.Peer, 0)
-	result := api.db.Debug().Scopes(FilterAndPaginate(&models.Peer{}, c)).Find(&peers)
+	result := api.db.WithContext(ctx).Scopes(FilterAndPaginate(&models.Peer{}, c)).Find(&peers)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
@@ -46,13 +51,18 @@ func (api *API) ListPeers(c *gin.Context) {
 // @Failure		 500  {object}  models.ApiError
 // @Router       /peers/{peer_id} [get]
 func (api *API) GetPeers(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetPeers",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "peer id is not a valid UUID"})
 		return
 	}
 	var peer models.Peer
-	result := api.db.First(&peer, "id = ?", k)
+	result := api.db.WithContext(ctx).First(&peer, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "peer not found"})
 		return
@@ -77,7 +87,11 @@ func (api *API) GetPeers(c *gin.Context) {
 // @Failure		 500  {object}  models.ApiError
 // @Router       /zones/{zone_id}/peers [post]
 func (api *API) CreatePeerInZone(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, span := tracer.Start(c.Request.Context(), "CreatePeerInZone",
+		trace.WithAttributes(
+			attribute.String("zone", c.Param("zone")),
+		))
+	defer span.End()
 	k, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not a valid UUID"})
@@ -85,7 +99,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 	}
 
 	var zone models.Zone
-	if res := api.db.Preload("Peers").First(&zone, "id = ?", k.String()); res.Error != nil {
+	if res := api.db.WithContext(ctx).Preload("Peers").First(&zone, "id = ?", k.String()); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: "zone not found"})
 		return
 	}
@@ -96,7 +110,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		return
 	}
 
-	tx := api.db.Begin()
+	tx := api.db.WithContext(ctx).Begin()
 
 	var device models.Device
 	if res := tx.First(&device, "id = ?", request.DeviceID); res.Error != nil {
@@ -256,7 +270,9 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		tx.Save(&device)
 	}
 	tx.Save(&peer)
-
+	span.SetAttributes(
+		attribute.String("id", peer.ID.String()),
+	)
 	if err := tx.Commit(); err.Error != nil {
 		tx.Rollback()
 		api.logger.Error(err.Error)
