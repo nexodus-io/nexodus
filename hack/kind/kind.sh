@@ -8,7 +8,7 @@ up() {
 
     # Deploy Ingress Controller
     kubectl apply -f ./deploy/kind-ingress.yaml
-    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=90s
+    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=300s
 
     # Add rewrite to CoreDNS
     kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
