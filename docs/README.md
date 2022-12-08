@@ -74,7 +74,7 @@ You will need to extract the CA certificate and add it to your system trust stor
 
 ```console
 mkdir -p .certs
-kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > ./certs/rootCA.pem
+kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > .certs/rootCA.pem
 ```
 
 Installation of this certificate is best left to [`mkcert`](https://github.com/FiloSottile/mkcert)
