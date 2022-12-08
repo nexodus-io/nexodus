@@ -33,6 +33,14 @@ spec:
             - name: config
               mountPath: /goff/goff-proxy.yaml
               subPath: goff-proxy.yaml
+        # the go-feature-flag-relay-proxy is a distroless container, so it
+        # has no tools for debugging. This should probably be moved to the
+        # dev overlay only ... TODO
+        - name: debug
+          image: registry.access.redhat.com/ubi8/ubi
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh"]
+          args: ["-c", "while :; do sleep 3600; done"]
       restartPolicy: Always
       volumes:
         - name: config
