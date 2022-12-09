@@ -86,13 +86,14 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
 	require.NoError(err)
 
+	gather := suite.gatherFail(ctx, node1, node2)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	require.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
-	require.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Info("killing apex and re-joining nodes with new keys")
 	//kill the apex process on both nodes
@@ -146,13 +147,14 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	)
 	require.NoError(err)
 
+	gather = suite.gatherFail(ctx, node1, node2)
 	suite.logger.Infof("Pinging %s from node1", newNode2IP)
 	err = ping(ctx, node1, newNode2IP)
-	assert.NoError(err)
+	assert.NoError(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", newNode1IP)
 	err = ping(ctx, node2, newNode1IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 }
 
 // TestRequestIPDefaultZone tests requesting a specific address in the default zone
@@ -192,14 +194,15 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
+	gather := suite.gatherFail(ctx, node1, node2)
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 }
 
 // TestRequestIPZone tests requesting a specific address in a newly created zone
@@ -250,14 +253,16 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
+	gather := suite.gatherFail(ctx, node1, node2)
+
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Info("killing apex and re-joining nodes")
 	//kill the apex process on both nodes
@@ -278,14 +283,16 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
+	gather = suite.gatherFail(ctx, node1, node2)
+
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, node1IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 }
 
 // TestHubZone test a hub zone with 3 nodes, the first being a relay node
@@ -293,7 +300,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
-	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
 	defer cancel()
 	token, err := getToken(ctx, "kitteh2@apex.local", "floofykittens")
 	require.NoError(err)
@@ -347,21 +354,75 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	node3IP, err := getContainerIfaceIP(ctx, "wg0", node3)
 	require.NoError(err)
 
+	gather := suite.gatherFail(ctx, node1, node2, node3)
+
 	suite.logger.Infof("Pinging %s from node1", node2IP)
 	err = ping(ctx, node1, node2IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node1", node3IP)
 	err = ping(ctx, node1, node3IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node3", node1IP)
 	err = ping(ctx, node3, node2IP)
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node3IP)
 	err = ping(ctx, node2, node3IP)
+	assert.NoErrorf(err, gather)
+
+	hubZoneChildPrefix := "10.188.100.0/24"
+	node2ChildPrefixLoopbackNet := "10.188.100.1/32"
+
+	suite.T().Logf("killing apex on node2")
+
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
 	assert.NoError(err)
+	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubZoneChildPrefix)
+
+	// add a loopback that are contained in the node's child prefix
+	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2ChildPrefixLoopbackNet, "dev", "lo"})
+	require.NoError(err)
+
+	// re-join and ensure the peer table updates with the new values
+	go func() {
+		_, err = suite.containerExec(ctx, node2, []string{
+			"/bin/apex",
+			fmt.Sprintf("--child-prefix=%s", hubZoneChildPrefix),
+			fmt.Sprintf("--with-token=%s", token),
+			"http://apex.local",
+		})
+	}()
+
+	// address will be the same, this is just a readiness check for gather data
+	node1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+	node2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
+	require.NoError(err)
+	node3IP, err = getContainerIfaceIP(ctx, "wg0", node3)
+	require.NoError(err)
+
+	gather = suite.gatherFail(ctx, node1, node2, node3)
+
+	// parse the loopback ip from the loopback prefix
+	node2LoopbackIP, _, _ := net.ParseCIDR(node2ChildPrefixLoopbackNet)
+
+	suite.T().Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
+	err = ping(ctx, node3, node2LoopbackIP.String())
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node1", node3IP)
+	err = ping(ctx, node1, node3IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node3", node1IP)
+	err = ping(ctx, node3, node2IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, node3IP)
+	assert.NoErrorf(err, gather)
 }
 
 // TestChildPrefix tests requesting a specific address in a newly created zone
@@ -425,13 +486,29 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	node1LoopbackIP, _, _ := net.ParseCIDR(node1LoopbackNet)
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2LoopbackNet)
 
+	// address will be the same, this is just a readiness check for gather data
+	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	require.NoError(err)
+
+	gather := suite.gatherFail(ctx, node1, node2)
+
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, node2IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, node1IP)
+	assert.NoErrorf(err, gather)
+
 	suite.logger.Infof("Pinging %s from node1", node2LoopbackIP)
 	err = ping(ctx, node1, node2LoopbackIP.String())
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1LoopbackIP)
 	err = ping(ctx, node2, node1LoopbackIP.String())
-	assert.NoError(err)
+	assert.NoErrorf(err, gather)
 }
 
 /*

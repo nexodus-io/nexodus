@@ -148,10 +148,12 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		}
 	}
 	if found {
+		// Update the values in the peer table
 		peer.ReflexiveIPv4 = request.ReflexiveIPv4
 		peer.EnpointLocalAddressIPv4 = request.EnpointLocalAddressIPv4
 		peer.EndpointIP = request.EndpointIP
 		peer.SymmetricNat = request.SymmetricNat
+		peer.ChildPrefix = request.ChildPrefix
 
 		if request.NodeAddress != peer.NodeAddress {
 			var ip string
