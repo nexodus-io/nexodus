@@ -11,24 +11,51 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// routeExists checks the netlink routes for the destination prefix
-func routeExists(prefix string) (bool, error) {
+func AddRoute(prefix, dev string) error {
+	link, err := netlink.LinkByName(dev)
+	if err != nil {
+		return fmt.Errorf("failed to lookup netlink device %s: %v", dev, err)
+	}
+
+	destNet, err := ParseIPNet(prefix)
+	if err != nil {
+		return fmt.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
+	}
+
+	return route(destNet, link)
+}
+
+// AddRoute adds a netlink route pointing to the linux device
+func route(ipNet *net.IPNet, dev netlink.Link) error {
+	return netlink.RouteAdd(&netlink.Route{
+		LinkIndex: dev.Attrs().Index,
+		Scope:     netlink.SCOPE_UNIVERSE,
+		Dst:       ipNet,
+	})
+}
+
+// RouteExists checks netlink routes for the destination prefix
+func RouteExists(prefix string) (bool, error) {
 	destNet, err := ParseIPNet(prefix)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
 	}
+
 	destRoute := &netlink.Route{Dst: destNet}
 	family := netlink.FAMILY_V6
 	if destNet.IP.To4() != nil {
 		family = netlink.FAMILY_V4
 	}
+
 	match, err := netlink.RouteListFiltered(family, destRoute, netlink.RT_FILTER_DST)
 	if err != nil {
 		return true, fmt.Errorf("error retrieving netlink routes: %v", err)
 	}
+
 	if len(match) > 0 {
 		return true, nil
 	}
+
 	return false, nil
 }
 
@@ -37,13 +64,16 @@ func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error)
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
+
 	ips, err := getNetworkInterfaceIPs(iface)
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
+
 	if len(ips) == 0 {
 		return nil, fmt.Errorf("%v", err)
 	}
+
 	return ips[0].IP, nil
 }
 
@@ -53,10 +83,12 @@ func getNetworkInterfaceIPs(iface string) ([]*net.IPNet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup link %s: %v", iface, err)
 	}
+
 	addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list addresses for %q: %v", iface, err)
 	}
+
 	var ips []*net.IPNet
 	for _, addr := range addrs {
 		if addr.IP.IsLinkLocalUnicast() {
@@ -67,6 +99,7 @@ func getNetworkInterfaceIPs(iface string) ([]*net.IPNet, error) {
 		}
 		ips = append(ips, addr.IPNet)
 	}
+
 	return ips, nil
 }
 
@@ -106,6 +139,7 @@ func getDefaultGatewayIface(logger *zap.SugaredLogger, family int) (string, net.
 			return intfLink.Attrs().Name, nh.Gw, nil
 		}
 	}
+
 	return "", net.IP{}, fmt.Errorf("failed to get default gateway interface")
 }
 
@@ -114,6 +148,7 @@ func linkExists(ifaceName string) bool {
 	if _, err := netlink.LinkByName(ifaceName); err != nil {
 		return false
 	}
+
 	return true
 }
 
@@ -124,5 +159,6 @@ func delLink(ifaceName string) error {
 			return err
 		}
 	}
+
 	return nil
 }

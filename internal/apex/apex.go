@@ -17,10 +17,16 @@ import (
 )
 
 const (
-	pollInterval = 5 * time.Second
-	wgBinary     = "wg"
-	wgGoBinary   = "wireguard-go"
-	wgWinBinary  = "wireguard.exe"
+	pollInterval      = 5 * time.Second
+	wgBinary          = "wg"
+	wgGoBinary        = "wireguard-go"
+	wgWinBinary       = "wireguard.exe"
+	WgLinuxConfPath   = "/etc/wireguard/"
+	WgDarwinConfPath  = "/usr/local/etc/wireguard/"
+	darwinIface       = "utun8"
+	WgDefaultPort     = 51820
+	wgIface           = "wg0"
+	WgWindowsConfPath = "C:/"
 )
 
 type Apex struct {
@@ -219,7 +225,7 @@ func (ax *Apex) Run() error {
 		if err := enableForwardingIPv4(ax.logger); err != nil {
 			return err
 		}
-		hubRouterIpTables()
+		hubRouterIpTables(ax.logger)
 	}
 
 	if err := ax.Reconcile(ax.zone, true); err != nil {
@@ -265,12 +271,19 @@ func (ax *Apex) Keepalive() {
 	var peerEndpoints []string
 	if !ax.hubRouter {
 		for _, value := range ax.peerCache {
-			peerEndpoints = append(peerEndpoints, value.NodeAddress)
+			nodeAddr := value.NodeAddress
+			// strip the /32 from the prefix if present
+			if net.ParseIP(value.NodeAddress) == nil {
+				nodeIP, _, err := net.ParseCIDR(value.NodeAddress)
+				nodeAddr = nodeIP.String()
+				if err != nil {
+					ax.logger.Debugf("failed parsing an ip from the prefix %v", err)
+				}
+			}
+			peerEndpoints = append(peerEndpoints, nodeAddr)
 		}
 	}
-	// basic discovery of what endpoints are reachable from the spoke peer that
-	// determines whether to drain traffic to the hub or build a p2p peering
-	// TODO: replace with a more in depth discovery than simple reachability
+
 	_ = probePeers(peerEndpoints)
 }
 
@@ -294,9 +307,7 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 				newPeers = append(newPeers, p)
 			}
 		}
-		if err := ax.ParseWireguardConfig(); err != nil {
-			return err
-		}
+		ax.buildPeersConfig()
 		if err := ax.DeployWireguardConfig(newPeers, firstTime); err != nil {
 			return err
 		}
@@ -318,9 +329,7 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 	}
 	if changed {
 		ax.logger.Debugf("Peers listing has changed, recalculating configuration")
-		if err := ax.ParseWireguardConfig(); err != nil {
-			return err
-		}
+		ax.buildPeersConfig()
 		if err := ax.DeployWireguardConfig(newPeers, false); err != nil {
 			return err
 		}
@@ -394,9 +403,10 @@ func checkOS(logger *zap.SugaredLogger) error {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
 		if ifaceExists(logger, darwinIface) {
-			deleteDarwinIface()
+			deleteDarwinIface(logger)
 		}
 	case Windows.String():
+		logger.Fatal("Windows is temporarily unsupported")
 		logger.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the windows wireguard directory exists
 		if err := CreateDirectory(WgWindowsConfPath); err != nil {
@@ -452,7 +462,7 @@ func (ax *Apex) nodePrep() {
 	}
 	if ax.os == Darwin.String() {
 		if ifaceExists(ax.logger, darwinIface) {
-			deleteDarwinIface()
+			deleteDarwinIface(ax.logger)
 		}
 	}
 
@@ -475,7 +485,7 @@ func (ax *Apex) nodePrep() {
 		}
 	}
 
-	isSymmetric, err := IsSymmetricNAT()
+	isSymmetric, err := IsSymmetricNAT(ax.logger)
 	if err != nil {
 		log.Error(err)
 	}
@@ -495,14 +505,14 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var err error
 	// Darwin network discovery
 	if !ax.stun && ax.os == Darwin.String() {
-		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "80")
+		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
 	if !ax.stun && ax.os == Windows.String() {
-		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "80")
+		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}

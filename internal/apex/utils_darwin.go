@@ -9,9 +9,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// routeExists currently only used for darwin build purposes
-func routeExists(s string) (bool, error) {
+// RouteExists currently only used for darwin build purposes
+func RouteExists(s string) (bool, error) {
 	return false, nil
+}
+
+// AddRoute currently only used for darwin build purposes
+func AddRoute(prefix, dev string) error {
+	return nil
 }
 
 // discoverLinuxAddress only used for darwin build purposes
