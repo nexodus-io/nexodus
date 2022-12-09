@@ -3,12 +3,12 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
-
 	"gorm.io/gorm"
 )
 
@@ -166,16 +166,21 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				}
 			} else {
 				if peer.NodeAddress == "" {
-					c.JSON(http.StatusBadRequest, models.ApiError{Error: "peer does not have a node address assigned in the peer table and did not request a specifc address"})
+					c.JSON(http.StatusBadRequest, models.ApiError{Error: "peer does not have a node address assigned in the peer table and did not request a specific address"})
 					return
 				}
 				ip = peer.NodeAddress
 			}
 			peer.NodeAddress = ip
+			hostPrefix := ip
+			// append a /32 to the IPAM assigned address unless it is a hub-router prefix
+			if net.ParseIP(ip) != nil && !hubRouter {
+				hostPrefix = fmt.Sprintf("%s/32", ip)
+			}
 
 			// update the peer entry with the latest AllowedIPs
 			peer.AllowedIPs = request.AllowedIPs
-			peer.AllowedIPs = append(peer.AllowedIPs, ip)
+			peer.AllowedIPs = append(peer.AllowedIPs, hostPrefix)
 		}
 
 		if request.ChildPrefix != peer.ChildPrefix {
@@ -219,8 +224,15 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				return
 			}
 		}
+
+		// append a /32 to the IPAM assigned address unless it is a hub-router prefix
+		hostPrefix := ipamIP
+		if net.ParseIP(ipamIP) != nil && !hubRouter {
+			hostPrefix = fmt.Sprintf("%s/32", ipamIP)
+		}
+
 		var allowedIPs []string
-		allowedIPs = append(allowedIPs, ipamIP)
+		allowedIPs = append(allowedIPs, hostPrefix)
 		peer = &models.Peer{
 			DeviceID:                device.ID,
 			ZoneID:                  zone.ID,

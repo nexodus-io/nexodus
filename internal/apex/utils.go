@@ -4,28 +4,24 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/pion/stun"
-	log "github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 )
 
-// supported OS types
+// OperatingSystem supported OS types
 type OperatingSystem string
 
 const (
-	Linux               OperatingSystem = "Linux"
-	Darwin              OperatingSystem = "Darwin"
-	Windows             OperatingSystem = "Windows"
-	wgConfigPermissions                 = 0600
+	Linux   OperatingSystem = "Linux"
+	Darwin  OperatingSystem = "Darwin"
+	Windows OperatingSystem = "Windows"
 )
 
 func (operatingSystem OperatingSystem) String() string {
@@ -78,32 +74,6 @@ func ValidateCIDR(cidr string) error {
 		return fmt.Errorf("%s is not a valid v4 or v6 IP prefix", err)
 	}
 	return nil
-}
-
-func FileToString(logger *zap.SugaredLogger, file string) string {
-	fileContent, err := os.ReadFile(file)
-	if err != nil {
-		logger.Errorf("unable to read the file [%s] %v\n", file, err)
-		return ""
-	}
-	return string(fileContent)
-}
-
-// CopyFile source destination
-func CopyFile(src, dst string) error {
-	w, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	r, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	_, err = io.Copy(w, r)
-	return err
 }
 
 // discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
@@ -223,30 +193,6 @@ func parseNetworkStr(cidr string) (string, error) {
 	return nw.String(), nil
 }
 
-// sanitizeWindowsConfig removes incompatible fields from the wg Interface section
-func sanitizeWindowsConfig(file string) error {
-	b, err := os.ReadFile(file)
-	if err != nil {
-		return fmt.Errorf("unable to read the wg0 configuration file %s: %v", file, err)
-	}
-	post := regexp.MustCompile("(?m)[\r\n]+^.*Post.*$")
-	regOut := post.ReplaceAllString(string(b), "")
-	post = regexp.MustCompile("(?m)[\r\n]+^.*SaveConfig.*$")
-	regOut = post.ReplaceAllString(regOut, "")
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("unable to open to the wg0 configuration file %s: %v", file, err)
-	}
-	_, err = f.Write([]byte(regOut))
-	if err != nil {
-		return fmt.Errorf("unable to open to the wg0 configuration file %s: %v", file, err)
-	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("unable to write to the wg0 configuration file %s: %v", file, err)
-	}
-	return nil
-}
-
 // enableForwardingIPv4 for linux nodes that are hub bouncers
 func enableForwardingIPv4(logger *zap.SugaredLogger) error {
 	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
@@ -282,14 +228,6 @@ func writeToFile(logger *zap.SugaredLogger, s, file string, filePermissions int)
 	}
 }
 
-func wgConfPermissions(f string) error {
-	err := os.Chmod(f, wgConfigPermissions)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // getInterfaceByIP will looks ip an interface by the IP provided
 func getInterfaceByIP(ip net.IP) (string, error) {
 	interfaces, err := net.Interfaces()
@@ -319,20 +257,22 @@ func setupDarwinIface(logger *zap.SugaredLogger, localAddress string) error {
 	if err != nil {
 		logger.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
 	}
+
 	_, err = RunCommand("ifconfig", darwinIface, "inet", localAddress, localAddress, "alias")
 	if err != nil {
 		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
 	}
+
 	_, err = RunCommand("ifconfig", darwinIface, "up")
 	if err != nil {
 		logger.Errorf("failed to bring up the %s interface: %v\n", darwinIface, err)
 	}
-	// wg syncconf on the wg0 interface with the wg0.conf config passed
-	darwinWgConf := fmt.Sprintf("%s%s", WgDarwinConfPath, wgConfActive)
-	_, err = RunCommand("wg", "setconf", darwinIface, darwinWgConf)
+
+	_, err = RunCommand("wg", "set", darwinIface, "private-key", darwinPrivateKeyFile)
 	if err != nil {
-		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+		logger.Errorf("failed to start the wireguard listener: %v\n", err)
 	}
+
 	return nil
 }
 
@@ -387,24 +327,6 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 	}
 }
 
-// addLinuxChildPrefixRoute todo: temporary, replace with netlink
-func addLinuxChildPrefixRoute(prefix string) error {
-	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", wgIface)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// addDarwinChildPrefixRoute todo: check if it exists
-func addDarwinChildPrefixRoute(logger *zap.SugaredLogger, prefix string) error {
-	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", darwinIface)
-	if err != nil {
-		logger.Debugf("child-prefix route was added: %v", err)
-	}
-	return nil
-}
-
 // ifaceExists returns true if the input matches a net interface
 func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 	_, err := net.InterfaceByName(iface)
@@ -416,17 +338,17 @@ func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 }
 
 // deleteDarwinIface these commands all fail silently so no errors are returned
-func deleteDarwinIface() {
+func deleteDarwinIface(logger *zap.SugaredLogger) {
 	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
 	_, err := RunCommand("rm", "-f", tunSock)
 	if err != nil {
-		log.Debugf("failed to delete darwin interface: %v", err)
+		logger.Debugf("failed to delete darwin interface: %v", err)
 	}
 	// /var/run/wireguard/wg0.name doesnt currently exist since utun8 isnt mapped to wg0 (fails silently)
 	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", wgIface)
 	_, err = RunCommand("rm", "-f", wgName)
 	if err != nil {
-		log.Tracef("failed to delete darwin interface: %v", err)
+		logger.Debugf("failed to delete darwin interface: %v", err)
 	}
 }
 

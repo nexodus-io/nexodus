@@ -6,48 +6,76 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
-// parseHubWireguardConfig parse peerlisting to build the wireguard local interface and peers
-func (ax *Apex) parseHubWireguardConfig(listenPort int) {
+// buildPeersConfig builds the peer configuration based off peer cache and peer listings from the controller
+func (ax *Apex) buildPeersConfig() {
 
 	var peers []wgPeerConfig
 	var hubRouterIP string
-	var localInterface wgLocalConfig
+	//var localInterface wgLocalConfig
 	var zonePrefix string
+	var hubZone bool
 	var err error
 
-	for _, value := range ax.peerCache {
-		if value.HubRouter {
-			hubRouterIP = value.AllowedIPs[0]
-			if ax.zone == value.ZoneID {
-				zonePrefix = value.ZonePrefix
+	for _, peer := range ax.peerCache {
+		var pubkey string
+		var ok bool
+		if pubkey, ok = ax.keyCache[peer.DeviceID]; !ok {
+			device, err := ax.client.GetDevice(peer.DeviceID)
+			if err != nil {
+				ax.logger.Warnf("unable to get device %s: %s", peer.DeviceID, err)
+			}
+			ax.keyCache[peer.DeviceID] = device.PublicKey
+			pubkey = device.PublicKey
+		}
+
+		if pubkey == ax.wireguardPubKey {
+			ax.wireguardPubKeyInConfig = true
+		}
+
+		if peer.HubRouter {
+			hubRouterIP = peer.AllowedIPs[0]
+			if ax.zone == peer.ZoneID {
+				zonePrefix = peer.ZonePrefix
 			}
 		}
 	}
 	// zonePrefix will be empty if a hub-router is not defined in the zone
-	if zonePrefix == "" {
-		log.Error("this zone is a hub zone and requires a hub-router `--hub-router` node before provisioning spokes nodes")
-		os.Exit(1)
+	if zonePrefix != "" {
+		hubZone = true
+	}
+	// if this is a zone router but does not have a relay node joined yet throw an error
+	if hubRouterIP == "" && hubZone {
+		ax.logger.Errorf("there is no hub router detected in this zone, please add one using `--hub-router`")
+		return
 	}
 	// Get a valid netmask from the zone prefix
-	zoneCidr, err := ParseIPNet(zonePrefix)
-	if err != nil {
-		log.Errorf("failed to parse a valid network the zone prefix %s: %v", zonePrefix, err)
-		os.Exit(1)
+	var hubRouterAllowedIP []string
+	if hubZone {
+		zoneCidr, err := ParseIPNet(zonePrefix)
+		if err != nil {
+			ax.logger.Errorf("failed to parse a valid network zone prefix cidr %s: %v", zonePrefix, err)
+			os.Exit(1)
+		}
+		zoneMask, _ := zoneCidr.Mask.Size()
+		hubRouterNetAddress := fmt.Sprintf("%s/%d", hubRouterIP, zoneMask)
+		hubRouterNetAddress, err = parseNetworkStr(hubRouterNetAddress)
+		if err != nil {
+			ax.logger.Errorf("failed to parse a valid hub router prefix from %s: %v", hubRouterNetAddress, err)
+		}
+		hubRouterAllowedIP = []string{hubRouterNetAddress}
 	}
-	zoneMask, _ := zoneCidr.Mask.Size()
-	hubRouterNetAddress := fmt.Sprintf("%s/%d", hubRouterIP, zoneMask)
-	hubRouterNetAddress, err = parseNetworkStr(hubRouterNetAddress)
-	hubRouterAllowedIP := []string{hubRouterNetAddress}
+
 	if err != nil {
-		log.Errorf("invalid hub router network found: %v", err)
+		ax.logger.Errorf("invalid hub router network found: %v", err)
 	}
 	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.peerCache {
 		_, peerPort, err := net.SplitHostPort(value.EndpointIP)
 		if err != nil {
-			log.Debugf("failed parse the endpoint address for node (likely still converging) : %v\n", err)
+			ax.logger.Debugf("failed parse the endpoint address for node (likely still converging) : %v\n", err)
 			continue
 		}
 
@@ -98,7 +126,7 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
 			if pubkey != ax.wireguardPubKey {
 				directLocalPeerEndpointSocket := fmt.Sprintf("%s:%s", value.EnpointLocalAddressIPv4, peerPort)
-				log.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
+				ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 				// the symmetric NAT peer
 				if value.ChildPrefix != "" {
 					ax.addChildPrefixRoute(value.ChildPrefix)
@@ -150,85 +178,68 @@ func (ax *Apex) parseHubWireguardConfig(listenPort int) {
 			}
 		}
 	}
+	ax.wgConfig.Peers = peers
+	ax.buildLocalConfig()
+}
 
-	// Deal with the wireguard local interface
+// buildLocalConfig builds the configuration for the local interface
+func (ax *Apex) buildLocalConfig() {
+	var localInterface wgLocalConfig
+
 	for _, value := range ax.peerCache {
 		pubkey := ax.keyCache[value.DeviceID]
+		// build the local interface configuration if this node is a zone router
 		if pubkey == ax.wireguardPubKey && ax.hubRouter {
 			if ax.wgLocalAddress != value.NodeAddress {
-				log.Infof("New local interface address assigned %s", value.NodeAddress)
+				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
 				if ax.os == Linux.String() && linkExists(wgIface) {
-					if err = delLink(wgIface); err != nil {
-						log.Infof("Failed to delete %s: %v", wgIface, err)
+					if err := delLink(wgIface); err != nil {
+						ax.logger.Infof("Failed to delete %s: %v", wgIface, err)
 					}
 				}
 			}
 			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				listenPort,
+				ax.listenPort,
 			}
-			log.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
+			ax.logger.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				ax.wgLocalAddress,
-				listenPort,
+				ax.listenPort,
 				ax.hubRouter)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
 		}
-		// Parse the [Interface] section of the wg config if this node is not a zone router
+		// build the local interface configuration if this node is not a zone router
 		if pubkey == ax.wireguardPubKey && !ax.hubRouter {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.NodeAddress {
-				log.Infof("New local interface address assigned %s", value.NodeAddress)
+				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
 				if ax.os == Linux.String() && linkExists(wgIface) {
-					if err = delLink(wgIface); err != nil {
-						log.Infof("Failed to delete %s: %v", wgIface, err)
+					if err := delLink(wgIface); err != nil {
+						ax.logger.Infof("Failed to delete %s: %v", wgIface, err)
 					}
 				}
 			}
 			ax.wgLocalAddress = value.NodeAddress
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
-				listenPort,
+				ax.listenPort,
 			}
-			log.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
+			ax.logger.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
 				ax.wgLocalAddress,
-				listenPort,
+				ax.listenPort,
 				ax.hubRouter)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
 		}
 	}
-	ax.wgConfig.Peers = peers
 }
 
 // hubRouterIpTables iptables for the relay node
-func hubRouterIpTables() {
+func hubRouterIpTables(logger *zap.SugaredLogger) {
 	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", wgIface, "-j", "ACCEPT")
 	if err != nil {
-		log.Debugf("the hub router iptable rule was not added: %v", err)
-	}
-}
-
-func (ax *Apex) addChildPrefixRoute(ChildPrefix string) {
-	routeExists, err := routeExists(ChildPrefix)
-	if err != nil {
-		ax.logger.Warn(err)
-	}
-	if ax.os == Linux.String() && routeExists {
-		log.Debugf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", ChildPrefix)
-		return
-	}
-	if ax.os == Linux.String() {
-		if err := addLinuxChildPrefixRoute(ChildPrefix); err != nil {
-			log.Infof("error adding the child prefix route: %v", err)
-		}
-	}
-	// add osx child prefix
-	if ax.os == Darwin.String() {
-		if err := addDarwinChildPrefixRoute(ax.logger, ChildPrefix); err != nil {
-			// TODO: setting to debug until the child prefix is looked up on Darwin
-			log.Debugf("error adding the child prefix route: %v", err)
-		}
+		logger.Debugf("the hub router iptable rule was not added: %v", err)
 	}
 }

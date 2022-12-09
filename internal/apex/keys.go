@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // default key pair file locations (windows needs work)
@@ -27,51 +27,51 @@ const (
 func (ax *Apex) handleKeys() error {
 	switch ax.os {
 	case Darwin.String():
-		publicKey := readKeyFile(darwinPublicKeyFile)
-		privateKey := readKeyFile(darwinPrivateKeyFile)
+		publicKey := readKeyFile(ax.logger, darwinPublicKeyFile)
+		privateKey := readKeyFile(ax.logger, darwinPrivateKeyFile)
 		if publicKey != "" && privateKey != "" {
 			ax.wireguardPubKey = publicKey
 			ax.wireguardPvtKey = privateKey
-			log.Infof("Existing key pair found at [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
+			ax.logger.Infof("Existing key pair found at [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
 			return nil
 		}
-		log.Infof("No existing public/private key pair found, generating a new pair")
+		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(darwinPublicKeyFile, darwinPrivateKeyFile); err != nil {
 			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
-		log.Debugf("New keys were written to [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
+		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
 		return nil
 
 	case Windows.String():
-		publicKey := readKeyFile(windowsPublicKeyFile)
-		privateKey := readKeyFile(windowsPrivateKeyFile)
+		publicKey := readKeyFile(ax.logger, windowsPublicKeyFile)
+		privateKey := readKeyFile(ax.logger, windowsPrivateKeyFile)
 		if publicKey != "" && privateKey != "" {
 			ax.wireguardPubKey = publicKey
 			ax.wireguardPvtKey = privateKey
-			log.Infof("Existing key pair found at [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
+			ax.logger.Infof("Existing key pair found at [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
 			return nil
 		}
-		log.Infof("No existing public/private key pair found, generating a new pair")
+		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(windowsPublicKeyFile, windowsPrivateKeyFile); err != nil {
 			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
-		log.Debugf("New keys were written to [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
+		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
 		return nil
 
 	case Linux.String():
-		publicKey := readKeyFile(linuxPublicKeyFile)
-		privateKey := readKeyFile(linuxPrivateKeyFile)
+		publicKey := readKeyFile(ax.logger, linuxPublicKeyFile)
+		privateKey := readKeyFile(ax.logger, linuxPrivateKeyFile)
 		if publicKey != "" && privateKey != "" {
 			ax.wireguardPubKey = publicKey
 			ax.wireguardPvtKey = privateKey
-			log.Infof("Existing key pair found at [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
+			ax.logger.Infof("Existing key pair found at [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
 			return nil
 		}
-		log.Infof("No existing public/private key pair found, generating a new pair")
+		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(linuxPublicKeyFile, linuxPrivateKeyFile); err != nil {
 			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
 		}
-		log.Debugf("New keys were written to [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
+		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
 		return nil
 	}
 	return nil
@@ -95,7 +95,7 @@ func (ax *Apex) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 	ax.wireguardPvtKey = strings.TrimSpace(string(privateKey))
 
 	// TODO remove this debug statement at some point
-	log.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
+	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
 	// write the new keys to disk
 	writeToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
 	writeToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
@@ -104,13 +104,13 @@ func (ax *Apex) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 }
 
 // readKeyFile reads the contents of a key file
-func readKeyFile(keyFile string) string {
+func readKeyFile(logger *zap.SugaredLogger, keyFile string) string {
 	if !FileExists(keyFile) {
 		return ""
 	}
 	key, err := readKeyFileToString(keyFile)
 	if err != nil {
-		log.Tracef("unable to read key file: %v", err)
+		logger.Debugf("unable to read key file: %v", err)
 		return ""
 	}
 
