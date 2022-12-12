@@ -1,5 +1,5 @@
 .PHONY: all
-all: go-lint apex apiserver
+all: go-lint apex
 
 .PHONY: apex
 apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64 dist/apex-darwin-arm64 dist/apex-windows-amd64
@@ -7,6 +7,8 @@ apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
 APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
+
+APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 
 TAG=$(shell git rev-parse HEAD)
 
