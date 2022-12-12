@@ -266,3 +266,46 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, peer)
 }
+
+// DeletePeer handles deleting an existing peer and associated ipam lease
+// @Summary      Delete Peer
+// @Description  Deletes an existing peer and associated IPAM lease
+// @Tags         Peers
+// @Accepts		 json
+// @Produce      json
+// @Param        id   path      string  true "Peer ID"
+// @Success      204  {object}  models.Peer
+// @Failure      400  {object}  models.ApiError
+// @Failure		 400  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
+// @Router       /peers/{id} [delete]
+func (api *API) DeletePeer(c *gin.Context) {
+	peerID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "peer id is not valid"})
+		return
+	}
+
+	var peer models.Peer
+
+	if res := api.db.First(&peer, "id = ?", peerID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+	ipamAddress := peer.NodeAddress
+	zonePrefix := peer.ZonePrefix
+
+	if res := api.db.Delete(&peer, "id = ?", peerID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if ipamAddress != "" && zonePrefix != "" {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, zonePrefix); err != nil {
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to release ipam address: %v", err)})
+		}
+	}
+
+	c.JSON(http.StatusOK, peer)
+}

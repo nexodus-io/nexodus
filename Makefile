@@ -31,6 +31,9 @@ dist/apex-darwin-arm64: $(APEX_DEPS) | dist
 dist/apex-windows-amd64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
 
+dist/apexctl: $(APEX_DEPS) | dist
+	CGO_ENABLED=0 go build -o $@ ./cmd/apexctl
+
 .PHONY: clean
 clean:
 	rm -rf dist
@@ -57,7 +60,7 @@ test-images:
 OS_IMAGE?="quay.io/apex/test:fedora"
 
 .PHONY: e2e
-e2e: dist/apex test-images
+e2e: dist/apex dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: images

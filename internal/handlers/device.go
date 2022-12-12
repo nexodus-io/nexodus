@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -68,7 +69,7 @@ func (api *API) GetDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
-// PostDevices handles adding a new device
+// CreateDevice handles adding a new device
 // @Summary      Add Devices
 // @Description  Adds a new device
 // @Tags         Devices
@@ -126,4 +127,58 @@ func (api *API) CreateDevice(c *gin.Context) {
 	api.db.Save(&user)
 
 	c.JSON(http.StatusCreated, device)
+}
+
+// DeleteDevice handles deleting an existing device and associated ipam lease
+// @Summary      Delete Device
+// @Description  Deletes an existing device and associated IPAM lease
+// @Tags         Devices
+// @Accepts		 json
+// @Produce      json
+// @Param        id   path      string  true "Device ID"
+// @Success      204  {object}  models.Device
+// @Failure      400  {object}  models.ApiError
+// @Failure		 400  {object}  models.ApiError
+// @Failure		 400  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
+// @Router       /devices/{id} [delete]
+func (api *API) DeleteDevice(c *gin.Context) {
+	deviceID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "device id is not valid"})
+		return
+	}
+
+	var peer models.Peer
+	baseID := models.Base{ID: deviceID}
+	device := models.Device{}
+	device.Base = baseID
+
+	if res := api.db.First(&peer, "device_id = ?", device.Base.ID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+	ipamAddress := peer.NodeAddress
+	zonePrefix := peer.ZonePrefix
+
+	if res := api.db.Delete(&peer, "device_id = ?", device.Base.ID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if res := api.db.Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if ipamAddress != "" && zonePrefix != "" {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, zonePrefix); err != nil {
+			c.JSON(http.StatusInternalServerError, models.ApiError{
+				Error: fmt.Sprintf("failed to release ipam address: %v", err),
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, device)
 }

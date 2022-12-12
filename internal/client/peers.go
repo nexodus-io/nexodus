@@ -13,6 +13,7 @@ import (
 
 const (
 	ZONE_PEERS = "/api/zones/%s/peers"
+	PEER       = "/api/peers/%s"
 )
 
 func (c *Client) CreatePeerInZone(zoneID uuid.UUID, deviceID uuid.UUID, endpointIP string, requestedIP string, childPrefix string, hubRouter bool, hubZone bool, zonePrefix string, reflexiveIP, endpointLocalAddress string, symmetricNat bool) (models.Peer, error) {
@@ -90,4 +91,34 @@ func (c *Client) GetZonePeers(zoneID uuid.UUID) ([]models.Peer, error) {
 	}
 
 	return peerListing, nil
+}
+
+func (c *Client) DeletePeer(peerID uuid.UUID) (models.Peer, error) {
+	dest := c.baseURL.JoinPath(fmt.Sprintf(PEER, peerID.String())).String()
+	r, err := http.NewRequest(http.MethodDelete, dest, nil)
+	if err != nil {
+		return models.Peer{}, err
+	}
+
+	res, err := c.client.Do(r)
+	if err != nil {
+		return models.Peer{}, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return models.Peer{}, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return models.Peer{}, fmt.Errorf("http error: %d %s", res.StatusCode, string(resBody))
+	}
+
+	var data models.Peer
+	if err := json.Unmarshal(resBody, &data); err != nil {
+		return models.Peer{}, err
+	}
+
+	return data, nil
 }
