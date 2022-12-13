@@ -95,11 +95,11 @@ hack/apex_installer.sh
 As the project is still in such early development, it is expected that `apex` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
 
 ```sh
-$ sudo ./apex <CONTROLLER_API_IP>:<CONTROLLER_API_PORT>
-Your device must be registered with Apex Controller.
+sudo apex-linux-amd64 https://apex.local
+Your device must be registered with Apex.
 Your one-time code is: ????-????
-Please open the following URL in your browser and enter your one-time code:
-http://HOST:PORT/auth/realms/controller/device
+Please open the following URL in your browser to sign in:
+https://auth.apex.local/device?user_code=????-????
 ```
 
 Once enrollment is completed in the web UI, the agent will show progress.
