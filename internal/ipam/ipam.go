@@ -47,7 +47,6 @@ func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, e
 		PrefixCidr: ipamPrefix,
 	}))
 	if err != nil {
-		i.logger.Errorf("failed to acquire an IPAM assigned address %v", err)
 		return "", fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
 	}
 	return res.Msg.Ip.Ip, nil
@@ -56,11 +55,35 @@ func (i *IPAM) AssignFromPool(ctx context.Context, ipamPrefix string) (string, e
 func (i *IPAM) AssignPrefix(ctx context.Context, cidr string) error {
 	cidr, err := cleanCidr(cidr)
 	if err != nil {
-		i.logger.Errorf("invalid prefix requested: %v", err)
 		return fmt.Errorf("invalid prefix requested: %v", err)
 	}
 	_, err = i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
 	return err
+}
+
+// ReleaseToPool release the ipam address back to the specified prefix
+func (i *IPAM) ReleaseToPool(ctx context.Context, address, cidr string) error {
+	_, err := i.client.ReleaseIP(ctx, connect.NewRequest(&apiv1.ReleaseIPRequest{
+		Ip:         address,
+		PrefixCidr: cidr,
+	}))
+
+	if err != nil {
+		return fmt.Errorf("failed to release IPAM address %v\n", err)
+	}
+	return nil
+}
+
+// ReleaseToPool release the ipam address back to the specified prefix
+func (i *IPAM) ReleasePrefix(ctx context.Context, cidr string) error {
+	_, err := i.client.DeletePrefix(ctx, connect.NewRequest(&apiv1.DeletePrefixRequest{
+		Cidr: cidr,
+	}))
+
+	if err != nil {
+		return fmt.Errorf("failed to release IPAM prefix %v\n", err)
+	}
+	return nil
 }
 
 // cleanCidr ensures a valid IP4/IP6 address is provided and return a proper

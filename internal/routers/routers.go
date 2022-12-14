@@ -44,6 +44,7 @@ func NewAPIRouter(
 		private.GET("/zones", api.ListZones)
 		private.POST("/zones", api.CreateZone)
 		private.GET("/zones/:zone", api.GetZones)
+		private.DELETE("/zones/:zone", api.DeleteZone)
 		private.GET("/zones/:zone/peers", api.ListPeersInZone)
 		private.POST("/zones/:zone/peers", api.CreatePeerInZone)
 		private.GET("/zones/:zone/peers/:id", api.GetPeerInZone)
@@ -51,9 +52,11 @@ func NewAPIRouter(
 		private.GET("/devices", api.ListDevices)
 		private.GET("/devices/:id", api.GetDevice)
 		private.POST("/devices", api.CreateDevice)
+		private.DELETE("/devices/:id", api.DeleteDevice)
 		// Peers
 		private.GET("/peers", api.ListPeers)
 		private.GET("/peers/:id", api.GetPeers)
+		private.DELETE("/peers/:id", api.DeletePeer)
 		// Users
 		private.GET("/users/:id", api.GetUser)
 		private.GET("/users", api.ListUsers)

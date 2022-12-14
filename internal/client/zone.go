@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 
@@ -12,6 +13,7 @@ import (
 
 const (
 	ZONES = "/api/zones"
+	ZONE  = "/api/zones/%s"
 )
 
 // CreateZone creates a zone
@@ -53,7 +55,7 @@ func (c *Client) CreateZone(name, description, cidr string, hubZone bool) (model
 	return data, nil
 }
 
-// ListZone lists all zones
+// ListZones lists all zones
 func (c *Client) ListZones() ([]models.Zone, error) {
 	dest := c.baseURL.JoinPath(ZONES).String()
 
@@ -80,6 +82,36 @@ func (c *Client) ListZones() ([]models.Zone, error) {
 	var data []models.Zone
 	if err := json.Unmarshal(resBody, &data); err != nil {
 		return nil, err
+	}
+
+	return data, nil
+}
+
+func (c *Client) DeleteZone(zoneID uuid.UUID) (models.Zone, error) {
+	dest := c.baseURL.JoinPath(fmt.Sprintf(ZONE, zoneID.String())).String()
+	r, err := http.NewRequest(http.MethodDelete, dest, nil)
+	if err != nil {
+		return models.Zone{}, err
+	}
+
+	res, err := c.client.Do(r)
+	if err != nil {
+		return models.Zone{}, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return models.Zone{}, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return models.Zone{}, fmt.Errorf("http error: %d %s", res.StatusCode, string(resBody))
+	}
+
+	var data models.Zone
+	if err := json.Unmarshal(resBody, &data); err != nil {
+		return models.Zone{}, err
 	}
 
 	return data, nil

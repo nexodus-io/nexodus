@@ -5,6 +5,7 @@ package integration_tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/redhat-et/apex/internal/models"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -801,4 +803,214 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	lc, err = lineCount(wgSpokeShow)
 	require.NoError(err)
 	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
+}
+
+func (suite *ApexIntegrationSuite) TestApexCtl() {
+	assert := suite.Assert()
+	require := suite.Require()
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
+	defer cancel()
+	user := "kitteh5@apex.local"
+	pass := "floofykittens"
+
+	token, err := getToken(ctx, user, pass)
+	require.NoError(err)
+
+	// create the nodes
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+
+	// create a new zone and parse the returned json for the zone id
+	zoneOut, err := suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"--output", "json",
+		"zone", "create",
+		"--name", "zone-apexctl",
+		"--cidr", "172.19.100.0/24",
+		"--description", "apexctl e2e zone",
+	)
+	require.NoErrorf(err, "apexctl zone create error: %v\n", err)
+	var zone models.Zone
+	err = json.Unmarshal([]byte(zoneOut), &zone)
+	assert.NotEmpty(zone.ID.String())
+
+	// move the current user into the new zone
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"zone", "move-user",
+		"--zone-id", zone.ID.String(),
+	)
+	assert.NoErrorf(err, "apexctl zone move-user error: %v\n", err)
+
+	// start apex on the nodes
+	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+
+	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	require.NoError(err)
+
+	gather := suite.gatherFail(ctx, node1, node2)
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, node2IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, node1IP)
+	assert.NoErrorf(err, gather)
+
+	// validate list-all peers and register IDs and IPs
+	allPeers, err := suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"--output", "json-raw",
+		"peer", "list-all",
+	)
+	var peers []models.Peer
+	json.Unmarshal([]byte(allPeers), &peers)
+	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+
+	// register the device IDs for node1 and node2
+	var node1DeviceID string
+	var node2DeviceID string
+	for _, p := range peers {
+		if p.NodeAddress == node1IP {
+			node1DeviceID = p.DeviceID.String()
+		}
+		if p.NodeAddress == node2IP {
+			node2DeviceID = p.DeviceID.String()
+		}
+	}
+
+	//kill the apex process on both nodes
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
+	require.NoError(err)
+
+	// delete both devices from apex
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"device", "delete",
+		"--device-id", node1DeviceID,
+	)
+	require.NoError(err)
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"device", "delete",
+		"--device-id", node2DeviceID,
+	)
+	require.NoError(err)
+
+	// delete the keys on both nodes to force ensure the deleted device released it's
+	// IPAM address and will re-issue that address to a new device with a new keypair.
+	_, err = suite.containerExec(ctx, node1, []string{"rm", "-rf", "/etc/wireguard/"})
+	require.NoError(err)
+	_, err = suite.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	require.NoError(err)
+
+	// re-join both nodes
+	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+
+	newNode1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+	gather = suite.gatherFail(ctx, node1, node2)
+
+	// If the device was not deleted, the next registered device would receive the
+	// next available address in the IPAM pool, not the previously assigned address.
+	var addressMatch bool
+	if newNode1IP == node2IP {
+		addressMatch = true
+		suite.logger.Infof("Pinging %s from node1", node1IP)
+		err = ping(ctx, node1, node1IP)
+		assert.NoErrorf(err, gather)
+	}
+	if newNode1IP == node1IP {
+		addressMatch = true
+		suite.logger.Infof("Pinging %s from node1", node2IP)
+		err = ping(ctx, node1, node2IP)
+		assert.NoErrorf(err, gather)
+	}
+	if !addressMatch {
+		assert.Failf("ipam/device delete failed", fmt.Sprintf("Node did not receive the proper IPAM address %s, it should have been %s or %s\n %s", newNode1IP, node1IP, node2IP, gather))
+	}
+
+	// validate list peers in a zone
+	peersInZone, err := suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"--output", "json-raw",
+		"peer", "list",
+		"--zone-id", zone.ID.String(),
+	)
+
+	json.Unmarshal([]byte(peersInZone), &peers)
+	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+
+	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
+	for _, p := range peers {
+		if p.NodeAddress == node1IP {
+			node1DeviceID = p.DeviceID.String()
+		}
+		if p.NodeAddress == node2IP {
+			node2DeviceID = p.DeviceID.String()
+		}
+	}
+	// delete all devices from the zone as currently required to avoid sql key
+	// constraints, then delete the zone, then recreate the zone to ensure the
+	// IPAM prefix was released. If it was not released the creation will fail.
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"device", "delete",
+		"--device-id", node1DeviceID,
+	)
+	require.NoError(err)
+
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"device", "delete",
+		"--device-id", node2DeviceID,
+	)
+	require.NoError(err)
+
+	// delete the zone
+	zoneOut, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"--output", "json",
+		"zone", "delete",
+		"--zone-id", zone.ID.String(),
+	)
+	require.NoError(err)
+
+	// re-create the deleted zone, this will fail if the IPAM
+	// prefix was not released from the prior deletion
+	_, err = suite.runCommand("../dist/apexctl",
+		"--username", user,
+		"--password", pass,
+		"zone", "create",
+		"--name", "zone-apexctl",
+		"--cidr", "172.19.100.0/24",
+		"--description", "apexctl e2e zone",
+	)
+	require.NoError(err)
 }

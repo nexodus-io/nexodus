@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -216,4 +217,52 @@ func (api *API) GetPeerInZone(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, peer)
+}
+
+// DeleteZone handles deleting an existing zone and associated ipam prefix
+// @Summary      Delete Zone
+// @Description  Deletes an existing Zone and associated IPAM prefix
+// @Tags         Zones
+// @Accepts		 json
+// @Produce      json
+// @Param        id   path      string  true "Zone ID"
+// @Success      204  {object}  models.Zone
+// @Failure      400  {object}  models.ApiError
+// @Failure		 400  {object}  models.ApiError
+// @Failure		 400  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
+// @Router       /zones/{id} [delete]
+func (api *API) DeleteZone(c *gin.Context) {
+	zoneID, err := uuid.Parse(c.Param("zone"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not valid"})
+		return
+	}
+
+	var zone models.Zone
+
+	if res := api.db.First(&zone, "id = ?", zoneID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if zone.Name == "default" {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "the default zone is not a candidate for deletion"})
+		return
+	}
+	zoneCIDR := zone.IpCidr
+
+	if res := api.db.Delete(&zone, "id = ?", zoneID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if zoneCIDR != "" {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), zoneCIDR); err != nil {
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to release ipam zone prefix: %v", err)})
+		}
+	}
+
+	c.JSON(http.StatusOK, zone)
 }

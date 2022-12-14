@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -281,4 +282,15 @@ func (suite *ApexIntegrationSuite) gatherFail(ctx context.Context, containers ..
 	}
 
 	return strings.Join(gatherOut, "\n")
+}
+
+// runCommand runs the cmd and returns the combined stdout and stderr
+func (suite *ApexIntegrationSuite) runCommand(cmd ...string) (string, error) {
+	suite.logger.Infof("Running command: %s", strings.Join(cmd, " "))
+	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
+	}
+
+	return string(output), nil
 }
