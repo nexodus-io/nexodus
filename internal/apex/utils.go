@@ -253,6 +253,10 @@ func getInterfaceByIP(ip net.IP) (string, error) {
 }
 
 func setupDarwinIface(logger *zap.SugaredLogger, localAddress string) error {
+	if ifaceExists(logger, darwinIface) {
+		deleteDarwinIface(logger)
+	}
+
 	_, err := RunCommand("wireguard-go", darwinIface)
 	if err != nil {
 		logger.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
@@ -337,7 +341,7 @@ func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 	return true
 }
 
-// deleteDarwinIface these commands all fail silently so no errors are returned
+// deleteDarwinIface delete the darwin userspace wireguard interface
 func deleteDarwinIface(logger *zap.SugaredLogger) {
 	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
 	_, err := RunCommand("rm", "-f", tunSock)

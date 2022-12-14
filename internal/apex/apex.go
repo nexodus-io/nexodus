@@ -402,9 +402,6 @@ func checkOS(logger *zap.SugaredLogger) error {
 		if err := CreateDirectory(WgDarwinConfPath); err != nil {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
-		if ifaceExists(logger, darwinIface) {
-			deleteDarwinIface(logger)
-		}
 	case Windows.String():
 		logger.Fatal("Windows is temporarily unsupported")
 		logger.Debugf("[%s] operating system detected", nodeOS)
