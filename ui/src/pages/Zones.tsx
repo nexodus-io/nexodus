@@ -1,3 +1,5 @@
+import { useState, useEffect, } from "react";
+import { useQuery, } from "react-query";
 import {
     Datagrid,
     List,
@@ -11,10 +13,37 @@ import {
     SimpleShowLayout,
     BooleanField,
     BooleanInput,
+    CreateButton,
+    ExportButton,
+    TopToolbar,
+    useDataProvider,
 } from 'react-admin';
 
+const ZoneCreateButton = () => {
+    const [disableCreate, setDisableCreate] = useState(false);
+    const dataProvider = useDataProvider();
+
+    useEffect(() => {
+        dataProvider.getFlag("multi-zone")
+            .then((response: any) => {
+                setDisableCreate(response.json["multi-zone"] != true)
+            });
+    });
+
+    return (
+        <CreateButton disabled={disableCreate}/>
+    );
+};
+
+const ListActions = () => (
+    <TopToolbar>
+        <ZoneCreateButton/>
+        <ExportButton/>
+    </TopToolbar>
+);
+
 export const ZoneList = () => (
-    <List>
+    <List actions={<ListActions/>}>
         <Datagrid rowClick="show" bulkActionButtons={false}>
             <TextField label="Name" source="name" />
             <TextField label="Description" source="description" />

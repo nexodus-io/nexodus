@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/redhat-et/apex/internal/fflags"
 	"github.com/redhat-et/apex/internal/ipam"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -22,9 +23,10 @@ type API struct {
 	db            *gorm.DB
 	ipam          ipam.IPAM
 	defaultZoneID uuid.UUID
+	fflags        *fflags.FFlags
 }
 
-func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM) (*API, error) {
+func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags) (*API, error) {
 	ctx, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 	api := &API{
@@ -32,6 +34,7 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		db:            db,
 		ipam:          ipam,
 		defaultZoneID: uuid.Nil,
+		fflags:        fflags,
 	}
 	if err := api.CreateDefaultZoneIfNotExists(ctx); err != nil {
 		return nil, err

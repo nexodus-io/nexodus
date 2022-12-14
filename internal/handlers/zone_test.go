@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/redhat-et/apex/internal/models"
 )
 
@@ -25,6 +26,10 @@ func (suite *HandlerTestSuite) TestListZones() {
 			IpCidr: "10.1.3.0/24",
 		},
 	}
+	zoneDenied := models.AddZone{
+		Name:   "zone-denied-multi-zone-off",
+		IpCidr: "10.1.3.0/24",
+	}
 
 	for _, zone := range zones {
 		resBody, err := json.Marshal(zone)
@@ -32,10 +37,26 @@ func (suite *HandlerTestSuite) TestListZones() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateZone, bytes.NewBuffer(resBody),
+			func(c *gin.Context) {
+				c.Set("_apex.testCreateZone", "true")
+				suite.api.CreateZone(c)
+			},
+			bytes.NewBuffer(resBody),
 		)
 		assert.NoError(err)
 		assert.Equal(http.StatusCreated, res.Code)
+	}
+
+	{
+		resBody, err := json.Marshal(zoneDenied)
+		assert.NoError(err)
+		_, res, err := suite.ServeRequest(
+			http.MethodPost,
+			"/", "/",
+			suite.api.CreateZone, bytes.NewBuffer(resBody),
+		)
+		assert.NoError(err)
+		assert.Equal(http.StatusMethodNotAllowed, res.Code)
 	}
 
 	{

@@ -72,6 +72,11 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: APEX_TRACE_INSECURE
+            - name: APEX_FFLAG_MULTI_ZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_FFLAG_MULTI_ZONE
           resources:
             requests:
               cpu: 100m

@@ -89,6 +89,9 @@ func NewAPIRouter(
 		private.GET("/users", api.ListUsers)
 		private.PATCH("/users/:id", api.PatchUser)
 		private.DELETE("/users/:id", api.DeleteUser)
+		// Feature Flags
+		private.GET("fflags", api.ListFeatureFlags)
+		private.GET("fflags/:name", api.GetFeatureFlag)
 	}
 
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

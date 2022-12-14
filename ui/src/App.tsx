@@ -28,11 +28,18 @@ const fetchJson = (url: URL, options: any = {}) => {
 
 const backend = `${window.location.protocol}//api.${window.location.host}`;
 const authProvider = goOidcAgentAuthProvider(backend);
-const dataProvider = simpleRestProvider(
+const baseDataProvider = simpleRestProvider(
   `${backend}/api`,
   fetchJson,
   'X-Total-Count',
 );
+const dataProvider = {
+  ...baseDataProvider,
+  getFlag: (name: string) => {
+    return fetchJson(new URL(`${backend}/api/fflags/${name}`))
+      .then(response => response);
+  },
+}
 
 const App = () => {
   return (
