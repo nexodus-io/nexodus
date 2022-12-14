@@ -65,6 +65,11 @@ spec:
                 configMapKeyRef:
                   name: backend-web
                   key: BACKEND
+            - name: GOFF_PROXY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: GOFF_PROXY_URL
           resources:
             requests:
               cpu: 100m

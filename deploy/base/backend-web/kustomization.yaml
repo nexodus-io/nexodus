@@ -11,6 +11,7 @@ configMapGenerator:
       - REDIRECT_URL=https://apex.local/#/login
       - ORIGINS=https://apex.local
       - BACKEND=http://apiserver:8080
+      - GOFF_PROXY_URL=https://goff-proxy.apex.local
 resources:
   - deployment.yaml
   - service.yaml

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redhat-et/apex/internal/fflags"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/util"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +54,9 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	}()
 
 	ipamClient := ipam.NewIPAM(suite.logger, util.TestIPAMClientAddr)
-	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient)
+
+	fflags := fflags.NewFFlags(suite.logger)
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags)
 	if err != nil {
 		suite.T().Fatal(err)
 	}
