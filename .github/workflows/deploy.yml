@@ -1,4 +1,4 @@
-name: image-build
+name: deploy
 
 on:
   push:
@@ -8,11 +8,10 @@ env:
   REGISTRY: quay.io
   REPOSITORY: apex
   APISERVER_IMAGE_NAME: apiserver
-  APISERVER_UI_IMAGE_NAME: frontend
-  IMAGE_TAG: latest
+  FRONTEND_IMAGE_NAME: frontend
 
 jobs:
-  build:
+  build-images:
     name: Build Images
     runs-on: ubuntu-latest
     environment: image-repositories
@@ -31,7 +30,7 @@ jobs:
       uses: redhat-actions/buildah-build@v2
       with:
         image: apiserver
-        tags: latest ${{ github.sha }} ${{github.ref_name}}
+        tags: latest ${{ github.sha }} ${{ github.ref_name }}
         containerfiles: |
           ./Containerfile.apiserver
 
@@ -47,7 +46,7 @@ jobs:
       uses: redhat-actions/buildah-build@v2
       with:
         image: frontend
-        tags: latest ${{ github.sha }} ${{github.ref_name}}
+        tags: latest ${{ github.sha }} ${{ github.ref_name }}
         labels: ${{ steps.meta-frontend.outputs.labels }}
         containerfiles: |
           ./Containerfile.frontend
@@ -58,3 +57,32 @@ jobs:
         image: ${{ steps.build-frontend.outputs.image }}
         tags: ${{ steps.build-frontend.outputs.tags }}
         registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+
+  update-deployment:
+    name: Update Deployment
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+
+      - name: Update Images
+        run: |
+          ./kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA} ./deploy/apex/overlays/operate-first
+          ./kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA} ./deploy/apex/overlays/operate-first
+
+      - name: Check for changes
+        run: |
+          git diff --quiet || echo "COMMIT_CHANGES=1" >> $GITHUB_ENV
+
+      - name: Commit Changes
+        id: commit
+        if: env.COMMIT_CHANGES == 1
+        uses: devops-infra/action-commit-push@master
+        with:
+          github_token: "${{ secrets.GITHUB_TOKEN }}"
+          commit_prefix: "[deploy] Update operate-first images"
+          commit_message: "Update operate-first overlay images to ${{ github.sha }}"
