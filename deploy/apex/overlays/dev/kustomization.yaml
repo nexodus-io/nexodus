@@ -1,46 +1,46 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../base
-components:
-  - ../../components/selfsigned-ca
+- ../../base
+- issuer.yaml
+namespace: apex
 # Uncomment this and the patch at the bottom to enable monitoring
 #  - ../../components/monitoring
 patchesJson6902:
-  - target:
-      kind: Ingress
-      name: apiproxy
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: api.apex.local
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: api.apex.local
-  - target:
-      kind: Ingress
-      name: dex
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: auth.apex.local
-  - target:
-      kind: Certificate
-      name: dex-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.apex.local
-  - target:
-      kind: Ingress
-      name: frontend
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: apex.local
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: apex.local
+- target:
+    kind: Ingress
+    name: apiproxy
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: api.apex.local
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: api.apex.local
+- target:
+    kind: Ingress
+    name: dex
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: auth.apex.local
+- target:
+    kind: Certificate
+    name: dex-cert
+  patch: |-
+    - op: replace
+      path: /spec/dnsNames/0
+      value: auth.apex.local
+- target:
+    kind: Ingress
+    name: frontend
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: apex.local
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: apex.local
 #  - target:
 #      name: apiserver
 #      kind: ConfigMap
@@ -52,3 +52,68 @@ patchesJson6902:
 #      - op: replace
 #        path: /data/APEX_TRACE_INSECURE
 #        value: "1"
+- target:
+    kind: Ingress
+    name: apiproxy
+  patch: |-
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: apex-issuer
+- target:
+    kind: Ingress
+    name: dex
+  patch: |-
+    - op: remove
+      path: /metadata/annotations/cert-manager.io~1issuer
+    - op: remove
+      path: /spec/tls
+    - op: add
+      path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      value: true
+- target:
+    kind: Ingress
+    name: frontend
+  patch: |-
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: apex-issuer
+- target:
+    kind: Certificate
+    name: dex-cert
+  patch: |-
+    - op: replace
+      path: /spec/issuerRef/name
+      value: apex-issuer
+    - op: replace
+      path: /spec/issuerRef/kind
+      value: Issuer
+- target:
+    kind: Deployment
+    name: backend-cli
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/volumeMounts
+      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+    - op: add
+      path: /spec/template/spec/volumes
+      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+- target:
+    kind: Deployment
+    name: backend-web
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/volumeMounts
+      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+    - op: add
+      path: /spec/template/spec/volumes
+      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+- target:
+    kind: Deployment
+    name: apiserver
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/volumeMounts
+      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+    - op: add
+      path: /spec/template/spec/volumes
+      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
