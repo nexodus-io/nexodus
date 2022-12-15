@@ -153,3 +153,37 @@ func (api *API) ListUsers(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, users)
 }
+
+// DeleteUser delete a user
+// @Summary      Delete User
+// @Description  Delete a user
+// @Tags         User
+// @Accepts		 json
+// @Produce      json
+// @Param        id  path       string  true  "User ID"
+// @Success      200  {object}  models.User
+// @Failure		 400  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
+// @Router       /users/{id} [delete]
+func (api *API) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
+		return
+	}
+
+	var user models.User
+
+	if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	if res := api.db.Delete(&user, "id = ?", userID); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
