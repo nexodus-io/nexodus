@@ -4,19 +4,9 @@ metadata:
   name: backend-web
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: backend-web
-      app.kubernetes.io/instance: backend-web
-      app.kubernetes.io/name: backend-web
   strategy:
     type: Recreate
   template:
-    metadata:
-      labels:
-        app.kubernetes.io/component: backend-web
-        app.kubernetes.io/instance: backend-web
-        app.kubernetes.io/name: backend-web
     spec:
       containers:
         - name: backend-web

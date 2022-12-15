@@ -4,19 +4,9 @@ metadata:
   name: dex
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: dex
-      app.kubernetes.io/instance: dex
-      app.kubernetes.io/name: dex
   strategy:
     type: Recreate
   template:
-    metadata:
-      labels:
-        app.kubernetes.io/component: dex
-        app.kubernetes.io/instance: dex
-        app.kubernetes.io/name: dex
     spec:
       containers:
         - name: dex
