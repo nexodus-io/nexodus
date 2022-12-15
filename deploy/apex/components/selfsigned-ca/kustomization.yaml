@@ -60,12 +60,12 @@ patchesJson6902:
         path: /spec/template/spec/volumes
         value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
   - target:
-      Kind: StatefulSet
+      Kind: Deployment
       Name: apiserver
     patch: |-
       - op: add
-        path: /spec/template/spec/containers/1/volumeMounts
+        path: /spec/template/spec/containers/0/volumeMounts
         value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
       - op: add
-        path: /spec/template/spec/volumes/1
-        value: {"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]

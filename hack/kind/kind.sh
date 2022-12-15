@@ -8,7 +8,7 @@ up() {
 
     echo "Deploying Ingress Controller"
     kubectl apply -f ./deploy/kind-ingress.yaml
-    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=300s
+    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
 
     echo "Adding Rewrite to CoreDNS"
     kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
@@ -17,14 +17,19 @@ up() {
     kubectl replace -n kube-system -f coredns.yaml
     rm coredns.yaml
     kubectl rollout restart -n kube-system deployment/coredns
-    kubectl rollout status -n kube-system deployment coredns --timeout=300s
+    kubectl rollout status -n kube-system deployment coredns --timeout=5m
 
     echo "Installing Cert Manager"
     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
-    kubectl rollout status -n cert-manager deploy/cert-manager --timeout=300s
-    kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=300s
-    kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=300s
+    kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
+    kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
+    kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
 
+    echo "Installing Postgres Operator"
+    kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
+    kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default
+    kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
+    
     echo "Loading Images To KIND"
     kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
     kind load --name apex-dev docker-image quay.io/apex/frontend:latest
@@ -33,16 +38,16 @@ up() {
     kubectl create namespace apex
     kubectl apply -k ./deploy/apex/overlays/dev
 
-    kubectl rollout status -n apex deployment dex --timeout=300s
-    kubectl rollout status -n apex deployment dex --timeout=300s
-    kubectl rollout status -n apex statefulset ipam --timeout=300s
-    kubectl rollout status -n apex statefulset apiserver --timeout=300s
-    kubectl rollout status -n apex deployment backend-web --timeout=300s
-    kubectl rollout status -n apex deployment backend-cli --timeout=300s
-    kubectl rollout status -n apex deployment apiproxy --timeout=300s
+    kubectl rollout status -n apex deployment dex --timeout=5m
+    kubectl rollout status -n apex deployment dex --timeout=5m
+    kubectl rollout status -n apex deployment ipam --timeout=5m
+    kubectl rollout status -n apex deployment apiserver --timeout=5m
+    kubectl rollout status -n apex deployment backend-web --timeout=5m
+    kubectl rollout status -n apex deployment backend-cli --timeout=5m
+    kubectl rollout status -n apex deployment apiproxy --timeout=5m
 
     echo "Waiting for Apex Pod Readiness"
-    kubectl wait --for=condition=Ready pods --all -n apex --timeout=20m
+    kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=5m
 
     echo "Waiting 5s until we add healthecks/liveness probes"
     # give k8s a little longer to come up

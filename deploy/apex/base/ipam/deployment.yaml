@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ipam
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    spec:
+      containers:
+        - name: ipam
+          image: ghcr.io/metal-stack/go-ipam:v1.11.3
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GOIPAM_PG_HOST
+              valueFrom:
+                secretKeyRef: 
+                  name: ipamdb-pguser-ipamdb
+                  key: host
+            - name: GOIPAM_PG_PORT
+              valueFrom:
+                secretKeyRef: 
+                  name: ipamdb-pguser-ipamdb
+                  key: port
+            - name: GOIPAM_PG_USER
+              valueFrom:
+                secretKeyRef: 
+                  name: ipamdb-pguser-ipamdb
+                  key: user
+            - name: GOIPAM_PG_PASSWORD
+              valueFrom:
+                secretKeyRef: 
+                  name: ipamdb-pguser-ipamdb
+                  key: password
+            - name: GOIPAM_PG_DBNAME
+              valueFrom:
+                secretKeyRef: 
+                  name: ipamdb-pguser-ipamdb
+                  key: dbname
+            - name: GOIPAM_PG_SSLMODE
+              value: require
+          args:
+            - --grpc-server-endpoint=0.0.0.0:9090
+            - postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 100m
+              memory: 200Mi
+      restartPolicy: Always

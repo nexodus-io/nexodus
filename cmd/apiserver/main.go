@@ -105,6 +105,12 @@ func main() {
 				EnvVars: []string{"APEX_DB_NAME"},
 			},
 			&cli.StringFlag{
+				Name:    "db-sslmode",
+				Value:   "disable",
+				Usage:   "db ssl mode",
+				EnvVars: []string{"APEX_DB_SSLMODE"},
+			},
+			&cli.StringFlag{
 				Name:    "ipam-address",
 				Value:   "ipam:9090",
 				Usage:   "address of ipam grpc service",
@@ -153,7 +159,7 @@ func main() {
 				cCtx.String("db-password"),
 				cCtx.String("db-name"),
 				cCtx.String("db-port"),
-				"disable",
+				cCtx.String("db-sslmode"),
 			)
 			if err != nil {
 				log.Fatal(err)
