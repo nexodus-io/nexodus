@@ -4,18 +4,14 @@ configMapGenerator:
   - name: apiserver
     literals:
       - APEX_DEBUG=1
-      - APEX_DB_HOST=localhost
-      - APEX_DB_NAME=apiserver
-      - APEX_DB_USER=apiserver
-      - APEX_DB_PASSWORD=floofykittens
       - APEX_IPAM_URL=http://ipam:9090
       - APEX_OIDC_URL=https://auth.apex.local
       - APEX_TRACE_ENDPOINT_OTLP=""
       - APEX_TRACE_INSECURE="1"
 resources:
-  - persistentvolumeclaim.yaml
+  - postgres.yaml
   - service.yaml
-  - statefulset.yaml
+  - deployment.yaml
 commonLabels:
   app.kubernetes.io/component: apiserver
   app.kubernetes.io/instance: apiserver
