@@ -16,7 +16,7 @@ The base apex manifests live in `./deploy/apex/base`, and we offer two overlays
 
 We use GitHub Actions as our build pipeline.
 Each Pull Request is gated by automated tests that are run in the `build` workflow.
-On each merge to the `main` branch the `deploy` workflow is triggered.
+On each merge to the `main` branch, the `deploy` workflow is triggered.
 
 This workflow:
 
