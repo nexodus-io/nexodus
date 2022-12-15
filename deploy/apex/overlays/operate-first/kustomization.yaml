@@ -2,6 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../../base
+- issuer.yaml
+namespace: apex
 configMapGenerator:
 - behavior: replace
   files:
@@ -11,73 +13,108 @@ patchesJson6902:
 - patch: |-
     - op: replace
       path: /data/APEX_OIDC_URL
-      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+      value: https://auth.apex-hosted.cloud
   target:
     kind: ConfigMap
     name: apiserver
 - patch: |-
     - op: replace
       path: /data/DOMAIN
-      value: https://api.apex.apps.smaug.na.operate-first.cloud
+      value: https://api.apex-hosted.cloud
     - op: replace
       path: /data/OIDC_PROVIDER
-      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+      value: https://auth.apex-hosted.cloud
     - op: replace
       path: /data/ORIGINS
-      value: https://apex.apps.smaug.na.operate-first.cloud
+      value: https://apex-hosted.cloud
     - op: replace
       path: /data/REDIRECT_URL
-      value: https://auth.apex.apps.smaug.na.operate-first.cloud/#/login
+      value: https://auth.apex-hosted.cloud /#/login
   target:
     kind: ConfigMap
     name: backend-web
 - patch: |-
     - op: replace
       path: /data/DOMAIN
-      value: https://api.apex.apps.smaug.na.operate-first.cloud
+      value: https://api.apex-hosted.cloud
     - op: replace
       path: /data/OIDC_PROVIDER
-      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+      value: https://auth.apex-hosted.cloud
   target:
     kind: ConfigMap
     name: backend-cli
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
-      value: api.apex.apps.smaug.na.operate-first.cloud
+      value: api.apex-hosted.cloud
     - op: replace
       path: /spec/tls/0/hosts/0
-      value: api.apex.apps.smaug.na.operate-first.cloud
+      value: api.apex-hosted.cloud
   target:
     kind: Ingress
     name: apiproxy
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
-      value: auth.apex.apps.smaug.na.operate-first.cloud
+      value: auth.apex-hosted.cloud
     - op: replace
       path: /spec/tls/0/hosts/0
-      value: auth.apex.apps.smaug.na.operate-first.cloud
+      value: auth.apex-hosted.cloud
   target:
     kind: Ingress
     name: dex
 - patch: |-
     - op: replace
       path: /spec/dnsNames/0
-      value: auth.apex.apps.smaug.na.operate-first.cloud
+      value: auth.apex-hosted.cloud
   target:
     kind: Certificate
     name: dex-cert
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
-      value: apex.apps.smaug.na.operate-first.cloud
+      value: apex-hosted.cloud
     - op: replace
       path: /spec/tls/0/hosts/0
-      value: apex.apps.smaug.na.operate-first.cloud
+      value: apex-hosted.cloud
   target:
     kind: Ingress
     name: frontend
+- target:
+    kind: Ingress
+    name: apiproxy
+  patch: |-
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: letsencrypt
+- target:
+    kind: Ingress
+    name: dex
+  patch: |-
+    - op: remove
+      path: /metadata/annotations/cert-manager.io~1issuer
+    - op: remove
+      path: /spec/tls
+    - op: add
+      path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      value: true
+- target:
+    kind: Ingress
+    name: frontend
+  patch: |-
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: letsencrypt
+- target:
+    kind: Certificate
+    name: dex-cert
+  patch: |-
+    - op: replace
+      path: /spec/issuerRef/name
+      value: letsencrypt
+    - op: replace
+      path: /spec/issuerRef/kind
+      value: Issuer
 images:
 - name: quay.io/apex/apiserver
   newTag: 5f5654896673cdb97d593d237aac90e587886dee

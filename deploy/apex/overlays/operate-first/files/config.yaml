@@ -1,4 +1,4 @@
-issuer: https://auth.apex.apps.smaug.na.operate-first.cloud
+issuer: https://auth.apex-hosted.cloud
 
 storage:
   type: memory
@@ -24,7 +24,7 @@ oauth2:
 staticClients:
   - idEnv: WEB_CLIENT_ID
     redirectURIs:
-      - "https://apex.apps.smaug.na.operate-first.cloud/#/login"
+      - "https://apex-hosted.cloud/#/login"
     name: "Apex Web Frontend"
     secretEnv: WEB_CLIENT_SECRET
   - idEnv: CLI_CLIENT_ID
