@@ -1,7 +1,7 @@
 Deployment
 ==========
 
-In order to follow our "Service First" guiding principal, we deploy Apex continuously as a service on [OperateFirst](https://operate-first.cloud) using GitOps.
+In order to follow our "Service First" guiding principle, we deploy Apex continuously as a service on [OperateFirst](https://operate-first.cloud) using GitOps.
 
 ## Kubernetes Manifests
 
