@@ -80,17 +80,14 @@ patchesJson6902:
   target:
     kind: Ingress
     name: frontend
-- target:
-    kind: Ingress
-    name: apiproxy
-  patch: |-
+- patch: |-
     - op: replace
       path: /metadata/annotations/cert-manager.io~1issuer
       value: letsencrypt
-- target:
+  target:
     kind: Ingress
-    name: dex
-  patch: |-
+    name: apiproxy
+- patch: |-
     - op: remove
       path: /metadata/annotations/cert-manager.io~1issuer
     - op: remove
@@ -98,25 +95,28 @@ patchesJson6902:
     - op: add
       path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       value: true
-- target:
+  target:
     kind: Ingress
-    name: frontend
-  patch: |-
+    name: dex
+- patch: |-
     - op: replace
       path: /metadata/annotations/cert-manager.io~1issuer
       value: letsencrypt
-- target:
-    kind: Certificate
-    name: dex-cert
-  patch: |-
+  target:
+    kind: Ingress
+    name: frontend
+- patch: |-
     - op: replace
       path: /spec/issuerRef/name
       value: letsencrypt
     - op: replace
       path: /spec/issuerRef/kind
       value: Issuer
+  target:
+    kind: Certificate
+    name: dex-cert
 images:
 - name: quay.io/apex/apiserver
-  newTag: 5f5654896673cdb97d593d237aac90e587886dee
+  newTag: 90268204644548af1eaa05eb4c4e3e55ef114b63
 - name: quay.io/apex/frontend
-  newTag: 5f5654896673cdb97d593d237aac90e587886dee
+  newTag: 90268204644548af1eaa05eb4c4e3e55ef114b63
