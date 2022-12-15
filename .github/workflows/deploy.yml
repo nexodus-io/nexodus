@@ -2,7 +2,7 @@ name: deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   REGISTRY: quay.io
@@ -16,55 +16,60 @@ jobs:
     runs-on: ubuntu-latest
     environment: image-repositories
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Login to Quay.io
-      uses: redhat-actions/podman-login@v1
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ secrets.QUAY_ROBOT_USERNAME }}
-        password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
+      - name: Login to Quay.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.QUAY_ROBOT_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
-    - name: Build apiserver image
-      id: build-apiserver
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: apiserver
-        tags: latest ${{ github.sha }} ${{ github.ref_name }}
-        containerfiles: |
-          ./Containerfile.apiserver
+      - name: Build apiserver image
+        id: build-apiserver
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: apiserver
+          tags: latest ${{ github.sha }} ${{ github.ref_name }}
+          containerfiles: |
+            ./Containerfile.apiserver
 
-    - name: Push apiserver to quay.io/
-      uses: redhat-actions/push-to-registry@v2
-      with:
-        image: ${{ steps.build-apiserver.outputs.image }}
-        tags: ${{ steps.build-apiserver.outputs.tags }}
-        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+      - name: Push apiserver to quay.io/
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-apiserver.outputs.image }}
+          tags: ${{ steps.build-apiserver.outputs.tags }}
+          registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
 
-    - name: Build frontend image
-      id: build-frontend
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: frontend
-        tags: latest ${{ github.sha }} ${{ github.ref_name }}
-        labels: ${{ steps.meta-frontend.outputs.labels }}
-        containerfiles: |
-          ./Containerfile.frontend
+      - name: Build frontend image
+        id: build-frontend
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: frontend
+          tags: latest ${{ github.sha }} ${{ github.ref_name }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          containerfiles: |
+            ./Containerfile.frontend
 
-    - name: Push frontend to quay.io
-      uses: redhat-actions/push-to-registry@v2
-      with:
-        image: ${{ steps.build-frontend.outputs.image }}
-        tags: ${{ steps.build-frontend.outputs.tags }}
-        registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+      - name: Push frontend to quay.io
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-frontend.outputs.image }}
+          tags: ${{ steps.build-frontend.outputs.tags }}
+          registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
 
   update-deployment:
     name: Update Deployment
-    needs: [ "build-images" ]
+    needs: ["build-images"]
     runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Calculate Short SHA
+        id: gitsha
+        run: |
+          echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Set up Kustomize
         run: |
@@ -91,5 +96,5 @@ jobs:
         uses: devops-infra/action-commit-push@master
         with:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
-          commit_prefix: "[deploy] Update operate-first images"
-          commit_message: "Update operate-first overlay images to ${{ github.sha }}"
+          commit_prefix: "[deploy]"
+          commit_message: "Update prod images to ${{ steps.gitsha.outputs.short }}"

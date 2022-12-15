@@ -4,19 +4,9 @@ metadata:
   name: frontend
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: frontend
-      app.kubernetes.io/instance: frontend
-      app.kubernetes.io/name: frontend
   strategy:
     type: Recreate
   template:
-    metadata:
-      labels:
-        app.kubernetes.io/component: frontend
-        app.kubernetes.io/instance: frontend
-        app.kubernetes.io/name: frontend
     spec:
       containers:
         - name: frontend
