@@ -3,10 +3,10 @@ kind: Kustomization
 resources:
 - ../../base
 configMapGenerator:
-- files:
+- behavior: replace
+  files:
   - files/config.yaml
   name: dex
-  behavior: replace
 patchesJson6902:
 - patch: |-
     - op: replace
@@ -80,6 +80,6 @@ patchesJson6902:
     name: frontend
 images:
 - name: quay.io/apex/apiserver
-  newTag: c384872006e80b62bd415f7df7b87db36e3f1df5
+  newTag: 9d2c4cb67538d1101ac88aa7126927e6cea8580b
 - name: quay.io/apex/frontend
-  newTag: c384872006e80b62bd415f7df7b87db36e3f1df5
+  newTag: 9d2c4cb67538d1101ac88aa7126927e6cea8580b
