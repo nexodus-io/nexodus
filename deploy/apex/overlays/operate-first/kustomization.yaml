@@ -1,79 +1,84 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../base
+- ../../base
 configMapGenerator:
-  - name: dex
-    files:
-      - files/config.yaml
+- files:
+  - files/config.yaml
+  name: dex
 patchesJson6902:
-  - target:
-      kind: ConfigMap
-      name: apiserver
-    patch: |-
-      - op: replace
-        path: /data/APEX_OIDC_URL
-        value: https://auth.apex.apps.smaug.na.operate-first.cloud
-  - target:
-      kind: ConfigMap
-      name: backend-web
-    patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: https://api.apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /data/ORIGINS
-        value: https://apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /data/REDIRECT_URL
-        value: https://auth.apex.apps.smaug.na.operate-first.cloud/#/login
-  - target:
-      kind: ConfigMap
-      name: backend-cli
-    patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: https://api.apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.apex.apps.smaug.na.operate-first.cloud
-  - target:
-      kind: Ingress
-      name: apiproxy
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: api.apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: api.apex.apps.smaug.na.operate-first.cloud
-  - target:
-      kind: Ingress
-      name: dex
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: auth.apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: auth.apex.apps.smaug.na.operate-first.cloud
-  - target:
-      kind: Certificate
-      name: dex-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.apex.apps.smaug.na.operate-first.cloud
-  - target:
-      kind: Ingress
-      name: frontend
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: apex.apps.smaug.na.operate-first.cloud
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: apex.apps.smaug.na.operate-first.cloud
+- patch: |-
+    - op: replace
+      path: /data/APEX_OIDC_URL
+      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: ConfigMap
+    name: apiserver
+- patch: |-
+    - op: replace
+      path: /data/DOMAIN
+      value: https://api.apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /data/OIDC_PROVIDER
+      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /data/ORIGINS
+      value: https://apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /data/REDIRECT_URL
+      value: https://auth.apex.apps.smaug.na.operate-first.cloud/#/login
+  target:
+    kind: ConfigMap
+    name: backend-web
+- patch: |-
+    - op: replace
+      path: /data/DOMAIN
+      value: https://api.apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /data/OIDC_PROVIDER
+      value: https://auth.apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: ConfigMap
+    name: backend-cli
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: api.apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: api.apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: Ingress
+    name: apiproxy
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: auth.apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: auth.apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: Ingress
+    name: dex
+- patch: |-
+    - op: replace
+      path: /spec/dnsNames/0
+      value: auth.apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: Certificate
+    name: dex-cert
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: apex.apps.smaug.na.operate-first.cloud
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: apex.apps.smaug.na.operate-first.cloud
+  target:
+    kind: Ingress
+    name: frontend
+images:
+- name: quay.io/apex/apiserver
+  newTag: 69b7d1ce735d179761fbbd63b9399e2c082d51f6
+- name: quay.io/apex/frontend
+  newTag: 69b7d1ce735d179761fbbd63b9399e2c082d51f6
