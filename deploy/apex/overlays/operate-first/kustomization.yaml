@@ -79,6 +79,6 @@ patchesJson6902:
     name: frontend
 images:
 - name: quay.io/apex/apiserver
-  newTag: 69b7d1ce735d179761fbbd63b9399e2c082d51f6
+  newTag: 08d97bb3c7315c47fd127208a99f3b00a476285d
 - name: quay.io/apex/frontend
-  newTag: 69b7d1ce735d179761fbbd63b9399e2c082d51f6
+  newTag: 08d97bb3c7315c47fd127208a99f3b00a476285d
