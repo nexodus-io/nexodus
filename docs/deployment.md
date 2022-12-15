@@ -8,7 +8,7 @@ In order to follow our "Service First" guiding principle, we deploy Apex continu
 Our project is deployed to Kubernetes using [kustomize](https://kustomize.io/).
 This enables Apex to be easily adapted for different deployment scenarios.
 
-The base apex manifests live in `./deploy/apex/base` and we offer two overlays
+The base apex manifests live in `./deploy/apex/base`, and we offer two overlays
 - Development - `./deploy/apex/overlays/dev`
 - Operate First - `./deploy/apex/overlays/operate-first`
 
