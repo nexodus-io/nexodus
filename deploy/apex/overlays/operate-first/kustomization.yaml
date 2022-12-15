@@ -6,6 +6,7 @@ configMapGenerator:
 - files:
   - files/config.yaml
   name: dex
+  behavior: replace
 patchesJson6902:
 - patch: |-
     - op: replace
