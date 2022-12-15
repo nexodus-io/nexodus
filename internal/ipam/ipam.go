@@ -83,19 +83,19 @@ func (i *IPAM) ReleaseToPool(ctx context.Context, address, cidr string) error {
 	}))
 
 	if err != nil {
-		return fmt.Errorf("failed to release IPAM address %v\n", err)
+		return fmt.Errorf("failed to release IPAM address %v", err)
 	}
 	return nil
 }
 
-// ReleaseToPool release the ipam address back to the specified prefix
+// ReleasePrefix release the ipam address back to the specified prefix
 func (i *IPAM) ReleasePrefix(ctx context.Context, cidr string) error {
 	_, err := i.client.DeletePrefix(ctx, connect.NewRequest(&apiv1.DeletePrefixRequest{
 		Cidr: cidr,
 	}))
 
 	if err != nil {
-		return fmt.Errorf("failed to release IPAM prefix %v\n", err)
+		return fmt.Errorf("failed to release IPAM prefix %v", err)
 	}
 	return nil
 }

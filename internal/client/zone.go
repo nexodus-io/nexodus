@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
 )
 
@@ -76,7 +76,7 @@ func (c *Client) ListZones() ([]models.Zone, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to create the zone: %d", res.StatusCode)
+		return nil, fmt.Errorf("failed to list zones %d", res.StatusCode)
 	}
 
 	var data []models.Zone

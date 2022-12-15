@@ -289,6 +289,55 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:  "user",
+				Usage: "commands relating to users",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "list all users",
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"),
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							encodeOut := cCtx.String("output")
+							return listUsers(c, encodeOut)
+						},
+					},
+					{
+						Name:  "delete",
+						Usage: "delete a user",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "user-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"),
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							encodeOut := cCtx.String("output")
+							userID := cCtx.String("user-id")
+							return deleteUser(c, encodeOut, userID)
+						},
+					},
+				},
+			},
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

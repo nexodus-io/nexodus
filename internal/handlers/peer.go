@@ -203,7 +203,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
 				api.logger.Error(err)
-				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
+				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
 				return
 			}
 		}
@@ -218,7 +218,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 				api.logger.Error(err)
-				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
+				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request specific ipam address: %v", err)})
 				return
 			}
 		} else {
@@ -227,7 +227,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 				api.logger.Error(err)
-				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
+				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request ipam address: %v", err)})
 				return
 			}
 		}
@@ -236,7 +236,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
 				api.logger.Error(err)
-				c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
+				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
 				return
 			}
 		}
@@ -295,6 +295,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 // @Failure		 400  {object}  models.ApiError
 // @Failure      400  {object}  models.ApiError
 // @Failure      500  {object}  models.ApiError
+// @Failure      500  {object}  models.ApiError
 // @Router       /peers/{id} [delete]
 func (api *API) DeletePeer(c *gin.Context) {
 	peerID, err := uuid.Parse(c.Param("id"))
@@ -311,6 +312,7 @@ func (api *API) DeletePeer(c *gin.Context) {
 	}
 	ipamAddress := peer.NodeAddress
 	zonePrefix := peer.ZonePrefix
+	childPrefix := peer.ChildPrefix
 
 	if res := api.db.Delete(&peer, "id = ?", peerID); res.Error != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
@@ -319,7 +321,15 @@ func (api *API) DeletePeer(c *gin.Context) {
 
 	if ipamAddress != "" && zonePrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, zonePrefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to release ipam address: %v", err)})
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("%v", err)})
+		}
+	}
+
+	if childPrefix != "" {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), childPrefix); err != nil {
+			c.JSON(http.StatusInternalServerError, models.ApiError{
+				Error: fmt.Sprintf("failed to release child prefix: %v", err),
+			})
 		}
 	}
 
