@@ -1,9 +1,7 @@
 issuer: https://auth.apex.apps.smaug.na.operate-first.cloud
 
 storage:
-  type: kubernetes
-  config:
-    inCluster: true
+  type: memory
 
 web:
   https: 0.0.0.0:5554
@@ -21,6 +19,7 @@ expiry:
 
 oauth2:
   responseTypes: ["code", "token", "id_token"]
+  passwordConnector: local
 
 staticClients:
   - idEnv: WEB_CLIENT_ID
