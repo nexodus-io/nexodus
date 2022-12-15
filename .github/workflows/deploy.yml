@@ -68,13 +68,17 @@ jobs:
 
       - name: Set up Kustomize
         run: |
+          mkdir -p $HOME/.local/bin
+          pushd $HOME/.local/bin
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          popd
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Update Images
         run: |
           pushd ./deploy/apex/overlays/operate-first
-          ./kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
-          ./kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
+          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
+          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
           popd
 
       - name: Check for changes
