@@ -28,7 +28,7 @@ This ensures that the desired state of our OperateFirst deployment is checked in
 ## Deployment Pipeline
 
 Deployment of Apex on OperateFirst is managed by [ArgoCD](https://argocd.operate-first.cloud/applications/apex-smaug).
-The ArgoCD project configuration lives [here](https://github.com/operate-first/apps/blob/master/argocd/overlays/moc-infra/projects/apex.yaml) and our ArgoCD Application configuration lives [here](https://github.com/operate-first/apps/blob/master/argocd/overlays/moc-infra/applications/envs/moc/smaug/apex/apex.yaml).
+The ArgoCD project configuration lives [here](https://github.com/operate-first/apps/blob/master/argocd/overlays/moc-infra/projects/apex.yaml), and our ArgoCD Application configuration lives [here](https://github.com/operate-first/apps/blob/master/argocd/overlays/moc-infra/applications/envs/moc/smaug/apex/apex.yaml).
 
 ArgoCD will watch this repository for changes and ensure that our deployment is up-to-date.
 It will prevent our application deviating from the desired state.
