@@ -23,7 +23,7 @@ This workflow:
 1. Builds container images and pushes them to quay.io
 1. Updates the image tags in `./deploy/apex/overlays/operate-first` and commits this change back to the repository
 
-This ensures that the desired state of our OperateFirst deployment is checked in to git.
+This ensures that the desired state of our OperateFirst deployment is checked into git.
 
 ## Deployment Pipeline
 
