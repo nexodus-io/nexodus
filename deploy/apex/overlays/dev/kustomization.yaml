@@ -4,6 +4,8 @@ resources:
   - ../../base
 components:
   - ../../components/selfsigned-ca
+# Uncomment this and the patch at the bottom to enable monitoring
+#  - ../../components/monitoring
 patchesJson6902:
   - target:
       kind: Ingress
@@ -39,3 +41,14 @@ patchesJson6902:
       - op: replace
         path: /spec/tls/0/hosts/0
         value: apex.local
+#  - target:
+#      name: apiserver
+#      kind: ConfigMap
+#      namespace: apex
+#    patch: |-
+#      - op: replace
+#        path: /data/APEX_TRACE_ENDPOINT_OTLP
+#        value: jaeger-collector.observability.svc.cluster.local:4317
+#      - op: replace
+#        path: /data/APEX_TRACE_INSECURE
+#        value: "1"

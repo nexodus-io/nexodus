@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -11,10 +12,24 @@ import (
 	"github.com/redhat-et/apex/internal/handlers"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/routers"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/urfave/cli/v2"
 )
+
+var tracer trace.Tracer
+
+func init() {
+	tracer = otel.Tracer("apiserver")
+}
 
 // @title          Apex API
 // @version        1.0
@@ -95,9 +110,22 @@ func main() {
 				Usage:   "address of ipam grpc service",
 				EnvVars: []string{"APEX_IPAM_URL"},
 			},
+			&cli.BoolFlag{
+				Name:    "trace-insecure",
+				Value:   false,
+				Usage:   "Set OTLP endpoint to insecure mode",
+				EnvVars: []string{"APEX_TRACE_INSECURE"},
+			},
+			&cli.StringFlag{
+				Name:    "trace-endpoint",
+				Value:   "",
+				Usage:   "OTLP endpoint for trace data",
+				EnvVars: []string{"APEX_TRACE_ENDPOINT_OTLP"},
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			ctx := cCtx.Context
+			ctx, span := tracer.Start(cCtx.Context, "Run")
+			defer span.End()
 			var logger *zap.Logger
 			var err error
 			// set the log level
@@ -110,7 +138,16 @@ func main() {
 				log.Fatal(err)
 			}
 
+			cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
+			defer func() {
+				if err := cleanup(ctx); err != nil {
+					logger.Error(err.Error())
+				}
+			}()
+
 			db, err := database.NewDatabase(
+				ctx,
+				logger.Sugar(),
 				cCtx.String("db-host"),
 				cCtx.String("db-user"),
 				cCtx.String("db-password"),
@@ -162,4 +199,46 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func(context.Context) error {
+	if collector == "" {
+		logger.Info("No collector endpoint configured")
+		return nil
+	}
+	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	if insecure {
+		secureOption = otlptracegrpc.WithInsecure()
+	}
+	exporter, err := otlptrace.New(
+		context.Background(),
+		otlptracegrpc.NewClient(
+			secureOption,
+			otlptracegrpc.WithEndpoint(collector),
+		),
+	)
+	if err != nil {
+		logger.Errorf("Unable to create open telemetry exporter: %s", err.Error())
+		return nil
+	}
+	resources, err := resource.New(
+		context.Background(),
+		resource.WithAttributes(
+			attribute.String("service.name", "apiserver"),
+			attribute.String("library.language", "go"),
+		),
+	)
+	if err != nil {
+		logger.Errorf("Unable to create resources: %s", err.Error())
+		return nil
+	}
+
+	otel.SetTracerProvider(
+		sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithBatcher(exporter),
+			sdktrace.WithResource(resources),
+		),
+	)
+	return exporter.Shutdown
 }

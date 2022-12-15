@@ -5,9 +5,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/ipam"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+var tracer trace.Tracer
+
+func init() {
+	tracer = otel.Tracer("github.com/redhat-et/apex/internal/handlers")
+}
 
 type API struct {
 	logger        *zap.SugaredLogger
@@ -16,7 +24,9 @@ type API struct {
 	defaultZoneID uuid.UUID
 }
 
-func NewAPI(ctx context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM) (*API, error) {
+func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM) (*API, error) {
+	ctx, span := tracer.Start(parent, "NewAPI")
+	defer span.End()
 	api := &API{
 		logger:        logger,
 		db:            db,

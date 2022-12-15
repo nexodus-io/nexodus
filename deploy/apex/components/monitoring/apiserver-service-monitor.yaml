@@ -1,0 +1,18 @@
+
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apiserver
+  namespace: observability
+  labels:
+    team: apex
+spec:
+  namespaceSelector:
+    matchNames:
+      - apex
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apiserver
+  endpoints:
+    - port: web

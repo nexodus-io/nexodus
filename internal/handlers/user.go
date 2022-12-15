@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
@@ -16,25 +18,31 @@ const AuthUserName string = "_apex.UserName"
 
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx, span := tracer.Start(c.Request.Context(), "CreateUserIfNotExists")
+		defer span.End()
 		id := c.GetString(gin.AuthUserKey)
 		userName := c.GetString(AuthUserName)
 		var user models.User
-		res := api.db.First(&user, "id = ?", id)
+		res := api.db.WithContext(ctx).First(&user, "id = ?", id)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				user.ID = id
 				user.ZoneID = api.defaultZoneID
 				user.Devices = make([]*models.Device, 0)
 				user.UserName = userName
-				api.db.Create(&user)
+				api.db.WithContext(ctx).Create(&user)
 			} else {
 				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", id))
 				return
 			}
 		}
+		span.SetAttributes(
+			attribute.String("user-id", id),
+			attribute.String("username", userName),
+		)
 		// Check if the UserName has changed since the last time we saw this user
 		if user.UserName != userName {
-			api.db.Model(&user).Update("UserName", userName)
+			api.db.WithContext(ctx).Model(&user).Update("UserName", userName)
 		}
 		c.Next()
 	}
@@ -54,6 +62,11 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 // @Failure      500  {object}  models.ApiError
 // @Router       /users/{id} [patch]
 func (api *API) PatchUser(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "PatchUser",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
 	userId := c.Param("id")
 	if userId == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
@@ -71,20 +84,20 @@ func (api *API) PatchUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := api.db.First(&user, "id = ?", userId); res.Error != nil {
+	if res := api.db.WithContext(ctx).First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
 		return
 	}
 
 	var zone models.Zone
-	if res := api.db.First(&zone, "id = ?", request.ZoneID); res.Error != nil {
+	if res := api.db.WithContext(ctx).First(&zone, "id = ?", request.ZoneID); res.Error != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not valid"})
 		return
 	}
 
 	user.ZoneID = request.ZoneID
 
-	api.db.Save(&user)
+	api.db.WithContext(ctx).Save(&user)
 
 	c.JSON(http.StatusOK, user)
 }
@@ -103,6 +116,11 @@ func (api *API) PatchUser(c *gin.Context) {
 // @Failure      500  {object}  models.ApiError
 // @Router       /users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetUser",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
 	userId := c.Param("id")
 	if userId == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
@@ -114,7 +132,7 @@ func (api *API) GetUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := api.db.Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+	if res := api.db.WithContext(ctx).Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: res.Error.Error()})
 		return
 	}
@@ -138,8 +156,10 @@ func (api *API) GetUser(c *gin.Context) {
 // @Failure		 401  {object}  models.ApiError
 // @Router       /users [get]
 func (api *API) ListUsers(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
+	defer span.End()
 	users := make([]*models.User, 0)
-	result := api.db.Preload("Devices").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
+	result := api.db.WithContext(ctx).Preload("Devices").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return

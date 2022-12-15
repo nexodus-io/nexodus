@@ -1,7 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-generatorOptions:
-  disableNameSuffixHash: true
 configMapGenerator:
   - name: apiserver
     literals:
@@ -12,6 +10,8 @@ configMapGenerator:
       - APEX_DB_PASSWORD=floofykittens
       - APEX_IPAM_URL=http://ipam:9090
       - APEX_OIDC_URL=https://auth.apex.local
+      - APEX_TRACE_ENDPOINT_OTLP=""
+      - APEX_TRACE_INSECURE="1"
 resources:
   - persistentvolumeclaim.yaml
   - service.yaml

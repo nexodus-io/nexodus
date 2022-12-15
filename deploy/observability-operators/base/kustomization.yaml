@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: observability
+resources:
+- https://github.com/grafana-operator/grafana-operator/deploy/manifests?ref=v4.8.0
+- https://github.com/jaegertracing/jaeger-operator/releases/download/v1.39.0/jaeger-operator.yaml
+- https://github.com/prometheus-operator/prometheus-operator?ref=v0.61.1
