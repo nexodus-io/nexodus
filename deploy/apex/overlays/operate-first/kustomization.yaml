@@ -29,7 +29,7 @@ patchesJson6902:
       value: https://apex-hosted.cloud
     - op: replace
       path: /data/REDIRECT_URL
-      value: https://auth.apex-hosted.cloud/#/login
+      value: https://apex-hosted.cloud/#/login
   target:
     kind: ConfigMap
     name: backend-web
