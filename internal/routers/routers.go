@@ -92,5 +92,18 @@ func NewAPIRouter(
 	}
 
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Healthchecks
+	r.GET("/ready", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "UP",
+		})
+	})
+	r.GET("/live", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "UP",
+		})
+	})
+
 	return r, nil
 }

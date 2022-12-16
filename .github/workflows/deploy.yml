@@ -96,5 +96,5 @@ jobs:
         uses: devops-infra/action-commit-push@master
         with:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
-          commit_prefix: "[deploy]"
+          commit_prefix: "[deploy] "
           commit_message: "Update prod images to ${{ steps.gitsha.outputs.short }}"

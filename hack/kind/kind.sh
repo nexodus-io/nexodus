@@ -6,6 +6,8 @@ up() {
     kind create cluster --config ./deploy/kind.yaml
     kubectl cluster-info --context kind-apex-dev
 
+    trap "kubectl get pods -A" EXIT
+
     echo "Deploying Ingress Controller"
     kubectl apply -f ./deploy/kind-ingress.yaml
     kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
@@ -38,20 +40,8 @@ up() {
     kubectl create namespace apex
     kubectl apply -k ./deploy/apex/overlays/dev
 
-    kubectl rollout status -n apex deployment dex --timeout=5m
-    kubectl rollout status -n apex deployment dex --timeout=5m
-    kubectl rollout status -n apex deployment ipam --timeout=5m
-    kubectl rollout status -n apex deployment apiserver --timeout=5m
-    kubectl rollout status -n apex deployment backend-web --timeout=5m
-    kubectl rollout status -n apex deployment backend-cli --timeout=5m
-    kubectl rollout status -n apex deployment apiproxy --timeout=5m
-
     echo "Waiting for Apex Pod Readiness"
-    kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=5m
-
-    echo "Waiting 5s until we add healthecks/liveness probes"
-    # give k8s a little longer to come up
-    sleep 5
+    kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 }
 
 down() {

@@ -127,6 +127,18 @@ jobs:
       run: |
         make e2e
 
+    - name: Get Logs
+      if: always()
+      run: |
+        kubectl logs -n apex -l app.kubernetes.io/part-of=apex --all-containers=true > logs.txt
+
+    - name: Upload Logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-logs
+        path: logs.txt
+
   deploy:
     needs: [ "build", "e2e" ]
     permissions:

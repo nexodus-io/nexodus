@@ -74,7 +74,6 @@ func (z zapLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql st
 		slowLog := fmt.Sprintf("SLOW SQL >= %v", z.SlowThreshold)
 		z.logger.With(
 			"line_number", utils.FileWithLineNum(),
-			"error", err.Error(),
 			"slow", slowLog,
 			"rows", rows,
 			"elapsed", float64(elapsed.Nanoseconds())/1e6,
@@ -83,7 +82,6 @@ func (z zapLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql st
 		sql, rows := fc()
 		z.logger.With(
 			"line_number", utils.FileWithLineNum(),
-			"error", err.Error(),
 			"rows", rows,
 			"elapsed", float64(elapsed.Nanoseconds())/1e6,
 		).Infof(sql)
