@@ -3,9 +3,16 @@ kind: Kustomization
 resources:
 - ../../base
 - issuer.yaml
-namespace: apex
+- cert.yaml
 # Uncomment this and the patch at the bottom to enable monitoring
+# components:
 #  - ../../components/monitoring
+namespace: apex
+configMapGenerator:
+- behavior: replace
+  files:
+  - files/config.yaml
+  name: dex
 patchesJson6902:
 - target:
     kind: Ingress
@@ -24,13 +31,9 @@ patchesJson6902:
     - op: replace
       path: /spec/rules/0/host
       value: auth.apex.local
-- target:
-    kind: Certificate
-    name: dex-cert
-  patch: |-
     - op: replace
-      path: /spec/dnsNames/0
-      value: auth.apex.local
+      path: /spec/rules/0/http/paths/0/backend/service/port/number
+      value: 443
 - target:
     kind: Ingress
     name: frontend
@@ -41,17 +44,6 @@ patchesJson6902:
     - op: replace
       path: /spec/tls/0/hosts/0
       value: apex.local
-#  - target:
-#      name: apiserver
-#      kind: ConfigMap
-#      namespace: apex
-#    patch: |-
-#      - op: replace
-#        path: /data/APEX_TRACE_ENDPOINT_OTLP
-#        value: jaeger-collector.observability.svc.cluster.local:4317
-#      - op: replace
-#        path: /data/APEX_TRACE_INSECURE
-#        value: "1"
 - target:
     kind: Ingress
     name: apiproxy
@@ -78,15 +70,15 @@ patchesJson6902:
       path: /metadata/annotations/cert-manager.io~1issuer
       value: apex-issuer
 - target:
-    kind: Certificate
-    name: dex-cert
+    kind: Deployment
+    name: dex
   patch: |-
-    - op: replace
-      path: /spec/issuerRef/name
-      value: apex-issuer
-    - op: replace
-      path: /spec/issuerRef/kind
-      value: Issuer
+    - op: add
+      path: /spec/template/spec/containers/0/volumeMounts/1
+      value: {"name":"cert","mountPath":"/etc/dex/tls","readOnly":true}
+    - op: add
+      path: /spec/template/spec/volumes/1
+      value: {"name":"cert","secret":{"secretName":"dex-cert","optional":false}}
 - target:
     kind: Deployment
     name: backend-cli
@@ -117,3 +109,24 @@ patchesJson6902:
     - op: add
       path: /spec/template/spec/volumes
       value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+- patch: |-
+    - op: replace
+      path: /spec/ports/0/port
+      value: 443
+    - op: replace
+      path: /spec/ports/0/targetPort
+      value: 5554
+  target:
+    kind: Service
+    name: dex
+#  - target:
+#      name: apiserver
+#      kind: ConfigMap
+#      namespace: apex
+#    patch: |-
+#      - op: replace
+#        path: /data/APEX_TRACE_ENDPOINT_OTLP
+#        value: jaeger-collector.observability.svc.cluster.local:4317
+#      - op: replace
+#        path: /data/APEX_TRACE_INSECURE
+#        value: "1"
