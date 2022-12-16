@@ -117,6 +117,6 @@ patchesJson6902:
     name: dex-cert
 images:
 - name: quay.io/apex/apiserver
-  newTag: 90268204644548af1eaa05eb4c4e3e55ef114b63
+  newTag: ebd0b0ec43d477a2ea3045ff35a040f3649e11fc
 - name: quay.io/apex/frontend
-  newTag: 90268204644548af1eaa05eb4c4e3e55ef114b63
+  newTag: ebd0b0ec43d477a2ea3045ff35a040f3649e11fc
