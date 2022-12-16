@@ -7,6 +7,6 @@ spec:
     app.kubernetes.io/instance: dex
     app.kubernetes.io/name: dex
   ports:
-    - name: https
-      port: 443
-      targetPort: 5554
+    - name: web
+      port: 80
+      targetPort: 5556

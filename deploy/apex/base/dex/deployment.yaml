@@ -45,15 +45,8 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/dex
-            - name: cert
-              mountPath: "/etc/dex/tls"
-              readOnly: true
       volumes:
         - name: config
           configMap:
             name: dex
-        - name: cert
-          secret:
-            secretName: dex-cert
-            optional: false
       restartPolicy: Always

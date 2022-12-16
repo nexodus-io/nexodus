@@ -1,10 +1,12 @@
-issuer: https://auth.apex-hosted.cloud
+issuer: https://auth.apex.local
 
 storage:
   type: memory
 
 web:
-  http: 0.0.0.0:5556
+  https: 0.0.0.0:5554
+  tlsCert: /etc/dex/tls/tls.crt
+  tlsKey: /etc/dex/tls/tls.key
 
 expiry:
   deviceRequests: "5m"
@@ -22,7 +24,7 @@ oauth2:
 staticClients:
   - idEnv: WEB_CLIENT_ID
     redirectURIs:
-      - "https://apex-hosted.cloud/#/login"
+      - "https://apex.local/#/login"
     name: "Apex Web Frontend"
     secretEnv: WEB_CLIENT_SECRET
   - idEnv: CLI_CLIENT_ID

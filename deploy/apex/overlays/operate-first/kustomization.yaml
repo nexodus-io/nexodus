@@ -29,7 +29,7 @@ patchesJson6902:
       value: https://apex-hosted.cloud
     - op: replace
       path: /data/REDIRECT_URL
-      value: https://auth.apex-hosted.cloud /#/login
+      value: https://auth.apex-hosted.cloud/#/login
   target:
     kind: ConfigMap
     name: backend-web
@@ -50,6 +50,9 @@ patchesJson6902:
     - op: replace
       path: /spec/tls/0/hosts/0
       value: api.apex-hosted.cloud
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: letsencrypt
   target:
     kind: Ingress
     name: apiproxy
@@ -60,16 +63,12 @@ patchesJson6902:
     - op: replace
       path: /spec/tls/0/hosts/0
       value: auth.apex-hosted.cloud
+    - op: replace
+      path: /metadata/annotations/cert-manager.io~1issuer
+      value: letsencrypt
   target:
     kind: Ingress
     name: dex
-- patch: |-
-    - op: replace
-      path: /spec/dnsNames/0
-      value: auth.apex-hosted.cloud
-  target:
-    kind: Certificate
-    name: dex-cert
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
@@ -77,44 +76,12 @@ patchesJson6902:
     - op: replace
       path: /spec/tls/0/hosts/0
       value: apex-hosted.cloud
-  target:
-    kind: Ingress
-    name: frontend
-- patch: |-
-    - op: replace
-      path: /metadata/annotations/cert-manager.io~1issuer
-      value: letsencrypt
-  target:
-    kind: Ingress
-    name: apiproxy
-- patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1issuer
-    - op: remove
-      path: /spec/tls
-    - op: add
-      path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
-      value: true
-  target:
-    kind: Ingress
-    name: dex
-- patch: |-
     - op: replace
       path: /metadata/annotations/cert-manager.io~1issuer
       value: letsencrypt
   target:
     kind: Ingress
     name: frontend
-- patch: |-
-    - op: replace
-      path: /spec/issuerRef/name
-      value: letsencrypt
-    - op: replace
-      path: /spec/issuerRef/kind
-      value: Issuer
-  target:
-    kind: Certificate
-    name: dex-cert
 images:
 - name: quay.io/apex/apiserver
   newTag: ebd0b0ec43d477a2ea3045ff35a040f3649e11fc

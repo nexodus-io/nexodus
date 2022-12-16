@@ -20,4 +20,4 @@ spec:
               service:
                 name: dex
                 port:
-                  number: 443
+                  number: 80
