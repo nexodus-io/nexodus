@@ -79,4 +79,16 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            periodSeconds: 5
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
       restartPolicy: Always

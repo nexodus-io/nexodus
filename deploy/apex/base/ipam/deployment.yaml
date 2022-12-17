@@ -50,4 +50,16 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
+          readinessProbe:
+            grpc:
+              port: 9090
+              service: api.v1.IpamService
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            grpc:
+              port: 9090
+              service: api.v1.IpamService
+            initialDelaySeconds: 10
+            periodSeconds: 5
       restartPolicy: Always
