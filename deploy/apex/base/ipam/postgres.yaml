@@ -15,11 +15,20 @@ spec:
             storage: 1Gi
       resources:
         limits:
-          cpu: 250m
+          cpu: 500m
           memory: 2Gi
         requests:
-          cpu: 250m
+          cpu: 500m
           memory: 2Gi
+      sidecars:
+        replicaCertCopy:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
   backups:
     pgbackrest:
       image: quay.io/apex/crunchy-pgbackrest:ubi8-2.41-0
@@ -27,6 +36,23 @@ spec:
         # 7 Day Retention
         repo1-retention-full: "7"
         repo1-retention-full-type: time
+      sidecars:
+        pgbackrest:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+        pgbackrestConfig:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
       repoHost:
         resources:
           limits:
