@@ -10,32 +10,32 @@ spec:
     spec:
       containers:
         - name: ipam
-          image: ghcr.io/metal-stack/go-ipam:v1.11.3
+          image: quay.io/apex/go-ipam:v1.11.3
           imagePullPolicy: IfNotPresent
           env:
             - name: GOIPAM_PG_HOST
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: ipamdb-pguser-ipamdb
                   key: host
             - name: GOIPAM_PG_PORT
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: ipamdb-pguser-ipamdb
                   key: port
             - name: GOIPAM_PG_USER
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: ipamdb-pguser-ipamdb
                   key: user
             - name: GOIPAM_PG_PASSWORD
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: ipamdb-pguser-ipamdb
                   key: password
             - name: GOIPAM_PG_DBNAME
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: ipamdb-pguser-ipamdb
                   key: dbname
             - name: GOIPAM_PG_SSLMODE
@@ -51,15 +51,19 @@ spec:
               cpu: 100m
               memory: 200Mi
           readinessProbe:
-            grpc:
-              port: 9090
-              service: api.v1.IpamService
+            exec:
+              command:
+                - "/bin/grpc_health_probe"
+                - "-addr=:9090"
+                - "-service=api.v1.IpamService"
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            grpc:
-              port: 9090
-              service: api.v1.IpamService
+            exec:
+              command:
+                - "/bin/grpc_health_probe"
+                - "-addr=:9090"
+                - "-service=api.v1.IpamService"
             initialDelaySeconds: 10
             periodSeconds: 5
       restartPolicy: Always
