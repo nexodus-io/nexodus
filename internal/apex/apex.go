@@ -26,7 +26,7 @@ const (
 	darwinIface       = "utun8"
 	WgDefaultPort     = 51820
 	wgIface           = "wg0"
-	WgWindowsConfPath = "C:/"
+	WgWindowsConfPath = "C:/apex/"
 )
 
 type Apex struct {
@@ -403,7 +403,6 @@ func checkOS(logger *zap.SugaredLogger) error {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgDarwinConfPath, err)
 		}
 	case Windows.String():
-		logger.Fatal("Windows is temporarily unsupported")
 		logger.Debugf("[%s] operating system detected", nodeOS)
 		// ensure the windows wireguard directory exists
 		if err := CreateDirectory(WgWindowsConfPath); err != nil {
@@ -527,19 +526,21 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 
 // binaryChecks validate the required binaries are available
 func binaryChecks() error {
+	// Windows userspace binary
 	if GetOS() == Windows.String() {
 		if !IsCommandAvailable(wgWinBinary) {
 			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
 		}
-	} else {
-		if !IsCommandAvailable(wgBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
-		}
 	}
+	// Darwin wireguard-go userspace binary
 	if GetOS() == Darwin.String() {
 		if !IsCommandAvailable(wgGoBinary) {
 			return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
 		}
+	}
+	// all OSs require the wg binary
+	if !IsCommandAvailable(wgBinary) {
+		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
 	}
 	return nil
 }

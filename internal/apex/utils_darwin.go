@@ -3,6 +3,7 @@
 package apex
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/vishvananda/netlink"
@@ -14,8 +15,13 @@ func RouteExists(s string) (bool, error) {
 	return false, nil
 }
 
-// AddRoute currently only used for darwin build purposes
+// AddRoute adds a route to the specified interface
 func AddRoute(prefix, dev string) error {
+	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", dev)
+	if err != nil {
+		return fmt.Errorf("route add failed: %v", err)
+	}
+
 	return nil
 }
 

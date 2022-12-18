@@ -35,7 +35,12 @@ func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) er
 		}
 
 	case Windows.String():
-		ax.logger.Infof("windows is temporarily unsupported")
+		// re-initialize the wireguard interface if it does not match it's assigned node address
+		if ax.wgLocalAddress != getIPv4Iface(wgIface).String() {
+			if err := setupWindowsIface(ax.logger, ax.wgLocalAddress, ax.wireguardPvtKey); err != nil {
+				ax.logger.Errorf("%v", err)
+			}
+		}
 	}
 
 	// add routes and tunnels for all peer candidates without checking cache since it has not been built yet

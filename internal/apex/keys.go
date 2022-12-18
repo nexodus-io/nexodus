@@ -16,8 +16,8 @@ const (
 	linuxPrivateKeyFile   = "/etc/wireguard/private.key"
 	darwinPublicKeyFile   = "/usr/local/etc/wireguard/public.key"
 	darwinPrivateKeyFile  = "/usr/local/etc/wireguard/private.key"
-	windowsPublicKeyFile  = "C:/public.key"
-	windowsPrivateKeyFile = "C:/private.key"
+	windowsPublicKeyFile  = "C:/apex/public.key"
+	windowsPrivateKeyFile = "C:/apex/private.key"
 	publicKeyPermissions  = 0644
 	privateKeyPermissions = 0600
 )
