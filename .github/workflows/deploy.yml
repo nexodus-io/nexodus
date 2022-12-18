@@ -79,9 +79,9 @@ jobs:
           popd
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Update Images
+      - name: Update QA Images
         run: |
-          pushd ./deploy/apex/overlays/operate-first
+          pushd ./deploy/apex/overlays/qa
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
           popd
