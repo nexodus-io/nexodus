@@ -65,6 +65,10 @@ OS_IMAGE?="quay.io/apex/test:fedora"
 e2e: dist/apex dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...
 
+.PHONY: unit
+unit:
+	go test -v ./...
+
 .PHONY: images
 images:
 	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
