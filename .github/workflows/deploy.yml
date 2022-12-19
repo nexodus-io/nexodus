@@ -79,9 +79,9 @@ jobs:
           popd
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Update Images
+      - name: Update QA Images
         run: |
-          pushd ./deploy/apex/overlays/operate-first
+          pushd ./deploy/apex/overlays/qa
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
           popd
@@ -97,4 +97,4 @@ jobs:
         with:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
           commit_prefix: "[deploy] "
-          commit_message: "Update prod images to ${{ steps.gitsha.outputs.short }}"
+          commit_message: "Update qa images to ${{ steps.gitsha.outputs.short }}"
