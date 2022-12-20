@@ -65,17 +65,11 @@ To bring the cluster down again:
 
 ### HTTPS
 
-You will need to extract the CA certificate and add it to your system trust store:
+You will need to extract the CA certificate and add it to your system trust store. `kind.sh` can do
+this for you, but you must first install [`mkcert`](https://github.com/FiloSottile/mkcert).
 
 ```console
-mkdir -p .certs
-kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > .certs/rootCA.pem
-```
-
-Installation of this certificate is best left to [`mkcert`](https://github.com/FiloSottile/mkcert)
-
-```console
-CAROOT=$(pwd)/.certs mkcert -install
+./hack/kind/kind.sh cacert
 ```
 
 ## The Apex Agent

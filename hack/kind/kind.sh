@@ -48,6 +48,12 @@ down() {
     kind delete cluster --name apex-dev
 }
 
+cacert() {
+    mkdir -p .certs
+    kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > .certs/rootCA.pem
+    CAROOT=$(pwd)/.certs mkcert -install
+}
+
 case $1 in
     "up")
         up
@@ -55,8 +61,11 @@ case $1 in
     "down")
         down
         ;;
+    "cacert")
+        cacert
+        ;;
     *)
-        echo "command required. up or down"
+        echo "command required. up, down, or cacert"
         exit 1
         ;;
 esac
