@@ -69,9 +69,13 @@ e2e: dist/apex dist/apexctl test-images
 unit:
 	go test -v ./...
 
-.PHONY: images
-images:
-	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
+.PHONY: images image-frontend image-apiserver
+image-frontend:
 	docker build -f Containerfile.frontend -t quay.io/apex/frontend:$(TAG) .
-	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
 	docker tag quay.io/apex/frontend:$(TAG) quay.io/apex/frontend:latest
+
+image-apiserver:
+	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
+	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
+
+images: image-frontend image-apiserver
