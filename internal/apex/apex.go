@@ -500,21 +500,21 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 	var localEndpointIP string
 	var err error
 	// Darwin network discovery
-	if !ax.stun && ax.os == Darwin.String() {
+	if ax.os == Darwin.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Windows network discovery
-	if !ax.stun && ax.os == Windows.String() {
+	if ax.os == Windows.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
 		}
 	}
 	// Linux network discovery
-	if !ax.stun && ax.os == Linux.String() {
+	if ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(ax.logger, 4)
 		if err != nil {
 			return "", fmt.Errorf("%v", err)
