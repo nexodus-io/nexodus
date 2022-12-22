@@ -9,7 +9,6 @@ configMapGenerator:
       - APEX_TRACE_ENDPOINT_OTLP=""
       - APEX_TRACE_INSECURE="1"
 resources:
-  - postgres.yaml
   - service.yaml
   - deployment.yaml
 commonLabels:

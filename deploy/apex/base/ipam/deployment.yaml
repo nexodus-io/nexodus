@@ -16,27 +16,27 @@ spec:
             - name: GOIPAM_PG_HOST
               valueFrom:
                 secretKeyRef:
-                  name: ipamdb-pguser-ipamdb
+                  name: database-pguser-ipam
                   key: host
             - name: GOIPAM_PG_PORT
               valueFrom:
                 secretKeyRef:
-                  name: ipamdb-pguser-ipamdb
+                  name: database-pguser-ipam
                   key: port
             - name: GOIPAM_PG_USER
               valueFrom:
                 secretKeyRef:
-                  name: ipamdb-pguser-ipamdb
+                  name: database-pguser-ipam
                   key: user
             - name: GOIPAM_PG_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: ipamdb-pguser-ipamdb
+                  name: database-pguser-ipam
                   key: password
             - name: GOIPAM_PG_DBNAME
               valueFrom:
                 secretKeyRef:
-                  name: ipamdb-pguser-ipamdb
+                  name: database-pguser-ipam
                   key: dbname
             - name: GOIPAM_PG_SSLMODE
               value: require
