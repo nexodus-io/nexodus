@@ -59,8 +59,6 @@ test-images:
 	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
 
-OS_IMAGE?="quay.io/apex/test:fedora"
-
 .PHONY: e2e
 e2e: dist/apex dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...

@@ -2,44 +2,97 @@ name: build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths-ignore:
-      - '**/*.md'
-      - '**/*.gitignore'
+      - "**/*.md"
+      - "**/*.gitignore"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
     paths-ignore:
-      - '**/*.md'
-      - '**/*.gitignore'
+      - "**/*.md"
+      - "**/*.gitignore"
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
 
-    - name: Go Format
-      run: |
-        go fmt ./...
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
 
-    - name: Build
-      run: |
-        go build ./...
+      - name: Go Build Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
 
-    - name: Unit tests
-      run: |
-        go test -v ./...
+      - name: Go Mod Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: v1.50.0
-  build:
+      - name: Go Format
+        run: |
+          go fmt ./...
+
+      - name: Build
+        run: |
+          go build ./...
+
+      - name: Unit tests
+        run: |
+          go test -v ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.50.0
+
+  build-images:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v1
+      - name: Build and export apiserver
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Containerfile.apiserver
+          tags: quay.io/apex/apiserver:latest
+          outputs: type=docker,dest=/tmp/apiserver.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Upload apiserver artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apiserver
+          path: /tmp/apiserver.tar
+      - name: Build and export frontend
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Containerfile.frontend
+          tags: quay.io/apex/frontend:latest
+          outputs: type=docker,dest=/tmp/frontend.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend
+          path: /tmp/frontend.tar
+
+  build-binaries:
     needs: lint
     strategy:
       fail-fast: false
@@ -47,100 +100,161 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         arch: ["amd64", "arm64", "arm"]
         exclude:
-        - os: macos-latest
-          arch: arm
-        - os: windows-latest
-          arch: arm
-        - os: windows-latest
-          arch: arm64
+          - os: macos-latest
+            arch: arm
+          - os: windows-latest
+            arch: arm
+          - os: windows-latest
+            arch: arm64
     runs-on: ${{ matrix.os }}
     env:
       GOARCH: ${{ matrix.arch }}
       JOB_NAME: "apex-${{ matrix.os }}-${{ matrix.arch }}"
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
 
-    - name: Test
-      run: |
-        go test -v ./internal/apex/...
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
 
-    - name: Build
-      id: build-apex
-      run: |
-        CGO_ENABLED=0 go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
-        echo "artifact-name=apex-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
-      shell: bash
+      - name: Go Build Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: apex
-        path: ${{ steps.build-apex.outputs.artifact-name }}
+      - name: Go Mod Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Test
+        run: |
+          go test -v ./internal/apex/...
+
+      - name: Build
+        id: build-apex
+        run: |
+          CGO_ENABLED=0 go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
+          echo "artifact-name=apex-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apex
+          path: ${{ steps.build-apex.outputs.artifact-name }}
 
   e2e:
-    needs: lint
+    needs: [lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - name: checkout
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: docker/setup-buildx-action@v1
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
 
-    - name: Install deps
-      run: |
-        sudo apt-get -qy install libnss3-tools
+      - name: Go Build Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
 
-    - name: Set up Homebrew
-      id: set-up-homebrew
-      uses: Homebrew/actions/setup-homebrew@master
+      - name: Go Mod Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-    - name: Install mkcert
-      run: |
-        brew install mkcert
+      - name: Install deps
+        run: |
+          sudo apt-get -qy install libnss3-tools
 
-    - name: Add hosts to /etc/hosts
-      run: |
-        echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
 
-    - name: Build Images
-      run: |
-        make images
+      - name: Install mkcert
+        run: |
+          brew install mkcert
 
-    - name: Setup KIND
-      run: |
-        ./hack/kind/kind.sh up
-        mkdir -p $(pwd)/.certs
-        kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(pwd)/.certs/rootCA.pem
-        CAROOT=$(pwd)/.certs mkcert -install
+      - name: Add hosts to /etc/hosts
+        run: |
+          echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
 
-    - name: Run e2e
-      run: |
-        make e2e
+      - name: Download apiserver image
+        uses: actions/download-artifact@v3
+        with:
+          name: apiserver
+          path: /tmp
 
-    - name: Get Logs
-      if: always()
-      run: |
-        kubectl logs -n apex -l app.kubernetes.io/part-of=apex --all-containers=true > logs.txt
+      - name: Download frontend image
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend
+          path: /tmp
 
-    - name: Upload Logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: e2e-logs
-        path: logs.txt
+      - name: Load Docker images
+        run: |
+          docker load --input /tmp/apiserver.tar
+          docker load --input /tmp/frontend.tar
 
-  deploy:
-    needs: [ "build", "e2e" ]
+      - name: Build dist
+        run: |
+          make dist/apex dist/apexctl
+
+      - name: Setup KIND
+        run: |
+          ./hack/kind/kind.sh up
+          mkdir -p $(pwd)/.certs
+          kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(pwd)/.certs/rootCA.pem
+          CAROOT=$(pwd)/.certs mkcert -install
+
+      - name: Build ubuntu test image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Containerfile.test
+          target: ubuntu
+          tags: quay.io/apex/test:ubuntu
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run e2e
+        run: |
+          go test -v --tags=integration ./integration-tests/...
+
+      - name: Get Logs
+        if: always()
+        run: |
+          kubectl logs -n apex -l app.kubernetes.io/part-of=apex --all-containers=true > logs.txt
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-logs
+          path: logs.txt
+
+  upload-s3-binaries:
+    needs: ["build-binaries", "e2e"]
     permissions:
       id-token: write
       contents: read
@@ -158,6 +272,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           role-session-name: apex-ci-deploy
           aws-region: us-east-1
-      - name:  copy binaries to s3
+      - name: copy binaries to s3
         run: |
           aws s3 sync . s3://apex-net/
