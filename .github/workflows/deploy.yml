@@ -25,37 +25,34 @@ jobs:
           username: ${{ secrets.QUAY_ROBOT_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
-      - name: Build apiserver image
-        id: build-apiserver
-        uses: redhat-actions/buildah-build@v2
+      - name: Build and export apiserver
+        uses: docker/build-push-action@v3
         with:
-          image: apiserver
-          tags: latest ${{ github.sha }} ${{ github.ref_name }}
-          containerfiles: |
-            ./Containerfile.apiserver
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          file: ./Containerfile.apiserver
+          tags: |
+            quay.io/apex/apiserver:latest
+            quay.io/apex/apiserver:${{ github.sha }}
+            quay.io/apex/apiserver:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Push apiserver to quay.io/
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-apiserver.outputs.image }}
-          tags: ${{ steps.build-apiserver.outputs.tags }}
-          registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
-
-      - name: Build frontend image
+      - name: Build and export frontend
         id: build-frontend
-        uses: redhat-actions/buildah-build@v2
+        uses: docker/build-push-action@v3
         with:
-          image: frontend
-          tags: latest ${{ github.sha }} ${{ github.ref_name }}
-          containerfiles: |
-            ./Containerfile.frontend
-
-      - name: Push frontend to quay.io
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-frontend.outputs.image }}
-          tags: ${{ steps.build-frontend.outputs.tags }}
-          registry: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          file: ./Containerfile.frontend
+          tags: |
+            quay.io/apex/frontend:latest
+            quay.io/apex/frontend:${{ github.sha }}
+            quay.io/apex/frontend:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   update-deployment:
     name: Update Deployment
