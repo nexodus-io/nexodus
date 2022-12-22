@@ -12,7 +12,9 @@
     - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
     - [Verifying Agent Setup](#verifying-agent-setup)
     - [Verifying Zone Connectivity](#verifying-zone-connectivity)
-  - [Cleanup](#cleanup)
+    - [Cleanup](#cleanup)
+  - [Additional Features](#additional-features)
+    - [Subnet Routers](#subnet-routers)
   - [Running the integration tests](#running-the-integration-tests)
     - [Using Docker](#using-docker)
     - [Using podman](#using-podman)
@@ -140,7 +142,7 @@ PING 10.200.0.2 (10.200.0.2) 56(84) bytes of data.
 64 bytes from 10.200.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
 
-## Cleanup
+### Cleanup
 
 If you want to remove the node from the network, and want to cleanup all the configuration done on the node. Fire away following commands:
 
@@ -157,6 +159,55 @@ sudo ip link del wg0
 
 ```shell
 sudo wg-quick down wg0
+```
+
+## Additional Features
+
+### Subnet Routers
+
+Typically, the Apex agent runs on every host that you intend to have connectivity to an Apex Zone. However, there may be some cases where you can't do that or don't want to. It is also possible to make a host act as a Subnet Router to provide connectivity between an Apex Zone and a local Subnet the host has access to.
+
+In the following diagram, `Host X` acts as a Subnet Router, allowing all hosts within Apex Zone A to access `192.168.100.0/24`.
+
+To configure this scenario, the `apex` agent on `Host X` must be run with the `--child-prefix` parameter.
+
+```sh
+sudo apex --child-prefix 192.168.100.0/24 [...]
+```
+
+The subnet exposed to the Apex Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this containers use case can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
+
+> **Note**
+> Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Apex Zone A via `Host X` must be handled via local configuration that is appropriate for your network.
+
+```text
+┌───────────────────────────────────────────────┐
+│                                               │
+│                                               │
+│    ┌─────────┐                                │
+│    │         │                                │
+│    │ Host Y  ├────────────────────┐           │
+│    │         │                    │           │          ┌───────────────────────────┐
+│    │         │                    │           │          │                           │
+│    └────┬────┘                    │           │          │                           │
+│         │                         │           │          │                           │
+│         │                         │           │          │                           │
+│         │                      ┌──┴──────┐    │          │   Subnet Accessible by    │
+│         │                      │         │    │          │                           │
+│         │                      │ Host X  │    │          │         Host X            │
+│         │                      │         ├────┼──────────┤                           │
+│         │                      │         │    │          │                           │
+│         │                      └──┬──────┘    │          │     192.168.100.0/24      │
+│         │                         │           │          │                           │
+│    ┌────┴────┐                    │           │          │                           │
+│    │         │                    │           │          │                           │
+│    │ Host Z  │                    │           │          └───────────────────────────┘
+│    │         ├────────────────────┘           │
+│    │         │                                │
+│    └─────────┘                                │
+│                                               │
+└───────────────────────────────────────────────┘
+             Apex Zone A - 10.0.0.10/24
 ```
 
 ## Running the integration tests
