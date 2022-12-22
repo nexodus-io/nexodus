@@ -180,34 +180,15 @@ The subnet exposed to the Apex Zone may be a physical network the host is connec
 > **Note**
 > Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Apex Zone A via `Host X` must be handled via local configuration that is appropriate for your network.
 
-```text
-┌───────────────────────────────────────────────┐
-│                                               │
-│                                               │
-│    ┌─────────┐                                │
-│    │         │                                │
-│    │ Host Y  ├────────────────────┐           │
-│    │         │                    │           │          ┌───────────────────────────┐
-│    │         │                    │           │          │                           │
-│    └────┬────┘                    │           │          │                           │
-│         │                         │           │          │                           │
-│         │                         │           │          │                           │
-│         │                      ┌──┴──────┐    │          │   Subnet Accessible by    │
-│         │                      │         │    │          │                           │
-│         │                      │ Host X  │    │          │         Host X            │
-│         │                      │         ├────┼──────────┤                           │
-│         │                      │         │    │          │                           │
-│         │                      └──┬──────┘    │          │     192.168.100.0/24      │
-│         │                         │           │          │                           │
-│    ┌────┴────┐                    │           │          │                           │
-│    │         │                    │           │          │                           │
-│    │ Host Z  │                    │           │          └───────────────────────────┘
-│    │         ├────────────────────┘           │
-│    │         │                                │
-│    └─────────┘                                │
-│                                               │
-└───────────────────────────────────────────────┘
-             Apex Zone A - 10.0.0.10/24
+```mermaid
+graph
+    subgraph "Apex Zone - 10.0.0.10/24"
+        x[Host X]<---> y
+        y[Host Y]<---> z[Host Z]
+        x<--->z
+    end
+
+    x <---> s[Subnet Accessible by Host X<br/>192.168.100.0/24]
 ```
 
 ## Running the integration tests
