@@ -4,8 +4,8 @@ metadata:
   name: dex-cert
 spec:
   secretName: dex-cert
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
+  duration: 2160h  # 90d
+  renewBefore: 360h  # 15d
   subject:
     organizations:
       - apex

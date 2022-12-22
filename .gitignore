@@ -32,3 +32,4 @@ docker-compose.log
 .env.*
 coredns.yaml
 .certs
+kubeconfigs/

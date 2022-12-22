@@ -23,4 +23,4 @@ spec:
       enabled: true
   dashboardLabelSelector:
     - matchExpressions:
-        - { key: app, operator: In, values: [grafana] }
+        - {key: app, operator: In, values: [grafana]}

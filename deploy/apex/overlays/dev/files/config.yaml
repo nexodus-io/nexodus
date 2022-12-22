@@ -14,8 +14,8 @@ expiry:
   idTokens: "24h"
   refreshTokens:
     reuseInterval: "3s"
-    validIfNotUsedFor: "2160h" # 90 days
-    absoluteLifetime: "3960h" # 165 days
+    validIfNotUsedFor: "2160h"  # 90 days
+    absoluteLifetime: "3960h"  # 165 days
 
 oauth2:
   responseTypes: ["code", "token", "id_token"]
