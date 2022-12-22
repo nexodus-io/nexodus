@@ -47,7 +47,6 @@ jobs:
         with:
           image: frontend
           tags: latest ${{ github.sha }} ${{ github.ref_name }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
           containerfiles: |
             ./Containerfile.frontend
 
