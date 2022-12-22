@@ -5,6 +5,7 @@ import {
     CardContent,
     CardHeader,
     CardMedia,
+    Typography,
 } from '@mui/material';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome"
 import {IconProp} from "@fortawesome/fontawesome-svg-core"
@@ -80,6 +81,17 @@ const Dashboard = () => {
                     href="https://apex-net.s3.amazonaws.com/apex-linux-arm64"
                 >Download (arm)</Button>
             </CardActions>
+        </Card>
+        <Card>
+            <CardHeader title="QuickStart" />
+            <CardContent>
+                <Typography variant="body1">
+                    On a host with the Apex agent installed, run the following command and follow the instructions it gives you:
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    $ sudo apex {window.location.protocol}//{window.location.host}
+                </Typography>
+            </CardContent>
         </Card>
     </div>
 );
