@@ -93,3 +93,36 @@ func stunDialer(logger *zap.SugaredLogger, conn *net.Conn) (string, error) {
 
 	return stunAddress, nil
 }
+
+// GetPubIPv4 retrieves current global IP address using STUN
+func GetPubIPv4(logger *zap.SugaredLogger) (string, error) {
+	// Creating a "connection" to STUN server.
+	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
+	if err != nil {
+		logger.Error(err)
+		return "", err
+	}
+
+	// Building binding request with random transaction id.
+	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	var ourIP string
+	// Sending request to STUN server, waiting for response message.
+	if err := c.Do(message, func(res stun.Event) {
+		if res.Error != nil {
+			logger.Error(res.Error)
+			return
+		}
+		// Decoding XOR-MAPPED-ADDRESS attribute from message.
+		var xorAddr stun.XORMappedAddress
+		if err := xorAddr.GetFrom(res.Message); err != nil {
+			return
+		}
+		logger.Debug("STUN: your IP is: ", xorAddr.IP)
+		ourIP = xorAddr.IP.String()
+	}); err != nil {
+		logger.Error(err)
+		return "", err
+	}
+
+	return ourIP, nil
+}

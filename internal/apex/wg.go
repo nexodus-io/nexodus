@@ -28,7 +28,7 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 // addPeer add a wg peer
 func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 	var wgDev string
-	if ax.os == Linux.String() {
+	if ax.os == Linux.String() || ax.os == Windows.String() {
 		wgDev = wgIface
 	}
 

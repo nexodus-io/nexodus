@@ -31,7 +31,7 @@ dist/apex-darwin-arm64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
 
 dist/apex-windows-amd64: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o $@ ./cmd/apex
 
 dist/apexctl: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 go build -o $@ ./cmd/apexctl

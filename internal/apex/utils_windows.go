@@ -14,8 +14,14 @@ func RouteExists(s string) (bool, error) {
 	return false, nil
 }
 
-// AddRoute currently only used for windows build purposes
+// AddRoute adds a windows route to the specified interface
 func AddRoute(prefix, dev string) error {
+	// TODO: replace with powershell
+	_, err := RunCommand("netsh", "int", "ipv4", "add", "route", prefix, dev)
+	if err != nil {
+		return fmt.Errorf("no windows route added: %v", err)
+	}
+
 	return nil
 }
 

@@ -8,10 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 
-	"github.com/pion/stun"
 	"go.uber.org/zap"
 )
 
@@ -93,39 +91,6 @@ func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port stri
 	return "", fmt.Errorf("failed to obtain the local IP")
 }
 
-// GetPubIPv4 retrieves current global IP address using STUN
-func GetPubIPv4(logger *zap.SugaredLogger) (string, error) {
-	// Creating a "connection" to STUN server.
-	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
-	if err != nil {
-		logger.Error(err)
-		return "", err
-	}
-
-	// Building binding request with random transaction id.
-	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	var ourIP string
-	// Sending request to STUN server, waiting for response message.
-	if err := c.Do(message, func(res stun.Event) {
-		if res.Error != nil {
-			logger.Error(res.Error)
-			return
-		}
-		// Decoding XOR-MAPPED-ADDRESS attribute from message.
-		var xorAddr stun.XORMappedAddress
-		if err := xorAddr.GetFrom(res.Message); err != nil {
-			return
-		}
-		logger.Debug("STUN: your IP is: ", xorAddr.IP)
-		ourIP = xorAddr.IP.String()
-	}); err != nil {
-		logger.Error(err)
-		return "", err
-	}
-
-	return ourIP, nil
-}
-
 func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (bool, error) {
 	var hostIP string
 	var err error
@@ -193,16 +158,6 @@ func parseNetworkStr(cidr string) (string, error) {
 	return nw.String(), nil
 }
 
-// enableForwardingIPv4 for linux nodes that are hub bouncers
-func enableForwardingIPv4(logger *zap.SugaredLogger) error {
-	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
-	if err != nil {
-		return fmt.Errorf("failed to enable IP Forwarding for this hub-router: %v\n", err)
-	}
-	logger.Debugf("%v", cmdOut)
-	return nil
-}
-
 // writeToFile overwrite the contents of a file
 func writeToFile(logger *zap.SugaredLogger, s, file string, filePermissions int) {
 	// overwrite the existing file contents
@@ -226,152 +181,4 @@ func writeToFile(logger *zap.SugaredLogger, s, file string, filePermissions int)
 	if err = wr.Flush(); err != nil {
 		logger.Warnf("Unable to write key to file [ %s ] %v", file, err)
 	}
-}
-
-// getInterfaceByIP will looks ip an interface by the IP provided
-func getInterfaceByIP(ip net.IP) (string, error) {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return "", err
-	}
-	for _, iface := range interfaces {
-		if addrs, err := iface.Addrs(); err == nil {
-			for _, addr := range addrs {
-				if ifaceIP, _, err := net.ParseCIDR(addr.String()); err == nil {
-					if ifaceIP.Equal(ip) {
-						return iface.Name, nil
-					}
-				} else {
-					continue
-				}
-			}
-		} else {
-			continue
-		}
-	}
-	return "", fmt.Errorf("no interface was found for the ip %s", ip)
-}
-
-func setupDarwinIface(logger *zap.SugaredLogger, localAddress string) error {
-	if ifaceExists(logger, darwinIface) {
-		deleteDarwinIface(logger)
-	}
-
-	_, err := RunCommand("wireguard-go", darwinIface)
-	if err != nil {
-		logger.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
-	}
-
-	_, err = RunCommand("ifconfig", darwinIface, "inet", localAddress, localAddress, "alias")
-	if err != nil {
-		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
-	}
-
-	_, err = RunCommand("ifconfig", darwinIface, "up")
-	if err != nil {
-		logger.Errorf("failed to bring up the %s interface: %v\n", darwinIface, err)
-	}
-
-	_, err = RunCommand("wg", "set", darwinIface, "private-key", darwinPrivateKeyFile)
-	if err != nil {
-		logger.Errorf("failed to start the wireguard listener: %v\n", err)
-	}
-
-	return nil
-}
-
-// setupLinuxInterface TODO replace with netlink calls
-// this is called if this is the first run or if the local node
-// address got assigned a new address by the controller
-func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
-	// delete the wireguard ip link interface if it exists
-	if ifaceExists(logger, wgIface) {
-		_, err := RunCommand("ip", "link", "del", wgIface)
-		if err != nil {
-			logger.Debugf("failed to delete the ip link interface: %v\n", err)
-		}
-	}
-	// create the wireguard ip link interface
-	_, err := RunCommand("ip", "link", "add", wgIface, "type", "wireguard")
-	if err != nil {
-		logger.Errorf("failed to create the ip link interface: %v\n", err)
-	}
-	// start the wireguard listener on a well-known port if it is the hub-router as all
-	// nodes need to be able to reach this node for state distribution if hole punching.
-	if ax.hubRouter {
-		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
-		if err != nil {
-			logger.Errorf("failed to start the wireguard listener: %v\n", err)
-		}
-	} else {
-		// start the wireguard listener
-		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
-		if err != nil {
-			logger.Errorf("failed to start the wireguard listener: %v\n", err)
-		}
-	}
-	// give the wg interface an address
-	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
-	if err != nil {
-		logger.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
-		wgIP := getIPv4Iface(wgIface)
-		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", wgIface)
-		if err != nil {
-			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
-		}
-		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
-		if err != nil {
-			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
-		}
-	}
-	// bring the wg0 interface up
-	_, err = RunCommand("ip", "link", "set", wgIface, "up")
-	if err != nil {
-		logger.Errorf("failed to bring up the wg interface: %v\n", err)
-	}
-}
-
-// ifaceExists returns true if the input matches a net interface
-func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
-	_, err := net.InterfaceByName(iface)
-	if err != nil {
-		logger.Debug(err)
-		return false
-	}
-	return true
-}
-
-// deleteDarwinIface delete the darwin userspace wireguard interface
-func deleteDarwinIface(logger *zap.SugaredLogger) {
-	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
-	_, err := RunCommand("rm", "-f", tunSock)
-	if err != nil {
-		logger.Debugf("failed to delete darwin interface: %v", err)
-	}
-	// /var/run/wireguard/wg0.name doesnt currently exist since utun8 isnt mapped to wg0 (fails silently)
-	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", wgIface)
-	_, err = RunCommand("rm", "-f", wgName)
-	if err != nil {
-		logger.Debugf("failed to delete darwin interface: %v", err)
-	}
-}
-
-// getIPv4Iface get the IP of the specified net interface
-func getIPv4Iface(ifname string) net.IP {
-	interfaces, _ := net.Interfaces()
-	for _, inter := range interfaces {
-		if inter.Name == ifname {
-			if addrs, err := inter.Addrs(); err == nil {
-				for _, addr := range addrs {
-					switch ip := addr.(type) {
-					case *net.IPNet:
-						if ip.IP.DefaultMask() != nil {
-							return ip.IP
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
 }
