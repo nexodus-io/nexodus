@@ -175,7 +175,7 @@ To configure this scenario, the `apex` agent on `Host X` must be run with the `-
 sudo apex --child-prefix 192.168.100.0/24 [...]
 ```
 
-The subnet exposed to the Apex Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host.
+The subnet exposed to the Apex Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this containers use case can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
 
 > **Note**
 > Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Apex Zone A via `Host X` must be handled via local configuration that is appropriate for your network.
