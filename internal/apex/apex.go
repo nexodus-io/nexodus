@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,6 +34,7 @@ type Apex struct {
 	wireguardPubKey         string
 	wireguardPvtKey         string
 	wireguardPubKeyInConfig bool
+	tunnelIface             string
 	controllerIP            string
 	listenPort              int
 	zone                    uuid.UUID
@@ -147,6 +149,8 @@ func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 		logger:                 logger,
 	}
 
+	ax.tunnelIface = defaultTunnelDev(ax.os)
+
 	if ax.hubRouter {
 		ax.listenPort = WgDefaultPort
 	}
@@ -225,7 +229,7 @@ func (ax *Apex) Run() error {
 		if err := enableForwardingIPv4(ax.logger); err != nil {
 			return err
 		}
-		hubRouterIpTables(ax.logger)
+		hubRouterIpTables(ax.logger, ax.tunnelIface)
 	}
 
 	if err := ax.Reconcile(ax.zone, true); err != nil {
@@ -345,7 +349,7 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 		log.Errorf("Error getting a peer listing: %v", err)
 	}
 	// get wireguard state from the relay node to learn the dynamic reflexive ip:port socket
-	relayInfo, err := DumpPeers(wgIface)
+	relayInfo, err := DumpPeers(ax.tunnelIface)
 	if err != nil {
 		log.Errorf("eror dumping wg peers")
 	}
@@ -415,7 +419,7 @@ func checkOS(logger *zap.SugaredLogger) error {
 			return fmt.Errorf("unable to create the wireguard config directory [%s]: %v", WgLinuxConfPath, err)
 		}
 	default:
-		return fmt.Errorf("OS [%s] is not supported\n", nodeOS)
+		return fmt.Errorf("OS [%s] is not supported\n", runtime.GOOS)
 	}
 	return nil
 }
@@ -450,15 +454,15 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 func (ax *Apex) nodePrep() {
 
 	// remove and existing wg interfaces
-	if ax.os == Linux.String() && linkExists(wgIface) {
-		if err := delLink(wgIface); err != nil {
+	if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
+		if err := delLink(ax.tunnelIface); err != nil {
 			// not a fatal error since if this is on startup it could be absent
-			ax.logger.Debugf("failed to delete netlink interface %s: %v", wgIface, err)
+			ax.logger.Debugf("failed to delete netlink interface %s: %v", ax.tunnelIface, err)
 		}
 	}
 	if ax.os == Darwin.String() {
-		if ifaceExists(ax.logger, darwinIface) {
-			deleteDarwinIface(ax.logger)
+		if ifaceExists(ax.logger, ax.tunnelIface) {
+			deleteDarwinIface(ax.logger, ax.tunnelIface)
 		}
 	}
 

@@ -27,15 +27,6 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 
 // addPeer add a wg peer
 func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
-	var wgDev string
-	if ax.os == Linux.String() || ax.os == Windows.String() {
-		wgDev = wgIface
-	}
-
-	if ax.os == Darwin.String() {
-		wgDev = darwinIface
-	}
-
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -105,7 +96,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 
-	return wgClient.ConfigureDevice(wgDev, cfg)
+	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
 func getWgListenPort() int {

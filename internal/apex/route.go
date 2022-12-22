@@ -31,7 +31,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 				ax.logger.Info(err)
 			}
 			if !routeExists {
-				if err := AddRoute(allowedIP, wgIface); err != nil {
+				if err := AddRoute(allowedIP, ax.tunnelIface); err != nil {
 					ax.logger.Errorf("route add failed: %v", err)
 				}
 			}
@@ -39,7 +39,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 
 	case Windows.String():
 		for _, allowedIP := range wgPeerConfig.AllowedIPs {
-			if err := AddRoute(allowedIP, wgIface); err != nil {
+			if err := AddRoute(allowedIP, ax.tunnelIface); err != nil {
 				ax.logger.Debugf("route add failed: %v", err)
 			}
 		}
@@ -47,13 +47,6 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 }
 
 func (ax *Apex) addChildPrefixRoute(childPrefix string) {
-	var dev string
-
-	if ax.os == Darwin.String() {
-		dev = darwinIface
-	} else {
-		dev = wgIface
-	}
 
 	routeExists, err := RouteExists(childPrefix)
 	if err != nil {
@@ -65,7 +58,7 @@ func (ax *Apex) addChildPrefixRoute(childPrefix string) {
 		return
 	}
 
-	if err := AddRoute(childPrefix, dev); err != nil {
+	if err := AddRoute(childPrefix, ax.tunnelIface); err != nil {
 		ax.logger.Infof("error adding the child prefix route: %v", err)
 	}
 }
