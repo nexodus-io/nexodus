@@ -63,7 +63,13 @@ func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clie
 		}
 		logger.Debugf("claims: %+v", claims)
 		c.Set(gin.AuthUserKey, claims.Subject)
-		c.Set(AuthUserName, claims.UserName)
+		if len(claims.UserName) > 0 {
+			c.Set(AuthUserName, claims.UserName)
+		} else if len(claims.FullName) > 0 {
+			c.Set(AuthUserName, claims.FullName)
+		} else {
+			logger.Debugf("Not able to determine a name for this user -- %s", claims.Subject)
+		}
 		// c.Set(AuthUserScope, claims.Scope)
 		logger.Debugf("user-id is %s", claims.Subject)
 		c.Next()
