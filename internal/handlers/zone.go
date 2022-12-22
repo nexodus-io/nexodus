@@ -32,11 +32,24 @@ const (
 // @Success      201  {object}  models.Zone
 // @Failure      400  {object}  models.ApiError
 // @Failure		 401  {object}  models.ApiError
+// @Failure		 405  {object}  models.ApiError
 // @Failure      500  {object}  models.ApiError
 // @Router       /zones [post]
 func (api *API) CreateZone(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateZone")
 	defer span.End()
+
+	multiZoneEnabled, err := api.fflags.GetFlag("multi-zone")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		return
+	}
+	allowForTests := c.GetString("_apex.testCreateZone")
+	if !multiZoneEnabled && allowForTests != "true" {
+		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-zone support is disabled"})
+		return
+	}
+
 	var request models.AddZone
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
@@ -249,12 +262,20 @@ func (api *API) GetPeerInZone(c *gin.Context) {
 // @Param        id   path      string  true "Zone ID"
 // @Success      204  {object}  models.Zone
 // @Failure      400  {object}  models.ApiError
-// @Failure		 400  {object}  models.ApiError
-// @Failure		 400  {object}  models.ApiError
-// @Failure      400  {object}  models.ApiError
+// @Failure      405  {object}  models.ApiError
 // @Failure      500  {object}  models.ApiError
 // @Router       /zones/{id} [delete]
 func (api *API) DeleteZone(c *gin.Context) {
+	multiZoneEnabled, err := api.fflags.GetFlag("multi-zone")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		return
+	}
+	if !multiZoneEnabled {
+		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-zone support is disabled"})
+		return
+	}
+
 	zoneID, err := uuid.Parse(c.Param("zone"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not valid"})

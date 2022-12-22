@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/redhat-et/apex/internal/database"
+	"github.com/redhat-et/apex/internal/fflags"
 	"github.com/redhat-et/apex/internal/handlers"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/routers"
@@ -167,7 +168,9 @@ func main() {
 
 			ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
 
-			api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam)
+			fflags := fflags.NewFFlags(logger.Sugar())
+
+			api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags)
 			if err != nil {
 				log.Fatal(err)
 			}

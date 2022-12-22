@@ -13,6 +13,10 @@ configMapGenerator:
   files:
   - files/config.yaml
   name: dex
+- behavior: merge
+  literals:
+   - APEX_FFLAG_MULTI_ZONE=true
+  name: apiserver
 patchesJson6902:
 - target:
     kind: Ingress
