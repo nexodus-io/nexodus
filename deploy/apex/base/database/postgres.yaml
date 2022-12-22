@@ -1,7 +1,7 @@
 apiVersion: postgres-operator.crunchydata.com/v1beta1
 kind: PostgresCluster
 metadata:
-  name: apiserverdb
+  name: database
 spec:
   image: quay.io/apex/crunchy-postgres:ubi8-14.6-0
   postgresVersion: 14
@@ -12,7 +12,7 @@ spec:
           - "ReadWriteOnce"
         resources:
           requests:
-            storage: 1Gi
+            storage: 2Gi
       resources:
         limits:
           cpu: 500m
@@ -73,3 +73,12 @@ spec:
               resources:
                 requests:
                   storage: 1Gi
+  users:
+    - name: ipam
+      databases:
+        - ipam
+      options: "NOSUPERUSER"
+    - name: apiserver
+      databases:
+        - apiserver
+      options: "NOSUPERUSER"

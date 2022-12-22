@@ -6,6 +6,7 @@ resources:
   - apiserver
   - backend-cli
   - backend-web
+  - database
   - dex
   - frontend
   - ipam
