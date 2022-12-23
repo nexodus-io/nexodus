@@ -35,27 +35,27 @@ func getInterfaceByIP(ip net.IP) (string, error) {
 	return "", fmt.Errorf("no interface was found for the ip %s", ip)
 }
 
-func setupDarwinIface(logger *zap.SugaredLogger, localAddress string) error {
-	if ifaceExists(logger, darwinIface) {
-		deleteDarwinIface(logger)
+func setupDarwinIface(logger *zap.SugaredLogger, localAddress, dev string) error {
+	if ifaceExists(logger, dev) {
+		deleteDarwinIface(logger, dev)
 	}
 
-	_, err := RunCommand("wireguard-go", darwinIface)
+	_, err := RunCommand("wireguard-go", dev)
 	if err != nil {
-		logger.Errorf("failed to create the %s interface: %v\n", darwinIface, err)
+		logger.Errorf("failed to create the %s interface: %v\n", dev, err)
 	}
 
-	_, err = RunCommand("ifconfig", darwinIface, "inet", localAddress, localAddress, "alias")
+	_, err = RunCommand("ifconfig", dev, "inet", localAddress, localAddress, "alias")
 	if err != nil {
 		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
 	}
 
-	_, err = RunCommand("ifconfig", darwinIface, "up")
+	_, err = RunCommand("ifconfig", dev, "up")
 	if err != nil {
-		logger.Errorf("failed to bring up the %s interface: %v\n", darwinIface, err)
+		logger.Errorf("failed to bring up the %s interface: %v\n", dev, err)
 	}
 
-	_, err = RunCommand("wg", "set", darwinIface, "private-key", darwinPrivateKeyFile)
+	_, err = RunCommand("wg", "set", dev, "private-key", darwinPrivateKeyFile)
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)
 	}
@@ -68,66 +68,66 @@ func setupDarwinIface(logger *zap.SugaredLogger, localAddress string) error {
 // address got assigned a new address by the controller
 func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 	// delete the wireguard ip link interface if it exists
-	if ifaceExists(logger, wgIface) {
-		_, err := RunCommand("ip", "link", "del", wgIface)
+	if ifaceExists(logger, ax.tunnelIface) {
+		_, err := RunCommand("ip", "link", "del", ax.tunnelIface)
 		if err != nil {
 			logger.Debugf("failed to delete the ip link interface: %v\n", err)
 		}
 	}
 	// create the wireguard ip link interface
-	_, err := RunCommand("ip", "link", "add", wgIface, "type", "wireguard")
+	_, err := RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
 	if err != nil {
 		logger.Errorf("failed to create the ip link interface: %v\n", err)
 	}
 	// start the wireguard listener on a well-known port if it is the hub-router as all
 	// nodes need to be able to reach this node for state distribution if hole punching.
 	if ax.hubRouter {
-		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
+		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
 			logger.Errorf("failed to start the wireguard listener: %v\n", err)
 		}
 	} else {
 		// start the wireguard listener
-		_, err = RunCommand("wg", "set", wgIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
+		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
 			logger.Errorf("failed to start the wireguard listener: %v\n", err)
 		}
 	}
 	// give the wg interface an address
-	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
+	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
 	if err != nil {
 		logger.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
-		wgIP := getIPv4Iface(wgIface)
-		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", wgIface)
+		wgIP := getIPv4Iface(ax.tunnelIface)
+		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
 		}
-		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", wgIface)
+		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
 		}
 	}
 	// bring the wg0 interface up
-	_, err = RunCommand("ip", "link", "set", wgIface, "up")
+	_, err = RunCommand("ip", "link", "set", ax.tunnelIface, "up")
 	if err != nil {
 		logger.Errorf("failed to bring up the wg interface: %v\n", err)
 	}
 }
 
-func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey string) error {
+func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev string) error {
 	if err := buildWindowsWireguardIfaceConf(privateKey, localAddress); err != nil {
 		return fmt.Errorf("failed to create the windows wireguard wg0 interface file %v", err)
 	}
 
 	var wgOut string
 	var err error
-	if ifaceExists(logger, wgIface) {
-		wgOut, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", wgIface)
+	if ifaceExists(logger, dev) {
+		wgOut, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", dev)
 		if err != nil {
 			logger.Debugf("failed to down the wireguard interface (this is generally ok): %v\n", err)
 		}
-		if ifaceExists(logger, wgIface) {
-			logger.Debugf("existing windows iface %s has not been torn down yet, pausing for 1 second", wgIface)
+		if ifaceExists(logger, dev) {
+			logger.Debugf("existing windows iface %s has not been torn down yet, pausing for 1 second", dev)
 			time.Sleep(time.Second * 1)
 		}
 	}
@@ -139,12 +139,12 @@ func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey strin
 	}
 	logger.Debugf("started windows tunnel svc: %v\n", wgOut)
 	// ensure the link is created before adding peers
-	if !ifaceExists(logger, wgIface) {
-		logger.Debugf("windows iface %s has not been created yet, pausing for 1 second", wgIface)
+	if !ifaceExists(logger, dev) {
+		logger.Debugf("windows iface %s has not been created yet, pausing for 1 second", dev)
 		time.Sleep(time.Second * 1)
 	}
 	// fatal out if the interface is not created
-	if !ifaceExists(logger, wgIface) {
+	if !ifaceExists(logger, dev) {
 		return fmt.Errorf("failed to create the windows wireguard interface: %v\n", err)
 	}
 
@@ -152,14 +152,14 @@ func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey strin
 }
 
 // deleteDarwinIface delete the darwin userspace wireguard interface
-func deleteDarwinIface(logger *zap.SugaredLogger) {
-	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", darwinIface)
+func deleteDarwinIface(logger *zap.SugaredLogger, dev string) {
+	tunSock := fmt.Sprintf("/var/run/wireguard/%s.sock", dev)
 	_, err := RunCommand("rm", "-f", tunSock)
 	if err != nil {
 		logger.Debugf("failed to delete darwin interface: %v", err)
 	}
 	// /var/run/wireguard/wg0.name doesnt currently exist since utun8 isnt mapped to wg0 (fails silently)
-	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", wgIface)
+	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", dev)
 	_, err = RunCommand("rm", "-f", wgName)
 	if err != nil {
 		logger.Debugf("failed to delete darwin interface: %v", err)

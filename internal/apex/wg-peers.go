@@ -192,9 +192,9 @@ func (ax *Apex) buildLocalConfig() {
 		if pubkey == ax.wireguardPubKey && ax.hubRouter {
 			if ax.wgLocalAddress != value.NodeAddress {
 				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
-				if ax.os == Linux.String() && linkExists(wgIface) {
-					if err := delLink(wgIface); err != nil {
-						ax.logger.Infof("Failed to delete %s: %v", wgIface, err)
+				if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
+					if err := delLink(ax.tunnelIface); err != nil {
+						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}
 				}
 			}
@@ -215,9 +215,9 @@ func (ax *Apex) buildLocalConfig() {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.NodeAddress {
 				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
-				if ax.os == Linux.String() && linkExists(wgIface) {
-					if err := delLink(wgIface); err != nil {
-						ax.logger.Infof("Failed to delete %s: %v", wgIface, err)
+				if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
+					if err := delLink(ax.tunnelIface); err != nil {
+						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}
 				}
 			}
@@ -237,8 +237,8 @@ func (ax *Apex) buildLocalConfig() {
 }
 
 // hubRouterIpTables iptables for the relay node
-func hubRouterIpTables(logger *zap.SugaredLogger) {
-	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", wgIface, "-j", "ACCEPT")
+func hubRouterIpTables(logger *zap.SugaredLogger, dev string) {
+	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
 	if err != nil {
 		logger.Debugf("the hub router iptable rule was not added: %v", err)
 	}

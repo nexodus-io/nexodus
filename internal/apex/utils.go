@@ -182,3 +182,16 @@ func writeToFile(logger *zap.SugaredLogger, s, file string, filePermissions int)
 		logger.Warnf("Unable to write key to file [ %s ] %v", file, err)
 	}
 }
+
+func defaultTunnelDev(operatingSystem string) string {
+	switch operatingSystem {
+	case Darwin.String():
+		return darwinIface
+	case Linux.String():
+		return wgIface
+	case Windows.String():
+		return wgIface
+	}
+
+	return ""
+}
