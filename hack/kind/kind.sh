@@ -28,6 +28,11 @@ error_message() {
 }
 
 up() {
+    if ! [ -x "$(command -v kind)" ]; then
+        error_message "Kind is required. Please install Kind"
+        exit 1
+    fi
+
     if ! [ -x "$(command -v kubectl)" ]; then
         error_message "kubectl is required. Please install kubectl"
         exit 1
