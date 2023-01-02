@@ -4,11 +4,6 @@ resources:
   - ../../base
   - issuer.yaml
 namespace: apex
-configMapGenerator:
-  - behavior: replace
-    files:
-      - files/config.yaml
-    name: dex
 patchesJson6902:
   - patch: |-
       - op: replace

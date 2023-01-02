@@ -4,7 +4,9 @@ configMapGenerator:
   - name: backend-cli
     literals:
       - DEBUG=1
-      - OIDC_PROVIDER=https://auth.apex.local
+      - OIDC_PROVIDER=https://auth.apex.local/realms/apex
+      - OIDC_BACKCHANNEL=https://auth-service.apex.svc.cluster.local:8443/realms/apex
+      - INSECURE_TLS=1
       - OIDC_FLOW=device
       - DOMAIN=api.apex.local
       - BACKEND=http://apiserver:8080

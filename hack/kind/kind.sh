@@ -51,22 +51,22 @@ up() {
     info_message "Deploying Ingress Controller"
     kubectl apply -f ./deploy/kind-ingress.yaml
 
-    info_message "Adding Rewrite to CoreDNS"
-    kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
-    sed '22i\
-        rewrite name auth.apex.local dex.apex.svc.cluster.local
-' coredns.yaml > coredns-apex.yaml
-    kubectl replace -n kube-system -f coredns-apex.yaml
-    rm coredns.yaml coredns-apex.yaml
-
-    kubectl rollout restart -n kube-system deployment/coredns
-
     info_message "Installing Cert Manager"
     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
 
     info_message "Installing Postgres Operator"
     kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
     kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default
+
+    info_message "Creating Apex Namespace"
+    kubectl create namespace apex
+
+    info_message "Installing Keycloak Operator"
+    kubectl create -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+    kubectl create -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+    kubectl wait --for condition=established -n apex crd/keycloaks.k8s.keycloak.org --timeout=5m
+    kubectl wait --for condition=established -n apex crd/keycloakrealmimports.k8s.keycloak.org --timeout=5m
+    kubectl apply -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/kubernetes.yml
 
     info_message "Loading Images To KIND"
     kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
@@ -82,7 +82,7 @@ up() {
     kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
     info_message "Deploying Apex"
-    kubectl create namespace apex
+
     kubectl apply -k ./deploy/apex/overlays/dev
 
     info_message "Waiting for Apex Pod Readiness"

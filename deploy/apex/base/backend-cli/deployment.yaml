@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: backend-cli
-          image: quay.io/go-oidc-agent/go-oidc-agent:b98e1621e73404c5de21f47c7c5e6fab091e5d17
+          image: quay.io/go-oidc-agent/go-oidc-agent:49a615afe56d5bf4d1e7e381fb6d553337e4a014
           imagePullPolicy: IfNotPresent
           env:
             - name: DEBUG
@@ -23,10 +23,20 @@ spec:
                 configMapKeyRef:
                   name: backend-cli
                   key: OIDC_PROVIDER
+            - name: OIDC_BACKCHANNEL
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: OIDC_BACKCHANNEL
+            - name: INSECURE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: INSECURE_TLS
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: dex-secrets
+                  name: auth-secrets
                   key: cli-client-id
                   optional: false
             - name: OIDC_FLOW

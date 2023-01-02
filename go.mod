@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/bufbuild/connect-go v1.4.1
 	github.com/coreos/go-oidc v2.2.1+incompatible
+	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.8.1
@@ -30,7 +31,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/net v0.5.0
-	golang.org/x/oauth2 v0.2.0
+	golang.org/x/oauth2 v0.3.0
 	golang.org/x/sys v0.4.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20221104135756-97bc4ad4a1cb
 	gorm.io/driver/postgres v1.4.6
@@ -49,6 +50,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sessions v0.0.5 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect

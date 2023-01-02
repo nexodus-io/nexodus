@@ -87,7 +87,7 @@ jobs:
         run: |
           mkdir -p $HOME/.local/bin
           pushd $HOME/.local/bin
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s 4.5.7
           popd
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 

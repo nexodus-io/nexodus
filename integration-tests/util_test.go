@@ -131,7 +131,7 @@ func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container 
 }
 
 func getToken(ctx context.Context, username, password string) (string, error) {
-	provider, err := oidc.NewProvider(ctx, "https://auth.apex.local")
+	provider, err := oidc.NewProvider(ctx, "https://auth.apex.local/realms/apex")
 	if err != nil {
 		return "", err
 	}

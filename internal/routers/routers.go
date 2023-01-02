@@ -2,11 +2,12 @@ package routers
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	_ "github.com/redhat-et/apex/internal/docs"
@@ -26,7 +27,9 @@ func NewAPIRouter(
 	api *handlers.API,
 	clientIdWeb string,
 	clientIdCli string,
-	oidcURL string) (*gin.Engine, error) {
+	oidcURL string,
+	oidcBackchannel string,
+	insecureTLS bool) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -52,6 +55,20 @@ func NewAPIRouter(
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
+	if insecureTLS {
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: transport}
+		ctx = oidc.ClientContext(ctx, client)
+	}
+
+	if oidcBackchannel != "" {
+		ctx = oidc.InsecureIssuerURLContext(ctx,
+			oidcURL,
+		)
+		oidcURL = oidcBackchannel
+	}
 	provider, err := oidc.NewProvider(ctx, oidcURL)
 	if err != nil {
 		return nil, err

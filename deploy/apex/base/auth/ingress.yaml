@@ -1,14 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: dex
   annotations:
-    cert-manager.io/issuer: apex-issuer
+    nginx.ingress.kubernetes.io/ssl-passthrough: true
+    route.openshift.io/termination: passthrough
+  name: auth
 spec:
-  tls:
-    - hosts:
-        - auth.apex.local
-      secretName: apex-auth-cert
   rules:
     - host: auth.apex.local
       http:
@@ -17,6 +14,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: dex
+                name: auth-service
                 port:
-                  number: 80
+                  number: 8443

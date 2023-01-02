@@ -4,10 +4,10 @@ namespace: apex
 resources:
   - apiproxy
   - apiserver
+  - auth
   - backend-cli
   - backend-web
   - database
-  - dex
   - frontend
   - ipam
 commonLabels:

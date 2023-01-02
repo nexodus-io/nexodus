@@ -64,6 +64,18 @@ func main() {
 				EnvVars: []string{"APEX_OIDC_URL"},
 			},
 			&cli.StringFlag{
+				Name:    "oidc-backchannel-url",
+				Value:   "",
+				Usage:   "backend address of oidc provider",
+				EnvVars: []string{"APEX_OIDC_BACKCHANNEL"},
+			},
+			&cli.BoolFlag{
+				Name:    "insecure-tls",
+				Value:   false,
+				Usage:   "trust any TLS certificate",
+				EnvVars: []string{"APEX_INSECURE_TLS"},
+			},
+			&cli.StringFlag{
 				Name:    "oidc-client-id-web",
 				Value:   "apex-web",
 				Usage:   "OIDC client id for web",
@@ -182,6 +194,8 @@ func main() {
 				cCtx.String("oidc-client-id-web"),
 				cCtx.String("oidc-client-id-cli"),
 				cCtx.String("oidc-url"),
+				cCtx.String("oidc-backchannel-url"),
+				cCtx.Bool("insecure-tls"),
 			)
 			if err != nil {
 				log.Fatal(err)

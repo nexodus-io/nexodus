@@ -1,9 +1,9 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: dex-cert
+  name: apex-auth-cert
 spec:
-  secretName: dex-cert
+  secretName: apex-auth-cert
   duration: 2160h  # 90d
   renewBefore: 360h  # 15d
   subject:
