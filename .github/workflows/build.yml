@@ -57,6 +57,42 @@ jobs:
         with:
           version: v1.50.0
 
+  k8s-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: YAML Lint
+        run: |
+          yamllint -c .yamllint.yaml deploy
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "stable"
+
+      - name: Set up Kustomize
+        run: |
+          mkdir -p $HOME/.local/bin
+          pushd $HOME/.local/bin
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          popd
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Kustomize Build
+        run: |
+          mkdir -p kubeconfigs
+          kustomize build ./deploy/apex/overlays/dev > kubeconfigs/dev.yaml
+          kustomize build ./deploy/apex/overlays/prod > kubeconfigs/prod.yaml
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login https://ghcr.io -u ${GITHUB_ACTOR} --password-stdin
+
+      - name: Set Up Kubeconform
+        run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0
+
+      - name: Check Kube Manifests
+        run: |
+          kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
+
   build-images:
     needs: lint
     runs-on: ubuntu-latest
@@ -153,7 +189,7 @@ jobs:
           path: ${{ steps.build-apex.outputs.artifact-name }}
 
   e2e:
-    needs: [lint, build-images]
+    needs: [lint, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30

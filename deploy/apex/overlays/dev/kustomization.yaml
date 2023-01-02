@@ -1,128 +1,128 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- ../../base
-- issuer.yaml
-- cert.yaml
+  - ../../base
+  - issuer.yaml
+  - cert.yaml
 # Uncomment this and the patch at the bottom to enable monitoring
 # components:
 #  - ../../components/monitoring
 namespace: apex
 configMapGenerator:
-- behavior: replace
-  files:
-  - files/config.yaml
-  name: dex
-- behavior: merge
-  literals:
-   - APEX_FFLAG_MULTI_ZONE=true
-  name: apiserver
-patchesJson6902:
-- target:
-    kind: Ingress
-    name: apiproxy
-  patch: |-
-    - op: replace
-      path: /spec/rules/0/host
-      value: api.apex.local
-    - op: replace
-      path: /spec/tls/0/hosts/0
-      value: api.apex.local
-- target:
-    kind: Ingress
+  - behavior: replace
+    files:
+      - files/config.yaml
     name: dex
-  patch: |-
-    - op: replace
-      path: /spec/rules/0/host
-      value: auth.apex.local
-    - op: replace
-      path: /spec/rules/0/http/paths/0/backend/service/port/number
-      value: 443
-- target:
-    kind: Ingress
-    name: frontend
-  patch: |-
-    - op: replace
-      path: /spec/rules/0/host
-      value: apex.local
-    - op: replace
-      path: /spec/tls/0/hosts/0
-      value: apex.local
-- target:
-    kind: Ingress
-    name: apiproxy
-  patch: |-
-    - op: replace
-      path: /metadata/annotations/cert-manager.io~1issuer
-      value: apex-issuer
-- target:
-    kind: Ingress
-    name: dex
-  patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1issuer
-    - op: remove
-      path: /spec/tls
-    - op: add
-      path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
-      value: true
-- target:
-    kind: Ingress
-    name: frontend
-  patch: |-
-    - op: replace
-      path: /metadata/annotations/cert-manager.io~1issuer
-      value: apex-issuer
-- target:
-    kind: Deployment
-    name: dex
-  patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/volumeMounts/1
-      value: {"name":"cert","mountPath":"/etc/dex/tls","readOnly":true}
-    - op: add
-      path: /spec/template/spec/volumes/1
-      value: {"name":"cert","secret":{"secretName":"dex-cert","optional":false}}
-- target:
-    kind: Deployment
-    name: backend-cli
-  patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/volumeMounts
-      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
-    - op: add
-      path: /spec/template/spec/volumes
-      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
-- target:
-    kind: Deployment
-    name: backend-web
-  patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/volumeMounts
-      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
-    - op: add
-      path: /spec/template/spec/volumes
-      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
-- target:
-    kind: Deployment
+  - behavior: merge
+    literals:
+      - APEX_FFLAG_MULTI_ZONE=true
     name: apiserver
-  patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/volumeMounts
-      value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
-    - op: add
-      path: /spec/template/spec/volumes
-      value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
-- patch: |-
-    - op: replace
-      path: /spec/ports/0/port
-      value: 443
-    - op: replace
-      path: /spec/ports/0/targetPort
-      value: 5554
-  target:
-    kind: Service
-    name: dex
+patchesJson6902:
+  - target:
+      kind: Ingress
+      name: apiproxy
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.apex.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.apex.local
+  - target:
+      kind: Ingress
+      name: dex
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.apex.local
+      - op: replace
+        path: /spec/rules/0/http/paths/0/backend/service/port/number
+        value: 443
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: apex.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: apex.local
+  - target:
+      kind: Ingress
+      name: apiproxy
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: apex-issuer
+  - target:
+      kind: Ingress
+      name: dex
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1issuer
+      - op: remove
+        path: /spec/tls
+      - op: add
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+        value: true
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: apex-issuer
+  - target:
+      kind: Deployment
+      name: dex
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/1
+        value: {"name":"cert","mountPath":"/etc/dex/tls","readOnly":true}
+      - op: add
+        path: /spec/template/spec/volumes/1
+        value: {"name":"cert","secret":{"secretName":"dex-cert","optional":false}}
+  - target:
+      kind: Deployment
+      name: backend-cli
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      kind: Deployment
+      name: backend-web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      kind: Deployment
+      name: apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"apex-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - patch: |-
+      - op: replace
+        path: /spec/ports/0/port
+        value: 443
+      - op: replace
+        path: /spec/ports/0/targetPort
+        value: 5554
+    target:
+      kind: Service
+      name: dex
 #  - target:
 #      name: apiserver
 #      kind: ConfigMap

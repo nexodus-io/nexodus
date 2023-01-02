@@ -20,22 +20,22 @@ spec:
                   key: APEX_DEBUG
             - name: APEX_DB_HOST
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: database-pguser-apiserver
                   key: host
             - name: APEX_DB_NAME
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: database-pguser-apiserver
                   key: dbname
             - name: APEX_DB_USER
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: database-pguser-apiserver
                   key: user
             - name: APEX_DB_PASSWORD
               valueFrom:
-                secretKeyRef: 
+                secretKeyRef:
                   name: database-pguser-apiserver
                   key: password
             - name: APEX_DB_SSLMODE

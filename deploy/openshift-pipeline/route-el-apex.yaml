@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: Triggers
     eventlistener: apex
   annotations:
-    openshift.io/host.generated: 'true'
+    openshift.io/host.generated: "true"
 spec:
   host: el-apex-apex.apps.smaug.na.operate-first.cloud
   to:

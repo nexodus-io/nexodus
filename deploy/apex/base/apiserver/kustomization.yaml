@@ -8,6 +8,7 @@ configMapGenerator:
       - APEX_OIDC_URL=https://auth.apex.local
       - APEX_TRACE_ENDPOINT_OTLP=""
       - APEX_TRACE_INSECURE="1"
+      - APEX_FFLAG_MULTI_ZONE=false
 resources:
   - service.yaml
   - deployment.yaml
