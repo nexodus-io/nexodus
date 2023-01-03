@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Provide a "yes" repsonse to the warning prompt as a command line arg.
+# Provide a "yes" response to the warning prompt as a command line arg.
 YES=""
 
 OS="$(uname -s)"
@@ -137,7 +137,7 @@ function cleanup() {
         fi
             
         if [ -x "$(command -v brew)" ]; then
-            info_message "Not uninstalling the Brew. If you would like to uninstall the brew please fire following commads"
+            info_message "Not uninstalling the Brew. If you would like to uninstall the brew please fire following commands"
             info_message 'echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"'
         fi
 
@@ -154,7 +154,7 @@ function cleanup() {
             elif [ "$linuxDistro" == "CentOS Stream" ] || [ "$linuxDistro" == "Fedora" ]; then
                 sudo dnf -q remove wireguard-tools -y
             else
-                error_message "Currenly only support Ubuntu, Fedora and Centos Stream."
+                error_message "Currently only support Ubuntu, Fedora and Centos Stream."
             fi
             if [ "$?" == "0" ]; then 
                 pass_message "WireGuard is uninstalled successfully."
