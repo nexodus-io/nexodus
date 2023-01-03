@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -ex
+set -e
 info_message() {
     if [ -z "${1}" ]; then
         echo "info_message() requires a message"
