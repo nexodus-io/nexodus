@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
-namespace: apex
+namespace: apex-qa
 configMapGenerator:
   - behavior: replace
     files:
