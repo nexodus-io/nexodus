@@ -4,7 +4,7 @@ metadata:
   name: letsencrypt
 spec:
   acme:
-    email: admin@qa.apex-hosted.cloud
+    email: admin.qa@apex-hosted.cloud
     privateKeySecretRef:
       name: letsencrypt-key
     server: 'https://acme-v02.api.letsencrypt.org/directory'
