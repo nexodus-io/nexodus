@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )

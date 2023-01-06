@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	agent "github.com/redhat-et/go-oidc-agent"
 	"github.com/urfave/cli/v2"
