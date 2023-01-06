@@ -51,6 +51,6 @@ Once you're fully authenticated, the frontend may then call the `/api` enpdoint 
 
 [badge1]: https://img.shields.io/github/v/release/redhat-et/go-oidc-agent?style=for-the-badge
 [badge2]: https://img.shields.io/github/license/redhat-et/go-oidc-agent?style=for-the-badge
-[badge3]: https://img.shields.io/github/workflow/status/redhat-et/go-oidc-agent/build?style=for-the-badge
+[badge3]: https://img.shields.io/github/actions/workflow/status/redhat-et/go-oidc-agent/ci.yml?branch=main&style=for-the-badge
 [badge4]: https://img.shields.io/coverallsCoverage/github/redhat-et/go-oidc-agent?branch=main&style=for-the-badge
 [badge5]: https://goreportcard.com/badge/github.com/redhat-et/go-oidc-agent?style=for-the-badge
