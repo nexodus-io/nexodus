@@ -104,6 +104,11 @@ image-apiserver:
 	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
 	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
 
+.PHONY: image-apex
+image-apex:
+	docker build -f Containerfile.apex -t quay.io/apex/apex:$(TAG) .
+	docker tag quay.io/apex/apex:$(TAG) quay.io/apex/apex:latest
+
 .PHONY: images
 images: image-frontend image-apiserver ## Create container images
 

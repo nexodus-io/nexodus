@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: apex
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+                  # Deploy apex client on the nodes tagged with following label
+                  - key: app.kubernetes.io/apex
+                    operator: Exists
+                    # Deploy apex client on  specific nodes
+#                 - key: kubernetes.io/hostname
+#                   operator: In
+#                   values:
+#                   - worker-1
