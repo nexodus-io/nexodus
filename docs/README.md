@@ -7,15 +7,30 @@
       - [Add required DNS entries](#add-required-dns-entries)
       - [Deploy using KIND](#deploy-using-kind)
     - [HTTPS](#https)
-  - [Deploying the Apexctl Utility](#deploying-the-apexctl-utility)
+  - [Using the Apexctl Utility](#using-the-apexctl-utility)
     - [Install pre-built binary](#install-pre-built-binary)
     - [Build from the source code](#build-from-the-source-code)
-  - [The Apex Agent](#the-apex-agent)
-    - [Installing the Agent](#installing-the-agent)
-    - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
-    - [Verifying Agent Setup](#verifying-agent-setup)
-    - [Verifying Zone Connectivity](#verifying-zone-connectivity)
-    - [Cleanup](#cleanup)
+  - [Deploying the Apex Agent](#deploying-the-apex-agent)
+    - [Deploying on Node](#deploying-on-node)
+      - [Installing the Agent](#installing-the-agent)
+      - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
+      - [Verifying Agent Setup](#verifying-agent-setup)
+      - [Verifying Zone Connectivity](#verifying-zone-connectivity)
+      - [Cleanup Agent From Node](#cleanup-agent-from-node)
+    - [Deploying on Kubernetes managed Node](#deploying-on-kubernetes-managed-node)
+      - [Setup the configuration](#setup-the-configuration)
+      - [Deploying the Apex Agent Manifest](#deploying-the-apex-agent-manifest)
+      - [Controlling the Agent Deployment](#controlling-the-agent-deployment)
+      - [Verify the deployment](#verify-the-deployment)
+      - [Cleanup Agent Pod From Node](#cleanup-agent-pod-from-node)
+  - [Deploying the Apex Relay](#deploying-the-apex-relay)
+    - [Setup Apex Relay Node](#setup-apex-relay-node)
+    - [Create a Relay Enabled Zone](#create-a-relay-enabled-zone)
+    - [Move user to Relay Enabled Zone](#move-user-to-relay-enabled-zone)
+    - [OnBoard the Relay node to the Relay Enabled Zone](#onboard-the-relay-node-to-the-relay-enabled-zone)
+      - [Interactive OnBoarding](#interactive-onboarding)
+      - [Quite OnBoarding](#quite-onboarding)
+    - [Delete Zone](#delete-zone)
   - [Additional Features](#additional-features)
     - [Subnet Routers](#subnet-routers)
   - [Running the integration tests](#running-the-integration-tests)
@@ -114,9 +129,13 @@ You can clone the Apex repo and build the binary using
 make dist/apexctl
 ```
 
-## The Apex Agent
+## Deploying the Apex Agent
 
-### Installing the Agent
+### Deploying on Node
+
+Following sections contains general instructions to deploy Apex agent on any node. Minimum requirement is that the node is running Linux, Darwin and Windows based Operating systems.
+
+#### Installing the Agent
 
 The Apex agent (`apexd`) is run on any node that will join an Apex Zone to communicate with other peers in that zone. This agent communicates with the Apex Controller and manages local wireguard configuration.
 
@@ -126,7 +145,7 @@ The `hack/apex_installer.sh` script will download the latest build of `apexd` an
 hack/apex_installer.sh
 ```
 
-### Running the Agent for Interactive Enrollment
+#### Running the Agent for Interactive Enrollment
 
 As the project is still in such early development, it is expected that `apexd` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
 
@@ -148,7 +167,7 @@ Authentication succeeded.
 INFO[0570] Peer setup complete
 ```
 
-### Verifying Agent Setup
+#### Verifying Agent Setup
 
 Once the Agent has been started successfully, you should see a wireguard interface with an address assigned. For example, on Linux:
 
@@ -160,7 +179,7 @@ $ ip address show wg0
        valid_lft forever preferred_lft forever
 ```
 
-### Verifying Zone Connectivity
+#### Verifying Zone Connectivity
 
 Once more than one node has enrolled in the same Apex Zone, you will see additional routes populated for reaching other node's endpoints in the same Zone. For example, we have just added a second node to this zone. The new node's address in the Apex Zone is 10.200.0.2. On Linux, we can check the routing table and see:
 
@@ -180,7 +199,7 @@ PING 10.200.0.2 (10.200.0.2) 56(84) bytes of data.
 
 You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://apex.local/`.
 
-### Cleanup
+#### Cleanup Agent From Node
 
 If you want to remove the node from the network, and want to cleanup all the configuration done on the node. Fire away following commands:
 
@@ -194,6 +213,213 @@ sudo ip link del wg0
 *OSX/Windows:*
 
 Since the wireguard agents are userspace in both Windows and Darwin, the tunnel interface is removed when the agent process exits.
+
+### Deploying on Kubernetes managed Node
+
+Instructions mentioned in [Deploying on Node](#deploying-on-node) can be used here to deploy Apex agent on kubernetes managed nodes. However deploying the agent across all the nodes in a sizable Kubernetes cluster can be a challenging task, manually and even with scripting. Following section provides instructions to deploy Kubernetes style manifest to automate the deployment process.
+
+#### Setup the configuration
+
+Agent deployment in kubernetes requires few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through [kustomization.yaml](../deploy/apex-client/overlays/dev/kustomization.yaml).
+
+Fetch the CA cert from the Kubernetes/Openshift Cluster that is running Apex Controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
+
+```sh
+kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"'
+```
+
+If you are not running your Apex service at the default DNS addresses set in the `kustomization.yaml` file, please update the `url` and `auth_url` accordingly. Update the username and password as well if your Apex Controller is configured with a different username and password.
+
+Note: Current username and password are default configuration, which is very likely to change in near future.
+
+Please update the `<APEX_CONTROLLER_IP>` with the IP address where the Apex controller is reachable.
+
+Following is an example kustomization.yaml
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: apex
+bases:
+  - ../../base
+secretGenerator:
+- name: apex-client-secret
+  literals:
+  - cert=<APEX_CONTROLLER_CERT>
+  - url=https://apex.local
+  - auth_url=https://auth.apex.local/token
+  - username=kitteh1
+  - password=floofykittens
+commonLabels:
+  app.kubernetes.io/component: apex-client
+  app.kubernetes.io/instance: apex-client
+  app.kubernetes.io/name: apex-client
+patchesJson6902:
+  - target:
+      kind: DaemonSet
+      name: apex
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/hostAliases/0/ip
+        value: 54.65.23.108
+patchesStrategicMerge:
+  - node_selector.yaml
+```
+
+#### Deploying the Apex Agent Manifest
+
+Once the configuration is set up. You can deploy Apex's manifest files
+
+```sh
+kubectl apply -k ./deploy/apex-client/overlays/dev
+```
+
+It will deploy a DaemonSet in the newly created `Apex` namespace. DaemonSet deploys a Pod that runs a privileged container that does all the required configuration on the local node. It also starts the agent and onboard the device automatically using the non-interactive access token based onboarding.
+
+Note: If your Kubernetes cluster enforces security context to deny privileged container deployment, you need to make sure that the security policy is added to the service account `apex` (created for agent agent deployment) to allow the deployment.
+
+#### Controlling the Agent Deployment
+
+By default Apex agent is deployed using DaemonSet, so Kubernetes will deploy Apex agent pod on each worker node. This might not be the ideal strategy for onboarding Kubernetes worker nodes for many reasons. You can control the Apex agent deployment by configuring the `nodeAffinity` in the [node_selector.yaml](../deploy/apex-client/overlays/dev/node_selector.yaml).
+
+The default behavior is set to deploy Apex pod on any node that is running Linux Operating System and is tagged with `app.kubernetes.io/apex=`. With this deployment strategy, once you apply the Apex manifest, Kubernetes won't deploy Apex pod on any worker node. To deploy the Apex pod on any worker node, tag that node with `app.kubernetes.io/apex=` label.
+
+```sh
+kubectl label nodes <NODE_NAME> app.kubernetes.io/apex=
+```
+
+If you want to remove the deployment from that node, just remove the label.
+
+```sh
+kubectl label nodes <NODE_NAME> app.kubernetes.io/apex-
+```
+
+If you want to by default deploy Apex pod on all the worker nodes, you can comment out the following lines in the [node_selector.yaml](../deploy/apex-client/overlays/dev/node_selector.yaml) file.
+
+```yaml
+  - key: app.kubernetes.io/apex
+    operator: Exists
+```
+
+If you want to deploy Apex pod on specific node/s and don't want to tag the nodes with `app.kubernetes.io/apex=` label, you can uncomment the following lines in `node_selector.yaml` and add the list of the nodes.
+
+```yaml
+# Deploy apex client on  specific nodes
+#              - key: kubernetes.io/hostname
+#                operator: In
+#                values:
+#                - <NODE_1>
+#                - <NODE_2>
+```
+
+#### Verify the deployment
+
+Check that apex pod is running on the nodes
+
+```sh
+kubectl get pods -n apex -o wide
+```
+
+Login to one of the nodes, and you should see a wireguard interface with an address assigned. For example, on Linux:
+
+```sh
+$ ip address show wg0
+161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/none
+    inet 10.200.0.1/32 scope global wg0
+       valid_lft forever preferred_lft forever
+```
+
+#### Cleanup Agent Pod From Node
+
+Removing the Apex manifest will remove the Apex pod and clean up WireGuard configuration from the node as well.
+
+```sh
+kubectl delete -k ./deploy/apex-client/overlays/dev
+```
+
+## Deploying the Apex Relay
+
+Apex Controller makes best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish the direct peering. To establish connectivity in those scenario, Apex Controller uses Apex Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Apex network. This **must** be the first device to join the Apex network to enable the traffic relay.
+
+### Setup Apex Relay Node
+
+Clone the Apex repository on a VM (or bare metal machine). Apex relay node must be reachable from all the endpoint nodes that want to join the Apex network. Follow the instruction in [Installing the agent](#installing-the-agent) section to setup the node and install the apex binary.
+
+### Create a Relay Enabled Zone
+
+Use the following cli command to create the Relay enabled Apex Zone. You can login to the Apex UI and create the zone as well, ensuring that you toggle the `Hub Zone` switch to on.
+
+```sh
+./apexctl --username=kitteh1 \
+   --password=floofykittens \
+   zone create --name=edge-zone \
+   --hub-zone=true \
+   --cidr=10.195.0.0/24 \
+   --description="Relay enabled zone"
+```
+
+Currently the usernames are hardcoded in the Apex Controller. You can edit `name`, `cidr`, `description` parameters in the CLI commands as per your deployment.
+
+You can list the available zones using following command
+
+```sh
+./apexctl  --username=kitteh1 --password=floofykittens zone list                                                         
+
+ZONE ID                                  NAME          CIDR              DESCRIPTION                RELAY/HUB ENABLED
+dcab6a84-f522-4e9b-a221-8752d505fc18     default       10.200.1.0/20     Default Zone               false
+b130805a-c312-4f4a-8a8e-f57a2c7ab152     edge-zone     10.195.0.0/24     Relay enabled zone         true
+```
+
+You can see the two zones associated with the username `kitteh1`.
+
+### Move user to Relay Enabled Zone
+
+By default an user account is associated with its default zone, that is not a relay enabled zone. So to onboard all the devices to the relay enabled zone, you need to associate that zone as a default zone of the user account.
+
+```sh
+apexctl  --username=kitteh1 --password=floofykittens zone move-user --zone-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
+```
+
+Zone id is printed once you create the zone, or you can get it by listing the zone as mentioned above.
+
+### OnBoard the Relay node to the Relay Enabled Zone
+
+Once the user account is associated with the newly created zone, any OnBoarded device will join the new zone. To OnBoard the Relay node you can use any of the following method
+
+#### Interactive OnBoarding
+
+```sh
+sudo apex --hub-router --stun https://apex.local
+```
+
+It will print an URL on stdout to onboard the relay node 
+
+```
+#sudo apex --hub-router --stun https://apex.local
+Your device must be registered with Apex.
+Your one-time code is: GTLN-RGKP
+Please open the following URL in your browser to sign in:
+https://auth.apex.local/device?user_code=GTLN-RGKP
+```
+
+Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting the access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
+
+#### Quite OnBoarding
+
+To OnBoard devices without any browser involvement you need to provide username and password in the CLI command
+
+```sh
+apex --hub-router --stun --username=kitteh1 --password=floofykittens https://apex.local
+```
+
+### Delete Zone
+
+To delete the zone,
+
+```sh
+apexctl  --username=kitteh1 --password=floofykittens zone delete --zone-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
+```
 
 ## Additional Features
 
