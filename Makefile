@@ -59,8 +59,23 @@ test-images:
 	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
 
-.PHONY: e2e
-e2e: dist/apex dist/apexctl test-images
+.PHONY: e2e e2eprereqs
+e2eprereqs:
+	@if [ -z "$(shell which kind)" ]; then \
+		echo "Please install kind and then start the kind dev environment." ; \
+		echo "https://kind.sigs.k8s.io/" ; \
+		echo "  $$ hack/kind/kind.sh up" ; \
+		echo "  $$ hack/kind/kind.sh cacert" ; \
+		exit 1 ; \
+	fi
+	@if [ -z "$(findstring apex-dev,$(shell kind get clusters))" ]; then \
+		echo "Please start the kind dev environment." ; \
+		echo "  $$ hack/kind/kind.sh up" ; \
+		echo "  $$ hack/kind/kind.sh cacert" ; \
+		exit 1 ; \
+	fi
+
+e2e: e2eprereqs dist/apex dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: unit
