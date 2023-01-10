@@ -49,10 +49,12 @@ up() {
 
     info_message "Adding Rewrite to CoreDNS"
     kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
-    sed -i '22i \
-            rewrite name auth.apex.local dex.apex.svc.cluster.local' coredns.yaml
-    kubectl replace -n kube-system -f coredns.yaml
-    rm coredns.yaml
+    sed '22i\
+        rewrite name auth.apex.local dex.apex.svc.cluster.local
+' coredns.yaml > coredns-apex.yaml
+    kubectl replace -n kube-system -f coredns-apex.yaml
+    rm coredns.yaml coredns-apex.yaml
+
     kubectl rollout restart -n kube-system deployment/coredns
     kubectl rollout status -n kube-system deployment coredns --timeout=5m
 
