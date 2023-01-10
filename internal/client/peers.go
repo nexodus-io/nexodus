@@ -18,16 +18,16 @@ const (
 
 func (c *Client) CreatePeerInZone(zoneID uuid.UUID, deviceID uuid.UUID, endpointIP string, requestedIP string, childPrefix string, hubRouter bool, hubZone bool, zonePrefix string, reflexiveIP, endpointLocalAddress string, symmetricNat bool) (models.Peer, error) {
 	registerRequest := models.AddPeer{
-		DeviceID:                deviceID,
-		EndpointIP:              endpointIP,
-		NodeAddress:             requestedIP,
-		ChildPrefix:             childPrefix,
-		HubRouter:               hubRouter,
-		HubZone:                 hubZone,
-		ZonePrefix:              zonePrefix,
-		ReflexiveIPv4:           reflexiveIP,
-		EnpointLocalAddressIPv4: endpointLocalAddress,
-		SymmetricNat:            symmetricNat,
+		DeviceID:                 deviceID,
+		EndpointIP:               endpointIP,
+		NodeAddress:              requestedIP,
+		ChildPrefix:              childPrefix,
+		HubRouter:                hubRouter,
+		HubZone:                  hubZone,
+		ZonePrefix:               zonePrefix,
+		ReflexiveIPv4:            reflexiveIP,
+		EndpointLocalAddressIPv4: endpointLocalAddress,
+		SymmetricNat:             symmetricNat,
 	}
 	body, err := json.Marshal(registerRequest)
 	if err != nil {

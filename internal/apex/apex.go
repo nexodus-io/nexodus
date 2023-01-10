@@ -382,7 +382,7 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 					continue
 				}
 				_, err = ax.client.CreatePeerInZone(zoneID, device.ID, relayData[device.PublicKey].Endpoint, ax.requestedIP,
-					peer.ChildPrefix, false, false, "", endpointReflexiveAddress, peer.EnpointLocalAddressIPv4, peer.SymmetricNat)
+					peer.ChildPrefix, false, false, "", endpointReflexiveAddress, peer.EndpointLocalAddressIPv4, peer.SymmetricNat)
 				if err != nil {
 					log.Errorf("failed creating peer: %+v", err)
 				}
