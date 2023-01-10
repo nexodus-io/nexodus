@@ -16,6 +16,7 @@
   - [Additional Features](#additional-features)
     - [Subnet Routers](#subnet-routers)
   - [Running the integration tests](#running-the-integration-tests)
+    - [Prerequisites](#prerequisites)
     - [Using Docker](#using-docker)
     - [Using podman](#using-podman)
 
@@ -37,7 +38,7 @@ The development Apex stack requires 3 hostnames to be reachable:
 - `api.apex.local` - for the backend apis
 - `apex.local` - for the frontend
 
-To add these on your own machine:
+To add these on your own machine for a local development environment:
 
 ```console
 echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
@@ -186,6 +187,10 @@ graph
 ```
 
 ## Running the integration tests
+
+### Prerequisites
+
+Prior to running the integration tests, you must start the kind-based development environment. See the [Run on Kubernetes](#run-on-kubernetes) section for further details.
 
 ### Using Docker
 
