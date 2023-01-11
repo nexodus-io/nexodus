@@ -38,6 +38,11 @@ up() {
         exit 1
     fi
 
+    if [ "$(command uname -s)" != "Linux" ]; then
+        error_message "$(command basename $0) is only known to work on Linux (not $(command uname -s))"
+        exit 1
+    fi
+
     kind create cluster --config ./deploy/kind.yaml
     kubectl cluster-info --context kind-apex-dev
 
