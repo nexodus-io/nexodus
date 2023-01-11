@@ -79,6 +79,10 @@ up() {
 
     info_message "Waiting for Apex Pod Readiness"
     kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
+
+    if ! grep -q "apex.local" /etc/hosts ; then
+        info_message "apex.local was not found in the /etc/hosts file. To access apex, update /etc/hosts by running: echo \"127.0.0.1 auth.apex.local api.apex.local apex.local\" | sudo tee -a /etc/hosts"
+    fi
 }
 
 down() {
@@ -86,6 +90,11 @@ down() {
 }
 
 cacert() {
+    if ! [ -x "$(command -v mkcert)" ]; then
+        error_message "mkcert not found. Please install it from https://github.com/FiloSottile/mkcert"
+        exit 1
+    fi
+
     mkdir -p .certs
     kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > .certs/rootCA.pem
     CAROOT=$(pwd)/.certs mkcert -install
