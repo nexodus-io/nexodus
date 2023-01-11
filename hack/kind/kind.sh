@@ -45,7 +45,6 @@ up() {
 
     info_message "Deploying Ingress Controller"
     kubectl apply -f ./deploy/kind-ingress.yaml
-    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
 
     info_message "Adding Rewrite to CoreDNS"
     kubectl get -n kube-system cm/coredns -o yaml > coredns.yaml
@@ -56,22 +55,26 @@ up() {
     rm coredns.yaml coredns-apex.yaml
 
     kubectl rollout restart -n kube-system deployment/coredns
-    kubectl rollout status -n kube-system deployment coredns --timeout=5m
 
     info_message "Installing Cert Manager"
     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
-    kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
-    kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
-    kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
 
     info_message "Installing Postgres Operator"
     kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
     kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default
-    kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
-    
+
     info_message "Loading Images To KIND"
     kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
     kind load --name apex-dev docker-image quay.io/apex/frontend:latest
+
+    # We need at least the nginx and cert-manager admission controllers running before Apex can be deployed.
+    info_message "Waiting for System Readiness"
+    kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
+    kubectl rollout status -n kube-system deployment coredns --timeout=5m
+    kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
+    kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
+    kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
+    kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
     info_message "Deploying Apex"
     kubectl create namespace apex
