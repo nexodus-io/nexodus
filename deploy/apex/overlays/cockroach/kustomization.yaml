@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../dev
+  - cockroach.yaml
+
+namespace: apex
+
+secretGenerator:
+  - name: database-pguser-ipam
+    literals:
+      - dbname=ipam
+      - host=cockroachdb-public
+      - password=password
+      - port=26257
+      - user=ipam
+
+  - name: database-pguser-apiserver
+    literals:
+      - dbname=apiserver
+      - host=cockroachdb-public
+      - password=password
+      - port=26257
+      - user=apiserver
+
+configMapGenerator:
+  - name: ipam
+    behavior: merge
+    literals:
+      - GOIPAM_PG_SSLMODE=disable
+  - name: apiserver
+    behavior: merge
+    literals:
+      - APEX_DB_SSLMODE=disable
+
+patchesStrategicMerge:
+  - |-
+    $patch: delete
+    apiVersion: postgres-operator.crunchydata.com/v1beta1
+    kind: PostgresCluster
+    metadata:
+      name: database

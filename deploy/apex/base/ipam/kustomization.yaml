@@ -7,3 +7,8 @@ commonLabels:
   app.kubernetes.io/component: ipam
   app.kubernetes.io/instance: ipam
   app.kubernetes.io/name: ipam
+
+configMapGenerator:
+  - name: ipam
+    literals:
+      - GOIPAM_PG_SSLMODE=require
