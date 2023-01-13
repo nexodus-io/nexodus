@@ -39,7 +39,10 @@ spec:
                   name: database-pguser-ipam
                   key: dbname
             - name: GOIPAM_PG_SSLMODE
-              value: require
+              valueFrom:
+                configMapKeyRef:
+                  name: ipam
+                  key: GOIPAM_PG_SSLMODE
           args:
             - --grpc-server-endpoint=0.0.0.0:9090
             - postgres

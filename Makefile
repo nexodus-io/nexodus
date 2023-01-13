@@ -188,6 +188,36 @@ deploy-pgo: # Deploy crunchy-data postgres operator
 	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
 	@kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default
 
+.PHONY: deploy-cockroach-operator
+deploy-cockroach-operator: ## Deploy cockroach operator
+	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
+	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
+	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
+	@kubectl wait --for=condition=Ready pods --all -n cockroach-operator-system --timeout=5m
+
+.PHONY: use-cockroach
+use-cockroach: deploy-cockroach-operator ## Replace the postgres server with a cockroach server
+	@kubectl -n apex delete postgrescluster database || true
+	@kubectl apply -k ./deploy/apex/overlays/cockroach
+	@kubectl -n apex wait --for=condition=Initialized cockroachdb cockroachdb --timeout=5m
+	@kubectl -n apex rollout status statefulsets/cockroachdb --timeout=5m
+	@kubectl -n apex exec -it cockroachdb-0 \
+	  	-- ./cockroach sql \
+		--insecure \
+		--certs-dir=/cockroach/cockroach-certs \
+		--host=cockroachdb-public \
+		--execute "\
+			CREATE DATABASE IF NOT EXISTS ipam;\
+			CREATE USER IF NOT EXISTS ipam;\
+			GRANT ALL ON DATABASE ipam TO ipam;\
+			CREATE DATABASE IF NOT EXISTS apiserver;\
+			CREATE USER IF NOT EXISTS apiserver;\
+			GRANT ALL ON DATABASE apiserver TO apiserver;\
+			"
+	@kubectl rollout restart deploy/ipam -n apex
+	@kubectl -n apex rollout status deploy/ipam --timeout=5m
+	@kubectl rollout restart deploy/apiserver -n apex
+
 .PHONY: wait-for-readiness
 wait-for-readiness: # Wait for operators to be installed
 	@kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
