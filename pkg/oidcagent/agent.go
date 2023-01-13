@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
+	"net/http"
 	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -24,6 +26,7 @@ type OidcAgent struct {
 	deviceAuthURL  string
 	backend        *url.URL
 	cookieKey      string
+	insecureTLS    bool
 }
 
 type OauthConfig interface {
@@ -44,6 +47,8 @@ type IDTokenVerifier interface {
 func NewOidcAgent(ctx context.Context,
 	logger *zap.Logger,
 	oidcProvider string,
+	oidcBackchannel string,
+	insecureTLS bool,
 	clientID string,
 	clientSecret string,
 	redirectURL string,
@@ -53,6 +58,21 @@ func NewOidcAgent(ctx context.Context,
 	backend string,
 	cookieKey string,
 ) (*OidcAgent, error) {
+	if insecureTLS {
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: transport}
+		ctx = oidc.ClientContext(ctx, client)
+	}
+
+	if oidcBackchannel != "" {
+		ctx = oidc.InsecureIssuerURLContext(ctx,
+			oidcProvider,
+		)
+		oidcProvider = oidcBackchannel
+	}
+
 	provider, err := oidc.NewProvider(ctx, oidcProvider)
 	if err != nil {
 		log.Fatal(err)
@@ -99,6 +119,7 @@ func NewOidcAgent(ctx context.Context,
 		deviceAuthURL:  claims.DeviceAuthURL,
 		backend:        backendURL,
 		cookieKey:      cookieKey,
+		insecureTLS:    insecureTLS,
 	}
 	return auth, nil
 }

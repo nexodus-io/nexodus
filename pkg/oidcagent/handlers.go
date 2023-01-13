@@ -1,8 +1,11 @@
 package agent
 
 import (
+	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +14,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
 	"golang.org/x/oauth2"
 )
 
@@ -28,6 +31,18 @@ func randString(nByte int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func (o *OidcAgent) prepareContext(c *gin.Context) context.Context {
+	if o.insecureTLS {
+		parent := c.Request.Context()
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: transport}
+		return oidc.ClientContext(parent, client)
+	}
+	return c.Request.Context()
 }
 
 // LoginStart starts a login request
@@ -88,6 +103,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	}
 
 	logger := o.logger
+	ctx := o.prepareContext(c)
 	logger.Debug("handling login end request")
 
 	values := requestURL.Query()
@@ -142,7 +158,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 		}
 		c.SetCookie("nonce", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
 
-		oauth2Token, err := o.oauthConfig.Exchange(c.Request.Context(), code)
+		oauth2Token, err := o.oauthConfig.Exchange(ctx, code)
 		if err != nil {
 			logger.With(
 				"error", err,
@@ -160,7 +176,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 
-		idToken, err := o.verifier.Verify(c.Request.Context(), rawIDToken)
+		idToken, err := o.verifier.Verify(ctx, rawIDToken)
 		if err != nil {
 			logger.With(
 				"error", err,
@@ -175,22 +191,30 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 
-		session := sessions.Default(c)
-		session.Set(TokenKey, *oauth2Token)
+		session := ginsession.FromContext(c)
+		tokenString, err := tokenToJSONString(oauth2Token)
+		if err != nil {
+			logger.Debug("can't convert token to string")
+			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("can't convert token to string"))
+			return
+		}
+		session.Set(TokenKey, tokenString)
 		session.Set(IDTokenKey, rawIDToken)
 		if err := session.Save(); err != nil {
-			logger.With("error", err).Debug("can't save session storage")
+			logger.With("error", err,
+				"id_token_size", len(rawIDToken)).Debug("can't save session storage")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		logger.Debug("user is logged in")
+		logger.With("session_id", session.SessionID()).Debug("user is logged in")
 		loggedIn = true
 	} else {
 		logger.Debug("checking if user is logged in")
 		loggedIn = isLoggedIn(c)
 	}
 
-	logger.With("logged_in", loggedIn).Debug("complete")
+	session := ginsession.FromContext(c)
+	logger.With("session_id", session.SessionID()).With("logged_in", loggedIn).Debug("complete")
 	res := LoginEndResponse{
 		Handled:  handleAuth,
 		LoggedIn: loggedIn,
@@ -206,20 +230,21 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 // @Success      200	{object}	UserInfo
 // @Router       /user_info [get]
 func (o *OidcAgent) UserInfo(c *gin.Context) {
-	session := sessions.Default(c)
-	tokenRaw := session.Get(TokenKey)
-	if tokenRaw == nil {
+	session := ginsession.FromContext(c)
+	ctx := o.prepareContext(c)
+	tokenRaw, ok := session.Get(TokenKey)
+	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, ok := tokenRaw.(oauth2.Token)
-	if !ok {
+	token, err := jsonStringToToken(tokenRaw.(string))
+	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	src := o.oauthConfig.TokenSource(c.Request.Context(), &token)
+	src := o.oauthConfig.TokenSource(ctx, token)
 
-	info, err := o.provider.UserInfo(c.Request.Context(), src)
+	info, err := o.provider.UserInfo(ctx, src)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -259,13 +284,14 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 // @Success      200	{object}	map[string]interface{}
 // @Router       /claims [get]
 func (o *OidcAgent) Claims(c *gin.Context) {
-	session := sessions.Default(c)
-	idTokenRaw := session.Get(IDTokenKey)
-	if idTokenRaw == nil {
+	session := ginsession.FromContext(c)
+	ctx := o.prepareContext(c)
+	idTokenRaw, ok := session.Get(IDTokenKey)
+	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	idToken, err := o.verifier.Verify(c.Request.Context(), idTokenRaw.(string))
+	idToken, err := o.verifier.Verify(ctx, idTokenRaw.(string))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -288,25 +314,31 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 // @Success      200	{object}	Claims
 // @Router       /refresh [get]
 func (o *OidcAgent) Refresh(c *gin.Context) {
-	session := sessions.Default(c)
-	tokenRaw := session.Get(TokenKey)
-	if tokenRaw == nil {
+	session := ginsession.FromContext(c)
+	ctx := o.prepareContext(c)
+	tokenRaw, ok := session.Get(TokenKey)
+	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, ok := tokenRaw.(oauth2.Token)
-	if !ok {
+	token, err := jsonStringToToken(tokenRaw.(string))
+	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	src := o.oauthConfig.TokenSource(c.Request.Context(), &token)
+	src := o.oauthConfig.TokenSource(ctx, token)
 	newToken, err := src.Token()
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	session.Set(TokenKey, *newToken)
+	tokenString, err := tokenToJSONString(newToken)
+	if err != nil {
+		o.logger.Debug("can't convert token to string")
+		_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("can't convert token to string"))
+		return
+	}
+	session.Set(TokenKey, tokenString)
 	if err := session.Save(); err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -323,9 +355,9 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 // @Success      200	{object}	LogoutResponse
 // @Router       /logout [post]
 func (o *OidcAgent) Logout(c *gin.Context) {
-	session := sessions.Default(c)
-	idToken := session.Get(IDTokenKey)
-	if idToken == nil {
+	session := ginsession.FromContext(c)
+	idToken, ok := session.Get(IDTokenKey)
+	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -349,22 +381,23 @@ func (o *OidcAgent) Logout(c *gin.Context) {
 }
 
 func (o *OidcAgent) CodeFlowProxy(c *gin.Context) {
-	session := sessions.Default(c)
-	tokenRaw := session.Get(TokenKey)
-	if tokenRaw == nil {
+	session := ginsession.FromContext(c)
+	ctx := o.prepareContext(c)
+	tokenRaw, ok := session.Get(TokenKey)
+	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, ok := tokenRaw.(oauth2.Token)
-	if !ok {
+	token, err := jsonStringToToken(tokenRaw.(string))
+	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	// Use a static token source to avoid automatically
 	// refreshing the token - this needs to be handled
 	// by the frontend
-	src := oauth2.StaticTokenSource(&token)
-	client := oauth2.NewClient(c.Request.Context(), src)
+	src := oauth2.StaticTokenSource(token)
+	client := oauth2.NewClient(ctx, src)
 	proxy := httputil.NewSingleHostReverseProxy(o.backend)
 
 	// Use the client transport
@@ -380,11 +413,9 @@ func (o *OidcAgent) CodeFlowProxy(c *gin.Context) {
 }
 
 func isLoggedIn(c *gin.Context) bool {
-	session := sessions.Default(c)
-	if s := session.Get(TokenKey); s == nil {
-		return false
-	}
-	return true
+	session := ginsession.FromContext(c)
+	_, ok := session.Get(TokenKey)
+	return ok
 }
 
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
@@ -405,4 +436,21 @@ func (o *OidcAgent) DeviceFlowProxy(c *gin.Context) {
 		req.URL.Path = c.Param("proxyPath")
 	}
 	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func tokenToJSONString(t *oauth2.Token) (string, error) {
+	b, err := json.Marshal(t)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func jsonStringToToken(s string) (*oauth2.Token, error) {
+	var t oauth2.Token
+	if err := json.Unmarshal([]byte(s), &t); err != nil {
+		return nil, err
+	}
+	return &t, nil
+
 }

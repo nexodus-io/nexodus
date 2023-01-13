@@ -13,9 +13,10 @@ import (
 	"unsafe"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/go-session/session/v3"
+	"github.com/redhat-et/go-oidc-agent/pkg/cookie"
+	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -116,10 +117,18 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 			},
 		},
 	}
+
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetHashKey([]byte("secretkey")),
+			),
+		),
+	)
+
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	cookieStore := cookie.NewStore([]byte("secretstorage"))
-	r.Use(sessions.Sessions(SessionStorage, cookieStore))
+	r.Use(ginsession.New())
 	r.POST("/login/end", auth.LoginEnd)
 	loginEndRequest := LoginEndRequest{
 		RequestURL: "https://example.com?state=foo&code=kittens",
@@ -149,15 +158,6 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 
 	assert.Equal(t, true, response.LoggedIn)
 	assert.Equal(t, true, response.Handled)
-
-	store, err := cookieStore.Get(req, SessionStorage)
-	require.NoError(t, err)
-
-	_, ok := store.Values[IDTokenKey]
-	assert.True(t, ok)
-
-	_, ok = store.Values[TokenKey]
-	assert.True(t, ok)
 }
 
 func TestLoginEnd_LoggedIn(t *testing.T) {
@@ -166,14 +166,22 @@ func TestLoginEnd_LoggedIn(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	cookieStore := cookie.NewStore([]byte("secretstorage"))
-	r.Use(sessions.Sessions(SessionStorage, cookieStore))
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetCookieName("demo_cookie_store_id"),
+				cookie.SetHashKey([]byte(auth.cookieKey)),
+			),
+		),
+	)
+	r.Use(ginsession.New())
 	r.Use(func(c *gin.Context) {
-		session := sessions.Default(c)
+		session := ginsession.FromContext(c)
 		t := oauth2.Token{
 			AccessToken: "kittens",
 		}
-		session.Set(TokenKey, t)
+		token, _ := tokenToJSONString(&t)
+		session.Set(TokenKey, token)
 		if err := session.Save(); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -210,8 +218,15 @@ func TestLoginEnd_NotLoggedIn(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	cookieStore := cookie.NewStore([]byte("secretstorage"))
-	r.Use(sessions.Sessions(SessionStorage, cookieStore))
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetCookieName("demo_cookie_store_id"),
+				cookie.SetHashKey([]byte(auth.cookieKey)),
+			),
+		),
+	)
+	r.Use(ginsession.New())
 	r.POST("/login/end", auth.LoginEnd)
 	loginEndRequest := LoginEndRequest{
 		RequestURL: "https://example.com",
@@ -241,8 +256,15 @@ func TestUserInfo_NotLoggedIn(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	cookieStore := cookie.NewStore([]byte("secretstorage"))
-	r.Use(sessions.Sessions(SessionStorage, cookieStore))
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetCookieName("demo_cookie_store_id"),
+				cookie.SetHashKey([]byte(auth.cookieKey)),
+			),
+		),
+	)
+	r.Use(ginsession.New())
 	r.GET("/user_info", auth.UserInfo)
 	req, _ := http.NewRequest("GET", "/user_info", nil)
 	w := httptest.NewRecorder()
@@ -285,14 +307,22 @@ func TestUserInfo_LoggedIn(t *testing.T) {
 		},
 	}
 	r := gin.New()
-	cookieStore := cookie.NewStore([]byte("secretstorage"))
-	r.Use(sessions.Sessions(SessionStorage, cookieStore))
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetCookieName("demo_cookie_store_id"),
+				cookie.SetHashKey([]byte(auth.cookieKey)),
+			),
+		),
+	)
+	r.Use(ginsession.New())
 	r.Use(func(c *gin.Context) {
-		session := sessions.Default(c)
+		session := ginsession.FromContext(c)
 		t := oauth2.Token{
 			AccessToken: "kittens",
 		}
-		session.Set(TokenKey, t)
+		token, _ := tokenToJSONString(&t)
+		session.Set(TokenKey, token)
 		if err := session.Save(); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return

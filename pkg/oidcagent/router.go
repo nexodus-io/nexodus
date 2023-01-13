@@ -4,9 +4,10 @@ import (
 	"encoding/gob"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/go-session/session/v3"
+	"github.com/redhat-et/go-oidc-agent/pkg/cookie"
+	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
 	"golang.org/x/oauth2"
 )
 
@@ -18,8 +19,15 @@ func NewCodeFlowRouter(auth *OidcAgent) *gin.Engine {
 	r := gin.Default()
 	r.Use(auth.OriginVerifier())
 
-	store := cookie.NewStore([]byte(auth.cookieKey))
-	r.Use(sessions.Sessions(SessionStorage, store))
+	session.InitManager(
+		session.SetStore(
+			cookie.NewCookieStore(
+				cookie.SetHashKey([]byte(auth.cookieKey)),
+			),
+		),
+	)
+
+	r.Use(ginsession.New())
 
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowCredentials = true

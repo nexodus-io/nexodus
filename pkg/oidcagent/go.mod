@@ -5,8 +5,9 @@ go 1.19
 require (
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/gin-contrib/cors v1.4.0
-	github.com/gin-contrib/sessions v0.0.5
 	github.com/gin-gonic/gin v1.8.1
+	github.com/go-session/session/v3 v3.1.7
+	github.com/gorilla/securecookie v1.1.1
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.23.5
 	go.uber.org/zap v1.23.0
@@ -23,9 +24,6 @@ require (
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/goccy/go-json v0.9.7 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/gorilla/context v1.1.1 // indirect
-	github.com/gorilla/securecookie v1.1.1 // indirect
-	github.com/gorilla/sessions v1.2.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
