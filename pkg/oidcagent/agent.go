@@ -66,14 +66,17 @@ func NewOidcAgent(ctx context.Context,
 		ctx = oidc.ClientContext(ctx, client)
 	}
 
+	var provider *oidc.Provider
+	var err error
 	if oidcBackchannel != "" {
 		ctx = oidc.InsecureIssuerURLContext(ctx,
 			oidcProvider,
 		)
-		oidcProvider = oidcBackchannel
-	}
+		provider, err = oidc.NewProvider(ctx, oidcBackchannel)
 
-	provider, err := oidc.NewProvider(ctx, oidcProvider)
+	} else {
+		provider, err = oidc.NewProvider(ctx, oidcProvider)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
