@@ -57,6 +57,20 @@ jobs:
         with:
           version: v1.50.0
 
+  ui-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: yarn install --frozen-lockfile
+        working-directory: ui
+      - run: npx prettier --check .
+        working-directory: ui
+      - run: yarn run build
+        working-directory: ui
+
   k8s-lint:
     runs-on: ubuntu-latest
     steps:

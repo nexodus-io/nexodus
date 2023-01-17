@@ -37,12 +37,6 @@
     "build": "tsc && vite build",
     "serve": "vite preview"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -57,6 +51,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^2.1.0",
+    "prettier": "2.8.3",
     "vite": "^3.1.8",
     "vite-plugin-svgr": "^2.2.2",
     "vite-tsconfig-paths": "^4.0.3"
