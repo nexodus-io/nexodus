@@ -64,7 +64,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 
-	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
+	token, err := getToken(ctx, "admin", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
@@ -171,7 +171,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "admin@apex.local", "floofykittens")
+	token, err := getToken(ctx, "admin", "floofykittens")
 	require.NoError(err)
 
 	// create the nodes
@@ -216,7 +216,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh1@apex.local", "floofykittens")
+	token, err := getToken(ctx, "kitteh1", "floofykittens")
 	require.NoError(err)
 
 	c, err := newClient(ctx, token)
@@ -306,7 +306,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh2@apex.local", "floofykittens")
+	token, err := getToken(ctx, "kitteh2", "floofykittens")
 	require.NoError(err)
 
 	c, err := newClient(ctx, token)
@@ -436,7 +436,7 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh3@apex.local", "floofykittens")
+	token, err := getToken(ctx, "kitteh3", "floofykittens")
 	require.NoError(err)
 
 	c, err := newClient(ctx, token)
@@ -676,7 +676,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	err = ping(ctx, net2SpokeNode2, hostDNSName)
 	assert.NoError(err)
 
-	token, err := getToken(ctx, "kitteh4@apex.local", "floofykittens")
+	token, err := getToken(ctx, "kitteh4", "floofykittens")
 	require.NoError(err)
 
 	c, err := newClient(ctx, token)
@@ -813,7 +813,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	user := "kitteh5@apex.local"
+	user := "kitteh5"
 	pass := "floofykittens"
 
 	token, err := getToken(ctx, user, pass)

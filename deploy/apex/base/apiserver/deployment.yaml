@@ -50,16 +50,26 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: APEX_OIDC_URL
+            - name: APEX_OIDC_BACKCHANNEL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_OIDC_BACKCHANNEL
+            - name: APEX_INSECURE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: APEX_INSECURE_TLS
             - name: APEX_OIDC_CLIENT_ID_WEB
               valueFrom:
                 secretKeyRef:
-                  name: dex-secrets
+                  name: auth-secrets
                   key: web-client-id
                   optional: false
             - name: APEX_OIDC_CLIENT_ID_CLI
               valueFrom:
                 secretKeyRef:
-                  name: dex-secrets
+                  name: auth-secrets
                   key: cli-client-id
                   optional: false
             - name: APEX_TRACE_ENDPOINT_OTLP

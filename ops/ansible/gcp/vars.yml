@@ -21,6 +21,6 @@ apex_zone_prefix: 10.185.0.0/20
 apex_auth_uid: kitteh1@apex.local
 apex_auth_password: floofykittens
 apex_oidc_client_id_cli: apex-cli
-apex_oidc_url: https://auth.apex.local
+apex_oidc_url: https://auth.apex.local/realms/apex
 apex_api_url: https://api.apex.local
 apex_url: https://apex.local

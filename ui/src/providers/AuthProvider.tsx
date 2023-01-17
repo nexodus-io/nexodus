@@ -11,7 +11,6 @@ const cleanup = () => {
 
 export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
   login: async (params = {}) => {
-    console.log("login");
     // 1. Redirect to the issuer to ask authentication
     if (!params.code || !params.state) {
       const request = new Request(`${api}/login/start`, {
@@ -51,7 +50,6 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     }
   },
   logout: async () => {
-    console.log("logout");
     const request = new Request(`${api}/logout`, {
       method: "post",
       credentials: "include",
@@ -70,7 +68,6 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     }
   },
   checkError: async (error: any) => {
-    console.log("checkError");
     const status = error.status;
     if (status === 401) {
       return Promise.reject();
@@ -78,8 +75,6 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     return Promise.resolve();
   },
   checkAuth: async () => {
-    console.log("checkAuth");
-    console.log(document.cookie);
     const request = new Request(`${api}/login/end`, {
       method: "POST",
       credentials: "include",
@@ -102,7 +97,6 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     return Promise.resolve();
   },
   getIdentity: async (): Promise<UserIdentity> => {
-    console.log("getIdentity");
     const request = new Request(`${api}/user_info`, {
       credentials: "include",
     });

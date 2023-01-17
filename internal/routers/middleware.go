@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -40,20 +40,23 @@ func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clie
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-
-		logger.Debug("verifying token")
 		token, err := verifier.Verify(c.Request.Context(), parts[1])
 		if err != nil {
+			logger.With("error", err).Debug("verification failed")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		for _, audience := range token.Audience {
-			if audience != clientIdWeb && audience != clientIdCli {
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
-		}
+		// Skip this for now.
+		// TODO: Add more robust aud/azp checks
+		// Dex sets aud... not sure about azp
+		// Keycloak's aud is account in an access token, but azp is the client-id
+		// for _, audience := range token.Audience {
+		//	if audience != clientIdWeb && audience != clientIdCli {
+		//		c.AbortWithStatus(http.StatusUnauthorized)
+		//		return
+		//	}
+		// }
 
 		logger.Debug("getting claims")
 		var claims Claims
