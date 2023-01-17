@@ -1,23 +1,19 @@
-import {
-  Admin,
-  Resource,
-  fetchUtils
-} from 'react-admin';
-import simpleRestProvider from 'ra-data-simple-rest';
-import { goOidcAgentAuthProvider } from './providers/AuthProvider';
+import { Admin, Resource, fetchUtils } from "react-admin";
+import simpleRestProvider from "ra-data-simple-rest";
+import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 
 // icons
-import DeviceIcon from '@mui/icons-material/Devices';
-import ZoneIcon from '@mui/icons-material/VpnLock';
-import UserIcon from '@mui/icons-material/People';
+import DeviceIcon from "@mui/icons-material/Devices";
+import ZoneIcon from "@mui/icons-material/VpnLock";
+import UserIcon from "@mui/icons-material/People";
 
 // pages
 import { ZoneCreate, ZoneShow, ZoneList } from "./pages/Zones";
 import { PeerShow, PeerList } from "./pages/Peers";
 import { UserShow, UserList } from "./pages/Users";
 import { DeviceList, DeviceShow } from "./pages/Devices";
-import Dashboard from './pages/Dashboard';
-import LoginPage from './pages/Login';
+import Dashboard from "./pages/Dashboard";
+import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
 
 const fetchJson = (url: URL, options: any = {}) => {
@@ -31,15 +27,16 @@ const authProvider = goOidcAgentAuthProvider(backend);
 const baseDataProvider = simpleRestProvider(
   `${backend}/api`,
   fetchJson,
-  'X-Total-Count',
+  "X-Total-Count"
 );
 const dataProvider = {
   ...baseDataProvider,
   getFlag: (name: string) => {
-    return fetchJson(new URL(`${backend}/api/fflags/${name}`))
-      .then(response => response);
+    return fetchJson(new URL(`${backend}/api/fflags/${name}`)).then(
+      (response) => response
+    );
   },
-}
+};
 
 const App = () => {
   return (
@@ -52,9 +49,28 @@ const App = () => {
       loginPage={LoginPage}
       requireAuth
     >
-      <Resource name="users" list={UserList} show={UserShow} icon={UserIcon} recordRepresentation={(record) => `${record.username}`} />
-      <Resource name="devices" list={DeviceList} show={DeviceShow} icon={DeviceIcon} recordRepresentation={(record) => `${record.hostname}`} />
-      <Resource name="zones" list={ZoneList} show={ZoneShow} create={ZoneCreate} icon={ZoneIcon} recordRepresentation={(record) => `${record.name}`} />
+      <Resource
+        name="users"
+        list={UserList}
+        show={UserShow}
+        icon={UserIcon}
+        recordRepresentation={(record) => `${record.username}`}
+      />
+      <Resource
+        name="devices"
+        list={DeviceList}
+        show={DeviceShow}
+        icon={DeviceIcon}
+        recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="zones"
+        list={ZoneList}
+        show={ZoneShow}
+        create={ZoneCreate}
+        icon={ZoneIcon}
+        recordRepresentation={(record) => `${record.name}`}
+      />
       <Resource name="peers" list={PeerList} show={PeerShow} icon={UserIcon} />
     </Admin>
   );
