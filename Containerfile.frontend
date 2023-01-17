@@ -3,11 +3,11 @@ FROM docker.io/library/node:16-alpine AS builder
 WORKDIR /app
 
 COPY ui/package.json .
-COPY ui/yarn.lock .
-RUN yarn install
+COPY ui/package-lock.json .
+RUN npm install
 
 COPY ui .
-RUN yarn build
+RUN npm run build
 
 FROM docker.io/nginxinc/nginx-unprivileged:latest
 COPY --from=builder /app/build /usr/share/nginx/html

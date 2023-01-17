@@ -1,5 +1,4 @@
 import { useState, useEffect, Fragment } from "react";
-import { useQuery } from "react-query";
 import {
   Datagrid,
   List,
