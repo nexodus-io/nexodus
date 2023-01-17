@@ -3,13 +3,13 @@ module github.com/redhat-et/apex
 go 1.19
 
 require (
-	github.com/bufbuild/connect-go v1.1.0
+	github.com/bufbuild/connect-go v1.4.1
 	github.com/coreos/go-oidc v2.2.1+incompatible
-	github.com/docker/docker v20.10.21+incompatible
+	github.com/docker/docker v20.10.22+incompatible
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/google/uuid v1.3.0
-	github.com/metal-stack/go-ipam v1.11.3
+	github.com/metal-stack/go-ipam v1.11.4
 	github.com/pion/stun v0.3.5
 	github.com/redhat-et/go-oidc-agent v0.0.2-0.20221130160039-b98e1621e734
 	github.com/sirupsen/logrus v1.9.0
@@ -19,7 +19,7 @@ require (
 	github.com/swaggo/swag v1.8.7
 	github.com/testcontainers/testcontainers-go v0.16.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.17
-	github.com/urfave/cli/v2 v2.23.5
+	github.com/urfave/cli/v2 v2.23.7
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/zsais/go-gin-prometheus v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.37.0
@@ -29,9 +29,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.11.2
 	go.opentelemetry.io/otel/trace v1.11.2
 	go.uber.org/zap v1.24.0
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.5.0
 	golang.org/x/oauth2 v0.2.0
-	golang.org/x/sys v0.2.0
+	golang.org/x/sys v0.4.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20221104135756-97bc4ad4a1cb
 	gorm.io/driver/postgres v1.4.4
 	gorm.io/driver/sqlite v1.4.3
@@ -47,7 +47,7 @@ require (
 	github.com/buger/goterm v1.0.4 // indirect
 	github.com/compose-spec/compose-go v1.6.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/containerd/containerd v1.6.10 // indirect
+	github.com/containerd/containerd v1.6.15 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
@@ -87,11 +87,11 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mdlayher/genetlink v1.2.0 // indirect
 	github.com/mdlayher/netlink v1.6.2 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
@@ -105,7 +105,7 @@ require (
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/symlink v0.2.0 // indirect
-	github.com/moby/term v0.0.0-20221105221325-4eb28fa6025c // indirect
+	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
@@ -136,7 +136,7 @@ require (
 	go.opentelemetry.io/otel/metric v0.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -153,9 +153,9 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/avast/retry-go/v4 v4.3.1 // indirect
+	github.com/avast/retry-go/v4 v4.3.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -187,7 +187,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.12 // indirect
+	github.com/klauspost/compress v1.15.14 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.7
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -203,22 +203,22 @@ require (
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.1.1 // indirect
-	github.com/xdg-go/stringprep v1.0.3 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.etcd.io/etcd/api/v3 v3.5.5 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
-	go.etcd.io/etcd/client/v3 v3.5.5 // indirect
-	go.mongodb.org/mongo-driver v1.11.0 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.6 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.6 // indirect
+	go.etcd.io/etcd/client/v3 v3.5.6 // indirect
+	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	go4.org/netipx v0.0.0-20220925034521-797b0c90d8ab // indirect
-	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/tools v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
+	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/tools v0.5.0 // indirect
+	google.golang.org/genproto v0.0.0-20230106154932-a12b697841d9 // indirect
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
