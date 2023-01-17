@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@babel/core": "^7.0.0",
-    "@emotion/babel-plugin": "11.10.2",
+    "@emotion/babel-plugin": "11.10.5",
     "@fortawesome/fontawesome-svg-core": "~1 || ~6",
     "@fortawesome/free-brands-svg-icons": "^6.2.0",
     "@fortawesome/free-solid-svg-icons": "^6.2.0",
