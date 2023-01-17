@@ -69,12 +69,12 @@
 - name: Create a JWT
   shell: |
     curl -s -f -X POST \
-      {{ apex_oidc_url }}/token \
+      {{ apex_oidc_url }}/realms/apex/protocol/openid-connect/token \
       -H 'Content-Type: application/x-www-form-urlencoded' \
       -d "username={{ apex_auth_uid }}" \
       -d "password={{ apex_auth_password }}" \
-      -d "scope=openid profile email" \
       -d "grant_type=password" \
+      -d "scope=openid profile email" \
       -d "client_id={{ apex_oidc_client_id_cli }}"
   register: api_token
 
