@@ -19,7 +19,7 @@ func RouteExists(s string) (bool, error) {
 func AddRoute(prefix, dev string) error {
 	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", dev)
 	if err != nil {
-		return fmt.Errorf("route add failed: %v", err)
+		return fmt.Errorf("route add failed: %w", err)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func delLink(ifaceName string) error {
 func DeleteRoute(prefix, dev string) error {
 	_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix, "-interface", dev)
 	if err != nil {
-		return fmt.Errorf("no route deleted: %v", err)
+		return fmt.Errorf("no route deleted: %w", err)
 	}
 
 	return nil

@@ -34,7 +34,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
 	var user models.User
-	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		res := tx.Preload("Organizations").First(&user, "id = ?", id)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
@@ -156,7 +156,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 		return
 	}
 	var user models.User
-	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
 			return errUserNotFound
 		}

@@ -111,7 +111,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	}
 
 	var device models.Device
-	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		result := tx.First(&device, "id = ?", k)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errDeviceNotFound
@@ -209,7 +209,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 	userId := c.GetString(gin.AuthUserKey)
 	var device models.Device
 
-	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 
 		var org models.Organization
 		if res := tx.Model(&org).
