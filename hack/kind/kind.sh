@@ -61,13 +61,6 @@ up() {
     info_message "Creating Apex Namespace"
     kubectl create namespace apex
 
-    info_message "Installing Keycloak Operator"
-    kubectl create -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
-    kubectl create -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
-    kubectl wait --for condition=established -n apex crd/keycloaks.k8s.keycloak.org --timeout=5m
-    kubectl wait --for condition=established -n apex crd/keycloakrealmimports.k8s.keycloak.org --timeout=5m
-    kubectl apply -n apex -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.2/kubernetes/kubernetes.yml
-
     info_message "Loading Images To KIND"
     kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
     kind load --name apex-dev docker-image quay.io/apex/frontend:latest
