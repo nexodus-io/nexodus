@@ -75,6 +75,16 @@ this for you, but you must first install [`mkcert`](https://github.com/FiloSotti
 ./hack/kind/kind.sh cacert
 ```
 
+In order to join a self-signed Apex controller from a remote node or view the Apex UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the apex.local domain for development.
+
+Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following. 
+
+```console
+CAROOT=$(pwd)/.certs mkcert -install
+```
+
+For windows, we recommend installing the root certificate via the [MMC snap-in](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/install-imported-certificates#import-the-certificate-into-the-local-computer-store).
+
 ## The Apex Agent
 
 ### Installing the Agent
@@ -91,12 +101,14 @@ hack/apex_installer.sh
 
 As the project is still in such early development, it is expected that `apex` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
 
+Note: In a self-signed dev environment, each agent machine needs to have the [imported cert](#https) and the [host entry](#add-required-dns-entries) detailed above.
+
 ```sh
 sudo apex-linux-amd64 https://apex.local
 Your device must be registered with Apex.
-Your one-time code is: ????-????
+Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.apex.local/device?user_code=????-????
+https://auth.apex.local/realms/apex/device?user_code=LTCV-OFFS
 ```
 
 Once enrollment is completed in the web UI, the agent will show progress.
@@ -132,10 +144,12 @@ $ ip route
 You should now be able to reach that node over the wireguard tunnel.
 
 ```sh
-$ ping -c 1 10.200.0.2
+$ ping 10.200.0.2
 PING 10.200.0.2 (10.200.0.2) 56(84) bytes of data.
 64 bytes from 10.200.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
+
+You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://apex.local/`.
 
 ### Cleanup
 
@@ -145,16 +159,12 @@ Ctrl + c (cmd+c) the agent process. and remove the wireguard interface and relev
 *Linux:*
 
 ```shell
-sudo rm /etc/wireguard/wg0-latest-rev.conf
-sudo rm /etc/wireguard/wg0.conf
 sudo ip link del wg0
 ```
 
-*Mac-OSX:*
+*OSX/Windows:*
 
-```shell
-sudo wg-quick down wg0
-```
+Since the wireguard agents are userspace in both Windows and Darwin, the tunnel interface is removed when the agent process exits.
 
 ## Additional Features
 
