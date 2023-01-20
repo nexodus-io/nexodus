@@ -5,11 +5,11 @@ resources:
   - issuer.yaml
 namespace: apex-qa
 configMapGenerator:
-  - name: auth-config
-    behavior: replace
+  - behavior: replace
     literals:
       - hostname=auth.qa.apex-hosted.cloud
       - frontend-url=https://qa.apex-hosted.cloud
+    name: auth-config
 patchesJson6902:
   - patch: |-
       - op: replace
@@ -85,6 +85,6 @@ patchesJson6902:
       name: frontend
 images:
   - name: quay.io/apex/apiserver
-    newTag: f8e367d9d1d42eca64d111e301a2f90f1893176c
+    newTag: 7312c8736d0930923fa4ebd1e027460f8afce646
   - name: quay.io/apex/frontend
-    newTag: f8e367d9d1d42eca64d111e301a2f90f1893176c
+    newTag: 7312c8736d0930923fa4ebd1e027460f8afce646
