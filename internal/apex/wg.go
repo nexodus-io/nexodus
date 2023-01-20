@@ -107,6 +107,10 @@ func (ax *Apex) handlePeerDelete(peerListing []models.Peer) error {
 		if inPeerListing(peerListing, p) {
 			continue
 		}
+		// skip if the key is the same as the node itself
+		if ax.keyCache[p.DeviceID] == ax.wireguardPubKey {
+			continue
+		}
 		ax.logger.Debugf("Deleting peer with key: %s\n", ax.keyCache[p.DeviceID])
 		if err := ax.deletePeer(ax.keyCache[p.DeviceID], ax.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %v", err)
@@ -116,7 +120,6 @@ func (ax *Apex) handlePeerDelete(peerListing []models.Peer) error {
 		// remove peer from local peer and key cache
 		delete(ax.peerCache, p.ID)
 		delete(ax.keyCache, p.DeviceID)
-
 	}
 
 	return nil
