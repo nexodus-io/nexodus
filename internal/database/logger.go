@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/redhat-et/apex/internal/util"
 	"time"
 
+	"github.com/redhat-et/apex/internal/util"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

@@ -162,8 +162,8 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	assert.NoErrorf(err, gather)
 }
 
-// TestRequestIPDefaultZone tests requesting a specific address in the default zone
-func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
+// TestRequestIPDefaultOrganization tests requesting a specific address in the default organization
+func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
 	assert := suite.Assert()
 
 	node1IP := "10.200.0.101"
@@ -210,8 +210,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 	assert.NoErrorf(err, gather)
 }
 
-// TestRequestIPZone tests requesting a specific address in a newly created zone
-func (suite *ApexIntegrationSuite) TestRequestIPZone() {
+// TestRequestIPOrganization tests requesting a specific address in a newly created organization
+func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -219,17 +219,6 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	defer cancel()
 	username := "kitteh1"
 	password := "floofykittens"
-
-	c, err := newClient(ctx, username, password)
-	require.NoError(err)
-	// create a new zone
-	zoneID, err := c.CreateZone("zone-blue", "zone full of blue things", "10.140.0.0/24", false)
-	require.NoError(err)
-
-	// patch the new user into the zone
-	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	require.NoError(err)
-
 	node1IP := "10.140.0.101"
 	node2IP := "10.140.0.102"
 
@@ -262,7 +251,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err := ping(ctx, node1, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
@@ -300,8 +289,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	assert.NoErrorf(err, gather)
 }
 
-// TestHubZone test a hub zone with 3 nodes, the first being a relay node
-func (suite *ApexIntegrationSuite) TestHubZone() {
+// TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
+func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -309,17 +298,6 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	defer cancel()
 	username := "kitteh2"
 	password := "floofykittens"
-
-	c, err := newClient(ctx, username, password)
-	require.NoError(err)
-
-	// create a new zone
-	zoneID, err := c.CreateZone("zone-relay", "zone with a relay hub", "10.162.0.0/24", true)
-	require.NoError(err)
-
-	// patch the new user into the zone
-	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	require.NoError(err)
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -346,7 +324,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 		"--hub-router", "--username", username, "--password", password,
 	)
 
-	// Ensure the relay node has time to register before joining spokes since it is required for hub-zones
+	// Ensure the relay node has time to register before joining spokes since it is required for hub-organizations
 	time.Sleep(time.Second * 10)
 	go suite.runApex(ctx, node2, "--username", username, "--password", password)
 	go suite.runApex(ctx, node3, "--username", username, "--password", password)
@@ -376,24 +354,24 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	err = ping(ctx, node2, node3IP)
 	assert.NoErrorf(err, gather)
 
-	hubZoneChildPrefix := "10.188.100.0/24"
+	hubOrganizationChildPrefix := "10.188.100.0/24"
 	node2ChildPrefixLoopbackNet := "10.188.100.1/32"
 
 	suite.T().Logf("killing apex on node2")
 
 	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
 	assert.NoError(err)
-	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubZoneChildPrefix)
+	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubOrganizationChildPrefix)
 
 	// add a loopback that are contained in the node's child prefix
 	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2ChildPrefixLoopbackNet, "dev", "lo"})
 	require.NoError(err)
 
-	// re-join and ensure the peer table updates with the new values
+	// re-join and ensure the device table updates with the new values
 	go func() {
 		_, err = suite.containerExec(ctx, node2, []string{
 			"/bin/apexd",
-			fmt.Sprintf("--child-prefix=%s", hubZoneChildPrefix),
+			fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 			"--username", username, "--password", password,
 			"http://apex.local",
 		})
@@ -428,31 +406,31 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	err = ping(ctx, node2, node3IP)
 	assert.NoErrorf(err, gather)
 
-	// get the peer id for node3
-	allPeers, err := suite.runCommand(apexctl,
+	// get the device id for node3
+	allDevices, err := suite.runCommand(apexctl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
 		"--output", "json-raw",
-		"peer", "list-all",
+		"device", "list-all",
 	)
-	var peers []models.Peer
-	json.Unmarshal([]byte(allPeers), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	var devices []models.Device
+	json.Unmarshal([]byte(allDevices), &devices)
+	assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
 
-	var peer3ID string
-	for _, p := range peers {
-		if p.NodeAddress == node1IP {
-			node3IP = p.NodeAddress
-			peer3ID = p.ID.String()
+	var device3ID string
+	for _, p := range devices {
+		if p.TunnelIP == node1IP {
+			node3IP = p.TunnelIP
+			device3ID = p.ID.String()
 		}
 	}
 
-	// delete the peer node2
+	// delete the device node2
 	_, err = suite.runCommand(apexctl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
-		"peer", "delete",
-		"--peer-id", peer3ID,
+		"device", "delete",
+		"--device-id", device3ID,
 	)
 	require.NoError(err)
 
@@ -460,18 +438,18 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	time.Sleep(time.Second * 10)
 	gather = suite.gatherFail(ctx, node1, node2, node3)
 
-	// verify the deleted peer details are no longer in a peer's tables
+	// verify the deleted device details are no longer in a device's tables
 	node2routes := suite.routesDump(ctx, node2)
 	node2dump := suite.wgDump(ctx, node2)
 	if strings.Contains(node2routes, node3IP) {
-		assert.Errorf(err, "found deleted peer node still in routing tables of a peer", gather)
+		assert.Errorf(err, "found deleted device node still in routing tables of a device", gather)
 	}
 	if strings.Contains(node2dump, node3IP) {
-		assert.Errorf(err, "found deleted peer node still in wg show wg0 dump tables of a peer", gather)
+		assert.Errorf(err, "found deleted device node still in wg show wg0 dump tables of a device", gather)
 	}
 }
 
-// TestChildPrefix tests requesting a specific address in a newly created zone
+// TestChildPrefix tests requesting a specific address in a newly created organization
 func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
@@ -480,18 +458,6 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	defer cancel()
 	username := "kitteh3"
 	password := "floofykittens"
-
-	c, err := newClient(ctx, username, password)
-	require.NoError(err)
-
-	// create a new zone
-	zoneID, err := c.CreateZone("zone-child-prefix", "zone full of toddler prefixes", "100.64.100.0/24", false)
-	require.NoError(err)
-
-	// patch the new user into the zone
-	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	require.NoError(err)
-
 	node1LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNet := "172.16.20.102/32"
 	node1ChildPrefix := "172.16.10.0/24"
@@ -523,7 +489,7 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	)
 
 	// add loopbacks to the containers that are contained in the node's child prefix
-	_, err = suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
+	_, err := suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
 	require.NoError(err)
@@ -561,9 +527,9 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 The following test sets up a NAT scenario that emulates
 two networks that are behind  NAT devices and validates
 connectivity between local nodes and the relay node.
-Spoke nodes within the same network should peer directly
+Spoke nodes within the same network should device directly
 to one another. This validates nodes that cannot UDP hole
-punch and can only peer directly to one another.
+punch and can only device directly to one another.
 
 	           +----------+
 	           |  Relay   |
@@ -720,18 +686,6 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 
 	username := "kitteh4"
 	password := "floofykittens"
-	require.NoError(err)
-
-	c, err := newClient(ctx, username, password)
-	require.NoError(err)
-
-	// create a new zone
-	zoneID, err := c.CreateZone("zone-nat-relay", "nat test zone", "10.29.0.0/24", true)
-	require.NoError(err)
-
-	// patch the new user into the zone
-	_, err = c.MoveCurrentUserToZone(zoneID.ID)
-	require.NoError(err)
 
 	// start apex on the nodes
 	go suite.runApex(ctx, relayNode,
@@ -739,7 +693,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 		"--username", username, "--password", password,
 	)
 
-	// ensure the relay node has time to register before joining spokes since it is required for hub-zones
+	// ensure the relay node has time to register before joining spokes since it is required for hub-organizations
 	time.Sleep(time.Second * 10)
 	go suite.runApex(ctx, net1SpokeNode1,
 		"--relay-only",
@@ -842,14 +796,14 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	require.NoError(err)
 	lc, err := lineCount(wgSpokeShow)
 	require.NoError(err)
-	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
+	assert.Equal(5, lc, "the number of expected wg show devices was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 
 	// verify there are (n) lines in the wg show output on a spoke node in each network
 	wgSpokeShow, err = suite.containerExec(ctx, net2SpokeNode1, []string{"wg", "show", "wg0", "dump"})
 	require.NoError(err)
 	lc, err = lineCount(wgSpokeShow)
 	require.NoError(err)
-	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
+	assert.Equal(5, lc, "the number of expected wg show devices was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 }
 
 func (suite *ApexIntegrationSuite) TestApexCtl() {
@@ -882,33 +836,18 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		"user", "list",
 	)
 	require.NoErrorf(err, "apexctl user list error: %v\n", err)
-	var users []models.User
+	var users []models.UserJSON
 	err = json.Unmarshal([]byte(userOut), &users)
 	assert.NotEmpty(users)
 
-	// create a new zone and parse the returned json for the zone id
-	zoneOut, err := suite.runCommand(apexctl,
-		"--username", username,
-		"--password", password,
-		"--output", "json",
-		"zone", "create",
-		"--name", "zone-apexctl",
-		"--cidr", "172.19.100.0/24",
-		"--description", "apexctl e2e zone",
-	)
-	require.NoErrorf(err, "apexctl zone create error: %v\n", err)
-	var zone models.Zone
-	err = json.Unmarshal([]byte(zoneOut), &zone)
-	assert.NotEmpty(zone.ID.String())
-
-	// move the current user into the new zone
-	_, err = suite.runCommand(apexctl,
-		"--username", username,
-		"--password", password,
-		"zone", "move-user",
-		"--zone-id", zone.ID.String(),
-	)
-	assert.NoErrorf(err, "apexctl zone move-user error: %v\n", err)
+	var user models.UserJSON
+	for _, u := range users {
+		if u.UserName == username {
+			user = u
+		}
+	}
+	require.NotEmpty(user.UserName)
+	require.Equal(1, len(user.Organizations))
 
 	// start apex on the nodes
 	go suite.runApex(ctx, node1, "--username", username, "--password", password)
@@ -928,26 +867,26 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	err = ping(ctx, node2, node1IP)
 	assert.NoErrorf(err, gather)
 
-	// validate list-all peers and register IDs and IPs
-	allPeers, err := suite.runCommand(apexctl,
+	// validate list-all devices and register IDs and IPs
+	allDevices, err := suite.runCommand(apexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
-		"peer", "list-all",
+		"device", "list-all",
 	)
-	var peers []models.Peer
-	json.Unmarshal([]byte(allPeers), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	var devices []models.Device
+	json.Unmarshal([]byte(allDevices), &devices)
+	assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
 
 	// register the device IDs for node1 and node2
 	var node1DeviceID string
 	var node2DeviceID string
-	for _, p := range peers {
-		if p.NodeAddress == node1IP {
-			node1DeviceID = p.DeviceID.String()
+	for _, p := range devices {
+		if p.TunnelIP == node1IP {
+			node1DeviceID = p.ID.String()
 		}
-		if p.NodeAddress == node2IP {
-			node2DeviceID = p.DeviceID.String()
+		if p.TunnelIP == node2IP {
+			node2DeviceID = p.ID.String()
 		}
 	}
 
@@ -1008,29 +947,29 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		assert.Failf("ipam/device delete failed", fmt.Sprintf("Node did not receive the proper IPAM address %s, it should have been %s or %s\n %s", newNode1IP, node1IP, node2IP, gather))
 	}
 
-	// validate list peers in a zone
-	peersInZone, err := suite.runCommand(apexctl,
+	// validate list devices in a organization
+	devicesInOrganization, err := suite.runCommand(apexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
-		"peer", "list",
-		"--zone-id", zone.ID.String(),
+		"device", "list",
+		"--organization-id", string(user.Organizations[0].String()),
 	)
 
-	json.Unmarshal([]byte(peersInZone), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	json.Unmarshal([]byte(devicesInOrganization), &devices)
+	assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
 
 	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
-	for _, p := range peers {
-		if p.NodeAddress == node1IP {
-			node1DeviceID = p.DeviceID.String()
+	for _, p := range devices {
+		if p.TunnelIP == node1IP {
+			node1DeviceID = p.ID.String()
 		}
-		if p.NodeAddress == node2IP {
-			node2DeviceID = p.DeviceID.String()
+		if p.TunnelIP == node2IP {
+			node2DeviceID = p.ID.String()
 		}
 	}
-	// delete all devices from the zone as currently required to avoid sql key
-	// constraints, then delete the zone, then recreate the zone to ensure the
+	// delete all devices from the organization as currently required to avoid sql key
+	// constraints, then delete the organization, then recreate the organization to ensure the
 	// IPAM prefix was released. If it was not released the creation will fail.
 	_, err = suite.runCommand(apexctl,
 		"--username", username,
@@ -1048,25 +987,25 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 	require.NoError(err)
 
-	// delete the zone
-	zoneOut, err = suite.runCommand(apexctl,
+	// delete the organization
+	_, err = suite.runCommand(apexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json",
-		"zone", "delete",
-		"--zone-id", zone.ID.String(),
+		"organization", "delete",
+		"--organization-id", user.Organizations[0].String(),
 	)
 	require.NoError(err)
 
-	// re-create the deleted zone, this will fail if the IPAM
+	// re-create the deleted organization, this will fail if the IPAM
 	// prefix was not released from the prior deletion
 	_, err = suite.runCommand(apexctl,
 		"--username", username,
 		"--password", password,
-		"zone", "create",
-		"--name", "zone-apexctl",
-		"--cidr", "172.19.100.0/24",
-		"--description", "apexctl e2e zone",
+		"organization", "create",
+		"--name", "kitteh5",
+		"--cidr", "10.200.1.0/20",
+		"--description", "kitteh5's organization",
 	)
 	require.NoError(err)
 }

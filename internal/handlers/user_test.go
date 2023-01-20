@@ -1,0 +1,30 @@
+package handlers
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/redhat-et/apex/internal/models"
+)
+
+func (suite *HandlerTestSuite) TestGetUser() {
+	require := suite.Require()
+	assert := suite.Assert()
+	_, res, err := suite.ServeRequest(
+		http.MethodPost,
+		"/:id", fmt.Sprintf("/%s", TestUserID),
+		suite.api.GetUser, nil,
+	)
+	require.NoError(err)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.Code, string(body))
+
+	var actual models.UserJSON
+	err = json.Unmarshal(body, &actual)
+	require.NoError(err, string(body))
+
+	assert.Equal(1, len(actual.Organizations))
+}

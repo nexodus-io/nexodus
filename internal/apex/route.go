@@ -66,7 +66,7 @@ func (ax *Apex) addChildPrefixRoute(childPrefix string) {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Apex) handlePeerRouteDelete(dev string, wgPeerConfig models.Peer) {
+func (ax *Apex) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
 	switch ax.os {
 	case Darwin.String():
 		// TODO: OSX route lookups

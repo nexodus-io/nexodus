@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,18 +26,11 @@ import (
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
 	defer span.End()
-	devices := make([]*models.Device, 0)
-	result := api.db.WithContext(ctx).Preload("Peers").Scopes(FilterAndPaginate(&models.Device{}, c)).Find(&devices)
+	devices := make([]models.Device, 0)
+	result := api.db.WithContext(ctx).Scopes(FilterAndPaginate(&models.Device{}, c)).Find(&devices)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
-	}
-	for _, d := range devices {
-		peers := make([]uuid.UUID, 0)
-		for _, p := range d.Peers {
-			peers = append(peers, p.ID)
-		}
-		d.PeerList = peers
 	}
 	c.JSON(http.StatusOK, devices)
 }
@@ -64,16 +58,77 @@ func (api *API) GetDevice(c *gin.Context) {
 		return
 	}
 	var device models.Device
-	result := api.db.WithContext(ctx).Preload("Peers").First(&device, "id = ?", k)
+	result := api.db.WithContext(ctx).First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
 	}
-	peers := make([]uuid.UUID, 0)
-	for _, p := range device.Peers {
-		peers = append(peers, p.ID)
+	c.JSON(http.StatusOK, device)
+}
+
+// UpdateDevice updates a Device
+// @Summary      Update Devices
+// @Description  Updates a device by ID
+// @Tags         Devices
+// @Accepts		 json
+// @Produce      json
+// @Param        id   path      string  true "Device ID"
+// @Param		 update body models.UpdateDevice true "Device Update"
+// @Success      200  {object}  models.Device
+// @Failure		 401  {object}  models.ApiError
+// @Failure      400  {object}  models.ApiError
+// @Failure      404  {object}  models.ApiError
+// @Router       /devices/{id} [get]
+func (api *API) UpdateDevice(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
+		attribute.String("id", c.Param("id")),
+	))
+	defer span.End()
+	k, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: "id is not valid"})
+		return
 	}
-	device.PeerList = peers
+	var request models.UpdateDevice
+
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.ApiError{Error: err.Error()})
+		return
+	}
+
+	var device models.Device
+	result := api.db.WithContext(ctx).First(&device, "id = ?", k)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	if request.EndpointLocalAddressIPv4 != "" {
+		device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
+	}
+
+	if request.Hostname != "" {
+		device.Hostname = request.Hostname
+	}
+
+	if request.LocalIP != "" {
+		device.LocalIP = request.LocalIP
+	}
+
+	if request.OrganizationID != uuid.Nil {
+		device.OrganizationID = request.OrganizationID
+	}
+
+	if request.ReflexiveIPv4 != "" {
+		device.ReflexiveIPv4 = request.ReflexiveIPv4
+	}
+
+	if request.SymmetricNat != device.SymmetricNat {
+		device.SymmetricNat = request.SymmetricNat
+	}
+
+	api.db.Save(&device)
+
 	c.JSON(http.StatusOK, device)
 }
 
@@ -105,14 +160,23 @@ func (api *API) CreateDevice(c *gin.Context) {
 	}
 
 	userId := c.GetString(gin.AuthUserKey)
+	tx := api.db.Begin().WithContext(ctx)
+
 	var user models.User
-	if res := api.db.WithContext(ctx).Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+	if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "user not found"})
 		return
 	}
 
+	var org models.Organization
+	result := tx.First(&org, "id = ?", request.OrganizationID)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, models.ApiError{Error: "organization not found"})
+		return
+	}
+
 	var device models.Device
-	res := api.db.WithContext(ctx).Where("public_key = ?", request.PublicKey).First(&device)
+	res := tx.Where("public_key = ?", request.PublicKey).First(&device)
 	if res.Error == nil {
 		c.JSON(http.StatusConflict, device)
 		return
@@ -122,22 +186,94 @@ func (api *API) CreateDevice(c *gin.Context) {
 		return
 	}
 
-	device = models.Device{
-		PublicKey: request.PublicKey,
-		UserID:    user.ID,
-		Hostname:  request.Hostname,
+	var permitted bool
+	for _, org := range user.Organizations {
+		if org.ID == request.OrganizationID {
+			permitted = true
+		}
+	}
+	if !permitted {
+		c.JSON(http.StatusForbidden, models.ApiError{Error: fmt.Sprintf("user is not a member of organization: %s", request.OrganizationID.String())})
+		return
 	}
 
-	if res := api.db.WithContext(ctx).Create(&device); res.Error != nil {
+	ipamPrefix := org.IpCidr
+	var relay bool
+	// determine if the node joining is a relay or in a hub-zone
+	if request.Relay && org.HubZone {
+		relay = true
+	}
+
+	var ipamIP string
+	// If this was a static address request
+	// TODO: handle a user requesting an IP not in the IPAM prefix
+	if device.TunnelIP != "" {
+		var err error
+		ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamPrefix, device.TunnelIP)
+		if err != nil {
+			tx.Rollback()
+			api.Logger(ctx).Error(err)
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request specific ipam address: %v", err)})
+			return
+		}
+	} else {
+		var err error
+		ipamIP, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
+		if err != nil {
+			tx.Rollback()
+			api.Logger(ctx).Error(err)
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request ipam address: %v", err)})
+			return
+		}
+	}
+	// allocate a child prefix if requested
+	for _, prefix := range device.ChildPrefix {
+		if err := api.ipam.AssignPrefix(ctx, prefix); err != nil {
+			tx.Rollback()
+			api.Logger(ctx).Error(err)
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
+			return
+		}
+	}
+
+	// append a /32 to the IPAM assignment unless it is a relay prefix
+	hostPrefix := ipamIP
+	if net.ParseIP(ipamIP) != nil && !relay {
+		hostPrefix = fmt.Sprintf("%s/32", ipamIP)
+	}
+
+	var allowedIPs []string
+	allowedIPs = append(allowedIPs, hostPrefix)
+
+	device = models.Device{
+		UserID:                   user.ID,
+		OrganizationID:           org.ID,
+		PublicKey:                request.PublicKey,
+		LocalIP:                  request.LocalIP,
+		AllowedIPs:               allowedIPs,
+		TunnelIP:                 ipamIP,
+		ChildPrefix:              request.ChildPrefix,
+		Relay:                    request.Relay,
+		OrganizationPrefix:       org.IpCidr,
+		ReflexiveIPv4:            request.ReflexiveIPv4,
+		EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
+		SymmetricNat:             request.SymmetricNat,
+		Hostname:                 request.Hostname,
+	}
+
+	if res := tx.Create(&device); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
+		return
+	}
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		api.Logger(ctx).Error(err.Error)
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
 	}
 	span.SetAttributes(
 		attribute.String("id", device.ID.String()),
 	)
-	user.Devices = append(user.Devices, &device)
-	api.db.WithContext(ctx).Save(&user)
-
 	c.JSON(http.StatusCreated, device)
 }
 
@@ -157,45 +293,36 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Failure      500  {object}  models.ApiError
 // @Router       /devices/{id} [delete]
 func (api *API) DeleteDevice(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteDevice")
+	defer span.End()
 	deviceID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "device id is not valid"})
 		return
 	}
 
-	var peer models.Peer
 	baseID := models.Base{ID: deviceID}
 	device := models.Device{}
 	device.Base = baseID
+	ipamAddress := device.TunnelIP
+	orgPrefix := device.OrganizationPrefix
+	childPrefix := device.ChildPrefix
 
-	if res := api.db.First(&peer, "device_id = ?", device.Base.ID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-	ipamAddress := peer.NodeAddress
-	zonePrefix := peer.ZonePrefix
-	childPrefix := peer.ChildPrefix
-
-	if res := api.db.Delete(&peer, "device_id = ?", device.Base.ID); res.Error != nil {
+	if res := api.db.WithContext(ctx).Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
 		return
 	}
 
-	if res := api.db.Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-
-	if ipamAddress != "" && zonePrefix != "" {
-		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, zonePrefix); err != nil {
+	if ipamAddress != "" && orgPrefix != "" {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, orgPrefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.ApiError{
 				Error: fmt.Sprintf("%v", err),
 			})
 		}
 	}
 
-	if childPrefix != "" {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), childPrefix); err != nil {
+	for _, prefix := range childPrefix {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), prefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.ApiError{
 				Error: fmt.Sprintf("failed to release child prefix: %v", err),
 			})

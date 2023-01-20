@@ -23,7 +23,7 @@ type FFlag struct {
 }
 
 var hardCodedFlags = map[string]FFlag{
-	"multi-zone": {"APEX_FFLAG_MULTI_ZONE", false},
+	"multi-organization": {"APEX_FFLAG_MULTI_ORGANIZATION", false},
 }
 
 func NewFFlags(logger *zap.SugaredLogger) *FFlags {

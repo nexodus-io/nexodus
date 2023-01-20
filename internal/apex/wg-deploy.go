@@ -1,8 +1,6 @@
 package apex
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
 )
@@ -13,7 +11,7 @@ const (
 	persistentHubKeepalive = "0"
 )
 
-func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) error {
+func (ax *Apex) DeployWireguardConfig(newPeers []models.Device, firstTime bool) error {
 	cfg := &wgConfig{
 		Interface: ax.wgConfig.Interface,
 		Peers:     ax.wgConfig.Peers,
@@ -57,13 +55,9 @@ func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) er
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, newPeer := range newPeers {
 		if newPeer.ID != uuid.Nil {
-			device, err := ax.client.GetDevice(newPeer.DeviceID)
-			if err != nil {
-				return fmt.Errorf("unable to get device %s: %w", newPeer.DeviceID, err)
-			}
 			// add routes for each peer candidate (unless the key matches the local nodes key)
 			for _, peer := range cfg.Peers {
-				if peer.PublicKey == device.PublicKey && device.PublicKey != ax.wireguardPubKey {
+				if peer.PublicKey == newPeer.PublicKey && newPeer.PublicKey != ax.wireguardPubKey {
 					ax.handlePeerRoute(peer)
 					ax.handlePeerTunnel(peer)
 				}

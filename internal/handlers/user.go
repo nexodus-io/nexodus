@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -18,37 +19,63 @@ const AuthUserName string = "_apex.UserName"
 
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx, span := tracer.Start(c.Request.Context(), "CreateUserIfNotExists")
-		defer span.End()
 		id := c.GetString(gin.AuthUserKey)
-		userName := c.GetString(AuthUserName)
-		var user models.User
-		res := api.db.WithContext(ctx).First(&user, "id = ?", id)
-		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				user.ID = id
-				user.ZoneID = api.defaultZoneID
-				user.Devices = make([]*models.Device, 0)
-				user.UserName = userName
-				api.db.WithContext(ctx).Create(&user)
-			} else {
-				_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("can't find record for user id %s", id))
-				return
-			}
-		}
-		span.SetAttributes(
-			attribute.String("user-id", id),
-			attribute.String("username", userName),
-		)
-		// Check if the UserName has changed since the last time we saw this user
-		if user.UserName != userName {
-			api.db.WithContext(ctx).Model(&user).Update("UserName", userName)
+		username := c.GetString(AuthUserName)
+		_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusInternalServerError, err)
+			return
 		}
 		c.Next()
 	}
 }
 
-// PatchUser handles moving a User to a new Zone
+func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
+	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
+	defer span.End()
+	tx := api.db.Begin().WithContext(ctx)
+	var user models.User
+	res := tx.Preload("Organizations").First(&user, "id = ?", id)
+	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			user.ID = id
+			user.UserName = userName
+			if err := api.ipam.AssignPrefix(ctx, defaultOrganizationPrefix); err != nil {
+				return uuid.Nil, fmt.Errorf("can't create user record: %w", res.Error)
+			}
+			user.Organizations = []*models.Organization{
+				{
+					Name:        userName,
+					Description: fmt.Sprintf("%s's organization", userName),
+					IpCidr:      defaultOrganizationPrefix,
+					HubZone:     true,
+				},
+			}
+			if res := tx.Create(&user); res.Error != nil {
+				return uuid.Nil, fmt.Errorf("can't create user record: %w", res.Error)
+			}
+		} else {
+			return uuid.Nil, fmt.Errorf("can't find record for user id %s", id)
+		}
+	}
+	span.SetAttributes(
+		attribute.String("user-id", id),
+		attribute.String("username", userName),
+	)
+	// Check if the UserName has changed since the last time we saw this user
+	if user.UserName != userName {
+		tx.Model(&user).Update("UserName", userName)
+	}
+
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		return uuid.Nil, err.Error
+	}
+
+	return user.Organizations[0].ID, nil
+}
+
+/* PatchUser handles moving a User to a new Zone
 // @Summary      Update User
 // @Description  Changes the users zone
 // @Tags         User
@@ -101,6 +128,7 @@ func (api *API) PatchUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+*/
 
 // GetUser gets a user
 // @Summary      Get User
@@ -121,6 +149,8 @@ func (api *API) GetUser(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
+	tx := api.db.Begin().WithContext(ctx)
+
 	userId := c.Param("id")
 	if userId == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
@@ -132,16 +162,17 @@ func (api *API) GetUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := api.db.WithContext(ctx).Preload("Devices").First(&user, "id = ?", userId); res.Error != nil {
+	if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: res.Error.Error()})
 		return
 	}
 
-	var devices []uuid.UUID
-	for _, d := range user.Devices {
-		devices = append(devices, d.ID)
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		api.Logger(ctx).Error(err.Error)
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
+		return
 	}
-	user.DeviceList = devices
 
 	c.JSON(http.StatusOK, user)
 }
@@ -158,18 +189,18 @@ func (api *API) GetUser(c *gin.Context) {
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
 	defer span.End()
+	tx := api.db.Begin().WithContext(ctx)
 	users := make([]*models.User, 0)
-	result := api.db.WithContext(ctx).Preload("Devices").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
+	result := tx.Preload("Devices").Preload("Organizations").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
 	}
-	for _, u := range users {
-		var devices []uuid.UUID
-		for _, d := range u.Devices {
-			devices = append(devices, d.ID)
-		}
-		u.DeviceList = devices
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		api.Logger(ctx).Error(err.Error)
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
+		return
 	}
 	c.JSON(http.StatusOK, users)
 }
@@ -187,6 +218,9 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Failure      500  {object}  models.ApiError
 // @Router       /users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
+	defer span.End()
+	tx := api.db.Begin().WithContext(ctx)
 	userID := c.Param("id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
@@ -204,6 +238,11 @@ func (api *API) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
 		return
 	}
-
+	if err := tx.Commit(); err.Error != nil {
+		tx.Rollback()
+		api.Logger(ctx).Error(err.Error)
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
+		return
+	}
 	c.JSON(http.StatusOK, user)
 }

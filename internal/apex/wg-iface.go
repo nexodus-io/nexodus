@@ -89,7 +89,7 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) error {
 	}
 	// start the wireguard listener on a well-known port if it is the hub-router as all
 	// nodes need to be able to reach this node for state distribution if hole punching.
-	if ax.hubRouter {
+	if ax.relay {
 		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
 			logger.Errorf("failed to start the wireguard listener: %v\n", err)

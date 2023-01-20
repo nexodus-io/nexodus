@@ -9,14 +9,14 @@
     - role: setup-ec2
 
 # Create a Zone
-- hosts: hubRouterNode
+- hosts: relayNode
   vars_files:
     - vars.yml
   roles:
     - role: create-zone
 
 # Deploy and start the hub router
-- hosts: hubRouterNode
+- hosts: relayNode
   vars_files:
     - vars.yml
   roles:

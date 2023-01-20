@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type probeResults struct {
@@ -15,7 +15,8 @@ type probeResults struct {
 }
 
 type dialer struct {
-	dial func(string, string) (net.Conn, error)
+	logger zap.SugaredLogger
+	dial   func(string, string) (net.Conn, error)
 }
 
 const (
@@ -28,7 +29,7 @@ const (
 )
 
 // probePeers initial simple proofing of a peer discovery
-func probePeers(peers []string) []string {
+func probePeers(peers []string, logger *zap.SugaredLogger) []string {
 	c := make(chan probeResults)
 	for _, peer := range peers {
 		go runProbe(peer, c)
@@ -39,9 +40,9 @@ func probePeers(peers []string) []string {
 		result[i] = <-c
 		if result[i].status {
 			reachablePeers = append(reachablePeers, result[i].peer)
-			log.Tracef("peer [ %s ] is reachable", result[i].peer)
+			logger.Debugf("peer [ %s ] is reachable", result[i].peer)
 		} else {
-			log.Debugf("peer [ %s ] is not reachable", result[i].peer)
+			logger.Debugf("peer [ %s ] is not reachable", result[i].peer)
 		}
 	}
 	return reachablePeers
@@ -91,7 +92,7 @@ func (p *dialer) ping(host string, i uint64, waitFor time.Duration) (string, err
 	defer c.Close()
 	// send echo request
 	if err = c.SetDeadline(time.Now().Add(waitFor)); err != nil {
-		log.Debugf("probe error: %v", err)
+		p.logger.Debugf("probe error: %v", err)
 	}
 
 	msg := make([]byte, PACKETSIZE)
@@ -105,7 +106,7 @@ func (p *dialer) ping(host string, i uint64, waitFor time.Duration) (string, err
 	}
 	// get echo reply
 	if err = c.SetDeadline(time.Now().Add(waitFor)); err != nil {
-		log.Debugf("probe error: %v", err)
+		p.logger.Debugf("probe error: %v", err)
 	}
 	rmsg := make([]byte, PACKETSIZE+256)
 	before := time.Now()

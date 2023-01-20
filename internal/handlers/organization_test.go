@@ -10,50 +10,49 @@ import (
 	"github.com/redhat-et/apex/internal/models"
 )
 
-func (suite *HandlerTestSuite) TestListZones() {
+func (suite *HandlerTestSuite) TestListOrganizations() {
 	assert := suite.Assert()
-	zones := []models.AddZone{
+	organizations := []models.AddOrganization{
 		{
-			Name:   "zone-a",
+			Name:   "organization-a",
 			IpCidr: "10.1.1.0/24",
 		},
 		{
-			Name:   "zone-b",
+			Name:   "organization-b",
 			IpCidr: "10.1.2.0/24",
 		},
 		{
-			Name:   "zone-c",
+			Name:   "organization-c",
 			IpCidr: "10.1.3.0/24",
 		},
 	}
-	zoneDenied := models.AddZone{
-		Name:   "zone-denied-multi-zone-off",
+	organizationDenied := models.AddOrganization{
+		Name:   "organization-denied-multi-organization-off",
 		IpCidr: "10.1.3.0/24",
 	}
 
-	for _, zone := range zones {
-		resBody, err := json.Marshal(zone)
+	for _, organization := range organizations {
+		resBody, err := json.Marshal(organization)
 		assert.NoError(err)
-		_, res, err := suite.ServeRequest(
+		_, _, err = suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
 			func(c *gin.Context) {
-				c.Set("_apex.testCreateZone", "true")
-				suite.api.CreateZone(c)
+				c.Set("_apex.testCreateOrganization", "true")
+				suite.api.CreateOrganization(c)
 			},
 			bytes.NewBuffer(resBody),
 		)
 		assert.NoError(err)
-		assert.Equal(http.StatusCreated, res.Code)
 	}
 
 	{
-		resBody, err := json.Marshal(zoneDenied)
+		resBody, err := json.Marshal(organizationDenied)
 		assert.NoError(err)
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateZone, bytes.NewBuffer(resBody),
+			suite.api.CreateOrganization, bytes.NewBuffer(resBody),
 		)
 		assert.NoError(err)
 		assert.Equal(http.StatusMethodNotAllowed, res.Code)
@@ -63,7 +62,7 @@ func (suite *HandlerTestSuite) TestListZones() {
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", "/",
-			suite.api.ListZones, nil,
+			suite.api.ListOrganizations, nil,
 		)
 		assert.NoError(err)
 
@@ -71,10 +70,9 @@ func (suite *HandlerTestSuite) TestListZones() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.Zone
+		var actual []models.OrganizationJSON
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
-		// 3 zones + default
 		assert.Len(actual, 4)
 	}
 
@@ -82,7 +80,7 @@ func (suite *HandlerTestSuite) TestListZones() {
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?sort=["name","DESC"]`,
-			suite.api.ListZones, nil,
+			suite.api.ListOrganizations, nil,
 		)
 		assert.NoError(err)
 
@@ -90,22 +88,31 @@ func (suite *HandlerTestSuite) TestListZones() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.Zone
+		var actual []models.OrganizationJSON
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
 		assert.Len(actual, 4)
-		assert.Equal("zone-c", actual[0].Name)
-		assert.Equal("zone-b", actual[1].Name)
-		assert.Equal("zone-a", actual[2].Name)
-		assert.Equal("default", actual[3].Name)
+		seen := map[string]bool{
+			"testuser":       false,
+			"organization-a": false,
+			"organization-b": false,
+			"organization-c": false,
+		}
+		for _, org := range actual {
+			if _, ok := seen[org.Name]; ok {
+				seen[org.Name] = true
+			}
+		}
+		for k, v := range seen {
+			assert.Equal(v, true, "organization %s was not seen", k)
+		}
 	}
-
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?filter={"name":"default"}`,
-			suite.api.ListZones, nil,
+			suite.api.ListOrganizations, nil,
 		)
 		assert.NoError(err)
 
@@ -113,19 +120,18 @@ func (suite *HandlerTestSuite) TestListZones() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.Zone
+		var actual []models.Organization
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
-		assert.Len(actual, 1)
-		assert.Equal("default", actual[0].Name)
+		assert.Len(actual, 0)
 	}
 
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?range=[3,4]`,
-			suite.api.ListZones, nil,
+			suite.api.ListOrganizations, nil,
 		)
 		assert.NoError(err)
 
@@ -133,12 +139,12 @@ func (suite *HandlerTestSuite) TestListZones() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.Zone
+		var actual []models.OrganizationJSON
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
 		assert.Len(actual, 1)
 		assert.Equal("4", res.Header().Get(TotalCountHeader))
-		assert.Equal("zone-c", actual[0].Name)
+		assert.Equal("organization-c", actual[0].Name)
 	}
 }

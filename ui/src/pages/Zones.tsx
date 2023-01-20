@@ -25,8 +25,8 @@ const ZoneCreateButton = () => {
   const dataProvider = useDataProvider();
 
   useEffect(() => {
-    dataProvider.getFlag("multi-zone").then((response: any) => {
-      setDisableCreate(response.json["multi-zone"] != true);
+    dataProvider.getFlag("multi-organization").then((response: any) => {
+      setDisableCreate(response.json["multi-organization"] != true);
     });
   });
 
@@ -45,8 +45,8 @@ const ZoneBulkDeleteButton = () => {
   const dataProvider = useDataProvider();
 
   useEffect(() => {
-    dataProvider.getFlag("multi-zone").then((response: any) => {
-      setDisableCreate(response.json["multi-zone"] != true);
+    dataProvider.getFlag("multi-organization").then((response: any) => {
+      setDisableCreate(response.json["multi-organization"] != true);
     });
   });
 

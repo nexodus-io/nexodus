@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/redhat-et/apex/internal/database"
 	"github.com/redhat-et/apex/internal/fflags"
 	"github.com/redhat-et/apex/internal/ipam"
 	"github.com/redhat-et/apex/internal/util"
@@ -26,18 +28,18 @@ const (
 
 type HandlerTestSuite struct {
 	suite.Suite
-	logger *zap.SugaredLogger
-	ipam   *http.Server
-	wg     *sync.WaitGroup
-	api    *API
+	logger             *zap.SugaredLogger
+	ipam               *http.Server
+	wg                 *sync.WaitGroup
+	api                *API
+	testOrganizationID uuid.UUID
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
-	db, err := util.NewTestDatabase()
+	db, err := database.NewTestDatabase()
 	if err != nil {
 		suite.T().Fatal(err)
 	}
-
 	suite.logger = zaptest.NewLogger(suite.T()).Sugar()
 	suite.ipam = util.NewTestIPAMServer()
 	suite.wg = &sync.WaitGroup{}
@@ -63,13 +65,16 @@ func (suite *HandlerTestSuite) SetupSuite() {
 }
 
 func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
-	suite.api.db.Exec("DELETE FROM users WHERE id <> ?", TestUserID)
-	suite.api.db.Exec("DELETE FROM peers")
-	suite.api.db.Exec("DELETE FROM zones WHERE name <> ?", "default")
+	suite.api.db.Exec("DELETE FROM users")
+	suite.api.db.Exec("DELETE FROM organizations")
+	suite.api.db.Exec("DELETE FROM user_organization")
 	suite.api.db.Exec("DELETE FROM devices")
+	var err error
+	suite.testOrganizationID, err = suite.api.createUserIfNotExists(context.Background(), TestUserID, "testuser")
+	suite.Require().NoError(err)
 }
 
-func (suite *HandlerTestSuite) ServeRequest(method, path, uri string, handler func(*gin.Context), body io.Reader) (*http.Request, *httptest.ResponseRecorder, error) {
+func (suite *HandlerTestSuite) ServeRequest(method, path string, uri string, handler func(*gin.Context), body io.Reader) (*http.Request, *httptest.ResponseRecorder, error) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {

@@ -84,8 +84,13 @@ gen-docs: ## Generate API docs
 	swag init -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: e2e
-e2e: e2eprereqs dist/apexd dist/apexctl test-images ## Run e2e tests
+e2e: e2eprereqs test-images ## Run e2e tests
 	go test -v --tags=integration ./integration-tests/...
+
+.PHONY: e2e-podman
+e2e-podman: ## Run e2e tests on podman
+	go test -c -v --tags=integration ./integration-tests/...
+	sudo APEX_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 
 .PHONY: test
 test: ## Run unit tests
@@ -106,7 +111,7 @@ run-test-container: dist/apexd dist/apexctl test-images ## Run docker container 
 ##@ Container Images
 
 .PHONY: test-images
-test-images: ## Create test images for e2e
+test-images: dist/apexd dist/apexctl ## Create test images for e2e
 	docker build -f Containerfile.test -t quay.io/apex/test:alpine --target alpine .
 	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
