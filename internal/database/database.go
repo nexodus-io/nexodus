@@ -3,12 +3,18 @@ package database
 import (
 	"context"
 	"fmt"
+
 	"github.com/cenkalti/backoff/v4"
+	"github.com/go-gormigrate/gormigrate/v2"
+	"github.com/redhat-et/apex/internal/database/migration_20230113_0000"
+	"github.com/redhat-et/apex/internal/database/migration_20230126_0000"
+	"github.com/redhat-et/apex/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -52,4 +58,32 @@ func NewDatabase(
 		return nil, err
 	}
 	return db, nil
+}
+
+func NewTestDatabase() (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+	if err := Migrations().Migrate(context.Background(), db); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// gormigrate is a wrapper for gorm's migration functions that adds schema versioning and rollback capabilities.
+// For help writing migration steps, see the gorm documentation on migrations: https://gorm.io/docs/migration.html
+func Migrations() *migrations.Migrations {
+	return &migrations.Migrations{
+		GormOptions: &gormigrate.Options{
+			TableName:      "apiserver_migrations",
+			IDColumnName:   "id",
+			IDColumnSize:   40,
+			UseTransaction: false,
+		},
+		Migrations: []*gormigrate.Migration{
+			migration_20230113_0000.Migrate(),
+			migration_20230126_0000.Migrate(),
+		},
+	}
 }

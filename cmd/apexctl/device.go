@@ -6,42 +6,28 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/client"
-	"github.com/redhat-et/apex/internal/models"
 )
 
 func listAllDevices(c *client.Client, encodeOut string) error {
-	allPeers := getAllPeers(c)
-
+	devices, err := c.ListDevices()
+	if err != nil {
+		log.Fatal(err)
+	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
 		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS", "ENDPOINT IP", "PUBLIC KEY", "ZONE ID")
 		}
-
-		for _, peer := range allPeers {
-			dev, err := c.GetDevice(peer.DeviceID)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, peer.NodeAddress, peer.EndpointIP, dev.PublicKey, peer.ZoneID)
+		for _, dev := range devices {
+			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID)
 		}
-
 		w.Flush()
 
 		return nil
 	}
 
-	var devices []models.Device
-	for _, peer := range allPeers {
-		dev, err := c.GetDevice(peer.DeviceID)
-		devices = append(devices, dev)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	err := FormatOutput(encodeOut, devices)
+	err = FormatOutput(encodeOut, devices)
 	if err != nil {
 		log.Fatalf("failed to print output: %v", err)
 	}

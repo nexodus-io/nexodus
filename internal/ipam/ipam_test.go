@@ -46,7 +46,7 @@ func (suite *IpamTestSuite) TearDownSuite() {
 	suite.wg.Wait()
 }
 
-func (suite *IpamTestSuite) TestAllocateNodeAddress() {
+func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 	ctx := context.Background()
 
 	prefix := "10.20.30.0/24"
@@ -55,31 +55,31 @@ func (suite *IpamTestSuite) TestAllocateNodeAddress() {
 	}
 
 	// 1. Does not assign invalid IP
-	nodeAddress := "notanipaddress"
-	_, err := suite.ipam.AssignSpecificNodeAddress(ctx, prefix, nodeAddress)
+	TunnelIP := "notanipaddress"
+	_, err := suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
 	if err == nil {
 		suite.T().Fatal("should return an error if ip is invalid")
 	}
 
-	// 2. Test valid NodeAddress assigned
-	nodeAddress = "10.20.30.1"
-	ip, err := suite.ipam.AssignSpecificNodeAddress(ctx, prefix, nodeAddress)
+	// 2. Test valid TunnelIP assigned
+	TunnelIP = "10.20.30.1"
+	ip, err := suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}
-	assert.Equal(suite.T(), nodeAddress, ip)
+	assert.Equal(suite.T(), TunnelIP, ip)
 
-	// 3. Test conflicting NodeAddress assigned from pool
-	nodeAddress = "10.20.30.1"
-	ip, err = suite.ipam.AssignSpecificNodeAddress(ctx, prefix, nodeAddress)
+	// 3. Test conflicting TunnelIP assigned from pool
+	TunnelIP = "10.20.30.1"
+	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}
 	assert.Equal(suite.T(), "10.20.30.2", ip)
 
-	// 3. Test mismatched NodeAddress assigned from pool
-	nodeAddress = "10.20.40.1"
-	ip, err = suite.ipam.AssignSpecificNodeAddress(ctx, prefix, nodeAddress)
+	// 3. Test mismatched TunnelIP assigned from pool
+	TunnelIP = "10.20.40.1"
+	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

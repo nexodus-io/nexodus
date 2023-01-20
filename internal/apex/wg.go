@@ -48,7 +48,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 		allowedIP[i] = *ipNet
 	}
 
-	endpointIP, endpointPort, err := net.SplitHostPort(wgPeerConfig.Endpoint)
+	LocalIP, endpointPort, err := net.SplitHostPort(wgPeerConfig.Endpoint)
 	if err != nil {
 		ax.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
 		return err
@@ -60,7 +60,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 	}
 
 	udpAddr := &net.UDPAddr{
-		IP:   net.ParseIP(endpointIP),
+		IP:   net.ParseIP(LocalIP),
 		Port: port,
 	}
 
@@ -68,7 +68,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 
 	// relay nodes do not set explicit endpoints
 	cfg := wgtypes.Config{}
-	if ax.hubRouter {
+	if ax.relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -82,7 +82,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 	// all other nodes set peer endpoints
-	if !ax.hubRouter {
+	if !ax.relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -100,21 +100,21 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
-func (ax *Apex) handlePeerDelete(peerListing []models.Peer) error {
+func (ax *Apex) handlePeerDelete(peerListing []models.Device) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
-	for _, p := range ax.peerCache {
+	for _, p := range ax.deviceCache {
 		if inPeerListing(peerListing, p) {
 			continue
 		}
-		ax.logger.Debugf("Deleting peer with key: %s\n", ax.keyCache[p.DeviceID])
-		if err := ax.deletePeer(ax.keyCache[p.DeviceID], ax.tunnelIface); err != nil {
+		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.ID])
+		if err := ax.deletePeer(ax.deviceCache[p.ID].PublicKey, ax.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
 		}
 		// delete the peer route(s)
 		ax.handlePeerRouteDelete(ax.tunnelIface, p)
 		// remove peer from local peer and key cache
-		delete(ax.peerCache, p.ID)
-		delete(ax.keyCache, p.DeviceID)
+		delete(ax.deviceCache, p.ID)
+		delete(ax.deviceCache, p.ID)
 
 	}
 
@@ -153,7 +153,7 @@ func (ax *Apex) deletePeer(publicKey, dev string) error {
 	return nil
 }
 
-func inPeerListing(peers []models.Peer, p models.Peer) bool {
+func inPeerListing(peers []models.Device, p models.Device) bool {
 	for _, peer := range peers {
 		if peer.ID == p.ID {
 			return true

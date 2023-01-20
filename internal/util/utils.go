@@ -1,8 +1,6 @@
 package util
 
 import (
-	"context"
-	"github.com/redhat-et/apex/internal/database/migrations"
 	"net/http"
 	"time"
 
@@ -12,25 +10,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 const (
 	TestIPAMClientAddr = "http://localhost:9090"
 )
-
-func NewTestDatabase() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := migrations.New().Migrate(context.Background(), db); err != nil {
-		return nil, err
-	}
-	return db, nil
-}
 
 func NewTestIPAMServer() *http.Server {
 	zlog := zap.NewNop()

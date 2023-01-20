@@ -10,7 +10,7 @@ namespace: apex
 configMapGenerator:
   - behavior: merge
     literals:
-      - APEX_FFLAG_MULTI_ZONE=true
+      - APEX_FFLAG_MULTI_ORGANIZATION=true
     name: apiserver
 patchesJson6902:
   - target:

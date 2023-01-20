@@ -52,12 +52,12 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "zone",
-				Usage: "commands relating to zones",
+				Name:  "organization",
+				Usage: "commands relating to organizations",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
-						Usage: "list zones",
+						Usage: "list organizations",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"),
@@ -70,12 +70,12 @@ func main() {
 								log.Fatal(err)
 							}
 							encodeOut := cCtx.String("output")
-							return listZones(c, encodeOut)
+							return listOrganizations(c, encodeOut)
 						},
 					},
 					{
 						Name:  "create",
-						Usage: "create a zones",
+						Usage: "create a organizations",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "name",
@@ -90,7 +90,7 @@ func main() {
 								Required: true,
 							},
 							&cli.BoolFlag{
-								Name:  "hub-zone",
+								Name:  "hub-organization",
 								Value: false,
 							},
 						},
@@ -106,45 +106,19 @@ func main() {
 								log.Fatal(err)
 							}
 							encodeOut := cCtx.String("output")
-							zoneName := cCtx.String("name")
-							zoneDescrip := cCtx.String("description")
-							zoneCIDR := cCtx.String("cidr")
-							zoneHub := cCtx.Bool("hub-zone")
-							return createZone(c, encodeOut, zoneName, zoneDescrip, zoneCIDR, zoneHub)
-						},
-					},
-					{
-						Name:  "move-user",
-						Usage: "move the current user to a zone",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "zone-id",
-								Required: true,
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
-							encodeOut := cCtx.String("output")
-							zoneID := cCtx.String("zone-id")
-							username := cCtx.String("username")
-							return moveUserToZone(c, encodeOut, username, zoneID)
+							organizationName := cCtx.String("name")
+							organizationDescrip := cCtx.String("description")
+							organizationCIDR := cCtx.String("cidr")
+							organizationHub := cCtx.Bool("hub-organization")
+							return createOrganization(c, encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationHub)
 						},
 					},
 					{
 						Name:  "delete",
-						Usage: "delete a zone",
+						Usage: "delete a organization",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:     "zone-id",
+								Name:     "organization-id",
 								Required: true,
 							},
 						},
@@ -160,82 +134,8 @@ func main() {
 								log.Fatal(err)
 							}
 							encodeOut := cCtx.String("output")
-							zoneID := cCtx.String("zone-id")
-							return deleteZone(c, encodeOut, zoneID)
-						},
-					},
-				},
-			},
-			{
-				Name:  "peer",
-				Usage: "commands relating to zones",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "list",
-						Usage: "list all peers in a zone",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "zone-id",
-								Required: true,
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
-							encodeOut := cCtx.String("output")
-							zoneID := cCtx.String("zone-id")
-							return listPeersInZone(c, encodeOut, zoneID)
-						},
-					},
-					{
-						Name:  "list-all",
-						Usage: "list all peers",
-						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
-							encodeOut := cCtx.String("output")
-							return listAllPeers(c, encodeOut)
-						},
-					},
-					{
-						Name:  "delete",
-						Usage: "delete a peer from all zones",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "peer-id",
-								Required: true,
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
-							encodeOut := cCtx.String("output")
-							peerID := cCtx.String("peer-id")
-							return deletePeer(c, encodeOut, peerID)
+							organizationID := cCtx.String("organization-id")
+							return deleteOrganization(c, encodeOut, organizationID)
 						},
 					},
 				},
@@ -309,6 +209,24 @@ func main() {
 							}
 							encodeOut := cCtx.String("output")
 							return listUsers(c, encodeOut)
+						},
+					},
+					{
+						Name:  "get-current",
+						Usage: "get current user",
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"),
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							encodeOut := cCtx.String("output")
+							return getCurrent(c, encodeOut)
 						},
 					},
 					{

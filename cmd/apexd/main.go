@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/urfave/cli/v2"
 
 	"github.com/redhat-et/apex/internal/apex"
 	"go.uber.org/zap"
@@ -24,11 +25,12 @@ func main() {
 	var err error
 	if debug != "" {
 		logger, err = zap.NewDevelopment()
+		logger.Info("Debug logging enabled")
 	} else {
 		logger, err = zap.NewProduction()
 	}
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
 	// flags are stored in the global flags variable
@@ -122,7 +124,7 @@ func main() {
 
 			controller := cCtx.Args().First()
 			if controller == "" {
-				log.Fatal("<controller-url> required")
+				logger.Fatal("<controller-url> required")
 			}
 
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
@@ -144,12 +146,12 @@ func main() {
 				cCtx.Bool("relay-only"),
 			)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatal(err.Error())
 			}
 
 			wg := &sync.WaitGroup{}
 			if err := apex.Start(ctx, wg); err != nil {
-				log.Fatal(err)
+				logger.Fatal(err.Error())
 			}
 			wg.Wait()
 
@@ -157,6 +159,6 @@ func main() {
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 }

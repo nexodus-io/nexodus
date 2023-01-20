@@ -35,18 +35,18 @@ func NewIPAM(logger *zap.SugaredLogger, ipamAddress string) IPAM {
 		)}
 }
 
-func (i *IPAM) AssignSpecificNodeAddress(parent context.Context, ipamPrefix string, nodeAddress string) (string, error) {
-	ctx, span := tracer.Start(parent, "AssignSpecificNodeAddress")
+func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, ipamPrefix string, TunnelIP string) (string, error) {
+	ctx, span := tracer.Start(parent, "AssignSpecificTunnelIP")
 	defer span.End()
-	if err := validateIP(nodeAddress); err != nil {
-		return "", fmt.Errorf("Address %s is not valid", nodeAddress)
+	if err := validateIP(TunnelIP); err != nil {
+		return "", fmt.Errorf("Address %s is not valid", TunnelIP)
 	}
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
-		Ip:         &nodeAddress,
+		Ip:         &TunnelIP,
 	}))
 	if err != nil {
-		i.logger.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", nodeAddress, err)
+		i.logger.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", TunnelIP, err)
 		return i.AssignFromPool(ctx, ipamPrefix)
 	}
 	return res.Msg.Ip.Ip, nil
@@ -65,7 +65,7 @@ func (i *IPAM) AssignFromPool(parent context.Context, ipamPrefix string) (string
 }
 
 func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
-	ctx, span := tracer.Start(parent, "CreateDefaultZoneIfNotExists")
+	ctx, span := tracer.Start(parent, "AssignPrefix")
 	defer span.End()
 	cidr, err := cleanCidr(cidr)
 	if err != nil {

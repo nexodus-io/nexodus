@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/redhat-et/apex/internal/database/migrations"
 	"gorm.io/gorm"
 
 	"github.com/redhat-et/apex/internal/database"
@@ -151,7 +150,7 @@ func main() {
 			defer span.End()
 			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
 
-				if err := migrations.New().Migrate(ctx, db); err != nil {
+				if err := database.Migrations().Migrate(ctx, db); err != nil {
 					log.Fatal(err)
 				}
 
@@ -207,7 +206,7 @@ func main() {
 		Action: func(cCtx *cli.Context) error {
 			ctx := cCtx.Context
 			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
-				if err := migrations.New().RollbackLast(ctx, db); err != nil {
+				if err := database.Migrations().RollbackLast(ctx, db); err != nil {
 					log.Fatal(err)
 				}
 			})

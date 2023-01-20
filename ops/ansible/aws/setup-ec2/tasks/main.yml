@@ -41,13 +41,13 @@
       NodeType: "{{ aws_nodetype_tag }}"
     state: running
     wait: true
-  register: hubRouterIp
+  register: relayIp
 
 - name: Updating the hub-router node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "hubRouterNode"
-    line: "[hubRouterNode]\n{{ hubRouterIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ hubRouterIp['instances'][0]['private_ip_address']}} hostname=hubrouter"
+    regexp: "relayNode"
+    line: "[relayNode]\n{{ relayIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ relayIp['instances'][0]['private_ip_address']}} hostname=relay"
 
 - name: Launching EC2 Instances in VPC Blue
   amazon.aws.ec2_instance:

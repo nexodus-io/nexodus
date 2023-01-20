@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+
 	"github.com/redhat-et/apex/internal/util"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ type API struct {
 }
 
 func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags) (*API, error) {
-	ctx, span := tracer.Start(parent, "NewAPI")
+	_, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 	api := &API{
 		logger:        logger,
@@ -36,9 +37,6 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		ipam:          ipam,
 		defaultZoneID: uuid.Nil,
 		fflags:        fflags,
-	}
-	if err := api.CreateDefaultZoneIfNotExists(ctx); err != nil {
-		return nil, err
 	}
 	return api, nil
 }

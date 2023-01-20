@@ -3,12 +3,13 @@ package migrations
 import (
 	"context"
 	"fmt"
+	"runtime"
+
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-	"runtime"
 )
 
 var tracer trace.Tracer
@@ -276,6 +277,26 @@ func RenameTableColumnAction(table interface{}, oldFieldName string, newFieldNam
 			}
 		} else {
 			if err := tx.Migrator().RenameColumn(table, newFieldName, oldFieldName); err != nil {
+				return errors.Wrap(err, caller)
+			}
+		}
+		return nil
+
+	}
+}
+
+func RenameTableAction(from interface{}, to interface{}) MigrationAction {
+	caller := ""
+	if _, file, no, ok := runtime.Caller(1); ok {
+		caller = fmt.Sprintf("[ %s:%d ]", file, no)
+	}
+	return func(tx *gorm.DB, apply bool) error {
+		if apply {
+			if err := tx.Migrator().RenameTable(from, to); err != nil {
+				return errors.Wrap(err, caller)
+			}
+		} else {
+			if err := tx.Migrator().RenameTable(to, from); err != nil {
 				return errors.Wrap(err, caller)
 			}
 		}

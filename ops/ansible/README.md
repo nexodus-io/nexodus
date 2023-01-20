@@ -54,7 +54,7 @@ cd /apex/ops/ansible/
 ansible-playbook -vv ./deploy.yml 
 ```
 
-- Once the nodes are finished provisioning, ssh to the `hubRouterNode` from the ansible inventory and run the validation test that verifies connectivity across VPCs.
+- Once the nodes are finished provisioning, ssh to the `relayNode` from the ansible inventory and run the validation test that verifies connectivity across VPCs.
 
 ```shell
 ssh -i <key_name>.pem ubuntu@<ip_from_inventory>

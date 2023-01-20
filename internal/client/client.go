@@ -7,10 +7,12 @@ import (
 	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
 type Client struct {
+	logger  *zap.SugaredLogger
 	options *options
 	baseURL *url.URL
 	client  *http.Client
@@ -30,6 +32,16 @@ func NewClient(ctx context.Context, addr string, options ...Option) (*Client, er
 	c := Client{
 		options: opts,
 		baseURL: baseURL,
+	}
+
+	if c.options.logger != nil {
+		c.logger = c.options.logger
+	} else {
+		l, err := zap.NewDevelopment()
+		if err != nil {
+			return nil, err
+		}
+		c.logger = l.Sugar()
 	}
 
 	resp, err := startLogin(*baseURL)

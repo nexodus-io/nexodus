@@ -1,10 +1,13 @@
 package client
 
+import "go.uber.org/zap"
+
 type options struct {
 	deviceFlow   bool
 	clientSecret string
 	username     string
 	password     string
+	logger       *zap.SugaredLogger
 }
 
 func newOptions(opts ...Option) (*options, error) {
@@ -34,6 +37,15 @@ func WithPasswordGrant(
 func WithDeviceFlow() Option {
 	return func(o *options) error {
 		o.deviceFlow = true
+		return nil
+	}
+}
+
+func WithLogger(
+	logger *zap.SugaredLogger,
+) Option {
+	return func(o *options) error {
+		o.logger = logger
 		return nil
 	}
 }

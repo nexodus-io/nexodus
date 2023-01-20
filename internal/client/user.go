@@ -1,13 +1,11 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/models"
 )
 
@@ -17,75 +15,76 @@ const (
 	CURRENT_USER = "/api/users/me"
 )
 
-func (c *Client) GetCurrentUser() (models.User, error) {
+func (c *Client) GetCurrentUser() (models.UserJSON, error) {
 	dest := c.baseURL.JoinPath(CURRENT_USER).String()
 	r, err := http.NewRequest(http.MethodGet, dest, nil)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	res, err := c.client.Do(r)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return models.User{}, fmt.Errorf("http error: %s", string(body))
+		return models.UserJSON{}, fmt.Errorf("http error: %s", string(body))
 	}
 
-	var u models.User
+	var u models.UserJSON
 	if err := json.Unmarshal(body, &u); err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	return u, nil
 }
 
-// MoveCurrentUserToZone moves the current user into a given zone
-func (c *Client) MoveCurrentUserToZone(zoneID uuid.UUID) (models.User, error) {
+/* MoveCurrentUserToZone moves the current user into a given zone
+func (c *Client) MoveCurrentUserToOrganization(zoneID uuid.UUID) (models.User, error) {
 	dest := c.baseURL.JoinPath(CURRENT_USER).String()
 	user := models.PatchUser{
-		ZoneID: zoneID,
+		Organizations: zoneID,
 	}
 	userJSON, _ := json.Marshal(user)
 
 	req, err := http.NewRequest(http.MethodPatch, dest, bytes.NewBuffer(userJSON))
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	res, err := c.client.Do(req)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return models.User{}, fmt.Errorf("failed to patch the user into the zone: %s", zoneID)
+		return models.UserJSON{}, fmt.Errorf("failed to patch the user into the zone: %s", zoneID)
 	}
 
 	var u models.User
 	if err := json.Unmarshal(body, &u); err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	return u, nil
 }
+*/
 
-func (c *Client) ListUsers() ([]models.User, error) {
+func (c *Client) ListUsers() ([]models.UserJSON, error) {
 	dest := c.baseURL.JoinPath(USERS).String()
 
 	req, err := http.NewRequest(http.MethodGet, dest, nil)
@@ -108,7 +107,7 @@ func (c *Client) ListUsers() ([]models.User, error) {
 		return nil, fmt.Errorf("failed to list users: %d", res.StatusCode)
 	}
 
-	var data []models.User
+	var data []models.UserJSON
 	if err := json.Unmarshal(resBody, &data); err != nil {
 		return nil, err
 	}
@@ -117,31 +116,31 @@ func (c *Client) ListUsers() ([]models.User, error) {
 }
 
 // DeleteUser deletes a user
-func (c *Client) DeleteUser(userID string) (models.User, error) {
+func (c *Client) DeleteUser(userID string) (models.UserJSON, error) {
 	dest := c.baseURL.JoinPath(fmt.Sprintf(USER, userID)).String()
 	r, err := http.NewRequest(http.MethodDelete, dest, nil)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	res, err := c.client.Do(r)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return models.User{}, fmt.Errorf("http error: %s", string(body))
+		return models.UserJSON{}, fmt.Errorf("http error: %s", string(body))
 	}
 
-	var u models.User
+	var u models.UserJSON
 	if err := json.Unmarshal(body, &u); err != nil {
-		return models.User{}, err
+		return models.UserJSON{}, err
 	}
 
 	return u, nil
