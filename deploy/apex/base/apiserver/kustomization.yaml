@@ -6,7 +6,7 @@ configMapGenerator:
       - APEX_DEBUG=1
       - APEX_IPAM_URL=http://ipam:9090
       - APEX_OIDC_URL=https://auth.apex.local/realms/apex
-      - APEX_OIDC_BACKCHANNEL=https://auth-service.apex.svc.cluster.local:8443/realms/apex
+      - APEX_OIDC_BACKCHANNEL=https://auth.apex.svc.cluster.local:8443/realms/apex
       - APEX_INSECURE_TLS=1
       - APEX_TRACE_ENDPOINT_OTLP=""
       - APEX_TRACE_INSECURE="1"

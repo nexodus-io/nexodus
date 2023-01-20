@@ -4,6 +4,12 @@ resources:
   - ../../base
   - issuer.yaml
 namespace: apex-qa
+configMapGenerator:
+  - name: auth-config
+    behavior: replace
+    literals:
+      - hostname=auth.qa.apex-hosted.cloud
+      - frontend-url=https://qa.apex-hosted.cloud
 patchesJson6902:
   - patch: |-
       - op: replace

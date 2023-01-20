@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    spec:
+      containers:
+        - image: quay.io/keycloak/keycloak:20.0.3
+          name: keycloak
+          env:
+            - name: DB_VENDOR
+              value: "postgres"
+            - name: DB_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: database-pguser-keycloak
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: database-pguser-keycloak
+                  key: port
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: database-pguser-keycloak
+                  key: dbname
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-pguser-keycloak
+                  key: user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-pguser-keycloak
+                  key: password
+            - name: KC_HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: hostname
+            - name: KC_PROXY
+              value: "edge"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HTTP_PORT
+              value: "8080"
+            - name: KC_HTTPS_PORT
+              value: "8443"
+            - name: KC_HTTPS_CERTIFICATE_FILE
+              value: "/etc/pki/tls/certs/cert.pem"
+            - name: KC_HTTPS_CERTIFICATE_KEY_FILE
+              value: "/etc/pki/tls/private/cert.key"
+            - name: KEYCLOAK_ADMIN
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: keycloak-admin-password
+            - name: WEB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: web-client-id
+            - name: WEB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: web-client-secret
+            - name: CLI_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: cli-client-id
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: frontend-url
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: https
+              containerPort: 8443
+          readinessProbe:
+            httpGet:
+              path: /realms/apex
+              port: 8080
+          volumeMounts:
+            - name: certificate
+              mountPath: "/etc/pki/tls/certs"
+              readOnly: true
+            - name: privatekey
+              mountPath: "/etc/pki/tls/private"
+              readOnly: true
+            - name: realm
+              mountPath: "/opt/keycloak/data/import"
+              readOnly: true
+          command: ["/opt/keycloak/bin/kc.sh"]
+          args: ["start", "--import-realm"]
+      restartPolicy: Always
+      volumes:
+        - name: certificate
+          secret:
+            secretName: apex-auth-cert
+            items:
+              - key: tls.crt
+                path: cert.pem
+            optional: false
+        - name: privatekey
+          secret:
+            secretName: apex-auth-cert
+            items:
+              - key: tls.key
+                path: cert.key
+            optional: false
+        - name: realm
+          configMap:
+            name: realm
+            items:
+              - key: apex.json
+                path: apex.json

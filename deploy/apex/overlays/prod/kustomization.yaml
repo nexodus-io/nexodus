@@ -4,6 +4,16 @@ resources:
   - ../../base
   - issuer.yaml
 namespace: apex
+configMapGenerator:
+  - name: auth-config
+    behavior: replace
+    literals:
+      - hostname=auth.apex-hosted.cloud
+      - frontend-url=https://apex-hosted.cloud
+  - name: realm
+    behavior: replace
+    files:
+      - files/apex.json
 patchesJson6902:
   - patch: |-
       - op: replace

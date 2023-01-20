@@ -3,10 +3,6 @@ kind: Service
 metadata:
   name: apiproxy
 spec:
-  selector:
-    app.kubernetes.io/component: apiproxy
-    app.kubernetes.io/instance: apiproxy
-    app.kubernetes.io/name: apiproxy
   ports:
     - port: 8080
       targetPort: 8080

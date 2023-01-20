@@ -5,7 +5,7 @@ configMapGenerator:
     literals:
       - DEBUG=1
       - OIDC_PROVIDER=https://auth.apex.local/realms/apex
-      - OIDC_BACKCHANNEL=https://auth-service.apex.svc.cluster.local:8443/realms/apex
+      - OIDC_BACKCHANNEL=https://auth.apex.svc.cluster.local:8443/realms/apex
       - INSECURE_TLS=1
       - DOMAIN=api.apex.local
       - REDIRECT_URL=https://apex.local/#/login
