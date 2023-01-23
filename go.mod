@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/gin-contrib/zap v0.1.0
-	github.com/gin-gonic/gin v1.8.1
+	github.com/gin-gonic/gin v1.8.2
 	github.com/google/uuid v1.3.0
 	github.com/metal-stack/go-ipam v1.11.4
 	github.com/pion/stun v0.3.5
