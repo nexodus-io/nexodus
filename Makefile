@@ -28,16 +28,25 @@ endif
 ##@ All
 
 .PHONY: all
-all: go-lint yaml-lint markdown-lint ui-lint apexd  ## Run linters and build apexd
+all: go-lint yaml-lint markdown-lint ui-lint apexd apexctl ## Run linters and build apexd
 
 ##@ Binaries
 
 .PHONY: apexd
 apexd: dist/apexd dist/apexd-linux-arm dist/apexd-linux-amd64 dist/apexd-darwin-amd64 dist/apexd-darwin-arm64 dist/apexd-windows-amd64 ## Build the apexd binary for all architectures
 
+.PHONY: apexctl
+apexctl: dist/apexctl dist/apexctl-linux-arm dist/apexctl-linux-amd64 dist/apexctl-darwin-amd64 dist/apexctl-darwin-arm64 dist/apexctl-windows-amd64 ## Build the apex binary for all architectures
+
+APEX_VERSION?=$(shell date +%Y.%m.%d)
+APEX_RELEASE?=$(shell git describe --always)
+APEX_LDFLAGS?=-X main.Version=$(APEX_VERSION)-$(APEX_RELEASE)
+
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
 APEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexd/*.go)
+
+APEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexctl/*.go)
 
 APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 
@@ -58,6 +67,11 @@ dist/apexd-%: $(APEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
+
+dist/apexctl-%: $(APEXCTL_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
+		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
 
 .PHONY: clean
 clean: ## clean built binaries

@@ -127,7 +127,7 @@ func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, 
 }
 
 func newClient(ctx context.Context, username, password string) (*client.Client, error) {
-	return client.NewClient(ctx, "http://api.apex.local", client.WithPasswordGrant(username, password))
+	return client.NewClient(ctx, "http://api.apex.local", nil, client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
