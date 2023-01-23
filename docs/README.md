@@ -13,7 +13,11 @@
   - [Deploying the Apex Agent](#deploying-the-apex-agent)
     - [Deploying on Node](#deploying-on-node)
       - [Installing the Agent](#installing-the-agent)
-      - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
+        - [Install Script](#install-script)
+        - [RPM](#rpm)
+        - [Systemd](#systemd)
+        - [Starting the Agent](#starting-the-agent)
+      - [Interactive Enrollment](#interactive-enrollment)
       - [Verifying Agent Setup](#verifying-agent-setup)
       - [Verifying Zone Connectivity](#verifying-zone-connectivity)
       - [Cleanup Agent From Node](#cleanup-agent-from-node)
@@ -138,6 +142,8 @@ The following sections contain general instructions to deploy the Apex agent on 
 
 #### Installing the Agent
 
+##### Install Script
+
 The Apex agent (`apexd`) is run on any node that will join an Apex Zone to communicate with other peers in that zone. This agent communicates with the Apex Controller and manages local wireguard configuration.
 
 The `hack/apex_installer.sh` script will download the latest build of `apexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `apexd` from source.
@@ -146,19 +152,67 @@ The `hack/apex_installer.sh` script will download the latest build of `apexd` an
 hack/apex_installer.sh
 ```
 
-#### Running the Agent for Interactive Enrollment
+##### RPM
 
-As the project is still in such early development, it is expected that `apexd` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
+You can build an rpm from the git repository. The rpm will include `apexctl`, `apexd`, and integration with systemd. You must have `mock` installed to build the package.
 
-Note: In a self-signed dev environment, each agent machine needs to have the [imported cert](#https) and the [host entry](#add-required-dns-entries) detailed above.
+```sh
+make rpm
+```
+
+After running this command, the resulting rpm can be found in `./dist/rpm/mock/`.
+
+To install the rpm, you may use `dnf`.
+
+```sh
+sudo dnf install ./dist/rpm/mock/apex-0-0.1.20230216git068fedd.fc37.src.rpm
+```
+
+##### Systemd
+
+If you did not install `apexd` via the rpm, you can still use the systemd integration if you would like. The following commands will put the files in the right place.
+
+```sh
+sudo cp contrib/rpm/apex.service /usr/lib/systemd/service/apex.service
+sudo cp contrib/rpm/apex.sysconfig /etc/sysconfig/apex
+sudo systemctl daemon-reload
+```
+
+##### Starting the Agent
+
+> **Note**
+> In a self-signed dev environment, each agent machine needs to have the [imported cert](#https) and the [host entry](#add-required-dns-entries) detailed above.
+
+You may start `apexd` directly. You must include the URL to the Apex service as an argument.
 
 ```sh
 sudo apexd-linux-amd64 https://apex.local
+```
+
+Alternatively, you can start `apexd` as a systemd service. First, edit `/etc/sysconfig/apex` to reflect the URL of the Apex service. Then, start the agent with the following command:
+
+```sh
+sudo systemctl start apex
+```
+
+If you would like `apexd` to run automatically on boot, run this command as well:
+
+```sh
+sudo systemctl enable apex
+```
+
+#### Interactive Enrollment
+
+If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone. If you ran `apexd` manually, you will see a message like the following in your terminal:
+
+```sh
 Your device must be registered with Apex.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
 https://auth.apex.local/realms/apex/device?user_code=LTCV-OFFS
 ```
+
+If the agent was started using systemd, you will find the same thing in the service logs.
 
 Once enrollment is completed in the web UI, the agent will show progress.
 

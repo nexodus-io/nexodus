@@ -1,0 +1,12 @@
+[Unit]
+Description=Apex connectivity daemon
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+EnvironmentFile=/etc/sysconfig/apex
+ExecStart=/usr/bin/apexd ${APEX_ARGS} ${APEX_URL}

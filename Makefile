@@ -14,6 +14,9 @@ else
     CMD_PREFIX=
 endif
 
+APEX_VERSION?=$(shell date +%Y.%m.%d)
+APEX_RELEASE?=$(shell git describe --always)
+
 ##@ All
 
 .PHONY: all
@@ -224,3 +227,45 @@ cacerts: ## Install the Self-Signed CA Certificate
 	@mkdir -p $(CURDIR)/.certs
 	@kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	@CAROOT=$(CURDIR)/.certs mkcert -install
+
+##@ Packaging
+
+dist/rpm:
+	$(CMD_PREFIX) mkdir -p dist/rpm
+
+.PHONY: image-mock
+image-mock:
+	docker build -f Containerfile.mock -t quay.io/apex/mock:$(TAG) .
+	docker tag quay.io/apex/mock:$(TAG) quay.io/apex/mock:latest
+
+MOCK_ROOT?=fedora-37-x86_64
+SRPM_DISTRO?=fc37
+
+.PHONY: srpm
+srpm: dist/rpm image-mock ## Build a source RPM
+	go mod vendor
+	rm -rf dist/rpm/apex-${APEX_RELEASE}
+	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
+	git archive --format=tar.gz -o dist/rpm/apex-${APEX_RELEASE}.tar.gz --prefix=apex-${APEX_RELEASE}/ ${APEX_RELEASE}
+	cd dist/rpm && tar xvzf apex-${APEX_RELEASE}.tar.gz
+	mv vendor dist/rpm/apex-${APEX_RELEASE}/.
+	cd dist/rpm && tar czvf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
+	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
+	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
+	docker rm -f mock || true
+	docker run --name mock --cap-add SYS_ADMIN -v $(CURDIR):/apex quay.io/apex/mock:latest \
+		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock \
+		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
+	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
+
+.PHONY: rpm
+rpm: srpm ## Build an RPM
+	docker rm -f mock || true
+	docker run --name mock --cap-add SYS_ADMIN -v $(CURDIR):/apex quay.io/apex/mock:latest \
+		mock --rebuild --without check \--resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
+		/apex/$(wildcard dist/rpm/mock/apex-*$(shell date +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
+
+# Nothing to see here
+.PHONY: cat
+cat:
+	$(CMD_PREFIX) docker run -it --rm --name nyancat 06kellyjac/nyancat
