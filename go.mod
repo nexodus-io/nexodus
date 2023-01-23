@@ -19,7 +19,7 @@ require (
 	github.com/swaggo/gin-swagger v1.5.3
 	github.com/swaggo/swag v1.8.9
 	github.com/testcontainers/testcontainers-go v0.17.0
-	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.17
+	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.18
 	github.com/urfave/cli/v2 v2.24.1
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/zsais/go-gin-prometheus v0.1.0
@@ -36,7 +36,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20221104135756-97bc4ad4a1cb
 	gorm.io/driver/postgres v1.4.6
 	gorm.io/driver/sqlite v1.4.4
-	gorm.io/gorm v1.24.2
+	gorm.io/gorm v1.24.3
 )
 
 require (
@@ -77,7 +77,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.17 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.18 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.2 // indirect
 	go.opentelemetry.io/otel/metric v0.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
