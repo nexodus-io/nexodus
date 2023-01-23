@@ -1,7 +1,7 @@
 FROM alpine:3.16 as alpine
 RUN apk add --no-cache iputils wireguard-tools iptables psmisc ca-certificates
 COPY ./dist/apex /bin/apex
-COPY ./dist/apexctl /bin/apexctl
+COPY ./dist/apex-api-ctl /bin/apex-api-ctl
 COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 RUN /usr/sbin/update-ca-certificates
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
@@ -20,7 +20,7 @@ RUN dnf update -qy && \
     && \
     dnf clean all
 COPY ./dist/apex /bin/apex
-COPY ./dist/apexctl /bin/apexctl
+COPY ./dist/apex-api-ctl /bin/apex-api-ctl
 COPY ./.certs/rootCA.pem /etc/pki/ca-trust/source/anchors/rootCA.crt
 RUN /usr/bin/update-ca-trust
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
@@ -41,7 +41,7 @@ RUN apt-get update -qy && \
     && \
     apt-get clean
 COPY ./dist/apex /bin/apex
-COPY ./dist/apexctl /bin/apexctl
+COPY ./dist/apex-api-ctl /bin/apex-api-ctl
 COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 RUN /usr/sbin/update-ca-certificates
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
