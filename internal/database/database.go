@@ -3,9 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-
 	"github.com/cenkalti/backoff/v4"
-	"github.com/redhat-et/apex/internal/models"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -53,27 +51,5 @@ func NewDatabase(
 	if err := db.Use(otelgorm.NewPlugin()); err != nil {
 		return nil, err
 	}
-	if err := Migrate(ctx, db); err != nil {
-		return nil, err
-	}
 	return db, nil
-}
-
-func Migrate(ctx context.Context, db *gorm.DB) error {
-	_, span := tracer.Start(ctx, "Migrate")
-	defer span.End()
-	// Migrate the schema
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		return err
-	}
-	if err := db.AutoMigrate(&models.Zone{}); err != nil {
-		return err
-	}
-	if err := db.AutoMigrate(&models.Peer{}); err != nil {
-		return err
-	}
-	if err := db.AutoMigrate(&models.Device{}); err != nil {
-		return err
-	}
-	return nil
 }

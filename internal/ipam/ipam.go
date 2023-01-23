@@ -71,8 +71,19 @@ func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
 	if err != nil {
 		return fmt.Errorf("invalid prefix requested: %v", err)
 	}
-	_, err = i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
-	return err
+
+	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
+	if originalErr != nil {
+		// check to see if the prefix had been already created....
+		resp, err := i.client.GetPrefix(ctx, connect.NewRequest(&apiv1.GetPrefixRequest{Cidr: cidr}))
+		if err == nil {
+			// it did exist... so ignore that create error since the prefix was created.
+			if resp.Msg.Prefix.Cidr == cidr && resp.Msg.Prefix.ParentCidr == "" {
+				originalErr = nil
+			}
+		}
+	}
+	return originalErr
 }
 
 // ReleaseToPool release the ipam address back to the specified prefix

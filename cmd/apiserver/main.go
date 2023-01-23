@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/redhat-et/apex/internal/database/migrations"
+	"gorm.io/gorm"
+
 	"github.com/redhat-et/apex/internal/database"
 	"github.com/redhat-et/apex/internal/fflags"
 	"github.com/redhat-et/apex/internal/handlers"
@@ -145,83 +148,113 @@ func main() {
 		Action: func(cCtx *cli.Context) error {
 			ctx, span := tracer.Start(cCtx.Context, "Run")
 			defer span.End()
-			var logger *zap.Logger
-			var err error
-			// set the log level
-			if cCtx.Bool("debug") {
-				logger, err = zap.NewDevelopment()
-			} else {
-				logger, err = zap.NewProduction()
-			}
-			if err != nil {
-				log.Fatal(err)
-			}
+			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
 
-			cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
-			defer func() {
-				if err := cleanup(ctx); err != nil {
-					logger.Error(err.Error())
-				}
-			}()
-
-			db, err := database.NewDatabase(
-				ctx,
-				logger.Sugar(),
-				cCtx.String("db-host"),
-				cCtx.String("db-user"),
-				cCtx.String("db-password"),
-				cCtx.String("db-name"),
-				cCtx.String("db-port"),
-				cCtx.String("db-sslmode"),
-			)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
-
-			fflags := fflags.NewFFlags(logger.Sugar())
-
-			api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			router, err := routers.NewAPIRouter(
-				ctx,
-				logger.Sugar(),
-				api,
-				cCtx.String("oidc-client-id-web"),
-				cCtx.String("oidc-client-id-cli"),
-				cCtx.String("oidc-url"),
-				cCtx.String("oidc-backchannel-url"),
-				cCtx.Bool("insecure-tls"),
-			)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			server := &http.Server{
-				Addr:    "0.0.0.0:8080",
-				Handler: router,
-			}
-
-			go func() {
-				if err = server.ListenAndServe(); err != nil {
+				if err := migrations.New().Migrate(ctx, db); err != nil {
 					log.Fatal(err)
 				}
-			}()
 
-			ch := make(chan os.Signal, 1)
-			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-			<-ch
+				ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
 
-			return server.Close()
+				fflags := fflags.NewFFlags(logger.Sugar())
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				router, err := routers.NewAPIRouter(
+					ctx,
+					logger.Sugar(),
+					api,
+					cCtx.String("oidc-client-id-web"),
+					cCtx.String("oidc-client-id-cli"),
+					cCtx.String("oidc-url"),
+					cCtx.String("oidc-backchannel-url"),
+					cCtx.Bool("insecure-tls"),
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				server := &http.Server{
+					Addr:    "0.0.0.0:8080",
+					Handler: router,
+				}
+
+				go func() {
+					if err = server.ListenAndServe(); err != nil {
+						log.Fatal(err)
+					}
+				}()
+
+				ch := make(chan os.Signal, 1)
+				signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+				<-ch
+
+				server.Close()
+			})
+			return nil
 		},
 	}
+	app.Commands = append(app.Commands, &cli.Command{
+		Name:  "rollback",
+		Usage: "rollback the last database migration",
+		Action: func(cCtx *cli.Context) error {
+			ctx := cCtx.Context
+			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
+				if err := migrations.New().RollbackLast(ctx, db); err != nil {
+					log.Fatal(err)
+				}
+			})
+			return nil
+		},
+	})
+
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB)) {
+
+	var logger *zap.Logger
+	var err error
+	// set the log level
+	if cCtx.Bool("debug") {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
+	defer func() {
+		if cleanup == nil {
+			return
+		}
+		if err := cleanup(ctx); err != nil {
+			logger.Error(err.Error())
+		}
+	}()
+
+	db, err := database.NewDatabase(
+		ctx,
+		logger.Sugar(),
+		cCtx.String("db-host"),
+		cCtx.String("db-user"),
+		cCtx.String("db-password"),
+		cCtx.String("db-name"),
+		cCtx.String("db-port"),
+		cCtx.String("db-sslmode"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	f(logger, db)
 }
 
 func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func(context.Context) error {

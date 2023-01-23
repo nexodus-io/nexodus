@@ -2,13 +2,13 @@ package util
 
 import (
 	"context"
+	"github.com/redhat-et/apex/internal/database/migrations"
 	"net/http"
 	"time"
 
 	goipam "github.com/metal-stack/go-ipam"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
 	"github.com/metal-stack/go-ipam/pkg/service"
-	"github.com/redhat-et/apex/internal/database"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -25,7 +25,8 @@ func NewTestDatabase() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := database.Migrate(context.Background(), db); err != nil {
+
+	if err := migrations.New().Migrate(context.Background(), db); err != nil {
 		return nil, err
 	}
 	return db, nil
