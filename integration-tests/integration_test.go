@@ -102,9 +102,9 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 
 	suite.logger.Info("killing apex and re-joining nodes with new keys")
 	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
 	require.NoError(err)
 
 	// delete only the public key on node1
@@ -271,9 +271,9 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 
 	suite.logger.Info("killing apex and re-joining nodes")
 	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
 	require.NoError(err)
 
 	// restart apex and ensure the nodes receive the same re-quested address
@@ -382,7 +382,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 
 	suite.T().Logf("killing apex on node2")
 
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
 	assert.NoError(err)
 	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubZoneChildPrefix)
 
@@ -393,7 +393,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	// re-join and ensure the peer table updates with the new values
 	go func() {
 		_, err = suite.containerExec(ctx, node2, []string{
-			"/bin/apex",
+			"/bin/apexd",
 			fmt.Sprintf("--child-prefix=%s", hubZoneChildPrefix),
 			fmt.Sprintf("--with-token=%s", token),
 			"http://apex.local",
@@ -810,9 +810,9 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	suite.logger.Info("killing apex and re-joining nodes")
 
 	// kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "apexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "apexd"})
 	require.NoError(err)
 
 	// restart the process on two nodes and verify re-joining
@@ -954,9 +954,9 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	}
 
 	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apex"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
 	require.NoError(err)
 
 	// delete both devices from apex

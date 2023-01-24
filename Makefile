@@ -1,12 +1,12 @@
 .PHONY: all
-all: go-lint apex
+all: go-lint apexd
 
-.PHONY: apex
-apex: dist/apex dist/apex-linux-arm dist/apex-linux-amd64 dist/apex-darwin-amd64 dist/apex-darwin-arm64 dist/apex-windows-amd64
+.PHONY: apexd
+apexd: dist/apexd dist/apexd-linux-arm dist/apexd-linux-amd64 dist/apexd-darwin-amd64 dist/apexd-darwin-arm64 dist/apexd-windows-amd64
 
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
-APEX_DEPS=$(COMMON_DEPS) $(wildcard cmd/apex/*.go)
+APEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexd/*.go)
 
 APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 
@@ -15,25 +15,25 @@ TAG=$(shell git rev-parse HEAD)
 dist:
 	mkdir -p $@
 
-dist/apex: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 go build -o $@ ./cmd/apex
+dist/apexd: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 go build -o $@ ./cmd/apexd
 
-dist/apex-linux-arm: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o $@ ./cmd/apex
+dist/apexd-linux-arm: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o $@ ./cmd/apexd
 
-dist/apex-linux-amd64: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apex
+dist/apexd-linux-amd64: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apexd
 
-dist/apex-darwin-amd64: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apex
+dist/apexd-darwin-amd64: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apexd
 
-dist/apex-darwin-arm64: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apex
+dist/apexd-darwin-arm64: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apexd
 
-dist/apex-windows-amd64: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o $@ ./cmd/apex
+dist/apexd-windows-amd64: $(APEXD_DEPS) | dist
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o $@ ./cmd/apexd
 
-dist/apexctl: $(APEX_DEPS) | dist
+dist/apexctl: $(APEXD_DEPS) | dist
 	CGO_ENABLED=0 go build -o $@ ./cmd/apexctl
 
 .PHONY: clean
@@ -41,7 +41,7 @@ clean:
 	rm -rf dist
 
 .PHONY: go-lint
-go-lint: $(APEX_DEPS) $(APISERVER_DEPS)
+go-lint: $(APEXD_DEPS) $(APISERVER_DEPS)
 	@if ! which golangci-lint 2>&1 >/dev/null; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
@@ -75,7 +75,7 @@ e2eprereqs:
 		exit 1 ; \
 	fi
 
-e2e: e2eprereqs dist/apex dist/apexctl test-images
+e2e: e2eprereqs dist/apexd dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: unit

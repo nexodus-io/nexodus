@@ -116,7 +116,7 @@ func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container 
 		return "", err
 	}
 	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "/bin/apex" {
+	if cmd[0] != "/bin/apexd" {
 		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	output, err := io.ReadAll(outputRaw)
@@ -211,7 +211,7 @@ func lineCount(s string) (int, error) {
 }
 
 func (suite *ApexIntegrationSuite) runApex(ctx context.Context, node testcontainers.Container, args ...string) {
-	cmd := []string{"/bin/apex"}
+	cmd := []string{"/bin/apexd"}
 	cmd = append(cmd, args...)
 	cmd = append(cmd, "https://apex.local")
 	nodeName, _ := node.Name(ctx)

@@ -1,9 +1,9 @@
 ---
 # tasks file for stop-apex-agent
-- name: Kill any existing apex process from previous runs
+- name: Kill any existing apexd process from previous runs
   become: yes
   shell: |
-    sudo killall apex 2> /dev/null
+    sudo killall apexd 2> /dev/null
   ignore_errors: yes
 
 - name: Delete wg0

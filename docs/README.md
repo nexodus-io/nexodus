@@ -89,9 +89,9 @@ For windows, we recommend installing the root certificate via the [MMC snap-in](
 
 ### Installing the Agent
 
-The Apex agent is run on any node that will join an Apex Zone to communicate with other peers in that zone. This agent communicates with the Apex Controller and manages local wireguard configuration.
+The Apex agent (`apexd`) is run on any node that will join an Apex Zone to communicate with other peers in that zone. This agent communicates with the Apex Controller and manages local wireguard configuration.
 
-The `hack/apex_installer.sh` script will download the latest build of `apex` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `apex` from source.
+The `hack/apex_installer.sh` script will download the latest build of `apexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `apexd` from source.
 
 ```sh
 hack/apex_installer.sh
@@ -99,12 +99,12 @@ hack/apex_installer.sh
 
 ### Running the Agent for Interactive Enrollment
 
-As the project is still in such early development, it is expected that `apex` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
+As the project is still in such early development, it is expected that `apexd` is run manually on each node you intend to test. If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Apex Zone.
 
 Note: In a self-signed dev environment, each agent machine needs to have the [imported cert](#https) and the [host entry](#add-required-dns-entries) detailed above.
 
 ```sh
-sudo apex-linux-amd64 https://apex.local
+sudo apexd-linux-amd64 https://apex.local
 Your device must be registered with Apex.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
@@ -174,10 +174,10 @@ Typically, the Apex agent runs on every host that you intend to have connectivit
 
 In the following diagram, `Host X` acts as a Subnet Router, allowing all hosts within Apex Zone A to access `192.168.100.0/24`.
 
-To configure this scenario, the `apex` agent on `Host X` must be run with the `--child-prefix` parameter.
+To configure this scenario, the `apexd` agent on `Host X` must be run with the `--child-prefix` parameter.
 
 ```sh
-sudo apex --child-prefix 192.168.100.0/24 [...]
+sudo apexd --child-prefix 192.168.100.0/24 [...]
 ```
 
 The subnet exposed to the Apex Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this containers use case can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
