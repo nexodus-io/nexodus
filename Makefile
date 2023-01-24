@@ -33,8 +33,8 @@ dist/apex-darwin-arm64: $(APEX_DEPS) | dist
 dist/apex-windows-amd64: $(APEX_DEPS) | dist
 	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o $@ ./cmd/apex
 
-dist/apex-api-ctl: $(APEX_DEPS) | dist
-	CGO_ENABLED=0 go build -o $@ ./cmd/apex-api-ctl
+dist/apexctl: $(APEX_DEPS) | dist
+	CGO_ENABLED=0 go build -o $@ ./cmd/apexctl
 
 .PHONY: clean
 clean:
@@ -75,7 +75,7 @@ e2eprereqs:
 		exit 1 ; \
 	fi
 
-e2e: e2eprereqs dist/apex dist/apex-api-ctl test-images
+e2e: e2eprereqs dist/apex dist/apexctl test-images
 	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: unit
