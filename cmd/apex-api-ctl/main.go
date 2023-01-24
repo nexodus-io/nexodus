@@ -20,7 +20,7 @@ const (
 
 func main() {
 	app := &cli.App{
-		Name: "apexctl",
+		Name: "apex-api-ctl",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",

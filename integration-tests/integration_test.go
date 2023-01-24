@@ -26,7 +26,7 @@ var defaultNetwork string
 var hostDNSName string
 var ipamDriver string
 
-const apexctl = "../dist/apexctl"
+const apexAptCtl = "../dist/apex-api-ctl"
 
 func init() {
 	if os.Getenv("APEX_TEST_PODMAN") != "" {
@@ -430,7 +430,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	assert.NoErrorf(err, gather)
 
 	// get the peer id for node3
-	allPeers, err := suite.runCommand(apexctl,
+	allPeers, err := suite.runCommand(apexAptCtl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
 		"--output", "json-raw",
@@ -438,7 +438,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	)
 	var peers []models.Peer
 	json.Unmarshal([]byte(allPeers), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	assert.NoErrorf(err, "apex-api-ctl peer list-all error: %v\n", err)
 
 	var peer3ID string
 	for _, p := range peers {
@@ -449,7 +449,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	}
 
 	// delete the peer node2
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
 		"peer", "delete",
@@ -850,7 +850,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	assert.Equal(5, lc, "the number of expected wg show peers was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 }
 
-func (suite *ApexIntegrationSuite) TestApexCtl() {
+func (suite *ApexIntegrationSuite) TestApexApiCtl() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -876,41 +876,41 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		}
 	})
 
-	// validate apexctl user list returns a user
-	userOut, err := suite.runCommand(apexctl,
+	// validate apex-api-ctl user list returns a user
+	userOut, err := suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"--output", "json",
 		"user", "list",
 	)
-	require.NoErrorf(err, "apexctl user list error: %v\n", err)
+	require.NoErrorf(err, "apex-api-ctl user list error: %v\n", err)
 	var users []models.User
 	err = json.Unmarshal([]byte(userOut), &users)
 	assert.NotEmpty(users)
 
 	// create a new zone and parse the returned json for the zone id
-	zoneOut, err := suite.runCommand(apexctl,
+	zoneOut, err := suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"--output", "json",
 		"zone", "create",
-		"--name", "zone-apexctl",
+		"--name", "zone-apex-api-ctl",
 		"--cidr", "172.19.100.0/24",
-		"--description", "apexctl e2e zone",
+		"--description", "apex-api-ctl e2e zone",
 	)
-	require.NoErrorf(err, "apexctl zone create error: %v\n", err)
+	require.NoErrorf(err, "apex-api-ctl zone create error: %v\n", err)
 	var zone models.Zone
 	err = json.Unmarshal([]byte(zoneOut), &zone)
 	assert.NotEmpty(zone.ID.String())
 
 	// move the current user into the new zone
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"zone", "move-user",
 		"--zone-id", zone.ID.String(),
 	)
-	assert.NoErrorf(err, "apexctl zone move-user error: %v\n", err)
+	assert.NoErrorf(err, "apex-api-ctl zone move-user error: %v\n", err)
 
 	// start apex on the nodes
 	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
@@ -931,7 +931,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	assert.NoErrorf(err, gather)
 
 	// validate list-all peers and register IDs and IPs
-	allPeers, err := suite.runCommand(apexctl,
+	allPeers, err := suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"--output", "json-raw",
@@ -939,7 +939,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 	var peers []models.Peer
 	json.Unmarshal([]byte(allPeers), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	assert.NoErrorf(err, "apex-api-ctl peer list-all error: %v\n", err)
 
 	// register the device IDs for node1 and node2
 	var node1DeviceID string
@@ -960,14 +960,14 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	require.NoError(err)
 
 	// delete both devices from apex
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"device", "delete",
 		"--device-id", node1DeviceID,
 	)
 	require.NoError(err)
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"device", "delete",
@@ -1011,7 +1011,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	}
 
 	// validate list peers in a zone
-	peersInZone, err := suite.runCommand(apexctl,
+	peersInZone, err := suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"--output", "json-raw",
@@ -1020,7 +1020,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 
 	json.Unmarshal([]byte(peersInZone), &peers)
-	assert.NoErrorf(err, "apexctl peer list-all error: %v\n", err)
+	assert.NoErrorf(err, "apex-api-ctl peer list-all error: %v\n", err)
 
 	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
 	for _, p := range peers {
@@ -1034,7 +1034,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	// delete all devices from the zone as currently required to avoid sql key
 	// constraints, then delete the zone, then recreate the zone to ensure the
 	// IPAM prefix was released. If it was not released the creation will fail.
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"device", "delete",
@@ -1042,7 +1042,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 	require.NoError(err)
 
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"device", "delete",
@@ -1051,7 +1051,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	require.NoError(err)
 
 	// delete the zone
-	zoneOut, err = suite.runCommand(apexctl,
+	zoneOut, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"--output", "json",
@@ -1062,13 +1062,13 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// re-create the deleted zone, this will fail if the IPAM
 	// prefix was not released from the prior deletion
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(apexAptCtl,
 		"--username", user,
 		"--password", pass,
 		"zone", "create",
-		"--name", "zone-apexctl",
+		"--name", "zone-apex-api-ctl",
 		"--cidr", "172.19.100.0/24",
-		"--description", "apexctl e2e zone",
+		"--description", "apex-api-ctl e2e zone",
 	)
 	require.NoError(err)
 }

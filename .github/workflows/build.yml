@@ -267,7 +267,7 @@ jobs:
 
       - name: Build dist
         run: |
-          make dist/apex dist/apexctl
+          make dist/apex dist/apex-api-ctl
 
       - name: Setup KIND
         run: |
