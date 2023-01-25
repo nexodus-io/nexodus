@@ -176,7 +176,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 				ip, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
 				if err != nil {
 					tx.Rollback()
-					api.logger.Error(err)
+					api.Logger(ctx).Error(err)
 					c.JSON(http.StatusInternalServerError, models.ApiError{Error: "ipam error"})
 					return
 				}
@@ -202,13 +202,13 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		if request.ChildPrefix != peer.ChildPrefix {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
-				api.logger.Error(err)
+				api.Logger(ctx).Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
 				return
 			}
 		}
 	} else {
-		api.logger.Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
+		api.Logger(ctx).Debugf("Public key not in the zone %s. Creating a new peer", zone.ID)
 		var ipamIP string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
@@ -217,7 +217,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			ipamIP, err = api.ipam.AssignSpecificNodeAddress(ctx, ipamPrefix, request.NodeAddress)
 			if err != nil {
 				tx.Rollback()
-				api.logger.Error(err)
+				api.Logger(ctx).Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request specific ipam address: %v", err)})
 				return
 			}
@@ -226,7 +226,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
 			if err != nil {
 				tx.Rollback()
-				api.logger.Error(err)
+				api.Logger(ctx).Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request ipam address: %v", err)})
 				return
 			}
@@ -235,7 +235,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		if request.ChildPrefix != "" {
 			if err := api.ipam.AssignPrefix(ctx, request.ChildPrefix); err != nil {
 				tx.Rollback()
-				api.logger.Error(err)
+				api.Logger(ctx).Error(err)
 				c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
 				return
 			}
@@ -275,7 +275,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 	)
 	if err := tx.Commit(); err.Error != nil {
 		tx.Rollback()
-		api.logger.Error(err.Error)
+		api.Logger(ctx).Error(err.Error)
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
 	}

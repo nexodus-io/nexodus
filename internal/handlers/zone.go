@@ -83,7 +83,7 @@ func (api *API) CreateZone(c *gin.Context) {
 		return
 	}
 	span.SetAttributes(attribute.String("id", newZone.ID.String()))
-	api.logger.Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
+	api.Logger(ctx).Debugf("New zone request [ %s ] and ipam [ %s ] request", newZone.Name, newZone.IpCidr)
 	c.JSON(http.StatusCreated, newZone)
 }
 
@@ -93,7 +93,7 @@ func (api *API) CreateDefaultZoneIfNotExists(parent context.Context) error {
 	var zone models.Zone
 	res := api.db.WithContext(ctx).Where("name = ?", defaultZoneName).First(&zone)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		api.logger.Debug("Creating Default Zone")
+		api.Logger(ctx).Debug("Creating Default Zone")
 		if err := api.ipam.AssignPrefix(ctx, defaultZonePrefix); err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (api *API) CreateDefaultZoneIfNotExists(parent context.Context) error {
 		zone.IpCidr = defaultZonePrefix
 		api.db.WithContext(ctx).Save(&zone)
 	}
-	api.logger.Debugf("Default Zone UUID is: %s", zone.ID)
+	api.Logger(ctx).Debugf("Default Zone UUID is: %s", zone.ID)
 	api.defaultZoneID = zone.ID
 	return nil
 }

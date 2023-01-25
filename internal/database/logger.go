@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/redhat-et/apex/internal/util"
 	"time"
 
 	"go.uber.org/zap"
@@ -39,19 +40,19 @@ func (z *zapLogger) LogMode(level logger.LogLevel) logger.Interface {
 
 func (z zapLogger) Info(ctx context.Context, msg string, args ...interface{}) {
 	if z.LogLevel >= logger.Info {
-		z.logger.Infof(msg, args...)
+		util.WithTrace(ctx, z.logger).Infof(msg, args...)
 	}
 }
 
 func (z zapLogger) Warn(ctx context.Context, msg string, args ...interface{}) {
 	if z.LogLevel >= logger.Warn {
-		z.logger.Warnf(msg, args...)
+		util.WithTrace(ctx, z.logger).Warnf(msg, args...)
 	}
 }
 
 func (z zapLogger) Error(ctx context.Context, msg string, args ...interface{}) {
 	if z.LogLevel >= logger.Warn {
-		z.logger.Errorf(msg, args...)
+		util.WithTrace(ctx, z.logger).Errorf(msg, args...)
 	}
 }
 
@@ -63,7 +64,7 @@ func (z zapLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql st
 	switch {
 	case err != nil && z.LogLevel >= logger.Error && (!errors.Is(err, gorm.ErrRecordNotFound) || !z.IgnoreRecordNotFoundError):
 		sql, rows := fc()
-		z.logger.With(
+		util.WithTrace(ctx, z.logger).With(
 			"line_number", utils.FileWithLineNum(),
 			"error", err.Error(),
 			"rows", rows,
@@ -72,7 +73,7 @@ func (z zapLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql st
 	case elapsed > z.SlowThreshold && z.SlowThreshold != 0 && z.LogLevel >= logger.Warn:
 		sql, rows := fc()
 		slowLog := fmt.Sprintf("SLOW SQL >= %v", z.SlowThreshold)
-		z.logger.With(
+		util.WithTrace(ctx, z.logger).With(
 			"line_number", utils.FileWithLineNum(),
 			"slow", slowLog,
 			"rows", rows,
@@ -80,7 +81,7 @@ func (z zapLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql st
 		).Warnf(sql)
 	case z.LogLevel == logger.Info:
 		sql, rows := fc()
-		z.logger.With(
+		util.WithTrace(ctx, z.logger).With(
 			"line_number", utils.FileWithLineNum(),
 			"rows", rows,
 			"elapsed", float64(elapsed.Nanoseconds())/1e6,

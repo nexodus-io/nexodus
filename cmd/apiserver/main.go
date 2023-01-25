@@ -260,6 +260,11 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func(context.Context) error {
 	if collector == "" {
 		logger.Info("No collector endpoint configured")
+		otel.SetTracerProvider(
+			sdktrace.NewTracerProvider(
+				sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			),
+		)
 		return nil
 	}
 	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
