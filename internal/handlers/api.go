@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/redhat-et/apex/internal/util"
 
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/fflags"
@@ -40,4 +41,8 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		return nil, err
 	}
 	return api, nil
+}
+
+func (api *API) Logger(ctx context.Context) *zap.SugaredLogger {
+	return util.WithTrace(ctx, api.logger)
 }
