@@ -192,8 +192,8 @@ jobs:
       - name: Build
         id: build-apex
         run: |
-          CGO_ENABLED=0 go build -o apex-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apex
-          echo "artifact-name=apex-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexd
+          echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Upload Artifact
@@ -267,7 +267,7 @@ jobs:
 
       - name: Build dist
         run: |
-          make dist/apex dist/apexctl
+          make dist/apexd dist/apexctl
 
       - name: Setup KIND
         run: |

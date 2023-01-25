@@ -34,9 +34,9 @@
   shell: |
     CAROOT=/home/{{ ansible_user }}/.certs mkcert -install
 
-- name: Kill any existing apex process from previous runs
+- name: Kill any existing apexd process from previous runs
   shell: |
-    sudo killall apex 2> /dev/null
+    sudo killall apexd 2> /dev/null
   ignore_errors: yes
 
 - name: Delete hosts file
@@ -106,6 +106,6 @@
 - name: Attach the Node Agent to the Controller
   become: yes
   shell: |
-    apex \
+    apexd \
     --with-token='{{ api_token.stdout }}' \
     {{ apex_url }} > apex-logs.txt 2>&1 &

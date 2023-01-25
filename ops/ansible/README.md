@@ -20,7 +20,7 @@ aws_secret_access_key = <aws_secret_access_key>
 - Start the controller on a node
 
 ```shell
-# from the apex root directory run:
+# from the apexd root directory run:
 docker-compose up
 ```
 
@@ -29,7 +29,7 @@ docker-compose up
 ```
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apex_binary: https://apex-net.s3.amazonaws.com/apex-amd64-linux
+apexd_binary: https://apex-net.s3.amazonaws.com/apexd-amd64-linux
 apex_zone_name: zone-hub
 apex_azone_prefix: 10.185.0.0/24
 
@@ -41,7 +41,7 @@ apex_oidc_url: https://auth.apex.local
 apex_api_url: https://api.apex.local
 apex_url: https://apex.local
 ```
-- Run the playbook (the apex binary is stored in an S3 bucket and pulled down by ansible)
+- Run the playbook (the apexd binary is stored in an S3 bucket and pulled down by ansible)
 
 ```shell
 # Install Ansible if not already installed
@@ -77,10 +77,10 @@ node 10.180.0.5 is up
 - This will redirect to a web page to enter the pass code provided from registration (also under daily development).
 
 ```
-sudo apex <CONTROLLER_URL>
+sudo apexd <CONTROLLER_URL>
 ```
 
-You can view the apex logs on each deployed image with `cat ~/apex-logs.txt`
+You can view the apexd logs on each deployed image with `cat ~/apex-logs.txt`
 
 To simply stop and start the Apex agents on the nodes you can run those plays with:
 
