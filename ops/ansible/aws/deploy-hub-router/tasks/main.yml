@@ -49,8 +49,8 @@
 
 - name: Download the Apex Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/apex
-    sudo chmod +x /usr/local/sbin/apex
+    sudo curl {{ apex_binary }} --output /usr/local/sbin/apexd
+    sudo chmod +x /usr/local/sbin/apexd
 
 - name: Copy the verifier script
   copy:
