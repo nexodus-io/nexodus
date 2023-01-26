@@ -65,8 +65,8 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 
-	token, err := getToken(ctx, "admin", "floofykittens")
-	require.NoError(err)
+	username := "admin"
+	password := "floofykittens"
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -83,8 +83,8 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	})
 
 	// start apex on the nodes
-	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
-	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node1, "--username", username, "--password", password)
+	go suite.runApex(ctx, node2, "--username", username, "--password", password)
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -115,8 +115,8 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	require.NoError(err)
 
 	// start apex on the nodes
-	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
-	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node1, "--username", username, "--password", password)
+	go suite.runApex(ctx, node2, "--username", username, "--password", password)
 
 	var newNode1IP string
 	err = backoff.Retry(
@@ -165,15 +165,15 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 // TestRequestIPDefaultZone tests requesting a specific address in the default zone
 func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 	assert := suite.Assert()
-	require := suite.Require()
 
 	node1IP := "10.200.0.101"
 	node2IP := "10.200.0.102"
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "admin", "floofykittens")
-	require.NoError(err)
+
+	username := "admin"
+	password := "floofykittens"
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -191,18 +191,18 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultZone() {
 
 	// start apex on the nodes
 	go suite.runApex(ctx, node1,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 	go suite.runApex(ctx, node2,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
 	gather := suite.gatherFail(ctx, node1, node2)
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err := ping(ctx, node1, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
@@ -217,10 +217,10 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh1", "floofykittens")
-	require.NoError(err)
+	username := "kitteh1"
+	password := "floofykittens"
 
-	c, err := newClient(ctx, token)
+	c, err := newClient(ctx, username, password)
 	require.NoError(err)
 	// create a new zone
 	zoneID, err := c.CreateZone("zone-blue", "zone full of blue things", "10.140.0.0/24", false)
@@ -249,12 +249,12 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 
 	// start apex on the nodes
 	go suite.runApex(ctx, node1,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 
 	go suite.runApex(ctx, node2,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -279,12 +279,12 @@ func (suite *ApexIntegrationSuite) TestRequestIPZone() {
 	// restart apex and ensure the nodes receive the same re-quested address
 	suite.logger.Info("Restarting Apex on two spoke nodes and re-joining")
 	go suite.runApex(ctx, node1,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 
 	go suite.runApex(ctx, node2,
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -307,10 +307,10 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh2", "floofykittens")
-	require.NoError(err)
+	username := "kitteh2"
+	password := "floofykittens"
 
-	c, err := newClient(ctx, token)
+	c, err := newClient(ctx, username, password)
 	require.NoError(err)
 
 	// create a new zone
@@ -343,14 +343,13 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 
 	// start apex on the nodes
 	go suite.runApex(ctx, node1,
-		"--hub-router",
-		fmt.Sprintf("--with-token=%s", token),
+		"--hub-router", "--username", username, "--password", password,
 	)
 
 	// Ensure the relay node has time to register before joining spokes since it is required for hub-zones
 	time.Sleep(time.Second * 10)
-	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
-	go suite.runApex(ctx, node3, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node2, "--username", username, "--password", password)
+	go suite.runApex(ctx, node3, "--username", username, "--password", password)
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -395,7 +394,7 @@ func (suite *ApexIntegrationSuite) TestHubZone() {
 		_, err = suite.containerExec(ctx, node2, []string{
 			"/bin/apexd",
 			fmt.Sprintf("--child-prefix=%s", hubZoneChildPrefix),
-			fmt.Sprintf("--with-token=%s", token),
+			"--username", username, "--password", password,
 			"http://apex.local",
 		})
 	}()
@@ -479,10 +478,10 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	token, err := getToken(ctx, "kitteh3", "floofykittens")
-	require.NoError(err)
+	username := "kitteh3"
+	password := "floofykittens"
 
-	c, err := newClient(ctx, token)
+	c, err := newClient(ctx, username, password)
 	require.NoError(err)
 
 	// create a new zone
@@ -515,12 +514,12 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 	// start apex on the nodes
 	go suite.runApex(ctx, node1,
 		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 
 	go suite.runApex(ctx, node2,
 		fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 
 	// add loopbacks to the containers that are contained in the node's child prefix
@@ -719,10 +718,11 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	err = ping(ctx, net2SpokeNode2, hostDNSName)
 	assert.NoError(err)
 
-	token, err := getToken(ctx, "kitteh4", "floofykittens")
+	username := "kitteh4"
+	password := "floofykittens"
 	require.NoError(err)
 
-	c, err := newClient(ctx, token)
+	c, err := newClient(ctx, username, password)
 	require.NoError(err)
 
 	// create a new zone
@@ -736,26 +736,26 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	// start apex on the nodes
 	go suite.runApex(ctx, relayNode,
 		"--hub-router",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 
 	// ensure the relay node has time to register before joining spokes since it is required for hub-zones
 	time.Sleep(time.Second * 10)
 	go suite.runApex(ctx, net1SpokeNode1,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 	go suite.runApex(ctx, net2SpokeNode1,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 	go suite.runApex(ctx, net1SpokeNode2,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 	go suite.runApex(ctx, net2SpokeNode2,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username, "--password", password,
 	)
 	time.Sleep(time.Second * 10)
 
@@ -819,11 +819,13 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	suite.logger.Info("Restarting apex on two spoke nodes and re-joining")
 	go suite.runApex(ctx, net1SpokeNode1,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username,
+		"--password", password,
 	)
 	go suite.runApex(ctx, net2SpokeNode1,
 		"--relay-only",
-		fmt.Sprintf("--with-token=%s", token),
+		"--username", username,
+		"--password", password,
 	)
 
 	suite.logger.Infof("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net1Spoke1Name)
@@ -856,11 +858,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	user := "kitteh5"
-	pass := "floofykittens"
-
-	token, err := getToken(ctx, user, pass)
-	require.NoError(err)
+	username := "kitteh5"
+	password := "floofykittens"
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -878,8 +877,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// validate apexctl user list returns a user
 	userOut, err := suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username, "--password", password,
 		"--output", "json",
 		"user", "list",
 	)
@@ -890,8 +888,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// create a new zone and parse the returned json for the zone id
 	zoneOut, err := suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"--output", "json",
 		"zone", "create",
 		"--name", "zone-apexctl",
@@ -905,16 +903,16 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// move the current user into the new zone
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"zone", "move-user",
 		"--zone-id", zone.ID.String(),
 	)
 	assert.NoErrorf(err, "apexctl zone move-user error: %v\n", err)
 
 	// start apex on the nodes
-	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token))
-	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token), "--child-prefix=100.22.100.0/24")
+	go suite.runApex(ctx, node1, "--username", username, "--password", password)
+	go suite.runApex(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -932,8 +930,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// validate list-all peers and register IDs and IPs
 	allPeers, err := suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"--output", "json-raw",
 		"peer", "list-all",
 	)
@@ -961,15 +959,15 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// delete both devices from apex
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"device", "delete",
 		"--device-id", node1DeviceID,
 	)
 	require.NoError(err)
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"device", "delete",
 		"--device-id", node2DeviceID,
 	)
@@ -984,8 +982,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	time.Sleep(time.Second * 10)
 	// re-join both nodes, flipping the child-prefix to node1 to ensure the child-prefix was released
-	go suite.runApex(ctx, node1, fmt.Sprintf("--with-token=%s", token), "--child-prefix=100.22.100.0/24")
-	go suite.runApex(ctx, node2, fmt.Sprintf("--with-token=%s", token))
+	go suite.runApex(ctx, node1, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
+	go suite.runApex(ctx, node2, "--username", username, "--password", password)
 
 	newNode1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -1012,8 +1010,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// validate list peers in a zone
 	peersInZone, err := suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"--output", "json-raw",
 		"peer", "list",
 		"--zone-id", zone.ID.String(),
@@ -1035,16 +1033,16 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	// constraints, then delete the zone, then recreate the zone to ensure the
 	// IPAM prefix was released. If it was not released the creation will fail.
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"device", "delete",
 		"--device-id", node1DeviceID,
 	)
 	require.NoError(err)
 
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"device", "delete",
 		"--device-id", node2DeviceID,
 	)
@@ -1052,8 +1050,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// delete the zone
 	zoneOut, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"--output", "json",
 		"zone", "delete",
 		"--zone-id", zone.ID.String(),
@@ -1063,8 +1061,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	// re-create the deleted zone, this will fail if the IPAM
 	// prefix was not released from the prior deletion
 	_, err = suite.runCommand(apexctl,
-		"--username", user,
-		"--password", pass,
+		"--username", username,
+		"--password", password,
 		"zone", "create",
 		"--name", "zone-apexctl",
 		"--cidr", "172.19.100.0/24",

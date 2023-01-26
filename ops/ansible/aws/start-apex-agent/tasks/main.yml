@@ -6,21 +6,10 @@
     sudo killall apexd 2> /dev/null
   ignore_errors: yes
 
-- name: Create a JWT
-  shell: |
-    curl -s -f -X POST \
-      {{ apex_oidc_url }}/realms/apex/protocol/openid-connect/token \
-      -H 'Content-Type: application/x-www-form-urlencoded' \
-      -d "username={{ apex_auth_uid }}" \
-      -d "password={{ apex_auth_password }}" \
-      -d "grant_type=password" \
-      -d "scope=openid profile email" \
-      -d "client_id={{ apex_oidc_client_id_cli }}"
-  register: api_token
-
 - name: Attach the Node Agent to the Controller
   become: yes
   shell: |
     apexd \
-    --with-token='{{ api_token.stdout }}' \
+    --username '{{ apex_auth_uid }}' \
+    --password '{{ apex_auth_password }}' \
     {{ apex_url }} > apex-logs.txt 2>&1 &

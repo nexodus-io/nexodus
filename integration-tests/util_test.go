@@ -6,7 +6,6 @@ package integration_tests
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -15,12 +14,10 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/coreos/go-oidc"
 	"github.com/docker/docker/api/types/network"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"golang.org/x/oauth2"
 )
 
 // CreateNode creates a container
@@ -50,8 +47,8 @@ func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, 
 	return ctr
 }
 
-func newClient(ctx context.Context, token string) (*client.Client, error) {
-	return client.NewClient(ctx, "http://api.apex.local", client.WithToken(token))
+func newClient(ctx context.Context, username, password string) (*client.Client, error) {
+	return client.NewClient(ctx, "http://api.apex.local", client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
@@ -128,43 +125,6 @@ func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container 
 	}
 
 	return string(output), err
-}
-
-func getToken(ctx context.Context, username, password string) (string, error) {
-	provider, err := oidc.NewProvider(ctx, "https://auth.apex.local/realms/apex")
-	if err != nil {
-		return "", err
-	}
-	config := oauth2.Config{
-		ClientID: "apex-cli",
-		//ClientSecret: "dhEN2dsqyUg5qmaDAdqi4CmH",
-		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "profile", "email"},
-	}
-
-	token, err := config.PasswordCredentialsToken(ctx, username, password)
-	if err != nil {
-		return "", err
-	}
-
-	data, err := json.Marshal(token)
-	if err != nil {
-		return "", err
-	}
-
-	var rawToken map[string]interface{}
-	if err := json.Unmarshal(data, &rawToken); err != nil {
-		return "", err
-	}
-
-	rawToken["id_token"] = token.Extra("id_token")
-
-	data, err = json.Marshal(rawToken)
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), err
 }
 
 // CreateNetwork creates a docker network

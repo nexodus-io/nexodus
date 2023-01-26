@@ -5,7 +5,6 @@ type options struct {
 	clientSecret string
 	username     string
 	password     string
-	token        string
 }
 
 func newOptions(opts ...Option) (*options, error) {
@@ -35,16 +34,6 @@ func WithPasswordGrant(
 func WithDeviceFlow() Option {
 	return func(o *options) error {
 		o.deviceFlow = true
-		return nil
-	}
-}
-
-func WithToken(
-	token string,
-) Option {
-	return func(o *options) error {
-		o.deviceFlow = false
-		o.token = token
 		return nil
 	}
 }
