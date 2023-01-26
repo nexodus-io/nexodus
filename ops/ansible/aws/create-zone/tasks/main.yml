@@ -66,8 +66,8 @@
 
 - name: Download the Apex Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/apex
-    sudo chmod +x /usr/local/sbin/apex
+    sudo curl {{ apex_binary }} --output /usr/local/sbin/apexd
+    sudo chmod +x /usr/local/sbin/apexd
 
 # Example Token Acquisition
 #  curl -s -f -X POST https://auth.apex.local/realms/apex/protocol/openid-connect/token \
