@@ -80,7 +80,8 @@ type wgLocalConfig struct {
 
 func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 	controller string,
-	withToken string,
+	username string,
+	password string,
 	wgListenPort int,
 	wireguardPubKey string,
 	wireguardPvtKey string,
@@ -105,10 +106,10 @@ func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 	controllerURL.Path = ""
 
 	var option client.Option
-	if withToken == "" {
+	if username == "" {
 		option = client.WithDeviceFlow()
 	} else {
-		option = client.WithToken(withToken)
+		option = client.WithPasswordGrant(username, password)
 	}
 
 	client, err := client.NewClient(ctx, controllerURL.String(), option)

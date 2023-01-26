@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -63,21 +62,14 @@ func NewClient(ctx context.Context, addr string, options ...Option) (*Client, er
 		if err != nil {
 			return nil, err
 		}
-	} else if c.options.token == "" {
+	} else if c.options.username != "" && c.options.password != "" {
 		token, err = config.PasswordCredentialsToken(ctx, c.options.username, c.options.password)
 		if err != nil {
 			return nil, err
 		}
 		rawIdToken = token.Extra("id_token")
 	} else {
-		if err = json.Unmarshal([]byte(c.options.token), &token); err != nil {
-			return nil, err
-		}
-		var tokenRaw map[string]interface{}
-		if err = json.Unmarshal([]byte(c.options.token), &tokenRaw); err != nil {
-			return nil, err
-		}
-		rawIdToken = tokenRaw["id_token"]
+		return nil, fmt.Errorf("no authentication method provided")
 	}
 	if rawIdToken == nil {
 		return nil, fmt.Errorf("no id_token in response")

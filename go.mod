@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/bufbuild/connect-go v1.4.1
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/gin-contrib/zap v0.1.0
@@ -46,6 +45,7 @@ require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/containerd/containerd v1.6.15 // indirect
+	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
