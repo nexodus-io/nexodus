@@ -47,9 +47,9 @@ func NewAPIRouter(
 	}
 	p.Use(r)
 
-	r.Use(ginzap.Ginzap(logger.Desugar(), time.RFC3339, true))
-	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
 	r.Use(otelgin.Middleware(name))
+	r.Use(ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true}))
+	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})

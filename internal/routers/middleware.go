@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"github.com/redhat-et/apex/internal/util"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,7 @@ type Claims struct {
 // Naive JWS Key validation
 func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
 	return func(c *gin.Context) {
+		logger := util.WithTrace(c.Request.Context(), logger)
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
