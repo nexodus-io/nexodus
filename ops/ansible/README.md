@@ -20,11 +20,11 @@ aws_secret_access_key = <aws_secret_access_key>
 - Start the controller on a node
 
 ```shell
-# from the apexd root directory run:
-docker-compose up
+# from the apex root directory run:
+make run-on-kind
 ```
 
-- Edit the Controller and Auth sections in `vars.yml` to add the address of the running compose stack and change the binary address if you want a modified binary. The auth values are hardcoded as auth is still under daily development for bulk node imports such as this. The S3 bucket will generally have the latest build as we develop.
+- Edit the Controller and Auth sections in `vars.yml` to add the address of the running Apex stack and change the binary address if you want a modified binary. The auth values are hardcoded as auth is still under daily development for bulk node imports such as this. The S3 bucket will generally have the latest build as we develop.
 
 ```
 ### Controller Section (values are there for example, replace with your environment) ###
@@ -41,6 +41,7 @@ apex_oidc_url: https://auth.apex.local
 apex_api_url: https://api.apex.local
 apex_url: https://apex.local
 ```
+
 - Run the playbook (the apexd binary is stored in an S3 bucket and pulled down by ansible)
 
 ```shell
@@ -76,7 +77,7 @@ node 10.180.0.5 is up
 - Add your own machine to the mesh, for example, a mac or linux dev machine by creating a toml file of any name with your host's details:
 - This will redirect to a web page to enter the pass code provided from registration (also under daily development).
 
-```
+```shell
 sudo apexd <CONTROLLER_URL>
 ```
 
@@ -94,6 +95,6 @@ ansible-playbook aws-apex-start.yml
 
 - Tear down the environment with:
 
-```
+```shell
 ansible-playbook terminate-instances.yml
 ```
