@@ -2,8 +2,22 @@
 help:
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+#
+# If you want to see the full commands, run:
+#   NOISY_BUILD=y make
+#
+ifeq ($(NOISY_BUILD),)
+    ECHO_PREFIX=@
+    CMD_PREFIX=@
+else
+    ECHO_PREFIX=@\#
+    CMD_PREFIX=
+endif
+
+##@ All
+
 .PHONY: all
-all: go-lint yaml-lint markdown-lint apexd
+all: go-lint yaml-lint markdown-lint apexd  ## Run linters and build apexd
 
 ##@ Binaries
 
@@ -19,28 +33,20 @@ APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 TAG=$(shell git rev-parse HEAD)
 
 dist:
-	mkdir -p $@
+	$(CMD_PREFIX) mkdir -p $@
 
 dist/apexd: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 go build -o $@ ./cmd/apexd
-
-dist/apexd-linux-arm: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o $@ ./cmd/apexd
-
-dist/apexd-linux-amd64: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/apexd
-
-dist/apexd-darwin-amd64: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/apexd
-
-dist/apexd-darwin-arm64: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $@ ./cmd/apexd
-
-dist/apexd-windows-amd64: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o $@ ./cmd/apexd
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
 
 dist/apexctl: $(APEXD_DEPS) | dist
-	CGO_ENABLED=0 go build -o $@ ./cmd/apexctl
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
+
+dist/apexd-%: $(APEXD_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
+		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
 
 .PHONY: clean
 clean: ## clean built binaries
@@ -55,7 +61,8 @@ go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
 		exit 1 ; \
 	fi
-	golangci-lint run ./...
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO LINT]"
+	$(CMD_PREFIX) golangci-lint run ./...
 
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files
@@ -64,11 +71,13 @@ yaml-lint: ## Lint the yaml files
 		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
 		exit 1 ; \
 	fi
-	yamllint -c .yamllint.yaml deploy --strict
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[YAML LINT]"
+	$(CMD_PREFIX) yamllint -c .yamllint.yaml deploy --strict
 
 .PHONY: markdown-lint
 markdown-lint: ## Lint markdown files
-	docker run -v $PWD:/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 "**/*.md" "#node_modules"	
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[MD LINT]"
+	$(CMD_PREFIX) docker run -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 "**/*.md" "#node_modules" > /dev/null
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
