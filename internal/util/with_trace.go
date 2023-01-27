@@ -9,7 +9,7 @@ import (
 func WithTrace(ctx context.Context, l *zap.SugaredLogger) *zap.SugaredLogger {
 	sc := trace.SpanFromContext(ctx).SpanContext()
 	if sc.HasTraceID() {
-		l = l.With(zap.String("trace-id", sc.TraceID().String()))
+		l = l.With(zap.String("traceID", sc.TraceID().String()))
 	}
 	return l
 }
