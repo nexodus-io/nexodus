@@ -24,7 +24,6 @@
 ./tests/*.key
 /*.key
 /apex-*.sh
-docker-compose.log
 !Containerfile.test
 *.test
 
