@@ -46,11 +46,15 @@ echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/ho
 
 #### Deploy using KIND
 
-You should first ensure that you have `kind` and `kubectl` installed.
+> **Note**
+> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [The Apex Agent](#the-apex-agent).
+
+You should first ensure that you have `kind`, `kubectl` and [`mkcert`](https://github.com/FiloSottile/mkcert) installed.
+
 If not, you can follow the instructions in the [KIND Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
 ```console
-./hack/kind/kind.sh up
+make run-on-kind
 ```
 
 This will install:
@@ -63,16 +67,15 @@ This will install:
 To bring the cluster down again:
 
 ```console
-./hack/kind/kind.sh down
+make teardown
 ```
 
 ### HTTPS
 
-You will need to extract the CA certificate and add it to your system trust store. `kind.sh` can do
-this for you, but you must first install [`mkcert`](https://github.com/FiloSottile/mkcert).
+The Makefile will install the https certs. You can view the cert in the Apex root where you ran the Makefiile.
 
 ```console
-./hack/kind/kind.sh cacert
+cat .certs/rootCA.pem
 ```
 
 In order to join a self-signed Apex controller from a remote node or view the Apex UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the apex.local domain for development.
