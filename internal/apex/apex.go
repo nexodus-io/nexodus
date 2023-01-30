@@ -265,7 +265,7 @@ func (ax *Apex) Run() error {
 		if err := ax.Reconcile(user.ZoneID, false); err != nil {
 			// TODO: Add smarter reconciliation logic
 			// to handle disconnects and/or timeouts etc...
-			return err
+			ax.logger.Error(err)
 		}
 	}
 	return nil

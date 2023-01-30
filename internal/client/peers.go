@@ -82,7 +82,7 @@ func (c *Client) GetZonePeers(zoneID uuid.UUID) ([]models.Peer, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, err
+		return nil, fmt.Errorf("http error code: %d", res.StatusCode)
 	}
 
 	var peerListing []models.Peer
