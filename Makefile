@@ -159,6 +159,11 @@ redeploy: load-images # Redploy apex after images changes
 	@kubectl rollout restart deploy/apiserver -n apex
 	@kubectl rollout restart deploy/frontend -n apex
 
+.PHONY: recreate-db
+recreate-db: recreate-db # Delete and bring up a new apex database
+	@kubectl delete -n apex deploy/apiserver postgrescluster/database deploy/ipam
+	@kubectl apply -k ./deploy/apex/overlays/dev
+
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
 	@mkdir -p $(CURDIR)/.certs
