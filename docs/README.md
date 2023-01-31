@@ -7,6 +7,9 @@
       - [Add required DNS entries](#add-required-dns-entries)
       - [Deploy using KIND](#deploy-using-kind)
     - [HTTPS](#https)
+  - [Deploying the Apexctl Utility](#deploying-the-apexctl-utility)
+    - [Install pre-built binary](#install-pre-built-binary)
+    - [Build from the source code](#build-from-the-source-code)
   - [The Apex Agent](#the-apex-agent)
     - [Installing the Agent](#installing-the-agent)
     - [Running the Agent for Interactive Enrollment](#running-the-agent-for-interactive-enrollment)
@@ -87,6 +90,29 @@ CAROOT=$(pwd)/.certs mkcert -install
 ```
 
 For windows, we recommend installing the root certificate via the [MMC snap-in](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/install-imported-certificates#import-the-certificate-into-the-local-computer-store).
+
+## Deploying the Apexctl Utility
+
+`apexctl` is a CLI utility that is used to interact with the Apex Api Server. It provides command line options to get existing configuration of the resources like Zone, Peer, User and Devices from the Api server. It also allows limited options to configure certain aspects of these resources. Please use `apexctl -h` to learn more about the available options.
+
+You can install `apexctl` using following two ways
+
+### Install pre-built binary
+
+You can directly fetch the binary from the Apex's AWS S3 bucket.
+
+```sh
+sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexctl-linux-amd64 --output /usr/local/sbin/apexctl
+sudo chmod a+x /usr/local/sbin/apexctl
+```
+
+### Build from the source code
+
+You can clone the Apex repo and build the binary using
+
+```sh
+make dist/apexctl
+```
 
 ## The Apex Agent
 
