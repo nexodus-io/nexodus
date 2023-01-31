@@ -168,6 +168,7 @@ func (api *API) CreatePeerInZone(c *gin.Context) {
 		peer.EndpointIP = request.EndpointIP
 		peer.SymmetricNat = request.SymmetricNat
 		peer.ChildPrefix = request.ChildPrefix
+		peer.HubRouter = request.HubRouter
 
 		if request.NodeAddress != peer.NodeAddress {
 			var ip string
