@@ -130,6 +130,7 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
 		case <-ticker.C:
+			requestTime := time.Now()
 			res, err := http.PostForm(tokenURL, v)
 			if err != nil {
 				// possible transient connection error, continue retrying
@@ -163,14 +164,30 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 					continue
 				}
 			}
-
+			// This will only give us AccessToken, RefreshToken and TokenType
 			if err := json.Unmarshal(body, &token); err != nil {
 				return nil, "", err
 			}
+			// We need the OIDC id_token from here, but also the expires_in to compute the expiry time
 			var tokenRaw map[string]interface{}
 			if err = json.Unmarshal(body, &tokenRaw); err != nil {
 				return nil, "", err
 			}
+
+			expiresRaw, ok := tokenRaw["expires_in"]
+			if !ok {
+				return nil, "", fmt.Errorf("expires_in is not contained in the access token")
+			}
+
+			expires, ok := expiresRaw.(float64)
+			if !ok {
+				return nil, "", fmt.Errorf("cannot cast expires_in to float64")
+			}
+
+			if expires == 0 {
+				return nil, "", fmt.Errorf("expires_in should not be 0")
+			}
+			token.Expiry = requestTime.Add(time.Duration(expires) * time.Second)
 			idToken := tokenRaw["id_token"]
 			return &token, idToken, nil
 		}
