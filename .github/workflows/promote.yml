@@ -1,5 +1,7 @@
 name: promote
 
+concurrency: prod-${{ github.ref_name }}
+
 on:
   workflow_call:
   workflow_dispatch:
