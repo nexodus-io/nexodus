@@ -189,18 +189,27 @@ jobs:
         run: |
           go test -v ./internal/apex/...
 
-      - name: Build
-        id: build-apex
+      - name: Build Apexd
+        id: build-apexd
         run: |
           CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexd
           echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Build Apexctl
+        id: build-apexctl
+        run: |
+          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexctl
+          echo "artifact-name=apexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: apex
-          path: ${{ steps.build-apex.outputs.artifact-name }}
+          path: |
+            ${{ steps.build-apexd.outputs.artifact-name }}
+            ${{ steps.build-apexctl.outputs.artifact-name }}
 
   e2e:
     needs: [lint, k8s-lint, build-images]
