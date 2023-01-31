@@ -91,7 +91,7 @@ CAROOT=$(pwd)/.certs mkcert -install
 
 For windows, we recommend installing the root certificate via the [MMC snap-in](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/install-imported-certificates#import-the-certificate-into-the-local-computer-store).
 
-## Deploying the Apexctl Utility
+## Using the Apexctl Utility
 
 `apexctl` is a CLI utility that is used to interact with the Apex Api Server. It provides command line options to get existing configuration of the resources like Zone, Peer, User and Devices from the Api server. It also allows limited options to configure certain aspects of these resources. Please use `apexctl -h` to learn more about the available options.
 
