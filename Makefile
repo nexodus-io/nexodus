@@ -63,11 +63,11 @@ gen-docs: ## Generate API docs
 
 
 .PHONY: e2e
-e2e: e2eprereqs dist/apexd dist/apexctl test-images # Run e2e tests
+e2e: e2eprereqs dist/apexd dist/apexctl test-images ## Run e2e tests
 	go test -v --tags=integration ./integration-tests/...
 
 .PHONY: test
-test: # Run unit tests
+test: ## Run unit tests
 	go test -v ./...
 
 ##@ Container Images
@@ -140,22 +140,22 @@ teardown: ## Teardown the kind cluster
 	@kind delete cluster --name apex-dev
 
 .PHONY: deploy
-deploy: # Deploy a development apex stack onto a kubernetes cluster
+deploy: ## Deploy a development apex stack onto a kubernetes cluster
 	@kubectl create namespace apex
 	@kubectl apply -k ./deploy/apex/overlays/dev
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: undeploy
-undeploy: # Remove the apex stack from a kubernetes cluster
+undeploy: ## Remove the apex stack from a kubernetes cluster
 	@kubectl delete namespace apex
 
 .PHONY: load-images
-load-images: images # Load images onto kind
+load-images: images ## Load images onto kind
 	@kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
 	@kind load --name apex-dev docker-image quay.io/apex/frontend:latest
 
 .PHONY: redeploy
-redeploy: load-images # Redploy apex after images changes
+redeploy: load-images ## Redploy apex after images changes
 	@kubectl rollout restart deploy/apiserver -n apex
 	@kubectl rollout restart deploy/frontend -n apex
 
@@ -166,4 +166,4 @@ cacerts: ## Install the Self-Signed CA Certificate
 	@CAROOT=$(CURDIR)/.certs mkcert -install
 
 .PHONY: run-on-kind
-run-on-kind: setup-kind deploy-operators load-images deploy cacerts # Setup a kind cluster and deploy apex on it
+run-on-kind: setup-kind deploy-operators load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
