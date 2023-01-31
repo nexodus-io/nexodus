@@ -29,7 +29,7 @@
     - [Move user to Relay Enabled Zone](#move-user-to-relay-enabled-zone)
     - [OnBoard the Relay node to the Relay Enabled Zone](#onboard-the-relay-node-to-the-relay-enabled-zone)
       - [Interactive OnBoarding](#interactive-onboarding)
-      - [Quite OnBoarding](#quite-onboarding)
+      - [Silent OnBoarding](#silent-onboarding)
     - [Delete Zone](#delete-zone)
   - [Additional Features](#additional-features)
     - [Subnet Routers](#subnet-routers)
@@ -98,7 +98,7 @@ cat .certs/rootCA.pem
 
 In order to join a self-signed Apex controller from a remote node or view the Apex UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the apex.local domain for development.
 
-Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following. 
+Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following.
 
 ```console
 CAROOT=$(pwd)/.certs mkcert -install
@@ -133,7 +133,7 @@ make dist/apexctl
 
 ### Deploying on Node
 
-Following sections contains general instructions to deploy Apex agent on any node. Minimum requirement is that the node is running Linux, Darwin and Windows based Operating systems.
+The following sections contain general instructions to deploy the Apex agent on any node. The minimum requirement is that the node runs Linux, Darwin, or Windows-based Operating systems.
 
 #### Installing the Agent
 
@@ -216,25 +216,24 @@ Since the wireguard agents are userspace in both Windows and Darwin, the tunnel 
 
 ### Deploying on Kubernetes managed Node
 
-Instructions mentioned in [Deploying on Node](#deploying-on-node) can be used here to deploy Apex agent on kubernetes managed nodes. However deploying the agent across all the nodes in a sizable Kubernetes cluster can be a challenging task, manually and even with scripting. Following section provides instructions to deploy Kubernetes style manifest to automate the deployment process.
+Instructions mentioned in [Deploying on Node](#deploying-on-node) can be used here to deploy the Apex agent on Kubernetes-managed nodes. However, deploying the agent across all the nodes in a sizable Kubernetes cluster can be a challenging task. The following section provides instructions to deploy Kubernetes style manifest to automate the deployment process.
 
 #### Setup the configuration
 
-Agent deployment in kubernetes requires few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through [kustomization.yaml](../deploy/apex-client/overlays/dev/kustomization.yaml).
+Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample `kustomization.yaml.sample`](../deploy/apex-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
 
-Fetch the CA cert from the Kubernetes/Openshift Cluster that is running Apex Controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
+Fetch the CA cert from the Kubernetes cluster that is running the Apex controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
 
 ```sh
 kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"'
 ```
 
-If you are not running your Apex service at the default DNS addresses set in the `kustomization.yaml` file, please update the `url` and `auth_url` accordingly. Update the username and password as well if your Apex Controller is configured with a different username and password.
+Update the `<APEX_CONTROLLER_IP>` with the IP address where the Apex controller is reachable. If you are running the Apex stack in Kind cluster on your local machine, set it to the public IP of the machine.
 
-Note: Current username and password are default configuration, which is very likely to change in near future.
+**Note**
+Current username and password are default configuration for development environment, which is very likely to change in near future.
 
-Please update the `<APEX_CONTROLLER_IP>` with the IP address where the Apex controller is reachable.
-
-Following is an example kustomization.yaml
+The Following is an example `kustomization.yaml`:
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -266,9 +265,11 @@ patchesStrategicMerge:
   - node_selector.yaml
 ```
 
+If you have setup your Apex stack with non-default configuration, please copy the [sample](./../deploy/apex-client/overlays/sample/) directory and update the sample file according to create a new overlay for your setup and deploy it.
+
 #### Deploying the Apex Agent Manifest
 
-Once the configuration is set up. You can deploy Apex's manifest files
+Once the configuration is set up, you can deploy Apex's manifest files.
 
 ```sh
 kubectl apply -k ./deploy/apex-client/overlays/dev
@@ -276,7 +277,8 @@ kubectl apply -k ./deploy/apex-client/overlays/dev
 
 It will deploy a DaemonSet in the newly created `Apex` namespace. DaemonSet deploys a Pod that runs a privileged container that does all the required configuration on the local node. It also starts the agent and onboard the device automatically using the non-interactive access token based onboarding.
 
-Note: If your Kubernetes cluster enforces security context to deny privileged container deployment, you need to make sure that the security policy is added to the service account `apex` (created for agent agent deployment) to allow the deployment.
+**Note**
+If your Kubernetes cluster enforces security context to deny privileged container deployment, you need to make sure that the security policy is added to the service account `apex` (created for agent agent deployment) to allow the deployment.
 
 #### Controlling the Agent Deployment
 
@@ -294,14 +296,18 @@ If you want to remove the deployment from that node, just remove the label.
 kubectl label nodes <NODE_NAME> app.kubernetes.io/apex-
 ```
 
-If you want to by default deploy Apex pod on all the worker nodes, you can comment out the following lines in the [node_selector.yaml](../deploy/apex-client/overlays/dev/node_selector.yaml) file.
+If you want to change the deployment strategy for Apex pod, please copy the [sample](./../deploy/apex-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](../deploy/apex-client/overlays/sameple/node_selector.yaml.sample) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
+
+Currently sample file provides two strategy to control the deployment, but feel free to change it based on your requirements.
+
+1 ) Deploy Apex pod on any node that is tagged with `app.kubernetes.io/apex=`
 
 ```yaml
   - key: app.kubernetes.io/apex
     operator: Exists
 ```
 
-If you want to deploy Apex pod on specific node/s and don't want to tag the nodes with `app.kubernetes.io/apex=` label, you can uncomment the following lines in `node_selector.yaml` and add the list of the nodes.
+2 ) Deploy Apex pod on specific node/s in the Kubernetes cluster. Uncomment the following lines in `node_selector.yaml.sample` and add the list of the nodes.
 
 ```yaml
 # Deploy apex client on  specific nodes
@@ -359,7 +365,8 @@ Use the following cli command to create the Relay enabled Apex Zone. You can log
    --description="Relay enabled zone"
 ```
 
-Currently the usernames are hardcoded in the Apex Controller. You can edit `name`, `cidr`, `description` parameters in the CLI commands as per your deployment.
+Currently for the Dev environment, the usernames and passwords are hardcoded in the Apex Controller.
+You can edit `name`, `cidr`, `description` parameters in the CLI commands as per your deployment.
 
 You can list the available zones using following command
 
@@ -375,7 +382,7 @@ You can see the two zones associated with the username `kitteh1`.
 
 ### Move user to Relay Enabled Zone
 
-By default an user account is associated with its default zone, that is not a relay enabled zone. So to onboard all the devices to the relay enabled zone, you need to associate that zone as a default zone of the user account.
+By default, a user account is associated with its default zone, that is not a relay enabled zone. So to onboard all the devices to the relay enabled zone, you need to associate that zone as a default zone of the user account.
 
 ```sh
 apexctl  --username=kitteh1 --password=floofykittens zone move-user --zone-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
@@ -393,7 +400,7 @@ Once the user account is associated with the newly created zone, any OnBoarded d
 sudo apex --hub-router --stun https://apex.local
 ```
 
-It will print an URL on stdout to onboard the relay node 
+It will print an URL on stdout to onboard the relay node
 
 ```
 #sudo apex --hub-router --stun https://apex.local
@@ -405,7 +412,7 @@ https://auth.apex.local/device?user_code=GTLN-RGKP
 
 Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting the access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
 
-#### Quite OnBoarding
+#### Silent OnBoarding
 
 To OnBoard devices without any browser involvement you need to provide username and password in the CLI command
 

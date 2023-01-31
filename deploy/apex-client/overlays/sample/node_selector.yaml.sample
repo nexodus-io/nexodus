@@ -17,3 +17,8 @@ spec:
                   # Deploy apex client on the nodes tagged with following label
                   - key: app.kubernetes.io/apex
                     operator: Exists
+                  # Deploy apex client on  specific nodes
+                  - key: kubernetes.io/hostname
+                   operator: In
+                   values:
+                   - worker-1
