@@ -32,3 +32,10 @@
 coredns.yaml
 .certs
 kubeconfigs/
+
+# kustomization yaml
+./deploy/apex-client/overlays/dev/kustomization.yaml
+./deploy/apex-client/overlays/dev/node_selector.yaml
+./deploy/apex-client/overlays/sample/kustomization.yaml
+./deploy/apex-client/overlays/sample/node_selector.yaml
+
