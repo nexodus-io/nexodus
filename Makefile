@@ -172,3 +172,15 @@ cacerts: ## Install the Self-Signed CA Certificate
 
 .PHONY: run-on-kind
 run-on-kind: setup-kind deploy-operators load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
+
+APEX_LOCAL_IP:=`getent hosts apex.local | awk '{ print $$1 }'`
+.PHONY: run-test-container
+run-test-container: e2eprereqs dist/apexd dist/apexctl test-images ## Run docker container that you can run apex in
+	docker run --rm -it --network bridge \
+		--cap-add SYS_MODULE \
+		--cap-add NET_ADMIN \
+		--cap-add NET_RAW \
+		--add-host apex.local:$(APEX_LOCAL_IP) \
+		--add-host api.apex.local:$(APEX_LOCAL_IP) \
+		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
+		--entrypoint /bin/bash quay.io/apex/test:ubuntu
