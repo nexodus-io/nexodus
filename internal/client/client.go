@@ -52,7 +52,7 @@ func NewClient(ctx context.Context, addr string, options ...Option) (*Client, er
 		ClientID:     resp.ClientID,
 		ClientSecret: c.options.clientSecret,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{"openid", "profile", "email"},
+		Scopes:       []string{"openid", "profile", "email", "offline_access"},
 	}
 
 	var token *oauth2.Token
