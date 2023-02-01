@@ -1,0 +1,54 @@
+name: Bug report
+description: Report an Issue to help and contribute to improve Project Apex
+title: "Brief bug summary"
+labels: ["needs-triaging", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sparing the time to report the issue.
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: Tell us what happened.
+      placeholder: A clear and concise description of what the issue is.
+    validations:
+      required: true
+  - type: textarea
+    id: to-reproduce
+    attributes:
+      label: How to Reproduce
+      description: Help me reproduce the issue.
+      placeholder: Steps to reproduce the Issue
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: what were you expecting.
+      placeholder: A clear and concise description of what were you expecting to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: deployment-environment
+    attributes:
+      label: Deployment Environment
+      description: Please provide information about your deployment setup
+      placeholder: |
+        How did you deploy the Apex controller stack?
+        Brief about the node/device topology that you are testing with?
+        Appreciate any other relevant information about the deployment environment.
+    validations:
+      required: false
+  - type: textarea
+    id: add-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information that can possibly help debug the issue.
+      placeholder: |
+        Any observation from your initial debugging?
+        Any suspicious log entry in Apex Controller of Agent logs?
+    validations:
+      required: false

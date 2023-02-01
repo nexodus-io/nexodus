@@ -1,0 +1,41 @@
+name: Enhancement Proposal
+description: Suggest an enhancement to improve Project Apex
+title: "Brief enhancement summary "
+labels: ["needs-triaging", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sparing the time to submit the enhancement proposal.
+  - type: textarea
+    id: why-enhancement
+    attributes:
+      label: Describe the Problem Statement
+      description: Please explain why this enhancement proposal is needed?
+      placeholder: Please provide a clear and concise description of the challenge/issue this enhancement will help resolve.
+    validations:
+      required: true
+  - type: textarea
+    id: enhancement-description
+    attributes:
+      label: Describe the Enhancement
+      description: Do you have any proposal on how to solve the problem statement you mentioned above?
+      placeholder: Please provide a clear and concise description of your proposal.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternate Solutions
+      description: did you explore any alternate solution for the above problem statement?
+      placeholder: Please provide a clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+  - type: textarea
+    id: add-context
+    attributes:
+      label: Additional context
+      description: Add any other context or information about the enhancement request here.
+    validations:
+      required: false
+
