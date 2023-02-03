@@ -81,7 +81,7 @@ func startLogin(hostname url.URL) (*agent.DeviceStartReponse, error) {
 func startDeviceFlow(deviceEndpoint string, clientID string) (*deviceFlowResponse, error) {
 	v := url.Values{}
 	v.Set("client_id", clientID)
-	v.Set("scope", "openid profile email")
+	v.Set("scope", "openid profile email offline_access")
 	res, err := http.PostForm(deviceEndpoint, v)
 	if err != nil {
 		return nil, err
