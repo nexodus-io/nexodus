@@ -234,37 +234,7 @@ Update the `<APEX_CONTROLLER_IP>` with the IP address where the Apex controller 
 **Note**
 Current username and password are default configuration for development environment, which is very likely to change in near future.
 
-The Following is an example `kustomization.yaml`:
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: apex
-bases:
-  - ../../base
-secretGenerator:
-- name: apex-client-secret
-  literals:
-  - cert=<APEX_CONTROLLER_CERT>
-  - url=https://apex.local
-  - auth_url=https://auth.apex.local/token
-  - username=kitteh1
-  - password=floofykittens
-commonLabels:
-  app.kubernetes.io/component: apex-client
-  app.kubernetes.io/instance: apex-client
-  app.kubernetes.io/name: apex-client
-patchesJson6902:
-  - target:
-      kind: DaemonSet
-      name: apex
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/hostAliases/0/ip
-        value: 54.65.23.108
-patchesStrategicMerge:
-  - node_selector.yaml
-```
+You can refer to [kustomization.yaml.sample](../deploy/apex-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
 
 If you have setup your Apex stack with non-default configuration, please copy the [sample](./../deploy/apex-client/overlays/sample/) directory and update the sample file according to create a new overlay for your setup and deploy it.
 
