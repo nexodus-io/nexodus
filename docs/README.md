@@ -19,6 +19,7 @@
       - [Cleanup Agent From Node](#cleanup-agent-from-node)
     - [Deploying on Kubernetes managed Node](#deploying-on-kubernetes-managed-node)
       - [Setup the configuration](#setup-the-configuration)
+      - [Deploying the Agent in the Kind Dev Environment](#deploying-the-agent-in-the-kind-dev-environment)
       - [Deploying the Apex Agent Manifest](#deploying-the-apex-agent-manifest)
       - [Controlling the Agent Deployment](#controlling-the-agent-deployment)
       - [Verify the deployment](#verify-the-deployment)
@@ -266,6 +267,18 @@ patchesStrategicMerge:
 ```
 
 If you have setup your Apex stack with non-default configuration, please copy the [sample](./../deploy/apex-client/overlays/sample/) directory and update the sample file according to create a new overlay for your setup and deploy it.
+
+#### Deploying the Agent in the Kind Dev Environment
+
+If you're using the kind-based development environment, you can deploy the agent to each node in that cluster using this command:
+
+```sh
+make deploy-apex-agent
+```
+
+Then you may skip down to the [Verify the deployment](#verify-the-deployment) section.
+
+Otherwise, if you are working with another cluster, continue to the next section.
 
 #### Deploying the Apex Agent Manifest
 
