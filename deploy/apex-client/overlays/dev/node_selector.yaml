@@ -15,5 +15,5 @@ spec:
                     values:
                       - linux
                   # Deploy apex client on the nodes tagged with following label
-                  - key: app.kubernetes.io/apex
-                    operator: Exists
+                  #- key: app.kubernetes.io/apex
+                  #  operator: Exists

@@ -189,3 +189,11 @@ run-test-container: e2eprereqs dist/apexd dist/apexctl test-images ## Run docker
 		--add-host api.apex.local:$(APEX_LOCAL_IP) \
 		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
 		--entrypoint /bin/bash quay.io/apex/test:ubuntu
+
+.PHONY: deploy-apex-agent ## Deply the apex agent in the kind cluster
+deploy-apex-agent: image-apex
+	@kind load --name apex-dev docker-image quay.io/apex/apex:latest
+	@cp deploy/apex-client/overlays/dev/kustomization.yaml.sample deploy/apex-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(APEX_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<APEX_CONTROLLER_CERT>/$(shell kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/apex-client/overlays/dev/kustomization.yaml
+	@kubectl apply -k ./deploy/apex-client/overlays/dev
