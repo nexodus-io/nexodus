@@ -57,6 +57,15 @@ go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
 	fi
 	golangci-lint run ./...
 
+.PHONY: yaml-lint
+yaml-lint: ## Lint the yaml files
+	@if ! which yamllint 2>&1 >/dev/null; then \
+		echo "Please install yamllint." ; \
+		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
+		exit 1 ; \
+	fi
+	yamllint -c .yamllint.yaml deploy --strict
+
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
 	swag init -g ./cmd/apiserver/main.go -o ./internal/docs
