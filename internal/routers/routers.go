@@ -57,6 +57,7 @@ func NewAPIRouter(
 
 	if insecureTLS {
 		transport := &http.Transport{
+			// #nosec
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		client := &http.Client{Transport: transport}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/redhat-et/apex/internal/database/migrations"
 	"gorm.io/gorm"
@@ -178,8 +179,11 @@ func main() {
 				}
 
 				server := &http.Server{
-					Addr:    "0.0.0.0:8080",
-					Handler: router,
+					Addr:              "0.0.0.0:8080",
+					Handler:           router,
+					ReadTimeout:       5 * time.Second,
+					ReadHeaderTimeout: 5 * time.Second,
+					WriteTimeout:      10 * time.Second,
 				}
 
 				go func() {
