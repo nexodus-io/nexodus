@@ -1,9 +1,8 @@
-
 # Ansible Deployment
 
 There are playbooks for AWS, GCP and Azure. We recommend starting with AWS/EC2 as it is generally the easier setup of the three. The EC2 deploy also has a role for a hub router hybrid mesh demo.
 
-### EC2 deploy
+## EC2 deploy
 
 To deploy the current state run the following which deploys nodes across two VPCs and enables full mesh connectivity between them (simulating two disparate data centers)
 
@@ -26,7 +25,7 @@ make run-on-kind
 
 - Edit the Controller and Auth sections in `vars.yml` to add the address of the running Apex stack and change the binary address if you want a modified binary. The auth values are hardcoded as auth is still under daily development for bulk node imports such as this. The S3 bucket will generally have the latest build as we develop.
 
-```
+```text
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
 apexd_binary: https://apex-net.s3.amazonaws.com/apexd-amd64-linux

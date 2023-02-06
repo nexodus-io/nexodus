@@ -66,7 +66,7 @@ echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/ho
 #### Deploy using KIND
 
 > **Note**
-> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [The Apex Agent](#the-apex-agent).
+> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [Deploying the Apex Agent](#deploying-the-apex-agent).
 
 You should first ensure that you have `kind`, `kubectl` and [`mkcert`](https://github.com/FiloSottile/mkcert) installed.
 
@@ -385,8 +385,8 @@ sudo apex --hub-router --stun https://apex.local
 
 It will print an URL on stdout to onboard the relay node
 
-```
-#sudo apex --hub-router --stun https://apex.local
+```sh
+$ sudo apex --hub-router --stun https://apex.local
 Your device must be registered with Apex.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:

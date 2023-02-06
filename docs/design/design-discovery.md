@@ -2,12 +2,11 @@
 
 Discovery is a key component of Apex. Enterprise workloads are spread across all manner of networks both managed and unmanaged. Even networks under the same administrative domain typically require manual intervention or approval to enable direct access between workloads. One of this project's goals is for endpoints to not require custom firewall rules or static NAT mappings to have continuous connectivity.
 
-
 - Apex and, in general, most Wireguard-based projects are leveraging a decade worth of discovery and connectivity mechanisms that evolved out of VOIP and media streaming needs.
 - The general standard protocol for NAT traversal and peer candidate discovery that we plan to follow is laid out in [RFC8445 Interactive Connectivity Establishment (ICE): A Protocol for Network Address Translator (NAT) Traversal](https://www.rfc-editor.org/rfc/rfc8445).
 - The goal is to create direct peering between nodes where possible and bounce connections through a relay node where direct connections are not possible. Apex should be able to set up direct peering in most cases, even when two endpoints are not ordinarily able to reach each other directly.
 
-```
+```text
                       To Internet
 
                           |
@@ -53,7 +52,7 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
 
 ### Nodes with a firewall and/or NAT device between them (currently supported)
 
-```
+```text
                                +---------+
              +--------+        |  Relay  |        +--------+
              | STUN   |        |  Server |        | STUN   |
