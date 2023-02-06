@@ -11,7 +11,7 @@ require (
 	github.com/go-gormigrate/gormigrate/v2 v2.0.2
 	github.com/google/uuid v1.3.0
 	github.com/metal-stack/go-ipam v1.11.4
-	github.com/pion/stun v0.3.5
+	github.com/pion/stun v0.4.0
 	github.com/redhat-et/go-oidc-agent v0.0.2-0.20221130160039-b98e1621e734
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
@@ -73,6 +73,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
+	github.com/pion/transport/v2 v2.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
