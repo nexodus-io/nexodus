@@ -127,7 +127,10 @@ func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 	}
 
 	if wgListenPort == 0 {
-		wgListenPort = getWgListenPort()
+		wgListenPort, err = getWgListenPort()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ax := &Apex{
