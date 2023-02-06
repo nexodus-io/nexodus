@@ -59,7 +59,7 @@ func (i *IPAM) AssignFromPool(parent context.Context, ipamPrefix string) (string
 		PrefixCidr: ipamPrefix,
 	}))
 	if err != nil {
-		return "", fmt.Errorf("failed to acquire an IPAM assigned address %v\n", err)
+		return "", fmt.Errorf("failed to acquire an IPAM assigned address %w\n", err)
 	}
 	return res.Msg.Ip.Ip, nil
 }
@@ -69,7 +69,7 @@ func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
 	defer span.End()
 	cidr, err := cleanCidr(cidr)
 	if err != nil {
-		return fmt.Errorf("invalid prefix requested: %v", err)
+		return fmt.Errorf("invalid prefix requested: %w", err)
 	}
 
 	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
@@ -94,7 +94,7 @@ func (i *IPAM) ReleaseToPool(ctx context.Context, address, cidr string) error {
 	}))
 
 	if err != nil {
-		return fmt.Errorf("failed to release IPAM address %v", err)
+		return fmt.Errorf("failed to release IPAM address %w", err)
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func (i *IPAM) ReleasePrefix(ctx context.Context, cidr string) error {
 	}))
 
 	if err != nil {
-		return fmt.Errorf("failed to release IPAM prefix %v", err)
+		return fmt.Errorf("failed to release IPAM prefix %w", err)
 	}
 	return nil
 }

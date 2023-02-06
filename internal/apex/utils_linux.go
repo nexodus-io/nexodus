@@ -14,12 +14,12 @@ import (
 func AddRoute(prefix, dev string) error {
 	link, err := netlink.LinkByName(dev)
 	if err != nil {
-		return fmt.Errorf("failed to lookup netlink device %s: %v", dev, err)
+		return fmt.Errorf("failed to lookup netlink device %s: %w", dev, err)
 	}
 
 	destNet, err := ParseIPNet(prefix)
 	if err != nil {
-		return fmt.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
+		return fmt.Errorf("failed to parse a valid network address from %s: %w", prefix, err)
 	}
 
 	return route(destNet, link)
@@ -38,7 +38,7 @@ func route(ipNet *net.IPNet, dev netlink.Link) error {
 func RouteExists(prefix string) (bool, error) {
 	destNet, err := ParseIPNet(prefix)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse a valid network address from %s: %v", prefix, err)
+		return false, fmt.Errorf("failed to parse a valid network address from %s: %w", prefix, err)
 	}
 
 	destRoute := &netlink.Route{Dst: destNet}
@@ -49,7 +49,7 @@ func RouteExists(prefix string) (bool, error) {
 
 	match, err := netlink.RouteListFiltered(family, destRoute, netlink.RT_FILTER_DST)
 	if err != nil {
-		return true, fmt.Errorf("error retrieving netlink routes: %v", err)
+		return true, fmt.Errorf("error retrieving netlink routes: %w", err)
 	}
 
 	if len(match) > 0 {
@@ -62,16 +62,16 @@ func RouteExists(prefix string) (bool, error) {
 func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	iface, _, err := getDefaultGatewayIface(logger, family)
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	ips, err := getNetworkInterfaceIPs(iface)
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	if len(ips) == 0 {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	return ips[0].IP, nil
@@ -81,12 +81,12 @@ func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error)
 func getNetworkInterfaceIPs(iface string) ([]*net.IPNet, error) {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lookup link %s: %v", iface, err)
+		return nil, fmt.Errorf("failed to lookup link %s: %w", iface, err)
 	}
 
 	addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list addresses for %q: %v", iface, err)
+		return nil, fmt.Errorf("failed to list addresses for %q: %w", iface, err)
 	}
 
 	var ips []*net.IPNet
@@ -108,7 +108,7 @@ func getDefaultGatewayIface(logger *zap.SugaredLogger, family int) (string, net.
 	filter := &netlink.Route{Dst: nil}
 	routes, err := netlink.RouteListFiltered(family, filter, netlink.RT_FILTER_DST)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to get routing table in node: %v", err)
+		return "", nil, fmt.Errorf("failed to get routing table in node: %w", err)
 	}
 	// use the first valid default gateway
 	for _, r := range routes {

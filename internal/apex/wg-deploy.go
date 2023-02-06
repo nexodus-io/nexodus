@@ -59,7 +59,7 @@ func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) er
 		if newPeer.ID != uuid.Nil {
 			device, err := ax.client.GetDevice(newPeer.DeviceID)
 			if err != nil {
-				return fmt.Errorf("unable to get device %s: %s", newPeer.DeviceID, err)
+				return fmt.Errorf("unable to get device %s: %w", newPeer.DeviceID, err)
 			}
 			// add routes for each peer candidate (unless the key matches the local nodes key)
 			for _, peer := range cfg.Peers {

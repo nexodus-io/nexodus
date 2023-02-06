@@ -45,7 +45,7 @@ func RunCommand(cmd ...string) (string, error) {
 	// #nosec -- G204: Subprocess launched with a potential tainted input or cmd arguments
 	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
+		return "", fmt.Errorf("failed to run %q: %w (%s)", strings.Join(cmd, " "), err, output)
 	}
 	return string(output), nil
 }
@@ -70,7 +70,7 @@ func ValidateIp(ip string) error {
 func ValidateCIDR(cidr string) error {
 	_, _, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return fmt.Errorf("%s is not a valid v4 or v6 IP prefix", err)
+		return fmt.Errorf("'%s' is not a valid v4 or v6 IP prefix: %w", cidr, err)
 	}
 	return nil
 }
@@ -129,7 +129,7 @@ func CreateDirectory(path string) error {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
-			return fmt.Errorf("failed to create the directory %s: %v", path, err)
+			return fmt.Errorf("failed to create the directory %s: %w", path, err)
 		}
 	}
 	return nil

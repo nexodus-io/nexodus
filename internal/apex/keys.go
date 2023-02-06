@@ -37,7 +37,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(darwinPublicKeyFile, darwinPrivateKeyFile); err != nil {
-			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair: %w", err)
 		}
 		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", darwinPublicKeyFile, darwinPrivateKeyFile)
 		return nil
@@ -53,7 +53,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(windowsPublicKeyFile, windowsPrivateKeyFile); err != nil {
-			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair: %w", err)
 		}
 		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", windowsPublicKeyFile, windowsPrivateKeyFile)
 		return nil
@@ -69,7 +69,7 @@ func (ax *Apex) handleKeys() error {
 		}
 		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
 		if err := ax.generateKeyPair(linuxPublicKeyFile, linuxPrivateKeyFile); err != nil {
-			return fmt.Errorf("Unable to locate or generate a key/pair %v", err)
+			return fmt.Errorf("Unable to locate or generate a key/pair: %w", err)
 		}
 		ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", linuxPublicKeyFile, linuxPrivateKeyFile)
 		return nil
@@ -82,14 +82,14 @@ func (ax *Apex) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 	cmd := exec.Command(wgBinary, "genkey")
 	privateKey, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("wg genkey error %s", err)
+		return fmt.Errorf("wg genkey error: %w", err)
 	}
 
 	cmd = exec.Command(wgBinary, "pubkey")
 	cmd.Stdin = bytes.NewReader(privateKey)
 	publicKey, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("wg pubkey error: %s", err)
+		return fmt.Errorf("wg pubkey error: %w", err)
 	}
 	ax.wireguardPubKey = strings.TrimSpace(string(publicKey))
 	ax.wireguardPvtKey = strings.TrimSpace(string(privateKey))
@@ -121,7 +121,7 @@ func readKeyFile(logger *zap.SugaredLogger, keyFile string) string {
 func readKeyFileToString(s string) (string, error) {
 	buf, err := os.ReadFile(s)
 	if err != nil {
-		return "", fmt.Errorf("unable to read file: %v\n", err)
+		return "", fmt.Errorf("unable to read file: %w", err)
 	}
 	rawStr := string(buf)
 	return strings.Replace(rawStr, "\n", "", -1), nil
