@@ -45,6 +45,10 @@
 - **Controller** - The Controller is the hosted service that handles authentication, authorization, management of zones, enrollment of nodes, and coordination among nodes to allow them to peer with other nodes.
 - **Agent** - The Agent runs on any node which wants to join an Apex Zone.
 
+## High Level Solution Description
+
+A high level summary of the overall solution is provided [here.](design/solution-architecture.md) 
+
 ## Deploying the Apex Controller
 
 ### Run on Kubernetes
