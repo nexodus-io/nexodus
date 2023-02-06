@@ -1,6 +1,7 @@
 package apex
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -9,7 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// getInterfaceByIP will looks ip an interface by the IP provided
+var interfaceErr = errors.New("interface setup error")
+
+// getInterfaceByIP looks up an interface by the IP provided
 func getInterfaceByIP(ip net.IP) (string, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -43,21 +46,25 @@ func setupDarwinIface(logger *zap.SugaredLogger, localAddress, dev string) error
 	_, err := RunCommand("wireguard-go", dev)
 	if err != nil {
 		logger.Errorf("failed to create the %s interface: %v\n", dev, err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	_, err = RunCommand("ifconfig", dev, "inet", localAddress, localAddress, "alias")
 	if err != nil {
 		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	_, err = RunCommand("ifconfig", dev, "up")
 	if err != nil {
 		logger.Errorf("failed to bring up the %s interface: %v\n", dev, err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	_, err = RunCommand("wg", "set", dev, "private-key", darwinPrivateKeyFile)
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	return nil
@@ -66,7 +73,7 @@ func setupDarwinIface(logger *zap.SugaredLogger, localAddress, dev string) error
 // setupLinuxInterface TODO replace with netlink calls
 // this is called if this is the first run or if the local node
 // address got assigned a new address by the controller
-func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
+func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) error {
 	// delete the wireguard ip link interface if it exists
 	if ifaceExists(logger, ax.tunnelIface) {
 		_, err := RunCommand("ip", "link", "del", ax.tunnelIface)
@@ -78,6 +85,7 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 	_, err := RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
 	if err != nil {
 		logger.Errorf("failed to create the ip link interface: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 	// start the wireguard listener on a well-known port if it is the hub-router as all
 	// nodes need to be able to reach this node for state distribution if hole punching.
@@ -85,12 +93,14 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
 			logger.Errorf("failed to start the wireguard listener: %v\n", err)
+			return fmt.Errorf("%w", interfaceErr)
 		}
 	} else {
 		// start the wireguard listener
 		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
 			logger.Errorf("failed to start the wireguard listener: %v\n", err)
+			return fmt.Errorf("%w", interfaceErr)
 		}
 	}
 	// give the wg interface an address
@@ -105,13 +115,17 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+			return fmt.Errorf("%w", interfaceErr)
 		}
 	}
 	// bring the wg0 interface up
 	_, err = RunCommand("ip", "link", "set", ax.tunnelIface, "up")
 	if err != nil {
 		logger.Errorf("failed to bring up the wg interface: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
+
+	return nil
 }
 
 func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev string) error {
