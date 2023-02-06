@@ -34,7 +34,7 @@ jobs:
           password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
       - name: Build and export apiserver
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -49,7 +49,7 @@ jobs:
 
       - name: Build and export frontend
         id: build-frontend
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -64,7 +64,7 @@ jobs:
       
       - name: Build and export apex
         id: build-apex
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64,linux/arm64, windows/amd64

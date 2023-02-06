@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
       - name: Build and export apiserver
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Containerfile.apiserver
@@ -132,7 +132,7 @@ jobs:
           name: apiserver
           path: /tmp/apiserver.tar
       - name: Build and export frontend
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Containerfile.frontend
@@ -287,7 +287,7 @@ jobs:
           make run-on-kind
 
       - name: Build ubuntu test image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Containerfile.test
