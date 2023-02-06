@@ -20,7 +20,10 @@ const (
 // different ports, then it is likely the node is behind a symmetric nat.
 func IsSymmetricNAT(logger *zap.SugaredLogger) (bool, error) {
 	// get a random port to source the request from since the wg port may be bound
-	srcPort := getWgListenPort()
+	srcPort, err := getWgListenPort()
+	if err != nil {
+		return false, fmt.Errorf("failed to queury the STUN server %s: %+v", stunServer1, err)
+	}
 	firstStun, err := StunRequest(logger, stunServer1, srcPort)
 	if err != nil {
 		return false, fmt.Errorf("failed to queury the STUN server %s", stunServer1)

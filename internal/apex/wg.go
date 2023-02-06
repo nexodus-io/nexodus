@@ -1,8 +1,9 @@
 package apex
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net"
 	"strconv"
 	"time"
@@ -163,9 +164,12 @@ func inPeerListing(peers []models.Peer, p models.Peer) bool {
 	return false
 }
 
-func getWgListenPort() int {
+func getWgListenPort() (int, error) {
 	min := 32768
 	max := 61000
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(max-min) + min
+	bInt, err := rand.Int(rand.Reader, big.NewInt(int64(max-min)))
+	if err != nil {
+		return 0, err
+	}
+	return int(bInt.Int64()) + min, nil
 }
