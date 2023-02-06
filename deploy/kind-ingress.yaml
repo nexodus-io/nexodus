@@ -456,7 +456,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: LD_PRELOAD
               value: /usr/local/lib/libmimalloc.so
-          image: registry.k8s.io/ingress-nginx/controller:v1.6.0@sha256:75d3b12eeb889aba3ae5c9505da5625fb9000a5bdec4d7dabe4c94d2d42fdcc4
+          image: registry.k8s.io/ingress-nginx/controller:v1.6.2@sha256:28109607594161ae703b8fc4d8c309b2267a2848885b9687f2080592ad790558
           imagePullPolicy: IfNotPresent
           lifecycle:
             preStop:
