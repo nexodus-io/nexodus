@@ -1,5 +1,4 @@
-Deployment
-==========
+# Deployment
 
 In order to follow our "Service First" guiding principle, we deploy Apex continuously as a service on [OperateFirst](https://operate-first.cloud) using GitOps.
 
@@ -9,6 +8,7 @@ Our project is deployed to Kubernetes using [kustomize](https://kustomize.io/).
 This enables Apex to be easily adapted for different deployment scenarios.
 
 The base apex manifests live in `./deploy/apex/base`, and we offer a number of overlays:
+
 - Local Development - `./deploy/apex/overlays/dev`
 - Operate First (QA) - `./deploy/apex/overlays/qa`
 - Operate First (Production) - `./deploy/apex/overlays/prod`
