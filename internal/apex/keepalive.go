@@ -86,7 +86,7 @@ func (p *dialer) ping(host string, i uint64, waitFor time.Duration) (string, err
 	netname := "ip4:icmp"
 	c, err := p.dial(netname, host)
 	if err != nil {
-		return "", fmt.Errorf("net.Dial(%v %v) failed: %v", netname, host, err)
+		return "", fmt.Errorf("net.Dial(%v %v) failed: %w", netname, host, err)
 	}
 	defer c.Close()
 	// send echo request
@@ -101,7 +101,7 @@ func (p *dialer) ping(host string, i uint64, waitFor time.Duration) (string, err
 	binary.BigEndian.PutUint16(msg[4:], uint16(i>>16))
 	binary.BigEndian.PutUint16(msg[2:], cksum(msg))
 	if _, err := c.Write(msg[:]); err != nil {
-		return "", fmt.Errorf("write failed: %v", err)
+		return "", fmt.Errorf("write failed: %w", err)
 	}
 	// get echo reply
 	if err = c.SetDeadline(time.Now().Add(waitFor)); err != nil {
@@ -111,7 +111,7 @@ func (p *dialer) ping(host string, i uint64, waitFor time.Duration) (string, err
 	before := time.Now()
 	amt, err := c.Read(rmsg[:])
 	if err != nil {
-		return "", fmt.Errorf("read failed: %v", err)
+		return "", fmt.Errorf("read failed: %w", err)
 	}
 	latency := time.Since(before)
 
@@ -141,7 +141,7 @@ func ping(host string) error {
 	for i := uint64(0); i <= iterations; i++ {
 		_, err := p.ping(host, i+1, waitFor)
 		if err != nil {
-			return fmt.Errorf("ping failed: %v", err)
+			return fmt.Errorf("ping failed: %w", err)
 		}
 		// TODO: this is probably irrelevant on one iteration
 		time.Sleep(time.Millisecond * interval)

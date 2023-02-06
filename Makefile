@@ -55,7 +55,7 @@ go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
 		exit 1 ; \
 	fi
-	golangci-lint run --enable gosec ./...
+	golangci-lint run --enable gosec,errorlint ./...
 
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files

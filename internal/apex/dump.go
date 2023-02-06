@@ -2,6 +2,7 @@ package apex
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -24,7 +25,7 @@ type WgSessions struct {
 func ShowDump(iface string) (string, error) {
 	dumpOut, err := RunCommand("wg", "show", iface, "dump")
 	if err != nil {
-		return "", fmt.Errorf("failed to dump wireguard peers %v", err)
+		return "", fmt.Errorf("failed to dump wireguard peers: %w", err)
 	}
 
 	return dumpOut, nil
@@ -34,17 +35,17 @@ func ShowDump(iface string) (string, error) {
 func DumpPeers(iface string) ([]WgSessions, error) {
 	result, err := ShowDump(iface)
 	if err != nil {
-		return nil, fmt.Errorf("error running wg show %s dump :%v", iface, err)
+		return nil, fmt.Errorf("error running wg show %s dump: %w", iface, err)
 	}
 	r := bufio.NewReader(strings.NewReader(result))
 	peers := make([]WgSessions, 0)
 	for {
 		line, _, err := r.ReadLine()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, fmt.Errorf("failed to read wg dump: %v", err)
+			return nil, fmt.Errorf("failed to read wg dump: %w", err)
 		}
 		column := strings.Split(string(line), "	")
 		if len(column) != 8 {
@@ -56,7 +57,7 @@ func DumpPeers(iface string) ([]WgSessions, error) {
 		allowedIPs := strings.Split(column[3], ",")
 		latestHandshake, err := strconv.Atoi(column[4])
 		if err != nil {
-			return nil, fmt.Errorf("latest handshake parse failed: %v", err)
+			return nil, fmt.Errorf("latest handshake parse failed: %w", err)
 		}
 		latestHandshakeTime := time.Duration(0)
 		if latestHandshake != 0 {
@@ -64,11 +65,11 @@ func DumpPeers(iface string) ([]WgSessions, error) {
 		}
 		tx, err := strconv.Atoi(column[5])
 		if err != nil {
-			return nil, fmt.Errorf("transfer received parse failed: %v", err)
+			return nil, fmt.Errorf("transfer received parse failed: %w", err)
 		}
 		tr, err := strconv.Atoi(column[6])
 		if err != nil {
-			return nil, fmt.Errorf("transfer sent parse failed: %v", err)
+			return nil, fmt.Errorf("transfer sent parse failed: %w", err)
 		}
 		peers = append(peers, WgSessions{
 			PublicKey:       publicKey,

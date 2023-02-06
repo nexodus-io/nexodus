@@ -110,7 +110,7 @@ func (ax *Apex) handlePeerDelete(peerListing []models.Peer) error {
 		}
 		ax.logger.Debugf("Deleting peer with key: %s\n", ax.keyCache[p.DeviceID])
 		if err := ax.deletePeer(ax.keyCache[p.DeviceID], ax.tunnelIface); err != nil {
-			return fmt.Errorf("failed to delete peer: %v", err)
+			return fmt.Errorf("failed to delete peer: %w", err)
 		}
 		// delete the peer route(s)
 		ax.handlePeerRouteDelete(ax.tunnelIface, p)
@@ -132,7 +132,7 @@ func (ax *Apex) deletePeer(publicKey, dev string) error {
 
 	key, err := wgtypes.ParseKey(publicKey)
 	if err != nil {
-		return fmt.Errorf("failed to parse public key %s %v", publicKey, err)
+		return fmt.Errorf("failed to parse public key %s: %w", publicKey, err)
 	}
 
 	cfg := []wgtypes.PeerConfig{
@@ -148,7 +148,7 @@ func (ax *Apex) deletePeer(publicKey, dev string) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to remove peer with key %s %v", key, err)
+		return fmt.Errorf("failed to remove peer with key %s: %w", key, err)
 	}
 
 	ax.logger.Infof("Removed peer with key %s", key)

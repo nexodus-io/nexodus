@@ -116,7 +116,7 @@ func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) {
 
 func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev string) error {
 	if err := buildWindowsWireguardIfaceConf(privateKey, localAddress); err != nil {
-		return fmt.Errorf("failed to create the windows wireguard wg0 interface file %v", err)
+		return fmt.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
 	}
 
 	var wgOut string
@@ -124,7 +124,7 @@ func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev 
 	if ifaceExists(logger, dev) {
 		wgOut, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", dev)
 		if err != nil {
-			logger.Debugf("failed to down the wireguard interface (this is generally ok): %v\n", err)
+			logger.Debugf("failed to down the wireguard interface (this is generally ok): %w", err)
 		}
 		if ifaceExists(logger, dev) {
 			logger.Debugf("existing windows iface %s has not been torn down yet, pausing for 1 second", dev)
@@ -135,7 +135,7 @@ func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev 
 	// sleep for one second to give the wg async exe time to tear down any existing wg0 configuration
 	wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
 	if err != nil {
-		return fmt.Errorf("failed to start the wireguard interface: %v\n", err)
+		return fmt.Errorf("failed to start the wireguard interface: %w", err)
 	}
 	logger.Debugf("started windows tunnel svc: %v\n", wgOut)
 	// ensure the link is created before adding peers
@@ -145,7 +145,7 @@ func setupWindowsIface(logger *zap.SugaredLogger, localAddress, privateKey, dev 
 	}
 	// fatal out if the interface is not created
 	if !ifaceExists(logger, dev) {
-		return fmt.Errorf("failed to create the windows wireguard interface: %v\n", err)
+		return fmt.Errorf("failed to create the windows wireguard interface: %w", err)
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func getIPv4Iface(ifname string) net.IP {
 func enableForwardingIPv4(logger *zap.SugaredLogger) error {
 	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
 	if err != nil {
-		return fmt.Errorf("failed to enable IP Forwarding for this hub-router: %v\n", err)
+		return fmt.Errorf("failed to enable IP Forwarding for this hub-router: %w", err)
 	}
 	logger.Debugf("%v", cmdOut)
 	return nil
