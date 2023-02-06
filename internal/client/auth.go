@@ -82,6 +82,7 @@ func startDeviceFlow(deviceEndpoint string, clientID string) (*deviceFlowRespons
 	v := url.Values{}
 	v.Set("client_id", clientID)
 	v.Set("scope", "openid profile email offline_access")
+	// #nosec -- G107: Potential HTTP request made with variable url (gosec)
 	res, err := http.PostForm(deviceEndpoint, v)
 	if err != nil {
 		return nil, err
@@ -131,6 +132,7 @@ func pollForResponse(ctx context.Context, clientID string, tokenURL string, t *d
 			return nil, nil, ctx.Err()
 		case <-ticker.C:
 			requestTime := time.Now()
+			// #nosec -- G107: Potential HTTP request made with variable url (gosec)
 			res, err := http.PostForm(tokenURL, v)
 			if err != nil {
 				// possible transient connection error, continue retrying

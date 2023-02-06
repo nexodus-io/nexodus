@@ -42,6 +42,7 @@ func GetOS() (operatingSystem string) {
 
 // RunCommand runs the cmd and returns the combined stdout and stderr
 func RunCommand(cmd ...string) (string, error) {
+	// #nosec -- G204: Subprocess launched with a potential tainted input or cmd arguments
 	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
