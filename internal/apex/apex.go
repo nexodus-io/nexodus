@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/redhat-et/apex/internal/util"
 	"net"
 	"net/url"
 	"os"
 	"reflect"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,7 +171,7 @@ func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 	return ax, nil
 }
 
-func (ax *Apex) Run() error {
+func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
 
 	if err := ax.handleKeys(); err != nil {
@@ -241,37 +243,37 @@ func (ax *Apex) Run() error {
 		return err
 	}
 
-	// send keepalives to all peers on a ticker
+	// send keepalives to all peers periodically
 	if !ax.hubRouter {
-		go func() {
-			keepAliveTicker := time.NewTicker(time.Second * 10)
-			for range keepAliveTicker.C {
+		util.GoWithWaitGroup(wg, func() {
+			util.RunPeriodically(ctx, time.Second*10, func() {
 				ax.Keepalive()
-			}
-		}()
+			})
+		})
 	}
 
-	// gather wireguard state from the relay node on a ticker
+	// gather wireguard state from the relay node periodically
 	if ax.hubRouter {
-		go func() {
-			relayStateTicker := time.NewTicker(time.Second * 30)
-			for range relayStateTicker.C {
+		util.GoWithWaitGroup(wg, func() {
+			util.RunPeriodically(ctx, time.Second*30, func() {
 				ax.logger.Debugf("Reconciling peers from relay state")
 				if err := ax.relayStateReconcile(user.ZoneID); err != nil {
 					ax.logger.Error(err)
 				}
-			}
-		}()
+			})
+		})
 	}
 
-	ticker := time.NewTicker(pollInterval)
-	for range ticker.C {
-		if err := ax.Reconcile(user.ZoneID, false); err != nil {
-			// TODO: Add smarter reconciliation logic
-			// to handle disconnects and/or timeouts etc...
-			ax.logger.Errorf("Failed to reconcile state with the apex API server: ", err)
-		}
-	}
+	util.GoWithWaitGroup(wg, func() {
+		util.RunPeriodically(ctx, pollInterval, func() {
+			if err := ax.Reconcile(user.ZoneID, false); err != nil {
+				// TODO: Add smarter reconciliation logic
+				// to handle disconnects and/or timeouts etc...
+				ax.logger.Errorf("Failed to reconcile state with the apex API server: ", err)
+			}
+		})
+	})
+
 	return nil
 }
 
@@ -404,10 +406,6 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 			}
 		}
 	}
-	return nil
-}
-
-func (ax *Apex) Shutdown(ctx context.Context) error {
 	return nil
 }
 

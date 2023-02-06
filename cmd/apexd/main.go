@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/redhat-et/apex/internal/apex"
-	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
@@ -124,8 +125,11 @@ func main() {
 				log.Fatal("<controller-url> required")
 			}
 
+			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+
 			apex, err := apex.NewApex(
-				context.Background(), logger.Sugar(),
+				ctx,
+				logger.Sugar(),
 				controller,
 				cCtx.String("username"),
 				cCtx.String("password"),
@@ -143,17 +147,12 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if err := apex.Run(); err != nil {
+			wg := &sync.WaitGroup{}
+			if err := apex.Start(ctx, wg); err != nil {
 				log.Fatal(err)
 			}
+			wg.Wait()
 
-			ch := make(chan os.Signal, 1)
-			signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-			<-ch
-
-			if err := apex.Shutdown(context.Background()); err != nil {
-				log.Fatal(err)
-			}
 			return nil
 		},
 	}
