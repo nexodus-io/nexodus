@@ -80,102 +80,95 @@ func (ax *Apex) buildPeersConfig() {
 		}
 
 		pubkey := ax.keyCache[value.DeviceID]
+		if pubkey == ax.wireguardPubKey {
+			// we found ourself in the peer list
+			continue
+		}
+
 		var peerHub wgPeerConfig
 		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.hubRouter && value.HubRouter {
-			if pubkey != ax.wireguardPubKey {
-				if value.ChildPrefix != "" {
-					ax.addChildPrefixRoute(value.ChildPrefix)
-					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
-				}
-				ax.hubRouterWgIP = hubRouterIP
-				peerHub = wgPeerConfig{
-					pubkey,
-					value.EndpointIP,
-					hubRouterAllowedIP,
-					persistentKeepalive,
-				}
-				peers = append(peers, peerHub)
+			if value.ChildPrefix != "" {
+				ax.addChildPrefixRoute(value.ChildPrefix)
+				value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 			}
+			ax.hubRouterWgIP = hubRouterIP
+			peerHub = wgPeerConfig{
+				pubkey,
+				value.EndpointIP,
+				hubRouterAllowedIP,
+				persistentKeepalive,
+			}
+			peers = append(peers, peerHub)
 		}
+
 		// Build the wg config for all peers if this node is the zone's hub-router.
 		if ax.hubRouter {
 			// Config if the node is a relay
-			if pubkey != ax.wireguardPubKey {
-				if value.ChildPrefix != "" {
-					ax.addChildPrefixRoute(value.ChildPrefix)
-					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
-				}
-				peer := wgPeerConfig{
-					pubkey,
-					value.EndpointIP,
-					value.AllowedIPs,
-					persistentHubKeepalive,
-				}
-				peers = append(peers, peer)
-				log.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-					value.AllowedIPs,
-					value.EndpointIP,
-					pubkey,
-					value.NodeAddress,
-					value.ZoneID)
+			if value.ChildPrefix != "" {
+				ax.addChildPrefixRoute(value.ChildPrefix)
+				value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 			}
+			peer := wgPeerConfig{
+				pubkey,
+				value.EndpointIP,
+				value.AllowedIPs,
+				persistentHubKeepalive,
+			}
+			peers = append(peers, peer)
+			log.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+				value.AllowedIPs,
+				value.EndpointIP,
+				pubkey,
+				value.NodeAddress,
+				value.ZoneID)
 		}
+
 		// if both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
-			if pubkey != ax.wireguardPubKey {
-				directLocalPeerEndpointSocket := fmt.Sprintf("%s:%s", value.EndpointLocalAddressIPv4, peerPort)
-				ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
-				// the symmetric NAT peer
-				if value.ChildPrefix != "" {
-					ax.addChildPrefixRoute(value.ChildPrefix)
-					value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
-				}
-				peer := wgPeerConfig{
-					pubkey,
-					directLocalPeerEndpointSocket,
-					value.AllowedIPs,
-					persistentKeepalive,
-				}
-				peers = append(peers, peer)
-				log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-					value.AllowedIPs,
-					directLocalPeerEndpointSocket,
-					pubkey,
-					value.NodeAddress,
-					value.ZoneID)
+			directLocalPeerEndpointSocket := fmt.Sprintf("%s:%s", value.EndpointLocalAddressIPv4, peerPort)
+			ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
+			// the symmetric NAT peer
+			if value.ChildPrefix != "" {
+				ax.addChildPrefixRoute(value.ChildPrefix)
+				value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 			}
-		} else {
+			peer := wgPeerConfig{
+				pubkey,
+				directLocalPeerEndpointSocket,
+				value.AllowedIPs,
+				persistentKeepalive,
+			}
+			peers = append(peers, peer)
+			log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+				value.AllowedIPs,
+				directLocalPeerEndpointSocket,
+				pubkey,
+				value.NodeAddress,
+				value.ZoneID)
+		} else if !ax.symmetricNat && !value.SymmetricNat && !value.HubRouter {
 			// the bulk of the peers will be added here except for local address peers. Endpoint sockets added here are likely
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
-			if pubkey != ax.wireguardPubKey {
-				// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
-				// symmetric nat node, do not add peers as it will relay and not mesh
-				if !ax.symmetricNat {
-					if !value.SymmetricNat {
-						if !value.HubRouter {
-							if value.ChildPrefix != "" {
-								ax.addChildPrefixRoute(value.ChildPrefix)
-								value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
-							}
-							peer := wgPeerConfig{
-								pubkey,
-								value.EndpointIP,
-								value.AllowedIPs,
-								persistentKeepalive,
-							}
-							peers = append(peers, peer)
-							log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
-								value.AllowedIPs,
-								value.EndpointIP,
-								pubkey,
-								value.NodeAddress,
-								value.ZoneID)
-						}
-					}
-				}
+			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
+			// symmetric nat node, do not add peers as it will relay and not mesh
+			if value.ChildPrefix != "" {
+				ax.addChildPrefixRoute(value.ChildPrefix)
+				value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix)
 			}
+			peer := wgPeerConfig{
+				pubkey,
+				value.EndpointIP,
+				value.AllowedIPs,
+				persistentKeepalive,
+			}
+			peers = append(peers, peer)
+			log.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] NodeAddress [ %s ] Zone [ %s ]\n",
+				value.AllowedIPs,
+				value.EndpointIP,
+				pubkey,
+				value.NodeAddress,
+				value.ZoneID)
 		}
 	}
 	ax.wgConfig.Peers = peers
