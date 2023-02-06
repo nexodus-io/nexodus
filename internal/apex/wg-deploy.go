@@ -23,14 +23,16 @@ func (ax *Apex) DeployWireguardConfig(newPeers []models.Peer, firstTime bool) er
 	case Linux.String():
 		// re-initialize the wireguard interface if it does not match it's assigned node address
 		if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
-			ax.setupLinuxInterface(ax.logger)
+			if err := ax.setupLinuxInterface(ax.logger); err != nil {
+				return err
+			}
 		}
 
 	case Darwin.String():
 		// re-initialize the wireguard interface if it does not match it's assigned node address
 		if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
 			if err := setupDarwinIface(ax.logger, ax.wgLocalAddress, ax.tunnelIface); err != nil {
-				ax.logger.Errorf("%v", err)
+				return err
 			}
 		}
 

@@ -2,6 +2,7 @@ package apex
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -317,6 +318,9 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 		}
 		ax.buildPeersConfig()
 		if err := ax.DeployWireguardConfig(newPeers, firstTime); err != nil {
+			if errors.Is(err, interfaceErr) {
+				log.Fatal(err)
+			}
 			return err
 		}
 	}
