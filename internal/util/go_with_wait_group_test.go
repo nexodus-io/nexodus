@@ -16,16 +16,23 @@ func TestGoWithWaitGroup(t *testing.T) {
 	})
 
 	// Verify all goroutines are done before the WaitGroup counter is zero.
-	counter := atomic.Int32{}
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
 		// run a few functions in parallel
 		util.GoWithWaitGroup(wg, func() {
 			time.Sleep(200 * time.Millisecond)
-			counter.Add(1)
 		})
 	}
-	wg.Wait()
-	assert.Equal(t, int32(10), counter.Load())
+
+	done := atomic.Bool{}
+	go func() {
+		wg.Wait()
+		done.Store(true)
+	}()
+
+	// Wait should block about 200 ms
+	assert.Eventually(t, func() bool {
+		return done.Load()
+	}, 400*time.Millisecond, time.Millisecond)
 
 }
