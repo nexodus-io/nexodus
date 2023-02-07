@@ -34,6 +34,7 @@ RUN apt-get update -qy && \
     iproute2 \
     wireguard-tools \
     iptables \
+    net-tools \
     traceroute \
     tcpdump \
     conntrack \
@@ -44,4 +45,10 @@ COPY ./dist/apexd /bin/apexd
 COPY ./dist/apexctl /bin/apexctl
 COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 RUN /usr/sbin/update-ca-certificates
+RUN echo "echo '\n\
+To connect this container to the apex network, try running:\n\
+\n\
+   /bin/apexd --username admin --password floofykittens https://apex.local\n\
+'" >> /root/.bashrc
+
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
