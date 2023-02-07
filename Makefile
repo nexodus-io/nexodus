@@ -78,9 +78,9 @@ e2e: e2eprereqs dist/apexd dist/apexctl test-images ## Run e2e tests
 test: ## Run unit tests
 	go test -v ./...
 
-APEX_LOCAL_IP:=`getent hosts apex.local | awk '{ print $$1 }'`
+APEX_LOCAL_IP:=`go run ./hack/resolve-ip apex.local`
 .PHONY: run-test-container
-run-test-container: e2eprereqs dist/apexd dist/apexctl test-images ## Run docker container that you can run apex in
+run-test-container: dist/apexd dist/apexctl test-images ## Run docker container that you can run apex in
 	docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
@@ -103,14 +103,12 @@ e2eprereqs:
 	@if [ -z "$(shell which kind)" ]; then \
 		echo "Please install kind and then start the kind dev environment." ; \
 		echo "https://kind.sigs.k8s.io/" ; \
-		echo "  $$ hack/kind/kind.sh up" ; \
-		echo "  $$ hack/kind/kind.sh cacert" ; \
+		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
 	fi
 	@if [ -z "$(findstring apex-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
-		echo "  $$ hack/kind/kind.sh up" ; \
-		echo "  $$ hack/kind/kind.sh cacert" ; \
+		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
 	fi
 
