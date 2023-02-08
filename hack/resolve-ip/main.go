@@ -15,7 +15,7 @@ func main() {
 	host := os.Args[1]
 	addrs, err := net.LookupHost(host)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %+v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %w\n", err)
 		os.Exit(2)
 	}
 
