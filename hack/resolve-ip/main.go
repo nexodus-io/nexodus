@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "host argument missing")
 		os.Exit(1)
 	}
