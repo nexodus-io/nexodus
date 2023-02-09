@@ -15,7 +15,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 		if err != nil {
 			ax.logger.Debugf("failed to find the darwin interface with the address [ %s ] %v", ax.wgLocalAddress, err)
 		}
-		// If child prefix split the two prefixes (host /32 and child prefix
+		// If child prefix split the two prefixes (host /32) and child prefix
 		for _, allowedIP := range wgPeerConfig.AllowedIPs {
 			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", devName)
 			if err != nil {
@@ -30,7 +30,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 		for _, allowedIP := range wgPeerConfig.AllowedIPs {
 			routeExists, err := RouteExists(allowedIP)
 			if err != nil {
-				ax.logger.Info(err)
+				ax.logger.Warnf("%v", err)
 			}
 			if !routeExists {
 				if err := AddRoute(allowedIP, ax.tunnelIface); err != nil {

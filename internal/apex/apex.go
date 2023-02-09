@@ -375,7 +375,7 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 	// get wireguard state from the relay node to learn the dynamic reflexive ip:port socket
 	relayInfo, err := DumpPeers(ax.tunnelIface)
 	if err != nil {
-		log.Errorf("eror dumping wg peers")
+		log.Errorf("error dumping wg peers")
 	}
 	relayData := make(map[string]WgSessions)
 	for _, peerRelay := range relayInfo {
@@ -473,7 +473,7 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 // nodePrep add basic gathering and node condition checks here
 func (ax *Apex) nodePrep() {
 
-	// remove and existing wg interfaces
+	// remove an existing wg interfaces
 	if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
 		if err := delLink(ax.tunnelIface); err != nil {
 			// not a fatal error since if this is on startup it could be absent
@@ -519,24 +519,17 @@ func (ax *Apex) nodePrep() {
 
 func (ax *Apex) findLocalEndpointIp() (string, error) {
 	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
-	// Otherwise, discover what the public of the node is and provide that to the peers unless the --internal flag was set,
-	// in which case the endpoint address will be set to an existing address on the host.
+	// Otherwise, discover what the public ip of the node is and provide that to the peers.
 	var localEndpointIP string
 	var err error
-	// Darwin network discovery
-	if ax.os == Darwin.String() {
+	// Darwin/Windows network discovery
+	if ax.os == Darwin.String() || ax.os == Windows.String() {
 		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 		if err != nil {
 			return "", fmt.Errorf("%w", err)
 		}
 	}
-	// Windows network discovery
-	if ax.os == Windows.String() {
-		localEndpointIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
-		if err != nil {
-			return "", fmt.Errorf("%w", err)
-		}
-	}
+	
 	// Linux network discovery
 	if ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(ax.logger, 4)
@@ -550,7 +543,7 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 
 // binaryChecks validate the required binaries are available
 func binaryChecks() error {
-	// Windows userspace binary
+	// Windows user space binary
 	if GetOS() == Windows.String() {
 		if !IsCommandAvailable(wgWinBinary) {
 			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
