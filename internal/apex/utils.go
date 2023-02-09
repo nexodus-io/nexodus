@@ -95,13 +95,7 @@ func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port stri
 func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (bool, error) {
 	var hostIP string
 	var err error
-	if nodeOS == Darwin.String() {
-		hostIP, err = discoverGenericIPv4(logger, controller, port)
-		if err != nil {
-			return false, err
-		}
-	}
-	if nodeOS == Windows.String() {
+	if nodeOS == Darwin.String() || nodeOS == Windows.String() {
 		hostIP, err = discoverGenericIPv4(logger, controller, port)
 		if err != nil {
 			return false, err
