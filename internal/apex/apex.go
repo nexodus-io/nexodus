@@ -192,26 +192,33 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.zone = user.ZoneID
 
 	var localEndpointIP string
+	var localEndpointPort int
+
 	// User requested ip --request-ip takes precedent
 	if ax.userProvidedEndpointIP != "" {
 		localEndpointIP = ax.userProvidedEndpointIP
+		localEndpointPort = ax.listenPort
 	}
 	if ax.stun && localEndpointIP == "" {
-		localEndpointIP, err = GetPubIPv4(ax.logger)
+		ipPort, err := GetPublicUDPAddr(ax.logger, ax.listenPort)
 		if err != nil {
 			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		}
+		localEndpointIP = ipPort.IP.String()
+		localEndpointPort = ipPort.Port
 	}
 	if localEndpointIP == "" {
-		localEndpointIP, err = ax.findLocalEndpointIp()
+		ip, err := ax.findLocalEndpointIp()
 		if err != nil {
 			return fmt.Errorf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %v", err)
 		}
+		localEndpointIP = ip
+		localEndpointPort = ax.listenPort
 	}
 	ax.endpointIP = localEndpointIP
 	ax.endpointLocalAddress = localEndpointIP
 
-	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, ax.listenPort)
+	endpointSocket := fmt.Sprintf("%s:%d", localEndpointIP, localEndpointPort)
 
 	_, err = ax.client.CreatePeerInZone(
 		user.ZoneID,
@@ -480,19 +487,19 @@ func (ax *Apex) nodePrep() {
 	}
 
 	// discover the server reflexive address per ICE RFC8445 = (lol public address)
-	stunAddr, err := GetPubIPv4(ax.logger)
+	stunAddr, err := GetPublicUDPAddr(ax.logger, ax.listenPort)
 	if err != nil {
 		log.Infof("failed to query the stun server: %v", err)
 	} else {
 		var stunPresent bool
-		if stunAddr != "" {
+		if stunAddr.IP.String() != "" {
 			stunPresent = true
 		}
 		if stunPresent {
-			if err := ValidateIp(stunAddr); err == nil {
-				ax.nodeReflexiveAddress = stunAddr
-				log.Infof("the public facing ipv4 NAT address found for the host is: [ %s ]", stunAddr)
-			}
+			//if err := ValidateIp(stunAddr); err == nil {
+			ax.nodeReflexiveAddress = stunAddr.IP.String()
+			log.Infof("the public facing ipv4 NAT address found for the host is: [ %s ]", stunAddr.String())
+			//}
 		} else {
 			log.Infof("no public facing NAT address found for the host")
 		}

@@ -2,6 +2,7 @@ package apex
 
 import (
 	"fmt"
+	"github.com/libp2p/go-reuseport"
 	"net"
 	"strconv"
 	"time"
@@ -97,19 +98,29 @@ func stunDialer(logger *zap.SugaredLogger, conn *net.Conn) (string, error) {
 	return stunAddress, nil
 }
 
-// GetPubIPv4 retrieves current global IP address using STUN
-func GetPubIPv4(logger *zap.SugaredLogger) (string, error) {
-	// Creating a "connection" to STUN server.
-	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
+// GetPublicUDPAddr retrieves current global net.UDPAddr address using STUN for a given local UDP port.
+func GetPublicUDPAddr(logger *zap.SugaredLogger, wgPort int) (net.UDPAddr, error) {
+
+	// Send a message to the stun server from the WG port.
+	conn, err := reuseport.Dial("udp", fmt.Sprintf(":%d", wgPort), "stun.l.google.com:19302")
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	if err != nil {
+		panic(err)
+	}
+
+	c, err := stun.NewClient(conn)
 	if err != nil {
 		logger.Error(err)
-		return "", err
+		return net.UDPAddr{}, err
 	}
 
 	// Building binding request with random transaction id.
 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	var ourIP string
 	// Sending request to STUN server, waiting for response message.
+	result := net.UDPAddr{}
 	if err := c.Do(message, func(res stun.Event) {
 		if res.Error != nil {
 			logger.Error(res.Error)
@@ -120,12 +131,14 @@ func GetPubIPv4(logger *zap.SugaredLogger) (string, error) {
 		if err := xorAddr.GetFrom(res.Message); err != nil {
 			return
 		}
-		logger.Debug("STUN: your IP is: ", xorAddr.IP)
-		ourIP = xorAddr.IP.String()
+		logger.Debugf("STUN: your IP:port are: %s:%d", xorAddr.IP, xorAddr.Port)
+		result = net.UDPAddr{
+			IP:   xorAddr.IP,
+			Port: xorAddr.Port,
+		}
 	}); err != nil {
 		logger.Error(err)
-		return "", err
+		return net.UDPAddr{}, err
 	}
-
-	return ourIP, nil
+	return result, nil
 }
