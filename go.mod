@@ -10,6 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.8.2
 	github.com/go-gormigrate/gormigrate/v2 v2.0.2
 	github.com/google/uuid v1.3.0
+	github.com/libp2p/go-reuseport v0.2.0
 	github.com/metal-stack/go-ipam v1.11.4
 	github.com/pion/stun v0.4.0
 	github.com/redhat-et/go-oidc-agent v0.0.2-0.20221130160039-b98e1621e734

@@ -114,11 +114,11 @@ func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (b
 		}
 		hostIP = linuxIP.String()
 	}
-	pubIP, err := GetPubIPv4(logger)
+	ipAndPort, err := GetPublicUDPAddr(logger, 0)
 	if err != nil {
 		return false, err
 	}
-	if hostIP != pubIP {
+	if hostIP != ipAndPort.IP.String() {
 		return true, nil
 	}
 	return false, nil
