@@ -66,11 +66,11 @@ On top of this flow, we were somewhat abusing `POST /zones/$id/peers` to also up
 
 This model was built under the assumption that multi-tenancy would be achieved by deploying an Apex stack per-tenant.
 
-# v2: SaaS (Milestone-1)
+# v2: SaaS Preview Milestone
 
 In order to create a more SaaS-ready schema, we've made the following changes.
 
-1. Replace the `Zone` construct with `Organization`. This is a GitHub like construct, where each unique `User` is also it's own `Organization`.
+1. Replace the `Zone` construct with `Organization`. This is a GitHub-like construct, where each unique `User` is also its own `Organization`.
 1. Deprecate `Peer` and combine it's functionality with the `Device` table.
 
 ```mermaid
@@ -117,7 +117,7 @@ Since a `User` is also an `Organization`, once someone has registered to Apex we
 
 The device-onboarding flow is as follows:
 
-1. A User registers for Apex using an sign-up form on https://apex-hosted.cloud, with the option to use SSO from Google, Github, Facebook etc..
+1. A User registers for Apex using a sign-up form on <https://apex-hosted.cloud>, with the option to use SSO from Google, Github, Facebook etc..
 1. User downloads and runs the Apex agent
 1. Apex agent does a `POST /device` to register the unique device with Apex for the user - it's onboarded into their personal organization.
 1. `GET /organization/$id/devices` is polled to retrieve the peer listing for a zone.
