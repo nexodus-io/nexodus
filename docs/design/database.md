@@ -1,7 +1,6 @@
-Database Schema
-===============
+# Database Schema
 
-# v1: PoC
+## v1: PoC
 
 In v1, the schema looks as follows:
 
@@ -66,7 +65,7 @@ On top of this flow, we were somewhat abusing `POST /zones/$id/peers` to also up
 
 This model was built under the assumption that multi-tenancy would be achieved by deploying an Apex stack per-tenant.
 
-# v2: SaaS Preview Milestone
+## v2: SaaS Preview Milestone
 
 In order to create a more SaaS-ready schema, we've made the following changes.
 
@@ -125,9 +124,4 @@ The device-onboarding flow is as follows:
 
 A key point here is that there is no admin intervention required to onboard a new user as anyone can sign-up and register.
 
-Supporting a user belonging to multiple organizations is easy in this model since a `Device` may only be in one `Organization` at a time. A `User` may chose to move their device at any time.
-
-
-# v3: (TBD) Milestone-2
-
-In our v3 schema we seek to add a few constructs like `Group` and `Network` to allow for more fine-grained connection policies.
+Supporting a user belonging to multiple organizations is easy in this model since a `Device` may only be in one `Organization` at a time. A `User` may chose to move their device at any time, although this functionality will not be implemented during the transition from v1->v2.
