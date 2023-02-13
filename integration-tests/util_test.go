@@ -68,7 +68,11 @@ func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Con
 		if code != 0 {
 			return fmt.Errorf("exit code %d. output: %s", code, string(output))
 		}
-		cidr := strings.Fields(string(output))[2]
+		fields := strings.Fields(string(output))
+		if len(fields) < 3 {
+			return fmt.Errorf("Interface %s has no IP address", dev)
+		}
+		cidr := fields[2]
 		if err != nil {
 			return err
 		}
