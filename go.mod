@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/bufbuild/connect-go v1.5.1
+	github.com/cockroachdb/cockroach-go/v2 v2.2.20
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/gin-contrib/zap v0.1.0
