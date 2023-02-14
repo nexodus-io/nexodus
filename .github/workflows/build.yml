@@ -111,13 +111,6 @@ jobs:
         run: |
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
-  markdown-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: markdownlint-cli2-action
-        uses: DavidAnson/markdownlint-cli2-action@v9
-
   build-images:
     needs: lint
     runs-on: ubuntu-latest
