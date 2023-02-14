@@ -543,7 +543,7 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 
 // binaryChecks validate the required binaries are available
 func binaryChecks() error {
-	// Windows user space binary
+	// Windows userspace binary
 	if GetOS() == Windows.String() {
 		if !IsCommandAvailable(wgWinBinary) {
 			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
