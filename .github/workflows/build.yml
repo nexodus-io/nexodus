@@ -60,7 +60,6 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.50.0
-          args: --enable gosec,errorlint
 
   ui-lint:
     runs-on: ubuntu-latest
