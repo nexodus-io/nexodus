@@ -4,13 +4,13 @@ on:
   push:
     branches: ["main"]
     paths-ignore:
-      - "**/*.md"
-      - "**/*.gitignore"
+      - '**/*.md'
+      - '**/*.gitignore'
   pull_request:
     branches: ["main"]
     paths-ignore:
-      - "**/*.md"
-      - "**/*.gitignore"
+      - '**/*.md'
+      - '**/*.gitignore'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
