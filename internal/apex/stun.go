@@ -23,15 +23,15 @@ func IsSymmetricNAT(logger *zap.SugaredLogger) (bool, error) {
 	// get a random port to source the request from since the wg port may be bound
 	srcPort, err := getWgListenPort()
 	if err != nil {
-		return false, fmt.Errorf("failed to queury the STUN server %s: %w", stunServer1, err)
+		return false, fmt.Errorf("failed to query the STUN server %s: %w", stunServer1, err)
 	}
 	firstStun, err := StunRequest(logger, stunServer1, srcPort)
 	if err != nil {
-		return false, fmt.Errorf("failed to queury the STUN server %s", stunServer1)
+		return false, fmt.Errorf("failed to query the STUN server %s", stunServer1)
 	}
 	secondStun, err := StunRequest(logger, stunServer2, srcPort)
 	if err != nil {
-		return false, fmt.Errorf("failed to queury the STUN server %s", stunServer1)
+		return false, fmt.Errorf("failed to query the STUN server %s", stunServer1)
 	}
 	if firstStun != secondStun {
 		return true, nil
@@ -58,7 +58,7 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (str
 
 	stunResults, err := stunDialer(logger, &conn)
 	if err != nil {
-		return "", fmt.Errorf("stun dialing timed out: %w", err)
+		return "", fmt.Errorf("Failed to find stun address %w", err)
 	}
 	return stunResults, nil
 }

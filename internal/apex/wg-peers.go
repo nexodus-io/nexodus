@@ -182,29 +182,7 @@ func (ax *Apex) buildLocalConfig() {
 	for _, value := range ax.peerCache {
 		pubkey := ax.keyCache[value.DeviceID]
 		// build the local interface configuration if this node is a zone router
-		if pubkey == ax.wireguardPubKey && ax.hubRouter {
-			if ax.wgLocalAddress != value.NodeAddress {
-				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
-				if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
-					if err := delLink(ax.tunnelIface); err != nil {
-						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
-					}
-				}
-			}
-			ax.wgLocalAddress = value.NodeAddress
-			localInterface = wgLocalConfig{
-				ax.wireguardPvtKey,
-				ax.listenPort,
-			}
-			ax.logger.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
-				ax.wgLocalAddress,
-				ax.listenPort,
-				ax.hubRouter)
-			// set the node unique local interface configuration
-			ax.wgConfig.Interface = localInterface
-		}
-		// build the local interface configuration if this node is not a zone router
-		if pubkey == ax.wireguardPubKey && !ax.hubRouter {
+		if pubkey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.NodeAddress {
 				ax.logger.Infof("New local interface address assigned %s", value.NodeAddress)
@@ -233,6 +211,6 @@ func (ax *Apex) buildLocalConfig() {
 func hubRouterIpTables(logger *zap.SugaredLogger, dev string) {
 	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
 	if err != nil {
-		logger.Debugf("the hub router iptable rule was not added: %v", err)
+		logger.Debugf("the hub router iptables rule was not added: %v", err)
 	}
 }
