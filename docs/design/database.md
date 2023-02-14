@@ -67,6 +67,8 @@ This model was built under the assumption that multi-tenancy would be achieved b
 
 ## v2: SaaS Preview Milestone
 
+See [issue #348](https://github.com/redhat-et/apex/issues/348).
+
 In order to create a more SaaS-ready schema, we've made the following changes.
 
 1. Replace the `Zone` construct with `Organization`. This is a GitHub-like construct, where each unique `User` is also its own `Organization`.
