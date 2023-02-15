@@ -199,13 +199,16 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localEndpointIP = ax.userProvidedEndpointIP
 		localEndpointPort = ax.listenPort
 	}
-	if ax.stun && localEndpointIP == "" {
-		ipPort, err := GetPublicUDPAddr(ax.logger, ax.listenPort)
+
+	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
+	if !ax.symmetricNat && ax.stun && localEndpointIP == "" {
+		ipPort, err := StunRequest(ax.logger, stunServer, ax.listenPort)
 		if err != nil {
 			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
+		} else {
+			localEndpointIP = ipPort.IP.String()
+			localEndpointPort = ipPort.Port
 		}
-		localEndpointIP = ipPort.IP.String()
-		localEndpointPort = ipPort.Port
 	}
 	if localEndpointIP == "" {
 		ip, err := ax.findLocalEndpointIp()
@@ -487,27 +490,19 @@ func (ax *Apex) nodePrep() {
 	}
 
 	// discover the server reflexive address per ICE RFC8445 = (lol public address)
-	stunAddr, err := GetPublicUDPAddr(ax.logger, ax.listenPort)
+	stunAddr, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		log.Infof("failed to query the stun server: %v", err)
 	} else {
-		var stunPresent bool
-		if stunAddr.IP.String() != "" {
-			stunPresent = true
-		}
-		if stunPresent {
-			//if err := ValidateIp(stunAddr); err == nil {
-			ax.nodeReflexiveAddress = stunAddr.IP.String()
-			log.Infof("the public facing ipv4 NAT address found for the host is: [ %s ]", stunAddr.String())
-			//}
-		} else {
-			log.Infof("no public facing NAT address found for the host")
-		}
+		ax.nodeReflexiveAddress = stunAddr.IP.String()
 	}
 
-	isSymmetric, err := IsSymmetricNAT(ax.logger)
+	isSymmetric := false
+	stunAddr2, err := StunRequest(ax.logger, stunServer2, ax.listenPort)
 	if err != nil {
 		log.Error(err)
+	} else {
+		isSymmetric = stunAddr.String() != stunAddr2.String()
 	}
 
 	if isSymmetric {
@@ -529,7 +524,7 @@ func (ax *Apex) findLocalEndpointIp() (string, error) {
 			return "", fmt.Errorf("%w", err)
 		}
 	}
-	
+
 	// Linux network discovery
 	if ax.os == Linux.String() {
 		linuxIP, err := discoverLinuxAddress(ax.logger, 4)

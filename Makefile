@@ -203,6 +203,7 @@ redeploy: load-images ## Redploy apex after images changes
 recreate-db: recreate-db ## Delete and bring up a new apex database
 	@kubectl delete -n apex deploy/apiserver postgrescluster/database deploy/ipam
 	@kubectl apply -k ./deploy/apex/overlays/dev
+	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate

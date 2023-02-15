@@ -1,9 +1,7 @@
 package apex
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"net"
 	"strconv"
 	"time"
@@ -165,11 +163,18 @@ func inPeerListing(peers []models.Peer, p models.Peer) bool {
 }
 
 func getWgListenPort() (int, error) {
-	min := 32768
-	max := 61000
-	bInt, err := rand.Int(rand.Reader, big.NewInt(int64(max-min)))
+	l, err := net.ListenUDP("udp", &net.UDPAddr{})
 	if err != nil {
 		return 0, err
 	}
-	return int(bInt.Int64()) + min, nil
+	defer l.Close()
+	_, port, err := net.SplitHostPort(l.LocalAddr().String())
+	if err != nil {
+		return 0, err
+	}
+	p, err := strconv.Atoi(port)
+	if err != nil {
+		return 0, err
+	}
+	return p, nil
 }
