@@ -5,10 +5,12 @@ on:
     branches: ["main"]
     paths:
       - '**/*.md'
+      - '.vscode/**'
   pull_request:
     branches: ["main"]
     paths:
       - '**/*.md'
+      - '.vscode/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
