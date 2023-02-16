@@ -199,7 +199,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
 	if !ax.symmetricNat && ax.stun && localIP == "" {
-		ipPort, err := StunRequest(ax.logger, stunServer, ax.listenPort)
+		ipPort, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
 			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		} else {

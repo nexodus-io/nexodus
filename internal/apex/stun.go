@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	stunServer  = "stun.l.google.com:19302"
 	stunServer1 = "stun1.l.google.com:19302"
 	stunServer2 = "stun2.l.google.com:19302"
 )
