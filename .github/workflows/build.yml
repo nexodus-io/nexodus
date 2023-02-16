@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/*.gitignore'
+      - '.vscode/**'
   pull_request:
     branches: ["main"]
     paths-ignore:
       - '**/*.md'
       - '**/*.gitignore'
+      - '.vscode/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
