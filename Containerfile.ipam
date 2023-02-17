@@ -12,12 +12,10 @@ COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf
 RUN git clone https://github.com/dave-tucker/go-ipam -b apex /work
 WORKDIR /work
 RUN make server client
+RUN CGO_ENABLED=0 go install github.com/grpc-ecosystem/grpc-health-probe@v0.4.15
 
 FROM alpine:3.16
 COPY --from=builder /work/bin/* /
-
-RUN GRPC_HEALTH_PROBE_VERSION=v0.4.14 && \
-    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
-    chmod +x /bin/grpc_health_probe
+COPY --from=builder /go/bin/grpc-health-probe /bin/grpc_health_probe
 
 ENTRYPOINT [ "/server" ]
