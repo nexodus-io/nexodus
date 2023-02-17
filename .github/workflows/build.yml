@@ -369,3 +369,16 @@ jobs:
       - name: copy binaries to s3
         run: |
           aws s3 sync . s3://apex-net/
+
+  build-rpm:
+    needs: ["go-lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker/setup-buildx-action@v2
+      - name: Install make
+        run: |
+          sudo apt -y install make
+      - name: Build rpm
+        run: |
+          make rpm
