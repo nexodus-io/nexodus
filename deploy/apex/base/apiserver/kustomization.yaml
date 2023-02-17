@@ -12,7 +12,6 @@ configMapGenerator:
       - APEX_TRACE_INSECURE="1"
       - APEX_FFLAG_MULTI_ORGANIZATION=false
       - APEX_DB_SSLMODE=require
-
 resources:
   - service.yaml
   - deployment.yaml
@@ -20,4 +19,3 @@ commonLabels:
   app.kubernetes.io/component: apiserver
   app.kubernetes.io/instance: apiserver
   app.kubernetes.io/name: apiserver
-
