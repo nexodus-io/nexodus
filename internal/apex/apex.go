@@ -396,14 +396,16 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 		_, ok := relayData[peer.PublicKey]
 		if ok {
 			if relayData[peer.PublicKey].Endpoint != "" {
-				// set the reflexive address for the host based on the relay state
-				endpointReflexiveAddress, _, err := net.SplitHostPort(relayData[peer.PublicKey].Endpoint)
+				// test the reflexive address is valid and not still in a (none) state
+				_, _, err := net.SplitHostPort(relayData[peer.PublicKey].Endpoint)
 				if err != nil {
 					// if the relay state was not yet established the endpoint can be (none)
 					ax.logger.Infof("failed to split host:port endpoint pair: %v", err)
 					continue
 				}
-				_, err = ax.client.UpdateDevice(peer.ID, models.UpdateDevice{ReflexiveIPv4: endpointReflexiveAddress})
+				endpointReflexiveAddress := relayData[peer.PublicKey].Endpoint
+				// update the peer endpoint to the new reflexive address learned from the wg session
+				_, err = ax.client.UpdateDevice(peer.ID, models.UpdateDevice{LocalIP: endpointReflexiveAddress})
 				if err != nil {
 					ax.logger.Errorf("failed updating peer: %+v", err)
 				}
