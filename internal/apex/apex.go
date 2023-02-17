@@ -221,7 +221,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if ax.childPrefix != "" {
 		childPrefix = append(childPrefix, ax.childPrefix)
 	}
-	endpointSocket := fmt.Sprintf("%s:%d", localIP, localEndpointPort)
+	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	device, err := ax.client.CreateDevice(models.AddDevice{
 		UserID:                   user.ID,
 		OrganizationID:           ax.zone,
