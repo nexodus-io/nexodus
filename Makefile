@@ -291,13 +291,13 @@ srpm: dist/rpm image-mock ## Build a source RPM
 	rm -rf dist/rpm/apex-${APEX_RELEASE}
 	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
 	git archive --format=tar.gz -o dist/rpm/apex-${APEX_RELEASE}.tar.gz --prefix=apex-${APEX_RELEASE}/ ${APEX_RELEASE}
-	cd dist/rpm && tar xvzf apex-${APEX_RELEASE}.tar.gz
+	cd dist/rpm && tar xzf apex-${APEX_RELEASE}.tar.gz
 	mv vendor dist/rpm/apex-${APEX_RELEASE}/.
-	cd dist/rpm && tar czvf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
+	cd dist/rpm && tar czf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
 	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
 	docker rm -f mock || true
-	docker run --name mock --cap-add SYS_ADMIN -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
 		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock \
 		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
 	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
@@ -305,7 +305,7 @@ srpm: dist/rpm image-mock ## Build a source RPM
 .PHONY: rpm
 rpm: srpm ## Build an RPM
 	docker rm -f mock || true
-	docker run --name mock --cap-add SYS_ADMIN -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
 		mock --rebuild --without check \--resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
 		/apex/$(wildcard dist/rpm/mock/apex-*$(shell date +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
 
