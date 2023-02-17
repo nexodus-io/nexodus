@@ -112,7 +112,7 @@ func (ax *Apex) buildPeersConfig() {
 
 		// if both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
-			directLocalPeerEndpointSocket := fmt.Sprintf("%s:%s", value.EndpointLocalAddressIPv4, peerPort)
+			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
 			ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 			// the symmetric NAT peer
 			for _, prefix := range value.ChildPrefix {
