@@ -463,7 +463,7 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 	}
 	if ax.childPrefix != "" {
 		if err := ValidateCIDR(ax.childPrefix); err != nil {
-			return fmt.Errorf("the CIDR prefix passed in --child-prefix %s was not valid: %w", ax.childPrefix, err)
+			return err
 		}
 	}
 	return nil

@@ -68,10 +68,15 @@ func ValidateIp(ip string) error {
 
 // ValidateCIDR ensures a valid IP4/IP6 prefix is provided
 func ValidateCIDR(cidr string) error {
-	_, _, err := net.ParseCIDR(cidr)
+	_, netAddr, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return fmt.Errorf("'%s' is not a valid v4 or v6 IP prefix: %w", cidr, err)
 	}
+
+	if cidr != netAddr.String() {
+		return fmt.Errorf("Invalid network prefix provided %s, try using %s\n", cidr, netAddr.String())
+	}
+
 	return nil
 }
 
