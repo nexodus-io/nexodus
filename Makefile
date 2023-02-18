@@ -17,6 +17,14 @@ endif
 APEX_VERSION?=$(shell date +%Y.%m.%d)
 APEX_RELEASE?=$(shell git describe --always)
 
+# Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),arm64)
+	OVERLAY?=arm64
+else
+	OVERLAY?=dev
+endif
+
 ##@ All
 
 .PHONY: all
@@ -182,7 +190,7 @@ deploy-apex-agent: image-apex
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 
 .PHONY: deploy-operators
-deploy-operators: deploy-certmanager deploy-pgo wait-for-readiness ## Deploy all operators and wait for readiness
+deploy-operators: deploy-certmanager deploy-pgo  ## Deploy all operators and wait for readiness
 
 .PHONY: deploy-certmanager
 deploy-certmanager: # Deploy cert-manager
@@ -232,9 +240,9 @@ wait-for-readiness: # Wait for operators to be installed
 	@kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
 .PHONY: deploy
-deploy: ## Deploy a development apex stack onto a kubernetes cluster
+deploy: wait-for-readiness ## Deploy a development apex stack onto a kubernetes cluster
 	@kubectl create namespace apex
-	@kubectl apply -k ./deploy/apex/overlays/dev
+	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: undeploy
@@ -255,7 +263,7 @@ redeploy: load-images ## Redploy apex after images changes
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new apex database
 	@kubectl delete -n apex deploy/apiserver postgrescluster/database deploy/ipam
-	@kubectl apply -k ./deploy/apex/overlays/dev
+	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: cacerts

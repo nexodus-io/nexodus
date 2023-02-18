@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+
+      volumes:
+        - name: initdir
+          emptyDir: {}
+
+      initContainers:
+        - name: apiserver-setup
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: database-pguser-apiserver
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat << EOF > /docker-entrypoint-initdb.d/${user}.sql
+                CREATE USER ${user} WITH NOSUPERUSER PASSWORD '${password}';
+                CREATE DATABASE ${dbname};
+                GRANT ALL PRIVILEGES ON DATABASE ${dbname} TO ${user};
+                \c ${dbname};
+                GRANT ALL ON SCHEMA public TO ${user}
+              EOF
+          volumeMounts:
+            - name: initdir
+              mountPath: "/docker-entrypoint-initdb.d"
+
+
+        - name: ipam-setup
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: database-pguser-ipam
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat << EOF > /docker-entrypoint-initdb.d/${user}.sql
+                CREATE USER ${user} WITH NOSUPERUSER PASSWORD '${password}';
+                CREATE DATABASE ${dbname};
+                GRANT ALL PRIVILEGES ON DATABASE ${dbname} TO ${user};
+                \c ${dbname};
+                GRANT ALL ON SCHEMA public TO ${user}
+              EOF
+          volumeMounts:
+            - name: initdir
+              mountPath: "/docker-entrypoint-initdb.d"
+
+        - name: keycloak-setup
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: database-pguser-keycloak
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat << EOF > /docker-entrypoint-initdb.d/${user}.sql
+                CREATE USER ${user} WITH NOSUPERUSER PASSWORD '${password}';
+                CREATE DATABASE ${dbname};
+                GRANT ALL PRIVILEGES ON DATABASE ${dbname} TO ${user};
+                \c ${dbname};
+                GRANT ALL ON SCHEMA public TO ${user}
+              EOF
+          volumeMounts:
+            - name: initdir
+              mountPath: "/docker-entrypoint-initdb.d"
+
+      containers:
+        - name: postgres
+          image: postgres:latest
+          imagePullPolicy: IfNotPresent
+
+          volumeMounts:
+            - name: initdir
+              mountPath: "/docker-entrypoint-initdb.d"
+            - name: postgres-disk
+              mountPath: /data
+
+          # Config from ConfigMap
+          envFrom:
+            - secretRef:
+                name: postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 100m
+              memory: 200Mi
+      restartPolicy: Always
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-disk
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 25Gi
