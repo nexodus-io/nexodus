@@ -148,8 +148,13 @@ image-apex:
 	docker build -f Containerfile.apex -t quay.io/apex/apex:$(TAG) .
 	docker tag quay.io/apex/apex:$(TAG) quay.io/apex/apex:latest
 
+.PHONY: image-ipam ## Build the IPAM image
+image-ipam:
+	docker build -f Containerfile.ipam -t quay.io/apex/go-ipam:$(TAG) .
+	docker tag quay.io/apex/go-ipam:$(TAG) quay.io/apex/go-ipam:latest
+
 .PHONY: images
-images: image-frontend image-apiserver ## Create container images
+images: image-frontend image-apiserver image-ipam ## Create container images
 
 ##@ Kubernetes - kind dev environment
 
@@ -240,6 +245,7 @@ undeploy: ## Remove the apex stack from a kubernetes cluster
 load-images: images ## Load images onto kind
 	@kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
 	@kind load --name apex-dev docker-image quay.io/apex/frontend:latest
+	@kind load --name apex-dev docker-image quay.io/apex/go-ipam:latest
 
 .PHONY: redeploy
 redeploy: load-images ## Redploy apex after images changes
@@ -247,7 +253,7 @@ redeploy: load-images ## Redploy apex after images changes
 	@kubectl rollout restart deploy/frontend -n apex
 
 .PHONY: recreate-db
-recreate-db: recreate-db ## Delete and bring up a new apex database
+recreate-db: ## Delete and bring up a new apex database
 	@kubectl delete -n apex deploy/apiserver postgrescluster/database deploy/ipam
 	@kubectl apply -k ./deploy/apex/overlays/dev
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m

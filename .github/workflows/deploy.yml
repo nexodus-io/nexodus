@@ -11,6 +11,7 @@ env:
   REPOSITORY: apex
   APISERVER_IMAGE_NAME: apiserver
   FRONTEND_IMAGE_NAME: frontend
+  IPAM_IMAGE_NAME: ipam
 
 jobs:
   build-images:
@@ -61,7 +62,7 @@ jobs:
             quay.io/apex/frontend:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+
       - name: Build and export apex
         id: build-apex
         uses: docker/build-push-action@v4
@@ -74,6 +75,20 @@ jobs:
             quay.io/apex/apex:latest
             quay.io/apex/apex:${{ github.sha }}
             quay.io/apex/apex:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and export ipam
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          file: ./Containerfile.ipam
+          tags: |
+            quay.io/apex/go-ipam:latest
+            quay.io/apex/go-ipam:${{ github.sha }}
+            quay.io/apex/go-ipam:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -103,6 +118,7 @@ jobs:
           pushd ./deploy/apex/overlays/qa
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
+          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${IPAM_IMAGE_NAME}:${GITHUB_SHA}
           yq -i kustomization.yaml
           popd
 

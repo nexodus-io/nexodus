@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: ipam
-          image: quay.io/apex/go-ipam:v1.11.3
+          image: quay.io/apex/go-ipam:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: GOIPAM_PG_HOST
