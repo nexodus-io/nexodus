@@ -14,7 +14,8 @@
     - [Deploying on Node](#deploying-on-node)
       - [Installing the Agent](#installing-the-agent)
         - [Install Script](#install-script)
-        - [RPM](#rpm)
+        - [RPM from a Copr Repository](#rpm-from-a-copr-repository)
+        - [Custom RPM Build](#custom-rpm-build)
         - [Systemd](#systemd)
         - [Starting the Agent](#starting-the-agent)
       - [Interactive Enrollment](#interactive-enrollment)
@@ -152,9 +153,25 @@ The `hack/apex_installer.sh` script will download the latest build of `apexd` an
 hack/apex_installer.sh
 ```
 
-##### RPM
+##### RPM from a Copr Repository
 
-You can build an rpm from the git repository. The rpm will include `apexctl`, `apexd`, and integration with systemd. You must have `mock` installed to build the package.
+A Fedora [Copr repository](https://copr.fedorainfracloud.org/coprs/russellb/apex/) is updated with new rpms after each new commit to the `main` branch that passes CI. The rpm will include `apexctl`, `apexd`, and integration with systemd.
+
+You can add this repository to your Fedora host with the following command:
+
+```sh
+sudo dnf copr enable russellb/apex
+```
+
+Then you should be able to install apex with:
+
+```sh
+sudo dnf install apex
+```
+
+##### Custom RPM Build
+
+You can also build a custom rpm from the git repository. You must have `mock` installed to build the package.
 
 ```sh
 make rpm
