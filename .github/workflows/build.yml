@@ -19,7 +19,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  go-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - id: go-cache-paths
+        shell: bash
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+      - name: Go Build Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+
+      - name: Go Mod Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Build
+        run: |
+          go build ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.50.0
+
+  go-unit:
+    needs: go-lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -54,11 +92,6 @@ jobs:
       - name: Unit tests
         run: |
           go test -v ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.50.0
 
   ui-lint:
     runs-on: ubuntu-latest
@@ -111,7 +144,7 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: lint
+    needs: go-lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -161,7 +194,7 @@ jobs:
           path: /tmp/ipam.tar
 
   build-binaries:
-    needs: lint
+    needs: go-lint
     strategy:
       fail-fast: false
       matrix:
@@ -231,7 +264,7 @@ jobs:
             ${{ steps.build-apexctl.outputs.artifact-name }}
 
   e2e:
-    needs: [lint, k8s-lint, build-images]
+    needs: [go-lint, go-unit, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
