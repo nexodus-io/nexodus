@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -18,7 +19,7 @@ const (
 
 func NewTestIPAMServer() *http.Server {
 	zlog := zap.NewNop()
-	ipam := goipam.New()
+	ipam := goipam.New(context.Background())
 	mux := http.NewServeMux()
 	mux.Handle(apiv1connect.NewIpamServiceHandler(service.New(zlog.Sugar(), ipam)))
 

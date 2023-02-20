@@ -40,9 +40,6 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			user.ID = id
 			user.UserName = userName
-			if err := api.ipam.AssignPrefix(ctx, defaultOrganizationPrefix); err != nil {
-				return uuid.Nil, fmt.Errorf("can't create user record: %w", res.Error)
-			}
 			user.Organizations = []*models.Organization{
 				{
 					Name:        userName,
@@ -52,9 +49,19 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 				},
 			}
 			if res := tx.Create(&user); res.Error != nil {
+				tx.Rollback()
 				return uuid.Nil, fmt.Errorf("can't create user record: %w", res.Error)
 			}
+			if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID.String()); err != nil {
+				tx.Rollback()
+				return uuid.Nil, fmt.Errorf("failed to create ipam namespace: %w", err)
+			}
+			if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID.String(), defaultOrganizationPrefix); err != nil {
+				tx.Rollback()
+				return uuid.Nil, fmt.Errorf("can't assign default ipam prefix: %w", err)
+			}
 		} else {
+			tx.Rollback()
 			return uuid.Nil, fmt.Errorf("can't find record for user id %s", id)
 		}
 	}

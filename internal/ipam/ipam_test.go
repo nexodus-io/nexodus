@@ -48,22 +48,27 @@ func (suite *IpamTestSuite) TearDownSuite() {
 
 func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 	ctx := context.Background()
-
+	namespace := "testns"
 	prefix := "10.20.30.0/24"
-	if err := suite.ipam.AssignPrefix(ctx, prefix); err != nil {
+
+	if err := suite.ipam.CreateNamespace(ctx, namespace); err != nil {
+		suite.T().Fatal(err)
+	}
+
+	if err := suite.ipam.AssignPrefix(ctx, namespace, prefix); err != nil {
 		suite.T().Fatal(err)
 	}
 
 	// 1. Does not assign invalid IP
 	TunnelIP := "notanipaddress"
-	_, err := suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
+	_, err := suite.ipam.AssignSpecificTunnelIP(ctx, namespace, prefix, TunnelIP)
 	if err == nil {
 		suite.T().Fatal("should return an error if ip is invalid")
 	}
 
 	// 2. Test valid TunnelIP assigned
 	TunnelIP = "10.20.30.1"
-	ip, err := suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
+	ip, err := suite.ipam.AssignSpecificTunnelIP(ctx, namespace, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}
@@ -71,7 +76,7 @@ func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 
 	// 3. Test conflicting TunnelIP assigned from pool
 	TunnelIP = "10.20.30.1"
-	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
+	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, namespace, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}
@@ -79,7 +84,7 @@ func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 
 	// 3. Test mismatched TunnelIP assigned from pool
 	TunnelIP = "10.20.40.1"
-	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, prefix, TunnelIP)
+	ip, err = suite.ipam.AssignSpecificTunnelIP(ctx, namespace, prefix, TunnelIP)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

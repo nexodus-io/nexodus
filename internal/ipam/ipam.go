@@ -35,7 +35,25 @@ func NewIPAM(logger *zap.SugaredLogger, ipamAddress string) IPAM {
 		)}
 }
 
-func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, ipamPrefix string, TunnelIP string) (string, error) {
+func (i *IPAM) CreateNamespace(parent context.Context, namespace string) error {
+	ctx, span := tracer.Start(parent, "CreateNamespace")
+	defer span.End()
+	_, err := i.client.CreateNamespace(ctx, connect.NewRequest(&apiv1.CreateNamespaceRequest{
+		Namespace: namespace,
+	}))
+	return err
+}
+
+func (i *IPAM) DeleteNamespace(parent context.Context, namespace string) error {
+	ctx, span := tracer.Start(parent, "DeleteNamespace")
+	defer span.End()
+	_, err := i.client.DeleteNamespace(ctx, connect.NewRequest(&apiv1.DeleteNamespaceRequest{
+		Namespace: namespace,
+	}))
+	return err
+}
+
+func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, namespace string, ipamPrefix string, TunnelIP string) (string, error) {
 	ctx, span := tracer.Start(parent, "AssignSpecificTunnelIP")
 	defer span.End()
 	if err := validateIP(TunnelIP); err != nil {
@@ -44,19 +62,21 @@ func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, ipamPrefix string,
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
 		Ip:         &TunnelIP,
+		Namespace:  &namespace,
 	}))
 	if err != nil {
 		i.logger.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", TunnelIP, err)
-		return i.AssignFromPool(ctx, ipamPrefix)
+		return i.AssignFromPool(ctx, namespace, ipamPrefix)
 	}
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignFromPool(parent context.Context, ipamPrefix string) (string, error) {
+func (i *IPAM) AssignFromPool(parent context.Context, namespace string, ipamPrefix string) (string, error) {
 	ctx, span := tracer.Start(parent, "AssignFromPool")
 	defer span.End()
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
+		Namespace:  &namespace,
 	}))
 	if err != nil {
 		return "", fmt.Errorf("failed to acquire an IPAM assigned address %w\n", err)
@@ -64,7 +84,8 @@ func (i *IPAM) AssignFromPool(parent context.Context, ipamPrefix string) (string
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
+func (i *IPAM) AssignPrefix(parent context.Context, namespace string, cidr string) error {
+	println()
 	ctx, span := tracer.Start(parent, "AssignPrefix")
 	defer span.End()
 	cidr, err := cleanCidr(cidr)
@@ -72,10 +93,10 @@ func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
 		return fmt.Errorf("invalid prefix requested: %w", err)
 	}
 
-	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr}))
+	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr, Namespace: &namespace}))
 	if originalErr != nil {
 		// check to see if the prefix had been already created....
-		resp, err := i.client.GetPrefix(ctx, connect.NewRequest(&apiv1.GetPrefixRequest{Cidr: cidr}))
+		resp, err := i.client.GetPrefix(ctx, connect.NewRequest(&apiv1.GetPrefixRequest{Cidr: cidr, Namespace: &namespace}))
 		if err == nil {
 			// it did exist... so ignore that create error since the prefix was created.
 			if resp.Msg.Prefix.Cidr == cidr && resp.Msg.Prefix.ParentCidr == "" {
@@ -87,10 +108,11 @@ func (i *IPAM) AssignPrefix(parent context.Context, cidr string) error {
 }
 
 // ReleaseToPool release the ipam address back to the specified prefix
-func (i *IPAM) ReleaseToPool(ctx context.Context, address, cidr string) error {
+func (i *IPAM) ReleaseToPool(ctx context.Context, namespace, address, cidr string) error {
 	_, err := i.client.ReleaseIP(ctx, connect.NewRequest(&apiv1.ReleaseIPRequest{
 		Ip:         address,
 		PrefixCidr: cidr,
+		Namespace:  &namespace,
 	}))
 
 	if err != nil {
@@ -100,9 +122,10 @@ func (i *IPAM) ReleaseToPool(ctx context.Context, address, cidr string) error {
 }
 
 // ReleasePrefix release the ipam address back to the specified prefix
-func (i *IPAM) ReleasePrefix(ctx context.Context, cidr string) error {
+func (i *IPAM) ReleasePrefix(ctx context.Context, namespace, cidr string) error {
 	_, err := i.client.DeletePrefix(ctx, connect.NewRequest(&apiv1.DeletePrefixRequest{
-		Cidr: cidr,
+		Cidr:      cidr,
+		Namespace: &namespace,
 	}))
 
 	if err != nil {
