@@ -39,3 +39,5 @@ kubeconfigs/
 ./deploy/apex-client/overlays/sample/kustomization.yaml
 ./deploy/apex-client/overlays/sample/node_selector.yaml
 
+# Auto generated man pages
+/contrib/man/*
