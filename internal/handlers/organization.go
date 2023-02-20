@@ -286,7 +286,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	if orgCIDR != "" {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID.String(), orgCIDR); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID, orgCIDR); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release ipam organization prefix: %w", err)))
 			return
 		}

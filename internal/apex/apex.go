@@ -243,6 +243,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			}
 			device, err = ax.client.UpdateDevice(deviceID, models.UpdateDevice{
 				LocalIP:                  endpointSocket,
+				ChildPrefix:              childPrefix,
 				ReflexiveIPv4:            ax.nodeReflexiveAddress,
 				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 				SymmetricNat:             ax.symmetricNat,
@@ -423,7 +424,9 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 				}
 				endpointReflexiveAddress := relayData[peer.PublicKey].Endpoint
 				// update the peer endpoint to the new reflexive address learned from the wg session
-				_, err = ax.client.UpdateDevice(peer.ID, models.UpdateDevice{LocalIP: endpointReflexiveAddress})
+				_, err = ax.client.UpdateDevice(peer.ID, models.UpdateDevice{
+					LocalIP: endpointReflexiveAddress,
+				})
 				if err != nil {
 					ax.logger.Errorf("failed updating peer: %+v", err)
 				}

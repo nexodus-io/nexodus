@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	errOrgNotFound  = errors.New("organization not found")
-	errUserNotFound = errors.New("user not found")
+	errOrgNotFound    = errors.New("organization not found")
+	errUserNotFound   = errors.New("user not found")
+	errDeviceNotFound = errors.New("device not found")
 )
 
 type errDuplicateDevice struct {
@@ -110,38 +111,71 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	}
 
 	var device models.Device
-	result := api.db.WithContext(ctx).First(&device, "id = ?", k)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.Status(http.StatusNotFound)
+	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.First(&device, "id = ?", k)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return errDeviceNotFound
+		}
+
+		if request.EndpointLocalAddressIPv4 != "" {
+			device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
+		}
+
+		if request.Hostname != "" {
+			device.Hostname = request.Hostname
+		}
+
+		if request.LocalIP != "" {
+			device.LocalIP = request.LocalIP
+		}
+
+		if request.OrganizationID != uuid.Nil {
+			device.OrganizationID = request.OrganizationID
+		}
+
+		if request.ReflexiveIPv4 != "" {
+			device.ReflexiveIPv4 = request.ReflexiveIPv4
+		}
+
+		if request.SymmetricNat != device.SymmetricNat {
+			device.SymmetricNat = request.SymmetricNat
+		}
+
+		if request.ChildPrefix != nil {
+			prefixAllocated := make(map[string]struct{})
+			for _, prefix := range device.ChildPrefix {
+				prefixAllocated[prefix] = struct{}{}
+			}
+			for _, prefix := range request.ChildPrefix {
+				// lookup miss of prefix means we need to release it
+				if _, ok := prefixAllocated[prefix]; ok {
+					if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
+						return err
+					}
+				} else {
+					// otherwise we need to allocate it
+					if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
+						return err
+					}
+				}
+			}
+			device.ChildPrefix = request.ChildPrefix
+		}
+
+		if res := tx.Save(&device); res.Error != nil {
+			return res.Error
+		}
+		return nil
+	})
+
+	if err != nil {
+		if errors.Is(err, errDeviceNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		}
 		return
 	}
-
-	if request.EndpointLocalAddressIPv4 != "" {
-		device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
-	}
-
-	if request.Hostname != "" {
-		device.Hostname = request.Hostname
-	}
-
-	if request.LocalIP != "" {
-		device.LocalIP = request.LocalIP
-	}
-
-	if request.OrganizationID != uuid.Nil {
-		device.OrganizationID = request.OrganizationID
-	}
-
-	if request.ReflexiveIPv4 != "" {
-		device.ReflexiveIPv4 = request.ReflexiveIPv4
-	}
-
-	if request.SymmetricNat != device.SymmetricNat {
-		device.SymmetricNat = request.SymmetricNat
-	}
-
-	api.db.Save(&device)
-
 	c.JSON(http.StatusOK, device)
 }
 
@@ -324,14 +358,14 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	if ipamAddress != "" && orgPrefix != "" {
-		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID.String(), ipamAddress, orgPrefix); err != nil {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddress, orgPrefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release address to pool: %w", err)))
 			return
 		}
 	}
 
 	for _, prefix := range childPrefix {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID.String(), prefix); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID, prefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release child prefix: %w", err)))
 			return
 		}

@@ -43,6 +43,7 @@ type AddDevice struct {
 type UpdateDevice struct {
 	OrganizationID           uuid.UUID `json:"organization_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	LocalIP                  string    `json:"local_ip" example:"10.1.1.1"`
+	ChildPrefix              []string  `json:"child_prefix" example:"172.16.42.0/24"`
 	ReflexiveIPv4            string    `json:"reflexive_ip4"`
 	EndpointLocalAddressIPv4 string    `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
 	SymmetricNat             bool      `json:"symmetric_nat"`

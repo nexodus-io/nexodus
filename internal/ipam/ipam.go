@@ -116,11 +116,12 @@ func (i *IPAM) AssignPrefix(parent context.Context, namespace uuid.UUID, cidr st
 }
 
 // ReleaseToPool release the ipam address back to the specified prefix
-func (i *IPAM) ReleaseToPool(ctx context.Context, namespace, address, cidr string) error {
+func (i *IPAM) ReleaseToPool(ctx context.Context, namespace uuid.UUID, address, cidr string) error {
+	ns := uuidToNamespace(namespace)
 	_, err := i.client.ReleaseIP(ctx, connect.NewRequest(&apiv1.ReleaseIPRequest{
 		Ip:         address,
 		PrefixCidr: cidr,
-		Namespace:  &namespace,
+		Namespace:  &ns,
 	}))
 
 	if err != nil {
@@ -130,10 +131,11 @@ func (i *IPAM) ReleaseToPool(ctx context.Context, namespace, address, cidr strin
 }
 
 // ReleasePrefix release the ipam address back to the specified prefix
-func (i *IPAM) ReleasePrefix(ctx context.Context, namespace, cidr string) error {
+func (i *IPAM) ReleasePrefix(ctx context.Context, namespace uuid.UUID, cidr string) error {
+	ns := uuidToNamespace(namespace)
 	_, err := i.client.DeletePrefix(ctx, connect.NewRequest(&apiv1.DeletePrefixRequest{
 		Cidr:      cidr,
-		Namespace: &namespace,
+		Namespace: &ns,
 	}))
 
 	if err != nil {
