@@ -118,3 +118,28 @@ jobs:
           github_token: "${{ secrets.GITHUB_TOKEN }}"
           commit_prefix: "[deploy] "
           commit_message: "Update qa images to ${{ steps.gitsha.outputs.short }}"
+
+  publish-rpms:
+    runs-on: ubuntu-latest
+    environment: copr-repo
+    strategy:
+      matrix:
+        include:
+          - mock_root: fedora-37-x86_64
+            srpm_distro: fc37
+          - mock_root: fedora-38-x86_64
+            srpm_distro: fc38
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install make
+        run: |
+          sudo apt -y install make
+      - name: Build srpm
+        run: |
+          MOCK_ROOT="${{ matrix.mock_root }}" make srpm
+          find dist
+      - name: Submit srpm to copr
+        run: |
+          echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
+          docker run --name copr-cli -v $(pwd):/apex -v ~/.config:/root/.config quay.io/apex/mock:latest \
+              copr-cli build apex -r ${{ matrix.mock_root }} --nowait /apex//dist/rpm/mock/apex-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm
