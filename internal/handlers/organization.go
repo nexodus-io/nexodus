@@ -37,12 +37,12 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
 	allowForTests := c.GetString("_apex.testCreateOrganization")
 	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-organization support is disabled"})
+		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
 		return
 	}
 	userId := c.GetString(gin.AuthUserKey)
@@ -50,15 +50,15 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	var request models.AddOrganization
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
 	if request.IpCidr == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "the organization request did not contain a required CIDR prefix"})
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr"))
 		return
 	}
 	if request.Name == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "the organization request did not contain a required name"})
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("name"))
 		return
 	}
 
@@ -95,9 +95,9 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusNotFound, models.NewApiInternalError(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		}
 		return
 	}
@@ -120,7 +120,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 	var orgs []models.Organization
 	result := api.db.WithContext(ctx).Preload("Devices").Preload("Users").Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "error fetching Organizations from db"})
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
 		return
 	}
 	c.JSON(http.StatusOK, orgs)
@@ -146,13 +146,13 @@ func (api *API) GetOrganizations(c *gin.Context) {
 	defer span.End()
 	k, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "Organization id is not a valid UUID"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 	var org models.Organization
 	result := api.db.WithContext(ctx).Preload("Devices").Preload("Users").First(&org, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: "Organization not found"})
+		c.Status(http.StatusNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, org)
@@ -175,13 +175,13 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 	defer span.End()
 	k, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "organization id is not a valid UUID"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 	var org models.Organization
 	res := api.db.WithContext(ctx).Preload("Devices").First(&org, "id = ?", k.String())
 	if res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "error fetching devices from db"})
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
 	}
 	// For pagination
@@ -213,25 +213,25 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	defer span.End()
 	k, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "Organization id is not a valid UUID"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 
 	var organization models.Organization
 	result := api.db.WithContext(ctx).First(&organization, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: "organization not found"})
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
 	}
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "organization id is not a valid UUID"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var device models.Device
 	result = api.db.WithContext(ctx).First(&device, "id = ?", id.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: "device not found"})
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		return
 	}
 	c.JSON(http.StatusOK, device)
@@ -258,36 +258,37 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
 	if !multiOrganizationEnabled {
-		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-organization support is disabled"})
+		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
 		return
 	}
 
 	orgID, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "organization id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 
 	var org models.Organization
 	if res := api.db.WithContext(ctx).First(&org, "id = ?", orgID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
 	}
 
 	orgCIDR := org.IpCidr
 
 	if res := api.db.WithContext(ctx).Delete(&org, "id = ?", orgID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
 	}
 
 	if orgCIDR != "" {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID.String(), orgCIDR); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to release ipam organization prefix: %v", err)})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release ipam organization prefix: %w", err)))
+			return
 		}
 	}
 	c.JSON(http.StatusOK, org)

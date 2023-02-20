@@ -16,6 +16,14 @@ const (
 	DEVICE  = "/api/devices/%s"
 )
 
+type ErrConflict struct {
+	ID string
+}
+
+func (e ErrConflict) Error() string {
+	return fmt.Sprintf("resource with ID %s conflicts with request resource", e.ID)
+}
+
 func (c *Client) CreateDevice(device models.AddDevice) (models.Device, error) {
 	body, err := json.Marshal(device)
 	if err != nil {
@@ -39,7 +47,15 @@ func (c *Client) CreateDevice(device models.AddDevice) (models.Device, error) {
 		return models.Device{}, err
 	}
 
-	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusConflict {
+	if res.StatusCode == http.StatusConflict {
+		var data models.ConflictsError
+		if err := json.Unmarshal(resBody, &data); err != nil {
+			return models.Device{}, err
+		}
+		return models.Device{}, ErrConflict{ID: data.ID}
+	}
+
+	if res.StatusCode != http.StatusCreated {
 		return models.Device{}, fmt.Errorf("http error: %d %s", res.StatusCode, string(resBody))
 	}
 

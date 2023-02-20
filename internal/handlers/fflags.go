@@ -34,13 +34,13 @@ func (api *API) ListFeatureFlags(c *gin.Context) {
 func (api *API) GetFeatureFlag(c *gin.Context) {
 	flagName := c.Param("name")
 	if flagName == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "flag name is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("name"))
 		return
 	}
 
 	enabled, err := api.fflags.GetFlag(flagName)
 	if err != nil {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("flag"))
 		return
 	}
 

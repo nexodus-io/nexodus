@@ -77,61 +77,6 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	return user.Organizations[0].ID, nil
 }
 
-/* PatchUser handles moving a User to a new Zone
-// @Summary      Update User
-// @Description  Changes the users zone
-// @Tags         User
-// @Accepts		 json
-// @Produce      json
-// @Param        id  path       string  true  "User ID"
-// @Param        device  body   models.PatchUser  true "Patch User"
-// @Success      200  {object}  models.User
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
-// @Router       /users/{id} [patch]
-func (api *API) PatchUser(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "PatchUser",
-		trace.WithAttributes(
-			attribute.String("id", c.Param("id")),
-		))
-	defer span.End()
-	userId := c.Param("id")
-	if userId == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
-		return
-	}
-	var request models.PatchUser
-	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: err.Error()})
-		return
-	}
-
-	var user models.User
-	if userId == "me" {
-		userId = c.GetString(gin.AuthUserKey)
-	}
-
-	if res := api.db.WithContext(ctx).First(&user, "id = ?", userId); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-
-	var zone models.Zone
-	if res := api.db.WithContext(ctx).First(&zone, "id = ?", request.ZoneID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "zone id is not valid"})
-		return
-	}
-
-	user.ZoneID = request.ZoneID
-
-	api.db.WithContext(ctx).Save(&user)
-
-	c.JSON(http.StatusOK, user)
-}
-*/
-
 // GetUser gets a user
 // @Summary      Get User
 // @Description  Gets a user
@@ -153,7 +98,7 @@ func (api *API) GetUser(c *gin.Context) {
 	defer span.End()
 	userId := c.Param("id")
 	if userId == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
@@ -163,7 +108,7 @@ func (api *API) GetUser(c *gin.Context) {
 	}
 
 	if res := api.db.WithContext(ctx).Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: res.Error.Error()})
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		return
 	}
 	c.JSON(http.StatusOK, user)
@@ -207,7 +152,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 	defer span.End()
 	userID := c.Param("id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var user models.User
@@ -223,9 +168,9 @@ func (api *API) DeleteUser(c *gin.Context) {
 
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		}
 		return
 	}
