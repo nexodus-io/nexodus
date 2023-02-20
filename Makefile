@@ -67,7 +67,7 @@ clean: ## clean built binaries
 
 .PHONY: go-lint
 go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
-	@if ! which golangci-lint 2>&1 >/dev/null; then \
+	@if ! which golangci-lint >/dev/null 2>&1; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
 		exit 1 ; \
@@ -77,7 +77,7 @@ go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
 
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files
-	@if ! which yamllint 2>&1 >/dev/null; then \
+	@if ! which yamllint >/dev/null 2>&1; then \
 		echo "Please install yamllint." ; \
 		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
 		exit 1 ; \
@@ -296,18 +296,26 @@ srpm: dist/rpm image-mock ## Build a source RPM
 	cd dist/rpm && tar czf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
 	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
-	docker rm -f mock || true
-	docker run --name mock --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
 		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock \
 		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
 	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
-	docker rm -f mock || true
-	docker run --name mock --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
 		mock --rebuild --without check \--resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
 		/apex/$(wildcard dist/rpm/mock/apex-*$(shell date +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
+
+##@ Manpage Generation
+
+contrib/man:
+	$(CMD_PREFIX) mkdir -p contrib/man
+
+.PHONY: manpages
+manpages: contrib/man dist/apexd dist/apexctl image-mock ## Generate manpages in ./contrib/man
+	dist/apexd -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexd | gzip > contrib/man/apexd.8.gz
+	dist/apexctl -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexctl | gzip > contrib/man/apexctl.8.gz
 
 # Nothing to see here
 .PHONY: cat
