@@ -217,20 +217,20 @@ func (api *API) CreateDevice(c *gin.Context) {
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if device.TunnelIP != "" {
 			var err error
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID.String(), ipamPrefix, device.TunnelIP)
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, ipamPrefix, device.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
 		} else {
 			var err error
-			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID.String(), ipamPrefix)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID, ipamPrefix)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
 		}
 		// allocate a child prefix if requested
 		for _, prefix := range device.ChildPrefix {
-			if err := api.ipam.AssignPrefix(ctx, org.ID.String(), prefix); err != nil {
+			if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
 				return fmt.Errorf("failed to assign child prefix: %w", err)
 			}
 		}

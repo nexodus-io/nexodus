@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/google/uuid"
 	apiv1 "github.com/metal-stack/go-ipam/api/v1"
 	"github.com/metal-stack/go-ipam/api/v1/apiv1connect"
 	"go.opentelemetry.io/otel"
@@ -18,6 +20,10 @@ var tracer trace.Tracer
 
 func init() {
 	tracer = otel.Tracer("github.com/redhat-et/apex/internal/ipam")
+}
+
+func uuidToNamespace(id uuid.UUID) string {
+	return strings.ReplaceAll(id.String(), "-", "_")
 }
 
 type IPAM struct {
@@ -35,34 +41,35 @@ func NewIPAM(logger *zap.SugaredLogger, ipamAddress string) IPAM {
 		)}
 }
 
-func (i *IPAM) CreateNamespace(parent context.Context, namespace string) error {
+func (i *IPAM) CreateNamespace(parent context.Context, namespace uuid.UUID) error {
 	ctx, span := tracer.Start(parent, "CreateNamespace")
 	defer span.End()
 	_, err := i.client.CreateNamespace(ctx, connect.NewRequest(&apiv1.CreateNamespaceRequest{
-		Namespace: namespace,
+		Namespace: uuidToNamespace(namespace),
 	}))
 	return err
 }
 
-func (i *IPAM) DeleteNamespace(parent context.Context, namespace string) error {
+func (i *IPAM) DeleteNamespace(parent context.Context, namespace uuid.UUID) error {
 	ctx, span := tracer.Start(parent, "DeleteNamespace")
 	defer span.End()
 	_, err := i.client.DeleteNamespace(ctx, connect.NewRequest(&apiv1.DeleteNamespaceRequest{
-		Namespace: namespace,
+		Namespace: uuidToNamespace(namespace),
 	}))
 	return err
 }
 
-func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, namespace string, ipamPrefix string, TunnelIP string) (string, error) {
+func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, namespace uuid.UUID, ipamPrefix string, TunnelIP string) (string, error) {
 	ctx, span := tracer.Start(parent, "AssignSpecificTunnelIP")
 	defer span.End()
 	if err := validateIP(TunnelIP); err != nil {
 		return "", fmt.Errorf("Address %s is not valid", TunnelIP)
 	}
+	ns := uuidToNamespace(namespace)
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
 		Ip:         &TunnelIP,
-		Namespace:  &namespace,
+		Namespace:  &ns,
 	}))
 	if err != nil {
 		i.logger.Errorf("failed to assign the requested address %s, assigning an address from the pool: %v\n", TunnelIP, err)
@@ -71,12 +78,13 @@ func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, namespace string, 
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignFromPool(parent context.Context, namespace string, ipamPrefix string) (string, error) {
+func (i *IPAM) AssignFromPool(parent context.Context, namespace uuid.UUID, ipamPrefix string) (string, error) {
 	ctx, span := tracer.Start(parent, "AssignFromPool")
 	defer span.End()
+	ns := uuidToNamespace(namespace)
 	res, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
 		PrefixCidr: ipamPrefix,
-		Namespace:  &namespace,
+		Namespace:  &ns,
 	}))
 	if err != nil {
 		return "", fmt.Errorf("failed to acquire an IPAM assigned address %w\n", err)
@@ -84,7 +92,7 @@ func (i *IPAM) AssignFromPool(parent context.Context, namespace string, ipamPref
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignPrefix(parent context.Context, namespace string, cidr string) error {
+func (i *IPAM) AssignPrefix(parent context.Context, namespace uuid.UUID, cidr string) error {
 	println()
 	ctx, span := tracer.Start(parent, "AssignPrefix")
 	defer span.End()
@@ -92,11 +100,11 @@ func (i *IPAM) AssignPrefix(parent context.Context, namespace string, cidr strin
 	if err != nil {
 		return fmt.Errorf("invalid prefix requested: %w", err)
 	}
-
-	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr, Namespace: &namespace}))
+	ns := uuidToNamespace(namespace)
+	_, originalErr := i.client.CreatePrefix(ctx, connect.NewRequest(&apiv1.CreatePrefixRequest{Cidr: cidr, Namespace: &ns}))
 	if originalErr != nil {
 		// check to see if the prefix had been already created....
-		resp, err := i.client.GetPrefix(ctx, connect.NewRequest(&apiv1.GetPrefixRequest{Cidr: cidr, Namespace: &namespace}))
+		resp, err := i.client.GetPrefix(ctx, connect.NewRequest(&apiv1.GetPrefixRequest{Cidr: cidr, Namespace: &ns}))
 		if err == nil {
 			// it did exist... so ignore that create error since the prefix was created.
 			if resp.Msg.Prefix.Cidr == cidr && resp.Msg.Prefix.ParentCidr == "" {

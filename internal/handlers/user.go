@@ -51,10 +51,10 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 				if res := tx.Create(&user); res.Error != nil {
 					return fmt.Errorf("can't create user record: %w", res.Error)
 				}
-				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID.String()); err != nil {
+				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID); err != nil {
 					return fmt.Errorf("failed to create ipam namespace: %w", err)
 				}
-				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID.String(), defaultOrganizationPrefix); err != nil {
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefix); err != nil {
 					return fmt.Errorf("can't assign default ipam prefix: %w", err)
 				}
 			} else {

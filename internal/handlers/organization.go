@@ -81,11 +81,11 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		// Create the organization in IPAM
-		if err := api.ipam.CreateNamespace(ctx, org.ID.String()); err != nil {
+		if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
 			return err
 		}
 
-		if err := api.ipam.AssignPrefix(ctx, org.ID.String(), request.IpCidr); err != nil {
+		if err := api.ipam.AssignPrefix(ctx, org.ID, request.IpCidr); err != nil {
 			return err
 		}
 
