@@ -149,6 +149,21 @@ jobs:
           name: frontend
           path: /tmp/frontend.tar
 
+      - name: Build and export ipam
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Containerfile.ipam
+          tags: quay.io/apex/go-ipam:latest
+          outputs: type=docker,dest=/tmp/ipam.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Upload ipam artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ipam
+          path: /tmp/ipam.tar
+
   build-binaries:
     needs: lint
     strategy:

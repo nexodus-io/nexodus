@@ -9,7 +9,7 @@ RUN apk add \
     make
 
 COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf
-RUN git clone https://github.com/dave-tucker/go-ipam -b namespaces /work
+RUN git clone https://github.com/dave-tucker/go-ipam -b apex /work
 WORKDIR /work
 RUN make server client
 

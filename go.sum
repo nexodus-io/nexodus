@@ -104,8 +104,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
-github.com/dave-tucker/go-ipam v0.0.0-20230220151707-7003ac41276a h1:cnykh+nB8UATD97vjoYLw6wwKmL0+77c/sFsPGO4aWs=
-github.com/dave-tucker/go-ipam v0.0.0-20230220151707-7003ac41276a/go.mod h1:gathRR6rJMvok7UDwjtHk6MRU1tQzY5dKhQ2fYy8L7g=
+github.com/dave-tucker/go-ipam v0.0.0-20230220173413-c25c56b2408b h1:ARbbv7X/ynDXnCQCkYkBanbuaITWxwKGgbACZr64saY=
+github.com/dave-tucker/go-ipam v0.0.0-20230220173413-c25c56b2408b/go.mod h1:gathRR6rJMvok7UDwjtHk6MRU1tQzY5dKhQ2fYy8L7g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

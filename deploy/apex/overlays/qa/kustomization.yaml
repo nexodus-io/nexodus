@@ -88,3 +88,5 @@ images:
     newTag: 1107d9fbcb8c34c01baad174141474d5745ebb9c
   - name: quay.io/apex/frontend
     newTag: 1107d9fbcb8c34c01baad174141474d5745ebb9c
+  - name: quay.io/apex/go-ipam
+    newTag: 1107d9fbcb8c34c01baad174141474d5745ebb9c

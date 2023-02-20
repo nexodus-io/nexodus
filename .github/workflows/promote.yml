@@ -11,6 +11,7 @@ env:
   REPOSITORY: apex
   APISERVER_IMAGE_NAME: apiserver
   FRONTEND_IMAGE_NAME: frontend
+  IPAM_IMAGE_NAME: ipam
 
 jobs:
   update-prod:
@@ -42,6 +43,7 @@ jobs:
           pushd ./deploy/apex/overlays/prod
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
+          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${IPAM_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
           yq -i kustomization.yaml
           popd
 
