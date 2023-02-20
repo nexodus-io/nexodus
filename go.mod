@@ -18,7 +18,7 @@ require (
 	github.com/swaggo/files v0.0.0-20220728132757-551d4a08d97a
 	github.com/swaggo/gin-swagger v1.5.3
 	github.com/swaggo/swag v1.8.10
-	github.com/testcontainers/testcontainers-go v0.17.0
+	github.com/testcontainers/testcontainers-go v0.18.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.21
 	github.com/urfave/cli/v2 v2.24.3
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
