@@ -73,9 +73,8 @@ func main() {
 				EnvVars:  []string{"APEX_LOCAL_ENDPOINT_IP"},
 				Required: false,
 			},
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:     "child-prefix",
-				Value:    "",
 				Usage:    "request a CIDR range of addresses that will be advertised from this node (optional)",
 				EnvVars:  []string{"APEX_REQUESTED_CHILD_PREFIX"},
 				Required: false,
@@ -140,7 +139,7 @@ func main() {
 				cCtx.String("private-key"),
 				cCtx.String("request-ip"),
 				cCtx.String("local-endpoint-ip"),
-				cCtx.String("child-prefix"),
+				cCtx.StringSlice("child-prefix"),
 				cCtx.Bool("stun"),
 				cCtx.Bool("hub-router"),
 				cCtx.Bool("relay-only"),

@@ -44,7 +44,7 @@ type Apex struct {
 	requestedIP             string
 	userProvidedLocalIP     string
 	LocalIP                 string
-	childPrefix             string
+	childPrefix             []string
 	stun                    bool
 	relay                   bool
 	relayWgIP               string
@@ -87,7 +87,7 @@ func NewApex(ctx context.Context, logger *zap.SugaredLogger,
 	wireguardPvtKey string,
 	requestedIP string,
 	userProvidedLocalIP string,
-	childPrefix string,
+	childPrefix []string,
 	stun bool,
 	relay bool,
 	relayOnly bool,
@@ -217,10 +217,6 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 	ax.LocalIP = localIP
 	ax.endpointLocalAddress = localIP
-	childPrefix := make([]string, 0)
-	if ax.childPrefix != "" {
-		childPrefix = append(childPrefix, ax.childPrefix)
-	}
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	device, err := ax.client.CreateDevice(models.AddDevice{
 		UserID:                   user.ID,
@@ -228,7 +224,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		PublicKey:                ax.wireguardPubKey,
 		LocalIP:                  endpointSocket,
 		TunnelIP:                 ax.requestedIP,
-		ChildPrefix:              childPrefix,
+		ChildPrefix:              ax.childPrefix,
 		ReflexiveIPv4:            ax.nodeReflexiveAddress,
 		EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 		SymmetricNat:             ax.symmetricNat,
@@ -243,7 +239,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			}
 			device, err = ax.client.UpdateDevice(deviceID, models.UpdateDevice{
 				LocalIP:                  endpointSocket,
-				ChildPrefix:              childPrefix,
+				ChildPrefix:              ax.childPrefix,
 				ReflexiveIPv4:            ax.nodeReflexiveAddress,
 				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 				SymmetricNat:             ax.symmetricNat,
@@ -482,8 +478,8 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 			return fmt.Errorf("the IP address passed in --request-ip %s was not valid: %w", ax.requestedIP, err)
 		}
 	}
-	if ax.childPrefix != "" {
-		if err := ValidateCIDR(ax.childPrefix); err != nil {
+	for _, prefix := range ax.childPrefix {
+		if err := ValidateCIDR(prefix); err != nil {
 			return err
 		}
 	}
