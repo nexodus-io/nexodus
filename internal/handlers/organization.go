@@ -35,7 +35,6 @@ const (
 func (api *API) CreateOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateOrganization")
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
@@ -46,13 +45,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusMethodNotAllowed, models.ApiError{Error: "multi-organization support is disabled"})
 		return
 	}
-
 	userId := c.GetString(gin.AuthUserKey)
-	var user models.User
-	if res := tx.First(&user, "id = ?", userId); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "user not found"})
-		return
-	}
 
 	var request models.AddOrganization
 	// Call BindJSON to bind the received JSON
@@ -69,38 +62,46 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	newOrganization := models.Organization{
-		Name:        request.Name,
-		Description: request.Description,
-		IpCidr:      request.IpCidr,
-		HubZone:     request.HubZone,
-		Users:       []*models.User{&user},
-	}
-	if res := tx.Create(&newOrganization); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create organization"})
-		return
-	}
+	var org models.Organization
+	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		if res := tx.First(&user, "id = ?", userId); res.Error != nil {
+			return errUserNotFound
+		}
 
-	// Create the organization in IPAM
-	if err := api.ipam.CreateNamespace(ctx, newOrganization.ID.String()); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create ipam namespace"})
-		return
-	}
+		org = models.Organization{
+			Name:        request.Name,
+			Description: request.Description,
+			IpCidr:      request.IpCidr,
+			HubZone:     request.HubZone,
+			Users:       []*models.User{&user},
+		}
+		if res := tx.Create(&org); res.Error != nil {
+			return res.Error
+		}
 
-	if err := api.ipam.AssignPrefix(ctx, newOrganization.ID.String(), request.IpCidr); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
-		return
-	}
+		// Create the organization in IPAM
+		if err := api.ipam.CreateNamespace(ctx, org.ID.String()); err != nil {
+			return err
+		}
 
-	span.SetAttributes(attribute.String("id", newOrganization.ID.String()))
-	api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", newOrganization.Name, newOrganization.IpCidr)
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
+		if err := api.ipam.AssignPrefix(ctx, org.ID.String(), request.IpCidr); err != nil {
+			return err
+		}
+
+		span.SetAttributes(attribute.String("id", org.ID.String()))
+		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		}
 		return
 	}
-	c.JSON(http.StatusCreated, newOrganization)
+	c.JSON(http.StatusCreated, org)
 }
 
 // ListOrganizations lists all Organizations
@@ -116,17 +117,10 @@ func (api *API) CreateOrganization(c *gin.Context) {
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
 	var orgs []models.Organization
-	result := tx.Preload("Devices").Preload("Users").Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
+	result := api.db.WithContext(ctx).Preload("Devices").Preload("Users").Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "error fetching Organizations from db"})
-		return
-	}
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
 	}
 	c.JSON(http.StatusOK, orgs)
