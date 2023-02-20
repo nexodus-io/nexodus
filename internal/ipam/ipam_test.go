@@ -9,6 +9,7 @@ import (
 
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -48,7 +49,7 @@ func (suite *IpamTestSuite) TearDownSuite() {
 
 func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 	ctx := context.Background()
-	namespace := "testns"
+	namespace := uuid.New()
 	prefix := "10.20.30.0/24"
 
 	if err := suite.ipam.CreateNamespace(ctx, namespace); err != nil {
