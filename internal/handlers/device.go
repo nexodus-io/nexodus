@@ -15,10 +15,17 @@ import (
 )
 
 var (
-	errOrgNotFound     = errors.New("organization not found")
-	errUserNotFound    = errors.New("user not found")
-	errDuplicateDevice = errors.New("duplicate device")
+	errOrgNotFound  = errors.New("organization not found")
+	errUserNotFound = errors.New("user not found")
 )
+
+type errDuplicateDevice struct {
+	ID string
+}
+
+func (e errDuplicateDevice) Error() string {
+	return "device already exists"
+}
 
 // ListDevices lists all devices
 // @Summary      List Devices
@@ -60,7 +67,7 @@ func (api *API) GetDevice(c *gin.Context) {
 	defer span.End()
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var device models.Device
@@ -92,13 +99,13 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	defer span.End()
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var request models.UpdateDevice
 
 	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
 
@@ -157,11 +164,11 @@ func (api *API) CreateDevice(c *gin.Context) {
 	var request models.AddDevice
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
 	if request.PublicKey == "" {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "the request did not contain a valid public key"})
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("public_key"))
 		return
 	}
 
@@ -182,7 +189,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		res := tx.Where("public_key = ?", request.PublicKey).First(&device)
 		if res.Error == nil {
-			return errDuplicateDevice
+			return errDuplicateDevice{ID: device.ID.String()}
 		}
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return res.Error
@@ -263,14 +270,15 @@ func (api *API) CreateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
+		var duplicate errDuplicateDevice
 		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		} else if errors.Is(err, errOrgNotFound) {
-			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
-		} else if errors.Is(err, errDuplicateDevice) {
-			c.JSON(http.StatusConflict, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else if errors.As(err, &duplicate) {
+			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		}
 		return
 	}
@@ -298,7 +306,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	defer span.End()
 	deviceID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: "device id is not valid"})
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
@@ -311,23 +319,21 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	childPrefix := device.ChildPrefix
 
 	if res := api.db.WithContext(ctx).Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
 		return
 	}
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID.String(), ipamAddress, orgPrefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ApiError{
-				Error: fmt.Sprintf("%v", err),
-			})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release address to pool: %w", err)))
+			return
 		}
 	}
 
 	for _, prefix := range childPrefix {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID.String(), prefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.ApiError{
-				Error: fmt.Sprintf("failed to release child prefix: %v", err),
-			})
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release child prefix: %w", err)))
+			return
 		}
 	}
 

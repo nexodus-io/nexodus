@@ -235,7 +235,25 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		Hostname:                 ax.hostname,
 	})
 	if err != nil {
-		return fmt.Errorf("error creating peer: %w", err)
+		var conflict client.ErrConflict
+		if errors.As(err, &conflict) {
+			deviceID, err := uuid.Parse(conflict.ID)
+			if err != nil {
+				return fmt.Errorf("error parsing conflicting device id: %w", err)
+			}
+			device, err = ax.client.UpdateDevice(deviceID, models.UpdateDevice{
+				LocalIP:                  endpointSocket,
+				ReflexiveIPv4:            ax.nodeReflexiveAddress,
+				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
+				SymmetricNat:             ax.symmetricNat,
+				Hostname:                 ax.hostname,
+			})
+			if err != nil {
+				return fmt.Errorf("error updating device: %w", err)
+			}
+		} else {
+			return fmt.Errorf("error creating device: %w", err)
+		}
 	}
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", device))
 	ax.logger.Infof("Successfully registered device with UUID: %+v", device.ID)
