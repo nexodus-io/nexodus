@@ -1,4 +1,23 @@
-FROM ghcr.io/metal-stack/go-ipam:v1.11.3
+FROM bufbuild/buf:1.9.0 as buf
+FROM golang:1.19-alpine as builder
+
+RUN apk add \
+    binutils \
+    gcc \
+    git \
+    libc-dev \
+    make
+
+COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf
+RUN git clone https://github.com/dave-tucker/go-ipam -b namespaces /work
+WORKDIR /work
+RUN make server client
+
+FROM alpine:3.16
+COPY --from=builder /work/bin/* /
+
 RUN GRPC_HEALTH_PROBE_VERSION=v0.4.14 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
+
+ENTRYPOINT [ "/server" ]

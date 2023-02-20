@@ -69,11 +69,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	// Create the organization
-	if err := api.ipam.AssignPrefix(ctx, request.IpCidr); err != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
-		return
-	}
 	newOrganization := models.Organization{
 		Name:        request.Name,
 		Description: request.Description,
@@ -85,6 +80,18 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create organization"})
 		return
 	}
+
+	// Create the organization in IPAM
+	if err := api.ipam.CreateNamespace(ctx, newOrganization.ID.String()); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "unable to create ipam namespace"})
+		return
+	}
+
+	if err := api.ipam.AssignPrefix(ctx, newOrganization.ID.String(), request.IpCidr); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		return
+	}
+
 	span.SetAttributes(attribute.String("id", newOrganization.ID.String()))
 	api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", newOrganization.Name, newOrganization.IpCidr)
 	if err := tx.Commit(); err.Error != nil {
@@ -285,7 +292,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	if orgCIDR != "" {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgCIDR); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID.String(), orgCIDR); err != nil {
 			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to release ipam organization prefix: %v", err)})
 		}
 	}

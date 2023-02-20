@@ -104,6 +104,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
+github.com/dave-tucker/go-ipam v0.0.0-20230220151707-7003ac41276a h1:cnykh+nB8UATD97vjoYLw6wwKmL0+77c/sFsPGO4aWs=
+github.com/dave-tucker/go-ipam v0.0.0-20230220151707-7003ac41276a/go.mod h1:gathRR6rJMvok7UDwjtHk6MRU1tQzY5dKhQ2fYy8L7g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -351,8 +353,6 @@ github.com/mdlayher/netlink v1.6.2/go.mod h1:O1HXX2sIWSMJ3Qn1BYZk1yZM+7iMki/uYGG
 github.com/mdlayher/socket v0.1.1/go.mod h1:mYV5YIZAfHh4dzDVzI8x8tWLWCliuX8Mon5Awbj+qDs=
 github.com/mdlayher/socket v0.2.3 h1:XZA2X2TjdOwNoNPVPclRCURoX/hokBY8nkTmRZFEheM=
 github.com/mdlayher/socket v0.2.3/go.mod h1:bz12/FozYNH/VbvC3q7TRIK/Y6dH1kCKsXaUeXi/FmY=
-github.com/metal-stack/go-ipam v1.11.6 h1:obfw3U1R6XtB9H8+rYzpJvQ8+p+6pOtusAGQRYNNjCY=
-github.com/metal-stack/go-ipam v1.11.6/go.mod h1:gathRR6rJMvok7UDwjtHk6MRU1tQzY5dKhQ2fYy8L7g=
 github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721 h1:RlZweED6sbSArvlE924+mUcZuXKLBHA35U7LN621Bws=
 github.com/moby/patternmatcher v0.5.0 h1:YCZgJOeULcxLw1Q+sVR636pmS7sPEn1Qo2iAN6M7DBo=
 github.com/moby/patternmatcher v0.5.0/go.mod h1:hDPoyOpDY7OrrMDLaYoY3hf52gNCR/YOUYxkhApJIxc=

@@ -209,7 +209,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 	// TODO: handle a user requesting an IP not in the IPAM prefix
 	if device.TunnelIP != "" {
 		var err error
-		ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamPrefix, device.TunnelIP)
+		ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID.String(), ipamPrefix, device.TunnelIP)
 		if err != nil {
 			tx.Rollback()
 			api.Logger(ctx).Error(err)
@@ -218,7 +218,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 	} else {
 		var err error
-		ipamIP, err = api.ipam.AssignFromPool(ctx, ipamPrefix)
+		ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID.String(), ipamPrefix)
 		if err != nil {
 			tx.Rollback()
 			api.Logger(ctx).Error(err)
@@ -228,7 +228,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 	}
 	// allocate a child prefix if requested
 	for _, prefix := range device.ChildPrefix {
-		if err := api.ipam.AssignPrefix(ctx, prefix); err != nil {
+		if err := api.ipam.AssignPrefix(ctx, org.ID.String(), prefix); err != nil {
 			tx.Rollback()
 			api.Logger(ctx).Error(err)
 			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
@@ -305,6 +305,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	device := models.Device{}
 	device.Base = baseID
 	ipamAddress := device.TunnelIP
+	orgID := device.OrganizationID
 	orgPrefix := device.OrganizationPrefix
 	childPrefix := device.ChildPrefix
 
@@ -314,7 +315,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	if ipamAddress != "" && orgPrefix != "" {
-		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamAddress, orgPrefix); err != nil {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID.String(), ipamAddress, orgPrefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.ApiError{
 				Error: fmt.Sprintf("%v", err),
 			})
@@ -322,7 +323,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	for _, prefix := range childPrefix {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), prefix); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID.String(), prefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.ApiError{
 				Error: fmt.Sprintf("failed to release child prefix: %v", err),
 			})

@@ -160,3 +160,5 @@ require (
 )
 
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20221013203545-33ab36d6b304+incompatible // 22.06 branch
+
+replace github.com/metal-stack/go-ipam => github.com/dave-tucker/go-ipam v0.0.0-20230220151707-7003ac41276a
