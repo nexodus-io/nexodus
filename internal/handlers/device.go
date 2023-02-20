@@ -14,6 +14,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	errOrgNotFound     = errors.New("organization not found")
+	errUserNotFound    = errors.New("user not found")
+	errDuplicateDevice = errors.New("duplicate device")
+)
+
 // ListDevices lists all devices
 // @Summary      List Devices
 // @Description  Lists all devices
@@ -160,120 +166,115 @@ func (api *API) CreateDevice(c *gin.Context) {
 	}
 
 	userId := c.GetString(gin.AuthUserKey)
-	tx := api.db.Begin().WithContext(ctx)
-
-	var user models.User
-	if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "user not found"})
-		return
-	}
-
-	var org models.Organization
-	result := tx.First(&org, "id = ?", request.OrganizationID)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.ApiError{Error: "organization not found"})
-		return
-	}
-
 	var device models.Device
-	res := tx.Where("public_key = ?", request.PublicKey).First(&device)
-	if res.Error == nil {
-		c.JSON(http.StatusConflict, device)
-		return
-	}
-	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
-		return
-	}
 
-	var permitted bool
-	for _, org := range user.Organizations {
-		if org.ID == request.OrganizationID {
-			permitted = true
+	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
+			return errUserNotFound
 		}
-	}
-	if !permitted {
-		c.JSON(http.StatusForbidden, models.ApiError{Error: fmt.Sprintf("user is not a member of organization: %s", request.OrganizationID.String())})
+
+		var org models.Organization
+		result := tx.First(&org, "id = ?", request.OrganizationID)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return errOrgNotFound
+		}
+
+		res := tx.Where("public_key = ?", request.PublicKey).First(&device)
+		if res.Error == nil {
+			return errDuplicateDevice
+		}
+		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return res.Error
+		}
+
+		var permitted bool
+		for _, org := range user.Organizations {
+			if org.ID == request.OrganizationID {
+				permitted = true
+			}
+		}
+		if !permitted {
+			return fmt.Errorf("user is not a member of organization: %s", request.OrganizationID.String())
+		}
+
+		ipamPrefix := org.IpCidr
+		var relay bool
+		// determine if the node joining is a relay or in a hub-zone
+		if request.Relay && org.HubZone {
+			relay = true
+		}
+
+		var ipamIP string
+		// If this was a static address request
+		// TODO: handle a user requesting an IP not in the IPAM prefix
+		if device.TunnelIP != "" {
+			var err error
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID.String(), ipamPrefix, device.TunnelIP)
+			if err != nil {
+				return fmt.Errorf("failed to request specific ipam address: %w", err)
+			}
+		} else {
+			var err error
+			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID.String(), ipamPrefix)
+			if err != nil {
+				return fmt.Errorf("failed to request ipam address: %w", err)
+			}
+		}
+		// allocate a child prefix if requested
+		for _, prefix := range device.ChildPrefix {
+			if err := api.ipam.AssignPrefix(ctx, org.ID.String(), prefix); err != nil {
+				return fmt.Errorf("failed to assign child prefix: %w", err)
+			}
+		}
+
+		// append a /32 to the IPAM assignment unless it is a relay prefix
+		hostPrefix := ipamIP
+		if net.ParseIP(ipamIP) != nil && !relay {
+			hostPrefix = fmt.Sprintf("%s/32", ipamIP)
+		}
+
+		var allowedIPs []string
+		allowedIPs = append(allowedIPs, hostPrefix)
+
+		device = models.Device{
+			UserID:                   user.ID,
+			OrganizationID:           org.ID,
+			PublicKey:                request.PublicKey,
+			LocalIP:                  request.LocalIP,
+			AllowedIPs:               allowedIPs,
+			TunnelIP:                 ipamIP,
+			ChildPrefix:              request.ChildPrefix,
+			Relay:                    request.Relay,
+			OrganizationPrefix:       org.IpCidr,
+			ReflexiveIPv4:            request.ReflexiveIPv4,
+			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
+			SymmetricNat:             request.SymmetricNat,
+			Hostname:                 request.Hostname,
+		}
+
+		if res := tx.Create(&device); res.Error != nil {
+			return res.Error
+		}
+		span.SetAttributes(
+			attribute.String("id", device.ID.String()),
+		)
+		return nil
+	})
+
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+		} else if errors.Is(err, errOrgNotFound) {
+			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+		} else if errors.Is(err, errDuplicateDevice) {
+			c.JSON(http.StatusConflict, models.ApiError{Error: err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		}
 		return
 	}
 
-	ipamPrefix := org.IpCidr
-	var relay bool
-	// determine if the node joining is a relay or in a hub-zone
-	if request.Relay && org.HubZone {
-		relay = true
-	}
-
-	var ipamIP string
-	// If this was a static address request
-	// TODO: handle a user requesting an IP not in the IPAM prefix
-	if device.TunnelIP != "" {
-		var err error
-		ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID.String(), ipamPrefix, device.TunnelIP)
-		if err != nil {
-			tx.Rollback()
-			api.Logger(ctx).Error(err)
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request specific ipam address: %v", err)})
-			return
-		}
-	} else {
-		var err error
-		ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID.String(), ipamPrefix)
-		if err != nil {
-			tx.Rollback()
-			api.Logger(ctx).Error(err)
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to request ipam address: %v", err)})
-			return
-		}
-	}
-	// allocate a child prefix if requested
-	for _, prefix := range device.ChildPrefix {
-		if err := api.ipam.AssignPrefix(ctx, org.ID.String(), prefix); err != nil {
-			tx.Rollback()
-			api.Logger(ctx).Error(err)
-			c.JSON(http.StatusInternalServerError, models.ApiError{Error: fmt.Sprintf("failed to assign child prefix: %v", err)})
-			return
-		}
-	}
-
-	// append a /32 to the IPAM assignment unless it is a relay prefix
-	hostPrefix := ipamIP
-	if net.ParseIP(ipamIP) != nil && !relay {
-		hostPrefix = fmt.Sprintf("%s/32", ipamIP)
-	}
-
-	var allowedIPs []string
-	allowedIPs = append(allowedIPs, hostPrefix)
-
-	device = models.Device{
-		UserID:                   user.ID,
-		OrganizationID:           org.ID,
-		PublicKey:                request.PublicKey,
-		LocalIP:                  request.LocalIP,
-		AllowedIPs:               allowedIPs,
-		TunnelIP:                 ipamIP,
-		ChildPrefix:              request.ChildPrefix,
-		Relay:                    request.Relay,
-		OrganizationPrefix:       org.IpCidr,
-		ReflexiveIPv4:            request.ReflexiveIPv4,
-		EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
-		SymmetricNat:             request.SymmetricNat,
-		Hostname:                 request.Hostname,
-	}
-
-	if res := tx.Create(&device); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
-		return
-	}
-	span.SetAttributes(
-		attribute.String("id", device.ID.String()),
-	)
 	c.JSON(http.StatusCreated, device)
 }
 

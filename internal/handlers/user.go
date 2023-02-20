@@ -33,52 +33,47 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
 	var user models.User
-	res := tx.Preload("Organizations").First(&user, "id = ?", id)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			user.ID = id
-			user.UserName = userName
-			user.Organizations = []*models.Organization{
-				{
-					Name:        userName,
-					Description: fmt.Sprintf("%s's organization", userName),
-					IpCidr:      defaultOrganizationPrefix,
-					HubZone:     true,
-				},
+	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Preload("Organizations").First(&user, "id = ?", id)
+		if res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				user.ID = id
+				user.UserName = userName
+				user.Organizations = []*models.Organization{
+					{
+						Name:        userName,
+						Description: fmt.Sprintf("%s's organization", userName),
+						IpCidr:      defaultOrganizationPrefix,
+						HubZone:     true,
+					},
+				}
+				if res := tx.Create(&user); res.Error != nil {
+					return fmt.Errorf("can't create user record: %w", res.Error)
+				}
+				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID.String()); err != nil {
+					return fmt.Errorf("failed to create ipam namespace: %w", err)
+				}
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID.String(), defaultOrganizationPrefix); err != nil {
+					return fmt.Errorf("can't assign default ipam prefix: %w", err)
+				}
+			} else {
+				return fmt.Errorf("can't find record for user id %s", id)
 			}
-			if res := tx.Create(&user); res.Error != nil {
-				tx.Rollback()
-				return uuid.Nil, fmt.Errorf("can't create user record: %w", res.Error)
-			}
-			if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID.String()); err != nil {
-				tx.Rollback()
-				return uuid.Nil, fmt.Errorf("failed to create ipam namespace: %w", err)
-			}
-			if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID.String(), defaultOrganizationPrefix); err != nil {
-				tx.Rollback()
-				return uuid.Nil, fmt.Errorf("can't assign default ipam prefix: %w", err)
-			}
-		} else {
-			tx.Rollback()
-			return uuid.Nil, fmt.Errorf("can't find record for user id %s", id)
 		}
+		span.SetAttributes(
+			attribute.String("user-id", id),
+			attribute.String("username", userName),
+		)
+		// Check if the UserName has changed since the last time we saw this user
+		if user.UserName != userName {
+			tx.Model(&user).Update("UserName", userName)
+		}
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, err
 	}
-	span.SetAttributes(
-		attribute.String("user-id", id),
-		attribute.String("username", userName),
-	)
-	// Check if the UserName has changed since the last time we saw this user
-	if user.UserName != userName {
-		tx.Model(&user).Update("UserName", userName)
-	}
-
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		return uuid.Nil, err.Error
-	}
-
 	return user.Organizations[0].ID, nil
 }
 
@@ -156,8 +151,6 @@ func (api *API) GetUser(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
-
 	userId := c.Param("id")
 	if userId == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
@@ -169,18 +162,10 @@ func (api *API) GetUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
+	if res := api.db.WithContext(ctx).Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.ApiError{Error: res.Error.Error()})
 		return
 	}
-
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
-		return
-	}
-
 	c.JSON(http.StatusOK, user)
 }
 
@@ -196,17 +181,10 @@ func (api *API) GetUser(c *gin.Context) {
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
 	users := make([]*models.User, 0)
-	result := tx.Preload("Devices").Preload("Organizations").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
+	result := api.db.WithContext(ctx).Preload("Devices").Preload("Organizations").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
-		return
-	}
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -227,28 +205,28 @@ func (api *API) ListUsers(c *gin.Context) {
 func (api *API) DeleteUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
 	defer span.End()
-	tx := api.db.Begin().WithContext(ctx)
 	userID := c.Param("id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, models.ApiError{Error: "user id is not valid"})
 		return
 	}
-
 	var user models.User
+	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
+			return errUserNotFound
+		}
+		if res := api.db.Delete(&user, "id = ?", userID); res.Error != nil {
+			return res.Error
+		}
+		return nil
+	})
 
-	if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-
-	if res := api.db.Delete(&user, "id = ?", userID); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: res.Error.Error()})
-		return
-	}
-	if err := tx.Commit(); err.Error != nil {
-		tx.Rollback()
-		api.Logger(ctx).Error(err.Error)
-		c.JSON(http.StatusInternalServerError, models.ApiError{Error: "database error"})
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			c.JSON(http.StatusNotFound, models.ApiError{Error: err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, models.ApiError{Error: err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, user)
