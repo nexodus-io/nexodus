@@ -299,14 +299,14 @@ srpm: dist/rpm image-mock manpages ## Build a source RPM
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
 	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock \
+		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
 		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
 	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
+		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
 		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 ##@ Manpage Generation
