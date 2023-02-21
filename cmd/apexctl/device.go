@@ -8,6 +8,33 @@ import (
 	"github.com/redhat-et/apex/internal/client"
 )
 
+func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string) error {
+	devices, err := c.GetDeviceInOrganization(organizationID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		w := newTabWriter()
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
+		if encodeOut != encodeNoHeader {
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS", "ENDPOINT IP", "PUBLIC KEY", "ZONE ID")
+		}
+		for _, dev := range devices {
+			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID)
+		}
+		w.Flush()
+
+		return nil
+	}
+
+	err = FormatOutput(encodeOut, devices)
+	if err != nil {
+		log.Fatalf("failed to print output: %v", err)
+	}
+
+	return nil
+}
+
 func listAllDevices(c *client.Client, encodeOut string) error {
 	devices, err := c.ListDevices()
 	if err != nil {

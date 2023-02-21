@@ -7,6 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/urfave/cli/v2"
 )
@@ -147,6 +148,13 @@ func main() {
 					{
 						Name:  "list",
 						Usage: "list all devices",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "organization-id",
+								Value:    "",
+								Required: false,
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"),
@@ -155,10 +163,19 @@ func main() {
 									cCtx.String("password"),
 								),
 							)
+
 							if err != nil {
 								log.Fatal(err)
 							}
 							encodeOut := cCtx.String("output")
+							orgID := cCtx.String("organization-id")
+							if orgID != "" {
+								id, err := uuid.Parse(orgID)
+								if err != nil {
+									log.Fatal(err)
+								}
+								return listOrgDevices(c, id, encodeOut)
+							}
 							return listAllDevices(c, encodeOut)
 						},
 					},

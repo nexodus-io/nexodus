@@ -249,9 +249,9 @@ func (api *API) CreateDevice(c *gin.Context) {
 		var ipamIP string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
-		if device.TunnelIP != "" {
+		if request.TunnelIP != "" {
 			var err error
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, ipamPrefix, device.TunnelIP)
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, ipamPrefix, request.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
@@ -263,7 +263,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			}
 		}
 		// allocate a child prefix if requested
-		for _, prefix := range device.ChildPrefix {
+		for _, prefix := range request.ChildPrefix {
 			if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
 				return fmt.Errorf("failed to assign child prefix: %w", err)
 			}
