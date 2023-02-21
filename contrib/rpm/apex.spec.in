@@ -37,6 +37,7 @@ Source:         apex-##APEX_COMMIT##.tar.gz
 %description %{common_description}
 
 BuildRequires: systemd-rpm-macros
+BuildRequires: systemd-units
 Requires: wireguard-tools
 Requires(post): systemd-units
 Requires(preun): systemd-units
@@ -65,6 +66,9 @@ install -m 0755 -vp %{gobuilddir}/bin/* %{buildroot}%{_bindir}/
 install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}%{_libdir}/systemd/system/apex.service
 #install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}%{_unitdir}/apex.service
 install -p -D -m 0644 contrib/rpm/apex.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/apex
+for cmd in apexd apexctl ; do
+  install -p -D -m 0644 contrib/man/${cmd}.8.gz %{buildroot}%{_mandir}/man8/${cmd}.8.gz
+done
 
 %if %{with check}
 %check
@@ -78,17 +82,36 @@ install -p -D -m 0644 contrib/rpm/apex.sysconfig %{buildroot}%{_sysconfdir}/sysc
 %{_libdir}/systemd/system/apex.service
 #%{_unitdir}/apex.service
 %{_sysconfdir}/sysconfig/apex
+%{_mandir}/man8/*
 
 %gopkgfiles
 
 %post
-%systemd_post apex.service
+%if 0%{?systemd_post:1}
+    %systemd_post apex.service
+%else
+    if [ $1 -eq 1 ]; then
+        /bin/systemctl daemon-reload >/dev/null || :
+    fi
+%endif
 
 %preun
-%systemd_preun apex.service
+%if 0%{?systemd_preun:1}
+  %systemd_preun apex.service
+%else
+  if [ $1 -eq 0 ] ; then
+    # Package removal, not upgrade
+    /bin/systemctl --no-reload disable apex.service >/dev/null 2>&1 || :
+    /bin/systemctl stop apex.service >/dev/null 2>&1 || :
+  fi
+%endif
 
 %postun
-%systemd_postun apex.service
+%if 0%{?systemd_postun:1}
+  %systemd_postun apex.service
+%else
+  /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+%endif
 
 %changelog
 %autochangelog
