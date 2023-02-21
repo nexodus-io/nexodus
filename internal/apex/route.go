@@ -79,7 +79,7 @@ func (ax *Apex) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
 	case Linux.String():
 		for _, allowedIP := range wgPeerConfig.AllowedIPs {
 			routeExists, err := RouteExists(allowedIP)
-			if routeExists {
+			if !routeExists {
 				continue
 			}
 			if err != nil {

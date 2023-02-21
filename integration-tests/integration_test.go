@@ -164,7 +164,6 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 
 // TestRequestIPDefaultOrganization tests requesting a specific address in the default organization
 func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
-	suite.T().Skip("Test skipped as relay orgs do not currently support --request-ip")
 	assert := suite.Assert()
 
 	node1IP := "10.200.0.101"
@@ -214,7 +213,6 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
 
 // TestRequestIPOrganization tests requesting a specific address in a newly created organization
 func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
-	suite.T().Skip("Test skipped as relay orgs do not currently support --request-ip")
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -222,9 +220,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 	defer cancel()
 	username := "kitteh1"
 	password := "floofykittens"
-	// TODO: revert back to overlapping CIDR once IPAM namespacing is supported
-	node1IP := "10.200.0.201"
-	node2IP := "10.200.0.202"
+	node1IP := "10.200.0.101"
+	node2IP := "10.200.0.102"
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -359,101 +356,107 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	err = ping(ctx, node2, node3IP)
 	assert.NoErrorf(err, gather)
 
-	// TODO: re-enable this functionality once #458 lands
-	//hubOrganizationChildPrefix := "10.188.100.0/24"
-	//node2ChildPrefixLoopbackNet := "10.188.100.1/32"
-	//
-	//suite.T().Logf("killing apex on node2")
-	//
-	//_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
-	//assert.NoError(err)
-	//suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubOrganizationChildPrefix)
-	//
-	//// add a loopback that are contained in the node's child prefix
-	//_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2ChildPrefixLoopbackNet, "dev", "lo"})
-	//require.NoError(err)
-	//
-	//// re-join and ensure the device table updates with the new values
-	//go func() {
-	//	_, err = suite.containerExec(ctx, node2, []string{
-	//		"/bin/apexd",
-	//		fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
-	//		"--username", username, "--password", password,
-	//		"http://apex.local",
-	//	})
-	//}()
-	//
-	//// address will be the same, this is just a readiness check for gather data
-	//node1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
-	//require.NoError(err)
-	//node2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
-	//require.NoError(err)
-	//node3IP, err = getContainerIfaceIP(ctx, "wg0", node3)
-	//require.NoError(err)
-	//
-	//gather = suite.gatherFail(ctx, node1, node2, node3)
-	//
-	//// parse the loopback ip from the loopback prefix
-	//node2LoopbackIP, _, _ := net.ParseCIDR(node2ChildPrefixLoopbackNet)
-	//
-	//suite.T().Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
-	//err = ping(ctx, node3, node2LoopbackIP.String())
-	//assert.NoErrorf(err, gather)
-	//
-	//suite.logger.Infof("Pinging %s from node1", node3IP)
-	//err = ping(ctx, node1, node3IP)
-	//assert.NoErrorf(err, gather)
-	//
-	//suite.logger.Infof("Pinging %s from node3", node1IP)
-	//err = ping(ctx, node3, node2IP)
-	//assert.NoErrorf(err, gather)
-	//
-	//suite.logger.Infof("Pinging %s from node2", node3IP)
-	//err = ping(ctx, node2, node3IP)
-	//assert.NoErrorf(err, gather)
+	hubOrganizationChildPrefix := "10.188.100.0/24"
+	node2ChildPrefixLoopbackNet := "10.188.100.1/32"
 
-	// TODO: re-enable this functionality once node deletes are resolved
+	suite.T().Logf("killing apex on node2")
+
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
+	assert.NoError(err)
+	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubOrganizationChildPrefix)
+
+	// add a loopback that are contained in the node's child prefix
+	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2ChildPrefixLoopbackNet, "dev", "lo"})
+	require.NoError(err)
+
+	// re-join and ensure the device table updates with the new values
+	go func() {
+		_, err = suite.containerExec(ctx, node2, []string{
+			"/bin/apexd",
+			fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
+			"--username", username, "--password", password,
+			"http://apex.local",
+		})
+	}()
+
+	// address will be the same, this is just a readiness check for gather data
+	node1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+	node2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
+	require.NoError(err)
+	node3IP, err = getContainerIfaceIP(ctx, "wg0", node3)
+	require.NoError(err)
+
+	gather = suite.gatherFail(ctx, node1, node2, node3)
+
+	// parse the loopback ip from the loopback prefix
+	node2LoopbackIP, _, _ := net.ParseCIDR(node2ChildPrefixLoopbackNet)
+
+	suite.T().Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
+	err = ping(ctx, node3, node2LoopbackIP.String())
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node1", node3IP)
+	err = ping(ctx, node1, node3IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node3", node1IP)
+	err = ping(ctx, node3, node2IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, node3IP)
+	assert.NoErrorf(err, gather)
+
 	// get the device id for node3
-	//allDevices, err := suite.runCommand(apexctl,
-	//	"--username", "kitteh2",
-	//	"--password", "floofykittens",
-	//	"--output", "json-raw",
-	//	"device", "list-all",
-	//)
-	//var devices []models.Device
-	//json.Unmarshal([]byte(allDevices), &devices)
-	//assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
+	userOut, err := suite.runCommand(apexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"user", "get-current",
+	)
+	require.NoErrorf(err, "apexctl user list error: %v\n", err)
+	var user models.UserJSON
+	err = json.Unmarshal([]byte(userOut), &user)
+	assert.Equal(1, len(user.Organizations))
+	orgID := user.Organizations[0]
 
-	//var device3ID string
-	//for _, p := range devices {
-	//	if p.TunnelIP == node1IP {
-	//		node3IP = p.TunnelIP
-	//		device3ID = p.ID.String()
-	//	}
-	//}
+	allDevices, err := suite.runCommand(apexctl,
+		"--username", "kitteh2",
+		"--password", "floofykittens",
+		"--output", "json-raw",
+		"device", "list", "--organization-id", orgID.String(),
+	)
+	var devices []models.Device
+	json.Unmarshal([]byte(allDevices), &devices)
+	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
+
+	var device3ID string
+	for _, p := range devices {
+		if p.TunnelIP == node1IP {
+			node3IP = p.TunnelIP
+			device3ID = p.ID.String()
+		}
+	}
 
 	// delete the device node2
-	//_, err = suite.runCommand(apexctl,
-	//	"--username", "kitteh2",
-	//	"--password", "floofykittens",
-	//	"device", "delete",
-	//	"--device-id", device3ID,
-	//)
-	//require.NoError(err)
+	_, err = suite.runCommand(apexctl,
+		"--username", "kitteh2",
+		"--password", "floofykittens",
+		"device", "delete",
+		"--device-id", device3ID,
+	)
+	require.NoError(err)
 
-	//// this is probably more time than needed for convergence as polling is currently 5s
-	//time.Sleep(time.Second * 10)
-	//gather = suite.gatherFail(ctx, node1, node2, node3)
+	// this is probably more time than needed for convergence as polling is currently 5s
+	time.Sleep(time.Second * 10)
+	gather = suite.gatherFail(ctx, node1, node2, node3)
 
-	//// verify the deleted device details are no longer in a device's tables
-	//node2routes := suite.routesDump(ctx, node2)
-	//node2dump := suite.wgDump(ctx, node2)
-	//if strings.Contains(node2routes, node3IP) {
-	//	assert.Errorf(err, "found deleted device node still in routing tables of a device", gather)
-	//}
-	//if strings.Contains(node2dump, node3IP) {
-	//	assert.Errorf(err, "found deleted device node still in wg show wg0 dump tables of a device", gather)
-	//}
+	// verify the deleted device details are no longer in a device's tables
+	node2routes := suite.routesDump(ctx, node2)
+	node2dump := suite.wgDump(ctx, node2)
+
+	assert.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device", gather)
+	assert.NotContainsf(node2dump, node3IP, "found deleted device node still in wg show wg0 dump tables of a device", gather)
 }
 
 // TestChildPrefix tests requesting a specific address in a newly created organization
@@ -814,8 +817,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 }
 
 func (suite *ApexIntegrationSuite) TestApexCtl() {
-	// TODO re-enable this test
-	suite.T().Skip("apexctl tests are temporarily disabled")
+	suite.T().Skip("Skipping since deleting org fails with key constraint errors")
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -877,16 +879,16 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	err = ping(ctx, node2, node1IP)
 	assert.NoErrorf(err, gather)
 
-	// validate list-all devices and register IDs and IPs
+	// validate list devices and register IDs and IPs
 	allDevices, err := suite.runCommand(apexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
-		"device", "list-all",
+		"device", "list",
 	)
 	var devices []models.Device
 	json.Unmarshal([]byte(allDevices), &devices)
-	assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
+	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
 
 	// register the device IDs for node1 and node2
 	var node1DeviceID string
@@ -967,7 +969,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 
 	json.Unmarshal([]byte(devicesInOrganization), &devices)
-	assert.NoErrorf(err, "apexctl device list-all error: %v\n", err)
+	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
 
 	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
 	for _, p := range devices {
