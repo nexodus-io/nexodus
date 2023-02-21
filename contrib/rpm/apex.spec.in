@@ -63,8 +63,7 @@ done
 %gopkginstall
 install -m 0755 -vd                     %{buildroot}%{_bindir}
 install -m 0755 -vp %{gobuilddir}/bin/* %{buildroot}%{_bindir}/
-install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}%{_libdir}/systemd/system/apex.service
-#install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}%{_unitdir}/apex.service
+install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}/usr/lib/systemd/system/apex.service
 install -p -D -m 0644 contrib/rpm/apex.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/apex
 for cmd in apexd apexctl ; do
   install -p -D -m 0644 contrib/man/${cmd}.8.gz %{buildroot}%{_mandir}/man8/${cmd}.8.gz
@@ -79,8 +78,7 @@ done
 %license LICENSE
 %doc docs DCO CONTRIBUTING.md README.md
 %{_bindir}/*
-%{_libdir}/systemd/system/apex.service
-#%{_unitdir}/apex.service
+/usr/lib/systemd/system/apex.service
 %{_sysconfdir}/sysconfig/apex
 %{_mandir}/man8/*
 
