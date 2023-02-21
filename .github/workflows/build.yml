@@ -405,5 +405,14 @@ jobs:
           sudo apt -y install make
 
       - name: Build rpm
+        id: build-rpm
         run: |
           make rpm
+          echo "artifact-name=$(pwd)/dist/rpm/mock/apex-*.x86_64.rpm" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apex
+          path: |
+            ${{ steps.build-rpm.outputs.artifact-name }}
