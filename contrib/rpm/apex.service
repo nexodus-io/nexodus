@@ -9,4 +9,4 @@ Restart=always
 RestartSec=1
 User=root
 EnvironmentFile=/etc/sysconfig/apex
-ExecStart=/usr/bin/apexd ${APEX_ARGS} ${APEX_URL}
+ExecStart=/usr/bin/apexd ${APEX_URL} ${APEX_ARGS}
