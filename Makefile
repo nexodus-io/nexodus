@@ -272,13 +272,15 @@ MOCK_ROOT?=fedora-37-x86_64
 SRPM_DISTRO?=fc37
 
 .PHONY: srpm
-srpm: dist/rpm image-mock ## Build a source RPM
+srpm: dist/rpm image-mock manpages ## Build a source RPM
 	go mod vendor
 	rm -rf dist/rpm/apex-${APEX_RELEASE}
 	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
 	git archive --format=tar.gz -o dist/rpm/apex-${APEX_RELEASE}.tar.gz --prefix=apex-${APEX_RELEASE}/ ${APEX_RELEASE}
 	cd dist/rpm && tar xzf apex-${APEX_RELEASE}.tar.gz
 	mv vendor dist/rpm/apex-${APEX_RELEASE}/.
+	mkdir -p dist/rpm/apex-${APEX_RELEASE}/contrib/man
+	cp -r contrib/man/* dist/rpm/apex-${APEX_RELEASE}/contrib/man/.
 	cd dist/rpm && tar czf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
 	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
@@ -290,8 +292,8 @@ srpm: dist/rpm image-mock ## Build a source RPM
 .PHONY: rpm
 rpm: srpm ## Build an RPM
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --rebuild --without check \--resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
-		/apex/$(wildcard dist/rpm/mock/apex-*$(shell date +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
+		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} \
+		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 ##@ Manpage Generation
 
