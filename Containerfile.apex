@@ -17,8 +17,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 WORKDIR /
-RUN apk add git && \
-    git clone https://github.com/FiloSottile/mkcert && cd mkcert && \
+RUN git clone https://github.com/FiloSottile/mkcert && cd mkcert && \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags "-extldflags=-static -X main.Version=$(git describe --tags)"
 
