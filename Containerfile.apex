@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:1.19 as build-apex
+FROM docker.io/library/golang:1.19-alpine as build-apex
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-extldflags=-static" \
     -o apexd ./cmd/apexd
 
-FROM docker.io/library/golang:1.19 as build-mkcert
+FROM docker.io/library/golang:1.19-alpine as build-mkcert
 ARG TARGETOS
 ARG TARGETARCH
 
