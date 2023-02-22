@@ -322,10 +322,17 @@ jobs:
           name: frontend
           path: /tmp
 
+      - name: Download ipam image
+        uses: actions/download-artifact@v3
+        with:
+          name: ipam
+          path: /tmp
+
       - name: Load Docker images
         run: |
           docker load --input /tmp/apiserver.tar
           docker load --input /tmp/frontend.tar
+          docker load --input /tmp/ipam.tar
 
       - name: Build dist
         run: |
@@ -333,7 +340,7 @@ jobs:
 
       - name: Setup KIND
         run: |
-          make run-on-kind
+          make setup-kind deploy-operators load-images deploy cacerts
 
       - name: Build ubuntu test image
         uses: docker/build-push-action@v4
@@ -346,9 +353,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run e2e
+      - name: Run e2e against Crunchy managed Postgres
         run: |
           go test -v --tags=integration ./integration-tests/...
+
+# TODO: one day, uncomment this so that we also verify that the e2e
+#       tests work against Cockroach DB too.
+#
+#      - name: Switch to Cockroach DB
+#        run: |
+#          make use-cockroach
+#
+#      - name: Run e2e against Cockroach DB
+#        run: |
+#          go clean -testcache
+#          go test -v --tags=integration ./integration-tests/...
 
       - name: Get Logs
         if: always()
