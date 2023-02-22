@@ -1,9 +1,33 @@
+FROM docker.io/library/golang:1.19-alpine as build
+
+WORKDIR /src
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o ./dist/apexd ./cmd/apexd
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o ./dist/apexctl ./cmd/apexctl
+
 FROM alpine:3.16 as alpine
-RUN apk add --no-cache iputils wireguard-tools iptables psmisc ca-certificates
-COPY ./dist/apexd /bin/apexd
-COPY ./dist/apexctl /bin/apexctl
+RUN apk add --no-cache \
+    iputils \
+    wireguard-tools \
+    iptables \
+    psmisc \
+    ca-certificates
+COPY --from=build /src/dist/apexd /bin/apexd
+COPY --from=build /src/dist/apexctl /bin/apexctl
 COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 RUN /usr/sbin/update-ca-certificates
+RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc &&\
+    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
 
 FROM fedora:36 as fedora
@@ -19,10 +43,14 @@ RUN dnf update -qy && \
     hostname \
     && \
     dnf clean all
-COPY ./dist/apexd /bin/apexd
-COPY ./dist/apexctl /bin/apexctl
+COPY --from=build /src/dist/apexd /bin/apexd
+COPY --from=build /src/dist/apexctl /bin/apexctl
 COPY ./.certs/rootCA.pem /etc/pki/ca-trust/source/anchors/rootCA.crt
 RUN /usr/bin/update-ca-trust
+RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc &&\
+    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc
 ENTRYPOINT [ "/bin/sleep", "infinity" ]
 
 FROM ubuntu:22.04 as ubuntu
@@ -41,14 +69,12 @@ RUN apt-get update -qy && \
     psmisc \
     && \
     apt-get clean
-COPY ./dist/apexd /bin/apexd
-COPY ./dist/apexctl /bin/apexctl
+COPY --from=build /src/dist/apexd /bin/apexd
+COPY --from=build /src/dist/apexctl /bin/apexctl
 COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 RUN /usr/sbin/update-ca-certificates
-RUN echo "echo '\n\
-To connect this container to the apex network, try running:\n\
-\n\
-   /bin/apexd --username admin --password floofykittens https://apex.local\n\
-'" >> /root/.bashrc
-
+RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc &&\
+    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
+    echo 'echo' >> /root/.bashrc
 ENTRYPOINT [ "/bin/sleep", "infinity" ]

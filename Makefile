@@ -109,8 +109,9 @@ test: ## Run unit tests
 
 APEX_LOCAL_IP:=`go run ./hack/resolve-ip apex.local`
 .PHONY: run-test-container
-run-test-container: dist/apexd dist/apexctl test-images ## Run docker container that you can run apex in
-	docker run --rm -it --network bridge \
+run-test-container: ## Run docker container that you can run apex in
+	@docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
+	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
@@ -167,7 +168,7 @@ images: image-frontend image-apiserver image-ipam ## Create container images
 ##@ Kubernetes - kind dev environment
 
 .PHONY: run-on-kind
-run-on-kind: setup-kind deploy-operators load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
+run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
 
 .PHONY: teardown
 teardown: ## Teardown the kind cluster
@@ -196,40 +197,31 @@ deploy-operators: deploy-certmanager deploy-pgo  ## Deploy all operators and wai
 deploy-certmanager: # Deploy cert-manager
 	@kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
 
+CRUNCHY_REVISION?=f1766db0b50ad2ae8ff35a599a16e11eefbd9f9c
 .PHONY: deploy-pgo
 deploy-pgo: # Deploy crunchy-data postgres operator
-	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
-	@kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default
+	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace?ref=$(CRUNCHY_REVISION)
+	@kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default?ref=$(CRUNCHY_REVISION)
 
 .PHONY: deploy-cockroach-operator
 deploy-cockroach-operator: ## Deploy cockroach operator
 	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
 	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
 	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
-	@kubectl wait --for=condition=Ready pods --all -n cockroach-operator-system --timeout=5m
+	@kubectl wait --for=condition=Available --timeout=5m -n cockroach-operator-system deploy/cockroach-operator-manager
+	@sleep 3 # Waiting for operator readiness is not enough: https://github.com/cockroachdb/cockroach-operator/issues/957
 
 .PHONY: use-cockroach
-use-cockroach: deploy-cockroach-operator ## Replace the postgres server with a cockroach server
-	@kubectl -n apex delete postgrescluster database || true
-	@kubectl apply -k ./deploy/apex/overlays/cockroach
-	@kubectl -n apex wait --for=condition=Initialized cockroachdb cockroachdb --timeout=5m
-	@kubectl -n apex rollout status statefulsets/cockroachdb --timeout=5m
-	@kubectl -n apex exec -it cockroachdb-0 \
-	  	-- ./cockroach sql \
-		--insecure \
-		--certs-dir=/cockroach/cockroach-certs \
-		--host=cockroachdb-public \
-		--execute "\
-			CREATE DATABASE IF NOT EXISTS ipam;\
-			CREATE USER IF NOT EXISTS ipam;\
-			GRANT ALL ON DATABASE ipam TO ipam;\
-			CREATE DATABASE IF NOT EXISTS apiserver;\
-			CREATE USER IF NOT EXISTS apiserver;\
-			GRANT ALL ON DATABASE apiserver TO apiserver;\
-			"
-	@kubectl rollout restart deploy/ipam -n apex
-	@kubectl -n apex rollout status deploy/ipam --timeout=5m
-	@kubectl rollout restart deploy/apiserver -n apex
+use-cockroach: deploy-cockroach-operator ## Recreate the database with a Cockroach based server
+	@OVERLAY=cockroach make recreate-db
+
+.PHONY: use-crunchy
+use-crunchy: ## Recreate the database with a Crunchy based postgres server
+	@OVERLAY=dev make recreate-db
+
+.PHONY: use-postgres
+use-postgres: ## Recreate the database with a simple Postgres server
+	@OVERLAY=arm64 make recreate-db
 
 .PHONY: wait-for-readiness
 wait-for-readiness: # Wait for operators to be installed
@@ -243,6 +235,7 @@ wait-for-readiness: # Wait for operators to be installed
 deploy: wait-for-readiness ## Deploy a development apex stack onto a kubernetes cluster
 	@kubectl create namespace apex
 	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
+	@OVERLAY=$(OVERLAY) make init-db
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: undeploy
@@ -250,20 +243,63 @@ undeploy: ## Remove the apex stack from a kubernetes cluster
 	@kubectl delete namespace apex
 
 .PHONY: load-images
-load-images: images ## Load images onto kind
+load-images: ## Load images onto kind
 	@kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
 	@kind load --name apex-dev docker-image quay.io/apex/frontend:latest
 	@kind load --name apex-dev docker-image quay.io/apex/go-ipam:latest
 
 .PHONY: redeploy
-redeploy: load-images ## Redploy apex after images changes
+redeploy: images load-images ## Redeploy apex after images changes
 	@kubectl rollout restart deploy/apiserver -n apex
 	@kubectl rollout restart deploy/frontend -n apex
 
+.PHONY: init-db
+init-db:
+# wait for the DB to be up, then restart the services that use it.
+ifeq ($(OVERLAY),dev)
+	@kubectl wait -n apex postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
+else ifeq ($(OVERLAY),arm64)
+	@kubectl wait -n apex statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
+else ifeq ($(OVERLAY),cockroach)
+	@make deploy-cockroach-operator
+	@kubectl -n apex wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
+	@kubectl -n apex rollout status statefulsets/cockroachdb --timeout=5m
+	@kubectl -n apex exec -it cockroachdb-0 \
+	  	-- ./cockroach sql \
+		--insecure \
+		--certs-dir=/cockroach/cockroach-certs \
+		--host=cockroachdb-public \
+		--execute "\
+			CREATE DATABASE IF NOT EXISTS ipam;\
+			CREATE USER IF NOT EXISTS ipam;\
+			GRANT ALL ON DATABASE ipam TO ipam;\
+			CREATE DATABASE IF NOT EXISTS apiserver;\
+			CREATE USER IF NOT EXISTS apiserver;\
+			GRANT ALL ON DATABASE apiserver TO apiserver;\
+			CREATE DATABASE IF NOT EXISTS keycloak;\
+			CREATE USER IF NOT EXISTS keycloak;\
+			GRANT ALL ON DATABASE keycloak TO keycloak;\
+			"
+endif
+	@kubectl rollout restart deploy/apiserver -n apex
+	@kubectl rollout restart deploy/ipam -n apex
+	@kubectl -n apex rollout status deploy/apiserver --timeout=5m
+	@kubectl -n apex rollout status deploy/ipam --timeout=5m
+
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new apex database
-	@kubectl delete -n apex deploy/apiserver postgrescluster/database deploy/ipam
-	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
+
+	@kubectl delete -n apex postgrescluster/database 2> /dev/null || true
+	@kubectl wait --for=delete -n apex postgrescluster/database
+	@kubectl delete -n apex statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
+	@kubectl wait --for=delete -n apex persistentvolumeclaims/postgres-disk-postgres-0
+	@kubectl delete -n apex crdbclusters/cockroachdb persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-0
+	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-1
+	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-2
+
+	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY) | grep -v unchanged
+	@OVERLAY=$(OVERLAY) make init-db
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: cacerts

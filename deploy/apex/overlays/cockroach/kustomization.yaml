@@ -23,6 +23,14 @@ secretGenerator:
       - port=26257
       - user=apiserver
 
+  - name: database-pguser-keycloak
+    literals:
+      - host=postgres
+      - port=5432
+      - user=keycloak
+      - password=password
+      - dbname=keycloak
+
 configMapGenerator:
   - name: ipam
     behavior: merge
