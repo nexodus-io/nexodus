@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: apiserver
-          image: quay.io/apex/apiserver:latest
+          image: image-registry.openshift-image-registry.svc:5000/apex/apiserver
           imagePullPolicy: IfNotPresent
           env:
             - name: APEX_DEBUG

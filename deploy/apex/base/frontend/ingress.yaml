@@ -3,14 +3,14 @@ kind: Ingress
 metadata:
   name: frontend
   annotations:
-    cert-manager.io/issuer: apex-issuer
+    cert-manager.io/issuer: letsencrypt
 spec:
   tls:
     - hosts:
-        - apex.local
+        - frontend.apex-hosted.cloud
       secretName: apex-frontend-cert
   rules:
-    - host: apex.local
+    - host: frontend.apex-hosted.cloud
       http:
         paths:
           - pathType: Prefix

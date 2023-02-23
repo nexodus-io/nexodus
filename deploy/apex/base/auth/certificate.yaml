@@ -18,7 +18,7 @@ spec:
     - server auth
     - client auth
   dnsNames:
-    - auth.apex.local
+    - auth.apex-hosted.cloud
   issuerRef:
-    name: apex-issuer
+    name: letsencrypt
     kind: Issuer

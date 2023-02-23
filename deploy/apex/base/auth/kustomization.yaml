@@ -8,8 +8,8 @@ resources:
 configMapGenerator:
   - name: auth-config
     literals:
-      - hostname=auth.apex.local
-      - frontend-url=https://apex.local
+      - hostname=auth.apex-hosted.cloud
+      - frontend-url=https://apex-hosted.cloud
   - name: realm
     files:
       - files/apex.json

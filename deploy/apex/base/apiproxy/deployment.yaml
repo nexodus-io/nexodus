@@ -8,9 +8,11 @@ spec:
     type: Recreate
   template:
     spec:
+      securityContext:
+        runAsUser: 1001930000
       containers:
         - name: caddy
-          image: docker.io/library/caddy:2.6-alpine
+          image: image-registry.openshift-image-registry.svc:5000/apex/caddy
           imagePullPolicy: IfNotPresent
           resources:
             requests:

@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: ipam
-          image: quay.io/apex/go-ipam:latest
+          image: image-registry.openshift-image-registry.svc:5000/apex/ipam-go
           imagePullPolicy: IfNotPresent
           env:
             - name: GOIPAM_PG_HOST

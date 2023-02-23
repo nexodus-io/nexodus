@@ -7,7 +7,7 @@ metadata:
   name: auth
 spec:
   rules:
-    - host: auth.apex.local
+    - host: auth.apex-hosted.cloud
       http:
         paths:
           - pathType: Prefix

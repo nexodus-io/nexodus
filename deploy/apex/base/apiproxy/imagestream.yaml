@@ -1,0 +1,16 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: caddy
+  namespace: apex
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: docker.io/library/caddy:2.6-alpine
+      importPolicy: {}
+      referencePolicy:
+        type: Local

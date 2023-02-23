@@ -3,14 +3,14 @@ kind: Ingress
 metadata:
   name: apiproxy
   annotations:
-    cert-manager.io/issuer: apex-issuer
+    cert-manager.io/issuer: letsencrypt
 spec:
   tls:
     - hosts:
-        - api.apex.local
+        - api.apex-hosted.cloud
       secretName: apex-api-cert
   rules:
-    - host: api.apex.local
+    - host: api.apex-hosted.cloud
       http:
         paths:
           - pathType: Prefix
