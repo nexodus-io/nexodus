@@ -43,21 +43,14 @@ export const DeviceList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<DeviceListBulkActions />}>
       <TextField label="Hostname" source="hostname" />
+      <TextField label="Tunnel IP" source="tunnel_ip" />
+      <TextField label="Endpoint IP" source="local_ip" />
       <ReferenceField
         label="User"
         source="user_id"
         reference="users"
         link="show"
       />
-      <ReferenceArrayField
-        label="Peered Zones"
-        source="peers"
-        reference="peers"
-      >
-        <SingleFieldList linkType="show">
-          <ZoneNameFromPeer />
-        </SingleFieldList>
-      </ReferenceArrayField>
     </Datagrid>
   </List>
 );
@@ -67,6 +60,10 @@ export const DeviceShow = () => (
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Hostname" source="hostname" />
+      <TextField label="Allowed IPs" source="allowed_ips" />
+      <TextField label="Tunnel IP" source="tunnel_ip" />
+      <TextField label="Local IP" source="local_ip" />
+      <TextField label="Organization Prefix" source="organization_prefix" />
       <ReferenceField
         label="User"
         source="user_id"
