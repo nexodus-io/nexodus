@@ -193,6 +193,21 @@ jobs:
           name: ipam
           path: /tmp/ipam.tar
 
+      - name: Build and export ipam
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Containerfile.test
+          tags: quay.io/apex/test:ubuntu
+          outputs: type=docker,dest=/tmp/test-ubuntu.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Upload test:ubuntu artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-ubuntu
+          path: /tmp/test-ubuntu.tar
+
   build-binaries:
     needs: go-lint
     strategy:
@@ -328,11 +343,18 @@ jobs:
           name: ipam
           path: /tmp
 
+      - name: Download test:ubuntu image
+        uses: actions/download-artifact@v3
+        with:
+          name: test-ubuntu
+          path: /tmp
+
       - name: Load Docker images
         run: |
           docker load --input /tmp/apiserver.tar
           docker load --input /tmp/frontend.tar
           docker load --input /tmp/ipam.tar
+          docker load --input /tmp/test-ubuntu.tar
 
       - name: Build dist
         run: |
@@ -341,17 +363,6 @@ jobs:
       - name: Setup KIND
         run: |
           make setup-kind deploy-operators load-images deploy cacerts
-
-      - name: Build ubuntu test image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Containerfile.test
-          target: ubuntu
-          tags: quay.io/apex/test:ubuntu
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Run e2e against Crunchy managed Postgres
         run: |

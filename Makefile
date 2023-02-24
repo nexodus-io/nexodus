@@ -109,8 +109,9 @@ test: ## Run unit tests
 
 APEX_LOCAL_IP:=`go run ./hack/resolve-ip apex.local`
 .PHONY: run-test-container
+TEST_CONTAINER_DISTRO?=ubuntu
 run-test-container: ## Run docker container that you can run apex in
-	@docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
+	@docker build -f Containerfile.test -t quay.io/apex/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
 	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
@@ -118,7 +119,8 @@ run-test-container: ## Run docker container that you can run apex in
 		--add-host apex.local:$(APEX_LOCAL_IP) \
 		--add-host api.apex.local:$(APEX_LOCAL_IP) \
 		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
-		--entrypoint /bin/bash quay.io/apex/test:ubuntu
+		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
+		--entrypoint /bin/bash quay.io/apex/test:$(TEST_CONTAINER_DISTRO)
 
 ##@ Container Images
 
