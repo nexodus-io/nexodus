@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-et/apex/internal/apex"
 	"net"
 	"os"
 	"testing"
@@ -39,8 +40,16 @@ func init() {
 		providerType = testcontainers.ProviderDocker
 		defaultNetwork = "bridge"
 		ipamDriver = "default"
-		hostDNSName = "172.17.0.1"
+		hostDNSName = dockerKindGatewayIP()
 	}
+}
+
+func dockerKindGatewayIP() string {
+	ip := apex.LocalIPv4Address()
+	if ip == nil {
+		panic("local ip address not found")
+	}
+	return ip.String()
 }
 
 type ApexIntegrationSuite struct {

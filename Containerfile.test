@@ -22,13 +22,8 @@ RUN apk add --no-cache \
     ca-certificates
 COPY --from=build /src/dist/apexd /bin/apexd
 COPY --from=build /src/dist/apexctl /bin/apexctl
-COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
-RUN /usr/sbin/update-ca-certificates
-RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc &&\
-    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc
-ENTRYPOINT [ "/bin/sleep", "infinity" ]
+COPY ./hack/update-ca.sh /update-ca.sh
+RUN chmod a+x /update-ca.sh
 
 FROM fedora:36 as fedora
 RUN dnf update -qy && \
@@ -45,13 +40,8 @@ RUN dnf update -qy && \
     dnf clean all
 COPY --from=build /src/dist/apexd /bin/apexd
 COPY --from=build /src/dist/apexctl /bin/apexctl
-COPY ./.certs/rootCA.pem /etc/pki/ca-trust/source/anchors/rootCA.crt
-RUN /usr/bin/update-ca-trust
-RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc &&\
-    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc
-ENTRYPOINT [ "/bin/sleep", "infinity" ]
+COPY ./hack/update-ca.sh /update-ca.sh
+RUN chmod a+x /update-ca.sh
 
 FROM ubuntu:22.04 as ubuntu
 ENV DEBIAN_FRONTEND=noninteractive
@@ -71,10 +61,5 @@ RUN apt-get update -qy && \
     apt-get clean
 COPY --from=build /src/dist/apexd /bin/apexd
 COPY --from=build /src/dist/apexctl /bin/apexctl
-COPY ./.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
-RUN /usr/sbin/update-ca-certificates
-RUN echo 'echo "To connect this container to the apex network, try running:"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc &&\
-    echo 'echo "   /bin/apexd --username admin --password floofykittens https://apex.local"' >> /root/.bashrc &&\
-    echo 'echo' >> /root/.bashrc
-ENTRYPOINT [ "/bin/sleep", "infinity" ]
+COPY ./hack/update-ca.sh /update-ca.sh
+RUN chmod a+x /update-ca.sh

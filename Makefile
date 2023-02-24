@@ -107,10 +107,11 @@ e2e-podman: ## Run e2e tests on podman
 test: ## Run unit tests
 	go test -v ./...
 
-APEX_LOCAL_IP:=`go run ./hack/resolve-ip apex.local`
+APEX_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
+TEST_CONTAINER_DISTRO?=ubuntu
 run-test-container: ## Run docker container that you can run apex in
-	@docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
+	@docker build -f Containerfile.test -t quay.io/apex/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
 	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
@@ -118,7 +119,8 @@ run-test-container: ## Run docker container that you can run apex in
 		--add-host apex.local:$(APEX_LOCAL_IP) \
 		--add-host api.apex.local:$(APEX_LOCAL_IP) \
 		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
-		--entrypoint /bin/bash quay.io/apex/test:ubuntu
+		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
+		quay.io/apex/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 
 ##@ Container Images
 
@@ -209,7 +211,7 @@ deploy-cockroach-operator: ## Deploy cockroach operator
 	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
 	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
 	@kubectl wait --for=condition=Available --timeout=5m -n cockroach-operator-system deploy/cockroach-operator-manager
-	@sleep 3 # Waiting for operator readiness is not enough: https://github.com/cockroachdb/cockroach-operator/issues/957
+	@./hack/wait-for-cockroach-operator-ready.sh
 
 .PHONY: use-cockroach
 use-cockroach: deploy-cockroach-operator ## Recreate the database with a Cockroach based server
