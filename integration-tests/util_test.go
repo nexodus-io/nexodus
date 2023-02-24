@@ -6,10 +6,13 @@ package integration_tests
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,8 +23,44 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
+func findParentDirWhere(directory string, conditional func(fileName string) bool) (string, error) {
+	for {
+		if conditional(directory) {
+			return directory, nil
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return "", errors.New("not found")
+		}
+		directory = parent
+	}
+}
+
+func findCertsDir() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	dir, err = findParentDirWhere(dir, func(dir string) bool {
+		file := filepath.Join(dir, ".certs")
+		f, err := os.Stat(file)
+		if err == nil && f.IsDir() {
+			return true
+		}
+		return false
+	})
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, ".certs"), nil
+}
+
 // CreateNode creates a container
 func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string) testcontainers.Container {
+
+	certsDir, err := findCertsDir()
+	require.NoError(suite.T(), err)
+
 	req := testcontainers.ContainerRequest{
 		Image:    "quay.io/apex/test:ubuntu",
 		Name:     name,
@@ -37,6 +76,15 @@ func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, 
 			fmt.Sprintf("auth.apex.local:%s", hostDNSName),
 		},
 		AutoRemove: true,
+		Mounts: []testcontainers.ContainerMount{
+			{
+				Source: testcontainers.GenericBindMountSource{
+					HostPath: certsDir,
+				},
+				Target:   "/.certs",
+				ReadOnly: true,
+			},
+		},
 	}
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ProviderType:     providerType,
