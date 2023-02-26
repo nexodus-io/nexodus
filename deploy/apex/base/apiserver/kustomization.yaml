@@ -15,7 +15,6 @@ configMapGenerator:
 resources:
   - service.yaml
   - deployment.yaml
-  - imagestream.yaml
 commonLabels:
   app.kubernetes.io/component: apiserver
   app.kubernetes.io/instance: apiserver

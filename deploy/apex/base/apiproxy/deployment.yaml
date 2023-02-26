@@ -9,10 +9,10 @@ spec:
   template:
     spec:
       securityContext:
-        runAsUser: 1001930000
+        allowPrivilegeEscalation: true
       containers:
         - name: caddy
-          image: image-registry.openshift-image-registry.svc:5000/apex/caddy
+          image: quay.io/apex/caddy:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:

@@ -8,7 +8,6 @@ resources:
   - deployment.yaml
   - ingress.yaml
   - service.yaml
-  - imagestream.yaml
 commonLabels:
   app.kubernetes.io/component: apiproxy
   app.kubernetes.io/instance: apiproxy

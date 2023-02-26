@@ -4,6 +4,7 @@ resources:
   - ../../../base
   - issuer.yaml
   - sealed-secrets
+  - imagestreams
 namespace: apex-qa
 configMapGenerator:
   - behavior: replace
@@ -84,3 +85,24 @@ patchesJson6902:
     target:
       kind: Ingress
       name: frontend
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex-qa/caddy
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex-qa/apiserver
+    target:
+      kind: Deployment
+      name: apiserver
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex-qa/ipam-go
+    target:
+      kind: Deployment
+      name: ipam

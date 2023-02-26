@@ -4,6 +4,7 @@ resources:
   - ../../../base
   - issuer.yaml
   - sealed-secrets
+  - imagestreams
 namespace: apex
 configMapGenerator:
   - name: auth-config
@@ -88,3 +89,24 @@ patchesJson6902:
     target:
       kind: Ingress
       name: frontend
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex/caddy
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex/apiserver
+    target:
+      kind: Deployment
+      name: apiserver
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: image-registry.openshift-image-registry.svc:5000/apex/ipam-go
+    target:
+      kind: Deployment
+      name: ipam

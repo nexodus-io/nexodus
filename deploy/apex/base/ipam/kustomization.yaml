@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - service.yaml
   - deployment.yaml
-  - imagestream.yaml
 commonLabels:
   app.kubernetes.io/component: ipam
   app.kubernetes.io/instance: ipam
