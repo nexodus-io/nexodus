@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	errOrgNotFound    = errors.New("organization not found")
-	errUserNotFound   = errors.New("user not found")
-	errDeviceNotFound = errors.New("device not found")
+	errUserOrOrgNotFound = errors.New("user or organization not found")
+	errUserNotFound      = errors.New("user not found")
+	errDeviceNotFound    = errors.New("device not found")
 )
 
 type errDuplicateDevice struct {
@@ -210,15 +210,13 @@ func (api *API) CreateDevice(c *gin.Context) {
 	var device models.Device
 
 	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var user models.User
-		if res := tx.Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
-			return errUserNotFound
-		}
 
 		var org models.Organization
-		result := tx.First(&org, "id = ?", request.OrganizationID)
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return errOrgNotFound
+		if res := tx.Model(&org).
+			Joins("inner join user_organization on user_organization.organization_id=organizations.id").
+			Where("user_organization.user_id=? AND organizations.id=?", userId, request.OrganizationID).
+			First(&org); res.Error != nil {
+			return errUserOrOrgNotFound
 		}
 
 		res := tx.Where("public_key = ?", request.PublicKey).First(&device)
@@ -227,16 +225,6 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return res.Error
-		}
-
-		var permitted bool
-		for _, org := range user.Organizations {
-			if org.ID == request.OrganizationID {
-				permitted = true
-			}
-		}
-		if !permitted {
-			return fmt.Errorf("user is not a member of organization: %s", request.OrganizationID.String())
 		}
 
 		ipamPrefix := org.IpCidr
@@ -279,7 +267,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		allowedIPs = append(allowedIPs, hostPrefix)
 
 		device = models.Device{
-			UserID:                   user.ID,
+			UserID:                   userId,
 			OrganizationID:           org.ID,
 			PublicKey:                request.PublicKey,
 			LocalIP:                  request.LocalIP,
@@ -305,10 +293,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 	if err != nil {
 		var duplicate errDuplicateDevice
-		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
-		} else if errors.Is(err, errOrgNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		if errors.Is(err, errUserOrOrgNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotAllowedError("user or organization"))
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
