@@ -126,6 +126,11 @@ jobs:
         run: |
           git diff --quiet || echo "COMMIT_CHANGES=1" >> $GITHUB_ENV
 
+      - name: Check for new commits in main
+        run: |
+          git fetch origin
+          if [ "$(git log HEAD..origin/main --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> $GITHUB_ENV
+
       - name: Commit Changes
         id: commit
         if: env.COMMIT_CHANGES == 1
