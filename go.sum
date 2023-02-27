@@ -487,8 +487,8 @@ github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21 h1:iHkIlTU2P3xbSbVJbAi
 github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21/go.mod h1:hiCFa1UeZITKXi8lhu2qwOD5LHXjdGMCUIQHbybxoF0=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/urfave/cli/v2 v2.3.0/go.mod h1:LJmUH05zAU44vOAcrfzZQKsZbVcdbOG8rtL3/XcUArI=
-github.com/urfave/cli/v2 v2.24.3 h1:7Q1w8VN8yE0MJEHP06bv89PjYsN4IHWED2s1v/Zlfm0=
-github.com/urfave/cli/v2 v2.24.3/go.mod h1:GHupkWPMM0M/sj1a2b4wUrWBPzazNrIjouW6fmdJLxc=
+github.com/urfave/cli/v2 v2.24.4 h1:0gyJJEBYtCV87zI/x2nZCPyDxD51K6xM8SkwjHFCNEU=
+github.com/urfave/cli/v2 v2.24.4/go.mod h1:GHupkWPMM0M/sj1a2b4wUrWBPzazNrIjouW6fmdJLxc=
 github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
 github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5 h1:+UB2BJA852UkGH42H+Oee69djmxS3ANzl2b/JtT1YiA=
 github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhgX83tXhKS2B/PRMpOho=
