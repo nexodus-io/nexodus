@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: image-repositories
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Calculate Short SHA
         id: gitsha
@@ -146,7 +146,7 @@ jobs:
           - mock_root: fedora-38-x86_64
             srpm_distro: fc38
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Needed for building binaries to generate manpages
       - name: Set up Go
