@@ -269,7 +269,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -408,7 +408,7 @@ jobs:
     needs: ["go-lint"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Needed for building binaries to generate manpages
       - name: Set up Go
