@@ -24,7 +24,15 @@ export const UserList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<UserListBulkActions />}>
       <TextField label="Username" source="username" />
-      <ReferenceField source="zone_id" reference="zones" />
+      <ReferenceArrayField
+        label="Organizations"
+        source="organizations"
+        reference="organizations"
+      >
+        <SingleFieldList linkType="show">
+          <ChipField source="name" />
+        </SingleFieldList>
+      </ReferenceArrayField>
       <ReferenceArrayField label="Devices" source="devices" reference="devices">
         <SingleFieldList linkType="show">
           <ChipField source="hostname" />
@@ -39,7 +47,15 @@ export const UserShow = () => (
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Username" source="username" />
-      <ReferenceField label="Zone" source="zone_id" reference="zones" />
+      <ReferenceArrayField
+        label="Organizations"
+        source="organizations"
+        reference="organizations"
+      >
+        <SingleFieldList linkType="show">
+          <ChipField source="name" />
+        </SingleFieldList>
+      </ReferenceArrayField>
       <ReferenceArrayField label="Devices" source="devices" reference="devices">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Hostname" source="hostname" />
