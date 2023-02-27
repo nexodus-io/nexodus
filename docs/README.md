@@ -247,26 +247,26 @@ Once the Agent has been started successfully, you should see a wireguard interfa
 $ ip address show wg0
 161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
     link/none
-    inet 10.200.0.1/32 scope global wg0
+    inet 100.100.0.1/32 scope global wg0
        valid_lft forever preferred_lft forever
 ```
 
-#### Verifying Zone Connectivity
+#### Verifying Organization Connectivity
 
-Once more than one node has enrolled in the same Apex Zone, you will see additional routes populated for reaching other node's endpoints in the same Zone. For example, we have just added a second node to this zone. The new node's address in the Apex Zone is 10.200.0.2. On Linux, we can check the routing table and see:
+Once more than one node has enrolled in the same Apex organization, you will see additional routes populated for reaching other node's endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Apex organization is 100.100.0.2. On Linux, we can check the routing table and see:
 
 ```sh
 $ ip route
 ...
-10.200.0.2 dev wg0 scope link
+100.100.0.2 dev wg0 scope link
 ```
 
 You should now be able to reach that node over the wireguard tunnel.
 
 ```sh
-$ ping 10.200.0.2
-PING 10.200.0.2 (10.200.0.2) 56(84) bytes of data.
-64 bytes from 10.200.0.2: icmp_seq=1 ttl=64 time=7.63 ms
+$ ping 100.100.0.2
+PING 100.100.0.2 (100.100.0.2) 56(84) bytes of data.
+64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
 
 You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://apex.local/`.
@@ -386,7 +386,7 @@ Login to one of the nodes, and you should see a wireguard interface with an addr
 $ ip address show wg0
 161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
     link/none
-    inet 10.200.0.1/32 scope global wg0
+    inet 100.100.0.1/32 scope global wg0
        valid_lft forever preferred_lft forever
 ```
 
@@ -406,47 +406,15 @@ Apex Controller makes best effort to establish a direct peering between the endp
 
 Clone the Apex repository on a VM (or bare metal machine). Apex relay node must be reachable from all the endpoint nodes that want to join the Apex network. Follow the instruction in [Installing the agent](#installing-the-agent) section to setup the node and install the apex binary.
 
-### Create a Relay Enabled Zone
-
-Use the following cli command to create the Relay enabled Apex Zone. You can login to the Apex UI and create the zone as well, ensuring that you toggle the `Hub Zone` switch to on.
+You can list the available organizations using following command
 
 ```sh
-./apexctl --username=kitteh1 \
-   --password=floofykittens \
-   zone create --name=edge-zone \
-   --hub-zone=true \
-   --cidr=10.195.0.0/24 \
-   --description="Relay enabled zone"
+./apexctl  --username=kitteh1 --password=floofykittens organization list
+
+ORGANIZATION ID                          NAME          CIDR              DESCRIPTION                RELAY/HUB ENABLED
+dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Default Zone               false
 ```
 
-Currently for the Dev environment, the usernames and passwords are hardcoded in the Apex Controller.
-You can edit `name`, `cidr`, `description` parameters in the CLI commands as per your deployment.
-
-You can list the available zones using following command
-
-```sh
-./apexctl  --username=kitteh1 --password=floofykittens zone list                                                         
-
-ZONE ID                                  NAME          CIDR              DESCRIPTION                RELAY/HUB ENABLED
-dcab6a84-f522-4e9b-a221-8752d505fc18     default       10.200.1.0/20     Default Zone               false
-b130805a-c312-4f4a-8a8e-f57a2c7ab152     edge-zone     10.195.0.0/24     Relay enabled zone         true
-```
-
-You can see the two zones associated with the username `kitteh1`.
-
-### Move user to Relay Enabled Zone
-
-By default, a user account is associated with its default zone, that is not a relay enabled zone. So to onboard all the devices to the relay enabled zone, you need to associate that zone as a default zone of the user account.
-
-```sh
-apexctl  --username=kitteh1 --password=floofykittens zone move-user --zone-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
-```
-
-Zone id is printed once you create the zone, or you can get it by listing the zone as mentioned above.
-
-### OnBoard the Relay node to the Relay Enabled Zone
-
-Once the user account is associated with the newly created zone, any OnBoarded device will join the new zone. To OnBoard the Relay node you can use any of the following method
 
 #### Interactive OnBoarding
 
@@ -454,7 +422,7 @@ Once the user account is associated with the newly created zone, any OnBoarded d
 sudo apex --hub-router --stun https://apex.local
 ```
 
-It will print an URL on stdout to onboard the relay node
+It will print a URL on stdout to onboard the relay node
 
 ```sh
 $ sudo apex --hub-router --stun https://apex.local
@@ -474,12 +442,12 @@ To OnBoard devices without any browser involvement you need to provide username 
 apex --hub-router --stun --username=kitteh1 --password=floofykittens https://apex.local
 ```
 
-### Delete Zone
+### Delete Organization
 
-To delete the zone,
+To delete the organization,
 
 ```sh
-apexctl  --username=kitteh1 --password=floofykittens zone delete --zone-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
+apexctl  --username=kitteh1 --password=floofykittens organization delete --organization-id b130805a-c312-4f4a-8a8e-f57a2c7ab152
 ```
 
 ## Additional Features
