@@ -293,7 +293,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			if err := ax.Reconcile(ax.zone, false); err != nil {
 				// TODO: Add smarter reconciliation logic
 				// to handle disconnects and/or timeouts etc...
-				ax.logger.Errorf("Failed to reconcile state with the apex API server: ", err)
+				ax.logger.Errorf("Failed to reconcile state with the apex API server: %v", err)
 			}
 		})
 	})

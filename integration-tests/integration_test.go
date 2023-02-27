@@ -166,8 +166,8 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
 	assert := suite.Assert()
 
-	node1IP := "10.200.0.101"
-	node2IP := "10.200.0.102"
+	node1IP := "100.100.0.101"
+	node2IP := "100.100.0.102"
 	parentCtx := context.Background()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
@@ -220,8 +220,8 @@ func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 	defer cancel()
 	username := "kitteh1"
 	password := "floofykittens"
-	node1IP := "10.200.0.101"
-	node2IP := "10.200.0.102"
+	node1IP := "100.100.0.101"
+	node2IP := "100.100.0.102"
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
@@ -1016,7 +1016,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		"--password", password,
 		"organization", "create",
 		"--name", "kitteh5",
-		"--cidr", "10.200.1.0/20",
+		"--cidr", "100.100.1.0/20",
 		"--description", "kitteh5's organization",
 	)
 	require.NoError(err)

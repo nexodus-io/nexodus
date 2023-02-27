@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	defaultOrganizationPrefix = "10.200.1.0/20"
+	defaultOrganizationPrefix = "100.100.0.0/16"
 )
 
 // CreateOrganization creates a new Organization
