@@ -8,11 +8,10 @@ spec:
     type: Recreate
   template:
     spec:
-      securityContext:
-        allowPrivilegeEscalation: true
+      serviceAccountName: apex-serviceaccount
       containers:
         - name: caddy
-          image: quay.io/apex/caddy:latest
+          image: docker.io/library/caddy:2.6-alpine
           imagePullPolicy: IfNotPresent
           resources:
             requests:
@@ -25,6 +24,8 @@ spec:
             - name: config
               mountPath: /etc/caddy/Caddyfile
               subPath: Caddyfile
+          securityContext:
+            allowPrivilegeEscalation: true
       restartPolicy: Always
       volumes:
         - name: config

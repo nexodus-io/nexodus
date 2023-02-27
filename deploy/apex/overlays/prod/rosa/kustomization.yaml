@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - ../../../base
   - issuer.yaml
-  - sealed-secrets
+  # - sealed-secrets
   - imagestreams
 namespace: apex
 configMapGenerator:
@@ -75,7 +75,7 @@ patchesJson6902:
         value: letsencrypt
     target:
       kind: Ingress
-      name: dex
+      name: auth
   - patch: |-
       - op: replace
         path: /spec/rules/0/host

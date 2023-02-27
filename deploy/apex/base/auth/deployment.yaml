@@ -103,7 +103,7 @@ spec:
               mountPath: "/opt/keycloak/data/import"
               readOnly: true
           command: ["/opt/keycloak/bin/kc.sh"]
-          args: ["start", "--import-realm"]
+          args: ["start", "--import-realm", "--log-level=DEBUG"]
       restartPolicy: Always
       volumes:
         - name: certificate

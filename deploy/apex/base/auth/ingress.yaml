@@ -2,16 +2,20 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    nginx.ingress.kubernetes.io/ssl-passthrough: true
+    cert-manager.io/issuer: letsencrypt
     route.openshift.io/termination: passthrough
   name: auth
 spec:
+  tls:
+    - hosts:
+        - auth.apex-hosted.cloud
+      secretName: apex-auth-cert
   rules:
     - host: auth.apex-hosted.cloud
       http:
         paths:
-          - pathType: Prefix
-            path: "/"
+          - pathType: ImplementationSpecific
+            path: ''
             backend:
               service:
                 name: auth

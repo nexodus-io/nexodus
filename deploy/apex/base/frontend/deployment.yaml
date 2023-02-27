@@ -11,7 +11,7 @@ spec:
       containers:
         - name: frontend
           image: quay.io/apex/frontend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: 100m
