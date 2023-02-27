@@ -28,7 +28,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: go-lint yaml-lint markdown-lint apexd  ## Run linters and build apexd
+all: go-lint yaml-lint markdown-lint ui-lint apexd  ## Run linters and build apexd
 
 ##@ Binaries
 
@@ -89,6 +89,11 @@ yaml-lint: ## Lint the yaml files
 markdown-lint: ## Lint markdown files
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[MD LINT]"
 	$(CMD_PREFIX) docker run -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 "**/*.md" "#ui/node_modules" > /dev/null
+
+.PHONY: ui-lint
+ui-lint: ## Lint the UI source
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[UI LINT]"
+	$(CMD_PREFIX) docker run -v $(CURDIR):/workdir tmknom/prettier --check /workdir/ui/src/ >/dev/null
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
