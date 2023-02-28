@@ -30,6 +30,9 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 		logger.Error(err)
 		return net.UDPAddr{}, err
 	}
+	defer func() {
+		_ = c.Close()
+	}()
 
 	// Building binding request with random transaction id.
 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
