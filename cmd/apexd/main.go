@@ -18,6 +18,9 @@ const (
 	apexLogEnv = "APEX_LOGLEVEL"
 )
 
+// This variable is set using ldflags at build time. See Makefile for details.
+var Version = "dev"
+
 func main() {
 	// set the log level
 	debug := os.Getenv(apexLogEnv)
@@ -143,6 +146,7 @@ func main() {
 				cCtx.Bool("stun"),
 				cCtx.Bool("hub-router"),
 				cCtx.Bool("relay-only"),
+				Version,
 			)
 			if err != nil {
 				logger.Fatal(err.Error())

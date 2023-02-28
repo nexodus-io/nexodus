@@ -19,6 +19,9 @@ const (
 	encodeColumn     = "column"
 )
 
+// This variable is set using ldflags at build time. See Makefile for details.
+var Version = "dev"
+
 func main() {
 	app := &cli.App{
 		Name: "apexctl",
@@ -35,14 +38,12 @@ func main() {
 				Usage: "api server",
 			},
 			&cli.StringFlag{
-				Name:     "username",
-				Required: true,
-				Usage:    "username",
+				Name:  "username",
+				Usage: "username",
 			},
 			&cli.StringFlag{
-				Name:     "password",
-				Required: true,
-				Usage:    "password",
+				Name:  "password",
+				Usage: "password",
 			},
 			&cli.StringFlag{
 				Name:     "output",
@@ -53,6 +54,30 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
+				Name:  "version",
+				Usage: "Get the version of apexctl",
+				Action: func(cCtx *cli.Context) error {
+					fmt.Printf("version: %s\n", Version)
+					return nil
+				},
+			},
+			{
+				Name:  "apexd",
+				Usage: "commands for interacting with the local instance of apexd",
+				Subcommands: []*cli.Command{
+					{
+						Name:   "version",
+						Usage:  "apexd version",
+						Action: cmdLocalVersion,
+					},
+					{
+						Name:   "status",
+						Usage:  "apexd status",
+						Action: cmdLocalStatus,
+					},
+				},
+			},
+			{
 				Name:  "organization",
 				Usage: "commands relating to organizations",
 				Subcommands: []*cli.Command{
@@ -61,7 +86,7 @@ func main() {
 						Usage: "list organizations",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -97,7 +122,7 @@ func main() {
 						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -125,7 +150,7 @@ func main() {
 						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -157,7 +182,7 @@ func main() {
 						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -190,7 +215,7 @@ func main() {
 						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -215,7 +240,7 @@ func main() {
 						Usage: "list all users",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -233,7 +258,7 @@ func main() {
 						Usage: "get current user",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),
@@ -257,7 +282,7 @@ func main() {
 						},
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
-								cCtx.String("host"),
+								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
 									cCtx.String("password"),

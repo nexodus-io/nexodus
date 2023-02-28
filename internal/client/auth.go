@@ -22,17 +22,21 @@ type deviceFlowResponse struct {
 	Interval                int    `json:"interval"`
 }
 
-func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clientID string) (*oauth2.Token, interface{}, error) {
+func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clientID string, authcb func(string)) (*oauth2.Token, interface{}, error) {
 	requestTime := time.Now()
 	d, err := startDeviceFlow(deviceEndpoint, clientID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	fmt.Println("Your device must be registered with Apex.")
-	fmt.Printf("Your one-time code is: %s\n", d.UserCode)
-	fmt.Println("Please open the following URL in your browser to sign in:")
-	fmt.Printf("%s\n", d.VerificationURIComplete)
+	msg := fmt.Sprintf("Your device must be registered with Apex.\n"+
+		"Your one-time code is: %s\n"+
+		"Please open the following URL in your browser to sign in:\n%s\n",
+		d.UserCode, d.VerificationURIComplete)
+	fmt.Print(msg)
+	if authcb != nil {
+		authcb(msg)
+	}
 
 	var token *oauth2.Token
 	var idToken interface{}
