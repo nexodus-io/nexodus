@@ -311,6 +311,7 @@ jobs:
 
       - name: Install deps
         run: |
+          sudo apt update
           sudo apt-get -qy install libnss3-tools
 
       - name: Set up Homebrew
