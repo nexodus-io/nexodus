@@ -3,28 +3,40 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
+  - serviceaccount.yaml
 namespace: apex-qa
 configMapGenerator:
-  - behavior: replace
+  - name: auth-config
+    behavior: replace
     literals:
       - hostname=auth.qa.apex-hosted.cloud
       - frontend-url=https://qa.apex-hosted.cloud
-    name: auth-config
+  - name: realm
+    behavior: replace
+    files:
+      - files/apex.json
+
 patchesJson6902:
   - patch: |-
       - op: replace
         path: /data/APEX_OIDC_URL
-        value: https://auth.qa.apex-hosted.cloud
+        value: https://auth.qa.apex-hosted.cloud/realms/apex
+      - op: replace
+        path: /data/APEX_OIDC_BACKCHANNEL
+        value: https://auth.apex-qa.svc.cluster.local:8443/realms/apex
     target:
       kind: ConfigMap
       name: apiserver
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: https://api.qa.apex-hosted.cloud
+        value: api.qa.apex-hosted.cloud
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.qa.apex-hosted.cloud
+        value: https://auth.qa.apex-hosted.cloud/realms/apex
+      - op: replace
+        path: /data/OIDC_BACKCHANNEL
+        value: https://auth.apex-qa.svc.cluster.local:8443/realms/apex
       - op: replace
         path: /data/ORIGINS
         value: https://qa.apex-hosted.cloud
@@ -40,7 +52,10 @@ patchesJson6902:
         value: https://api.qa.apex-hosted.cloud
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.qa.apex-hosted.cloud
+        value: https://auth.qa.apex-hosted.cloud/realms/apex
+      - op: replace
+        path: /data/OIDC_BACKCHANNEL
+        value: https://auth.apex-qa.svc.cluster.local:8443/realms/apex
     target:
       kind: ConfigMap
       name: backend-cli
@@ -58,18 +73,40 @@ patchesJson6902:
       kind: Ingress
       name: apiproxy
   - patch: |-
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: apex-serviceaccount
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: letsencrypt
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
         value: auth.qa.apex-hosted.cloud
       - op: replace
-        path: /spec/tls/0/hosts/0
-        value: auth.qa.apex-hosted.cloud
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
       - op: replace
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
     target:
       kind: Ingress
-      name: dex
+      name: auth
+  - patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: auth.qa.apex-hosted.cloud
+      - op: replace
+        path: /spec/issuerRef/name
+        value: letsencrypt
+    target:
+      kind: Certificate
+      name: apex-auth-cert
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
@@ -83,12 +120,11 @@ patchesJson6902:
     target:
       kind: Ingress
       name: frontend
+
 images:
   - name: quay.io/apex/apiserver
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
   - name: quay.io/apex/frontend
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
   - name: quay.io/apex/go-ipam
-    newTag: 1107d9fbcb8c34c01baad174141474d5745ebb9c
-  - name: quay.io/apex/ipam
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
