@@ -49,7 +49,7 @@ type Apex struct {
 	tunnelIface             string
 	controllerIP            string
 	listenPort              int
-	zone                    uuid.UUID
+	organization            uuid.UUID
 	requestedIP             string
 	userProvidedLocalIP     string
 	LocalIP                 string
@@ -208,7 +208,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	user, err := ax.client.GetCurrentUser()
 	if err != nil {
-		return fmt.Errorf("get zone error: %w", err)
+		return fmt.Errorf("get organization error: %w", err)
 	}
 
 	if len(user.Organizations) == 0 {
@@ -217,8 +217,8 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if len(user.Organizations) != 1 {
 		return fmt.Errorf("user being in > 1 organization is not yet supported")
 	}
-	ax.logger.Infof("Device belongs in zone: %s", user.Organizations[0])
-	ax.zone = user.Organizations[0]
+	ax.logger.Infof("Device belongs in organization: %s", user.Organizations[0])
+	ax.organization = user.Organizations[0]
 
 	var localIP string
 	var localEndpointPort int
@@ -252,7 +252,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	device, err := ax.client.CreateDevice(models.AddDevice{
 		UserID:                   user.ID,
-		OrganizationID:           ax.zone,
+		OrganizationID:           ax.organization,
 		PublicKey:                ax.wireguardPubKey,
 		LocalIP:                  endpointSocket,
 		TunnelIP:                 ax.requestedIP,
@@ -295,7 +295,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		relayIpTables(ax.logger, ax.tunnelIface)
 	}
 
-	if err := ax.Reconcile(ax.zone, true); err != nil {
+	if err := ax.Reconcile(ax.organization, true); err != nil {
 		return err
 	}
 
@@ -313,7 +313,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		util.GoWithWaitGroup(wg, func() {
 			util.RunPeriodically(ctx, time.Second*30, func() {
 				ax.logger.Debugf("Reconciling peers from relay state")
-				if err := ax.relayStateReconcile(ax.zone); err != nil {
+				if err := ax.relayStateReconcile(ax.organization); err != nil {
 					ax.logger.Error(err)
 				}
 			})
@@ -322,7 +322,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	util.GoWithWaitGroup(wg, func() {
 		util.RunPeriodically(ctx, pollInterval, func() {
-			if err := ax.Reconcile(ax.zone, false); err != nil {
+			if err := ax.Reconcile(ax.organization, false); err != nil {
 				// TODO: Add smarter reconciliation logic
 				// to handle disconnects and/or timeouts etc...
 				ax.logger.Errorf("Failed to reconcile state with the apex API server: %v", err)
@@ -354,8 +354,8 @@ func (ax *Apex) Keepalive() {
 	_ = probePeers(peerEndpoints, ax.logger)
 }
 
-func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
-	peerListing, err := ax.client.GetDeviceInOrganization(zoneID)
+func (ax *Apex) Reconcile(orgID uuid.UUID, firstTime bool) error {
+	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
 	if err != nil {
 		return err
 	}
@@ -415,9 +415,9 @@ func (ax *Apex) Reconcile(zoneID uuid.UUID, firstTime bool) error {
 }
 
 // relayStateReconcile collect state from the relay node and rejoin nodes with the dynamic state
-func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
+func (ax *Apex) relayStateReconcile(orgID uuid.UUID) error {
 	ax.logger.Debugf("Reconciling peers from relay state")
-	peerListing, err := ax.client.GetDeviceInOrganization(zoneID)
+	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
 	if err != nil {
 		return err
 	}
@@ -446,8 +446,8 @@ func (ax *Apex) relayStateReconcile(zoneID uuid.UUID) error {
 				// test the reflexive address is valid and not still in a (none) state
 				_, _, err := net.SplitHostPort(relayData[peer.PublicKey].Endpoint)
 				if err != nil {
-					// if the relay state was not yet established the endpoint can be (none)
-					ax.logger.Infof("failed to split host:port endpoint pair: %v", err)
+					// if the relay state was not yet established or the peer is offline the endpoint can be (none)
+					ax.logger.Debugf("failed to split host:port endpoint pair: %v", err)
 					continue
 				}
 				endpointReflexiveAddress := relayData[peer.PublicKey].Endpoint

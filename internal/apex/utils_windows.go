@@ -19,7 +19,7 @@ func AddRoute(prefix, dev string) error {
 	// TODO: replace with powershell
 	_, err := RunCommand("netsh", "int", "ipv4", "add", "route", prefix, dev)
 	if err != nil {
-		return fmt.Errorf("no windows route added: %v", err)
+		return fmt.Errorf("no windows route added: %w", err)
 	}
 
 	return nil
@@ -53,7 +53,7 @@ func delLink(wgIface string) (err error) {
 func DeleteRoute(prefix, dev string) error {
 	_, err := RunCommand("netsh", "int", "ipv4", "del", "route", prefix, dev)
 	if err != nil {
-		return fmt.Errorf("no route deleted: %v", err)
+		return fmt.Errorf("no route deleted: %w", err)
 	}
 
 	return nil
