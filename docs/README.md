@@ -20,7 +20,7 @@
         - [Starting the Agent](#starting-the-agent)
       - [Interactive Enrollment](#interactive-enrollment)
       - [Verifying Agent Setup](#verifying-agent-setup)
-      - [Verifying Zone Connectivity](#verifying-zone-connectivity)
+      - [Verifying Organization Connectivity](#verifying-organization-connectivity)
       - [Cleanup Agent From Node](#cleanup-agent-from-node)
     - [Deploying on Kubernetes managed Node](#deploying-on-kubernetes-managed-node)
       - [Setup the configuration](#setup-the-configuration)
@@ -31,12 +31,9 @@
       - [Cleanup Agent Pod From Node](#cleanup-agent-pod-from-node)
   - [Deploying the Apex Relay](#deploying-the-apex-relay)
     - [Setup Apex Relay Node](#setup-apex-relay-node)
-    - [Create a Relay Enabled Zone](#create-a-relay-enabled-zone)
-    - [Move user to Relay Enabled Zone](#move-user-to-relay-enabled-zone)
-    - [OnBoard the Relay node to the Relay Enabled Zone](#onboard-the-relay-node-to-the-relay-enabled-zone)
       - [Interactive OnBoarding](#interactive-onboarding)
       - [Silent OnBoarding](#silent-onboarding)
-    - [Delete Zone](#delete-zone)
+    - [Delete Organization](#delete-organization)
   - [Additional Features](#additional-features)
     - [Subnet Routers](#subnet-routers)
   - [Running the integration tests](#running-the-integration-tests)
@@ -414,7 +411,6 @@ You can list the available organizations using following command
 ORGANIZATION ID                          NAME          CIDR              DESCRIPTION                RELAY/HUB ENABLED
 dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Default Zone               false
 ```
-
 
 #### Interactive OnBoarding
 
