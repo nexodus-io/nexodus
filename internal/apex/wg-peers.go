@@ -14,8 +14,8 @@ func (ax *Apex) buildPeersConfig() {
 	var peers []wgPeerConfig
 	var relayIP string
 	//var localInterface wgLocalConfig
-	var zonePrefix string
-	var hubZone bool
+	var orgPrefix string
+	var hubOrg bool
 	var err error
 
 	for _, device := range ax.deviceCache {
@@ -24,30 +24,30 @@ func (ax *Apex) buildPeersConfig() {
 		}
 		if device.Relay {
 			relayIP = device.AllowedIPs[0]
-			if ax.zone == device.OrganizationID {
-				zonePrefix = device.OrganizationPrefix
+			if ax.organization == device.OrganizationID {
+				orgPrefix = device.OrganizationPrefix
 			}
 		}
 	}
-	// zonePrefix will be empty if a hub-router is not defined in the zone
-	if zonePrefix != "" {
-		hubZone = true
+	// orgPrefix will be empty if a hub-router is not defined in the organization
+	if orgPrefix != "" {
+		hubOrg = true
 	}
-	// if this is a zone router but does not have a relay node joined yet throw an error
-	if relayIP == "" && hubZone {
-		ax.logger.Errorf("there is no hub router detected in this zone, please add one using `--hub-router`")
+	// if this is a org router but does not have a relay node joined yet throw an error
+	if relayIP == "" && hubOrg {
+		ax.logger.Errorf("there is no hub router detected in this organization, please add one using `--hub-router`")
 		return
 	}
-	// Get a valid netmask from the zone prefix
+	// Get a valid netmask from the organization prefix
 	var relayAllowedIP []string
-	if hubZone {
-		zoneCidr, err := ParseIPNet(zonePrefix)
+	if hubOrg {
+		orgCidr, err := ParseIPNet(orgPrefix)
 		if err != nil {
-			ax.logger.Errorf("failed to parse a valid network zone prefix cidr %s: %v", zonePrefix, err)
+			ax.logger.Errorf("failed to parse a valid network organization prefix cidr %s: %v", orgPrefix, err)
 			os.Exit(1)
 		}
-		zoneMask, _ := zoneCidr.Mask.Size()
-		relayNetAddress := fmt.Sprintf("%s/%d", relayIP, zoneMask)
+		orgMask, _ := orgCidr.Mask.Size()
+		relayNetAddress := fmt.Sprintf("%s/%d", relayIP, orgMask)
 		relayNetAddress, err = parseNetworkStr(relayNetAddress)
 		if err != nil {
 			ax.logger.Errorf("failed to parse a valid hub router prefix from %s: %v", relayNetAddress, err)
@@ -88,7 +88,7 @@ func (ax *Apex) buildPeersConfig() {
 			peers = append(peers, peerHub)
 		}
 
-		// Build the wg config for all peers if this node is the zone's hub-router.
+		// Build the wg config for all peers if this node is the organization's hub-router.
 		if ax.relay {
 			// Config if the node is a relay
 			for _, prefix := range value.ChildPrefix {
@@ -102,7 +102,7 @@ func (ax *Apex) buildPeersConfig() {
 				persistentHubKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Zone [ %s ]\n",
+			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
 				value.AllowedIPs,
 				value.LocalIP,
 				value.PublicKey,
@@ -126,7 +126,7 @@ func (ax *Apex) buildPeersConfig() {
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Zone [ %s ]\n",
+			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
 				value.AllowedIPs,
 				directLocalPeerEndpointSocket,
 				value.PublicKey,
@@ -148,7 +148,7 @@ func (ax *Apex) buildPeersConfig() {
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Zone [ %s ]\n",
+			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
 				value.AllowedIPs,
 				value.LocalIP,
 				value.PublicKey,
@@ -165,7 +165,7 @@ func (ax *Apex) buildLocalConfig() {
 	var localInterface wgLocalConfig
 
 	for _, value := range ax.deviceCache {
-		// build the local interface configuration if this node is a zone router
+		// build the local interface configuration if this node is a Organization router
 		if value.PublicKey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.TunnelIP {
