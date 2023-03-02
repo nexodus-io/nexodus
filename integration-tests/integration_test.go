@@ -27,7 +27,7 @@ var defaultNetwork string
 var hostDNSName string
 var ipamDriver string
 
-const apexctl = "../dist/apexctl"
+const nexctl = "../dist/nexctl"
 
 func init() {
 	if os.Getenv("NEXODUS_TEST_PODMAN") != "" {
@@ -53,21 +53,21 @@ func dockerKindGatewayIP() string {
 	return ip.String()
 }
 
-type ApexIntegrationSuite struct {
+type NexodusIntegrationSuite struct {
 	suite.Suite
 	logger *zap.SugaredLogger
 }
 
-func TestApexIntegrationSuite(t *testing.T) {
-	suite.Run(t, new(ApexIntegrationSuite))
+func TestNexodusIntegrationSuite(t *testing.T) {
+	suite.Run(t, new(NexodusIntegrationSuite))
 }
 
-func (suite *ApexIntegrationSuite) SetupSuite() {
+func (suite *NexodusIntegrationSuite) SetupSuite() {
 	logger := zaptest.NewLogger(suite.T())
 	suite.logger = logger.Sugar()
 }
 
-func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
+func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -91,10 +91,10 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 		}
 	})
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--username", username, "--password", password, "--hub-router")
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
 	time.Sleep(time.Second * 1)
-	go suite.runApex(ctx, node2, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -110,11 +110,11 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	err = ping(ctx, node2, node1IP)
 	assert.NoErrorf(err, gather)
 
-	suite.logger.Info("killing apex and re-joining nodes with new keys")
-	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
+	suite.logger.Info("killing nexodus and re-joining nodes with new keys")
+	//kill the nexodus process on both nodes
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
 
 	// delete only the public key on node1
@@ -124,9 +124,9 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 	_, err = suite.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
 	require.NoError(err)
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--username", username, "--password", password)
-	go suite.runApex(ctx, node2, "--username", username, "--password", password)
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
 	var newNode1IP string
 	err = backoff.Retry(
@@ -173,7 +173,7 @@ func (suite *ApexIntegrationSuite) TestBasicConnectivity() {
 }
 
 // TestRequestIPDefaultOrganization tests requesting a specific address in the default organization
-func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
+func (suite *NexodusIntegrationSuite) TestRequestIPDefaultOrganization() {
 	assert := suite.Assert()
 
 	node1IP := "100.100.0.101"
@@ -199,13 +199,13 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
 		}
 	})
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--hub-router",
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--hub-router",
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 	time.Sleep(time.Second * 1)
-	go suite.runApex(ctx, node2,
+	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
@@ -222,7 +222,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPDefaultOrganization() {
 }
 
 // TestRequestIPOrganization tests requesting a specific address in a newly created organization
-func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
+func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -247,13 +247,13 @@ func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 		}
 	})
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--hub-router",
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--hub-router",
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 	time.Sleep(time.Second * 1)
-	go suite.runApex(ctx, node2,
+	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
@@ -269,22 +269,22 @@ func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 	err = ping(ctx, node2, node1IP)
 	assert.NoErrorf(err, gather)
 
-	suite.logger.Info("killing apex and re-joining nodes")
-	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
+	suite.logger.Info("killing nexodus and re-joining nodes")
+	//kill the nexodus process on both nodes
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
 
-	// restart apex and ensure the nodes receive the same re-quested address
-	suite.logger.Info("Restarting Apex on two spoke nodes and re-joining")
-	go suite.runApex(ctx, node1, "--hub-router",
+	// restart nexodus and ensure the nodes receive the same re-quested address
+	suite.logger.Info("Restarting nexodus on two spoke nodes and re-joining")
+	go suite.runNexd(ctx, node1, "--hub-router",
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 	time.Sleep(time.Second * 1)
 
-	go suite.runApex(ctx, node2,
+	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
@@ -302,7 +302,7 @@ func (suite *ApexIntegrationSuite) TestRequestIPOrganization() {
 }
 
 // TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
-func (suite *ApexIntegrationSuite) TestHubOrganization() {
+func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -331,15 +331,15 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 		}
 	})
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1,
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1,
 		"--hub-router", "--username", username, "--password", password,
 	)
 
 	// Ensure the relay node has time to register before joining spokes since it is required for hub-organizations
 	time.Sleep(time.Second * 10)
-	go suite.runApex(ctx, node2, "--username", username, "--password", password)
-	go suite.runApex(ctx, node3, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node3, "--username", username, "--password", password)
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -369,9 +369,9 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	hubOrganizationChildPrefix := "10.188.100.0/24"
 	node2ChildPrefixLoopbackNet := "10.188.100.1/32"
 
-	suite.T().Logf("killing apex on node2")
+	suite.T().Logf("killing nexodus on node2")
 
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	assert.NoError(err)
 	suite.T().Logf("rejoining on node2 with --child-prefix=%s", hubOrganizationChildPrefix)
 
@@ -419,18 +419,18 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	assert.NoErrorf(err, gather)
 
 	// get the device id for node3
-	userOut, err := suite.runCommand(apexctl,
+	userOut, err := suite.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
 		"user", "get-current",
 	)
-	require.NoErrorf(err, "apexctl user list error: %v\n", err)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var user models.UserJSON
 	err = json.Unmarshal([]byte(userOut), &user)
 	assert.Equal(1, len(user.Organizations))
 	orgID := user.Organizations[0]
 
-	allDevices, err := suite.runCommand(apexctl,
+	allDevices, err := suite.runCommand(nexctl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
 		"--output", "json-raw",
@@ -438,7 +438,7 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	)
 	var devices []models.Device
 	json.Unmarshal([]byte(allDevices), &devices)
-	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
+	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
 	var device3ID string
 	for _, p := range devices {
@@ -449,7 +449,7 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	}
 
 	// delete the device node2
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", "kitteh2",
 		"--password", "floofykittens",
 		"device", "delete",
@@ -470,7 +470,7 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 }
 
 // TestChildPrefix tests requesting a specific address in a newly created organization
-func (suite *ApexIntegrationSuite) TestChildPrefix() {
+func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -497,13 +497,13 @@ func (suite *ApexIntegrationSuite) TestChildPrefix() {
 		}
 	})
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--hub-router",
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--hub-router",
 		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
 		"--username", username, "--password", password,
 	)
 	time.Sleep(time.Second * 1)
-	go suite.runApex(ctx, node2,
+	go suite.runNexd(ctx, node2,
 		fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
 		"--username", username, "--password", password,
 	)
@@ -570,7 +570,7 @@ punch and can only device directly to one another.
 +---------+   +---------+   +---------+   +---------+
 */
 // TestRelayNAT tests end to end and spoke to spoke in an easy NAT environment
-func (suite *ApexIntegrationSuite) TestRelayNAT() {
+func (suite *NexodusIntegrationSuite) TestRelayNAT() {
 	suite.T().Skip("This test is broken on podman since netavark does some magic masquerading to prevent it working. It's also not too healthy on docker either")
 	parentCtx := context.Background()
 	assert := suite.Assert()
@@ -707,27 +707,27 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	username := "kitteh4"
 	password := "floofykittens"
 
-	// start apex on the nodes
-	go suite.runApex(ctx, relayNode,
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, relayNode,
 		"--hub-router",
 		"--username", username, "--password", password,
 	)
 
 	// ensure the relay node has time to register before joining spokes since it is required for hub-organizations
 	time.Sleep(time.Second * 10)
-	go suite.runApex(ctx, net1SpokeNode1,
+	go suite.runNexd(ctx, net1SpokeNode1,
 		"--relay-only",
 		"--username", username, "--password", password,
 	)
-	go suite.runApex(ctx, net2SpokeNode1,
+	go suite.runNexd(ctx, net2SpokeNode1,
 		"--relay-only",
 		"--username", username, "--password", password,
 	)
-	go suite.runApex(ctx, net1SpokeNode2,
+	go suite.runNexd(ctx, net1SpokeNode2,
 		"--relay-only",
 		"--username", username, "--password", password,
 	)
-	go suite.runApex(ctx, net2SpokeNode2,
+	go suite.runNexd(ctx, net2SpokeNode2,
 		"--relay-only",
 		"--username", username, "--password", password,
 	)
@@ -781,22 +781,22 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	require.NoError(err)
 	suite.logger.Infof("Relay node wireguard state: \n%s", wgShow)
 
-	suite.logger.Info("killing apex and re-joining nodes")
+	suite.logger.Info("killing nexodus and re-joining nodes")
 
-	// kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "apexd"})
+	// kill the nexodus process on both nodes
+	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "nexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "apexd"})
+	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "nexd"})
 	require.NoError(err)
 
 	// restart the process on two nodes and verify re-joining
-	suite.logger.Info("Restarting apex on two spoke nodes and re-joining")
-	go suite.runApex(ctx, net1SpokeNode1,
+	suite.logger.Info("Restarting nexodus on two spoke nodes and re-joining")
+	go suite.runNexd(ctx, net1SpokeNode1,
 		"--relay-only",
 		"--username", username,
 		"--password", password,
 	)
-	go suite.runApex(ctx, net2SpokeNode1,
+	go suite.runNexd(ctx, net2SpokeNode1,
 		"--relay-only",
 		"--username", username,
 		"--password", password,
@@ -826,7 +826,7 @@ func (suite *ApexIntegrationSuite) TestRelayNAT() {
 	assert.Equal(5, lc, "the number of expected wg show devices was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
 }
 
-func (suite *ApexIntegrationSuite) TestApexCtl() {
+func (suite *NexodusIntegrationSuite) Testnexctl() {
 	suite.T().Skip("Skipping since deleting org fails with key constraint errors")
 	assert := suite.Assert()
 	require := suite.Require()
@@ -850,13 +850,13 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		}
 	})
 
-	// validate apexctl user list returns a user
-	userOut, err := suite.runCommand(apexctl,
+	// validate nexctl user list returns a user
+	userOut, err := suite.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
 		"user", "list",
 	)
-	require.NoErrorf(err, "apexctl user list error: %v\n", err)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var users []models.UserJSON
 	err = json.Unmarshal([]byte(userOut), &users)
 	assert.NotEmpty(users)
@@ -870,10 +870,10 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	require.NotEmpty(user.UserName)
 	require.Equal(1, len(user.Organizations))
 
-	// start apex on the nodes
-	go suite.runApex(ctx, node1, "--hub-router", "--username", username, "--password", password)
+	// start nexodus on the nodes
+	go suite.runNexd(ctx, node1, "--hub-router", "--username", username, "--password", password)
 	time.Sleep(time.Second * 1)
-	go suite.runApex(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -890,7 +890,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	assert.NoErrorf(err, gather)
 
 	// validate list devices and register IDs and IPs
-	allDevices, err := suite.runCommand(apexctl,
+	allDevices, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
@@ -898,7 +898,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 	var devices []models.Device
 	json.Unmarshal([]byte(allDevices), &devices)
-	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
+	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
 	// register the device IDs for node1 and node2
 	var node1DeviceID string
@@ -912,21 +912,21 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 		}
 	}
 
-	//kill the apex process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "apexd"})
+	//kill the nexodus process on both nodes
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
 	require.NoError(err)
-	_, err = suite.containerExec(ctx, node2, []string{"killall", "apexd"})
+	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
 
-	// delete both devices from apex
-	_, err = suite.runCommand(apexctl,
+	// delete both devices from nexodus
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
 		"--device-id", node1DeviceID,
 	)
 	require.NoError(err)
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
@@ -943,8 +943,8 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	time.Sleep(time.Second * 10)
 	// re-join both nodes, flipping the child-prefix to node1 to ensure the child-prefix was released
-	go suite.runApex(ctx, node1, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
-	go suite.runApex(ctx, node2, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node1, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
 	newNode1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
@@ -970,7 +970,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	}
 
 	// validate list devices in a organization
-	devicesInOrganization, err := suite.runCommand(apexctl,
+	devicesInOrganization, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
@@ -979,7 +979,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 
 	json.Unmarshal([]byte(devicesInOrganization), &devices)
-	assert.NoErrorf(err, "apexctl device list error: %v\n", err)
+	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
 	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
 	for _, p := range devices {
@@ -993,7 +993,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	// delete all devices from the organization as currently required to avoid sql key
 	// constraints, then delete the organization, then recreate the organization to ensure the
 	// IPAM prefix was released. If it was not released the creation will fail.
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
@@ -1001,7 +1001,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	)
 	require.NoError(err)
 
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
@@ -1010,7 +1010,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 	require.NoError(err)
 
 	// delete the organization
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json",
@@ -1021,7 +1021,7 @@ func (suite *ApexIntegrationSuite) TestApexCtl() {
 
 	// re-create the deleted organization, this will fail if the IPAM
 	// prefix was not released from the prior deletion
-	_, err = suite.runCommand(apexctl,
+	_, err = suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"organization", "create",

@@ -66,7 +66,7 @@ func (c FnConsumer) Accept(l testcontainers.Log) {
 }
 
 // CreateNode creates a container
-func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string) testcontainers.Container {
+func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string) testcontainers.Container {
 
 	certsDir, err := findCertsDir()
 	require.NoError(suite.T(), err)
@@ -187,7 +187,7 @@ func ping(ctx context.Context, ctr testcontainers.Container, address string) err
 }
 
 // containerExec exec container commands
-func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
+func (suite *NexodusIntegrationSuite) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
 	code, outputRaw, err := container.Exec(
 		ctx,
 		cmd,
@@ -211,7 +211,7 @@ func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container 
 }
 
 // CreateNetwork creates a docker network
-func (suite *ApexIntegrationSuite) CreateNetwork(ctx context.Context, name, cidr string) testcontainers.Network {
+func (suite *NexodusIntegrationSuite) CreateNetwork(ctx context.Context, name, cidr string) testcontainers.Network {
 	req := testcontainers.GenericNetworkRequest{
 		ProviderType: providerType,
 		NetworkRequest: testcontainers.NetworkRequest{
@@ -253,7 +253,7 @@ func lineCount(s string) (int, error) {
 	return count, nil
 }
 
-func (suite *ApexIntegrationSuite) runApex(ctx context.Context, node testcontainers.Container, args ...string) {
+func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcontainers.Container, args ...string) {
 	cmd := []string{"/bin/nexd"}
 	cmd = append(cmd, args...)
 	cmd = append(cmd, "https://apex.local")
@@ -275,7 +275,7 @@ func networkAddr(n *net.IPNet) net.IP {
 }
 
 // wgDump dump wg sessions for failed test debugging
-func (suite *ApexIntegrationSuite) wgDump(ctx context.Context, container testcontainers.Container) string {
+func (suite *NexodusIntegrationSuite) wgDump(ctx context.Context, container testcontainers.Container) string {
 	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"wg", "show", "wg0", "dump"})
 	if err != nil {
 		return ""
@@ -285,7 +285,7 @@ func (suite *ApexIntegrationSuite) wgDump(ctx context.Context, container testcon
 }
 
 // routesDump dump routes for failed test debugging
-func (suite *ApexIntegrationSuite) routesDump(ctx context.Context, container testcontainers.Container) string {
+func (suite *NexodusIntegrationSuite) routesDump(ctx context.Context, container testcontainers.Container) string {
 	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"ip", "route"})
 	if err != nil {
 		return ""
@@ -295,7 +295,7 @@ func (suite *ApexIntegrationSuite) routesDump(ctx context.Context, container tes
 }
 
 // gatherFail gather details on a failed test for debugging
-func (suite *ApexIntegrationSuite) gatherFail(ctx context.Context, containers ...testcontainers.Container) string {
+func (suite *NexodusIntegrationSuite) gatherFail(ctx context.Context, containers ...testcontainers.Container) string {
 	var gatherOut []string
 
 	for _, c := range containers {
@@ -328,7 +328,7 @@ func (suite *ApexIntegrationSuite) gatherFail(ctx context.Context, containers ..
 }
 
 // runCommand runs the cmd and returns the combined stdout and stderr
-func (suite *ApexIntegrationSuite) runCommand(cmd ...string) (string, error) {
+func (suite *NexodusIntegrationSuite) runCommand(cmd ...string) (string, error) {
 	suite.logger.Infof("Running command: %s", strings.Join(cmd, " "))
 	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 	if err != nil {
