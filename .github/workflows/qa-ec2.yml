@@ -37,7 +37,7 @@ jobs:
 
       - name:  Copy Agent Binary to S3
         run: |
-          aws s3 cp ./dist/apex-linux-amd64 s3://apex-net/ec2-e2e/
+          aws s3 cp ./dist/apex-linux-amd64 s3://nexodus-io/ec2-e2e/
 
       - uses: actions/setup-python@v4
         with:
@@ -58,7 +58,7 @@ jobs:
           echo "${{ secrets.ROOT_CA }}" > ./ops/ansible/aws/rootCA.pem
           chmod 0400 ops/ansible/aws/rootCA.pem
           echo "${{ secrets.ANSIBLE_VARS }}" > ./ops/ansible/aws/vars.yml
-          aws s3 cp ./ops/ansible/aws/vars.yml s3://apex-net/ec2-e2e/
+          aws s3 cp ./ops/ansible/aws/vars.yml s3://nexodus-io/ec2-e2e/
 
       - name: Deploy EC2 Playbooks
         run: |
