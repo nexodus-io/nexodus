@@ -14,8 +14,9 @@ else
     CMD_PREFIX=
 endif
 
-APEX_VERSION?=$(shell date +%Y.%m.%d)
-APEX_RELEASE?=$(shell git describe --always)
+NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
+NEXODUS_RELEASE?=$(shell git describe --always)
+NEXODUS_LDFLAGS?=-X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 
 # Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
 UNAME_M := $(shell uname -m)
@@ -28,25 +29,21 @@ endif
 ##@ All
 
 .PHONY: all
-all: go-lint yaml-lint md-lint ui-lint apexd apexctl ## Run linters and build apexd
+all: go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
-.PHONY: apexd
-apexd: dist/apexd dist/apexd-linux-arm dist/apexd-linux-amd64 dist/apexd-darwin-amd64 dist/apexd-darwin-arm64 dist/apexd-windows-amd64 ## Build the apexd binary for all architectures
+.PHONY: nexd
+nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64 ## Build the nexd binary for all architectures
 
-.PHONY: apexctl
-apexctl: dist/apexctl dist/apexctl-linux-arm dist/apexctl-linux-amd64 dist/apexctl-darwin-amd64 dist/apexctl-darwin-arm64 dist/apexctl-windows-amd64 ## Build the apex binary for all architectures
-
-APEX_VERSION?=$(shell date +%Y.%m.%d)
-APEX_RELEASE?=$(shell git describe --always)
-APEX_LDFLAGS?=-X main.Version=$(APEX_VERSION)-$(APEX_RELEASE)
+.PHONY: nexctl
+nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
 
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
-APEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexd/*.go)
+NEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexd/*.go)
 
-APEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexctl/*.go)
+NEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexctl/*.go)
 
 APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 
@@ -55,23 +52,23 @@ TAG=$(shell git rev-parse HEAD)
 dist:
 	$(CMD_PREFIX) mkdir -p $@
 
-dist/apexd: $(APEXD_DEPS) | dist
+dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
-dist/apexctl: $(APEXD_DEPS) | dist
+dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
-dist/apexd-%: $(APEXD_DEPS) | dist
+dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
+		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
-dist/apexctl-%: $(APEXCTL_DEPS) | dist
+dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
+		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 .PHONY: clean
 clean: ## clean built binaries
@@ -80,7 +77,7 @@ clean: ## clean built binaries
 ##@ Development
 
 .PHONY: go-lint
-go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
+go-lint: $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS) ## Lint the go code
 	@if ! which golangci-lint >/dev/null 2>&1; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
@@ -144,7 +141,7 @@ run-test-container: ## Run docker container that you can run apex in
 ##@ Container Images
 
 .PHONY: test-images
-test-images: dist/apexd dist/apexctl ## Create test images for e2e
+test-images: dist/nexd dist/nexctl ## Create test images for e2e
 	docker build -f Containerfile.test -t quay.io/apex/test:alpine --target alpine .
 	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
@@ -347,26 +344,26 @@ SRPM_DISTRO?=fc37
 .PHONY: srpm
 srpm: dist/rpm image-mock manpages ## Build a source RPM
 	go mod vendor
-	rm -rf dist/rpm/apex-${APEX_RELEASE}
-	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
-	git archive --format=tar.gz -o dist/rpm/apex-${APEX_RELEASE}.tar.gz --prefix=apex-${APEX_RELEASE}/ ${APEX_RELEASE}
-	cd dist/rpm && tar xzf apex-${APEX_RELEASE}.tar.gz
-	mv vendor dist/rpm/apex-${APEX_RELEASE}/.
-	mkdir -p dist/rpm/apex-${APEX_RELEASE}/contrib/man
-	cp -r contrib/man/* dist/rpm/apex-${APEX_RELEASE}/contrib/man/.
-	cd dist/rpm && tar czf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
+	rm -rf dist/rpm/apex-${NEXODUS_RELEASE}
+	rm -f dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz
+	git archive --format=tar.gz -o dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz --prefix=apex-${NEXODUS_RELEASE}/ ${NEXODUS_RELEASE}
+	cd dist/rpm && tar xzf apex-${NEXODUS_RELEASE}.tar.gz
+	mv vendor dist/rpm/apex-${NEXODUS_RELEASE}/.
+	mkdir -p dist/rpm/apex-${NEXODUS_RELEASE}/contrib/man
+	cp -r contrib/man/* dist/rpm/apex-${NEXODUS_RELEASE}/contrib/man/.
+	cd dist/rpm && tar czf apex-${NEXODUS_RELEASE}.tar.gz apex-${NEXODUS_RELEASE} && rm -rf apex-${NEXODUS_RELEASE}
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
-	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
+	sed -i -e "s/##APEX_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/apex.spec
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
+		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
 		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
-	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
+	rm -f dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
 		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
-		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
+		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 ##@ Manpage Generation
 
@@ -374,9 +371,9 @@ contrib/man:
 	$(CMD_PREFIX) mkdir -p contrib/man
 
 .PHONY: manpages
-manpages: contrib/man dist/apexd dist/apexctl image-mock ## Generate manpages in ./contrib/man
-	dist/apexd -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexd | gzip > contrib/man/apexd.8.gz
-	dist/apexctl -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexctl | gzip > contrib/man/apexctl.8.gz
+manpages: contrib/man dist/nexd dist/nexctl image-mock ## Generate manpages in ./contrib/man
+	dist/nexd -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t nexd | gzip > contrib/man/nexd.8.gz
+	dist/nexctl -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t nexctl | gzip > contrib/man/nexctl.8.gz
 
 # Nothing to see here
 .PHONY: cat
