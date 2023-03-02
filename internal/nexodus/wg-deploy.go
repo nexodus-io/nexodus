@@ -1,8 +1,8 @@
-package apex
+package nexodus
 
 import (
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/models"
+	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 const (

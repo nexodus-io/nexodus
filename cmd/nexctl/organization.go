@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 )
 
 func listOrganizations(c *client.Client, encodeOut string) error {

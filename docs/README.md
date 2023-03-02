@@ -124,8 +124,8 @@ You can install `apexctl` using following two ways
 You can directly fetch the binary from the Apex's AWS S3 bucket.
 
 ```sh
-sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexctl-linux-amd64 --output /usr/local/sbin/apexctl
-sudo chmod a+x /usr/local/sbin/apexctl
+sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexctl-linux-amd64 --output /usr/local/sbin/nexctl
+sudo chmod a+x /usr/local/sbin/nexctl
 ```
 
 ### Build from the source code

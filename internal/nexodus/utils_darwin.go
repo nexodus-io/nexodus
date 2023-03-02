@@ -1,6 +1,6 @@
 //go:build darwin
 
-package apex
+package nexodus
 
 import (
 	"fmt"

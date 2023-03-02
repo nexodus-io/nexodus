@@ -34,7 +34,7 @@ spec:
           effect: NoSchedule
       initContainers:
         - name: cert-setup
-          image: quay.io/apex/apex:latest
+          image: quay.io/nexodus/nexd:latest
           imagePullPolicy: Always
           command:
             - /bin/sh
@@ -52,7 +52,7 @@ spec:
               readOnly: true
       containers:
         - name: apex-client
-          image: quay.io/apex/apex:latest
+          image: quay.io/nexodus/nexd:latest
           imagePullPolicy: Always
           env:
             - name: USERNAME

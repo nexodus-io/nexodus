@@ -1,7 +1,7 @@
 package routers
 
 import (
-	"github.com/redhat-et/apex/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"net/http"
 	"strings"
 

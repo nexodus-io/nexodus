@@ -154,7 +154,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.apiserver
-          tags: quay.io/apex/apiserver:latest
+          tags: quay.io/nexodus/apiserver:latest
           outputs: type=docker,dest=/tmp/apiserver.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -168,7 +168,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.frontend
-          tags: quay.io/apex/frontend:latest
+          tags: quay.io/nexodus/frontend:latest
           outputs: type=docker,dest=/tmp/frontend.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -198,7 +198,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.test
-          tags: quay.io/apex/test:ubuntu
+          tags: quay.io/nexodus/test:ubuntu
           outputs: type=docker,dest=/tmp/test-ubuntu.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -254,19 +254,19 @@ jobs:
 
       - name: Test
         run: |
-          go test -v ./internal/apex/...
+          go test -v ./internal/nexodus/...
 
       - name: Build Apexd
         id: build-apexd
         run: |
-          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexd
+          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
           echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Build Apexctl
         id: build-apexctl
         run: |
-          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexctl
+          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
           echo "artifact-name=apexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -454,7 +454,7 @@ jobs:
         id: build-rpm
         run: |
           make rpm
-          echo "artifact-name=$(pwd)/dist/rpm/mock/apex-*.x86_64.rpm" >> $GITHUB_OUTPUT
+          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3

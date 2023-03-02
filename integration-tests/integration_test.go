@@ -7,14 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-et/apex/internal/apex"
 	"net"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/nexodus-io/nexodus/internal/nexodus"
+
 	"github.com/cenkalti/backoff/v4"
-	"github.com/redhat-et/apex/internal/models"
+	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -45,7 +46,7 @@ func init() {
 }
 
 func dockerKindGatewayIP() string {
-	ip := apex.LocalIPv4Address()
+	ip := nexodus.LocalIPv4Address()
 	if ip == nil {
 		panic("local ip address not found")
 	}
@@ -381,7 +382,7 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	// re-join and ensure the device table updates with the new values
 	go func() {
 		_, err = suite.containerExec(ctx, node2, []string{
-			"/bin/apexd",
+			"/bin/nexd",
 			fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 			"--username", username, "--password", password,
 			"http://apex.local",

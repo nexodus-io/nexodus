@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 )
 
 func listUsers(c *client.Client, encodeOut string) error {

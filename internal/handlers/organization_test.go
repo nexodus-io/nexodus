@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redhat-et/apex/internal/models"
+	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 func (suite *HandlerTestSuite) TestListOrganizations() {

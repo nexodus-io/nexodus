@@ -41,12 +41,12 @@ function setup() {
         cat <<EOF
   * Install Homebrew (brew) if not already installed.
   * Install wireguard-tools with brew.
-  * Download the apex agent and install it to /usr/local/bin/apexd
+  * Download the apex agent and install it to /usr/local/bin/nexd
 EOF
     elif [ $OS == "Linux" ]; then
         cat <<EOF
   * Use sudo to uninstall wireguard-tools using the system's package manager.
-  * Use sudo to download the apex agent and install it to /usr/local/sbin/apexd
+  * Use sudo to download the apex agent and install it to /usr/local/sbin/nexd
 EOF
     else
         echo "Please add warning message text for $OS"
@@ -84,8 +84,8 @@ EOF
             fi
         fi
         info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-darwin-amd64 --output /usr/local/bin/apexd
-        sudo chmod +x /usr/local/bin/apexd
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-darwin-amd64 --output /usr/local/bin/nexd
+        sudo chmod +x /usr/local/bin/nexd
         pass_message "Apex is installed successfully."
     fi
 
@@ -115,8 +115,8 @@ EOF
         fi
 
         info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-linux-amd64 --output /usr/local/sbin/apexd
-        sudo chmod +x /usr/local/sbin/apexd
+        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-linux-amd64 --output /usr/local/sbin/nexd
+        sudo chmod +x /usr/local/sbin/nexd
         pass_message "Apex is installed successfully."
 
     fi
@@ -142,7 +142,7 @@ function cleanup() {
             info_message 'echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"'
         fi
 
-        sudo rm -f /usr/local/bin/apexd
+        sudo rm -f /usr/local/bin/nexd
         pass_message "Apex is uninstalled successfully."
     
     elif [ $OS == "Linux" ]; then
@@ -166,7 +166,7 @@ function cleanup() {
             sudo rm -f /etc/wireguard/wg0.conf
             sudo ip link del wg0
         fi
-        sudo rm -f /usr/local/sbin/apexd
+        sudo rm -f /usr/local/sbin/nexd
         pass_message "Apex is uninstalled successfully."
     fi
 }

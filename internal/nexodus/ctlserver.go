@@ -1,4 +1,4 @@
-package apex
+package nexodus
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/redhat-et/apex/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util"
 )
 
 // TODO make this path configurable

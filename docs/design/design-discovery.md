@@ -89,7 +89,7 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
 - For all nodes that are unable to find a suitable candidate peering, we fall back to forwarding traffic through the relay node that needs to be open (UDP 51820) to all endpoints in the zone.
 - Currently, all nodes that peer into a zone will peer to the relay node to ensure connectivity in all scenarios. Since this is a hairpin, it is the least ideal pairing but can be scaled to fit the small number of peers that cannot establish a direct peering either through the "Local Address" or STUN discovered "Reflexive Address".
 - (Future work) The relay node will likely be the point at which source ports are opened and reconciled against in peer listings.
-- (Future work) Eliminating the need to terminate wireguard sessions to the relay node would reduce the attack surface and better adhere to zero trust networking principles. [Issue 169](https://github.com/redhat-et/apex/issues/169)
+- (Future work) Eliminating the need to terminate wireguard sessions to the relay node would reduce the attack surface and better adhere to zero trust networking principles. [Issue 169](https://github.com/nexodus-io/nexodus/issues/169)
 
 ### Health checking and proper probing (future work)
 

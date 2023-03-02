@@ -1,4 +1,4 @@
-package apex
+package nexodus
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/client"
-	"github.com/redhat-et/apex/internal/models"
-	"github.com/redhat-et/apex/internal/util"
+	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/term"
 )

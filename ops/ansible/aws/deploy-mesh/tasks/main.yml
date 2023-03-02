@@ -79,8 +79,8 @@
 
 - name: Download the Apex Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/apexd
-    sudo chmod +x /usr/local/sbin/apexd
+    sudo curl {{ apex_binary }} --output /usr/local/sbin/nexd
+    sudo chmod +x /usr/local/sbin/nexd
 
 - name: Attach the Node Agent to the Controller
   become: yes

@@ -20,7 +20,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/network"
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -72,7 +72,7 @@ func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, 
 	require.NoError(suite.T(), err)
 
 	req := testcontainers.ContainerRequest{
-		Image:    "quay.io/apex/test:ubuntu",
+		Image:    "quay.io/nexodus/test:ubuntu",
 		Name:     name,
 		Networks: networks,
 		CapAdd: []string{
@@ -196,7 +196,7 @@ func (suite *ApexIntegrationSuite) containerExec(ctx context.Context, container 
 		return "", err
 	}
 	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "/bin/apexd" {
+	if cmd[0] != "/bin/nexd" {
 		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	output, err := io.ReadAll(outputRaw)
@@ -254,7 +254,7 @@ func lineCount(s string) (int, error) {
 }
 
 func (suite *ApexIntegrationSuite) runApex(ctx context.Context, node testcontainers.Container, args ...string) {
-	cmd := []string{"/bin/apexd"}
+	cmd := []string{"/bin/nexd"}
 	cmd = append(cmd, args...)
 	cmd = append(cmd, "https://apex.local")
 	nodeName, _ := node.Name(ctx)

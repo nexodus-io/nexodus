@@ -11,11 +11,11 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/redhat-et/apex/internal/database"
-	"github.com/redhat-et/apex/internal/fflags"
-	"github.com/redhat-et/apex/internal/handlers"
-	"github.com/redhat-et/apex/internal/ipam"
-	"github.com/redhat-et/apex/internal/routers"
+	"github.com/nexodus-io/nexodus/internal/database"
+	"github.com/nexodus-io/nexodus/internal/fflags"
+	"github.com/nexodus-io/nexodus/internal/handlers"
+	"github.com/nexodus-io/nexodus/internal/ipam"
+	"github.com/nexodus-io/nexodus/internal/routers"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -40,7 +40,7 @@ func init() {
 // @description	This is the APEX API Server.
 
 // @contact.name   The Apex Authors
-// @contact.url    https://github.com/redhat-et/apex/issues
+// @contact.url    https://github.com/nexodus-io/nexodus/issues
 
 // @license.name  	Apache 2.0
 // @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html

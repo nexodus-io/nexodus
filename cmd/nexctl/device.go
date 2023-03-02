@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 )
 
 func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string) error {
