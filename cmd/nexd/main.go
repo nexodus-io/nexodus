@@ -10,7 +10,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/nexodus-io/nexodus/internal/apex"
+	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"go.uber.org/zap"
 )
 
@@ -131,7 +131,7 @@ func main() {
 
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
-			apex, err := apex.NewApex(
+			nexodus, err := nexodus.NewApex(
 				ctx,
 				logger.Sugar(),
 				controller,
@@ -153,7 +153,7 @@ func main() {
 			}
 
 			wg := &sync.WaitGroup{}
-			if err := apex.Start(ctx, wg); err != nil {
+			if err := nexodus.Start(ctx, wg); err != nil {
 				logger.Fatal(err.Error())
 			}
 			wg.Wait()

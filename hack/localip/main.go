@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/apex"
 	"os"
+
+	"github.com/nexodus-io/nexodus/internal/nexodus"
 )
 
 func main() {
-	ip := apex.LocalIPv4Address()
+	ip := nexodus.LocalIPv4Address()
 	if ip == nil {
 		fmt.Fprintln(os.Stderr, "ip not found")
 		os.Exit(1)

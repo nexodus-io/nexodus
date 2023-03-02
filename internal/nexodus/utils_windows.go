@@ -1,6 +1,6 @@
 //go:build windows
 
-package apex
+package nexodus
 
 import (
 	"fmt"

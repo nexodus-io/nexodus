@@ -7,11 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/apex"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/nexodus"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -45,7 +46,7 @@ func init() {
 }
 
 func dockerKindGatewayIP() string {
-	ip := apex.LocalIPv4Address()
+	ip := nexodus.LocalIPv4Address()
 	if ip == nil {
 		panic("local ip address not found")
 	}

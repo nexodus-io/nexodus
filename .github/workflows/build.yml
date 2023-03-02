@@ -254,7 +254,7 @@ jobs:
 
       - name: Test
         run: |
-          go test -v ./internal/apex/...
+          go test -v ./internal/nexodus/...
 
       - name: Build Apexd
         id: build-apexd

@@ -1,4 +1,4 @@
-package apex
+package nexodus
 
 import (
 	"net"
