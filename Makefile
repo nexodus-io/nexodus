@@ -126,7 +126,7 @@ test: ## Run unit tests
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
-run-test-container: ## Run docker container that you can run apex in
+run-test-container: ## Run docker container that you can run nexodus in
 	@docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
 	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
@@ -154,7 +154,7 @@ e2eprereqs:
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
 	fi
-	@if [ -z "$(findstring apex-dev,$(shell kind get clusters))" ]; then \
+	@if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
@@ -186,21 +186,21 @@ images: image-frontend image-apiserver image-ipam ## Create container images
 ##@ Kubernetes - kind dev environment
 
 .PHONY: run-on-kind
-run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
+run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy nexodus on it
 
 .PHONY: teardown
 teardown: ## Teardown the kind cluster
-	@kind delete cluster --name apex-dev
+	@kind delete cluster --name nexodus-dev
 
 .PHONY: setup-kind
-setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install apex.
+setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install nexodus.
 	@kind create cluster --config ./deploy/kind.yaml
-	@kubectl cluster-info --context kind-apex-dev
+	@kubectl cluster-info --context kind-nexodus-dev
 	@kubectl apply -f ./deploy/kind-ingress.yaml
 
 .PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
 deploy-nexodus-agent: image-nexd
-	@kind load --name apex-dev docker-image quay.io/nexodus/nexd:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
 	@cp deploy/apex-client/overlays/dev/kustomization.yaml.sample deploy/apex-client/overlays/dev/kustomization.yaml
 	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
 	@sed -i -e "s/<APEX_CONTROLLER_CERT>/$(shell kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/apex-client/overlays/dev/kustomization.yaml
@@ -250,24 +250,24 @@ wait-for-readiness: # Wait for operators to be installed
 	@kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
 .PHONY: deploy
-deploy: wait-for-readiness ## Deploy a development apex stack onto a kubernetes cluster
+deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
 	@kubectl create namespace apex
 	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
 	@OVERLAY=$(OVERLAY) make init-db
 	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
 
 .PHONY: undeploy
-undeploy: ## Remove the apex stack from a kubernetes cluster
+undeploy: ## Remove the nexodus stack from a kubernetes cluster
 	@kubectl delete namespace apex
 
 .PHONY: load-images
 load-images: ## Load images onto kind
-	@kind load --name apex-dev docker-image quay.io/nexodus/apiserver:latest
-	@kind load --name apex-dev docker-image quay.io/nexodus/frontend:latest
-	@kind load --name apex-dev docker-image quay.io/apex/go-ipam:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
+	@kind load --name nexodus-dev docker-image quay.io/apex/go-ipam:latest
 
 .PHONY: redeploy
-redeploy: images load-images ## Redeploy apex after images changes
+redeploy: images load-images ## Redeploy nexodus after images changes
 	@kubectl rollout restart deploy/apiserver -n apex
 	@kubectl rollout restart deploy/frontend -n apex
 
