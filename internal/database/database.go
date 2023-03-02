@@ -6,9 +6,9 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
-	"github.com/redhat-et/apex/internal/database/migration_20230113_0000"
-	"github.com/redhat-et/apex/internal/database/migration_20230126_0000"
-	"github.com/redhat-et/apex/internal/database/migrations"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230113_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230126_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -21,7 +21,7 @@ import (
 var tracer trace.Tracer
 
 func init() {
-	tracer = otel.Tracer("github.com/redhat-et/apex/internal/database")
+	tracer = otel.Tracer("github.com/nexodus-io/nexodus/internal/database")
 }
 
 func NewDatabase(

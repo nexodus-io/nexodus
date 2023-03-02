@@ -1,13 +1,13 @@
 ﻿apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: apex
-  namespace: apex
+  name: nexodus
+  namespace: nexodus
 spec:
   serviceAccountName: pipeline
   triggers:
     - bindings:
         - kind: TriggerBinding
-          ref: apex
+          ref: nexodus
       template:
-        ref: apex
+        ref: nexodus

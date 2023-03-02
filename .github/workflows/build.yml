@@ -130,8 +130,8 @@ jobs:
       - name: Kustomize Build
         run: |
           mkdir -p kubeconfigs
-          kustomize build ./deploy/apex/overlays/dev > kubeconfigs/dev.yaml
-          kustomize build ./deploy/apex/overlays/prod > kubeconfigs/prod.yaml
+          kustomize build ./deploy/nexodus/overlays/dev > kubeconfigs/dev.yaml
+          kustomize build ./deploy/nexodus/overlays/prod > kubeconfigs/prod.yaml
 
       - name: Login to GHCR
         run: echo "${{ github.token }}" | docker login https://ghcr.io -u ${GITHUB_ACTOR} --password-stdin
@@ -154,7 +154,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.apiserver
-          tags: quay.io/apex/apiserver:latest
+          tags: quay.io/nexodus/apiserver:latest
           outputs: type=docker,dest=/tmp/apiserver.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -168,7 +168,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.frontend
-          tags: quay.io/apex/frontend:latest
+          tags: quay.io/nexodus/frontend:latest
           outputs: type=docker,dest=/tmp/frontend.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -183,7 +183,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.ipam
-          tags: quay.io/apex/go-ipam:latest
+          tags: quay.io/nexodus/go-ipam:latest
           outputs: type=docker,dest=/tmp/ipam.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -198,7 +198,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.test
-          tags: quay.io/apex/test:ubuntu
+          tags: quay.io/nexodus/test:ubuntu
           outputs: type=docker,dest=/tmp/test-ubuntu.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -254,19 +254,19 @@ jobs:
 
       - name: Test
         run: |
-          go test -v ./internal/apex/...
+          go test -v ./internal/nexodus/...
 
       - name: Build Apexd
         id: build-apexd
         run: |
-          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexd
+          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
           echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Build Apexctl
         id: build-apexctl
         run: |
-          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexctl
+          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
           echo "artifact-name=apexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -324,7 +324,7 @@ jobs:
 
       - name: Add hosts to /etc/hosts
         run: |
-          echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 auth.nexodus.local api.nexodus.local nexodus.local" | sudo tee -a /etc/hosts
 
       - name: Download apiserver image
         uses: actions/download-artifact@v3
@@ -359,7 +359,7 @@ jobs:
 
       - name: Build dist
         run: |
-          make dist/apexd dist/apexctl
+          make dist/nexd dist/nexctl
 
       - name: Setup KIND
         run: |
@@ -384,7 +384,7 @@ jobs:
       - name: Get Logs
         if: always()
         run: |
-          kubectl logs -n apex -l app.kubernetes.io/part-of=apex --all-containers=true > logs.txt
+          kubectl logs -n nexodus -l app.kubernetes.io/part-of=nexodus --all-containers=true > logs.txt
 
       - name: Upload Logs
         if: always()
@@ -414,7 +414,7 @@ jobs:
           aws-region: us-east-1
       - name: copy binaries to s3
         run: |
-          aws s3 sync . s3://apex-net/
+          aws s3 sync . s3://nexodus-io/
 
   build-rpm:
     needs: ["go-lint"]
@@ -454,7 +454,7 @@ jobs:
         id: build-rpm
         run: |
           make rpm
-          echo "artifact-name=$(pwd)/dist/rpm/mock/apex-*.x86_64.rpm" >> $GITHUB_OUTPUT
+          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3

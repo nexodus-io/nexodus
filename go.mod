@@ -1,4 +1,4 @@
-module github.com/redhat-et/apex
+module github.com/nexodus-io/nexodus
 
 go 1.19
 

@@ -1,7 +1,7 @@
 package util_test
 
 import (
-	"github.com/redhat-et/apex/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"

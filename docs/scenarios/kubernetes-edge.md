@@ -14,38 +14,38 @@ You need to set up the following minimum deployment topology.
 
 Note: Please see the troubleshooting section for some additional information around possible issues and their workarounds (specifically around MicroShift deployment)
 
-## Deploying Apex Controller
+## Deploying Nexodus Controller
 
-Please follow the instructions provided in the [README](../README.md#deploying-the-apex-controller) to set up the Apex Controller. Make sure you setup the
+Please follow the instructions provided in the [README](../README.md#deploying-the-nexodus-controller) to set up the Nexodus Controller. Make sure you setup the
 controller on the machine that is reachable from your Kubernetes and MicroShift clusters.
 
-Once your Apex controller is set up, please get the CA certification from Apex's secret and keep it handy. You will need this CA cert for deploying the Apex agent and to access the Apex Controller UI.
+Once your Nexodus controller is set up, please get the CA certification from Nexodus's secret and keep it handy. You will need this CA cert for deploying the Nexodus agent and to access the Nexodus Controller UI.
 
 ```sh
 kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"'
 ```
 
-## Deploying the Apex Relay Node
+## Deploying the Nexodus Relay Node
 
-Please follow the instructions provided in the [README Apex Relay Section](../README.md#deploying-the-apex-relay) to setup a relay node, create a relay enabled zone, move the user to newly created zone and OnBoarding the Relay Node. Once the Relay node is OnBoarded successfully, its time to OnBoard all the nodes that want to be part of the Apex Network.
+Please follow the instructions provided in the [README Nexodus Relay Section](../README.md#deploying-the-nexodus-relay) to setup a relay node, create a relay enabled zone, move the user to newly created zone and OnBoarding the Relay Node. Once the Relay node is OnBoarded successfully, its time to OnBoard all the nodes that want to be part of the Nexodus Network.
 
-## Deploying Apex Agent on Clusters Nodes
+## Deploying Nexodus Agent on Clusters Nodes
 
-Please follow the [README Section](../README.md#deploying-on-kubernetes-managed-node) to deploy the Apex agent. It mainly requires two steps
+Please follow the [README Section](../README.md#deploying-on-kubernetes-managed-node) to deploy the Nexodus agent. It mainly requires two steps
 
-1. Set config data in `./deploy/apex-client/overlays/dev/kustomization.yaml` and deploy the Apex agent's manifest files
+1. Set config data in `./deploy/apex-client/overlays/dev/kustomization.yaml` and deploy the Nexodus agent's manifest files
 
    ```sh
         kubectl apply -k ./deploy/apex-client/overlays/dev
     ```
 
-2. Tag the worker nodes that you want to join the Apex network.
+2. Tag the worker nodes that you want to join the Nexodus network.
 
     ```sh
         kubectl label nodes <NODE_NAME> app.kubernetes.io/apex=
     ```
 
-    This will deploy the Apex agent pod on that node and onboard the node to the Apex network.
+    This will deploy the Nexodus agent pod on that node and onboard the node to the Nexodus network.
 
 If you tag all the worker nodes in both private and public kubernetes cluster and also the MicroShift node, the deployment topology will look as shown in the below diagram.
 
@@ -62,21 +62,21 @@ graph
         m2 <-.-> w4
     end
         
-    subgraph apex["Apex Controller (AWS) <br><br><br> 54.3.124.53/32"]
-        ax[Apex Controller]
+    subgraph nexodus["Nexodus Controller (AWS) <br><br><br> 54.3.124.53/32"]
+        ax[Nexodus Controller]
     end
     subgraph mShift["Edge Device - 192.168.0.10/32"]
         ms[MicroShift]
     end
 
-    apex <-.-> mShift
-    apex <-.-> privK8s 
-    apex <-.-> pubK8s
+    nexodus <-.-> mShift
+    nexodus <-.-> privK8s 
+    nexodus <-.-> pubK8s
     linkStyle 6 stroke:blue;
     linkStyle 7 stroke:blue;
     linkStyle 8 stroke:blue;
 
-    id1{{ Apex Network <br> Direct Peering or Through Relay}}
+    id1{{ Nexodus Network <br> Direct Peering or Through Relay}}
 
     w1 <-.-> id1
     w2 <-.-> id1
@@ -90,7 +90,7 @@ graph
     linkStyle 13 stroke:red;
 ```
 
-Red arrows show the nodes connected to each other through the Apex network. The connectivity between the nodes can be a direct peering or through a relay (in case of symmetric NAT).
+Red arrows show the nodes connected to each other through the Nexodus network. The connectivity between the nodes can be a direct peering or through a relay (in case of symmetric NAT).
 
 ## Deploy NodePort Service On Kubernetes Clusters
 
@@ -119,14 +119,14 @@ Request ID: 5648b07d658223aa8f488d9833cac06d
 
 ## Troubleshooting
 
-* Apex agent pod is not deployed even after tagging the MicroShift node.
+* Nexodus agent pod is not deployed even after tagging the MicroShift node.
   * MicroShift security context doesn't allow deployment of privileged containers. You need to add security context policy to the `apex` service account to allow the deployment.
   
   ```sh
     sudo oc --kubeconfig /var/lib/microshift/resources/kubeadmin/kubeconfig adm policy add-scc-to-user -z apex -n apex privileged
   ```
 
-* You don't see wireguard interface `wg0` after Apex agent deployment in MicroShift node.
+* You don't see wireguard interface `wg0` after Nexodus agent deployment in MicroShift node.
   * Current version of MicroShift is only supported on RHEL 8.7. RHEL 8.7 uses kernel 4.18.x, which does not have a wireguard kernel module. You need to explicitly install the wireguard module on the MicroShift node. Redeploy the pod after loading the wireguard kernel module and that should fix the issue.
 
     ```sh

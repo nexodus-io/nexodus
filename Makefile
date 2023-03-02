@@ -14,8 +14,9 @@ else
     CMD_PREFIX=
 endif
 
-APEX_VERSION?=$(shell date +%Y.%m.%d)
-APEX_RELEASE?=$(shell git describe --always)
+NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
+NEXODUS_RELEASE?=$(shell git describe --always)
+NEXODUS_LDFLAGS?=-X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 
 # Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
 UNAME_M := $(shell uname -m)
@@ -28,25 +29,21 @@ endif
 ##@ All
 
 .PHONY: all
-all: go-lint yaml-lint md-lint ui-lint apexd apexctl ## Run linters and build apexd
+all: go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
-.PHONY: apexd
-apexd: dist/apexd dist/apexd-linux-arm dist/apexd-linux-amd64 dist/apexd-darwin-amd64 dist/apexd-darwin-arm64 dist/apexd-windows-amd64 ## Build the apexd binary for all architectures
+.PHONY: nexd
+nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64 ## Build the nexd binary for all architectures
 
-.PHONY: apexctl
-apexctl: dist/apexctl dist/apexctl-linux-arm dist/apexctl-linux-amd64 dist/apexctl-darwin-amd64 dist/apexctl-darwin-arm64 dist/apexctl-windows-amd64 ## Build the apex binary for all architectures
-
-APEX_VERSION?=$(shell date +%Y.%m.%d)
-APEX_RELEASE?=$(shell git describe --always)
-APEX_LDFLAGS?=-X main.Version=$(APEX_VERSION)-$(APEX_RELEASE)
+.PHONY: nexctl
+nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
 
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
-APEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexd/*.go)
+NEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexd/*.go)
 
-APEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/apexctl/*.go)
+NEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexctl/*.go)
 
 APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
 
@@ -55,23 +52,23 @@ TAG=$(shell git rev-parse HEAD)
 dist:
 	$(CMD_PREFIX) mkdir -p $@
 
-dist/apexd: $(APEXD_DEPS) | dist
+dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
-dist/apexctl: $(APEXD_DEPS) | dist
+dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
-dist/apexd-%: $(APEXD_DEPS) | dist
+dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexd
+		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
-dist/apexctl-%: $(APEXCTL_DEPS) | dist
+dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -ldflags="$(APEX_LDFLAGS)" -o $@ ./cmd/apexctl
+		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 .PHONY: clean
 clean: ## clean built binaries
@@ -80,7 +77,7 @@ clean: ## clean built binaries
 ##@ Development
 
 .PHONY: go-lint
-go-lint: $(APEXD_DEPS) $(APISERVER_DEPS) ## Lint the go code
+go-lint: $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS) ## Lint the go code
 	@if ! which golangci-lint >/dev/null 2>&1; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
@@ -120,34 +117,47 @@ e2e: e2eprereqs test-images ## Run e2e tests
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
 	go test -c -v --tags=integration ./integration-tests/...
-	sudo APEX_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
+	sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 
 .PHONY: test
 test: ## Run unit tests
 	go test -v ./...
 
-APEX_LOCAL_IP:=`go run ./hack/localip`
+NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
-run-test-container: ## Run docker container that you can run apex in
-	@docker build -f Containerfile.test -t quay.io/apex/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
+run-test-container: ## Run docker container that you can run nexodus in
+	@docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
 	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
-		--add-host apex.local:$(APEX_LOCAL_IP) \
-		--add-host api.apex.local:$(APEX_LOCAL_IP) \
-		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
+		--add-host nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host api.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host auth.nexodus.local:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
-		quay.io/apex/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
+		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
+
+.PHONY: run-sql-apiserver
+run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
+ifeq ($(OVERLAY),dev)
+	@kubectl exec -it -n apex \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		-c database -- psql apiserver
+else ifeq ($(OVERLAY),arm64)
+	@kubectl exec -it -n apex svc/postgres -c postgres -- psql -U apiserver apiserver
+else ifeq ($(OVERLAY),cockroach)
+	@kubectl exec -it -n apex svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+endif
+
 
 ##@ Container Images
 
 .PHONY: test-images
-test-images: dist/apexd dist/apexctl ## Create test images for e2e
-	docker build -f Containerfile.test -t quay.io/apex/test:alpine --target alpine .
-	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
-	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
+test-images: dist/nexd dist/nexctl ## Create test images for e2e
+	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
+	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
+	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
 
 .PHONY: e2eprereqs
 e2eprereqs:
@@ -157,7 +167,7 @@ e2eprereqs:
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
 	fi
-	@if [ -z "$(findstring apex-dev,$(shell kind get clusters))" ]; then \
+	@if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
@@ -165,23 +175,23 @@ e2eprereqs:
 
 .PHONY: image-frontend
 image-frontend:
-	docker build -f Containerfile.frontend -t quay.io/apex/frontend:$(TAG) .
-	docker tag quay.io/apex/frontend:$(TAG) quay.io/apex/frontend:latest
+	docker build -f Containerfile.frontend -t quay.io/nexodus/frontend:$(TAG) .
+	docker tag quay.io/nexodus/frontend:$(TAG) quay.io/nexodus/frontend:latest
 
 .PHONY: image-apiserver
 image-apiserver:
-	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
-	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
+	docker build -f Containerfile.apiserver -t quay.io/nexodus/apiserver:$(TAG) .
+	docker tag quay.io/nexodus/apiserver:$(TAG) quay.io/nexodus/apiserver:latest
 
-.PHONY: image-apex ## Build the apex agent image
-image-apex:
-	docker build -f Containerfile.apex -t quay.io/apex/apex:$(TAG) .
-	docker tag quay.io/apex/apex:$(TAG) quay.io/apex/apex:latest
+.PHONY: image-nexd ## Build the nexodus agent image
+image-nexd:
+	docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
+	docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
 
 .PHONY: image-ipam ## Build the IPAM image
 image-ipam:
-	docker build -f Containerfile.ipam -t quay.io/apex/go-ipam:$(TAG) .
-	docker tag quay.io/apex/go-ipam:$(TAG) quay.io/apex/go-ipam:latest
+	docker build -f Containerfile.ipam -t quay.io/nexodus/go-ipam:$(TAG) .
+	docker tag quay.io/nexodus/go-ipam:$(TAG) quay.io/nexodus/go-ipam:latest
 
 .PHONY: images
 images: image-frontend image-apiserver image-ipam ## Create container images
@@ -189,25 +199,25 @@ images: image-frontend image-apiserver image-ipam ## Create container images
 ##@ Kubernetes - kind dev environment
 
 .PHONY: run-on-kind
-run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy apex on it
+run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy nexodus on it
 
 .PHONY: teardown
 teardown: ## Teardown the kind cluster
-	@kind delete cluster --name apex-dev
+	@kind delete cluster --name nexodus-dev
 
 .PHONY: setup-kind
-setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install apex.
+setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install nexodus.
 	@kind create cluster --config ./deploy/kind.yaml
-	@kubectl cluster-info --context kind-apex-dev
+	@kubectl cluster-info --context kind-nexodus-dev
 	@kubectl apply -f ./deploy/kind-ingress.yaml
 
-.PHONY: deploy-apex-agent ## Deply the apex agent in the kind cluster
-deploy-apex-agent: image-apex
-	@kind load --name apex-dev docker-image quay.io/apex/apex:latest
-	@cp deploy/apex-client/overlays/dev/kustomization.yaml.sample deploy/apex-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(APEX_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<APEX_CONTROLLER_CERT>/$(shell kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/apex-client/overlays/dev/kustomization.yaml
-	@kubectl apply -k ./deploy/apex-client/overlays/dev
+.PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
+deploy-nexodus-agent: image-nexd
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
+	@cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<NEXODUS_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<NEXODUS_CONTROLLER_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@kubectl apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 
@@ -253,39 +263,39 @@ wait-for-readiness: # Wait for operators to be installed
 	@kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
 .PHONY: deploy
-deploy: wait-for-readiness ## Deploy a development apex stack onto a kubernetes cluster
-	@kubectl create namespace apex
-	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
+deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
+	@kubectl create namespace nexodus
+	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY)
 	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
+	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: undeploy
-undeploy: ## Remove the apex stack from a kubernetes cluster
-	@kubectl delete namespace apex
+undeploy: ## Remove the nexodus stack from a kubernetes cluster
+	@kubectl delete namespace nexodus
 
 .PHONY: load-images
 load-images: ## Load images onto kind
-	@kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
-	@kind load --name apex-dev docker-image quay.io/apex/frontend:latest
-	@kind load --name apex-dev docker-image quay.io/apex/go-ipam:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
 
 .PHONY: redeploy
-redeploy: images load-images ## Redeploy apex after images changes
-	@kubectl rollout restart deploy/apiserver -n apex
-	@kubectl rollout restart deploy/frontend -n apex
+redeploy: images load-images ## Redeploy nexodus after images changes
+	@kubectl rollout restart deploy/apiserver -n nexodus
+	@kubectl rollout restart deploy/frontend -n nexodus
 
 .PHONY: init-db
 init-db:
 # wait for the DB to be up, then restart the services that use it.
 ifeq ($(OVERLAY),dev)
-	@kubectl wait -n apex postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
+	@kubectl wait -n nexodus postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
 else ifeq ($(OVERLAY),arm64)
-	@kubectl wait -n apex statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
+	@kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
 else ifeq ($(OVERLAY),cockroach)
 	@make deploy-cockroach-operator
-	@kubectl -n apex wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
-	@kubectl -n apex rollout status statefulsets/cockroachdb --timeout=5m
-	@kubectl -n apex exec -it cockroachdb-0 \
+	@kubectl -n nexodus wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
+	@kubectl -n nexodus rollout status statefulsets/cockroachdb --timeout=5m
+	@kubectl -n nexodus exec -it cockroachdb-0 \
 	  	-- ./cockroach sql \
 		--insecure \
 		--certs-dir=/cockroach/cockroach-certs \
@@ -302,33 +312,33 @@ else ifeq ($(OVERLAY),cockroach)
 			GRANT ALL ON DATABASE keycloak TO keycloak;\
 			"
 endif
-	@kubectl rollout restart deploy/apiserver -n apex
-	@kubectl rollout restart deploy/ipam -n apex
-	@kubectl -n apex rollout status deploy/apiserver --timeout=5m
-	@kubectl -n apex rollout status deploy/ipam --timeout=5m
+	@kubectl rollout restart deploy/apiserver -n nexodus
+	@kubectl rollout restart deploy/ipam -n nexodus
+	@kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
+	@kubectl -n nexodus rollout status deploy/ipam --timeout=5m
 
 .PHONY: recreate-db
-recreate-db: ## Delete and bring up a new apex database
+recreate-db: ## Delete and bring up a new nexodus database
 
-	@kubectl delete -n apex postgrescluster/database 2> /dev/null || true
-	@kubectl wait --for=delete -n apex postgrescluster/database
-	@kubectl delete -n apex statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/postgres-disk-postgres-0
-	@kubectl delete -n apex crdbclusters/cockroachdb 2> /dev/null || true
-	@kubectl wait --for=delete -n apex --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
-	@kubectl delete -n apex persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-0
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-1
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-2
+	@kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus postgrescluster/database
+	@kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
+	@kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
+	@kubectl delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-1
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-2
 
-	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY) | grep -v unchanged
+	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
 	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
+	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
 	@mkdir -p $(CURDIR)/.certs
-	@kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
+	@kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	@CAROOT=$(CURDIR)/.certs mkcert -install
 
 ##@ Packaging
@@ -338,8 +348,8 @@ dist/rpm:
 
 .PHONY: image-mock
 image-mock:
-	docker build -f Containerfile.mock -t quay.io/apex/mock:$(TAG) .
-	docker tag quay.io/apex/mock:$(TAG) quay.io/apex/mock:latest
+	docker build -f Containerfile.mock -t quay.io/nexodus/mock:$(TAG) .
+	docker tag quay.io/nexodus/mock:$(TAG) quay.io/nexodus/mock:latest
 
 MOCK_ROOT?=fedora-37-x86_64
 SRPM_DISTRO?=fc37
@@ -347,26 +357,26 @@ SRPM_DISTRO?=fc37
 .PHONY: srpm
 srpm: dist/rpm image-mock manpages ## Build a source RPM
 	go mod vendor
-	rm -rf dist/rpm/apex-${APEX_RELEASE}
-	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
-	git archive --format=tar.gz -o dist/rpm/apex-${APEX_RELEASE}.tar.gz --prefix=apex-${APEX_RELEASE}/ ${APEX_RELEASE}
-	cd dist/rpm && tar xzf apex-${APEX_RELEASE}.tar.gz
-	mv vendor dist/rpm/apex-${APEX_RELEASE}/.
-	mkdir -p dist/rpm/apex-${APEX_RELEASE}/contrib/man
-	cp -r contrib/man/* dist/rpm/apex-${APEX_RELEASE}/contrib/man/.
-	cd dist/rpm && tar czf apex-${APEX_RELEASE}.tar.gz apex-${APEX_RELEASE} && rm -rf apex-${APEX_RELEASE}
-	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
-	sed -i -e "s/##APEX_COMMIT##/${APEX_RELEASE}/" contrib/rpm/apex.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --buildsrpm -D "_commit ${APEX_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
-		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
-	rm -f dist/rpm/apex-${APEX_RELEASE}.tar.gz
+	rm -rf dist/rpm/nexodus-${NEXODUS_RELEASE}
+	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
+	git archive --format=tar.gz -o dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz --prefix=nexodus-${NEXODUS_RELEASE}/ ${NEXODUS_RELEASE}
+	cd dist/rpm && tar xzf nexodus-${NEXODUS_RELEASE}.tar.gz
+	mv vendor dist/rpm/nexodus-${NEXODUS_RELEASE}/.
+	mkdir -p dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man
+	cp -r contrib/man/* dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man/.
+	cd dist/rpm && tar czf nexodus-${NEXODUS_RELEASE}.tar.gz nexodus-${NEXODUS_RELEASE} && rm -rf nexodus-${NEXODUS_RELEASE}
+	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
+	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
+		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_ROOT}
+	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
-		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
-		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(APEX_RELEASE).$(SRPM_DISTRO).src.rpm)
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
+		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 ##@ Manpage Generation
 
@@ -374,9 +384,9 @@ contrib/man:
 	$(CMD_PREFIX) mkdir -p contrib/man
 
 .PHONY: manpages
-manpages: contrib/man dist/apexd dist/apexctl image-mock ## Generate manpages in ./contrib/man
-	dist/apexd -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexd | gzip > contrib/man/apexd.8.gz
-	dist/apexctl -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t apexctl | gzip > contrib/man/apexctl.8.gz
+manpages: contrib/man dist/nexd dist/nexctl image-mock ## Generate manpages in ./contrib/man
+	dist/nexd -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexd | gzip > contrib/man/nexd.8.gz
+	dist/nexctl -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexctl | gzip > contrib/man/nexctl.8.gz
 
 # Nothing to see here
 .PHONY: cat

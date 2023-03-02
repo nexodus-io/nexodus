@@ -49,7 +49,7 @@ python3 -m pip install --user ansible
 ansible-playbook --version
 
 # Run the playbook
-git clone https://github.com/redhat-et/apex.git
+git clone https://github.com/nexodus-io/nexodus.git
 cd /apex/ops/ansible/
 ansible-playbook -vv ./deploy.yml 
 ```
