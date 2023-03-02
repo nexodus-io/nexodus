@@ -1,19 +1,19 @@
 ﻿kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: el-apex
-  namespace: apex
+  name: el-nexodus
+  namespace: nexodus
   labels:
     app.kubernetes.io/managed-by: EventListener
     app.kubernetes.io/part-of: Triggers
-    eventlistener: apex
+    eventlistener: nexodus
   annotations:
     openshift.io/host.generated: "true"
 spec:
-  host: el-apex-apex.apps.smaug.na.operate-first.cloud
+  host: el-nexodus-nexodus.apps.smaug.na.operate-first.cloud
   to:
     kind: Service
-    name: el-apex
+    name: el-nexodus
     weight: 100
   port:
     targetPort: http-listener

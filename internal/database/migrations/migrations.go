@@ -15,7 +15,7 @@ import (
 var tracer trace.Tracer
 
 func init() {
-	tracer = otel.Tracer("github.com/redhat-et/apex/internal/database")
+	tracer = otel.Tracer("github.com/nexodus-io/nexodus/internal/database")
 }
 
 type Migrations struct {

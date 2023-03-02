@@ -19,7 +19,7 @@ import (
 var tracer trace.Tracer
 
 func init() {
-	tracer = otel.Tracer("github.com/redhat-et/apex/internal/ipam")
+	tracer = otel.Tracer("github.com/nexodus-io/nexodus/internal/ipam")
 }
 
 func uuidToNamespace(id uuid.UUID) string {

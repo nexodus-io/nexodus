@@ -8,10 +8,10 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
-    -o ./dist/apexd ./cmd/apexd
+    -o ./dist/nexd ./cmd/nexd
 RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
-    -o ./dist/apexctl ./cmd/apexctl
+    -o ./dist/nexctl ./cmd/nexctl
 
 FROM alpine:3.16 as alpine
 RUN apk add --no-cache \
@@ -20,8 +20,8 @@ RUN apk add --no-cache \
     iptables \
     psmisc \
     ca-certificates
-COPY --from=build /src/dist/apexd /bin/apexd
-COPY --from=build /src/dist/apexctl /bin/apexctl
+COPY --from=build /src/dist/nexd /bin/nexd
+COPY --from=build /src/dist/nexctl /bin/nexctl
 COPY ./hack/update-ca.sh /update-ca.sh
 RUN chmod a+x /update-ca.sh
 
@@ -38,8 +38,8 @@ RUN dnf update -qy && \
     hostname \
     && \
     dnf clean all
-COPY --from=build /src/dist/apexd /bin/apexd
-COPY --from=build /src/dist/apexctl /bin/apexctl
+COPY --from=build /src/dist/nexd /bin/nexd
+COPY --from=build /src/dist/nexctl /bin/nexctl
 COPY ./hack/update-ca.sh /update-ca.sh
 RUN chmod a+x /update-ca.sh
 
@@ -59,7 +59,7 @@ RUN apt-get update -qy && \
     psmisc \
     && \
     apt-get clean
-COPY --from=build /src/dist/apexd /bin/apexd
-COPY --from=build /src/dist/apexctl /bin/apexctl
+COPY --from=build /src/dist/nexd /bin/nexd
+COPY --from=build /src/dist/nexctl /bin/nexctl
 COPY ./hack/update-ca.sh /update-ca.sh
 RUN chmod a+x /update-ca.sh

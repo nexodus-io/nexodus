@@ -1,6 +1,6 @@
 # Monitoring
 
-The Apex stack is designed to be observable.
+The Nexodus stack is designed to be observable.
 
 ## Monitoring Locally
 

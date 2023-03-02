@@ -6,8 +6,8 @@ import (
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/redhat-et/apex/internal/database/migration_20230113_0000"
-	"github.com/redhat-et/apex/internal/database/migrations"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230113_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migrations"
 )
 
 // Base contains common columns for all tables.

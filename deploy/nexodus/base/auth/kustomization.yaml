@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - certificate.yaml
+  - deployment.yaml
+  - ingress.yaml
+  - service.yaml
+configMapGenerator:
+  - name: auth-config
+    literals:
+      - hostname=auth.nexodus.local
+      - frontend-url=https://nexodus.local
+  - name: realm
+    files:
+      - files/nexodus.json
+secretGenerator:
+  - name: auth-secrets
+    literals:
+      - keycloak-admin-password=floofykittens
+      - web-client-id=nexodus-web
+      - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
+      - cli-client-id=nexodus-cli
+commonLabels:
+  app.kubernetes.io/component: auth
+  app.kubernetes.io/instance: auth
+  app.kubernetes.io/name: auth

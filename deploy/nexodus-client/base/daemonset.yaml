@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nexodus
+spec:
+  updateStrategy:
+    type: OnDelete
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: nexodus-client
+      app.kubernetes.io/instance: nexodus-client
+      app.kubernetes.io/name: nexodus-client
+      app.kubernetes.io/part-of: nexodus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: nexodus
+    spec:
+      hostNetwork: true
+      hostAliases:
+        - ip: "127.0.0.1"
+          hostnames:
+            - "auth.nexodus.local"
+            - "api.nexodus.local"
+            - "nexodus.local"
+      serviceAccount: nexodus
+      serviceAccountName: nexodus
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      initContainers:
+        - name: cert-setup
+          image: quay.io/nexodus/nexd:latest
+          imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /etc/nexodus/.certs; base64 -d /etc/nexodus-client-secret/cert > /etc/nexodus/.certs/rootCA.pem
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-nexodus
+              mountPath: "/etc/nexodus"
+              mountPropagation: Bidirectional
+            - name: nexodus-client-secret
+              mountPath: "/etc/nexodus-client-secret"
+              readOnly: true
+      containers:
+        - name: nexodus-client
+          image: quay.io/nexodus/nexd:latest
+          imagePullPolicy: Always
+          env:
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: username
+                  optional: false
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: password
+                  optional: false
+            - name: URL
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: url
+                  optional: false
+            - name: AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: auth_url
+                  optional: false
+          command:
+            - /bin/sh
+            - -c
+            - |
+              CAROOT=/etc/nexodus/.certs ./mkcert -install
+              /nexd --username=$USERNAME --password=$PASSWORD $URL
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "ip link delete wg0"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-nexodus
+              mountPath: "/etc/nexodus"
+              mountPropagation: Bidirectional
+            - name: host-wireguard
+              mountPath: "/etc/wireguard"
+              mountPropagation: Bidirectional
+            - name: nexodus-client-secret
+              mountPath: "/etc/nexodus-client-secret"
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - name: nexodus-client-secret
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: nexodus-client-secret
+        - name: host-nexodus
+          hostPath:
+            path: /etc/nexodus
+            type: DirectoryOrCreate
+        - name: host-wireguard
+          hostPath:
+            path: /etc/wireguard
+            type: DirectoryOrCreate

@@ -42,9 +42,9 @@ jobs:
           push: true
           file: ./Containerfile.apiserver
           tags: |
-            quay.io/apex/apiserver:latest
-            quay.io/apex/apiserver:${{ github.sha }}
-            quay.io/apex/apiserver:${{ github.ref_name }}
+            quay.io/nexodus/apiserver:latest
+            quay.io/nexodus/apiserver:${{ github.sha }}
+            quay.io/nexodus/apiserver:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -57,9 +57,9 @@ jobs:
           push: true
           file: ./Containerfile.frontend
           tags: |
-            quay.io/apex/frontend:latest
-            quay.io/apex/frontend:${{ github.sha }}
-            quay.io/apex/frontend:${{ github.ref_name }}
+            quay.io/nexodus/frontend:latest
+            quay.io/nexodus/frontend:${{ github.sha }}
+            quay.io/nexodus/frontend:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -72,9 +72,9 @@ jobs:
           push: true
           file: ./Containerfile.apex
           tags: |
-            quay.io/apex/apex:latest
-            quay.io/apex/apex:${{ github.sha }}
-            quay.io/apex/apex:${{ github.ref_name }}
+            quay.io/nexodus/nexd:latest
+            quay.io/nexodus/nexd:${{ github.sha }}
+            quay.io/nexodus/nexd:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -187,5 +187,5 @@ jobs:
       - name: Submit srpm to copr
         run: |
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
-          docker run --name copr-cli -v $(pwd):/apex -v ~/.config:/root/.config quay.io/apex/mock:latest \
-              copr-cli build apex -r ${{ matrix.mock_root }} --nowait /apex//dist/rpm/mock/apex-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm
+          docker run --name copr-cli -v $(pwd):/nexodus -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
+              copr-cli build nexodus -r ${{ matrix.mock_root }} --nowait /nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm
