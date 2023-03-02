@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apiproxy
+  annotations:
+    cert-manager.io/issuer: nexodus-issuer
+spec:
+  tls:
+    - hosts:
+        - api.nexodus.local
+      secretName: nexodus-api-cert
+  rules:
+    - host: api.nexodus.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: apiproxy
+                port:
+                  number: 8080

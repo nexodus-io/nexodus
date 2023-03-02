@@ -130,8 +130,8 @@ jobs:
       - name: Kustomize Build
         run: |
           mkdir -p kubeconfigs
-          kustomize build ./deploy/apex/overlays/dev > kubeconfigs/dev.yaml
-          kustomize build ./deploy/apex/overlays/prod > kubeconfigs/prod.yaml
+          kustomize build ./deploy/nexodus/overlays/dev > kubeconfigs/dev.yaml
+          kustomize build ./deploy/nexodus/overlays/prod > kubeconfigs/prod.yaml
 
       - name: Login to GHCR
         run: echo "${{ github.token }}" | docker login https://ghcr.io -u ${GITHUB_ACTOR} --password-stdin
@@ -183,7 +183,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.ipam
-          tags: quay.io/apex/go-ipam:latest
+          tags: quay.io/nexodus/go-ipam:latest
           outputs: type=docker,dest=/tmp/ipam.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -324,7 +324,7 @@ jobs:
 
       - name: Add hosts to /etc/hosts
         run: |
-          echo "127.0.0.1 auth.apex.local api.apex.local apex.local" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 auth.nexodus.local api.nexodus.local nexodus.local" | sudo tee -a /etc/hosts
 
       - name: Download apiserver image
         uses: actions/download-artifact@v3
@@ -359,7 +359,7 @@ jobs:
 
       - name: Build dist
         run: |
-          make dist/apexd dist/apexctl
+          make dist/nexd dist/nexctl
 
       - name: Setup KIND
         run: |
@@ -384,7 +384,7 @@ jobs:
       - name: Get Logs
         if: always()
         run: |
-          kubectl logs -n apex -l app.kubernetes.io/part-of=apex --all-containers=true > logs.txt
+          kubectl logs -n nexodus -l app.kubernetes.io/part-of=nexodus --all-containers=true > logs.txt
 
       - name: Upload Logs
         if: always()

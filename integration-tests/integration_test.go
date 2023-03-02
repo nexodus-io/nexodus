@@ -385,7 +385,7 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 			"/bin/nexd",
 			fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 			"--username", username, "--password", password,
-			"http://apex.local",
+			"http://nexodus.local",
 		})
 	}()
 

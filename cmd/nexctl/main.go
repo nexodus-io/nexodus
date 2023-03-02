@@ -34,7 +34,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "host",
-				Value: "https://api.apex.local",
+				Value: "https://api.nexodus.local",
 				Usage: "api server",
 			},
 			&cli.StringFlag{
