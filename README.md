@@ -1,4 +1,4 @@
-# ![Nexodus](assets/logo.svg)
+# ![Nexodus](assets/wordmark.png)
 
 > **Warning**: This project is currently experimental.
 
