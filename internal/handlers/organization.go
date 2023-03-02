@@ -245,6 +245,26 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
+func (api *API) ListUsersInOrganization(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListUsersInOrganization")
+	defer span.End()
+	k, err := uuid.Parse(c.Param("organization"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+		return
+	}
+	var org models.Organization
+	res := api.db.WithContext(ctx).Preload("Users").First(&org, "id = ?", k.String())
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+		return
+	}
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
+	c.Header(TotalCountHeader, strconv.Itoa(len(org.Users)))
+	c.JSON(http.StatusOK, org.Users)
+}
+
 // DeleteOrganization handles deleting an existing organization and associated ipam prefix
 // @Summary      Delete Organization
 // @Description  Deletes an existing organization and associated IPAM prefix

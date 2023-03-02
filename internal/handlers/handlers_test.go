@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	TestUserID = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
+	TestUserID  = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
+	TestUser2ID = "3381dcaf-f61e-4671-8787-3e53490894ae"
 )
 
 type HandlerTestSuite struct {
@@ -34,6 +35,7 @@ type HandlerTestSuite struct {
 	wg                 *sync.WaitGroup
 	api                *API
 	testOrganizationID uuid.UUID
+	testUser2OrgID     uuid.UUID
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
@@ -73,6 +75,8 @@ func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
 	suite.api.db.Exec("DELETE FROM devices")
 	var err error
 	suite.testOrganizationID, err = suite.api.createUserIfNotExists(context.Background(), TestUserID, "testuser")
+	suite.Require().NoError(err)
+	suite.testUser2OrgID, err = suite.api.createUserIfNotExists(context.Background(), TestUser2ID, "testuser2")
 	suite.Require().NoError(err)
 }
 

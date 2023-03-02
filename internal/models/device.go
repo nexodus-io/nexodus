@@ -11,7 +11,7 @@ type Device struct {
 	Base
 	UserID                   string         `json:"user_id"`
 	OrganizationID           uuid.UUID      `json:"organization_id"`
-	PublicKey                string         `json:"public_key" gorm:"uniqueIndex"`
+	PublicKey                string         `json:"public_key"`
 	LocalIP                  string         `json:"local_ip"`
 	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
 	TunnelIP                 string         `json:"tunnel_ip"`

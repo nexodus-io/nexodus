@@ -10,6 +10,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230126_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230314_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230321_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230327_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
@@ -63,7 +64,15 @@ func NewDatabase(
 }
 
 func NewTestDatabase() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return nil, err
+	}
+	gormLogger := NewLogger(logger.Sugar())
+	config := &gorm.Config{
+		Logger: gormLogger,
+	}
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), config)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +97,7 @@ func Migrations() *migrations.Migrations {
 			migration_20230126_0000.Migrate(),
 			migration_20230314_0000.Migrate(),
 			migration_20230321_0000.Migrate(),
+			migration_20230327_0000.Migrate(),
 		},
 	}
 }

@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	errUserOrOrgNotFound = errors.New("user or organization not found")
-	errUserNotFound      = errors.New("user not found")
-	errDeviceNotFound    = errors.New("device not found")
-	errOrgNotFound       = errors.New("organization not found")
+	errUserOrOrgNotFound  = errors.New("user or organization not found")
+	errOrgNotFound        = errors.New("organization not found")
+	errUserNotFound       = errors.New("user not found")
+	errDeviceNotFound     = errors.New("device not found")
+	errInvitationNotFound = errors.New("invitation not found")
 )
 
 type errDuplicateDevice struct {

@@ -310,6 +310,90 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:  "invitation",
+				Usage: "commands relating to invitations",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "create",
+						Usage: "create an invitation",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "user-id",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "org-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"), nil,
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							encodeOut := cCtx.String("output")
+							userID := cCtx.String("user-id")
+							orgID := cCtx.String("org-id")
+							return createInvitation(c, encodeOut, userID, orgID)
+						},
+					},
+					{
+						Name:  "delete",
+						Usage: "delete an invitation",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "inv-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"), nil,
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							userID := cCtx.String("inv-id")
+							return deleteInvitation(c, userID)
+						},
+					},
+					{
+						Name:  "accept",
+						Usage: "accept an invitation",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "inv-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"), nil,
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							userID := cCtx.String("inv-id")
+							return acceptInvitation(c, userID)
+						},
+					},
+				},
+			},
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

@@ -16,6 +16,7 @@ Feature: Device API
       {
         "devices": [],
         "id": "${user_id}",
+        "invitations": [],
         "organizations": [
           "${organization_id}"
         ],
