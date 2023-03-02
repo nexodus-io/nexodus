@@ -132,9 +132,9 @@ run-test-container: ## Run docker container that you can run nexodus in
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
-		--add-host apex.local:$(NEXODUS_LOCAL_IP) \
-		--add-host api.apex.local:$(NEXODUS_LOCAL_IP) \
-		--add-host auth.apex.local:$(NEXODUS_LOCAL_IP) \
+		--add-host nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host api.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host auth.nexodus.local:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
 		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 
@@ -190,8 +190,8 @@ image-nexd:
 
 .PHONY: image-ipam ## Build the IPAM image
 image-ipam:
-	docker build -f Containerfile.ipam -t quay.io/apex/go-ipam:$(TAG) .
-	docker tag quay.io/apex/go-ipam:$(TAG) quay.io/apex/go-ipam:latest
+	docker build -f Containerfile.ipam -t quay.io/nexodus/go-ipam:$(TAG) .
+	docker tag quay.io/nexodus/go-ipam:$(TAG) quay.io/nexodus/go-ipam:latest
 
 .PHONY: images
 images: image-frontend image-apiserver image-ipam ## Create container images
@@ -214,10 +214,10 @@ setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't in
 .PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
 deploy-nexodus-agent: image-nexd
 	@kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
-	@cp deploy/apex-client/overlays/dev/kustomization.yaml.sample deploy/apex-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<APEX_CONTROLLER_CERT>/$(shell kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/apex-client/overlays/dev/kustomization.yaml
-	@kubectl apply -k ./deploy/apex-client/overlays/dev
+	@cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<NEXODUS_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<NEXODUS_CONTROLLER_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	@kubectl apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 
@@ -264,38 +264,38 @@ wait-for-readiness: # Wait for operators to be installed
 
 .PHONY: deploy
 deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
-	@kubectl create namespace apex
-	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY)
+	@kubectl create namespace nexodus
+	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY)
 	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
+	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: undeploy
 undeploy: ## Remove the nexodus stack from a kubernetes cluster
-	@kubectl delete namespace apex
+	@kubectl delete namespace nexodus
 
 .PHONY: load-images
 load-images: ## Load images onto kind
 	@kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
 	@kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
-	@kind load --name nexodus-dev docker-image quay.io/apex/go-ipam:latest
+	@kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
-	@kubectl rollout restart deploy/apiserver -n apex
-	@kubectl rollout restart deploy/frontend -n apex
+	@kubectl rollout restart deploy/apiserver -n nexodus
+	@kubectl rollout restart deploy/frontend -n nexodus
 
 .PHONY: init-db
 init-db:
 # wait for the DB to be up, then restart the services that use it.
 ifeq ($(OVERLAY),dev)
-	@kubectl wait -n apex postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
+	@kubectl wait -n nexodus postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
 else ifeq ($(OVERLAY),arm64)
-	@kubectl wait -n apex statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
+	@kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
 else ifeq ($(OVERLAY),cockroach)
 	@make deploy-cockroach-operator
-	@kubectl -n apex wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
-	@kubectl -n apex rollout status statefulsets/cockroachdb --timeout=5m
-	@kubectl -n apex exec -it cockroachdb-0 \
+	@kubectl -n nexodus wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
+	@kubectl -n nexodus rollout status statefulsets/cockroachdb --timeout=5m
+	@kubectl -n nexodus exec -it cockroachdb-0 \
 	  	-- ./cockroach sql \
 		--insecure \
 		--certs-dir=/cockroach/cockroach-certs \
@@ -312,33 +312,33 @@ else ifeq ($(OVERLAY),cockroach)
 			GRANT ALL ON DATABASE keycloak TO keycloak;\
 			"
 endif
-	@kubectl rollout restart deploy/apiserver -n apex
-	@kubectl rollout restart deploy/ipam -n apex
-	@kubectl -n apex rollout status deploy/apiserver --timeout=5m
-	@kubectl -n apex rollout status deploy/ipam --timeout=5m
+	@kubectl rollout restart deploy/apiserver -n nexodus
+	@kubectl rollout restart deploy/ipam -n nexodus
+	@kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
+	@kubectl -n nexodus rollout status deploy/ipam --timeout=5m
 
 .PHONY: recreate-db
-recreate-db: ## Delete and bring up a new apex database
+recreate-db: ## Delete and bring up a new nexodus database
 
-	@kubectl delete -n apex postgrescluster/database 2> /dev/null || true
-	@kubectl wait --for=delete -n apex postgrescluster/database
-	@kubectl delete -n apex statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/postgres-disk-postgres-0
-	@kubectl delete -n apex crdbclusters/cockroachdb 2> /dev/null || true
-	@kubectl wait --for=delete -n apex --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
-	@kubectl delete -n apex persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-0
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-1
-	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-2
+	@kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus postgrescluster/database
+	@kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
+	@kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
+	@kubectl delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-1
+	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-2
 
-	@kubectl apply -k ./deploy/apex/overlays/$(OVERLAY) | grep -v unchanged
+	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
 	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n apex -l app.kubernetes.io/part-of=apex --timeout=15m
+	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
 	@mkdir -p $(CURDIR)/.certs
-	@kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
+	@kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	@CAROOT=$(CURDIR)/.certs mkcert -install
 
 ##@ Packaging

@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  annotations:
+    cert-manager.io/issuer: nexodus-issuer
+spec:
+  tls:
+    - hosts:
+        - nexodus.local
+      secretName: nexodus-frontend-cert
+  rules:
+    - host: nexodus.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
