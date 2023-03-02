@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nexodus
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+                  # Deploy nexodus client on the nodes tagged with following label
+                  - key: app.kubernetes.io/nexodus
+                    operator: Exists
+                  # Deploy nexodus client on  specific nodes
+                  - key: kubernetes.io/hostname
+                   operator: In
+                   values:
+                   - worker-1

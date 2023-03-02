@@ -11,11 +11,11 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/redhat-et/apex/internal/database"
-	"github.com/redhat-et/apex/internal/fflags"
-	"github.com/redhat-et/apex/internal/handlers"
-	"github.com/redhat-et/apex/internal/ipam"
-	"github.com/redhat-et/apex/internal/routers"
+	"github.com/nexodus-io/nexodus/internal/database"
+	"github.com/nexodus-io/nexodus/internal/fflags"
+	"github.com/nexodus-io/nexodus/internal/handlers"
+	"github.com/nexodus-io/nexodus/internal/ipam"
+	"github.com/nexodus-io/nexodus/internal/routers"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -35,12 +35,12 @@ func init() {
 	tracer = otel.Tracer("apiserver")
 }
 
-// @title          Apex API
+// @title          Nexodus API
 // @version        1.0
-// @description	This is the APEX API Server.
+// @description	This is the Nexodus API Server.
 
-// @contact.name   The Apex Authors
-// @contact.url    https://github.com/redhat-et/apex/issues
+// @contact.name   The Nexodus Authors
+// @contact.url    https://github.com/nexodus-io/nexodus/issues
 
 // @license.name  	Apache 2.0
 // @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
@@ -52,97 +52,97 @@ func init() {
 // @BasePath  		/api
 func main() {
 	app := &cli.App{
-		Name: "apex-controller",
+		Name: "nexodus-controller",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Value:   false,
 				Usage:   "enable debug logging",
-				EnvVars: []string{"APEX_DEBUG"},
+				EnvVars: []string{"DEBUG"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-url",
-				Value:   "https://auth.apex.local",
+				Value:   "https://auth.nexodus.local",
 				Usage:   "address of oidc provider",
-				EnvVars: []string{"APEX_OIDC_URL"},
+				EnvVars: []string{"OIDC_URL"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-backchannel-url",
 				Value:   "",
 				Usage:   "backend address of oidc provider",
-				EnvVars: []string{"APEX_OIDC_BACKCHANNEL"},
+				EnvVars: []string{"OIDC_BACKCHANNEL"},
 			},
 			&cli.BoolFlag{
 				Name:    "insecure-tls",
 				Value:   false,
 				Usage:   "trust any TLS certificate",
-				EnvVars: []string{"APEX_INSECURE_TLS"},
+				EnvVars: []string{"INSECURE_TLS"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-client-id-web",
-				Value:   "apex-web",
+				Value:   "nexodus-web",
 				Usage:   "OIDC client id for web",
-				EnvVars: []string{"APEX_OIDC_CLIENT_ID_WEB"},
+				EnvVars: []string{"OIDC_CLIENT_ID_WEB"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-client-id-cli",
-				Value:   "apex-web",
+				Value:   "nexodus-web",
 				Usage:   "OIDC client id for cli",
-				EnvVars: []string{"APEX_OIDC_CLIENT_ID_CLI"},
+				EnvVars: []string{"OIDC_CLIENT_ID_CLI"},
 			},
 			&cli.StringFlag{
 				Name:    "db-host",
 				Value:   "apiserver-db",
 				Usage:   "db host",
-				EnvVars: []string{"APEX_DB_HOST"},
+				EnvVars: []string{"DB_HOST"},
 			},
 			&cli.StringFlag{
 				Name:    "db-port",
 				Value:   "5432",
 				Usage:   "db port",
-				EnvVars: []string{"APEX_DB_PORT"},
+				EnvVars: []string{"DB_PORT"},
 			},
 			&cli.StringFlag{
 				Name:    "db-user",
 				Value:   "apiserver",
 				Usage:   "db user",
-				EnvVars: []string{"APEX_DB_USER"},
+				EnvVars: []string{"DB_USER"},
 			},
 			&cli.StringFlag{
 				Name:    "db-password",
 				Value:   "secret",
 				Usage:   "db password",
-				EnvVars: []string{"APEX_DB_PASSWORD"},
+				EnvVars: []string{"DB_PASSWORD"},
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
 				Value:   "apiserver",
 				Usage:   "db name",
-				EnvVars: []string{"APEX_DB_NAME"},
+				EnvVars: []string{"DB_NAME"},
 			},
 			&cli.StringFlag{
 				Name:    "db-sslmode",
 				Value:   "disable",
 				Usage:   "db ssl mode",
-				EnvVars: []string{"APEX_DB_SSLMODE"},
+				EnvVars: []string{"DB_SSLMODE"},
 			},
 			&cli.StringFlag{
 				Name:    "ipam-address",
 				Value:   "ipam:9090",
 				Usage:   "address of ipam grpc service",
-				EnvVars: []string{"APEX_IPAM_URL"},
+				EnvVars: []string{"IPAM_URL"},
 			},
 			&cli.BoolFlag{
 				Name:    "trace-insecure",
 				Value:   false,
 				Usage:   "Set OTLP endpoint to insecure mode",
-				EnvVars: []string{"APEX_TRACE_INSECURE"},
+				EnvVars: []string{"TRACE_INSECURE"},
 			},
 			&cli.StringFlag{
 				Name:    "trace-endpoint",
 				Value:   "",
 				Usage:   "OTLP endpoint for trace data",
-				EnvVars: []string{"APEX_TRACE_ENDPOINT_OTLP"},
+				EnvVars: []string{"TRACE_ENDPOINT_OTLP"},
 			},
 		},
 		Action: func(cCtx *cli.Context) error {

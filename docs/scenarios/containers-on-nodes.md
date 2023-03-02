@@ -15,7 +15,7 @@ For simplicity, we are just using the default, built-in zone `default`.
 Join node1 to the `default` zone network
 
 ```shell
-sudo apex <CONTROLLER_URL> \
+sudo nexd <CONTROLLER_URL> \
     --child-prefix=172.24.0.0/24
 ```
 
@@ -42,7 +42,7 @@ docker run -it --rm --network=net1 busybox bash
 Join node2 to the `default` zone network
 
 ```shell
-sudo apex <CONTROLLER_URL> \
+sudo nexd <CONTROLLER_URL> \
     --child-prefix=172.28.0.0/24
 ```
 
@@ -86,10 +86,10 @@ sudo ip addr add 172.28.0.10/32 dev lo
 
 Ping between nodes to the loopbacks, both IPs should be reachable now because those prefixes were added to the routing tables.
 
-To go one step further, a user could then run apex on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
+To go one step further, a user could then run nexd on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
 
 ```shell
-sudo apex <CONTROLLER_URL>
+sudo nexd <CONTROLLER_URL>
 ```
 
 Ping to prefixes on both the other nodes should be successful now.

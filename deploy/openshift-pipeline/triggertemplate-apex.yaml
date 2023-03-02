@@ -1,8 +1,8 @@
 ﻿apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: apex
-  namespace: apex
+  name: nexodus
+  namespace: nexodus
 spec:
   params:
     - description: The quay image repository url
@@ -16,10 +16,10 @@ spec:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineRun
       metadata:
-        generateName: deploy-apex-
+        generateName: deploy-nexodus-
       spec:
         pipelineRef:
-          name: deploy-apex
+          name: deploy-nexodus
         serviceAccountName: pipeline
         workspaces:
           - emptyDir: {}

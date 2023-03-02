@@ -1,0 +1,91 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - issuer.yaml
+# Uncomment this and the patch at the bottom to enable monitoring
+# components:
+#  - ../../components/monitoring
+namespace: nexodus
+configMapGenerator:
+  - behavior: merge
+    literals:
+      - FFLAG_MULTI_ORGANIZATION=true
+    name: apiserver
+patchesJson6902:
+  - target:
+      kind: Ingress
+      name: apiproxy
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.nexodus.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.nexodus.local
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: nexodus.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: nexodus.local
+  - target:
+      kind: Ingress
+      name: apiproxy
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: nexodus-issuer
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: nexodus-issuer
+  - target:
+      kind: Deployment
+      name: backend-cli
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      kind: Deployment
+      name: backend-web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+  - target:
+      kind: Deployment
+      name: apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
+      - op: add
+        path: /spec/template/spec/volumes
+        value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+
+#  - target:
+#      name: apiserver
+#      kind: ConfigMap
+#      namespace: nexodus
+#    patch: |-
+#      - op: replace
+#        path: /data/TRACE_ENDPOINT_OTLP
+#        value: jaeger-collector.observability.svc.cluster.local:4317
+#      - op: replace
+#        path: /data/TRACE_INSECURE
+#        value: "1"

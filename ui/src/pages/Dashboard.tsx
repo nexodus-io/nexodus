@@ -40,7 +40,7 @@ const Dashboard = () => {
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faDownload as IconProp} />}
-            href="https://apex-net.s3.amazonaws.com/installer/apex-installer.sh"
+            href="https://apex-net.s3.amazonaws.com/installer/nexodus-installer.sh"
           >
             Apex Installer
           </Button>
