@@ -138,6 +138,19 @@ run-test-container: ## Run docker container that you can run nexodus in
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
 		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 
+.PHONY: run-sql-apiserver
+run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
+ifeq ($(OVERLAY),dev)
+	@kubectl exec -it -n apex \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		-c database -- psql apiserver
+else ifeq ($(OVERLAY),arm64)
+	@kubectl exec -it -n apex svc/postgres -c postgres -- psql -U apiserver apiserver
+else ifeq ($(OVERLAY),cockroach)
+	@kubectl exec -it -n apex svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+endif
+
+
 ##@ Container Images
 
 .PHONY: test-images
