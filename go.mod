@@ -33,6 +33,7 @@ require (
 	golang.org/x/net v0.7.0
 	golang.org/x/oauth2 v0.5.0
 	golang.org/x/sys v0.5.0
+	golang.org/x/term v0.5.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20221104135756-97bc4ad4a1cb
 	gorm.io/driver/postgres v1.4.8
 	gorm.io/driver/sqlite v1.4.4
