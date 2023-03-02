@@ -49,7 +49,7 @@
 
 ## High Level Solution Description
 
-A high level summary of the overall solution is provided [here.](design/solution-architecture.md) 
+A high level summary of the overall solution is provided [here.](design/solution-architecture.md)
 
 ## Deploying the Apex Controller
 
