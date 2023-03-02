@@ -381,7 +381,7 @@ func (suite *ApexIntegrationSuite) TestHubOrganization() {
 	// re-join and ensure the device table updates with the new values
 	go func() {
 		_, err = suite.containerExec(ctx, node2, []string{
-			"/bin/apexd",
+			"/bin/nexd",
 			fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 			"--username", username, "--password", password,
 			"http://apex.local",
