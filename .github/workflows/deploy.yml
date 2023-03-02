@@ -187,5 +187,5 @@ jobs:
       - name: Submit srpm to copr
         run: |
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
-          docker run --name copr-cli -v $(pwd):/apex -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
-              copr-cli build apex -r ${{ matrix.mock_root }} --nowait /apex//dist/rpm/mock/apex-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm
+          docker run --name copr-cli -v $(pwd):/nexodus -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
+              copr-cli build nexodus -r ${{ matrix.mock_root }} --nowait /nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm

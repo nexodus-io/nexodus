@@ -454,7 +454,7 @@ jobs:
         id: build-rpm
         run: |
           make rpm
-          echo "artifact-name=$(pwd)/dist/rpm/mock/apex-*.x86_64.rpm" >> $GITHUB_OUTPUT
+          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3

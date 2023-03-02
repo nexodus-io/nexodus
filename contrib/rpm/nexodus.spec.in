@@ -3,7 +3,7 @@
 
 # https://github.com/nexodus-io/nexodus
 %global goipath         github.com/nexodus-io/nexodus
-%global commit          ##APEX_COMMIT##
+%global commit          ##NEXODUS_COMMIT##
 
 # REMOVE BEFORE SUBMITTING THIS FOR REVIEW
 # ---
@@ -23,7 +23,7 @@ A prototype of connectivity as a service.}
 %global golicenses      LICENSE
 %global godocs          docs DCO CONTRIBUTING.md README.md
 
-Name:           apex
+Name:           nexodus
 Version:        0
 Release:        %autorelease -p
 Summary:        A prototype of connectivity as a service
@@ -31,7 +31,7 @@ Summary:        A prototype of connectivity as a service
 License:        Apache-2.0
 URL:            %{gourl}
 # Our custom tarball with vendored deps
-Source:         apex-##APEX_COMMIT##.tar.gz
+Source:         nexodus-##NEXODUS_COMMIT##.tar.gz
 #Source:         %%{gosource}
 
 %description %{common_description}
@@ -63,9 +63,9 @@ done
 %gopkginstall
 install -m 0755 -vd                     %{buildroot}%{_bindir}
 install -m 0755 -vp %{gobuilddir}/bin/* %{buildroot}%{_bindir}/
-install -p -D -m 0644 contrib/rpm/apex.service %{buildroot}/usr/lib/systemd/system/apex.service
-install -p -D -m 0644 contrib/rpm/apex.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/apex
-for cmd in apexd apexctl ; do
+install -p -D -m 0644 contrib/rpm/nexodus.service %{buildroot}/usr/lib/systemd/system/nexodus.service
+install -p -D -m 0644 contrib/rpm/nexodus.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/nexodus
+for cmd in nexd nexctl ; do
   install -p -D -m 0644 contrib/man/${cmd}.8.gz %{buildroot}%{_mandir}/man8/${cmd}.8.gz
 done
 
@@ -78,15 +78,15 @@ done
 %license LICENSE
 %doc docs DCO CONTRIBUTING.md README.md
 %{_bindir}/*
-/usr/lib/systemd/system/apex.service
-%{_sysconfdir}/sysconfig/apex
+/usr/lib/systemd/system/nexodus.service
+%{_sysconfdir}/sysconfig/nexodus
 %{_mandir}/man8/*
 
 %gopkgfiles
 
 %post
 %if 0%{?systemd_post:1}
-    %systemd_post apex.service
+    %systemd_post nexodus.service
 %else
     if [ $1 -eq 1 ]; then
         /bin/systemctl daemon-reload >/dev/null || :
@@ -95,18 +95,18 @@ done
 
 %preun
 %if 0%{?systemd_preun:1}
-  %systemd_preun apex.service
+  %systemd_preun nexodus.service
 %else
   if [ $1 -eq 0 ] ; then
     # Package removal, not upgrade
-    /bin/systemctl --no-reload disable apex.service >/dev/null 2>&1 || :
-    /bin/systemctl stop apex.service >/dev/null 2>&1 || :
+    /bin/systemctl --no-reload disable nexodus.service >/dev/null 2>&1 || :
+    /bin/systemctl stop nexodus.service >/dev/null 2>&1 || :
   fi
 %endif
 
 %postun
 %if 0%{?systemd_postun:1}
-  %systemd_postun apex.service
+  %systemd_postun nexodus.service
 %else
   /bin/systemctl daemon-reload >/dev/null 2>&1 || :
 %endif

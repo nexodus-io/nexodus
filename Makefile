@@ -344,26 +344,26 @@ SRPM_DISTRO?=fc37
 .PHONY: srpm
 srpm: dist/rpm image-mock manpages ## Build a source RPM
 	go mod vendor
-	rm -rf dist/rpm/apex-${NEXODUS_RELEASE}
-	rm -f dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz
-	git archive --format=tar.gz -o dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz --prefix=apex-${NEXODUS_RELEASE}/ ${NEXODUS_RELEASE}
-	cd dist/rpm && tar xzf apex-${NEXODUS_RELEASE}.tar.gz
-	mv vendor dist/rpm/apex-${NEXODUS_RELEASE}/.
-	mkdir -p dist/rpm/apex-${NEXODUS_RELEASE}/contrib/man
-	cp -r contrib/man/* dist/rpm/apex-${NEXODUS_RELEASE}/contrib/man/.
-	cd dist/rpm && tar czf apex-${NEXODUS_RELEASE}.tar.gz apex-${NEXODUS_RELEASE} && rm -rf apex-${NEXODUS_RELEASE}
-	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
-	sed -i -e "s/##APEX_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/apex.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/nexodus/mock:latest \
-		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
-		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
-	rm -f dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz
+	rm -rf dist/rpm/nexodus-${NEXODUS_RELEASE}
+	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
+	git archive --format=tar.gz -o dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz --prefix=nexodus-${NEXODUS_RELEASE}/ ${NEXODUS_RELEASE}
+	cd dist/rpm && tar xzf nexodus-${NEXODUS_RELEASE}.tar.gz
+	mv vendor dist/rpm/nexodus-${NEXODUS_RELEASE}/.
+	mkdir -p dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man
+	cp -r contrib/man/* dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man/.
+	cd dist/rpm && tar czf nexodus-${NEXODUS_RELEASE}.tar.gz nexodus-${NEXODUS_RELEASE} && rm -rf nexodus-${NEXODUS_RELEASE}
+	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
+	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
+		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_ROOT}
+	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/nexodus/mock:latest \
-		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
-		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
+		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 ##@ Manpage Generation
 
