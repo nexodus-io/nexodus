@@ -60,6 +60,6 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	if result.IP.IsUnspecified() {
 		return result, fmt.Errorf("no public facing NAT address found for the host")
 	}
-	logger.Debugf("STUN: your IP:port is: %s", result)
+	logger.Debugf("STUN: your IP:port is: %s:%d", result.IP.String(), result.Port)
 	return result, nil
 }
