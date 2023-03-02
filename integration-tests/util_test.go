@@ -72,7 +72,7 @@ func (suite *ApexIntegrationSuite) CreateNode(ctx context.Context, name string, 
 	require.NoError(suite.T(), err)
 
 	req := testcontainers.ContainerRequest{
-		Image:    "quay.io/apex/test:ubuntu",
+		Image:    "quay.io/nexodus/test:ubuntu",
 		Name:     name,
 		Networks: networks,
 		CapAdd: []string{

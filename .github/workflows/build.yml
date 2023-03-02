@@ -154,7 +154,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.apiserver
-          tags: quay.io/apex/apiserver:latest
+          tags: quay.io/nexodus/apiserver:latest
           outputs: type=docker,dest=/tmp/apiserver.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -168,7 +168,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.frontend
-          tags: quay.io/apex/frontend:latest
+          tags: quay.io/nexodus/frontend:latest
           outputs: type=docker,dest=/tmp/frontend.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -198,7 +198,7 @@ jobs:
         with:
           context: .
           file: ./Containerfile.test
-          tags: quay.io/apex/test:ubuntu
+          tags: quay.io/nexodus/test:ubuntu
           outputs: type=docker,dest=/tmp/test-ubuntu.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max

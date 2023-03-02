@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: quay.io/apex/frontend:latest
+          image: quay.io/nexodus/frontend:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:

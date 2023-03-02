@@ -123,28 +123,28 @@ e2e-podman: ## Run e2e tests on podman
 test: ## Run unit tests
 	go test -v ./...
 
-APEX_LOCAL_IP:=`go run ./hack/localip`
+NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
 run-test-container: ## Run docker container that you can run apex in
-	@docker build -f Containerfile.test -t quay.io/apex/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
+	@docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
 	@docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
-		--add-host apex.local:$(APEX_LOCAL_IP) \
-		--add-host api.apex.local:$(APEX_LOCAL_IP) \
-		--add-host auth.apex.local:$(APEX_LOCAL_IP) \
+		--add-host apex.local:$(NEXODUS_LOCAL_IP) \
+		--add-host api.apex.local:$(NEXODUS_LOCAL_IP) \
+		--add-host auth.apex.local:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
-		quay.io/apex/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
+		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 
 ##@ Container Images
 
 .PHONY: test-images
 test-images: dist/nexd dist/nexctl ## Create test images for e2e
-	docker build -f Containerfile.test -t quay.io/apex/test:alpine --target alpine .
-	docker build -f Containerfile.test -t quay.io/apex/test:fedora --target fedora .
-	docker build -f Containerfile.test -t quay.io/apex/test:ubuntu --target ubuntu .
+	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
+	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
+	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
 
 .PHONY: e2eprereqs
 e2eprereqs:
@@ -162,18 +162,18 @@ e2eprereqs:
 
 .PHONY: image-frontend
 image-frontend:
-	docker build -f Containerfile.frontend -t quay.io/apex/frontend:$(TAG) .
-	docker tag quay.io/apex/frontend:$(TAG) quay.io/apex/frontend:latest
+	docker build -f Containerfile.frontend -t quay.io/nexodus/frontend:$(TAG) .
+	docker tag quay.io/nexodus/frontend:$(TAG) quay.io/nexodus/frontend:latest
 
 .PHONY: image-apiserver
 image-apiserver:
-	docker build -f Containerfile.apiserver -t quay.io/apex/apiserver:$(TAG) .
-	docker tag quay.io/apex/apiserver:$(TAG) quay.io/apex/apiserver:latest
+	docker build -f Containerfile.apiserver -t quay.io/nexodus/apiserver:$(TAG) .
+	docker tag quay.io/nexodus/apiserver:$(TAG) quay.io/nexodus/apiserver:latest
 
-.PHONY: image-apex ## Build the apex agent image
-image-apex:
-	docker build -f Containerfile.apex -t quay.io/apex/apex:$(TAG) .
-	docker tag quay.io/apex/apex:$(TAG) quay.io/apex/apex:latest
+.PHONY: image-nexd ## Build the nexodus agent image
+image-nexd:
+	docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
+	docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
 
 .PHONY: image-ipam ## Build the IPAM image
 image-ipam:
@@ -198,11 +198,11 @@ setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't in
 	@kubectl cluster-info --context kind-apex-dev
 	@kubectl apply -f ./deploy/kind-ingress.yaml
 
-.PHONY: deploy-apex-agent ## Deply the apex agent in the kind cluster
-deploy-apex-agent: image-apex
-	@kind load --name apex-dev docker-image quay.io/apex/apex:latest
+.PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
+deploy-nexodus-agent: image-nexd
+	@kind load --name apex-dev docker-image quay.io/nexodus/nexd:latest
 	@cp deploy/apex-client/overlays/dev/kustomization.yaml.sample deploy/apex-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(APEX_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
+	@sed -i -e "s/<APEX_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/apex-client/overlays/dev/kustomization.yaml
 	@sed -i -e "s/<APEX_CONTROLLER_CERT>/$(shell kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/apex-client/overlays/dev/kustomization.yaml
 	@kubectl apply -k ./deploy/apex-client/overlays/dev
 
@@ -262,8 +262,8 @@ undeploy: ## Remove the apex stack from a kubernetes cluster
 
 .PHONY: load-images
 load-images: ## Load images onto kind
-	@kind load --name apex-dev docker-image quay.io/apex/apiserver:latest
-	@kind load --name apex-dev docker-image quay.io/apex/frontend:latest
+	@kind load --name apex-dev docker-image quay.io/nexodus/apiserver:latest
+	@kind load --name apex-dev docker-image quay.io/nexodus/frontend:latest
 	@kind load --name apex-dev docker-image quay.io/apex/go-ipam:latest
 
 .PHONY: redeploy
@@ -335,8 +335,8 @@ dist/rpm:
 
 .PHONY: image-mock
 image-mock:
-	docker build -f Containerfile.mock -t quay.io/apex/mock:$(TAG) .
-	docker tag quay.io/apex/mock:$(TAG) quay.io/apex/mock:latest
+	docker build -f Containerfile.mock -t quay.io/nexodus/mock:$(TAG) .
+	docker tag quay.io/nexodus/mock:$(TAG) quay.io/nexodus/mock:latest
 
 MOCK_ROOT?=fedora-37-x86_64
 SRPM_DISTRO?=fc37
@@ -354,14 +354,14 @@ srpm: dist/rpm image-mock manpages ## Build a source RPM
 	cd dist/rpm && tar czf apex-${NEXODUS_RELEASE}.tar.gz apex-${NEXODUS_RELEASE} && rm -rf apex-${NEXODUS_RELEASE}
 	cp contrib/rpm/apex.spec.in contrib/rpm/apex.spec
 	sed -i -e "s/##APEX_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/apex.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/nexodus/mock:latest \
 		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/apex/dist/rpm/mock --no-clean --no-cleanup-after \
 		--spec /apex/contrib/rpm/apex.spec --sources /apex/dist/rpm/ --root ${MOCK_ROOT}
 	rm -f dist/rpm/apex-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/apex/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/apex quay.io/nexodus/mock:latest \
 		mock --rebuild --without check --resultdir=/apex/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
 		/apex/$(wildcard dist/rpm/mock/apex-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
@@ -372,8 +372,8 @@ contrib/man:
 
 .PHONY: manpages
 manpages: contrib/man dist/nexd dist/nexctl image-mock ## Generate manpages in ./contrib/man
-	dist/nexd -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t nexd | gzip > contrib/man/nexd.8.gz
-	dist/nexctl -h | docker run -i --rm --name txt2man quay.io/apex/mock:latest txt2man -t nexctl | gzip > contrib/man/nexctl.8.gz
+	dist/nexd -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexd | gzip > contrib/man/nexd.8.gz
+	dist/nexctl -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexctl | gzip > contrib/man/nexctl.8.gz
 
 # Nothing to see here
 .PHONY: cat

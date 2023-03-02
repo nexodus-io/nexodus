@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: apiserver
-          image: quay.io/apex/apiserver:latest
+          image: quay.io/nexodus/apiserver:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: APEX_DEBUG

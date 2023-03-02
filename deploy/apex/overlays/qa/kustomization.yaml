@@ -122,9 +122,9 @@ patchesJson6902:
       name: frontend
 
 images:
-  - name: quay.io/apex/apiserver
+  - name: quay.io/nexodus/apiserver
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
-  - name: quay.io/apex/frontend
+  - name: quay.io/nexodus/frontend
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
   - name: quay.io/apex/go-ipam
     newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
