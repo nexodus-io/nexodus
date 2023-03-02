@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"context"
-	"github.com/redhat-et/apex/internal/database"
+	"github.com/nexodus-io/nexodus/internal/database"
 
-	"github.com/redhat-et/apex/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/fflags"
-	"github.com/redhat-et/apex/internal/ipam"
+	"github.com/nexodus-io/nexodus/internal/fflags"
+	"github.com/nexodus-io/nexodus/internal/ipam"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -18,7 +18,7 @@ import (
 var tracer trace.Tracer
 
 func init() {
-	tracer = otel.Tracer("github.com/redhat-et/apex/internal/handlers")
+	tracer = otel.Tracer("github.com/nexodus-io/nexodus/internal/handlers")
 }
 
 type API struct {

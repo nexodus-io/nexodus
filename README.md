@@ -1,8 +1,8 @@
-# ![Apex](assets/logo.svg)
+# ![Nexodus](assets/wordmark.png)
 
 > **Warning**: This project is currently experimental.
 
-[![build](https://github.com/redhat-et/apex/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
+[![build](https://github.com/nexodus-io/nexodus/actions/workflows/build.yml/badge.svg)](https://github.com/nexodus-io/nexodus/actions/workflows/build.yml)
 
 This project demonstrates an approach for building an IP connectivity-as-a-service solution that provides isolated zone-based connectivity using Wireguard for tunneling.
 
@@ -16,18 +16,18 @@ Some of the features and use cases that this project aims to support are:
 - **Hybrid data center connectivity** - circumvents NAT challenges
 - **IP mobility** - /32 host routing allows addresses to be advertised anywhere with convergence times only limited by a round-trip time to a controller.
 - **Compliance** - Provide isolated connectivity among a set of nodes, even if they are running across multiple network administrative domains.
-- **Configurable Authentication** - Apex uses OpenID Connect (OIDC) for authentication, allowing you to choose from a broad ecosystem of OIDC providers. OIDC gateways are available to provide interoperability with other authentication schemes (i.e., LDAP).
+- **Configurable Authentication** - Nexodus uses OpenID Connect (OIDC) for authentication, allowing you to choose from a broad ecosystem of OIDC providers. OIDC gateways are available to provide interoperability with other authentication schemes (i.e., LDAP).
 
 ## Guiding Principles
 
 Our guiding principles help guide our decision-making. We use these principles when adding new features or making difficult decisions that require weighing different tradeoffs.
 
-1. **Service First** -- We intend for Apex to run as a service, whether a public service or one run internally by an organization. To ensure that we get this right, the Apex development team must also run it as a service. We are doing this on top of [operate-first](https://www.operate-first.cloud/) community infrastructure and by following [open-source services](https://www.operate-first.cloud/community/open-source-services.html) principles: <http://apex-hosted.cloud/>. See more in [docs/deployment.md](docs/deployment.md).
-2. **Simple UX Above Features** -- Networking technology is often made incredibly complex. One key value that the Apex service can provide is a simplified user experience for a much more challenging problem. When deciding how or if to add a feature, we value retaining the simplicity of the user experience over functionality.
+1. **Service First** -- We intend for Nexodus to run as a service, whether a public service or one run internally by an organization. To ensure that we get this right, the Nexodus development team must also run it as a service. We are doing this by following [open-source services](https://www.operate-first.cloud/community/open-source-services.html) principles: <http://apex-hosted.cloud/>. See more in [docs/deployment.md](docs/deployment.md).
+2. **Simple UX Above Features** -- Networking technology is often made incredibly complex. One key value that the Nexodus service can provide is a simplified user experience for a much more challenging problem. When deciding how or if to add a feature, we value retaining the simplicity of the user experience over functionality.
 3. **Secure by Design** -- Security at all levels is critical for this to be a viable service. No features are worth a regression in security. There's enough to say about security that we've created a dedicated document for it: [docs/security.md](docs/security.md).
 4. **Optimized Connectivity** -- Forcing traffic through a central hub or other intermediary does not provide ideal network connectivity. Instead, we will implement various techniques to provide direct, mesh connectivity wherever possible, even in places where NAT or firewalls would typically prevent it.
-5. **Platform Agnostic** - Apex will work independently from the infrastructure platform and support multiple operating systems (Linux, Mac, Windows). We value making the service easy to use with different infrastructure platforms (Kubernetes, for example), but we will avoid changes that tie the service to any particular platform.
+5. **Platform Agnostic** - Nexodus will work independently from the infrastructure platform and support multiple operating systems (Linux, Mac, Windows). We value making the service easy to use with different infrastructure platforms (Kubernetes, for example), but we will avoid changes that tie the service to any particular platform.
 
 ## Documentation
 
-More detailed documentation covering how to use Apex for different scenarios is in the [project docs](docs/README.md).
+More detailed documentation covering how to use Nexodus for different scenarios is in the [project docs](docs/README.md).

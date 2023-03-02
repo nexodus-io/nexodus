@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: nexodus
+bases:
+  - ../../base
+secretGenerator:
+  - name: nexodus-client-secret
+    literals:
+      - cert=<NEXODUS_CONTROLLER_CERT>
+      - url=<NEXODUS_URL>
+      - auth_url=<NEXODUS_AUTH_URL>
+      - username=<NEXODUS_USERNAME>
+      - password=<NEXODUS_PASSWORD>
+commonLabels:
+  app.kubernetes.io/component: nexodus-client
+  app.kubernetes.io/instance: nexodus-client
+  app.kubernetes.io/name: nexodus-client
+patchesJson6902:
+  - target:
+      kind: DaemonSet
+      name: nexodus
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/hostAliases/0/ip
+        value: <NEXODUS_CONTROLLER_IP>
+patchesStrategicMerge:
+  - node_selector.yaml
