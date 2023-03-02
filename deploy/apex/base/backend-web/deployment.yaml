@@ -11,7 +11,7 @@ spec:
       containers:
         - name: redis
           image: docker.io/library/redis:7-alpine
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: 100m

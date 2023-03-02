@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
+  - serviceaccount.yaml
 namespace: apex
 configMapGenerator:
   - name: auth-config
@@ -18,17 +19,17 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /data/APEX_OIDC_URL
-        value: https://auth.apex-hosted.cloud
+        value: https://auth.apex-hosted.cloud/realms/apex
     target:
       kind: ConfigMap
       name: apiserver
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: https://api.apex-hosted.cloud
+        value: api.apex-hosted.cloud
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.apex-hosted.cloud
+        value: https://auth.apex-hosted.cloud/realms/apex
       - op: replace
         path: /data/ORIGINS
         value: https://apex-hosted.cloud
@@ -44,7 +45,7 @@ patchesJson6902:
         value: https://api.apex-hosted.cloud
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.apex-hosted.cloud
+        value: https://auth.apex-hosted.cloud/realms/apex
     target:
       kind: ConfigMap
       name: backend-cli
@@ -62,18 +63,40 @@ patchesJson6902:
       kind: Ingress
       name: apiproxy
   - patch: |-
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: apex-serviceaccount
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: letsencrypt
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
         value: auth.apex-hosted.cloud
       - op: replace
-        path: /spec/tls/0/hosts/0
-        value: auth.apex-hosted.cloud
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
       - op: replace
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
     target:
       kind: Ingress
-      name: dex
+      name: auth
+  - patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: auth.apex-hosted.cloud
+      - op: replace
+        path: /spec/issuerRef/name
+        value: letsencrypt
+    target:
+      kind: Certificate
+      name: apex-auth-cert
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
@@ -87,10 +110,11 @@ patchesJson6902:
     target:
       kind: Ingress
       name: frontend
+
 images:
   - name: quay.io/apex/apiserver
-    newTag: 19d502e9845edced47ca5acb73af525b54f06c6d
+    newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
   - name: quay.io/apex/frontend
-    newTag: 19d502e9845edced47ca5acb73af525b54f06c6d
+    newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
   - name: quay.io/apex/go-ipam
-    newTag: 19d502e9845edced47ca5acb73af525b54f06c6d
+    newTag: 6b7371ff93d476297b4cdb9fa38860162d93ed43
