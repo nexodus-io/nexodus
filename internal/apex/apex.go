@@ -10,14 +10,15 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
-
-	"github.com/redhat-et/apex/internal/util"
 
 	"github.com/google/uuid"
 	"github.com/redhat-et/apex/internal/client"
 	"github.com/redhat-et/apex/internal/models"
+	"github.com/redhat-et/apex/internal/util"
 	"go.uber.org/zap"
+	"golang.org/x/term"
 )
 
 const (
@@ -190,6 +191,15 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var option client.Option
 	if ax.username == "" {
 		option = client.WithDeviceFlow()
+	} else if ax.username != "" && ax.password == "" {
+		fmt.Print("Enter apex account password: ")
+		passwdInput, err := term.ReadPassword(int(syscall.Stdin))
+		println()
+		if err != nil {
+			return fmt.Errorf("login aborted: %w", err)
+		}
+		ax.password = string(passwdInput)
+		option = client.WithPasswordGrant(ax.username, ax.password)
 	} else {
 		option = client.WithPasswordGrant(ax.username, ax.password)
 	}
