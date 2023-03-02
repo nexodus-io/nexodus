@@ -47,7 +47,7 @@ const CustomAppBar = (props: JSX.IntrinsicAttributes & AppBarProps) => {
         }}
         id="react-admin-title"
       ></Typography>
-      {isLargeEnough && <img src={LogoSrc} alt="Apex" height="40px" />}
+      {isLargeEnough && <img src={LogoSrc} alt="Nexodus" height="40px" />}
       {isLargeEnough && <Box component="span" sx={{ flex: 1 }} />}
       <ToggleThemeButton lightTheme={defaultTheme} darkTheme={darkTheme} />
     </AppBar>
