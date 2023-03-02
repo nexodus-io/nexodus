@@ -3,7 +3,7 @@ package apex
 import (
 	"net"
 
-	"github.com/redhat-et/apex/internal/models"
+	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs

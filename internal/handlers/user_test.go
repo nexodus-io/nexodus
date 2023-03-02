@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/redhat-et/apex/internal/models"
+	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 func (suite *HandlerTestSuite) TestGetUser() {

@@ -67,7 +67,7 @@ This model was built under the assumption that multi-tenancy would be achieved b
 
 ## v2: SaaS Preview Milestone
 
-See [issue #348](https://github.com/redhat-et/apex/issues/348).
+See [issue #348](https://github.com/nexodus-io/nexodus/issues/348).
 
 In order to create a more SaaS-ready schema, we've made the following changes.
 

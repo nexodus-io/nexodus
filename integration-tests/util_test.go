@@ -20,7 +20,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/network"
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )

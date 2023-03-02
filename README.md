@@ -2,7 +2,7 @@
 
 > **Warning**: This project is currently experimental.
 
-[![build](https://github.com/redhat-et/apex/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
+[![build](https://github.com/nexodus-io/nexodus/actions/workflows/build.yml/badge.svg)](https://github.com/redhat-et/apex/actions/workflows/build.yml)
 
 This project demonstrates an approach for building an IP connectivity-as-a-service solution that provides isolated zone-based connectivity using Wireguard for tunneling.
 

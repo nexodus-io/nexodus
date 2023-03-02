@@ -9,5 +9,5 @@ Security is critical for Apex to be a viable service. This document discusses so
 5. **Least Privilege** -- Users are assigned only the privileges they require[^2].
 6. **Microsegmentation** -- Users are broken into smaller segments using Zones and may only communicate within the same zone.
 
-[^1]: See [Issue #169](https://github.com/redhat-et/apex/issues/169). Our first forwarding implementation is by using a normal apex node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required.
-[^2]: See [Issue #142](https://github.com/redhat-et/apex/issues/142) for tracking the use of oauth scopes to limit actions available to users.
+[^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal apex node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required.
+[^2]: See [Issue #142](https://github.com/nexodus-io/nexodus/issues/142) for tracking the use of oauth scopes to limit actions available to users.

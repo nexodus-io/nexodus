@@ -10,7 +10,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/redhat-et/apex/internal/apex"
+	"github.com/nexodus-io/nexodus/internal/apex"
 	"go.uber.org/zap"
 )
 

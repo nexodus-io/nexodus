@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/redhat-et/apex/internal/apex"
+	"github.com/nexodus-io/nexodus/internal/apex"
 	"os"
 )
 

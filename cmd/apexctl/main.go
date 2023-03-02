@@ -8,7 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/google/uuid"
-	"github.com/redhat-et/apex/internal/client"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
 )
 
