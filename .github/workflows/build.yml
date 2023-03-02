@@ -259,14 +259,14 @@ jobs:
       - name: Build Apexd
         id: build-apexd
         run: |
-          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexd
+          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
           echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Build Apexctl
         id: build-apexctl
         run: |
-          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/apexctl
+          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
           echo "artifact-name=apexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 

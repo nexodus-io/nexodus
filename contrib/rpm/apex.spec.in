@@ -55,7 +55,7 @@ Requires(postun): systemd-units
 
 %build
 find .
-for cmd in cmd/apexd cmd/apexctl ; do
+for cmd in cmd/nexd cmd/nexctl ; do
   %gobuild -o %{gobuilddir}/bin/$(basename $cmd) %{goipath}/$cmd
 done
 
