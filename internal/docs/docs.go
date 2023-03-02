@@ -12,7 +12,7 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "contact": {
             "name": "The Apex Authors",
-            "url": "https://github.com/redhat-et/apex/issues"
+            "url": "https://github.com/nexodus-io/nexodus/issues"
         },
         "license": {
             "name": "Apache 2.0",

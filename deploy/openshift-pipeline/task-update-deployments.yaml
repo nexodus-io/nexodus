@@ -2,7 +2,7 @@
 kind: Task
 metadata:
   name: update-deployments
-  namespace: apex
+  namespace: nexodus
 spec:
   steps:
     - args:

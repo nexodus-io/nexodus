@@ -10,8 +10,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	_ "github.com/redhat-et/apex/internal/docs"
-	"github.com/redhat-et/apex/internal/handlers"
+	_ "github.com/nexodus-io/nexodus/internal/docs"
+	"github.com/nexodus-io/nexodus/internal/handlers"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const name = "github.com/redhat-et/apex/internal/routers"
+const name = "github.com/nexodus-io/nexodus/internal/routers"
 
 func NewAPIRouter(
 	ctx context.Context,
