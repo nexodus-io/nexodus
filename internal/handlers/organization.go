@@ -63,7 +63,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var user models.User
 		if res := tx.First(&user, "id = ?", userId); res.Error != nil {
 			return errUserNotFound

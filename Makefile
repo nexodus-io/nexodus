@@ -314,7 +314,9 @@ recreate-db: ## Delete and bring up a new apex database
 	@kubectl wait --for=delete -n apex postgrescluster/database
 	@kubectl delete -n apex statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
 	@kubectl wait --for=delete -n apex persistentvolumeclaims/postgres-disk-postgres-0
-	@kubectl delete -n apex crdbclusters/cockroachdb persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	@kubectl delete -n apex crdbclusters/cockroachdb 2> /dev/null || true
+	@kubectl wait --for=delete -n apex --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
+	@kubectl delete -n apex persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
 	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-0
 	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-1
 	@kubectl wait --for=delete -n apex persistentvolumeclaims/datadir-cockroachdb-2
