@@ -1,6 +1,6 @@
 # Design Docs
 
-This directory contains design documents produced during the development of Apex. Our process values:
+This directory contains design documents produced during the development of Nexodus. Our process values:
 
 * **Openness** - Anyone should be able to discover the backlog of ideas, as well as participate in reviews of proposed designs.
 * **Design Artifacts** - We value the creation of design artifacts along the way to help others understand how key decisions were made throughout the life of the project.
