@@ -117,7 +117,7 @@ e2e: e2eprereqs test-images ## Run e2e tests
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
 	go test -c -v --tags=integration ./integration-tests/...
-	sudo APEX_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
+	sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 
 .PHONY: test
 test: ## Run unit tests

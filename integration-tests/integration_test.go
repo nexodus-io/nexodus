@@ -30,7 +30,7 @@ var ipamDriver string
 const apexctl = "../dist/apexctl"
 
 func init() {
-	if os.Getenv("APEX_TEST_PODMAN") != "" {
+	if os.Getenv("NEXODUS_TEST_PODMAN") != "" {
 		fmt.Println("Using podman")
 		providerType = testcontainers.ProviderPodman
 		defaultNetwork = "podman"

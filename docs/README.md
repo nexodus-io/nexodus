@@ -506,5 +506,5 @@ sudo make test-images
 # Compile integration tests
 go test -c --tags=integration ./integration-tests/...
 # Run integration tests using rootful podman
-sudo APEX_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
+sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 ```
