@@ -1,10 +1,10 @@
 # Discovery Design
 
-Discovery is a key component of Apex. Enterprise workloads are spread across all manner of networks both managed and unmanaged. Even networks under the same administrative domain typically require manual intervention or approval to enable direct access between workloads. One of this project's goals is for endpoints to not require custom firewall rules or static NAT mappings to have continuous connectivity.
+Discovery is a key component of Nexodus. Enterprise workloads are spread across all manner of networks both managed and unmanaged. Even networks under the same administrative domain typically require manual intervention or approval to enable direct access between workloads. One of this project's goals is for endpoints to not require custom firewall rules or static NAT mappings to have continuous connectivity.
 
-- Apex and, in general, most Wireguard-based projects are leveraging a decade worth of discovery and connectivity mechanisms that evolved out of VOIP and media streaming needs.
+- Nexodus and, in general, most Wireguard-based projects are leveraging a decade worth of discovery and connectivity mechanisms that evolved out of VOIP and media streaming needs.
 - The general standard protocol for NAT traversal and peer candidate discovery that we plan to follow is laid out in [RFC8445 Interactive Connectivity Establishment (ICE): A Protocol for Network Address Translator (NAT) Traversal](https://www.rfc-editor.org/rfc/rfc8445).
-- The goal is to create direct peering between nodes where possible and bounce connections through a relay node where direct connections are not possible. Apex should be able to set up direct peering in most cases, even when two endpoints are not ordinarily able to reach each other directly.
+- The goal is to create direct peering between nodes where possible and bounce connections through a relay node where direct connections are not possible. Nexodus should be able to set up direct peering in most cases, even when two endpoints are not ordinarily able to reach each other directly.
 
 ```text
                       To Internet
@@ -46,9 +46,9 @@ Discovery is a key component of Apex. Enterprise workloads are spread across all
 
 ### Nodes without a firewall and/or NAT device between them (currently supported)
 
-- Apex will peer end nodes directly that share the same reflexive address discovered via a STUN server.
-- This means that when both nodes share the same public or "reflexive address" (as defined in the above figure), Apex assumes that other peers are likely to have direct access to one another. Each peer has their stun/reflexive address in the peer listing received from the controller.
-- Next, the Apex agent will look up the "Local Address" (see Figure 1) of a peer candidate in the peer listing and attempt to probe for connectivity. If this probing succeeds, we consider it a likely candidate match, and both peers set up the connection to one another with a /32 host route and wireguard tunnel.
+- Nexodus will peer end nodes directly that share the same reflexive address discovered via a STUN server.
+- This means that when both nodes share the same public or "reflexive address" (as defined in the above figure), Nexodus assumes that other peers are likely to have direct access to one another. Each peer has their stun/reflexive address in the peer listing received from the controller.
+- Next, the Nexodus agent will look up the "Local Address" (see Figure 1) of a peer candidate in the peer listing and attempt to probe for connectivity. If this probing succeeds, we consider it a likely candidate match, and both peers set up the connection to one another with a /32 host route and wireguard tunnel.
 
 ### Nodes with a firewall and/or NAT device between them (currently supported)
 
