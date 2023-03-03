@@ -123,6 +123,19 @@ e2e-podman: ## Run e2e tests on podman
 test: ## Run unit tests
 	go test -v ./...
 
+.PHONY: debug-apiserver
+debug-apiserver: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
+	@telepresence helm install 2> /dev/null || true
+	@telepresence connect
+	@telepresence intercept -n nexodus apiserver --port 8080 --env-json=apiserver-envs.json
+	@echo "======================================================================================="
+	@echo
+	@echo "   Start the apiserver locally with a debugger with the env variables"
+	@echo "   with the values found in: apiserver-envs.json"
+	@echo
+	@echo "   Hint:ca use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
+	@echo
+
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
@@ -141,13 +154,13 @@ run-test-container: ## Run docker container that you can run nexodus in
 .PHONY: run-sql-apiserver
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
-	@kubectl exec -it -n apex \
+	@kubectl exec -it -n nexodus \
 		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql apiserver
 else ifeq ($(OVERLAY),arm64)
-	@kubectl exec -it -n apex svc/postgres -c postgres -- psql -U apiserver apiserver
+	@kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
 else ifeq ($(OVERLAY),cockroach)
-	@kubectl exec -it -n apex svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+	@kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
 endif
 
 
@@ -170,6 +183,14 @@ e2eprereqs:
 	@if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
+		exit 1 ; \
+	fi
+
+.PHONY: telepresence-prereqs
+telepresence-prereqs: e2eprereqs
+	@if [ -z "$(shell which telepresence)" ]; then \
+		echo "Please install telepresence first" ; \
+		echo "https://www.telepresence.io/docs/latest/quick-start/" ; \
 		exit 1 ; \
 	fi
 
