@@ -60,14 +60,14 @@ A high level summary of the overall solution is provided [here.](design/solution
 
 The development Nexodus stack requires 3 hostnames to be reachable:
 
-- `auth.nexodus.local` - for the authentication service
-- `api.nexodus.local` - for the backend apis
-- `nexodus.local` - for the frontend
+- `auth.try.nexodus.local` - for the authentication service
+- `api.try.nexodus.local` - for the backend apis
+- `try.nexodus.local` - for the frontend
 
 To add these on your own machine for a local development environment:
 
 ```console
-echo "127.0.0.1 auth.nexodus.local api.nexodus.local nexodus.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1 auth.try.nexodus.local api.try.nexodus.local try.nexodus.local" | sudo tee -a /etc/hosts
 ```
 
 #### Deploy using KIND
@@ -87,7 +87,7 @@ This will install:
 
 - `nexodus-dev` kind cluster
 - `ingress-nginx` ingress controller
-- a rewrite rule in coredns to allow `auth.nexodus.local` to resolve inside the k8s cluster
+- a rewrite rule in coredns to allow `auth.try.nexodus.local` to resolve inside the k8s cluster
 - the `nexodus` stack
 
 To bring the cluster down again:
@@ -104,7 +104,7 @@ The Makefile will install the https certs. You can view the cert in the Nexodus 
 cat .certs/rootCA.pem
 ```
 
-In order to join a self-signed Nexodus controller from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the nexodus.local domain for development.
+In order to join a self-signed Nexodus controller from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the try.nexodus.local domain for development.
 
 Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following.
 
@@ -205,7 +205,7 @@ sudo systemctl daemon-reload
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
 ```sh
-sudo nexd-linux-amd64 https://nexodus.local
+sudo nexd-linux-amd64 https://try.nexodus.local
 ```
 
 Alternatively, you can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service. Then, start the agent with the following command:
@@ -228,7 +228,7 @@ If the agent is able to successfully reach the controller API, it will provide a
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
@@ -239,7 +239,7 @@ Status: WaitingForAuth
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 Once enrollment is completed in the web UI, the agent will show progress.
@@ -280,7 +280,7 @@ PING 100.100.0.2 (100.100.0.2) 56(84) bytes of data.
 64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
 
-You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://nexodus.local/`.
+You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.local/`.
 
 #### Cleanup Agent From Node
 
@@ -429,17 +429,17 @@ dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Defaul
 #### Interactive OnBoarding
 
 ```sh
-sudo nexodus --hub-router --stun https://nexodus.local
+sudo nexodus --hub-router --stun https://try.nexodus.local
 ```
 
 It will print a URL on stdout to onboard the relay node
 
 ```sh
-$ sudo nexodus --hub-router --stun https://nexodus.local
+$ sudo nexodus --hub-router --stun https://try.nexodus.local
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
-https://auth.nexodus.local/device?user_code=GTLN-RGKP
+https://auth.try.nexodus.local/device?user_code=GTLN-RGKP
 ```
 
 Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting the access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
@@ -449,7 +449,7 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement you need to provide username and password in the CLI command
 
 ```sh
-nexodus --hub-router --stun --username=kitteh1 --password=floofykittens https://nexodus.local
+nexodus --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
 ```
 
 ### Delete Organization

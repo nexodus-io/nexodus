@@ -39,7 +39,7 @@ configMapGenerator:
   - name: apiserver
     behavior: merge
     literals:
-      - DB_SSLMODE=disable
+      - NEXAPI_DB_SSLMODE=disable
 
 patchesStrategicMerge:
   - |-

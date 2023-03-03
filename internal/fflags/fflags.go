@@ -23,7 +23,7 @@ type FFlag struct {
 }
 
 var hardCodedFlags = map[string]FFlag{
-	"multi-organization": {"NEXODUS_FFLAG_MULTI_ORGANIZATION", false},
+	"multi-organization": {"NEXAPI_FFLAG_MULTI_ORGANIZATION", false},
 }
 
 func NewFFlags(logger *zap.SugaredLogger) *FFlags {

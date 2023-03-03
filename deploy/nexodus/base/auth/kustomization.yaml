@@ -8,8 +8,8 @@ resources:
 configMapGenerator:
   - name: auth-config
     literals:
-      - hostname=auth.nexodus.local
-      - frontend-url=https://nexodus.local
+      - hostname=auth.try.nexodus.local
+      - frontend-url=https://try.nexodus.local
   - name: realm
     files:
       - files/nexodus.json
