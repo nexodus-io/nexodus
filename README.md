@@ -12,7 +12,7 @@ This project aims to provide connectivity between nodes deployed across heteroge
 
 Some of the features and use cases that this project aims to support are:
 
-- **IoT networking** - connectivity to any node, anywhere
+- **Edge networking** - connectivity to any node, anywhere
 - **Hybrid data center connectivity** - circumvents NAT challenges
 - **IP mobility** - /32 host routing allows addresses to be advertised anywhere with convergence times only limited by a round-trip time to a controller.
 - **Compliance** - Provide isolated connectivity among a set of nodes, even if they are running across multiple network administrative domains.
