@@ -827,7 +827,6 @@ func (suite *NexodusIntegrationSuite) TestRelayNAT() {
 }
 
 func (suite *NexodusIntegrationSuite) Testnexctl() {
-	suite.T().Skip("Skipping since deleting org fails with key constraint errors")
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := context.Background()
@@ -952,6 +951,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	// If the device was not deleted, the next registered device would receive the
 	// next available address in the IPAM pool, not the previously assigned address.
+	// Fail the test if the device IP was not the previous address from the IPAM pool.
 	var addressMatch bool
 	if newNode1IP == node2IP {
 		addressMatch = true
@@ -981,53 +981,54 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	json.Unmarshal([]byte(devicesInOrganization), &devices)
 	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
+	// TODO: this gets resolved with #439 (org delete)
 	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
-	for _, p := range devices {
-		if p.TunnelIP == node1IP {
-			node1DeviceID = p.ID.String()
-		}
-		if p.TunnelIP == node2IP {
-			node2DeviceID = p.ID.String()
-		}
-	}
-	// delete all devices from the organization as currently required to avoid sql key
-	// constraints, then delete the organization, then recreate the organization to ensure the
-	// IPAM prefix was released. If it was not released the creation will fail.
-	_, err = suite.runCommand(nexctl,
-		"--username", username,
-		"--password", password,
-		"device", "delete",
-		"--device-id", node1DeviceID,
-	)
-	require.NoError(err)
-
-	_, err = suite.runCommand(nexctl,
-		"--username", username,
-		"--password", password,
-		"device", "delete",
-		"--device-id", node2DeviceID,
-	)
-	require.NoError(err)
-
-	// delete the organization
-	_, err = suite.runCommand(nexctl,
-		"--username", username,
-		"--password", password,
-		"--output", "json",
-		"organization", "delete",
-		"--organization-id", user.Organizations[0].String(),
-	)
-	require.NoError(err)
-
-	// re-create the deleted organization, this will fail if the IPAM
-	// prefix was not released from the prior deletion
-	_, err = suite.runCommand(nexctl,
-		"--username", username,
-		"--password", password,
-		"organization", "create",
-		"--name", "kitteh5",
-		"--cidr", "100.100.1.0/20",
-		"--description", "kitteh5's organization",
-	)
-	require.NoError(err)
+	//for _, p := range devices {
+	//	if p.TunnelIP == node1IP {
+	//		node1DeviceID = p.ID.String()
+	//	}
+	//	if p.TunnelIP == node2IP {
+	//		node2DeviceID = p.ID.String()
+	//	}
+	//}
+	//// delete all devices from the organization as currently required to avoid sql key
+	//// constraints, then delete the organization, then recreate the organization to ensure the
+	//// IPAM prefix was released. If it was not released the creation will fail.
+	//_, err = suite.runCommand(nexctl,
+	//	"--username", username,
+	//	"--password", password,
+	//	"device", "delete",
+	//	"--device-id", node1DeviceID,
+	//)
+	//require.NoError(err)
+	//
+	//_, err = suite.runCommand(nexctl,
+	//	"--username", username,
+	//	"--password", password,
+	//	"device", "delete",
+	//	"--device-id", node2DeviceID,
+	//)
+	//require.NoError(err)
+	//
+	//// delete the organization
+	//_, err = suite.runCommand(nexctl,
+	//	"--username", username,
+	//	"--password", password,
+	//	"--output", "json",
+	//	"organization", "delete",
+	//	"--organization-id", user.Organizations[0].String(),
+	//)
+	//require.NoError(err)
+	//
+	//// re-create the deleted organization, this will fail if the IPAM
+	//// prefix was not released from the prior deletion
+	//_, err = suite.runCommand(nexctl,
+	//	"--username", username,
+	//	"--password", password,
+	//	"organization", "create",
+	//	"--name", "kitteh5",
+	//	"--cidr", "100.100.1.0/20",
+	//	"--description", "kitteh5's organization",
+	//)
+	//require.NoError(err)
 }

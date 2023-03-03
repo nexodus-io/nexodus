@@ -330,9 +330,12 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	baseID := models.Base{ID: deviceID}
 	device := models.Device{}
-	device.Base = baseID
+	if res := api.db.First(&device, "id = ?", deviceID); res.Error != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
+		return
+	}
+
 	ipamAddress := device.TunnelIP
 	orgID := device.OrganizationID
 	orgPrefix := device.OrganizationPrefix
