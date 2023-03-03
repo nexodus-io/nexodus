@@ -41,12 +41,12 @@ function setup() {
         cat <<EOF
   * Install Homebrew (brew) if not already installed.
   * Install wireguard-tools with brew.
-  * Download the apex agent and install it to /usr/local/bin/nexd
+  * Download the Nexodus agent and install it to /usr/local/bin/nexd
 EOF
     elif [ $OS == "Linux" ]; then
         cat <<EOF
   * Use sudo to uninstall wireguard-tools using the system's package manager.
-  * Use sudo to download the apex agent and install it to /usr/local/sbin/nexd
+  * Use sudo to download the Nexodus agent and install it to /usr/local/sbin/nexd
 EOF
     else
         echo "Please add warning message text for $OS"
@@ -83,10 +83,10 @@ EOF
                 exit 1
             fi
         fi
-        info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-darwin-amd64 --output /usr/local/bin/nexd
+        info_message "Installing Nexodus..."
+        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexd-darwin-amd64 --output /usr/local/bin/nexd
         sudo chmod +x /usr/local/bin/nexd
-        pass_message "Apex is installed successfully."
+        pass_message "Nexodus is installed successfully."
     fi
 
     if [ $OS == "Linux" ]; then
@@ -114,10 +114,10 @@ EOF
             fi
         fi
 
-        info_message "Installing Apex..."
-        sudo curl -fsSL https://apex-net.s3.amazonaws.com/apexd-linux-amd64 --output /usr/local/sbin/nexd
+        info_message "Installing Nexodus..."
+        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexd-linux-amd64 --output /usr/local/sbin/nexd
         sudo chmod +x /usr/local/sbin/nexd
-        pass_message "Apex is installed successfully."
+        pass_message "Nexodus is installed successfully."
 
     fi
 }
@@ -143,7 +143,7 @@ function cleanup() {
         fi
 
         sudo rm -f /usr/local/bin/nexd
-        pass_message "Apex is uninstalled successfully."
+        pass_message "Nexodus is uninstalled successfully."
     
     elif [ $OS == "Linux" ]; then
         . /etc/os-release
@@ -167,16 +167,16 @@ function cleanup() {
             sudo ip link del wg0
         fi
         sudo rm -f /usr/local/sbin/nexd
-        pass_message "Apex is uninstalled successfully."
+        pass_message "Nexodus is uninstalled successfully."
     fi
 }
 
 function help() {
     printf "\n"
     printf "Usage: %s [-iuh]\n" "$0"
-    printf "\t-i Install apex and all required dependencies.\n"
+    printf "\t-i Install Nexodus and all required dependencies.\n"
     printf "\t-y Provide \"yes\" response to install warning prompt in advance.\n"
-    printf "\t-u Uninstall apex and it's dependencies. \n"
+    printf "\t-u Uninstall Nexodus and it's dependencies. \n"
     printf "\t-h help\n"
     exit 1
 }

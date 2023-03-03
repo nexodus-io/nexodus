@@ -141,13 +141,13 @@ run-test-container: ## Run docker container that you can run nexodus in
 .PHONY: run-sql-apiserver
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
-	@kubectl exec -it -n apex \
+	@kubectl exec -it -n nexodus \
 		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql apiserver
 else ifeq ($(OVERLAY),arm64)
-	@kubectl exec -it -n apex svc/postgres -c postgres -- psql -U apiserver apiserver
+	@kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
 else ifeq ($(OVERLAY),cockroach)
-	@kubectl exec -it -n apex svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+	@kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
 endif
 
 

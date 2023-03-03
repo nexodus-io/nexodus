@@ -15,9 +15,9 @@ if [ -f /.certs/rootCA.pem ]; then
 fi
 
 if [ -z "$1" ]; then
-  echo "To connect this container to the apex network, try running:"
+  echo "To connect this container to the nexodus network, try running:"
   echo
-  echo "   /bin/nexd --username admin --password floofykittens https://apex.local"
+  echo "   /bin/nexd --username admin --password floofykittens https://nexodus.local"
   echo
   exec /bin/bash
 else

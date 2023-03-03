@@ -225,7 +225,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GOARCH: ${{ matrix.arch }}
-      JOB_NAME: "apex-${{ matrix.os }}-${{ matrix.arch }}"
+      JOB_NAME: "nexd-${{ matrix.os }}-${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
 
@@ -256,27 +256,27 @@ jobs:
         run: |
           go test -v ./internal/nexodus/...
 
-      - name: Build Apexd
-        id: build-apexd
+      - name: Build Nexd
+        id: build-nexd
         run: |
-          CGO_ENABLED=0 go build -o apexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
-          echo "artifact-name=apexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+          CGO_ENABLED=0 go build -o nexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
+          echo "artifact-name=nexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Build Apexctl
-        id: build-apexctl
+      - name: Build Nexctl
+        id: build-nexctl
         run: |
-          CGO_ENABLED=0 go build -o apexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
-          echo "artifact-name=apexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+          CGO_ENABLED=0 go build -o nexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
+          echo "artifact-name=nexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: apex
+          name: nexodus
           path: |
-            ${{ steps.build-apexd.outputs.artifact-name }}
-            ${{ steps.build-apexctl.outputs.artifact-name }}
+            ${{ steps.build-nexd.outputs.artifact-name }}
+            ${{ steps.build-nexctl.outputs.artifact-name }}
 
   e2e:
     needs: [go-lint, go-unit, k8s-lint, build-images]
@@ -405,12 +405,12 @@ jobs:
       - name: download binary artifacts
         uses: actions/download-artifact@v3
         with:
-          name: apex
+          name: nexodus
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
-          role-session-name: apex-ci-deploy
+          role-session-name: nexodus-ci-deploy
           aws-region: us-east-1
       - name: copy binaries to s3
         run: |
@@ -459,6 +459,6 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: apex
+          name: nexodus
           path: |
             ${{ steps.build-rpm.outputs.artifact-name }}
