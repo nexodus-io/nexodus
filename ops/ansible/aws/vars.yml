@@ -30,7 +30,7 @@ aws_subnet_green: subnet-0f8a1403fde2af94e  # VPC subnet id from your aws accoun
 
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apex_binary: https://apex-net.s3.amazonaws.com/apex-amd64-linux
+apex_binary: https://nexodus-io.s3.amazonaws.com/apex-amd64-linux
 apex_zone_name: zone-hub
 apex_azone_prefix: 10.185.0.0/24
 

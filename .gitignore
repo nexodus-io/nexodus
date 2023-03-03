@@ -20,10 +20,8 @@
 
 #tests
 ./tests/*.json
-./tests/apex-*.sh
 ./tests/*.key
 /*.key
-/apex-*.sh
 !Containerfile.test
 *.test
 
@@ -34,10 +32,10 @@ coredns.yaml
 kubeconfigs/
 
 # kustomization yaml
-./deploy/apex-client/overlays/dev/kustomization.yaml
-./deploy/apex-client/overlays/dev/node_selector.yaml
-./deploy/apex-client/overlays/sample/kustomization.yaml
-./deploy/apex-client/overlays/sample/node_selector.yaml
+./deploy/nexodus-client/overlays/dev/kustomization.yaml
+./deploy/nexodus-client/overlays/dev/node_selector.yaml
+./deploy/nexodus-client/overlays/sample/kustomization.yaml
+./deploy/nexodus-client/overlays/sample/node_selector.yaml
 
 # Auto generated man pages
 /contrib/man/*

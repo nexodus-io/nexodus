@@ -26,18 +26,18 @@ jobs:
 
       - name: Build
         run: |
-          make dist/apex-linux-amd64
+          make dist/nexd-linux-amd64
 
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
-          role-session-name: apex-ci-deploy
+          role-session-name: nexd-ci-deploy
           aws-region: us-east-1
 
       - name:  Copy Agent Binary to S3
         run: |
-          aws s3 cp ./dist/apex-linux-amd64 s3://nexodus-io/ec2-e2e/
+          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/
 
       - uses: actions/setup-python@v4
         with:

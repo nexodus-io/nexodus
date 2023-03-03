@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: quay.io
-  REPOSITORY: apex
+  REPOSITORY: nexodus
   APISERVER_IMAGE_NAME: apiserver
   FRONTEND_IMAGE_NAME: frontend
   IPAM_IMAGE_NAME: ipam
@@ -26,7 +26,7 @@ jobs:
       - name: Read Image SHAs from QA deployment
         id: gitsha
         run: |
-          tag=$(yq '.images[0].newTag' ./deploy/apex/overlays/qa/kustomization.yaml)
+          tag=$(yq '.images[0].newTag' ./deploy/nexodus/overlays/qa/kustomization.yaml)
           echo "tag=${tag}" >> $GITHUB_OUTPUT
           echo "short=${tag:0:8}" >> $GITHUB_OUTPUT
 
@@ -40,7 +40,7 @@ jobs:
 
       - name: Update Prod Images
         run: |
-          pushd ./deploy/apex/overlays/prod
+          pushd ./deploy/nexodus/overlays/prod
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
           kustomize edit set image ${REGISTRY}/${REPOSITORY}/${IPAM_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}

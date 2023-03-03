@@ -28,7 +28,7 @@ make run-on-kind
 ```text
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apexd_binary: https://apex-net.s3.amazonaws.com/apexd-amd64-linux
+apexd_binary: https://nexodus-io.s3.amazonaws.com/nexd-amd64-linux
 apex_zone_name: zone-hub
 apex_azone_prefix: 10.185.0.0/24
 
