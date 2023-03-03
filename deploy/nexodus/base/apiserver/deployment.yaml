@@ -13,88 +13,88 @@ spec:
           image: quay.io/nexodus/apiserver:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: DEBUG
+            - name: NEXAPI_DEBUG
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: DEBUG
-            - name: DB_HOST
+                  key: NEXAPI_DEBUG
+            - name: NEXAPI_DB_HOST
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-apiserver
                   key: host
-            - name: DB_PORT
+            - name: NEXAPI_DB_PORT
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-apiserver
                   key: port
-            - name: DB_NAME
+            - name: NEXAPI_DB_NAME
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-apiserver
                   key: dbname
-            - name: _DB_USER
+            - name: NEXAPI_DB_USER
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-apiserver
                   key: user
-            - name: DB_PASSWORD
+            - name: NEXAPI_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-apiserver
                   key: password
-            - name: DB_SSLMODE
+            - name: NEXAPI_DB_SSLMODE
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: DB_SSLMODE
-            - name: IPAM_URL
+                  key: NEXAPI_DB_SSLMODE
+            - name: NEXAPI_IPAM_URL
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: IPAM_URL
-            - name: OIDC_URL
+                  key: NEXAPI_IPAM_URL
+            - name: NEXAPI_OIDC_URL
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: OIDC_URL
-            - name: OIDC_BACKCHANNEL
+                  key: NEXAPI_OIDC_URL
+            - name: NEXAPI_OIDC_BACKCHANNEL
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: OIDC_BACKCHANNEL
-            - name: INSECURE_TLS
+                  key: NEXAPI_OIDC_BACKCHANNEL
+            - name: NEXAPI_INSECURE_TLS
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: INSECURE_TLS
-            - name: OIDC_CLIENT_ID_WEB
+                  key: NEXAPI_INSECURE_TLS
+            - name: NEXAPI_OIDC_CLIENT_ID_WEB
               valueFrom:
                 secretKeyRef:
                   name: auth-secrets
                   key: web-client-id
                   optional: false
-            - name: OIDC_CLIENT_ID_CLI
+            - name: NEXAPI_OIDC_CLIENT_ID_CLI
               valueFrom:
                 secretKeyRef:
                   name: auth-secrets
                   key: cli-client-id
                   optional: false
-            - name: TRACE_ENDPOINT_OTLP
+            - name: NEXAPI_TRACE_ENDPOINT_OTLP
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: TRACE_ENDPOINT_OTLP
-            - name: TRACE_INSECURE
+                  key: NEXAPI_TRACE_ENDPOINT_OTLP
+            - name: NEXAPI_TRACE_INSECURE
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: TRACE_INSECURE
-            - name: FFLAG_MULTI_ORGANIZATION
+                  key: NEXAPI_TRACE_INSECURE
+            - name: NEXAPI_FFLAG_MULTI_ORGANIZATION
               valueFrom:
                 configMapKeyRef:
                   name: apiserver
-                  key: FFLAG_MULTI_ORGANIZATION
+                  key: NEXAPI_FFLAG_MULTI_ORGANIZATION
           resources:
             requests:
               cpu: 100m

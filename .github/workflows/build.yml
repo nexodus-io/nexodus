@@ -324,7 +324,7 @@ jobs:
 
       - name: Add hosts to /etc/hosts
         run: |
-          echo "127.0.0.1 auth.nexodus.local api.nexodus.local nexodus.local" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 auth.try.nexodus.local api.try.nexodus.local try.nexodus.local" | sudo tee -a /etc/hosts
 
       - name: Download apiserver image
         uses: actions/download-artifact@v3

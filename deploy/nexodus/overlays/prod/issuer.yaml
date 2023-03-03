@@ -4,7 +4,7 @@ metadata:
   name: letsencrypt
 spec:
   acme:
-    email: admin@nexodus.io
+    email: contact@nexodus.io
     privateKeySecretRef:
       name: letsencrypt-key
     server: 'https://acme-v02.api.letsencrypt.org/directory'

@@ -9,8 +9,8 @@ configMapGenerator:
   - name: auth-config
     behavior: replace
     literals:
-      - hostname=auth.nexodus.io
-      - frontend-url=https://nexodus.io
+      - hostname=auth.try.nexodus.io
+      - frontend-url=https://try.nexodus.io
   - name: realm
     behavior: replace
     files:
@@ -18,44 +18,44 @@ configMapGenerator:
 patchesJson6902:
   - patch: |-
       - op: replace
-        path: /data/OIDC_URL
-        value: https://auth.nexodus.io/realms/nexodus
+        path: /data/NEXAPI_OIDC_URL
+        value: https://auth.try.nexodus.io/realms/nexodus
     target:
       kind: ConfigMap
       name: apiserver
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: api.nexodus.io
+        value: api.try.nexodus.io
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.nexodus.io/realms/nexodus
+        value: https://auth.try.nexodus.io/realms/nexodus
       - op: replace
         path: /data/ORIGINS
-        value: https://nexodus.io
+        value: https://try.nexodus.io
       - op: replace
         path: /data/REDIRECT_URL
-        value: https://nexodus.io/#/login
+        value: https://try.nexodus.io/#/login
     target:
       kind: ConfigMap
       name: backend-web
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: https://api.nexodus.io
+        value: https://api.try.nexodus.io
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.nexodus.io/realms/nexodus
+        value: https://auth.try.nexodus.io/realms/nexodus
     target:
       kind: ConfigMap
       name: backend-cli
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: api.nexodus.io
+        value: api.try.nexodus.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: api.nexodus.io
+        value: api.try.nexodus.io
       - op: replace
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt
@@ -77,7 +77,7 @@ patchesJson6902:
         path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
-        value: auth.nexodus.io
+        value: auth.try.nexodus.io
       - op: replace
         path: /spec/rules/0/http/paths/0/pathType
         value: ImplementationSpecific
@@ -90,7 +90,7 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /spec/dnsNames/0
-        value: auth.nexodus.io
+        value: auth.try.nexodus.io
       - op: replace
         path: /spec/issuerRef/name
         value: letsencrypt
@@ -100,10 +100,10 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: nexodus.io
+        value: try.nexodus.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: nexodus.io
+        value: try.nexodus.io
       - op: replace
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt

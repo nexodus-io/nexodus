@@ -7,10 +7,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - nexodus.local
+        - try.nexodus.local
       secretName: nexodus-frontend-cert
   rules:
-    - host: nexodus.local
+    - host: try.nexodus.local
       http:
         paths:
           - pathType: Prefix

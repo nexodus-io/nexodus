@@ -10,7 +10,7 @@ namespace: nexodus
 configMapGenerator:
   - behavior: merge
     literals:
-      - FFLAG_MULTI_ORGANIZATION=true
+      - NEXAPI_FFLAG_MULTI_ORGANIZATION=true
     name: apiserver
 patchesJson6902:
   - target:
@@ -19,20 +19,20 @@ patchesJson6902:
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: api.nexodus.local
+        value: api.try.nexodus.local
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: api.nexodus.local
+        value: api.try.nexodus.local
   - target:
       kind: Ingress
       name: frontend
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: nexodus.local
+        value: try.nexodus.local
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: nexodus.local
+        value: try.nexodus.local
   - target:
       kind: Ingress
       name: apiproxy
@@ -84,8 +84,8 @@ patchesJson6902:
 #      namespace: nexodus
 #    patch: |-
 #      - op: replace
-#        path: /data/TRACE_ENDPOINT_OTLP
+#        path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
 #        value: jaeger-collector.observability.svc.cluster.local:4317
 #      - op: replace
-#        path: /data/TRACE_INSECURE
+#        path: /data/NEXAPI_TRACE_INSECURE
 #        value: "1"

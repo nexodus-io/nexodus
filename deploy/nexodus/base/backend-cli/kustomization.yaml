@@ -4,11 +4,11 @@ configMapGenerator:
   - name: backend-cli
     literals:
       - DEBUG=1
-      - OIDC_PROVIDER=https://auth.nexodus.local/realms/nexodus
+      - OIDC_PROVIDER=https://auth.try.nexodus.local/realms/nexodus
       - OIDC_BACKCHANNEL=https://auth.nexodus.svc.cluster.local:8443/realms/nexodus
       - INSECURE_TLS=1
       - OIDC_FLOW=device
-      - DOMAIN=api.nexodus.local
+      - DOMAIN=api.try.nexodus.local
       - BACKEND=http://apiserver:8080
 resources:
   - deployment.yaml

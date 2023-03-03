@@ -3,15 +3,15 @@ kind: Kustomization
 configMapGenerator:
   - name: apiserver
     literals:
-      - DEBUG=1
-      - IPAM_URL=http://ipam:9090
-      - OIDC_URL=https://auth.nexodus.local/realms/nexodus
-      - OIDC_BACKCHANNEL=https://auth.nexodus.svc.cluster.local:8443/realms/nexodus
-      - INSECURE_TLS=1
-      - TRACE_ENDPOINT_OTLP=""
-      - TRACE_INSECURE="1"
-      - FFLAG_MULTI_ORGANIZATION=false
-      - DB_SSLMODE=require
+      - NEXAPI_DEBUG=1
+      - NEXAPI_IPAM_URL=http://ipam:9090
+      - NEXAPI_OIDC_URL=https://auth.try.nexodus.local/realms/nexodus
+      - NEXAPI_OIDC_BACKCHANNEL=https://auth.nexodus.svc.cluster.local:8443/realms/nexodus
+      - NEXAPI_INSECURE_TLS=1
+      - NEXAPI_TRACE_ENDPOINT_OTLP=""
+      - NEXAPI_TRACE_INSECURE="1"
+      - NEXAPI_FFLAG_MULTI_ORGANIZATION=false
+      - NEXAPI_DB_SSLMODE=require
 resources:
   - service.yaml
   - deployment.yaml

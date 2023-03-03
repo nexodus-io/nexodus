@@ -9,8 +9,8 @@ configMapGenerator:
   - name: auth-config
     behavior: replace
     literals:
-      - hostname=auth.qa.nexodus.io
-      - frontend-url=https://qa.nexodus.io
+      - hostname=auth.qa.try.nexodus.io
+      - frontend-url=https://qa.try.nexodus.io
   - name: realm
     behavior: replace
     files:
@@ -19,10 +19,10 @@ configMapGenerator:
 patchesJson6902:
   - patch: |-
       - op: replace
-        path: /data/OIDC_URL
-        value: https://auth.qa.nexodus.io/realms/nexodus
+        path: /data/NEXAPI_OIDC_URL
+        value: https://auth.qa.try.nexodus.io/realms/nexodus
       - op: replace
-        path: /data/OIDC_BACKCHANNEL
+        path: /data/NEXAPI_OIDC_BACKCHANNEL
         value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
     target:
       kind: ConfigMap
@@ -30,29 +30,29 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: api.qa.nexodus.io
+        value: api.qa.try.nexodus.io
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.qa.nexodus.io/realms/nexodus
+        value: https://auth.qa.try.nexodus.io/realms/nexodus
       - op: replace
         path: /data/OIDC_BACKCHANNEL
         value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
       - op: replace
         path: /data/ORIGINS
-        value: https://qa.nexodus.io
+        value: https://qa.try.nexodus.io
       - op: replace
         path: /data/REDIRECT_URL
-        value: https://qa.nexodus.io/#/login
+        value: https://qa.try.nexodus.io/#/login
     target:
       kind: ConfigMap
       name: backend-web
   - patch: |-
       - op: replace
         path: /data/DOMAIN
-        value: https://api.qa.nexodus.io
+        value: https://api.qa.try.nexodus.io
       - op: replace
         path: /data/OIDC_PROVIDER
-        value: https://auth.qa.nexodus.io/realms/nexodus
+        value: https://auth.qa.try.nexodus.io/realms/nexodus
       - op: replace
         path: /data/OIDC_BACKCHANNEL
         value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
@@ -62,10 +62,10 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: api.qa.nexodus.io
+        value: api.qa.try.nexodus.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: api.qa.nexodus.io
+        value: api.qa.try.nexodus.io
       - op: replace
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt
@@ -87,7 +87,7 @@ patchesJson6902:
         path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
-        value: auth.qa.nexodus.io
+        value: auth.qa.try.nexodus.io
       - op: replace
         path: /spec/rules/0/http/paths/0/pathType
         value: ImplementationSpecific
@@ -100,7 +100,7 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /spec/dnsNames/0
-        value: auth.qa.nexodus.io
+        value: auth.qa.try.nexodus.io
       - op: replace
         path: /spec/issuerRef/name
         value: letsencrypt
@@ -110,10 +110,10 @@ patchesJson6902:
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: qa.nexodus.io
+        value: qa.try.nexodus.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: qa.nexodus.io
+        value: qa.try.nexodus.io
       - op: replace
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt

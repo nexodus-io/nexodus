@@ -145,9 +145,9 @@ run-test-container: ## Run docker container that you can run nexodus in
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
-		--add-host nexodus.local:$(NEXODUS_LOCAL_IP) \
-		--add-host api.nexodus.local:$(NEXODUS_LOCAL_IP) \
-		--add-host auth.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host try.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host api.try.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host auth.try.nexodus.local:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
 		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 

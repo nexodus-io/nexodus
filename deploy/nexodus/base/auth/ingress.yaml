@@ -7,7 +7,7 @@ metadata:
   name: auth
 spec:
   rules:
-    - host: auth.nexodus.local
+    - host: auth.try.nexodus.local
       http:
         paths:
           - pathType: Prefix
