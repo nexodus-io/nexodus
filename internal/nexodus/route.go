@@ -7,7 +7,7 @@ import (
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
+func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 	switch ax.os {
 	case Darwin.String():
 		// Darwin maps to a utunX address which needs to be discovered (currently hardcoded to utun8)
@@ -48,7 +48,7 @@ func (ax *Apex) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 	}
 }
 
-func (ax *Apex) addChildPrefixRoute(childPrefix string) {
+func (ax *Nexodus) addChildPrefixRoute(childPrefix string) {
 
 	routeExists, err := RouteExists(childPrefix)
 	if err != nil {
@@ -66,7 +66,7 @@ func (ax *Apex) addChildPrefixRoute(childPrefix string) {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Apex) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
+func (ax *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
 	switch ax.os {
 	case Darwin.String():
 		// TODO: OSX route lookups

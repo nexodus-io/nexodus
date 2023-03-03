@@ -12,7 +12,7 @@ import (
 )
 
 // handlePeerTunnel build wg tunnels
-func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
+func (ax *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 	// validate the endpoint host:port pair parses.
 	// temporary: currently if relay state has not converged the endpoint can be registered as (none)
 	_, _, err := net.SplitHostPort(wgPeerConfig.Endpoint)
@@ -27,7 +27,7 @@ func (ax *Apex) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 }
 
 // addPeer add a wg peer
-func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
+func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (ax *Apex) addPeer(wgPeerConfig wgPeerConfig) error {
 	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
-func (ax *Apex) handlePeerDelete(peerListing []models.Device) error {
+func (ax *Nexodus) handlePeerDelete(peerListing []models.Device) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range ax.deviceCache {
 		if inPeerListing(peerListing, p) {
@@ -121,7 +121,7 @@ func (ax *Apex) handlePeerDelete(peerListing []models.Device) error {
 	return nil
 }
 
-func (ax *Apex) deletePeer(publicKey, dev string) error {
+func (ax *Nexodus) deletePeer(publicKey, dev string) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err

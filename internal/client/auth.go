@@ -29,7 +29,7 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 		return nil, nil, err
 	}
 
-	msg := fmt.Sprintf("Your device must be registered with Apex.\n"+
+	msg := fmt.Sprintf("Your device must be registered with Nexodus.\n"+
 		"Your one-time code is: %s\n"+
 		"Please open the following URL in your browser to sign in:\n%s\n",
 		d.UserCode, d.VerificationURIComplete)

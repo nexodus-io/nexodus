@@ -13,9 +13,9 @@ import (
 )
 
 // TODO make this path configurable
-const UnixSocketPath = "/run/apex.sock"
+const UnixSocketPath = "/run/nexd.sock"
 
-func (ax *Apex) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
+func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
 	switch ax.os {
 	case Linux.String():
 		ax.CtlServerLinuxStart(ctx, wg)
@@ -30,18 +30,18 @@ func (ax *Apex) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-type ApexCtl struct {
-	ax *Apex
+type NexdCtl struct {
+	ax *Nexodus
 }
 
-func (ac *ApexCtl) Status(_ string, result *string) error {
+func (ac *NexdCtl) Status(_ string, result *string) error {
 	var statusStr string
 	switch ac.ax.status {
-	case ApexStatusStarting:
+	case NexdStatusStarting:
 		statusStr = "Starting"
-	case ApexStatusAuth:
+	case NexdStatusAuth:
 		statusStr = "WaitingForAuth"
-	case ApexStatusRunning:
+	case NexdStatusRunning:
 		statusStr = "Running"
 	default:
 		statusStr = "Unknown"
@@ -54,12 +54,12 @@ func (ac *ApexCtl) Status(_ string, result *string) error {
 	return nil
 }
 
-func (ac *ApexCtl) Version(_ string, result *string) error {
+func (ac *NexdCtl) Version(_ string, result *string) error {
 	*result = ac.ax.version
 	return nil
 }
 
-func (ax *Apex) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) {
+func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) {
 	util.GoWithWaitGroup(wg, func() {
 		for {
 			// Use a different waitgroup here, because we want to make sure
@@ -77,7 +77,7 @@ func (ax *Apex) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) {
 	})
 }
 
-func (ax *Apex) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
+func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
 	os.Remove(UnixSocketPath)
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath, Net: "unix"})
 	if err != nil {
@@ -86,7 +86,7 @@ func (ax *Apex) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) er
 	}
 	defer l.Close()
 
-	ac := new(ApexCtl)
+	ac := new(NexdCtl)
 	ac.ax = ax
 	err = rpc.Register(ac)
 	if err != nil {

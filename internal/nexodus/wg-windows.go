@@ -8,7 +8,7 @@ import (
 
 const (
 	windowsConfFilePermissions = 0644
-	windowsWgConfigFile        = "C:/apex/wg0.conf"
+	windowsWgConfigFile        = "C:/nexd/wg0.conf"
 )
 
 func buildWindowsWireguardIfaceConf(pvtKey, wgAddress string) error {

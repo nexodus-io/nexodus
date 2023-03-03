@@ -24,13 +24,13 @@ var Version = "dev"
 
 func main() {
 	app := &cli.App{
-		Name: "apexctl",
+		Name: "nexctl",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Value:   false,
 				Usage:   "enable debug logging",
-				EnvVars: []string{"APEX_DEBUG"},
+				EnvVars: []string{"NEXCTL_DEBUG"},
 			},
 			&cli.StringFlag{
 				Name:  "host",
@@ -55,24 +55,24 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:  "version",
-				Usage: "Get the version of apexctl",
+				Usage: "Get the version of nexctl",
 				Action: func(cCtx *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
 				},
 			},
 			{
-				Name:  "apexd",
-				Usage: "commands for interacting with the local instance of apexd",
+				Name:  "nexd",
+				Usage: "commands for interacting with the local instance of nexd",
 				Subcommands: []*cli.Command{
 					{
 						Name:   "version",
-						Usage:  "apexd version",
+						Usage:  "nexd version",
 						Action: cmdLocalVersion,
 					},
 					{
 						Name:   "status",
-						Usage:  "apexd status",
+						Usage:  "nexd status",
 						Action: cmdLocalStatus,
 					},
 				},

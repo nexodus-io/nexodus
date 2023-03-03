@@ -11,7 +11,7 @@ const (
 	persistentHubKeepalive = "0"
 )
 
-func (ax *Apex) DeployWireguardConfig(newPeers []models.Device, firstTime bool) error {
+func (ax *Nexodus) DeployWireguardConfig(newPeers []models.Device, firstTime bool) error {
 	cfg := &wgConfig{
 		Interface: ax.wgConfig.Interface,
 		Peers:     ax.wgConfig.Peers,
