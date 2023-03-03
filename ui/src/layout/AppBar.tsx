@@ -13,7 +13,7 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import LogoSrc from "../logo.svg";
+import LogoSrc from "../logo.png";
 
 const darkTheme = createTheme({
   palette: { mode: "dark" },

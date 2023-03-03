@@ -6,7 +6,7 @@ import { Logout } from "react-admin";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), viteTsconfigPaths(), viteFaviconsPlugin("./src/logo.svg")],
+  plugins: [react(), viteTsconfigPaths(), viteFaviconsPlugin("./src/logo.png")],
   build: {
     outDir: "build",
   },
