@@ -40,7 +40,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
+	allowForTests := c.GetString("nexodus.testCreateOrganization")
 	if !multiOrganizationEnabled && allowForTests != "true" {
 		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
 		return

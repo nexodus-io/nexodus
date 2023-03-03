@@ -73,7 +73,7 @@ func setupDarwinIface(logger *zap.SugaredLogger, localAddress, dev string) error
 // setupLinuxInterface TODO replace with netlink calls
 // this is called if this is the first run or if the local node
 // address got assigned a new address by the controller
-func (ax *Apex) setupLinuxInterface(logger *zap.SugaredLogger) error {
+func (ax *Nexodus) setupLinuxInterface(logger *zap.SugaredLogger) error {
 	// delete the wireguard ip link interface if it exists
 	if ifaceExists(logger, ax.tunnelIface) {
 		_, err := RunCommand("ip", "link", "del", ax.tunnelIface)

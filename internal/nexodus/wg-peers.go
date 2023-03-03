@@ -9,7 +9,7 @@ import (
 )
 
 // buildPeersConfig builds the peer configuration based off peer cache and peer listings from the controller
-func (ax *Apex) buildPeersConfig() {
+func (ax *Nexodus) buildPeersConfig() {
 
 	var peers []wgPeerConfig
 	var relayIP string
@@ -161,7 +161,7 @@ func (ax *Apex) buildPeersConfig() {
 }
 
 // buildLocalConfig builds the configuration for the local interface
-func (ax *Apex) buildLocalConfig() {
+func (ax *Nexodus) buildLocalConfig() {
 	var localInterface wgLocalConfig
 
 	for _, value := range ax.deviceCache {

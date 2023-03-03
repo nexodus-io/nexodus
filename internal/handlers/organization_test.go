@@ -38,7 +38,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 			http.MethodPost,
 			"/", "/",
 			func(c *gin.Context) {
-				c.Set("_apex.testCreateOrganization", "true")
+				c.Set("nexodus.testCreateOrganization", "true")
 				suite.api.CreateOrganization(c)
 			},
 			bytes.NewBuffer(resBody),

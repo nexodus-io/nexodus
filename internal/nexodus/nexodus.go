@@ -31,19 +31,19 @@ const (
 	darwinIface       = "utun8"
 	WgDefaultPort     = 51820
 	wgIface           = "wg0"
-	WgWindowsConfPath = "C:/apex/"
+	WgWindowsConfPath = "C:/nexd/"
 )
 
 const (
-	// when apex is first starting up
-	ApexStatusStarting = iota
-	// when apex is waiting for auth and the user must complete the OTP auth flow
-	ApexStatusAuth
-	// apex is up and running normally
-	ApexStatusRunning
+	// when nexd is first starting up
+	NexdStatusStarting = iota
+	// when nexd is waiting for auth and the user must complete the OTP auth flow
+	NexdStatusAuth
+	// nexd is up and running normally
+	NexdStatusRunning
 )
 
-type Apex struct {
+type Nexodus struct {
 	wireguardPubKey         string
 	wireguardPvtKey         string
 	wireguardPubKeyInConfig bool
@@ -69,7 +69,7 @@ type Apex struct {
 	hostname                string
 	symmetricNat            bool
 	logger                  *zap.SugaredLogger
-	// See the ApexStatus* constants
+	// See the NexdStatus* constants
 	status    int
 	statusMsg string
 	version   string
@@ -94,7 +94,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewApex(ctx context.Context,
+func NewNexodus(ctx context.Context,
 	logger *zap.SugaredLogger,
 	controller string,
 	username string,
@@ -109,7 +109,7 @@ func NewApex(ctx context.Context,
 	relay bool,
 	relayOnly bool,
 	version string,
-) (*Apex, error) {
+) (*Nexodus, error) {
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func NewApex(ctx context.Context,
 		}
 	}
 
-	ax := &Apex{
+	ax := &Nexodus{
 		wireguardPubKey:     wireguardPubKey,
 		wireguardPvtKey:     wireguardPvtKey,
 		controllerIP:        controller,
@@ -155,7 +155,7 @@ func NewApex(ctx context.Context,
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
 		logger:              logger,
-		status:              ApexStatusStarting,
+		status:              NexdStatusStarting,
 		version:             version,
 		username:            username,
 		password:            password,
@@ -176,12 +176,12 @@ func NewApex(ctx context.Context,
 	return ax, nil
 }
 
-func (ax *Apex) SetStatus(status int, msg string) {
+func (ax *Nexodus) SetStatus(status int, msg string) {
 	ax.statusMsg = msg
 	ax.status = status
 }
 
-func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
+func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
 
 	if err := ax.CtlServerStart(ctx, wg); err != nil {
@@ -192,7 +192,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if ax.username == "" {
 		option = client.WithDeviceFlow()
 	} else if ax.username != "" && ax.password == "" {
-		fmt.Print("Enter apex account password: ")
+		fmt.Print("Enter nexodus account password: ")
 		passwdInput, err := term.ReadPassword(int(syscall.Stdin))
 		println()
 		if err != nil {
@@ -204,13 +204,13 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		option = client.WithPasswordGrant(ax.username, ax.password)
 	}
 	ax.client, err = client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
-		ax.SetStatus(ApexStatusAuth, msg)
+		ax.SetStatus(NexdStatusAuth, msg)
 	}, option)
 	if err != nil {
 		return err
 	}
 
-	ax.SetStatus(ApexStatusRunning, "")
+	ax.SetStatus(NexdStatusRunning, "")
 
 	if err := ax.handleKeys(); err != nil {
 		return fmt.Errorf("handleKeys: %w", err)
@@ -335,7 +335,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			if err := ax.Reconcile(ax.organization, false); err != nil {
 				// TODO: Add smarter reconciliation logic
 				// to handle disconnects and/or timeouts etc...
-				ax.logger.Errorf("Failed to reconcile state with the apex API server: %v", err)
+				ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
 			}
 		})
 	})
@@ -343,7 +343,7 @@ func (ax *Apex) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (ax *Apex) Keepalive() {
+func (ax *Nexodus) Keepalive() {
 	ax.logger.Debug("Sending Keepalive")
 	var peerEndpoints []string
 	if !ax.relay {
@@ -364,7 +364,7 @@ func (ax *Apex) Keepalive() {
 	_ = probePeers(peerEndpoints, ax.logger)
 }
 
-func (ax *Apex) Reconcile(orgID uuid.UUID, firstTime bool) error {
+func (ax *Nexodus) Reconcile(orgID uuid.UUID, firstTime bool) error {
 	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
 	if err != nil {
 		return err
@@ -425,7 +425,7 @@ func (ax *Apex) Reconcile(orgID uuid.UUID, firstTime bool) error {
 }
 
 // relayStateReconcile collect state from the relay node and rejoin nodes with the dynamic state
-func (ax *Apex) relayStateReconcile(orgID uuid.UUID) error {
+func (ax *Nexodus) relayStateReconcile(orgID uuid.UUID) error {
 	ax.logger.Debugf("Reconciling peers from relay state")
 	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
 	if err != nil {
@@ -503,7 +503,7 @@ func checkOS(logger *zap.SugaredLogger) error {
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
-func (ax *Apex) checkUnsupportedConfigs() error {
+func (ax *Nexodus) checkUnsupportedConfigs() error {
 	if ax.relay && ax.os == Darwin.String() {
 		return fmt.Errorf("OSX nodes cannot be a hub-router, only Linux nodes")
 	}
@@ -529,7 +529,7 @@ func (ax *Apex) checkUnsupportedConfigs() error {
 }
 
 // nodePrep add basic gathering and node condition checks here
-func (ax *Apex) nodePrep() {
+func (ax *Nexodus) nodePrep() {
 
 	// remove an existing wg interfaces
 	if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
@@ -567,7 +567,7 @@ func (ax *Apex) nodePrep() {
 
 }
 
-func (ax *Apex) findLocalIP() (string, error) {
+func (ax *Nexodus) findLocalIP() (string, error) {
 	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
 	// Otherwise, discover what the public ip of the node is and provide that to the peers.
 	var localIP string

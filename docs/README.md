@@ -2,6 +2,7 @@
 
 - [Documentation](#documentation)
   - [Concepts](#concepts)
+  - [High Level Solution Description](#high-level-solution-description)
   - [Deploying the Nexodus Controller](#deploying-the-nexodus-controller)
     - [Run on Kubernetes](#run-on-kubernetes)
       - [Add required DNS entries](#add-required-dns-entries)
@@ -230,7 +231,16 @@ Please open the following URL in your browser to sign in:
 https://auth.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
-If the agent was started using systemd, you will find the same thing in the service logs.
+If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
+
+```sh
+$ sudo nexctl nexd status
+Status: WaitingForAuth
+Your device must be registered with Nexodus.
+Your one-time code is: LTCV-OFFS
+Please open the following URL in your browser to sign in:
+https://auth.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+```
 
 Once enrollment is completed in the web UI, the agent will show progress.
 

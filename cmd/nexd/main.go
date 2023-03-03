@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	apexLogEnv = "APEX_LOGLEVEL"
+	nexodusLogEnv = "NEXD_LOGLEVEL"
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
@@ -23,7 +23,7 @@ var Version = "dev"
 
 func main() {
 	// set the log level
-	debug := os.Getenv(apexLogEnv)
+	debug := os.Getenv(nexodusLogEnv)
 	var logger *zap.Logger
 	var err error
 	if debug != "" {
@@ -38,80 +38,80 @@ func main() {
 
 	// flags are stored in the global flags variable
 	app := &cli.App{
-		Name:  "apex",
-		Usage: "Node agent to configure encrypted mesh networking.",
+		Name:  "nexd",
+		Usage: "Node agent to configure encrypted mesh networking with nexodus.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "public-key",
 				Value:    "",
 				Usage:    "public key for the local host - agent generates keys by default",
-				EnvVars:  []string{"APEX_PUB_KEY"},
+				EnvVars:  []string{"NEXD_PUB_KEY"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "private-key",
 				Value:    "",
 				Usage:    "private key for the local host (dev purposes only - soon to be removed)",
-				EnvVars:  []string{"APEX_PRIVATE_KEY"},
+				EnvVars:  []string{"NEXD_PRIVATE_KEY"},
 				Required: false,
 			},
 			&cli.IntFlag{
 				Name:     "listen-port",
 				Value:    0,
 				Usage:    "port wireguard is to listen for incoming peers on",
-				EnvVars:  []string{"APEX_LISTEN_PORT"},
+				EnvVars:  []string{"NEXD_LISTEN_PORT"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "request-ip",
 				Value:    "",
 				Usage:    "request a specific IP address from Ipam if available (optional)",
-				EnvVars:  []string{"APEX_REQUESTED_IP"},
+				EnvVars:  []string{"NEXD_REQUESTED_IP"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "local-endpoint-ip",
 				Value:    "",
 				Usage:    "specify the endpoint address of this node instead of being discovered (optional)",
-				EnvVars:  []string{"APEX_LOCAL_ENDPOINT_IP"},
+				EnvVars:  []string{"NEXD_LOCAL_ENDPOINT_IP"},
 				Required: false,
 			},
 			&cli.StringSliceFlag{
 				Name:     "child-prefix",
 				Usage:    "request a CIDR range of addresses that will be advertised from this node (optional)",
-				EnvVars:  []string{"APEX_REQUESTED_CHILD_PREFIX"},
+				EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
 				Required: false,
 			},
 			&cli.BoolFlag{Name: "stun",
 				Usage:    "discover the public address for this host using STUN",
 				Value:    false,
-				EnvVars:  []string{"APEX_STUN"},
+				EnvVars:  []string{"NEXD_STUN"},
 				Required: false,
 			},
 			&cli.BoolFlag{Name: "hub-router",
 				Usage:    "set if this node is to be the hub in a hub and spoke deployment",
 				Value:    false,
-				EnvVars:  []string{"APEX_HUB_ROUTER"},
+				EnvVars:  []string{"NEXD_HUB_ROUTER"},
 				Required: false,
 			},
 			&cli.BoolFlag{Name: "relay-only",
-				Usage:    "set if this node is unable to NAT hole punch in a hub zone (Apex will set this automatically if symmetric NAT is detected)",
+				Usage:    "set if this node is unable to NAT hole punch in a hub zone (Nexodus will set this automatically if symmetric NAT is detected)",
 				Value:    false,
-				EnvVars:  []string{"APEX_RELAY_ONLY"},
+				EnvVars:  []string{"NEXD_RELAY_ONLY"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "username",
 				Value:    "",
-				Usage:    "username for accessing the apex service",
-				EnvVars:  []string{"APEX_USERNAME"},
+				Usage:    "username for accessing the nexodus service",
+				EnvVars:  []string{"NEXD_USERNAME"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "password",
 				Value:    "",
-				Usage:    "password for accessing the apex service",
-				EnvVars:  []string{"APEX_PASSWORD"},
+				Usage:    "password for accessing the nexodus service",
+				EnvVars:  []string{"NEXD_PASSWORD"},
 				Required: false,
 			},
 		},
@@ -131,7 +131,7 @@ func main() {
 
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
-			nexodus, err := nexodus.NewApex(
+			nexodus, err := nexodus.NewNexodus(
 				ctx,
 				logger.Sugar(),
 				controller,

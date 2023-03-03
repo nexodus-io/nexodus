@@ -16,15 +16,15 @@ const (
 	linuxPrivateKeyFile   = "/etc/wireguard/private.key"
 	darwinPublicKeyFile   = "/usr/local/etc/wireguard/public.key"
 	darwinPrivateKeyFile  = "/usr/local/etc/wireguard/private.key"
-	windowsPublicKeyFile  = "C:/apex/public.key"
-	windowsPrivateKeyFile = "C:/apex/private.key"
+	windowsPublicKeyFile  = "C:/nexd/public.key"
+	windowsPrivateKeyFile = "C:/nexd/private.key"
 	publicKeyPermissions  = 0644
 	privateKeyPermissions = 0600
 )
 
 // handleKeys will look for an existing key pair, if a pair is not found this method
 // will generate a new pair and write them to location on the disk depending on the OS
-func (ax *Apex) handleKeys() error {
+func (ax *Nexodus) handleKeys() error {
 	switch ax.os {
 	case Darwin.String():
 		publicKey := readKeyFile(ax.logger, darwinPublicKeyFile)
@@ -78,7 +78,7 @@ func (ax *Apex) handleKeys() error {
 }
 
 // generateKeyPair a key pair and write them to disk
-func (ax *Apex) generateKeyPair(publicKeyFile, privateKeyFile string) error {
+func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 	cmd := exec.Command(wgBinary, "genkey")
 	privateKey, err := cmd.Output()
 	if err != nil {
