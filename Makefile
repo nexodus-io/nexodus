@@ -123,6 +123,19 @@ e2e-podman: ## Run e2e tests on podman
 test: ## Run unit tests
 	go test -v ./...
 
+.PHONY: debug-apiserver
+debug-apiserver: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
+	@telepresence helm install 2> /dev/null || true
+	@telepresence connect
+	@telepresence intercept -n nexodus apiserver --port 8080 --env-json=apiserver-envs.json
+	@echo "======================================================================================="
+	@echo
+	@echo "   Start the apiserver locally with a debugger with the env variables"
+	@echo "   with the values found in: apiserver-envs.json"
+	@echo
+	@echo "   Hint:ca use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
+	@echo
+
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
@@ -170,6 +183,14 @@ e2eprereqs:
 	@if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
+		exit 1 ; \
+	fi
+
+.PHONY: telepresence-prereqs
+telepresence-prereqs: e2eprereqs
+	@if [ -z "$(shell which telepresence)" ]; then \
+		echo "Please install telepresence first" ; \
+		echo "https://www.telepresence.io/docs/latest/quick-start/" ; \
 		exit 1 ; \
 	fi
 
