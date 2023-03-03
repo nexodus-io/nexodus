@@ -21,12 +21,19 @@ import CardImage from "../wordmark.png";
 const Dashboard = () => {
   return (
     <div>
-      <Card>
+      <Card
+        raised
+        sx={{
+          margin: "0 auto",
+          padding: "0.1em",
+        }}
+      >
         <CardMedia
           component="img"
           height="200"
           image={CardImage}
           alt="nexodus banner"
+          sx={{ padding: "1em 1em 0 1em", objectFit: "contain" }}
         />
         <CardHeader title="Welcome to Nexodus" />
         <CardContent>
