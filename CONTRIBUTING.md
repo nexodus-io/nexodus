@@ -1,4 +1,4 @@
-# Contributing to Apex
+# Contributing to Nexodus
 
 ## License
 
