@@ -31,9 +31,9 @@
   shell: |
     CAROOT=/home/{{ ansible_user }}/.certs mkcert -install
 
-- name: Kill any existing apexd process from previous runs
+- name: Kill any existing nexd process from previous runs
   shell: |
-    sudo killall apexd 2> /dev/null
+    sudo killall nexd 2> /dev/null
   ignore_errors: yes
 
 # Comment out the next two blocks and define "{{ controller_address }}" in vars.yml
@@ -65,7 +65,7 @@
       ff02::1 ip6-allnodes
       ff02::2 ip6-allrouters
       ff02::3 ip6-allhosts
-      {{ controller_address }} auth.apex.local api.apex.local apex.local
+      {{ controller_address }} auth.try.nexodus.local api.try.nexodus.local try.nexodus.local
 
 # Optionally clean all remnants of a previous run (agent will do this as well)
 - name: Delete wg0
@@ -74,30 +74,30 @@
     sudo ip link del wg0
   ignore_errors: yes
 
-- name: Download the Apex Agent Binary
+- name: Download the Nexodus Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/nexd
+    sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
     sudo chmod +x /usr/local/sbin/nexd
 
 # Example Token Acquisition
-#  curl -s -f -X POST https://auth.apex.local/realms/apex/protocol/openid-connect/token \
+#  curl -s -f -X POST https://auth.try.nexodus.local/realms/nexodus/protocol/openid-connect/token \
 #      -H 'Content-Type: application/x-www-form-urlencoded' \
 #      -d "username=kitteh1" \
 #      -d "password=floofykittens" \
 #      -d "grant_type=password" \
 #      -d "scope=openid profile email" \
-#      -d "client_id=apex-cli"
+#      -d "client_id=nexodus-cli"
 
 - name: Create a JWT
   shell: |
     curl -s -f -X POST \
-      {{ apex_oidc_url }}/realms/apex/protocol/openid-connect/token \
+      {{ nexodus_oidc_url }}/realms/nexodus/protocol/openid-connect/token \
       -H 'Content-Type: application/x-www-form-urlencoded' \
-      -d "username={{ apex_auth_uid }}" \
-      -d "password={{ apex_auth_password }}" \
+      -d "username={{ nexodus_auth_uid }}" \
+      -d "password={{ nexodus_auth_password }}" \
       -d "grant_type=password" \
       -d "scope=openid profile email" \
-      -d "client_id={{ apex_oidc_client_id_cli }}"
+      -d "client_id={{ nexodus_oidc_client_id_cli }}"
   register: api_token
 
 - name: Print the JWT Token
@@ -106,10 +106,10 @@
 
 - name: Create the Zone and register the UUID
   shell: |
-    curl -fL -X POST '{{ apex_api_url }}/api/zones' \
+    curl -fL -X POST '{{ nexodus_api_url }}/api/zones' \
     -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
     -H "Content-Type: application/json" \
-    --data-raw '{"Name": "{{ apex_zone_name }}", "Description": "Hub/Spoke Zone", "cidr": "{{ apex_zone_prefix }}", "hub_zone": true}'
+    --data-raw '{"Name": "{{ nexodus_zone_name }}", "Description": "Hub/Spoke Zone", "cidr": "{{ nexodus_zone_prefix }}", "hub_zone": true}'
   register: zone_uuid
 
 - name: Print the Zone UUID
@@ -118,7 +118,7 @@
 
 - name: Patch the User to the Zone
   shell: |
-    curl -fL -X PATCH '{{ apex_api_url }}/api/users/me' \
+    curl -fL -X PATCH '{{ nexodus_api_url }}/api/users/me' \
         -H "Authorization: bearer {{ (api_token.stdout|from_json).access_token }}" \
         -H "Content-Type: application/json" \
         --data-raw '{ "zone_id": "{{ (zone_uuid.stdout|from_json).id }}" }'

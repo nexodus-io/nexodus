@@ -1,9 +1,9 @@
 ---
-# tasks file for stop-apex-agent
-- name: Kill any existing apexd process from previous runs
+# tasks file for stop-nexodus-agent
+- name: Kill any existing nexd process from previous runs
   become: yes
   shell: |
-    sudo killall apexd 2> /dev/null
+    sudo killall nexd 2> /dev/null
   ignore_errors: yes
 
 - name: Delete wg0

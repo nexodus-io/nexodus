@@ -14,7 +14,7 @@
     - role: deploy-gcp-vms
 
 # Deploy and start the agent
-- hosts: apexNodes
+- hosts: nexodusNodes
   vars_files:
     - vars.yml
   roles:

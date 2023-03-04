@@ -1,19 +1,19 @@
 ### Globals ###
-ansible_user: apex                    # ssh username
+ansible_user: nexodus                    # ssh username
 inventory_location: inventory.txt     # leaving this as is will use the inventory.txt file in the base directory
 ssh_pub_key: "<PUBLIC_SSH_KEY"
-node_name: apex-azure-d1
+node_name: nexodus-azure-d1
 
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apex_binary: https://nexodus-io.s3.amazonaws.com/apex-amd64-linux
-apex_zone_name: zone-hub
-apex_zone_prefix: 10.185.0.0/20
+nexodus_binary: https://nexodus-io.s3.amazonaws.com/nexodus-amd64-linux
+nexodus_zone_name: zone-hub
+nexodus_zone_prefix: 10.185.0.0/20
 
-### Apex Auth ###
-apex_auth_uid: kitteh1
-apex_auth_password: floofykittens
-apex_oidc_client_id_cli: apex-cli
-apex_oidc_url: https://auth.apex.local
-apex_api_url: https://api.apex.local
-apex_url: https://apex.local
+### Nexodus Auth ###
+nexodus_auth_uid: kitteh1
+nexodus_auth_password: floofykittens
+nexodus_oidc_client_id_cli: nexodus-cli
+nexodus_oidc_url: https://auth.try.nexodus.local
+nexodus_api_url: https://api.try.nexodus.local
+nexodus_url: https://try.nexodus.local

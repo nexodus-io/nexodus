@@ -14,9 +14,9 @@
       - iperf3
     state: latest
 
-- name: Kill any existing apexd process from previous runs
+- name: Kill any existing nexd process from previous runs
   shell: |
-    sudo killall apexd 2> /dev/null
+    sudo killall nexd 2> /dev/null
   ignore_errors: yes
 
 # Optionally clean all remnants of a previous run (the agent will do this as well)
@@ -45,11 +45,11 @@
       ff02::1 ip6-allnodes
       ff02::2 ip6-allrouters
       ff02::3 ip6-allhosts
-      {{ controller_address }} auth.apex.local api.apex.local apex.local
+      {{ controller_address }} auth.try.nexodus.local api.try.nexodus.local try.nexodus.local
 
-- name: Download the Apex Agent Binary
+- name: Download the Nexodus Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/nexd
+    sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
     sudo chmod +x /usr/local/sbin/nexd
 
 - name: Copy the verifier script
@@ -61,9 +61,9 @@
 - name: Attach the Hub Router to the Controller
   become: yes
   shell: |
-    APEX_LOGLEVEL=debug apexd \
+    NEXD_LOGLEVEL=debug nexd \
     --hub-router \
     --stun \
-    --username '{{ apex_auth_uid }}' \
-    --password '{{ apex_auth_password }}' \
-    {{ apex_url }} > apex-logs.txt 2>&1 &
+    --username '{{ nexodus_auth_uid }}' \
+    --password '{{ nexodus_auth_password }}' \
+    {{ nexodus_url }} > nexodus-logs.txt 2>&1 &

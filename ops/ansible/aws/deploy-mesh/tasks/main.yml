@@ -34,9 +34,9 @@
   shell: |
     CAROOT=/home/{{ ansible_user }}/.certs mkcert -install
 
-- name: Kill any existing apexd process from previous runs
+- name: Kill any existing nexd process from previous runs
   shell: |
-    sudo killall apexd 2> /dev/null
+    sudo killall nexd 2> /dev/null
   ignore_errors: yes
 
 - name: Delete hosts file
@@ -62,7 +62,7 @@
       ff02::1 ip6-allnodes
       ff02::2 ip6-allrouters
       ff02::3 ip6-allhosts
-      {{ controller_address }} auth.apex.local api.apex.local apex.local
+      {{ controller_address }} auth.try.nexodus.local api.try.nexodus.local try.nexodus.local
 
 - name: Delete wg0
   become: yes
@@ -77,15 +77,15 @@
     mode: '0755'
   ignore_errors: yes
 
-- name: Download the Apex Agent Binary
+- name: Download the Nexodus Agent Binary
   shell: |
-    sudo curl {{ apex_binary }} --output /usr/local/sbin/nexd
+    sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
     sudo chmod +x /usr/local/sbin/nexd
 
 - name: Attach the Node Agent to the Controller
   become: yes
   shell: |
-    apexd \
-    --username '{{ apex_auth_uid }}' \
-    --password '{{ apex_auth_password }}' \
-    {{ apex_url }} > apex-logs.txt 2>&1 &
+    nexd \
+    --username '{{ nexodus_auth_uid }}' \
+    --password '{{ nexodus_auth_password }}' \
+    {{ nexodus_url }} > nexodus-logs.txt 2>&1 &

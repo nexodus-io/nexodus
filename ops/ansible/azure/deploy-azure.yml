@@ -2,7 +2,7 @@
 # Note: Optionally comment out any sections to pick and choose what gets run
 # The isn't an Azure VM loop deployment, only single VMs currently in create-azure-vm.yml
 # Deploy and start the agent
-- hosts: apexNodes
+- hosts: nexodusNodes
   vars_files:
     - vars.yml
   roles:
