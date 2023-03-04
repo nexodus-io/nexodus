@@ -1,9 +1,9 @@
 {
     "swagger": "2.0",
     "info": {
-        "title": "Apex API",
+        "title": "Nexodus API",
         "contact": {
-            "name": "The Apex Authors",
+            "name": "The Nexodus Authors",
             "url": "https://github.com/nexodus-io/nexodus/issues"
         },
         "license": {

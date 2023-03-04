@@ -15,7 +15,7 @@ import (
 )
 
 // key for username in gin.Context
-const AuthUserName string = "_apex.UserName"
+const AuthUserName string = "_nexodus.UserName"
 
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
