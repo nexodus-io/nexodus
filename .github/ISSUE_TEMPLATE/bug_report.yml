@@ -1,5 +1,5 @@
 name: Bug report
-description: Report an Issue to help and contribute to improve Project Apex
+description: Report an Issue to help and contribute to improve Project Nexodus
 title: "Brief bug summary"
 labels: ["needs-triaging", "bug"]
 body:
@@ -37,7 +37,7 @@ body:
       label: Deployment Environment
       description: Please provide information about your deployment setup
       placeholder: |
-        How did you deploy the Apex controller stack?
+        How did you deploy the Nexodus controller stack?
         Brief about the node/device topology that you are testing with?
         Appreciate any other relevant information about the deployment environment.
     validations:
@@ -49,6 +49,6 @@ body:
       description: Any other relevant information that can possibly help debug the issue.
       placeholder: |
         Any observation from your initial debugging?
-        Any suspicious log entry in Apex Controller of Agent logs?
+        Any suspicious log entry in Nexodus Controller of Agent logs?
     validations:
       required: false
