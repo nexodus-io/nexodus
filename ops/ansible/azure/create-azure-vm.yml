@@ -8,31 +8,31 @@
   tasks:
     - name: Create resource group
       azure_rm_resourcegroup:
-        name: ApexGroup
+        name: NexodusGroup
         location: eastus
     - name: Create virtual network
       azure_rm_virtualnetwork:
-        resource_group: ApexGroup
-        name: apexNet
+        resource_group: NexodusGroup
+        name: nexodusNet
         address_prefixes: "192.168.208.0/20"
     - name: Add subnet
       azure_rm_subnet:
-        resource_group: ApexGroup
-        name: apexSubnet
+        resource_group: NexodusGroup
+        name: nexodusSubnet
         address_prefix: "192.168.208.0/20"
-        virtual_network: apexNet
+        virtual_network: nexodusNet
     - name: Create public IP address
       azure_rm_publicipaddress:
-        resource_group: ApexGroup
+        resource_group: NexodusGroup
         allocation_method: Dynamic
-        name: "apexPublicDynamicIP-{{ node_name }}"
+        name: "nexodusPublicDynamicIP-{{ node_name }}"
       register: output_ip_address
     - name: Public IP of VM
       debug:
         msg: "The public IP is {{ output_ip_address.state.ip_address }}."
     - name: Create Network Security Group that allows SSH
       azure_rm_securitygroup:
-        resource_group: ApexGroup
+        resource_group: NexodusGroup
         name: myNetworkSecurityGroup
         rules:
           - name: SSH
@@ -46,21 +46,21 @@
             priority: 106
     - name: Create virtual network interface card
       azure_rm_networkinterface:
-        resource_group: ApexGroup
+        resource_group: NexodusGroup
         name: "nic-{{ node_name }}"
-        virtual_network: apexNet
-        subnet: apexSubnet
-        public_ip_name: "apexPublicDynamicIP-{{ node_name }}"
+        virtual_network: nexodusNet
+        subnet: nexodusSubnet
+        public_ip_name: "nexodusPublicDynamicIP-{{ node_name }}"
         security_group: myNetworkSecurityGroup
     - name: Create VM
       azure_rm_virtualmachine:
-        resource_group: ApexGroup
+        resource_group: NexodusGroup
         name: "{{ node_name }}"
         vm_size: Standard_B1s
-        admin_username: apex
+        admin_username: nexodus
         ssh_password_enabled: false
         ssh_public_keys:
-          - path: /home/apex/.ssh/authorized_keys
+          - path: /home/nexodus/.ssh/authorized_keys
             key_data: "{{ ssh_pub_key }}"
         network_interfaces: "nic-{{ node_name }}"
         image:

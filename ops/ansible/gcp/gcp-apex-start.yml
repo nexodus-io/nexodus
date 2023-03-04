@@ -1,6 +1,6 @@
-# Start Apex agents
-- hosts: apexNodes
+# Start Nexodus agents
+- hosts: nexodusNodes
   vars_files:
     - vars.yml
   roles:
-    - role: start-apex-agent
+    - role: start-nexodus-agent

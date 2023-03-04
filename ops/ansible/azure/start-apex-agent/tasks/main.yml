@@ -1,15 +1,15 @@
 ---
-# tasks file for start-apex-agent
-- name: Kill any existing apexd process from previous runs
+# tasks file for start-nexodus-agent
+- name: Kill any existing nexd process from previous runs
   become: yes
   shell: |
-    sudo killall apexd 2> /dev/null
+    sudo killall nexd 2> /dev/null
   ignore_errors: yes
 
 - name: Attach the Node Agent to the Controller
   become: yes
   shell: |
-    apexd \
-    --username '{{ apex_auth_uid }}' \
-     s--password '{{ apex_auth_password }}' \
-    {{ apex_url }} > apex-logs.txt 2>&1 &
+    nexd \
+    --username '{{ nexodus_auth_uid }}' \
+     s--password '{{ nexodus_auth_password }}' \
+    {{ nexodus_url }} > nexodus-logs.txt 2>&1 &

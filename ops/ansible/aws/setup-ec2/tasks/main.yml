@@ -51,7 +51,7 @@
 
 - name: Launching EC2 Instances in VPC Blue
   amazon.aws.ec2_instance:
-    name: "apex-demo-blue-node-{{ item+1 }}"
+    name: "nexodus-demo-blue-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -76,8 +76,8 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "apexNodes"
-    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-blue-node-{{ item+1 }}"
+    regexp: "nexodusNodes"
+    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-blue-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_blue | int) }}"
 
 ### VPC Green Deployment ###
@@ -99,7 +99,7 @@
 
 - name: Launching EC2 Instances in VPC Green
   amazon.aws.ec2_instance:
-    name: "apex-demo-green-node-{{ item+1 }}"
+    name: "nexodus-demo-green-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -124,8 +124,8 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "apexNodes"
-    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-green-node-{{ item+1 }}"
+    regexp: "nexodusNodes"
+    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-green-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_green | int) }}"
 
 ### VPC Red Deployment ###
@@ -147,7 +147,7 @@
 
 - name: Launching EC2 Instances in VPC Red
   amazon.aws.ec2_instance:
-    name: "apex-demo-red-node-{{ item+1 }}"
+    name: "nexodus-demo-red-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -172,8 +172,8 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
-    regexp: "apexNodes"
-    line: "[apexNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-red-node-{{ item+1 }}"
+    regexp: "nexodusNodes"
+    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_red | int) }}"
 
 - name: Refresh inventory to ensure new instances exist in inventory

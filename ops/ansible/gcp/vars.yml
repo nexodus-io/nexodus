@@ -7,20 +7,20 @@ region: us-east4
 machine_type: e2-micro
 node_count: 6
 image: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-ansible_user: apex
+ansible_user: nexodus
 # View GCP VMs at: https://console.cloud.google.com/compute/instances
 # View GCP VPC IP Addresses at: https://console.cloud.google.com/networking/addresses
 
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apex_binary: https://nexodus-io.s3.amazonaws.com/apex-amd64-linux
-apex_zone_name: zone-hub
-apex_zone_prefix: 10.185.0.0/20
+nexodus_binary: https://nexodus-io.s3.amazonaws.com/nexodus-amd64-linux
+nexodus_zone_name: zone-hub
+nexodus_zone_prefix: 10.185.0.0/20
 
-### Apex Auth ###
-apex_auth_uid: kitteh1
-apex_auth_password: floofykittens
-apex_oidc_client_id_cli: apex-cli
-apex_oidc_url: https://auth.apex.local/realms/apex
-apex_api_url: https://api.apex.local
-apex_url: https://apex.local
+### Nexodus Auth ###
+nexodus_auth_uid: kitteh1
+nexodus_auth_password: floofykittens
+nexodus_oidc_client_id_cli: nexodus-cli
+nexodus_oidc_url: https://auth.try.nexodus.local/realms/nexodus
+nexodus_api_url: https://api.try.nexodus.local
+nexodus_url: https://try.nexodus.local

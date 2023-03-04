@@ -19,29 +19,29 @@ aws_secret_access_key = <aws_secret_access_key>
 - Start the controller on a node
 
 ```shell
-# from the apex root directory run:
+# from the nexodus root directory run:
 make run-on-kind
 ```
 
-- Edit the Controller and Auth sections in `vars.yml` to add the address of the running Apex stack and change the binary address if you want a modified binary. The auth values are hardcoded as auth is still under daily development for bulk node imports such as this. The S3 bucket will generally have the latest build as we develop.
+- Edit the Controller and Auth sections in `vars.yml` to add the address of the running Nexodus stack and change the binary address if you want a modified binary. The auth values are hardcoded as auth is still under daily development for bulk node imports such as this. The S3 bucket will generally have the latest build as we develop.
 
 ```text
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
-apexd_binary: https://nexodus-io.s3.amazonaws.com/nexd-amd64-linux
-apex_zone_name: zone-hub
-apex_azone_prefix: 10.185.0.0/24
+nexd_binary: https://nexodus-io.s3.amazonaws.com/nexd-amd64-linux
+nexodus_zone_name: zone-hub
+nexodus_azone_prefix: 10.185.0.0/24
 
-### Apex Auth ###
-apex_auth_uid: kitteh1@apex.local
-apex_auth_password: floofykittens
-apex_oidc_client_id_cli: apex-cli
-apex_oidc_url: https://auth.apex.local
-apex_api_url: https://api.apex.local
-apex_url: https://apex.local
+### Nexodus Auth ###
+nexodus_auth_uid: kitteh1@try.nexodus.local
+nexodus_auth_password: floofykittens
+nexodus_oidc_client_id_cli: nexodus-cli
+nexodus_oidc_url: https://auth.try.nexodus.local
+nexodus_api_url: https://api.try.nexodus.local
+nexodus_url: https://try.nexodus.local
 ```
 
-- Run the playbook (the apexd binary is stored in an S3 bucket and pulled down by ansible)
+- Run the playbook (the nexd binary is stored in an S3 bucket and pulled down by ansible)
 
 ```shell
 # Install Ansible if not already installed
@@ -50,7 +50,7 @@ ansible-playbook --version
 
 # Run the playbook
 git clone https://github.com/nexodus-io/nexodus.git
-cd /apex/ops/ansible/
+cd /nexodus/ops/ansible/
 ansible-playbook -vv ./deploy.yml 
 ```
 
@@ -77,19 +77,19 @@ node 10.180.0.5 is up
 - This will redirect to a web page to enter the pass code provided from registration (also under daily development).
 
 ```shell
-sudo apexd <CONTROLLER_URL>
+sudo nexd <CONTROLLER_URL>
 ```
 
-You can view the apexd logs on each deployed image with `cat ~/apex-logs.txt`
+You can view the nexd logs on each deployed image with `cat ~/nexodus-logs.txt`
 
-To simply stop and start the Apex agents on the nodes you can run those plays with:
+To simply stop and start the Nexodus agents on the nodes you can run those plays with:
 
 ```shell
 # Stop the agent with:
-ansible-playbook aws-apex-start.yml 
+ansible-playbook aws-nexodus-start.yml 
 
 # Start the agent with:
-ansible-playbook aws-apex-start.yml 
+ansible-playbook aws-nexodus-start.yml 
 ```
 
 - Tear down the environment with:

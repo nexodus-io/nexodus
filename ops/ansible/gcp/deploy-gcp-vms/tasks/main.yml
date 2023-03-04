@@ -2,7 +2,7 @@
 ### Create Compute Engine instances ###
 - name: Create private IP address to the VM instance
   gcp_compute_address:
-    name: "apex-demo-gce-node-{{ item+1 }}"
+    name: "nexodus-demo-gce-node-{{ item+1 }}"
     region: "{{ region }}"
     project: "{{ gcp_project }}"
     service_account_file: "{{ gcp_cred_file }}"
@@ -12,7 +12,7 @@
 
 - name: Bring up the instance in the zone
   gcp_compute_instance:
-    name: apex-gcp-node-d{{ item+1 }}
+    name: nexodus-gcp-node-d{{ item+1 }}
     machine_type: "{{ machine_type }}"
     disks:
       - auto_delete: true
@@ -50,6 +50,6 @@
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "inventory.txt"
-    regexp: "apexNodes"
-    line: "[apexNodes]\n{{ gce_ip['results'][item]['address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=apex-demo-gce-node-{{ item+1 }}"
+    regexp: "nexodusNodes"
+    line: "[nexodusNodes]\n{{ gce_ip['results'][item]['address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-gce-node-{{ item+1 }}"
   loop: "{{ range(0, node_count | int) }}"
