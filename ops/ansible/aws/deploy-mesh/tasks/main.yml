@@ -26,10 +26,6 @@
     dest: .certs/
     mode: 0644
 
-- name: Create the certs dir
-  shell: |
-    mkdir -p .certs
-
 - name: mkcert
   shell: |
     CAROOT=/home/{{ ansible_user }}/.certs mkcert -install
