@@ -11,7 +11,7 @@ import (
 )
 
 // key for username in gin.Context
-const AuthUserName string = "_apex.UserName"
+const AuthUserName string = "_nexodus.UserName"
 
 type Claims struct {
 	Scope      string `json:"scope"`

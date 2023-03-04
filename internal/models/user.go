@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// User is the a person who uses Apex
+// User is the a person who uses Nexodus
 type User struct {
 	// Since the ID comes from the IDP, we have no control over the format...
 	ID            string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`

@@ -144,12 +144,12 @@ definitions:
     type: object
 info:
   contact:
-    name: The Apex Authors
+    name: The Nexodus Authors
     url: https://github.com/nexodus-io/nexodus/issues
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  title: Apex API
+  title: Nexodus API
   version: "1.0"
 paths:
   /devices:

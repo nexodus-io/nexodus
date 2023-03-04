@@ -11,7 +11,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "name": "The Apex Authors",
+            "name": "The Nexodus Authors",
             "url": "https://github.com/nexodus-io/nexodus/issues"
         },
         "license": {
@@ -924,7 +924,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api",
 	Schemes:          []string{},
-	Title:            "Apex API",
+	Title:            "Nexodus API",
 	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
