@@ -18,10 +18,10 @@ kubectl create -k ./deploy/observability-operators/base
 kubectl wait --for=condition=Ready pods --all -n observability --timeout=300s
 ```
 
-Uncomment the commented lines in `./deploy/apex/overlays/dev/kustomization.yaml` then run:
+Uncomment the commented lines in `./deploy/nexodus/overlays/dev/kustomization.yaml` then run:
 
 ```console
-kubectl apply -k ./deploy/apex/overlays/dev
+kubectl apply -k ./deploy/nexodus/overlays/dev
 ```
 
 The dashboards for the services are available at:

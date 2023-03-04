@@ -118,7 +118,7 @@ Since a `User` is also an `Organization`, once someone has registered to Nexodus
 
 The device-onboarding flow is as follows:
 
-1. A User registers for Nexodus using a sign-up form on <https://apex-hosted.cloud>, with the option to use SSO from Google, Github, Facebook etc..
+1. A User registers for Nexodus using a sign-up form on <https://try.nexodus.io/>, with the option to use SSO from Google, Github, Facebook etc..
 1. User downloads and runs the Nexodus agent
 1. Nexodus agent does a `POST /device` to register the unique device with Nexodus for the user - it's onboarded into their personal organization.
 1. `GET /organization/$id/devices` is polled to retrieve the peer listing for a zone.

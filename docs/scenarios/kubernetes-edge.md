@@ -22,7 +22,7 @@ controller on the machine that is reachable from your Kubernetes and MicroShift 
 Once your Nexodus controller is set up, please get the CA certification from Nexodus's secret and keep it handy. You will need this CA cert for deploying the Nexodus agent and to access the Nexodus Controller UI.
 
 ```sh
-kubectl get secret -n apex apex-ca-key-pair -o json | jq -r '.data."ca.crt"'
+kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"'
 ```
 
 ## Deploying the Nexodus Relay Node
@@ -33,16 +33,16 @@ Please follow the instructions provided in the [README Nexodus Relay Section](..
 
 Please follow the [README Section](../README.md#deploying-on-kubernetes-managed-node) to deploy the Nexodus agent. It mainly requires two steps
 
-1. Set config data in `./deploy/apex-client/overlays/dev/kustomization.yaml` and deploy the Nexodus agent's manifest files
+1. Set config data in `./deploy/nexodus-client/overlays/dev/kustomization.yaml` and deploy the Nexodus agent's manifest files
 
    ```sh
-        kubectl apply -k ./deploy/apex-client/overlays/dev
+        kubectl apply -k ./deploy/nexodus-client/overlays/dev
     ```
 
 2. Tag the worker nodes that you want to join the Nexodus network.
 
     ```sh
-        kubectl label nodes <NODE_NAME> app.kubernetes.io/apex=
+        kubectl label nodes <NODE_NAME> app.kubernetes.io/nexodus=
     ```
 
     This will deploy the Nexodus agent pod on that node and onboard the node to the Nexodus network.
@@ -120,10 +120,10 @@ Request ID: 5648b07d658223aa8f488d9833cac06d
 ## Troubleshooting
 
 * Nexodus agent pod is not deployed even after tagging the MicroShift node.
-  * MicroShift security context doesn't allow deployment of privileged containers. You need to add security context policy to the `apex` service account to allow the deployment.
+  * MicroShift security context doesn't allow deployment of privileged containers. You need to add security context policy to the `nexodus` service account to allow the deployment.
   
   ```sh
-    sudo oc --kubeconfig /var/lib/microshift/resources/kubeadmin/kubeconfig adm policy add-scc-to-user -z apex -n apex privileged
+    sudo oc --kubeconfig /var/lib/microshift/resources/kubeadmin/kubeconfig adm policy add-scc-to-user -z nexodus -n nexodus privileged
   ```
 
 * You don't see wireguard interface `wg0` after Nexodus agent deployment in MicroShift node.
