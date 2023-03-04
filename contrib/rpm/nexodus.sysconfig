@@ -3,9 +3,9 @@
 #
 # Configure the URL of the Nexodus service you wish to connect to.
 # For example:
-#   https://apex.local -- when using the development environment
-#   https://apex-hosted.cloud -- when using the project's hosted instance
+#   https://try.nexodus.local -- when using the development environment
+#   https://try.nexodus.io -- when using the project's hosted instance
 #
 # If additional arguments are needed, add them prior to the URL.
 #
-NEXD_ARGS="https://apex.local"
+NEXD_ARGS="https://try.nexodus.local"
