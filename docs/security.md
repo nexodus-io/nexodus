@@ -11,3 +11,7 @@ Security is critical for Nexodus to be a viable service. This document discusses
 
 [^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal nexodus node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required.
 [^2]: See [Issue #142](https://github.com/nexodus-io/nexodus/issues/142) for tracking the use of oauth scopes to limit actions available to users.
+
+## Reporting Vulnerabilities
+
+Vulnerabilities may be reported privately via GitHub at <https://github.com/nexodus-io/nexodus/security/advisories>. For more information about privately reporting security issues via GitHub, see the [GitHub Documentation](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability).
