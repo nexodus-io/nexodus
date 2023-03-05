@@ -1,0 +1,20 @@
+# Recreate the api-server db used in ec2-e2e
+- name: Define the api-server as read from Ansible vars
+  hosts: localhost
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: add new host
+      add_host:
+        hostname: '{{ controller_address }}'
+        groups: controllerGroup
+
+- name: API server operations
+  hosts: all:controllerGroup
+  tasks:
+    - name: Reset the Nexodus Stack
+      shell: |
+        cd nexodus
+        kubectl delete -n nexodus deploy/apiserver postgrescluster/database deploy/ipam
+        kubectl apply -k deploy/nexodus/overlays/dev
+      ignore_errors: yes
