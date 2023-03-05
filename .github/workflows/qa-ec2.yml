@@ -63,6 +63,11 @@ jobs:
       - name: Mesh Connectivity Results
         run: cat ./ops/ansible/aws/connectivity-results.txt
 
+      - name: Reset the Nexodus Stack
+        if: always()
+        run: |
+          ansible-playbook -vv ./ops/ansible/aws/recreate-api-db.yml -u ubuntu
+
       - name: Terminate EC2 Instances
         if: always()
         run: |
