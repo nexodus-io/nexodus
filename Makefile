@@ -78,7 +78,7 @@ clean: ## clean built binaries
 
 .PHONY: go-lint
 go-lint: $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS) ## Lint the go code
-	@if ! which golangci-lint >/dev/null 2>&1; then \
+	$(CMD_PREFIX) if ! which golangci-lint >/dev/null 2>&1; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
 		exit 1 ; \
@@ -88,7 +88,7 @@ go-lint: $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS) ## Lint the go code
 
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files
-	@if ! which yamllint >/dev/null 2>&1; then \
+	$(CMD_PREFIX) if ! which yamllint >/dev/null 2>&1; then \
 		echo "Please install yamllint." ; \
 		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
 		exit 1 ; \
@@ -125,9 +125,9 @@ test: ## Run unit tests
 
 .PHONY: debug-apiserver
 debug-apiserver: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
-	@telepresence helm install 2> /dev/null || true
-	@telepresence connect
-	@telepresence intercept -n nexodus apiserver --port 8080 --env-json=apiserver-envs.json
+	$(CMD_PREFIX) telepresence helm install 2> /dev/null || true
+	$(CMD_PREFIX) telepresence connect
+	$(CMD_PREFIX) telepresence intercept -n nexodus apiserver --port 8080 --env-json=apiserver-envs.json
 	@echo "======================================================================================="
 	@echo
 	@echo "   Start the apiserver locally with a debugger with the env variables"
@@ -140,8 +140,8 @@ NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
 TEST_CONTAINER_DISTRO?=ubuntu
 run-test-container: ## Run docker container that you can run nexodus in
-	@docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
-	@docker run --rm -it --network bridge \
+	$(CMD_PREFIX) docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
+	$(CMD_PREFIX) docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
@@ -154,13 +154,13 @@ run-test-container: ## Run docker container that you can run nexodus in
 .PHONY: run-sql-apiserver
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
-	@kubectl exec -it -n nexodus \
+	$(CMD_PREFIX) kubectl exec -it -n nexodus \
 		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql apiserver
 else ifeq ($(OVERLAY),arm64)
-	@kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
 else ifeq ($(OVERLAY),cockroach)
-	@kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
 endif
 
 
@@ -174,13 +174,13 @@ test-images: dist/nexd dist/nexctl ## Create test images for e2e
 
 .PHONY: e2eprereqs
 e2eprereqs:
-	@if [ -z "$(shell which kind)" ]; then \
+	$(CMD_PREFIX) if [ -z "$(shell which kind)" ]; then \
 		echo "Please install kind and then start the kind dev environment." ; \
 		echo "https://kind.sigs.k8s.io/" ; \
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
 	fi
-	@if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
+	$(CMD_PREFIX) if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
 		exit 1 ; \
@@ -224,21 +224,21 @@ run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Se
 
 .PHONY: teardown
 teardown: ## Teardown the kind cluster
-	@kind delete cluster --name nexodus-dev
+	$(CMD_PREFIX) kind delete cluster --name nexodus-dev
 
 .PHONY: setup-kind
 setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install nexodus.
-	@kind create cluster --config ./deploy/kind.yaml
-	@kubectl cluster-info --context kind-nexodus-dev
-	@kubectl apply -f ./deploy/kind-ingress.yaml
+	$(CMD_PREFIX) kind create cluster --config ./deploy/kind.yaml
+	$(CMD_PREFIX) kubectl cluster-info --context kind-nexodus-dev
+	$(CMD_PREFIX) kubectl apply -f ./deploy/kind-ingress.yaml
 
 .PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
 deploy-nexodus-agent: image-nexd
-	@kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
-	@cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<NEXODUS_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
-	@sed -i -e "s/<NEXODUS_CONTROLLER_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
-	@kubectl apply -k ./deploy/nexodus-client/overlays/dev
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
+	$(CMD_PREFIX) cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_CONTROLLER_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 
@@ -247,76 +247,76 @@ deploy-operators: deploy-certmanager deploy-pgo  ## Deploy all operators and wai
 
 .PHONY: deploy-certmanager
 deploy-certmanager: # Deploy cert-manager
-	@kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
+	$(CMD_PREFIX) kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
 
 CRUNCHY_REVISION?=f1766db0b50ad2ae8ff35a599a16e11eefbd9f9c
 .PHONY: deploy-pgo
 deploy-pgo: # Deploy crunchy-data postgres operator
-	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace?ref=$(CRUNCHY_REVISION)
-	@kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default?ref=$(CRUNCHY_REVISION)
+	$(CMD_PREFIX) kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace?ref=$(CRUNCHY_REVISION)
+	$(CMD_PREFIX) kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default?ref=$(CRUNCHY_REVISION)
 
 .PHONY: deploy-cockroach-operator
 deploy-cockroach-operator: ## Deploy cockroach operator
-	@kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
-	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
-	@kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
-	@kubectl wait --for=condition=Available --timeout=5m -n cockroach-operator-system deploy/cockroach-operator-manager
-	@./hack/wait-for-cockroach-operator-ready.sh
+	$(CMD_PREFIX) kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
+	$(CMD_PREFIX) kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
+	$(CMD_PREFIX) kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
+	$(CMD_PREFIX) kubectl wait --for=condition=Available --timeout=5m -n cockroach-operator-system deploy/cockroach-operator-manager
+	$(CMD_PREFIX) ./hack/wait-for-cockroach-operator-ready.sh
 
 .PHONY: use-cockroach
 use-cockroach: deploy-cockroach-operator ## Recreate the database with a Cockroach based server
-	@OVERLAY=cockroach make recreate-db
+	$(CMD_PREFIX) OVERLAY=cockroach make recreate-db
 
 .PHONY: use-crunchy
 use-crunchy: ## Recreate the database with a Crunchy based postgres server
-	@OVERLAY=dev make recreate-db
+	$(CMD_PREFIX) OVERLAY=dev make recreate-db
 
 .PHONY: use-postgres
 use-postgres: ## Recreate the database with a simple Postgres server
-	@OVERLAY=arm64 make recreate-db
+	$(CMD_PREFIX) OVERLAY=arm64 make recreate-db
 
 .PHONY: wait-for-readiness
 wait-for-readiness: # Wait for operators to be installed
-	@kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
-	@kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
-	@kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
-	@kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
-	@kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
+	$(CMD_PREFIX) kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
+	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
+	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
 
 .PHONY: deploy
 deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
-	@kubectl create namespace nexodus
-	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY)
-	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
+	$(CMD_PREFIX) kubectl create namespace nexodus
+	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY)
+	$(CMD_PREFIX) OVERLAY=$(OVERLAY) make init-db
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: undeploy
 undeploy: ## Remove the nexodus stack from a kubernetes cluster
-	@kubectl delete namespace nexodus
+	$(CMD_PREFIX) kubectl delete namespace nexodus
 
 .PHONY: load-images
 load-images: ## Load images onto kind
-	@kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
-	@kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
-	@kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
-	@kubectl rollout restart deploy/apiserver -n nexodus
-	@kubectl rollout restart deploy/frontend -n nexodus
+	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
+	$(CMD_PREFIX) kubectl rollout restart deploy/frontend -n nexodus
 
 .PHONY: init-db
 init-db:
 # wait for the DB to be up, then restart the services that use it.
 ifeq ($(OVERLAY),dev)
-	@kubectl wait -n nexodus postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
+	$(CMD_PREFIX) kubectl wait -n nexodus postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
 else ifeq ($(OVERLAY),arm64)
-	@kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
+	$(CMD_PREFIX) kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
 else ifeq ($(OVERLAY),cockroach)
-	@make deploy-cockroach-operator
-	@kubectl -n nexodus wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
-	@kubectl -n nexodus rollout status statefulsets/cockroachdb --timeout=5m
-	@kubectl -n nexodus exec -it cockroachdb-0 \
+	$(CMD_PREFIX) make deploy-cockroach-operator
+	$(CMD_PREFIX) kubectl -n nexodus wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=5m
+	$(CMD_PREFIX) kubectl -n nexodus rollout status statefulsets/cockroachdb --timeout=5m
+	$(CMD_PREFIX) kubectl -n nexodus exec -it cockroachdb-0 \
 	  	-- ./cockroach sql \
 		--insecure \
 		--certs-dir=/cockroach/cockroach-certs \
@@ -333,34 +333,34 @@ else ifeq ($(OVERLAY),cockroach)
 			GRANT ALL ON DATABASE keycloak TO keycloak;\
 			"
 endif
-	@kubectl rollout restart deploy/apiserver -n nexodus
-	@kubectl rollout restart deploy/ipam -n nexodus
-	@kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
-	@kubectl -n nexodus rollout status deploy/ipam --timeout=5m
+	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
+	$(CMD_PREFIX) kubectl rollout restart deploy/ipam -n nexodus
+	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
+	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/ipam --timeout=5m
 
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new nexodus database
 
-	@kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
-	@kubectl wait --for=delete -n nexodus postgrescluster/database
-	@kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
-	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
-	@kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
-	@kubectl wait --for=delete -n nexodus --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
-	@kubectl delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
-	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0
-	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-1
-	@kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-2
+	$(CMD_PREFIX) kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus postgrescluster/database
+	$(CMD_PREFIX) kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
+	$(CMD_PREFIX) kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
+	$(CMD_PREFIX) kubectl delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-1
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-2
 
-	@kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
-	@OVERLAY=$(OVERLAY) make init-db
-	@kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
+	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
+	$(CMD_PREFIX) OVERLAY=$(OVERLAY) make init-db
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
-	@mkdir -p $(CURDIR)/.certs
-	@kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
-	@CAROOT=$(CURDIR)/.certs mkcert -install
+	$(CMD_PREFIX) mkdir -p $(CURDIR)/.certs
+	$(CMD_PREFIX) kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
+	$(CMD_PREFIX) CAROOT=$(CURDIR)/.certs mkcert -install
 
 ##@ Packaging
 
