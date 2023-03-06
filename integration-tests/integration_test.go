@@ -12,10 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/nexodus"
-
 	"github.com/cenkalti/backoff/v4"
 	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -172,55 +171,6 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	assert.NoErrorf(err, gather)
 }
 
-// TestRequestIPDefaultOrganization tests requesting a specific address in the default organization
-func (suite *NexodusIntegrationSuite) TestRequestIPDefaultOrganization() {
-	assert := suite.Assert()
-
-	node1IP := "100.100.0.101"
-	node2IP := "100.100.0.102"
-	parentCtx := context.Background()
-	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
-	defer cancel()
-
-	username := "admin"
-	password := "floofykittens"
-
-	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-
-	// start nexodus on the nodes
-	go suite.runNexd(ctx, node1, "--hub-router",
-		"--username", username, "--password", password,
-		fmt.Sprintf("--request-ip=%s", node1IP),
-	)
-	time.Sleep(time.Second * 1)
-	go suite.runNexd(ctx, node2,
-		"--username", username, "--password", password,
-		fmt.Sprintf("--request-ip=%s", node2IP),
-	)
-
-	gather := suite.gatherFail(ctx, node1, node2)
-	// ping the requested IP address (--request-ip)
-	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err := ping(ctx, node1, node2IP)
-	assert.NoErrorf(err, gather)
-
-	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
-	assert.NoErrorf(err, gather)
-}
-
 // TestRequestIPOrganization tests requesting a specific address in a newly created organization
 func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	assert := suite.Assert()
@@ -230,7 +180,6 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	defer cancel()
 	username := "kitteh1"
 	password := "floofykittens"
-	node1IP := "100.100.0.101"
 	node2IP := "100.100.0.102"
 
 	// create the nodes
@@ -249,20 +198,21 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 
 	// start nexodus on the nodes
 	go suite.runNexd(ctx, node1, "--hub-router",
-		"--username", username, "--password", password,
-		fmt.Sprintf("--request-ip=%s", node1IP),
-	)
+		"--username", username, "--password", password)
 	time.Sleep(time.Second * 1)
 	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
+	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	require.NoError(err)
+
 	gather := suite.gatherFail(ctx, node1, node2)
 
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err := ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
@@ -543,287 +493,66 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 	assert.NoErrorf(err, gather)
 }
 
-/*
-The following test sets up a NAT scenario that emulates
-two networks that are behind  NAT devices and validates
-connectivity between local nodes and the relay node.
-Spoke nodes within the same network should device directly
-to one another. This validates nodes that cannot UDP hole
-punch and can only device directly to one another.
-
-	           +----------+
-	           |  Relay   |
-	           |  Node    |
-	           +-+------+-+
-	  +----------+      +----------+
-	  |                            |
-	  |                            |
-    +-----------+                 +-----------+
-    |   NAT     |                 |   NAT     |
-    |   Router  |                 |   Router  |
-    ++---------++                 ++---------++
-     |         |                   |        |
-     |         |                   |        |
-+-----+---+   ++--------+   +------+--+   +-+-------+
-|  Net1   |   |  Net1   |   |  Net2   |   |  Net2   |
-|  Spoke1 |   |  Spoke2 |   |  Spoke1 |   |  Spoke2 |
-+---------+   +---------+   +---------+   +---------+
-*/
-// TestRelayNAT tests end to end and spoke to spoke in an easy NAT environment
-func (suite *NexodusIntegrationSuite) TestRelayNAT() {
-	suite.T().Skip("This test is broken on podman since netavark does some magic masquerading to prevent it working. It's also not too healthy on docker either")
-	parentCtx := context.Background()
+// TestRelay validates the scenario where the agent is set to explicitly relay only.
+func (suite *NexodusIntegrationSuite) TestRelay() {
 	assert := suite.Assert()
 	require := suite.Require()
-
-	net1 := "net1"
-	net2 := "net2"
-	relayNodeName := "relay"
-	net1Spoke1Name := "net1-spoke1"
-	net2Spoke1Name := "net2-spoke1"
-	net1Spoke2Name := "net1-spoke2"
-	net2Spoke2Name := "net2-spoke2"
-
-	ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
+	parentCtx := context.Background()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-
-	// launch a relay node in the default namespace that all spokes can reach
-	relayNode := suite.CreateNode(ctx, relayNodeName, []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := relayNode.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-
-	dNet1 := suite.CreateNetwork(ctx, net1, "100.64.11.0/24")
-	suite.T().Cleanup(func() {
-		if err := dNet1.Remove(parentCtx); err != nil {
-			suite.logger.Infof("failed to remove network: %v", err)
-		}
-	})
-
-	dNet2 := suite.CreateNetwork(ctx, net2, "100.64.12.0/24")
-	suite.T().Cleanup(func() {
-		if err := dNet2.Remove(parentCtx); err != nil {
-			suite.logger.Infof("failed to remove network: %v", err)
-		}
-	})
-
-	// launch nat nodes
-	natNodeNet1 := suite.CreateNode(ctx, "net1-nat", []string{net1, defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := natNodeNet1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-	natNodeNet2 := suite.CreateNode(ctx, "net2-nat", []string{net2, defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := natNodeNet2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-
-	ctx, cancel = context.WithTimeout(parentCtx, 120*time.Second)
-	defer cancel()
-
-	// register the nat node interfaces which will be the gateways for spoke nodes
-	gatewayNet1, err := getContainerIfaceIP(ctx, "eth0", natNodeNet1)
-	require.NoError(err)
-
-	gatewayNet2, err := getContainerIfaceIP(ctx, "eth0", natNodeNet2)
-	require.NoError(err)
-
-	// enable masquerading on the nat nodes
-	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-A", "FORWARD", "-i", "eth0", "-o", "eth1", "-j", "ACCEPT"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-A", "FORWARD", "-i", "eth1", "-o", "eth0", "-j", "ACCEPT"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, natNodeNet1, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-A", "FORWARD", "-i", "eth0", "-o", "eth1", "-j", "ACCEPT"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-A", "FORWARD", "-i", "eth1", "-o", "eth0", "-j", "ACCEPT"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, natNodeNet2, []string{"iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth1", "-j", "MASQUERADE"})
-	require.NoError(err)
-
-	// create spoke nodes
-	net1SpokeNode1 := suite.CreateNode(ctx, net1Spoke1Name, []string{net1})
-	suite.T().Cleanup(func() {
-		if err := net1SpokeNode1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-	net2SpokeNode1 := suite.CreateNode(ctx, net2Spoke1Name, []string{net2})
-	suite.T().Cleanup(func() {
-		if err := net2SpokeNode1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-	net1SpokeNode2 := suite.CreateNode(ctx, net1Spoke2Name, []string{net1})
-	suite.T().Cleanup(func() {
-		if err := net1SpokeNode2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-	net2SpokeNode2 := suite.CreateNode(ctx, net2Spoke2Name, []string{net2})
-	suite.T().Cleanup(func() {
-		if err := net2SpokeNode2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container %v", err)
-		}
-	})
-
-	// delete the default route pointing to the nat gateway
-	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "flush", "default"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "flush", "default"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "flush", "default"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "flush", "default"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net1SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet1})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode2, []string{"ip", "-4", "route", "add", "default", "via", gatewayNet2})
-	require.NoError(err)
-
-	suite.logger.Infof("Validate NAT Infra: Pinging %s from net1-spoke1", hostDNSName)
-	err = ping(ctx, net1SpokeNode1, hostDNSName)
-	assert.NoError(err)
-	suite.logger.Infof("Validate NAT Infra: Pinging %s from net2-spoke1", hostDNSName)
-	err = ping(ctx, net2SpokeNode1, hostDNSName)
-	assert.NoError(err)
-	suite.logger.Infof("Validate NAT Infra: Pinging %s from net1-spoke2", hostDNSName)
-	err = ping(ctx, net1SpokeNode2, hostDNSName)
-	assert.NoError(err)
-	suite.logger.Infof("Validate NAT Infra: Pinging %s from net2-spoke2", hostDNSName)
-	err = ping(ctx, net2SpokeNode2, hostDNSName)
-	assert.NoError(err)
 
 	username := "kitteh4"
 	password := "floofykittens"
 
+	// create the nodes
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork})
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container %v", err)
+		}
+	})
+
 	// start nexodus on the nodes
-	go suite.runNexd(ctx, relayNode,
-		"--hub-router",
-		"--username", username, "--password", password,
-	)
+	go suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
+	time.Sleep(time.Second * 1)
+	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
+	go suite.runNexd(ctx, node3, "--username", username, "--password", password, "--relay-only")
 
-	// ensure the relay node has time to register before joining spokes since it is required for hub-organizations
-	time.Sleep(time.Second * 10)
-	go suite.runNexd(ctx, net1SpokeNode1,
-		"--relay-only",
-		"--username", username, "--password", password,
-	)
-	go suite.runNexd(ctx, net2SpokeNode1,
-		"--relay-only",
-		"--username", username, "--password", password,
-	)
-	go suite.runNexd(ctx, net1SpokeNode2,
-		"--relay-only",
-		"--username", username, "--password", password,
-	)
-	go suite.runNexd(ctx, net2SpokeNode2,
-		"--relay-only",
-		"--username", username, "--password", password,
-	)
-	time.Sleep(time.Second * 10)
-
-	relayNodeIP, err := getContainerIfaceIP(ctx, "wg0", relayNode)
+	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
 	require.NoError(err)
-	net1SpokeNode1IP, err := getContainerIfaceIP(ctx, "wg0", net1SpokeNode1)
+	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
 	require.NoError(err)
-	net2SpokeNode1IP, err := getContainerIfaceIP(ctx, "wg0", net2SpokeNode1)
-	require.NoError(err)
-	net1SpokeNode2IP, err := getContainerIfaceIP(ctx, "wg0", net1SpokeNode2)
-	require.NoError(err)
-	net2SpokeNode2IP, err := getContainerIfaceIP(ctx, "wg0", net2SpokeNode2)
+	node3IP, err := getContainerIfaceIP(ctx, "wg0", node2)
 	require.NoError(err)
 
-	suite.logger.Infof("Pinging %s %s from %s", net1Spoke1Name, net1SpokeNode1IP, relayNodeName)
-	err = ping(ctx, relayNode, net1SpokeNode1IP)
-	assert.NoError(err)
+	gather := suite.gatherFail(ctx, node1, node2, node3)
+	suite.logger.Infof("Pinging %s from node1", node3IP)
+	err = ping(ctx, node1, node3IP)
+	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s %s from %s", net2Spoke1Name, net2SpokeNode1IP, relayNodeName)
-	err = ping(ctx, relayNode, net2SpokeNode1IP)
-	assert.NoError(err)
+	suite.logger.Infof("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, node3IP)
+	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke1Name)
-	err = ping(ctx, net1SpokeNode1, relayNodeIP)
-	assert.NoError(err)
+	suite.logger.Infof("Pinging %s from node3", node1IP)
+	err = ping(ctx, node3, node1IP)
+	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke1Name)
-	err = ping(ctx, net2SpokeNode1, relayNodeIP)
-	assert.NoError(err)
-
-	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net1Spoke2Name)
-	err = ping(ctx, net1SpokeNode2, relayNodeIP)
-	assert.NoError(err)
-
-	suite.logger.Infof("Pinging %s %s from node %s", relayNodeName, relayNodeIP, net2Spoke2Name)
-	err = ping(ctx, net2SpokeNode2, relayNodeIP)
-	assert.NoError(err)
-
-	suite.logger.Infof("Pinging %s %s from node %s", net1Spoke1Name, net1SpokeNode1IP, net1Spoke2Name)
-	err = ping(ctx, net1SpokeNode2, net1SpokeNode1IP)
-	assert.NoError(err)
-
-	suite.logger.Infof("Pinging %s %s from node %s", net2Spoke1Name, net2SpokeNode1IP, net2Spoke2Name)
-	err = ping(ctx, net2SpokeNode2, net2SpokeNode1IP)
-	assert.NoError(err)
-
-	// dump the wg state from the relay node.
-	wgShow, err := suite.containerExec(ctx, relayNode, []string{"wg", "show", "wg0", "dump"})
-	require.NoError(err)
-	suite.logger.Infof("Relay node wireguard state: \n%s", wgShow)
-
-	suite.logger.Info("killing nexodus and re-joining nodes")
-
-	// kill the nexodus process on both nodes
-	_, err = suite.containerExec(ctx, net1SpokeNode1, []string{"killall", "nexd"})
-	require.NoError(err)
-	_, err = suite.containerExec(ctx, net2SpokeNode1, []string{"killall", "nexd"})
-	require.NoError(err)
-
-	// restart the process on two nodes and verify re-joining
-	suite.logger.Info("Restarting nexodus on two spoke nodes and re-joining")
-	go suite.runNexd(ctx, net1SpokeNode1,
-		"--relay-only",
-		"--username", username,
-		"--password", password,
-	)
-	go suite.runNexd(ctx, net2SpokeNode1,
-		"--relay-only",
-		"--username", username,
-		"--password", password,
-	)
-
-	suite.logger.Infof("Pinging %s %s from node %s", net1Spoke2Name, net1SpokeNode2IP, net1Spoke1Name)
-	err = ping(ctx, net1SpokeNode1, net1SpokeNode2IP)
-	assert.NoError(err)
-
-	// validate the re-joined nodes can communicate
-	suite.logger.Infof("Pinging %s %s from node %s", net2Spoke2Name, net2SpokeNode2IP, net2Spoke1Name)
-	err = ping(ctx, net2SpokeNode1, net2SpokeNode2IP)
-	assert.NoError(err)
-
-	// verify there are (n) lines in the wg show output on a spoke node in each network
-	wgSpokeShow, err := suite.containerExec(ctx, net1SpokeNode1, []string{"wg", "show", "wg0", "dump"})
-	require.NoError(err)
-	lc, err := lineCount(wgSpokeShow)
-	require.NoError(err)
-	assert.Equal(5, lc, "the number of expected wg show devices was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
-
-	// verify there are (n) lines in the wg show output on a spoke node in each network
-	wgSpokeShow, err = suite.containerExec(ctx, net2SpokeNode1, []string{"wg", "show", "wg0", "dump"})
-	require.NoError(err)
-	lc, err = lineCount(wgSpokeShow)
-	require.NoError(err)
-	assert.Equal(5, lc, "the number of expected wg show devices was %d, found %d: wg show out: \n%s", 5, lc, wgSpokeShow)
+	suite.logger.Infof("Pinging %s from node3", node2IP)
+	err = ping(ctx, node3, node2IP)
+	assert.NoErrorf(err, gather)
 }
 
 func (suite *NexodusIntegrationSuite) Testnexctl() {

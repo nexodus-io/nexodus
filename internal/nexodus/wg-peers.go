@@ -76,7 +76,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		if !ax.relay && value.Relay {
 			for _, prefix := range value.ChildPrefix {
 				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
+				relayAllowedIP = append(relayAllowedIP, prefix)
 			}
 			ax.relayWgIP = relayIP
 			peerHub = wgPeerConfig{
@@ -110,7 +110,8 @@ func (ax *Nexodus) buildPeersConfig() {
 				value.OrganizationID)
 		}
 
-		// if both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
+		// If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
+		// The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
 		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
 			ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
@@ -132,7 +133,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				value.PublicKey,
 				value.TunnelIP,
 				value.OrganizationID)
-		} else if !ax.symmetricNat && !value.SymmetricNat && !value.Relay {
+		} else if !ax.symmetricNat && !value.SymmetricNat {
 			// the bulk of the peers will be added here except for local address peers. Endpoint sockets added here are likely
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
 			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a

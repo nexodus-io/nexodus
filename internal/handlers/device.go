@@ -229,8 +229,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		ipamPrefix := org.IpCidr
 		var relay bool
-		// determine if the node joining is a relay or in a hub-zone
-		if request.Relay && org.HubZone {
+		// determine if the node joining is a relay node
+		if request.Relay {
 			relay = true
 		}
 
