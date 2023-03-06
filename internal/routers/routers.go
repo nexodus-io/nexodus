@@ -3,20 +3,20 @@ package routers
 import (
 	"context"
 	"crypto/tls"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	_ "github.com/nexodus-io/nexodus/internal/docs"
 	"github.com/nexodus-io/nexodus/internal/handlers"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
+	"net/http"
+	"strings"
+	"time"
 )
 
 const name = "github.com/nexodus-io/nexodus/internal/routers"
@@ -29,9 +29,22 @@ func NewAPIRouter(
 	clientIdCli string,
 	oidcURL string,
 	oidcBackchannel string,
-	insecureTLS bool) (*gin.Engine, error) {
+	insecureTLS bool,
+	browserFlow *agent.OidcAgent,
+	deviceFlow *agent.OidcAgent,
+) (*gin.Engine, error) {
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+
+	loggerMiddleware := ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
+	r.Use(otelgin.Middleware(name))
+	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
+
+	r.Use(browserFlow.CorsMiddleware())
+	r.Use(browserFlow.CookieSessionMiddleware())
+	agent.AddCodeFlowRoutes(r.Group("/browser", loggerMiddleware), browserFlow)
+	agent.AddDeviceFlowRoutes(r.Group("/device", loggerMiddleware), deviceFlow)
 
 	p := ginprometheus.NewPrometheus("apiserver")
 	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
@@ -46,14 +59,6 @@ func NewAPIRouter(
 		return url
 	}
 	p.Use(r)
-
-	r.Use(otelgin.Middleware(name))
-	r.Use(ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true}))
-	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
-
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "ok"})
-	})
 
 	if insecureTLS {
 		transport := &http.Transport{
@@ -81,7 +86,7 @@ func NewAPIRouter(
 	}
 	verifier := provider.Verifier(config)
 
-	private := r.Group("/")
+	private := r.Group("/api", loggerMiddleware)
 	{
 		private.Use(ValidateJWT(logger, verifier, clientIdWeb, clientIdCli))
 		private.Use(api.CreateUserIfNotExists())
@@ -108,9 +113,9 @@ func NewAPIRouter(
 		private.GET("fflags/:name", api.GetFeatureFlag)
 	}
 
-	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
-	// Healthchecks
+	// Don't log the health/readiness checks.
 	r.GET("/ready", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "UP",

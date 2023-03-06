@@ -1,7 +1,12 @@
 package routers
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
+	"golang.org/x/oauth2"
 	"net/http"
 	"strings"
 
@@ -22,14 +27,37 @@ type Claims struct {
 	Subject    string `json:"sub"`
 }
 
+func jsonStringToToken(s string) (*oauth2.Token, error) {
+	var t oauth2.Token
+	if err := json.Unmarshal([]byte(s), &t); err != nil {
+		return nil, err
+	}
+	return &t, nil
+
+}
+
 // Naive JWS Key validation
 func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
 	return func(c *gin.Context) {
+
 		logger := util.WithTrace(c.Request.Context(), logger)
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+
+			// If the Authorization header is not set, try to get the access token from the session
+			session := ginsession.FromContext(c)
+			tokenRaw, ok := session.Get(agent.TokenKey)
+			if !ok {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			token, err := jsonStringToToken(tokenRaw.(string))
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+
+			authz = fmt.Sprintf("%s %s", token.Type(), token.AccessToken)
 		}
 
 		parts := strings.Split(authz, " ")

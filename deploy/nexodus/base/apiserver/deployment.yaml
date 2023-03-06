@@ -74,6 +74,12 @@ spec:
                   name: auth-secrets
                   key: web-client-id
                   optional: false
+            - name: NEXAPI_OIDC_CLIENT_SECRET_WEB
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: web-client-secret
+                  optional: false
             - name: NEXAPI_OIDC_CLIENT_ID_CLI
               valueFrom:
                 secretKeyRef:
@@ -95,6 +101,21 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: NEXAPI_FFLAG_MULTI_ORGANIZATION
+            - name: NEXAPI_REDIRECT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_REDIRECT_URL
+            - name: NEXAPI_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_ORIGINS
+            - name: NEXAPI_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_DOMAIN
           resources:
             requests:
               cpu: 100m

@@ -13,6 +13,7 @@ func init() {
 
 func NewCodeFlowRouter(auth *OidcAgent) *gin.Engine {
 	r := gin.Default()
+	r.Use(auth.CorsMiddleware())
 	r.Use(auth.CookieSessionMiddleware())
 	AddCodeFlowRoutes(r, auth)
 	r.Any("/api/*proxyPath", auth.CodeFlowProxy)
@@ -21,7 +22,6 @@ func NewCodeFlowRouter(auth *OidcAgent) *gin.Engine {
 
 func AddCodeFlowRoutes(r gin.IRouter, auth *OidcAgent) {
 	r.Use(auth.OriginVerifier())
-	r.Use(auth.CorsMiddleware())
 	r.POST("/login/start", auth.LoginStart)
 	r.POST("/login/end", auth.LoginEnd)
 	r.GET("/user_info", auth.UserInfo)

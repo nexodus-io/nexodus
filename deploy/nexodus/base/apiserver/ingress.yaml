@@ -17,6 +17,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: apiproxy
+                name: apiserver
                 port:
                   number: 8080
