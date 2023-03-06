@@ -21,10 +21,10 @@ func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error
 		ax.CtlServerLinuxStart(ctx, wg)
 
 	case Darwin.String():
-		ax.logger.Info("Ctl interface not yet supported on OSX")
+		ax.logger.Debugf("Ctl interface not yet supported on OSX")
 
 	case Windows.String():
-		ax.logger.Info("Ctl interface not yet supported on Windows")
+		ax.logger.Debugf("Ctl interface not yet supported on Windows")
 	}
 
 	return nil

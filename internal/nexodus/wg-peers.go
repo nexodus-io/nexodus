@@ -102,7 +102,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				persistentHubKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
+			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
 				value.AllowedIPs,
 				value.LocalIP,
 				value.PublicKey,
@@ -114,7 +114,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		// The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
 		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
-			ax.logger.Infof("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
+			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 			// the symmetric NAT peer
 			for _, prefix := range value.ChildPrefix {
 				ax.addChildPrefixRoute(prefix)
@@ -127,7 +127,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
+			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
 				value.AllowedIPs,
 				directLocalPeerEndpointSocket,
 				value.PublicKey,
@@ -149,7 +149,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]\n",
+			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
 				value.AllowedIPs,
 				value.LocalIP,
 				value.PublicKey,
@@ -170,7 +170,7 @@ func (ax *Nexodus) buildLocalConfig() {
 		if value.PublicKey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.TunnelIP {
-				ax.logger.Infof("New local interface address assigned %s", value.TunnelIP)
+				ax.logger.Infof("New local Wireguard interface address assigned: %s", value.TunnelIP)
 				if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
 					if err := delLink(ax.tunnelIface); err != nil {
 						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
@@ -182,10 +182,7 @@ func (ax *Nexodus) buildLocalConfig() {
 				ax.wireguardPvtKey,
 				ax.listenPort,
 			}
-			ax.logger.Infof("Local Node Configuration - Wireguard IP [ %s ] Wireguard Port [ %v ] Hub Router [ %t ]\n",
-				ax.wgLocalAddress,
-				ax.listenPort,
-				ax.relay)
+			ax.logger.Debugf("Local Node Configuration - Wireguard IP [ %s ]", ax.wgLocalAddress)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
 		}
