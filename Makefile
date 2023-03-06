@@ -309,7 +309,7 @@ redeploy: images load-images ## Redeploy nexodus after images changes
 init-db:
 # wait for the DB to be up, then restart the services that use it.
 ifeq ($(OVERLAY),dev)
-	$(CMD_PREFIX) kubectl wait -n nexodus postgresclusters/database  --timeout=15m --for=jsonpath='{.status.instances[0].readyReplicas}'=1
+# todo: find a reliable way to wait for the crunchy based deployment of postgres to be online
 else ifeq ($(OVERLAY),arm64)
 	$(CMD_PREFIX) kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1
 else ifeq ($(OVERLAY),cockroach)
