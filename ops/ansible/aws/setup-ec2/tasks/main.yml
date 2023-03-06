@@ -94,7 +94,7 @@
         cidr_ip: 0.0.0.0/0
       - proto: tcp
         ports:
-        - 22
+          - 22
         cidr_ip: 0.0.0.0/0
 
 - name: Launching EC2 Instances in VPC Green
@@ -175,6 +175,37 @@
     regexp: "nexodusNodes"
     line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-node-{{ item+1 }}"
   loop: "{{ range(0, node_count_red | int) }}"
+
+- name: Launching Relay Only EC2 Instances in VPC Red
+  amazon.aws.ec2_instance:
+    name: "nexodus-demo-red-relay-node-{{ item+1 }}"
+    aws_region: "{{ aws_region }}"
+    key_name: "{{ aws_key_name }}"
+    instance_type: "{{ aws_instance_type }}"
+    image_id: "{{ aws_image_id }}"
+    security_group: "{{ secgroup_id_red }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 25
+          delete_on_termination: true
+          volume_type: standard
+    network:
+      assign_public_ip: true
+    subnet_id: "{{ aws_subnet_red }}"
+    tags:
+      NodeType: "{{ aws_nodetype_tag }}"
+    state: running
+    wait: true
+  register: nodeIP
+  loop: "{{ range(0, relay_node_count_red | int) }}"
+
+- name: Updating the node's public ip in inventory
+  lineinfile:
+    path: "{{ inventory_location }}"
+    regexp: "nexodusRelayNodes"
+    line: "[nexodusRelayNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-relay-node-{{ item+1 }}"
+  loop: "{{ range(0, relay_node_count_red | int) }}"
 
 - name: Refresh inventory to ensure new instances exist in inventory
   meta: refresh_inventory

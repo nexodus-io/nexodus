@@ -22,6 +22,13 @@
   roles:
     - role: deploy-mesh
 
+# Deploy and start the relay only agents
+- hosts: nexodusRelayNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: deploy-mesh
+
 # Validate nodes by running a connectivity test from the spoke node for QA e2e deployment
 - hosts:  "{{ groups['nexodusNodes'][0] }}"
   vars_files:

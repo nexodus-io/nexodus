@@ -28,6 +28,9 @@ node_count_green: 2                         # the number of cluster nodes you wa
 vpc_id_green: vpc-0566e09aa71f553c1         # VPC id from your aws account
 aws_subnet_green: subnet-0f8a1403fde2af94e  # VPC subnet id from your aws account
 
+### Relay Client Node Details ###
+relay_node_count_red: 1                   # Number of relay client nodes
+
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
 nexodus_binary: https://nexodus-io.s3.amazonaws.com/nexodus-amd64-linux
