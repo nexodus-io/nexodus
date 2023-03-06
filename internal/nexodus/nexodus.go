@@ -271,6 +271,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 		SymmetricNat:             ax.symmetricNat,
 		Hostname:                 ax.hostname,
+		Relay:                    ax.relay,
 	})
 	if err != nil {
 		var conflict client.ErrConflict
@@ -520,6 +521,12 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 			return fmt.Errorf("the IP address passed in --request-ip %s was not valid: %w", ax.requestedIP, err)
 		}
 	}
+
+	if ax.requestedIP != "" && ax.relay {
+		ax.logger.Warnf("request-ip is currently unsupported for the hub-router, a dynamic address will be used instead")
+		ax.requestedIP = ""
+	}
+
 	for _, prefix := range ax.childPrefix {
 		if err := ValidateCIDR(prefix); err != nil {
 			return err
