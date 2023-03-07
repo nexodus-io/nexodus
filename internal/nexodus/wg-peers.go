@@ -133,7 +133,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				value.PublicKey,
 				value.TunnelIP,
 				value.OrganizationID)
-		} else if !ax.symmetricNat && !value.SymmetricNat {
+		} else if !ax.symmetricNat && !value.SymmetricNat && !value.Relay {
 			// the bulk of the peers will be added here except for local address peers. Endpoint sockets added here are likely
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
 			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
