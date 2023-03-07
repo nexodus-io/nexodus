@@ -116,6 +116,4 @@ images:
   - name: quay.io/nexodus/frontend
     newTag: 2a53f5ce933ac69832aa24a05092e6a579b7973b
   - name: quay.io/nexodus/go-ipam
-    newTag: 775b85c170ecce5c92dcb1b96dcd0d4a13909619
-  - name: quay.io/nexodus/ipam
     newTag: 2a53f5ce933ac69832aa24a05092e6a579b7973b

@@ -11,7 +11,7 @@ env:
   REPOSITORY: nexodus
   APISERVER_IMAGE_NAME: apiserver
   FRONTEND_IMAGE_NAME: frontend
-  IPAM_IMAGE_NAME: ipam
+  IPAM_IMAGE_NAME: go-ipam
 
 jobs:
   update-prod:
