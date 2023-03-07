@@ -16,7 +16,6 @@ env:
 jobs:
   update-prod:
     name: Update Production Deployment
-    needs: ["build-images"]
     runs-on: ubuntu-20.04
 
     steps:
