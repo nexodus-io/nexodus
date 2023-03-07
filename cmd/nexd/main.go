@@ -126,7 +126,8 @@ func main() {
 
 			controller := cCtx.Args().First()
 			if controller == "" {
-				logger.Fatal("<controller-url> required")
+				logger.Info("<controller-url> required")
+				return nil
 			}
 
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
