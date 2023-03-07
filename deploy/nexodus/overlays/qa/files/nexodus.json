@@ -1563,25 +1563,7 @@
     "enabledEventTypes": [],
     "adminEventsEnabled": false,
     "adminEventsDetailsEnabled": false,
-    "identityProviders": [
-        {
-            "alias": "github",
-            "internalId": "b4d9c9be-2549-49cc-ab7f-39b512d615df",
-            "providerId": "github",
-            "enabled": true,
-            "updateProfileFirstLoginMode": "on",
-            "trustEmail": false,
-            "storeToken": false,
-            "addReadTokenRoleOnCreate": false,
-            "authenticateByDefault": false,
-            "linkOnly": false,
-            "firstBrokerLoginFlowAlias": "first broker login",
-            "config": {
-                "clientSecret": "${GITHUB_CLIENT_SECRET}",
-                "clientId": "${GITHUB_CLIENT_ID}"
-            }
-        }
-    ],
+    "identityProviders": [],
     "identityProviderMappers": [],
     "components": {
         "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
