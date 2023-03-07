@@ -6,15 +6,15 @@ resources:
   - serviceaccount.yaml
 namespace: nexodus
 configMapGenerator:
-  - name: auth-config
-    behavior: replace
+  - behavior: replace
     literals:
       - hostname=auth.try.nexodus.io
       - frontend-url=https://try.nexodus.io
-  - name: realm
-    behavior: replace
+    name: auth-config
+  - behavior: replace
     files:
       - files/nexodus.json
+    name: realm
 patchesJson6902:
   - patch: |-
       - op: replace
@@ -110,11 +110,12 @@ patchesJson6902:
     target:
       kind: Ingress
       name: frontend
-
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 775b85c170ecce5c92dcb1b96dcd0d4a13909619
+    newTag: 255af3d7009c7e64c274a27dfe0eccb963d0b770
   - name: quay.io/nexodus/frontend
-    newTag: 775b85c170ecce5c92dcb1b96dcd0d4a13909619
+    newTag: 255af3d7009c7e64c274a27dfe0eccb963d0b770
   - name: quay.io/nexodus/go-ipam
     newTag: 775b85c170ecce5c92dcb1b96dcd0d4a13909619
+  - name: quay.io/nexodus/ipam
+    newTag: 255af3d7009c7e64c274a27dfe0eccb963d0b770
