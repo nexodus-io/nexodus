@@ -13,9 +13,9 @@ type Device struct {
 	OrganizationID           uuid.UUID      `json:"organization_id"`
 	PublicKey                string         `json:"public_key" gorm:"uniqueIndex"`
 	LocalIP                  string         `json:"local_ip"`
-	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]"`
+	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
 	TunnelIP                 string         `json:"tunnel_ip"`
-	ChildPrefix              pq.StringArray `json:"child_prefix" gorm:"type:text[]"`
+	ChildPrefix              pq.StringArray `json:"child_prefix" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay                    bool           `json:"relay"`
 	OrganizationPrefix       string         `json:"organization_prefix"`
 	ReflexiveIPv4            string         `json:"reflexive_ip4"`

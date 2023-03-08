@@ -85,10 +85,10 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure      404  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
 // @Router       /users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetUser",
@@ -121,7 +121,7 @@ func (api *API) GetUser(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.User
-// @Failure		 401  {object}  models.ApiError
+// @Failure		 401  {object}  models.BaseError
 // @Router       /users [get]
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
@@ -143,9 +143,9 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
-// @Failure		 400  {object}  models.ApiError
-// @Failure      400  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
+// @Failure		 400  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
 // @Router       /users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
