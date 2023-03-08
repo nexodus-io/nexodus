@@ -27,10 +27,10 @@ const (
 // @Produce      json
 // @Param        Organization  body     models.AddOrganization  true  "Add Organization"
 // @Success      201  {object}  models.Organization
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure		 405  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 405  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
 // @Router       /organizations [post]
 func (api *API) CreateOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateOrganization")
@@ -111,8 +111,8 @@ func (api *API) CreateOrganization(c *gin.Context) {
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.Organization
-// @Failure		 401  {object}  models.ApiError
-// @Failure		 500  {object}  models.ApiError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 500  {object}  models.BaseError
 // @Router       /organizations [get]
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
@@ -134,9 +134,9 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // @Produce      json
 // @Param		 id   path      string true "Organization ID"
 // @Success      200  {object}  models.Organization
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure      404  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
 // @Router       /organizations/{id} [get]
 func (api *API) GetOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
@@ -166,9 +166,9 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // @Produce      json
 // @Param		 id   path       string true "Organization ID"
 // @Success      200  {object}  []models.Device
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure		 500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 500  {object}  models.BaseError
 // @Router       /organizations/{id}/devices [get]
 func (api *API) ListDevicesInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInOrganization")
@@ -199,10 +199,10 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 // @Param		 organization_id path   string true "Organization ID"
 // @Param		 device_id path   string true "Device ID"
 // @Success      200  {object}  []models.Device
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
-// @Failure      404  {object}  models.ApiError
-// @Failure		 500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure		 500  {object}  models.BaseError
 // @Router       /organizations/{organization_id}/devices/{device_id} [get]
 func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceInOrganization",
@@ -245,9 +245,9 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 // @Produce      json
 // @Param        id   path      string  true "Organization ID"
 // @Success      204  {object}  models.Organization
-// @Failure      400  {object}  models.ApiError
-// @Failure      405  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure      405  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
 // @Router       /organizations/{id} [delete]
 func (api *API) DeleteOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteOrganization",

@@ -46,6 +46,8 @@ func init() {
 // @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @securitydefinitions.oauth2.implicit OAuth2Implicit
+// @authorizationurl https://auth.try.nexodus.local/
+//
 // @scope.admin Grants read and write access to administrative information
 // @scope.user Grants read and write access to resources owned by this user
 

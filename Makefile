@@ -29,7 +29,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
+all: gen-docs go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
@@ -108,7 +108,7 @@ ui-lint: ## Lint the UI source
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
-	swag init -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) go run github.com/swaggo/swag/cmd/swag@v1.8.10 init -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests

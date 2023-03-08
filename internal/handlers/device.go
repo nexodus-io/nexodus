@@ -35,7 +35,7 @@ func (e errDuplicateDevice) Error() string {
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.Device
-// @Failure		 401  {object}  models.ApiError
+// @Failure		 401  {object}  models.BaseError
 // @Router       /devices [get]
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
@@ -57,9 +57,9 @@ func (api *API) ListDevices(c *gin.Context) {
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
 // @Success      200  {object}  models.Device
-// @Failure		 401  {object}  models.ApiError
-// @Failure      400  {object}  models.ApiError
-// @Failure      404  {object}  models.ApiError
+// @Failure		 401  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
 // @Router       /devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDevice", trace.WithAttributes(
@@ -89,9 +89,9 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Param        id   path      string  true "Device ID"
 // @Param		 update body models.UpdateDevice true "Device Update"
 // @Success      200  {object}  models.Device
-// @Failure		 401  {object}  models.ApiError
-// @Failure      400  {object}  models.ApiError
-// @Failure      404  {object}  models.ApiError
+// @Failure		 401  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
 // @Router       /devices/{id} [get]
 func (api *API) UpdateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
@@ -187,10 +187,10 @@ func (api *API) UpdateDevice(c *gin.Context) {
 // @Produce      json
 // @Param        device  body   models.AddDevice  true "Add Device"
 // @Success      201  {object}  models.Device
-// @Failure      400  {object}  models.ApiError
-// @Failure		 401  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
 // @Failure      409  {object}  models.Device
-// @Failure      500  {object}  models.ApiError
+// @Failure      500  {object}  models.BaseError
 // @Router       /devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateDevice")
@@ -314,12 +314,12 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
 // @Success      204  {object}  models.Device
-// @Failure      400  {object}  models.ApiError
-// @Failure		 400  {object}  models.ApiError
-// @Failure		 400  {object}  models.ApiError
-// @Failure      400  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
-// @Failure      500  {object}  models.ApiError
+// @Failure      400  {object}  models.BaseError
+// @Failure		 400  {object}  models.BaseError
+// @Failure		 400  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
 // @Router       /devices/{id} [delete]
 func (api *API) DeleteDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteDevice")
