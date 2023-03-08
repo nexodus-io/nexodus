@@ -6,7 +6,7 @@
 
 Propose a new name for this project: Nexodus.
 
-While we're at it, standardize on naming across components.
+While we're at it, standardize naming across components.
 
 ## Proposal
 
@@ -18,10 +18,10 @@ well as more memorable.
 * Proposed GitHub URL: <https://github.com/nexodus-io/nexodus>
 * Proposed Project Domain: `nexodus.io`
 
- Currently we are are using multiple names for different components across our documentation and code, such as:
+ Currently we are using multiple names for different components across our documentation and code, such as:
 
-* Apex Stack is referred as Apex Service, Apex ApiServer, Apex Controller, Apex Control Plane, Apex SaaS
-* Apex Agent is referred as hub-router, relay, agent, discovery node
+* Apex Stack is referred to as Apex Service, Apex ApiServer, Apex Controller, Apex Control Plane, Apex SaaS
+* Apex Agent is referred to as hub-router, relay, agent, discovery node
 
 The following sections aim to clarify preferred naming.
 
@@ -42,7 +42,7 @@ nex.x86_64 : A lexer generator for Go that is similar to Lex/Flex
 
 ### Component Names
 
-* Nexodus Service: This is an umbrella term to refer to the entire control plane stack that contains following individual components (Named as is).
+* Nexodus Service: This is an umbrella term to refer to the entire control plane stack that contains the following individual components (Named as is).
   * Nexodus ApiServer
   * Nexodus Frontend
   * Nexodus Database
