@@ -82,7 +82,7 @@ jobs:
           fi
 
   go-unit:
-    needs: go-lint
+    needs: [ go-lint, gen-docs ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -169,7 +169,7 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: go-lint
+    needs: [ go-lint, gen-docs ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -234,7 +234,7 @@ jobs:
           path: /tmp/test-ubuntu.tar
 
   build-binaries:
-    needs: go-lint
+    needs: [ go-lint, gen-docs ]
     strategy:
       fail-fast: false
       matrix:
@@ -304,7 +304,7 @@ jobs:
             ${{ steps.build-nexctl.outputs.artifact-name }}
 
   e2e:
-    needs: [go-lint, go-unit, k8s-lint, build-images]
+    needs: [go-lint, gen-docs, go-unit, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -442,7 +442,7 @@ jobs:
           aws s3 sync . s3://nexodus-io/
 
   build-rpm:
-    needs: ["go-lint"]
+    needs: [ go-lint, gen-docs ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
