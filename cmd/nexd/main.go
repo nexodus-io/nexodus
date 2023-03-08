@@ -30,7 +30,9 @@ func main() {
 		logger, err = zap.NewDevelopment()
 		logger.Info("Debug logging enabled")
 	} else {
-		logger, err = zap.NewProduction()
+		logCfg := zap.NewProductionConfig()
+		logCfg.DisableStacktrace = true
+		logger, err = logCfg.Build()
 	}
 	if err != nil {
 		logger.Fatal(err.Error())
