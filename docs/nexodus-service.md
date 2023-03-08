@@ -52,7 +52,7 @@ make teardown
 
 ## HTTPS
 
-The Makefile will install the https certs. You can view the cert in the Nexodus root where you ran the Makefiile.
+The Makefile will install the https certs. You can view the cert in the Nexodus root where you ran the Makefile.
 
 ```console
 cat .certs/rootCA.pem

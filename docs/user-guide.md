@@ -5,7 +5,7 @@
     - [Install pre-built binary](#install-pre-built-binary)
     - [Build from the source code](#build-from-the-source-code)
   - [Deploying the Nexodus Agent](#deploying-the-nexodus-agent)
-    - [Deploying on Node](#deploying-on-node)
+    - [Deploying on a Node](#deploying-on-a-node)
       - [Installing the Agent](#installing-the-agent)
         - [Install Script](#install-script)
         - [RPM from a Copr Repository](#rpm-from-a-copr-repository)
@@ -16,7 +16,7 @@
       - [Verifying Agent Setup](#verifying-agent-setup)
       - [Verifying Organization Connectivity](#verifying-organization-connectivity)
       - [Cleanup Agent From Node](#cleanup-agent-from-node)
-    - [Deploying on Kubernetes managed Node](#deploying-on-kubernetes-managed-node)
+    - [Deploying on Kubernetes-managed Nodes](#deploying-on-kubernetes-managed-nodes)
       - [Setup the configuration](#setup-the-configuration)
       - [Deploying the Agent in the Kind Dev Environment](#deploying-the-agent-in-the-kind-dev-environment)
       - [Deploying the Nexodus Agent Manifest](#deploying-the-nexodus-agent-manifest)
@@ -35,13 +35,13 @@ This document covers the usage of Nexodus as a user of the service.
 
 ## Using the Nexctl Utility
 
-`nexctl` is a CLI utility that is used to interact with the Nexodus Api Server. It provides command line options to get existing configuration of the resources like Zone, Peer, User and Devices from the Api server. It also allows limited options to configure certain aspects of these resources. Please use `nexctl -h` to learn more about the available options.
+`nexctl` is a CLI utility that is used to interact with the Nexodus Service. It provides command line options to get the existing configuration of the resources like Zone, Peer, User and Devices from the Nexodus Service. It also allows limited options to configure certain aspects of these resources. Please use `nexctl -h` to learn more about the available options.
 
-You can install `nexctl` using following two ways
+You can install `nexctl` using the following two ways
 
 ### Install pre-built binary
 
-You can directly fetch the binary from the Nexodus's AWS S3 bucket.
+You can directly fetch the binary from the Nexodus AWS S3 bucket.
 
 ```sh
 sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexctl-linux-amd64 --output /usr/local/sbin/nexctl
@@ -58,7 +58,7 @@ make dist/nexctl
 
 ## Deploying the Nexodus Agent
 
-### Deploying on Node
+### Deploying on a Node
 
 The following sections contain general instructions to deploy the Nexodus agent on any node. The minimum requirement is that the node runs Linux, Darwin, or Windows-based Operating systems.
 
@@ -66,7 +66,7 @@ The following sections contain general instructions to deploy the Nexodus agent 
 
 ##### Install Script
 
-The Nexodus agent (`nexd`) is run on any node that will join an Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
+The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
 
 The `hack/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
 
@@ -141,7 +141,7 @@ sudo systemctl enable nexodus
 
 #### Interactive Enrollment
 
-If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into an Nexodus Zone. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into a Nexodus Zone. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -183,7 +183,7 @@ $ ip address show wg0
 
 #### Verifying Organization Connectivity
 
-Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other node's endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Nexodus organization is 100.100.0.2. On Linux, we can check the routing table and see:
+Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Nexodus organization is 100.100.0.2. On Linux, we can check the routing table and see:
 
 ```sh
 $ ip route
@@ -203,7 +203,7 @@ You can explore the web UI by visiting the URL of the host you added in your `/e
 
 #### Cleanup Agent From Node
 
-If you want to remove the node from the network, and want to cleanup all the configuration done on the node. Fire away following commands:
+If you want to remove the node from the network, and want to clean up all the configuration done on the node. Fire away following commands:
 
 Ctrl + c (cmd+c) the agent process. and remove the wireguard interface and relevant configuration files.
 *Linux:*
@@ -216,9 +216,9 @@ sudo ip link del wg0
 
 Since the wireguard agents are userspace in both Windows and Darwin, the tunnel interface is removed when the agent process exits.
 
-### Deploying on Kubernetes managed Node
+### Deploying on Kubernetes-managed Nodes
 
-Instructions mentioned in [Deploying on Node](#deploying-on-node) can be used here to deploy the Nexodus agent on Kubernetes-managed nodes. However, deploying the agent across all the nodes in a sizable Kubernetes cluster can be a challenging task. The following section provides instructions to deploy Kubernetes style manifest to automate the deployment process.
+Instructions mentioned in [Deploying on a Node](#deploying-on-a-node) can be used here to deploy the Nexodus agent on Kubernetes-managed nodes. However, deploying the agent across all the nodes in a sizable Kubernetes cluster can be a challenging task. The following section provides instructions to deploy Kubernetes style manifest to automate the deployment process.
 
 #### Setup the configuration
 
@@ -233,11 +233,11 @@ kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt
 Update the `<nexodus_CONTROLLER_IP>` with the IP address where the Nexodus controller is reachable. If you are running the Nexodus stack in Kind cluster on your local machine, set it to the public IP of the machine.
 
 **Note**
-Current username and password are default configuration for development environment, which is very likely to change in near future.
+Current username and password are default configuration for the development environment, which is very likely to change in near future.
 
 You can refer to [kustomization.yaml.sample](../deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
 
-If you have setup your Nexodus stack with non-default configuration, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory and update the sample file according to create a new overlay for your setup and deploy it.
+If you have set up your Nexodus stack with a non-default configuration, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory and update the sample file accordingly to create a new overlay for your setup and deploy it.
 
 #### Deploying the Agent in the Kind Dev Environment
 
@@ -259,10 +259,10 @@ Once the configuration is set up, you can deploy Nexodus's manifest files.
 kubectl apply -k ./deploy/nexodus-client/overlays/dev
 ```
 
-It will deploy a DaemonSet in the newly created `Nexodus` namespace. DaemonSet deploys a Pod that runs a privileged container that does all the required configuration on the local node. It also starts the agent and onboard the device automatically using the non-interactive access token based onboarding.
+It will deploy a DaemonSet in the newly created `Nexodus` namespace. DaemonSet deploys a Pod that runs a privileged container that does all the required configuration on the local node. It also starts the agent and onboard the device automatically using the non-interactive access token-based onboarding.
 
 **Note**
-If your Kubernetes cluster enforces security context to deny privileged container deployment, you need to make sure that the security policy is added to the service account `nexodus` (created for agent agent deployment) to allow the deployment.
+If your Kubernetes cluster enforces security context to deny privileged container deployment, you need to make sure that the security policy is added to the service account `nexodus` (created for the agent deployment) to allow the deployment.
 
 #### Controlling the Agent Deployment
 
@@ -282,7 +282,7 @@ kubectl label nodes <NODE_NAME> app.kubernetes.io/nexodus-
 
 If you want to change the deployment strategy for Nexodus pod, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](../deploy/nexodus-client/overlays/sameple/node_selector.yaml.sample) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
 
-Currently sample file provides two strategy to control the deployment, but feel free to change it based on your requirements.
+Currently, the sample file provides two strategies to control the deployment, but feel free to change it based on your requirements.
 
 1 ) Deploy Nexodus pod on any node that is tagged with `app.kubernetes.io/nexodus=`
 
@@ -330,13 +330,13 @@ kubectl delete -k ./deploy/nexodus-client/overlays/dev
 
 ## Deploying the Nexodus Relay
 
-Nexodus Controller makes best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish the direct peering. To establish connectivity in those scenario, Nexodus Controller uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network. This **must** be the first device to join the Nexodus network to enable the traffic relay.
+Nexodus Controller makes the best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish direct peering. To establish connectivity in those scenarios, Nexodus Controller uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network. This **must** be the first device to join the Nexodus network to enable the traffic relay.
 
 ### Setup Nexodus Relay Node
 
-Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to setup the node and install the nexodus binary.
+Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to set up the node and install the nexodus binary.
 
-You can list the available organizations using following command
+You can list the available organizations using the following command
 
 ```sh
 ./nexctl  --username=kitteh1 --password=floofykittens organization list
@@ -361,11 +361,11 @@ Please open the following URL in your browser to sign in:
 https://auth.try.nexodus.local/device?user_code=GTLN-RGKP
 ```
 
-Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting the access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
+Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
 
 #### Silent OnBoarding
 
-To OnBoard devices without any browser involvement you need to provide username and password in the CLI command
+To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
 nexodus --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
@@ -383,9 +383,9 @@ nexctl  --username=kitteh1 --password=floofykittens organization delete --organi
 
 ### Subnet Routers
 
-Typically, the Nexodus agent runs on every host that you intend to have connectivity to an Nexodus Zone. However, there may be some cases where you can't do that or don't want to. It is also possible to make a host act as a Subnet Router to provide connectivity between an Nexodus Zone and a local Subnet the host has access to.
+Typically, the Nexodus agent runs on every host that you intend to have connectivity to a Nexodus Organization. However, there may be some cases where you can't do that or don't want to. It is also possible to make a host act as a Subnet Router to provide connectivity between a Nexodus Organization and a host's local Subnet.
 
-In the following diagram, `Host X` acts as a Subnet Router, allowing all hosts within Nexodus Zone A to access `192.168.100.0/24`.
+In the following diagram, `Host X` acts as a Subnet Router, allowing all hosts within Nexodus Organization A to access `192.168.100.0/24`.
 
 To configure this scenario, the `nexd` agent on `Host X` must be run with the `--child-prefix` parameter.
 
@@ -393,7 +393,7 @@ To configure this scenario, the `nexd` agent on `Host X` must be run with the `-
 sudo nexd --child-prefix 192.168.100.0/24 [...]
 ```
 
-The subnet exposed to the Nexodus Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this containers use case can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
+The subnet exposed to the Nexodus Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
 
 > **Note**
 > Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Nexodus Zone A via `Host X` must be handled via local configuration that is appropriate for your network.

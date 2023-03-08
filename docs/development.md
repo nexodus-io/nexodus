@@ -24,7 +24,7 @@ make e2e
 
 Since the test containers require CAP_NET_ADMIN only rootful podman can be used.
 To run the tests requires a little more gymnastics.
-This assumes you have `podman-docker` installed since testcontainers relies on mounting `/var/run/docker.sock` inside the reaper container.
+This assumes you have `podman-docker` installed since testcontainers rely on mounting `/var/run/docker.sock` inside the reaper container.
 
 ```console
 # Build test images in rootful podman
