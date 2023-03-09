@@ -2,3 +2,8 @@ config:
   line-length: false
   no-emphasis-as-header: false
   first-line-heading: false
+globs:
+ - "**/*.md"
+ignores:
+ - "pkg"
+ - "**/node_modules/*"

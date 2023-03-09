@@ -1,0 +1,55 @@
+services:
+  auth:
+    image: ghcr.io/dexidp/dex:v2.35.2
+    volumes:
+      - ./examples/auth/config.yaml:/etc/dex/config.yaml:ro,z
+    command:
+      - dex
+      - serve
+      - /etc/dex/config.yaml
+    networks:
+      default:
+        aliases:
+          - auth.widgetcorp.local
+
+  apiserver:
+    depends_on: [ auth ]
+    build:
+      context: .
+      dockerfile: Containerfile.test
+    networks:
+      - default
+
+  frontend:
+    build:
+      context: ./examples/frontend
+      dockerfile: Containerfile
+    networks:
+      - default
+
+  bff:
+    depends_on: [ auth ]
+    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    build:
+      context: .
+      dockerfile: Containerfile
+    environment:
+      OIDC_PROVIDER: http://auth.widgetcorp.local:8080
+      OIDC_CLIENT_ID: widgets-app
+      OIDC_CLIENT_SECRET: ZXhhbXBsZS1hcHAtc2VjcmV0
+      REDIRECT_URL: http://widgets.local:8080/#/login
+      ORIGINS: http://widgets.local:8080
+      DOMAIN: api.widgets.local
+      BACKEND: http://apiserver:8080
+    networks:
+      - default
+
+  proxy:
+    image: docker.io/library/caddy:2.6-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+
+networks:
+  default:

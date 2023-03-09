@@ -11,12 +11,12 @@ The web frontend authentication follows the Backend For Frontend (BFF) architecu
 - go-oidc-agent
 - apiserver
 
-The [go-oidc-agent](https://github.com/redhat-et/go-oidc-agent) service is a dedicated backend for the web frontend that provides authentication services, and proxies API requests to the apiserver.
+The [go-oidc-agent](https://github.com/nexodus-io/nexodus/pkg/oidcagent) service is a dedicated backend for the web frontend that provides authentication services, and proxies API requests to the apiserver.
 This not only helps simplify deployment, but also reduces risk of compromise of access tokens/refresh token compromise by keeping them out of the browser.
 
 For more information on this flow see:
 
-- <https://github.com/redhat-et/go-oidc-agent>
+- <https://github.com/nexodus-io/nexodus/pkg/oidcagent>
 - <https://auth0.com/blog/backend-for-frontend-pattern-with-auth0-and-dotnet/>
 - <https://curity.io/resources/learn/the-token-handler-pattern/>
 

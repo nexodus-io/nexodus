@@ -1,0 +1,15 @@
+{
+    http_port 8080
+}
+
+widgets.local:8080 {
+    reverse_proxy frontend:3000
+}
+
+api.widgets.local:8080 {
+    reverse_proxy bff:8080
+}
+
+auth.widgetcorp.local:8080 {
+    reverse_proxy auth:8080
+}
