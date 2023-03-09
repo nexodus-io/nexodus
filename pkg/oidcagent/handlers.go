@@ -1,4 +1,4 @@
-package agent
+package oidcagent
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
 	"golang.org/x/oauth2"
 )
 

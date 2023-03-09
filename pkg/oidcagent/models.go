@@ -1,4 +1,4 @@
-package agent
+package oidcagent
 
 type LoginStartReponse struct {
 	AuthorizationRequestURL string `json:"authorization_request_url"`

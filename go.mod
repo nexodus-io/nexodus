@@ -7,14 +7,16 @@ require (
 	github.com/cockroachdb/cockroach-go/v2 v2.3.0
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/docker/docker v23.0.1+incompatible
+	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.2
+	github.com/go-session/session/v3 v3.1.7
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/securecookie v1.1.1
 	github.com/libp2p/go-reuseport v0.2.0
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/pion/stun v0.4.0
-	github.com/redhat-et/go-oidc-agent v0.0.2
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/files v1.0.0
 	github.com/swaggo/gin-swagger v1.5.3
@@ -52,13 +54,10 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-session/session/v3 v3.1.7 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/jackc/pgx/v5 v5.3.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect

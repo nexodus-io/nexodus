@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	agent "github.com/redhat-et/go-oidc-agent"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"golang.org/x/oauth2"
 )
 

@@ -1,4 +1,4 @@
-package agent
+package oidcagent
 
 import (
 	"bytes"
@@ -15,8 +15,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
-	"github.com/redhat-et/go-oidc-agent/pkg/cookie"
-	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
+	"github.com/nexodus-io/nexodus/pkg/cookie"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

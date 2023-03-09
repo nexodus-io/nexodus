@@ -8,7 +8,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
-	agent "github.com/redhat-et/go-oidc-agent"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )

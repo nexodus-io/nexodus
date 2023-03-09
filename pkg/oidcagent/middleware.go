@@ -1,11 +1,12 @@
-package agent
+package oidcagent
 
 import (
+	"net/http"
+
 	"github.com/gin-contrib/cors"
 	"github.com/go-session/session/v3"
-	"github.com/redhat-et/go-oidc-agent/pkg/cookie"
-	"github.com/redhat-et/go-oidc-agent/pkg/ginsession"
-	"net/http"
+	"github.com/nexodus-io/nexodus/pkg/cookie"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
 
 	"github.com/gin-gonic/gin"
 )

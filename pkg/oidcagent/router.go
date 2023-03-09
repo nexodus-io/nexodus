@@ -1,7 +1,8 @@
-package agent
+package oidcagent
 
 import (
 	"encoding/gob"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 )
