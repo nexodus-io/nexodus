@@ -17,7 +17,7 @@ const (
 	oidcProviderArg     = "oidc-provider"
 	oidcBackChannelArg  = "oidc-backchannel"
 	oidcClientIDArg     = "oidc-client-id"
-	oidcClientSecretArg = "oidc-client-secret"
+	oidcClientSecretArg = "oidc-client-secret" // #nosec: G101
 	insecureTLSArg      = "insecure-tls"
 	redirectURLArg      = "redirect-url"
 	scopesArg           = "scopes"
@@ -174,5 +174,6 @@ func run(cCtx *cli.Context) error {
 		r = agent.NewDeviceFlowRouter(auth)
 	}
 
+	// #nosec: G114
 	return http.ListenAndServe("0.0.0.0:8080", r)
 }

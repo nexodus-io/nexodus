@@ -59,6 +59,7 @@ func NewOidcAgent(ctx context.Context,
 	cookieKey string,
 ) (*OidcAgent, error) {
 	if insecureTLS {
+		// #nosec: G402
 		transport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
