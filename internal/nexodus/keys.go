@@ -97,8 +97,8 @@ func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 	// TODO remove this debug statement at some point
 	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
 	// write the new keys to disk
-	writeToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
-	writeToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+	WriteToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
+	WriteToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
 
 	return nil
 }

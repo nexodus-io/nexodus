@@ -42,6 +42,7 @@ func init() {
 		ipamDriver = "default"
 		hostDNSName = dockerKindGatewayIP()
 	}
+	_ = nexodus.CreateDirectory("tmp")
 }
 
 func dockerKindGatewayIP() string {

@@ -158,28 +158,28 @@ func parseNetworkStr(cidr string) (string, error) {
 	return nw.String(), nil
 }
 
-// writeToFile overwrite the contents of a file
-func writeToFile(logger *zap.SugaredLogger, s, file string, filePermissions int) {
+// WriteToFile overwrite the contents of a file
+func WriteToFile(logger *zap.SugaredLogger, s, file string, filePermissions int) {
 	// overwrite the existing file contents
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(filePermissions))
 	if err != nil {
-		logger.Warnf("Unable to open a key file to write to: %v", err)
+		logger.Warnf("Unable to open the file %s to write to: %v", file, err)
 	}
 
 	defer func(f *os.File) {
 		err = f.Close()
 		if err != nil {
-			logger.Warnf("Unable to write key to file [ %s ] %v", file, err)
+			logger.Warnf("Unable to write to file [ %s ] %v", file, err)
 		}
 	}(f)
 
 	wr := bufio.NewWriter(f)
 	_, err = wr.WriteString(s)
 	if err != nil {
-		logger.Warnf("Unable to write key to file [ %s ] %v", file, err)
+		logger.Warnf("Unable to write to file [ %s ] %v", file, err)
 	}
 	if err = wr.Flush(); err != nil {
-		logger.Warnf("Unable to write key to file [ %s ] %v", file, err)
+		logger.Warnf("Unable to write to file [ %s ] %v", file, err)
 	}
 }
 
