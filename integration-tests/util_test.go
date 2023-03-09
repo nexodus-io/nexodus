@@ -21,6 +21,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/network"
 	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -254,11 +255,23 @@ func lineCount(s string) (int, error) {
 }
 
 func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcontainers.Container, args ...string) {
+	nodeName, _ := node.Name(ctx)
+	runScript := fmt.Sprintf("%s-nexd-run.sh", strings.TrimPrefix(nodeName, "/"))
+	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
 	cmd := []string{"/bin/nexd"}
 	cmd = append(cmd, args...)
 	cmd = append(cmd, "https://try.nexodus.local")
-	nodeName, _ := node.Name(ctx)
-	out, err := suite.containerExec(ctx, node, cmd)
+	cmd = append(cmd, ">> /nexd.logs 2>&1")
+
+	// write the nexd run command to a local file
+	nexodus.WriteToFile(suite.logger, strings.Join(cmd, " "), runScriptLocal, 0755)
+	// copy the nexd run script to the test container
+	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
+	if suite.T().Failed() {
+		suite.logger.Errorf("execution of copy command on %s failed: %v", nodeName, err)
+	}
+	// execute the nexd run script on the test container
+	out, err := suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
 	if suite.T().Failed() {
 		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
 		suite.logger.Errorf("output:\n%s", out)
@@ -276,22 +289,32 @@ func networkAddr(n *net.IPNet) net.IP {
 
 // wgDump dump wg sessions for failed test debugging
 func (suite *NexodusIntegrationSuite) wgDump(ctx context.Context, container testcontainers.Container) string {
-	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"wg", "show", "wg0", "dump"})
+	wgDump, err := suite.containerExec(ctx, container, []string{"wg", "show", "wg0", "dump"})
 	if err != nil {
 		return ""
 	}
 
-	return wgSpokeShow
+	return wgDump
 }
 
 // routesDump dump routes for failed test debugging
 func (suite *NexodusIntegrationSuite) routesDump(ctx context.Context, container testcontainers.Container) string {
-	wgSpokeShow, err := suite.containerExec(ctx, container, []string{"ip", "route"})
+	routesDump, err := suite.containerExec(ctx, container, []string{"ip", "route"})
 	if err != nil {
 		return ""
 	}
 
-	return wgSpokeShow
+	return routesDump
+}
+
+// routesDump dump routes for failed test debugging
+func (suite *NexodusIntegrationSuite) logsDump(ctx context.Context, container testcontainers.Container) string {
+	logsDump, err := suite.containerExec(ctx, container, []string{"cat", "/nexd.logs"})
+	if err != nil {
+		return "no logs found"
+	}
+
+	return logsDump
 }
 
 // gatherFail gather details on a failed test for debugging
@@ -322,6 +345,12 @@ func (suite *NexodusIntegrationSuite) gatherFail(ctx context.Context, containers
 		nodeName, _ := c.Name(ctx)
 		routes := fmt.Sprintf("%s routes:\n %s, ", nodeName, suite.routesDump(ctx, c))
 		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		nodeName, _ := c.Name(ctx)
+		logs := fmt.Sprintf("%s nexd logs:\n %s\n, ", nodeName, suite.logsDump(ctx, c))
+		gatherOut = append(gatherOut, logs)
 	}
 
 	return strings.Join(gatherOut, "\n")

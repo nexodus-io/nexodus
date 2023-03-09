@@ -24,6 +24,7 @@
 /*.key
 !Containerfile.test
 *.test
+integration-tests/tmp/
 
 # config
 .env.*
