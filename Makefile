@@ -9,9 +9,11 @@ help:
 ifeq ($(NOISY_BUILD),)
     ECHO_PREFIX=@
     CMD_PREFIX=@
+	SWAG_ARGS?=--quiet
 else
     ECHO_PREFIX=@\#
     CMD_PREFIX=
+	SWAG_ARGS?=
 endif
 
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
@@ -108,7 +110,8 @@ ui-lint: ## Lint the UI source
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
-	$(CMD_PREFIX) go run github.com/swaggo/swag/cmd/swag@v1.8.10 init -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
+	$(CMD_PREFIX) go run github.com/swaggo/swag/cmd/swag@v1.8.10 init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests
