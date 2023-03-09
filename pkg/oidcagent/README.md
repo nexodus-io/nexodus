@@ -1,6 +1,9 @@
 go-oidc-agent
 =============
 
+> **Warning**
+> This repo is no longer maintained. It's now a package within [Nexodus](https://github.com/nexodus-io/nexodus/)
+
 ![Release][badge1] ![License][badge2] ![Build][badge3] ![Coverage][badge4] ![Go Report Card][badge5]
 
 `go-oidc-agent` is a small binary designed to act as a Backend-For-Frontend, handling the OIDC authentication on behalf of the frontend app.
