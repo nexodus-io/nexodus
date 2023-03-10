@@ -13,6 +13,8 @@ spec:
           image: quay.io/nexodus/apiserver:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: NEXAPI_LISTEN
+              value: 0.0.0.0:8080
             - name: NEXAPI_DEBUG
               valueFrom:
                 configMapKeyRef:
@@ -74,6 +76,12 @@ spec:
                   name: auth-secrets
                   key: web-client-id
                   optional: false
+            - name: NEXAPI_OIDC_CLIENT_SECRET_WEB
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: web-client-secret
+                  optional: false
             - name: NEXAPI_OIDC_CLIENT_ID_CLI
               valueFrom:
                 secretKeyRef:
@@ -95,6 +103,26 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: NEXAPI_FFLAG_MULTI_ORGANIZATION
+            - name: NEXAPI_REDIRECT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_REDIRECT_URL
+            - name: NEXAPI_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_ORIGINS
+            - name: NEXAPI_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_DOMAIN
+            - name: NEXAPI_SCOPES
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_SCOPES
           resources:
             requests:
               cpu: 100m
@@ -102,16 +130,5 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            periodSeconds: 5
-            initialDelaySeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /live
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
+
       restartPolicy: Always

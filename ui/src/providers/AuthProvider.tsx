@@ -13,7 +13,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
   login: async (params = {}) => {
     // 1. Redirect to the issuer to ask authentication
     if (!params.code || !params.state) {
-      const request = new Request(`${api}/login/start`, {
+      const request = new Request(`${api}/web/login/start`, {
         method: "POST",
         credentials: "include",
       });
@@ -29,7 +29,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     }
 
     // 2. We came back from the issuer with ?code infos in query params
-    const request = new Request(`${api}/login/end`, {
+    const request = new Request(`${api}/web/login/end`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -50,7 +50,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     }
   },
   logout: async () => {
-    const request = new Request(`${api}/logout`, {
+    const request = new Request(`${api}/web/logout`, {
       method: "post",
       credentials: "include",
     });
@@ -75,7 +75,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     return Promise.resolve();
   },
   checkAuth: async () => {
-    const request = new Request(`${api}/login/end`, {
+    const request = new Request(`${api}/web/login/end`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -97,7 +97,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     return Promise.resolve();
   },
   getIdentity: async (): Promise<UserIdentity> => {
-    const request = new Request(`${api}/user_info`, {
+    const request = new Request(`${api}/web/user_info`, {
       credentials: "include",
     });
     var id;

@@ -5,59 +5,34 @@ resources:
   - issuer.yaml
   - serviceaccount.yaml
 namespace: nexodus-qa
+components:
+  - ../../components/limitador
 configMapGenerator:
   - behavior: replace
+    name: auth-config
     literals:
       - hostname=auth.qa.nexodus.io
       - frontend-url=https://qa.nexodus.io
-    name: auth-config
   - behavior: replace
+    name: realm
     files:
       - files/nexodus.json
-    name: realm
+  - behavior: merge
+    name: apiproxy
+    literals:
+      - APIPROXY_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
+      - APIPROXY_API_DOMAIN=api.qa.nexodus.io
+      - APIPROXY_WEB_DOMAIN=qa.nexodus.io
+      - APIPROXY_WEB_ORIGINS=https://qa.nexodus.io
+  - behavior: merge
+    name: apiserver
+    literals:
+      - NEXAPI_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
+      - NEXAPI_DOMAIN=api.qa.nexodus.io
+      - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
+      - NEXAPI_ORIGINS=https://qa.nexodus.io
+
 patchesJson6902:
-  - patch: |-
-      - op: replace
-        path: /data/NEXAPI_OIDC_URL
-        value: https://auth.qa.nexodus.io/realms/nexodus
-      - op: replace
-        path: /data/NEXAPI_OIDC_BACKCHANNEL
-        value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
-    target:
-      kind: ConfigMap
-      name: apiserver
-  - patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: api.qa.nexodus.io
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.qa.nexodus.io/realms/nexodus
-      - op: replace
-        path: /data/OIDC_BACKCHANNEL
-        value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
-      - op: replace
-        path: /data/ORIGINS
-        value: https://qa.nexodus.io
-      - op: replace
-        path: /data/REDIRECT_URL
-        value: https://qa.nexodus.io/#/login
-    target:
-      kind: ConfigMap
-      name: backend-web
-  - patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: https://api.qa.nexodus.io
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.qa.nexodus.io/realms/nexodus
-      - op: replace
-        path: /data/OIDC_BACKCHANNEL
-        value: https://auth.nexodus-qa.svc.cluster.local:8443/realms/nexodus
-    target:
-      kind: ConfigMap
-      name: backend-cli
   - patch: |-
       - op: replace
         path: /spec/rules/0/host

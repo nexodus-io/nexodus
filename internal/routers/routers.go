@@ -3,7 +3,6 @@ package routers
 import (
 	"context"
 	"crypto/tls"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/nexodus-io/nexodus/internal/docs"
 	"github.com/nexodus-io/nexodus/internal/handlers"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
@@ -30,67 +30,42 @@ func NewAPIRouter(
 	clientIdCli string,
 	oidcURL string,
 	oidcBackchannel string,
-	insecureTLS bool) (*gin.Engine, error) {
+	insecureTLS bool,
+	browserFlow *agent.OidcAgent,
+	deviceFlow *agent.OidcAgent,
+) (*gin.Engine, error) {
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	p := ginprometheus.NewPrometheus("apiserver")
-	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
-		url := c.Request.URL.Path
-		for _, p := range c.Params {
-			if p.Key == "id" {
-				url = strings.Replace(url, p.Value, ":id", 1)
-				break
-			}
-			// If zone cardinality is too big we'll replace here too
-		}
-		return url
-	}
-	p.Use(r)
-
+	loggerMiddleware := ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
 	r.Use(otelgin.Middleware(name))
-	r.Use(ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true}))
 	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
 
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "ok"})
-	})
+	newPrometheus().Use(r)
 
-	if insecureTLS {
-		transport := &http.Transport{
-			// #nosec -- G402: TLS InsecureSkipVerify set true.
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client := &http.Client{Transport: transport}
-		ctx = oidc.ClientContext(ctx, client)
-	}
-
-	if oidcBackchannel != "" {
-		ctx = oidc.InsecureIssuerURLContext(ctx,
-			oidcURL,
-		)
-		oidcURL = oidcBackchannel
-	}
-	provider, err := oidc.NewProvider(ctx, oidcURL)
-	if err != nil {
-		return nil, err
-	}
-
-	var claims struct {
-		JWKSUri string `json:"jwks_uri"`
-	}
-	err = provider.Claims(&claims)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	validateJWT, err := ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	private := r.Group("/")
+	device := r.Group("/device", loggerMiddleware)
 	{
+		device.POST("/login/start", deviceFlow.DeviceStart)
+	}
+	web := r.Group("/web", loggerMiddleware)
+	{
+		web.Use(browserFlow.OriginVerifier())
+		web.Use(browserFlow.CookieSessionMiddleware())
+		web.POST("/login/start", browserFlow.LoginStart)
+		web.POST("/login/end", browserFlow.LoginEnd)
+		web.GET("/user_info", browserFlow.UserInfo)
+		web.GET("/claims", browserFlow.Claims)
+		web.POST("/logout", browserFlow.Logout)
+	}
+	private := r.Group("/api", loggerMiddleware)
+	{
+
+		validateJWT, err := newValidateJWT(ctx, insecureTLS, oidcURL, oidcBackchannel, logger, clientIdWeb, clientIdCli)
+		if err != nil {
+			return nil, err
+		}
+
 		private.Use(validateJWT)
 		private.Use(api.CreateUserIfNotExists())
 		// Zones
@@ -117,9 +92,9 @@ func NewAPIRouter(
 		private.GET("fflags/:name", api.GetFeatureFlag)
 	}
 
-	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
-	// Healthchecks
+	// Don't log the health/readiness checks.
 	r.GET("/ready", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "UP",
@@ -132,4 +107,52 @@ func NewAPIRouter(
 	})
 
 	return r, nil
+}
+
+func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchannel string, logger *zap.SugaredLogger, clientIdWeb, clientIdCli string) (func(*gin.Context), error) {
+	if insecureTLS {
+		transport := &http.Transport{
+			// #nosec -- G402: TLS InsecureSkipVerify set true.
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: transport}
+		ctx = oidc.ClientContext(ctx, client)
+	}
+
+	if oidcBackchannel != "" {
+		ctx = oidc.InsecureIssuerURLContext(ctx,
+			oidcURL,
+		)
+		oidcURL = oidcBackchannel
+	}
+	provider, err := oidc.NewProvider(ctx, oidcURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var claims struct {
+		JWKSUri string `json:"jwks_uri"`
+	}
+	err = provider.Claims(&claims)
+	if err != nil {
+		return nil, err
+	}
+
+	return ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli)
+}
+
+func newPrometheus() *ginprometheus.Prometheus {
+	p := ginprometheus.NewPrometheus("apiserver")
+	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
+		url := c.Request.URL.Path
+		for _, p := range c.Params {
+			if p.Key == "id" {
+				url = strings.Replace(url, p.Value, ":id", 1)
+				break
+			}
+			// If zone cardinality is too big we'll replace here too
+		}
+		return url
+	}
+	return p
 }

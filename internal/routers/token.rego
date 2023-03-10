@@ -17,49 +17,49 @@ valid_token if {
 default allow := false
 
 allow if {
-	regex.match("^/organizations", input.path)
+	regex.match("^/api/organizations", input.path)
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:organizations")
 }
 
 allow if {
-	regex.match("^/organizations", input.path)
+	regex.match("^/api/organizations", input.path)
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:organizations")
 }
 
 allow if {
-	regex.match("^/devices", input.path)
+	regex.match("^/api/devices", input.path)
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:devices")
 }
 
 allow if {
-	regex.match("^/devices", input.path)
+	regex.match("^/api/devices", input.path)
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:devices")
 }
 
 allow if {
-	regex.match("^/users", input.path)
+	regex.match("^/api/users", input.path)
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:users")
 }
 
 allow if {
-	regex.match("^/users", input.path)
+	regex.match("^/api/users", input.path)
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:users")
 }
 
 allow if {
-	regex.match("^/fflags", input.path)
+	regex.match("^/api/fflags", input.path)
 	valid_token
 }
 
