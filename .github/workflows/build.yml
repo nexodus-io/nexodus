@@ -20,7 +20,11 @@ concurrency:
 
 jobs:
   go-lint:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
@@ -56,6 +60,10 @@ jobs:
         with:
           version: v1.50.0
 
+      - name: Vet
+        run: |
+          go vet ./...
+
   gen-docs:
     runs-on: ubuntu-latest
     steps:
@@ -65,8 +73,21 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.19
+
+      - id: go-cache-paths
+        shell: bash
+        run: |
+          echo "go-bin=$(go env GOPATH)/bin" >> $GITHUB_OUTPUT
+
+      - name: Go Bin Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ runner.os }}-go-bin-${{ hashFiles('./hack/install-tools.sh') }}
+
       - name: Generate the Openapi Docs
         run: |
+          ./hack/install-tools.sh
           make gen-docs
           
       - name: Check for uncommitted changes

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 
 	"go.uber.org/zap"
 )
@@ -171,7 +172,7 @@ func (ax *Nexodus) buildLocalConfig() {
 			// if the local node address changed replace it on wg0
 			if ax.wgLocalAddress != value.TunnelIP {
 				ax.logger.Infof("New local Wireguard interface address assigned: %s", value.TunnelIP)
-				if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
+				if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
 					if err := delLink(ax.tunnelIface); err != nil {
 						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}

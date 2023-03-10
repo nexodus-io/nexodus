@@ -79,14 +79,25 @@ clean: ## clean built binaries
 ##@ Development
 
 .PHONY: go-lint
-go-lint: $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS) ## Lint the go code
+go-lint: go-lint-linux go-lint-darwin go-lint-windows ## Lint the go code
+
+.PHONY: go-lint-prereqs
+go-lint-prereqs:
 	$(CMD_PREFIX) if ! which golangci-lint >/dev/null 2>&1; then \
 		echo "Please install golangci-lint." ; \
 		echo "See: https://golangci-lint.run/usage/install/#local-installation" ; \
 		exit 1 ; \
 	fi
-	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO LINT]"
-	$(CMD_PREFIX) golangci-lint run ./...
+
+.PHONY: go-lint-%
+go-lint-%: go-lint-prereqs $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
+	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO LINT]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
+		golangci-lint run ./...
+
+	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO VET]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
+		go vet ./...
 
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files
@@ -111,7 +122,7 @@ ui-lint: ## Lint the UI source
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
-	$(CMD_PREFIX) go run github.com/swaggo/swag/cmd/swag@v1.8.10 init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests
@@ -138,6 +149,10 @@ debug-apiserver: telepresence-prereqs ## Use telepresence to debug the apiserver
 	@echo
 	@echo "   Hint:ca use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
 	@echo
+
+.PHONY: debug-apiserver-stop
+debug-apiserver-stop: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
+	$(CMD_PREFIX) telepresence leave apiserver
 
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
