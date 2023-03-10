@@ -53,31 +53,32 @@ func init() {
 
 // @BasePath  		/api
 func main() {
+	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	app := &cli.App{
 		Name: "nexodus-controller",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Value:   false,
-				Usage:   "enable debug logging",
+				Usage:   "Enable debug logging",
 				EnvVars: []string{"NEXAPI_DEBUG"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-url",
 				Value:   "https://auth.try.nexodus.local",
-				Usage:   "address of oidc provider",
+				Usage:   "Address of oidc provider",
 				EnvVars: []string{"NEXAPI_OIDC_URL"},
 			},
 			&cli.StringFlag{
 				Name:    "oidc-backchannel-url",
 				Value:   "",
-				Usage:   "backend address of oidc provider",
+				Usage:   "Backend address of oidc provider",
 				EnvVars: []string{"NEXAPI_OIDC_BACKCHANNEL"},
 			},
 			&cli.BoolFlag{
 				Name:    "insecure-tls",
 				Value:   false,
-				Usage:   "trust any TLS certificate",
+				Usage:   "Trust any TLS certificate",
 				EnvVars: []string{"NEXAPI_INSECURE_TLS"},
 			},
 			&cli.StringFlag{
@@ -95,43 +96,43 @@ func main() {
 			&cli.StringFlag{
 				Name:    "db-host",
 				Value:   "apiserver-db",
-				Usage:   "db host",
+				Usage:   "Database host name",
 				EnvVars: []string{"NEXAPI_DB_HOST"},
 			},
 			&cli.StringFlag{
 				Name:    "db-port",
 				Value:   "5432",
-				Usage:   "db port",
+				Usage:   "Database port",
 				EnvVars: []string{"NEXAPI_DB_PORT"},
 			},
 			&cli.StringFlag{
 				Name:    "db-user",
 				Value:   "apiserver",
-				Usage:   "db user",
+				Usage:   "Database user",
 				EnvVars: []string{"NEXAPI_DB_USER"},
 			},
 			&cli.StringFlag{
 				Name:    "db-password",
 				Value:   "secret",
-				Usage:   "db password",
+				Usage:   "Database password",
 				EnvVars: []string{"NEXAPI_DB_PASSWORD"},
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
 				Value:   "apiserver",
-				Usage:   "db name",
+				Usage:   "Database name",
 				EnvVars: []string{"NEXAPI_DB_NAME"},
 			},
 			&cli.StringFlag{
 				Name:    "db-sslmode",
 				Value:   "disable",
-				Usage:   "db ssl mode",
+				Usage:   "Database ssl mode",
 				EnvVars: []string{"NEXAPI_DB_SSLMODE"},
 			},
 			&cli.StringFlag{
 				Name:    "ipam-address",
 				Value:   "ipam:9090",
-				Usage:   "address of ipam grpc service",
+				Usage:   "Address of ipam grpc service",
 				EnvVars: []string{"NEXAPI_IPAM_URL"},
 			},
 			&cli.BoolFlag{
@@ -204,7 +205,7 @@ func main() {
 	}
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "rollback",
-		Usage: "rollback the last database migration",
+		Usage: "Rollback the last database migration",
 		Action: func(cCtx *cli.Context) error {
 			ctx := cCtx.Context
 			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {

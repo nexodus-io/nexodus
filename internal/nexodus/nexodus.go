@@ -2,6 +2,7 @@ package nexodus
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -70,11 +71,12 @@ type Nexodus struct {
 	symmetricNat            bool
 	logger                  *zap.SugaredLogger
 	// See the NexdStatus* constants
-	status    int
-	statusMsg string
-	version   string
-	username  string
-	password  string
+	status        int
+	statusMsg     string
+	version       string
+	username      string
+	password      string
+	skipTlsVerify bool
 }
 
 type wgConfig struct {
@@ -108,6 +110,7 @@ func NewNexodus(ctx context.Context,
 	stun bool,
 	relay bool,
 	relayOnly bool,
+	insecureSkipTlsVerify bool,
 	version string,
 ) (*Nexodus, error) {
 	if err := binaryChecks(); err != nil {
@@ -159,6 +162,7 @@ func NewNexodus(ctx context.Context,
 		version:             version,
 		username:            username,
 		password:            password,
+		skipTlsVerify:       insecureSkipTlsVerify,
 	}
 
 	ax.tunnelIface = defaultTunnelDev(ax.os)
@@ -188,9 +192,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
 
-	var option client.Option
+	var options []client.Option
 	if ax.username == "" {
-		option = client.WithDeviceFlow()
+		options = append(options, client.WithDeviceFlow())
 	} else if ax.username != "" && ax.password == "" {
 		fmt.Print("Enter nexodus account password: ")
 		passwdInput, err := term.ReadPassword(int(syscall.Stdin))
@@ -199,13 +203,19 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			return fmt.Errorf("login aborted: %w", err)
 		}
 		ax.password = string(passwdInput)
-		option = client.WithPasswordGrant(ax.username, ax.password)
+		options = append(options, client.WithPasswordGrant(ax.username, ax.password))
 	} else {
-		option = client.WithPasswordGrant(ax.username, ax.password)
+		options = append(options, client.WithPasswordGrant(ax.username, ax.password))
 	}
+	if ax.skipTlsVerify { // #nosec G402
+		options = append(options, client.WithTLSConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		}))
+	}
+
 	ax.client, err = client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
 		ax.SetStatus(NexdStatusAuth, msg)
-	}, option)
+	}, options...)
 	if err != nil {
 		return err
 	}

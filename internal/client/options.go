@@ -1,6 +1,9 @@
 package client
 
-import "go.uber.org/zap"
+import (
+	"crypto/tls"
+	"go.uber.org/zap"
+)
 
 type options struct {
 	deviceFlow   bool
@@ -8,6 +11,7 @@ type options struct {
 	username     string
 	password     string
 	logger       *zap.SugaredLogger
+	tlsConfig    *tls.Config
 }
 
 func newOptions(opts ...Option) (*options, error) {
@@ -30,6 +34,15 @@ func WithPasswordGrant(
 		o.deviceFlow = false
 		o.username = username
 		o.password = password
+		return nil
+	}
+}
+
+func WithTLSConfig(
+	config *tls.Config,
+) Option {
+	return func(o *options) error {
+		o.tlsConfig = config
 		return nil
 	}
 }

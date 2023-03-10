@@ -44,7 +44,13 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 		c.logger = l.Sugar()
 	}
 
-	resp, err := startLogin(*baseURL)
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: opts.tlsConfig,
+		},
+	}
+
+	resp, err := startLogin(httpClient, *baseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +97,7 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 		return nil, err
 	}
 
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 	c.client = config.Client(ctx, token)
 
 	return &c, nil
