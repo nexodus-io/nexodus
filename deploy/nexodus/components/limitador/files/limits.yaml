@@ -1,0 +1,6 @@
+---
+- namespace: nexodus
+  max_value: 1
+  seconds: 1
+  conditions:
+  variables:

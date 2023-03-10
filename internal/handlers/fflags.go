@@ -14,6 +14,7 @@ import (
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object} map[string]bool
+// @Failure		 429  {object}  models.BaseError
 // @Router       /fflags [get]
 func (api *API) ListFeatureFlags(c *gin.Context) {
 	c.JSON(http.StatusOK, api.fflags.ListFlags())
@@ -29,6 +30,7 @@ func (api *API) ListFeatureFlags(c *gin.Context) {
 // @Success      200  {object} map[string]bool
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Router       /fflags/{name} [get]
 func (api *API) GetFeatureFlag(c *gin.Context) {
 	flagName := c.Param("name")

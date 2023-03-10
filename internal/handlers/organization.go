@@ -30,6 +30,7 @@ const (
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 405  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /organizations [post]
 func (api *API) CreateOrganization(c *gin.Context) {
@@ -112,6 +113,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 // @Produce      json
 // @Success      200  {object}  []models.Organization
 // @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
 // @Router       /organizations [get]
 func (api *API) ListOrganizations(c *gin.Context) {
@@ -136,6 +138,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // @Success      200  {object}  models.Organization
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Router       /organizations/{id} [get]
 func (api *API) GetOrganizations(c *gin.Context) {
@@ -168,6 +171,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // @Success      200  {object}  []models.Device
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
 // @Router       /organizations/{id}/devices [get]
 func (api *API) ListDevicesInOrganization(c *gin.Context) {
@@ -202,6 +206,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
 // @Router       /organizations/{organization_id}/devices/{device_id} [get]
 func (api *API) GetDeviceInOrganization(c *gin.Context) {
@@ -247,6 +252,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 // @Success      204  {object}  models.Organization
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /organizations/{id} [delete]
 func (api *API) DeleteOrganization(c *gin.Context) {

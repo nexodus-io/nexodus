@@ -3,9 +3,11 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
+components:
 # Uncomment this and the patch at the bottom to enable monitoring
-# components:
 #  - ../../components/monitoring
+# Uncomment this to enable rate limiting
+#  - ../../components/limitador
 namespace: nexodus
 configMapGenerator:
   - behavior: merge
@@ -75,8 +77,8 @@ patchesJson6902:
         path: /spec/template/spec/containers/0/volumeMounts
         value: [{"name":"trust","mountPath":"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem","readOnly":true,"subPath":"tls-ca-bundle.pem"}]
       - op: add
-        path: /spec/template/spec/volumes
-        value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
+        path: /spec/template/spec/volumes/0
+        value: {"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}
 
 #  - target:
 #      name: apiserver

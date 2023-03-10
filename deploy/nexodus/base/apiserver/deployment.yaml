@@ -8,11 +8,20 @@ spec:
     type: Recreate
   template:
     spec:
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: apiserver-envoy-config
+        - name: envoy-unix-sockets
+          emptyDir:
+            medium: Memory
       containers:
         - name: apiserver
           image: quay.io/nexodus/apiserver:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: NEXAPI_LISTEN
+              value: 127.0.0.1:8080
             - name: NEXAPI_DEBUG
               valueFrom:
                 configMapKeyRef:
@@ -102,16 +111,48 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
+        - name: envoy
+          image: envoyproxy/envoy:v1.25.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - envoy
+            - --config-path
+            - /configs/envoy/envoy.yaml
+          ports:
+            - name: api-envoy
+              protocol: TCP
+              containerPort: 9090
+            - name: metrics-envoy
+              protocol: TCP
+              containerPort: 9000
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /configs/envoy
+            - name: envoy-unix-sockets
+              mountPath: /sockets
           readinessProbe:
             httpGet:
               path: /ready
-              port: 8080
+              port: 9000
             periodSeconds: 5
             initialDelaySeconds: 5
           livenessProbe:
             httpGet:
               path: /live
-              port: 8080
+              port: 9000
             initialDelaySeconds: 10
             periodSeconds: 5
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 250m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+
       restartPolicy: Always

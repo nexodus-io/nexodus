@@ -88,6 +88,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
@@ -122,6 +123,7 @@ func (api *API) GetUser(c *gin.Context) {
 // @Produce      json
 // @Success      200  {object}  []models.User
 // @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Router       /users [get]
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
@@ -145,6 +147,7 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Success      200  {object}  models.User
 // @Failure		 400  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {

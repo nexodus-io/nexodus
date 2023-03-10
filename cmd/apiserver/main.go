@@ -65,6 +65,12 @@ func main() {
 				EnvVars: []string{"NEXAPI_DEBUG"},
 			},
 			&cli.StringFlag{
+				Name:    "listen",
+				Value:   "0.0.0.0:8080",
+				Usage:   "The address and port to listen for requests on",
+				EnvVars: []string{"NEXAPI_LISTEN"},
+			},
+			&cli.StringFlag{
 				Name:    "oidc-url",
 				Value:   "https://auth.try.nexodus.local",
 				Usage:   "Address of oidc provider",
@@ -182,7 +188,7 @@ func main() {
 				}
 
 				server := &http.Server{
-					Addr:              "0.0.0.0:8080",
+					Addr:              cCtx.String("listen"),
 					Handler:           router,
 					ReadTimeout:       5 * time.Second,
 					ReadHeaderTimeout: 5 * time.Second,

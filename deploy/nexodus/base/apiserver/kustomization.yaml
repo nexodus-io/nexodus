@@ -12,6 +12,11 @@ configMapGenerator:
       - NEXAPI_TRACE_INSECURE="1"
       - NEXAPI_FFLAG_MULTI_ORGANIZATION=false
       - NEXAPI_DB_SSLMODE=require
+
+  - name: apiserver-envoy-config
+    files:
+      - files/envoy.yaml
+
 resources:
   - service.yaml
   - deployment.yaml
