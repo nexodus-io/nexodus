@@ -38,6 +38,7 @@ func main() {
 		logger.Fatal(err.Error())
 	}
 
+	// Overwrite usage to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	// flags are stored in the global flags variable
 	app := &cli.App{
