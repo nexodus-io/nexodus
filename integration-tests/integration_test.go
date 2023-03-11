@@ -93,7 +93,11 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 	// start nexodus on the nodes
 	go suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
@@ -200,7 +204,11 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	// start nexodus on the nodes
 	go suite.runNexd(ctx, node1, "--hub-router",
 		"--username", username, "--password", password)
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node2IP),
@@ -233,7 +241,10 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 		"--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err = suite.nexdStatus(ctx, node1)
+	require.NoError(err)
 
 	go suite.runNexd(ctx, node2,
 		"--username", username, "--password", password,
@@ -287,8 +298,10 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 		"--hub-router", "--username", username, "--password", password,
 	)
 
-	// Ensure the relay node has time to register before joining spokes since it is required for hub-organizations
-	time.Sleep(time.Second * 10)
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 	go suite.runNexd(ctx, node3, "--username", username, "--password", password)
 
@@ -453,14 +466,18 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
 		"--username", username, "--password", password,
 	)
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2,
 		fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
 		"--username", username, "--password", password,
 	)
 
 	// add loopbacks to the containers that are contained in the node's child prefix
-	_, err := suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
+	_, err = suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
 	require.NoError(err)
@@ -527,7 +544,11 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 
 	// start nexodus on the nodes
 	go suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 	go suite.runNexd(ctx, node3, "--username", username, "--password", password, "--relay-only")
 
@@ -601,7 +622,11 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	// start nexodus on the nodes
 	go suite.runNexd(ctx, node1, "--hub-router", "--username", username, "--password", password)
-	time.Sleep(time.Second * 1)
+
+	// validate nexd has started on the discovery node
+	err = suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
 	go suite.runNexd(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
 
 	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
