@@ -93,7 +93,7 @@ go-lint-prereqs:
 go-lint-%: go-lint-prereqs $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO LINT]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
-		golangci-lint run ./...
+		golangci-lint run --timeout 5m ./...
 
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO VET]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
@@ -123,6 +123,14 @@ ui-lint: ## Lint the UI source
 gen-docs: ## Generate API docs
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
+
+.PHONY: generate
+generate: gen-docs ## Run all code generators and formatters
+	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
+	$(CMD_PREFIX) go mod tidy
+
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
+	$(CMD_PREFIX) go fmt ./...
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests

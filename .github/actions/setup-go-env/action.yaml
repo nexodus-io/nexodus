@@ -1,0 +1,43 @@
+name: 'Setup the Go Env'
+description: 'Sets up the go env'
+runs:
+  using: "composite"
+  steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+
+    - id: go-cache-paths
+      shell: bash
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+        echo "go-bin=$(go env GOPATH)/bin" >> $GITHUB_OUTPUT
+
+    - name: Go Build Cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum', './hack/install-tools.sh') }}
+
+    - name: Go Mod Cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.go-cache-paths.outputs.go-mod }}
+        key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum', './hack/install-tools.sh') }}
+
+    - name: Go Bin Cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.go-cache-paths.outputs.go-bin }}
+        key: ${{ runner.os }}-go-bin-${{ hashFiles('**/go.sum', './hack/install-tools.sh') }}
+
+    - name: Download Go Modules
+      shell: bash
+      run: go mod download -x
+
+    - name: Install Build Tools
+      shell: bash
+      run: ./hack/install-tools.sh
