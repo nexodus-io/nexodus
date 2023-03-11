@@ -23,33 +23,35 @@ const (
 var Version = "dev"
 
 func main() {
+	// Override usage to capitalize "Show"
+	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	app := &cli.App{
 		Name: "nexctl",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Value:   false,
-				Usage:   "enable debug logging",
+				Usage:   "Enable debug logging",
 				EnvVars: []string{"NEXCTL_DEBUG"},
 			},
 			&cli.StringFlag{
 				Name:  "host",
 				Value: "https://api.try.nexodus.local",
-				Usage: "api server",
+				Usage: "Api server URL",
 			},
 			&cli.StringFlag{
 				Name:  "username",
-				Usage: "username",
+				Usage: "Username",
 			},
 			&cli.StringFlag{
 				Name:  "password",
-				Usage: "password",
+				Usage: "Password",
 			},
 			&cli.StringFlag{
 				Name:     "output",
 				Value:    encodeColumn,
 				Required: false,
-				Usage:    "output format: json, json-raw, no-header, column (default columns)",
+				Usage:    "Output format: json, json-raw, no-header, column (default columns)",
 			},
 		},
 		Commands: []*cli.Command{
@@ -63,27 +65,27 @@ func main() {
 			},
 			{
 				Name:  "nexd",
-				Usage: "commands for interacting with the local instance of nexd",
+				Usage: "Commands for interacting with the local instance of nexd",
 				Subcommands: []*cli.Command{
 					{
 						Name:   "version",
-						Usage:  "nexd version",
+						Usage:  "Display the nexd version",
 						Action: cmdLocalVersion,
 					},
 					{
 						Name:   "status",
-						Usage:  "nexd status",
+						Usage:  "Display the nexd status",
 						Action: cmdLocalStatus,
 					},
 				},
 			},
 			{
 				Name:  "organization",
-				Usage: "commands relating to organizations",
+				Usage: "Commands relating to organizations",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
-						Usage: "list organizations",
+						Usage: "List organizations",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
@@ -101,7 +103,7 @@ func main() {
 					},
 					{
 						Name:  "create",
-						Usage: "create a organizations",
+						Usage: "Create a organizations",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "name",
@@ -141,7 +143,7 @@ func main() {
 					},
 					{
 						Name:  "delete",
-						Usage: "delete a organization",
+						Usage: "Delete a organization",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "organization-id",
@@ -168,11 +170,11 @@ func main() {
 			},
 			{
 				Name:  "device",
-				Usage: "commands relating to devices",
+				Usage: "Commands relating to devices",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
-						Usage: "list all devices",
+						Usage: "List all devices",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "organization-id",
@@ -206,7 +208,7 @@ func main() {
 					},
 					{
 						Name:  "delete",
-						Usage: "delete a device",
+						Usage: "Delete a device",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "device-id",
@@ -233,11 +235,11 @@ func main() {
 			},
 			{
 				Name:  "user",
-				Usage: "commands relating to users",
+				Usage: "Commands relating to users",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
-						Usage: "list all users",
+						Usage: "List all users",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
@@ -255,7 +257,7 @@ func main() {
 					},
 					{
 						Name:  "get-current",
-						Usage: "get current user",
+						Usage: "Get current user",
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
@@ -273,7 +275,7 @@ func main() {
 					},
 					{
 						Name:  "delete",
-						Usage: "delete a user",
+						Usage: "Delete a user",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "user-id",
