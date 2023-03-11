@@ -11,7 +11,7 @@ import (
 func callNexd(method string) (string, error) {
 	conn, err := net.Dial("unix", "/run/nexd.sock")
 	if err != nil {
-		fmt.Printf("Failed to connect to nexd: %+v", err)
+		fmt.Printf("Failed to connect to nexd: %+v\n", err)
 		return "", err
 	}
 	defer conn.Close()
@@ -21,7 +21,7 @@ func callNexd(method string) (string, error) {
 	var result string
 	err = client.Call("NexdCtl."+method, nil, &result)
 	if err != nil {
-		fmt.Printf("Failed to execute method (%s): %+v", method, err)
+		fmt.Printf("Failed to execute method (%s): %+v\n", method, err)
 		return "", err
 	}
 	return result, nil
