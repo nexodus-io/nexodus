@@ -59,7 +59,6 @@ type Nexodus struct {
 	stun                    bool
 	relay                   bool
 	relayWgIP               string
-	os                      string
 	wgConfig                wgConfig
 	client                  *client.Client
 	controllerURL           *url.URL
@@ -152,7 +151,6 @@ func NewNexodus(ctx context.Context,
 		childPrefix:         childPrefix,
 		stun:                stun,
 		relay:               relay,
-		os:                  GetOS(),
 		deviceCache:         make(map[uuid.UUID]models.Device),
 		controllerURL:       controllerURL,
 		hostname:            hostname,
@@ -165,7 +163,7 @@ func NewNexodus(ctx context.Context,
 		skipTlsVerify:       insecureSkipTlsVerify,
 	}
 
-	ax.tunnelIface = defaultTunnelDev(ax.os)
+	ax.tunnelIface = defaultTunnelDev()
 
 	if ax.relay {
 		ax.listenPort = WgDefaultPort
@@ -485,40 +483,12 @@ func (ax *Nexodus) relayStateReconcile(orgID uuid.UUID) error {
 	return nil
 }
 
-// Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
-	nodeOS := GetOS()
-	switch nodeOS {
-	case Darwin.String():
-		logger.Debugf("[%s] operating system detected", nodeOS)
-		// ensure the osx wireguard directory exists
-		if err := CreateDirectory(WgDarwinConfPath); err != nil {
-			return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgDarwinConfPath, err)
-		}
-	case Windows.String():
-		logger.Debugf("[%s] operating system detected", nodeOS)
-		// ensure the windows wireguard directory exists
-		if err := CreateDirectory(WgWindowsConfPath); err != nil {
-			return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgWindowsConfPath, err)
-		}
-	case Linux.String():
-		logger.Debugf("[%s] operating system detected", nodeOS)
-		// ensure the linux wireguard directory exists
-		if err := CreateDirectory(WgLinuxConfPath); err != nil {
-			return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)
-		}
-	default:
-		return fmt.Errorf("OS [%s] is not supported\n", runtime.GOOS)
-	}
-	return nil
-}
-
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Nexodus) checkUnsupportedConfigs() error {
-	if ax.relay && ax.os == Darwin.String() {
+	if ax.relay && runtime.GOOS == Darwin.String() {
 		return fmt.Errorf("OSX nodes cannot be a hub-router, only Linux nodes")
 	}
-	if ax.relay && ax.os == Windows.String() {
+	if ax.relay && runtime.GOOS == Windows.String() {
 		return fmt.Errorf("Windows nodes cannot be a hub-router, only Linux nodes")
 	}
 	if ax.userProvidedLocalIP != "" {
@@ -549,17 +519,7 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 func (ax *Nexodus) nodePrep() {
 
 	// remove an existing wg interfaces
-	if ax.os == Linux.String() && linkExists(ax.tunnelIface) {
-		if err := delLink(ax.tunnelIface); err != nil {
-			// not a fatal error since if this is on startup it could be absent
-			ax.logger.Debugf("failed to delete netlink interface %s: %v", ax.tunnelIface, err)
-		}
-	}
-	if ax.os == Darwin.String() {
-		if ifaceExists(ax.logger, ax.tunnelIface) {
-			deleteDarwinIface(ax.logger, ax.tunnelIface)
-		}
-	}
+	ax.removeExistingInterface()
 
 	// discover the server reflexive address per ICE RFC8445 = (lol public address)
 	stunAddr, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
@@ -582,49 +542,4 @@ func (ax *Nexodus) nodePrep() {
 		ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
 	}
 
-}
-
-func (ax *Nexodus) findLocalIP() (string, error) {
-	// If the user supplied what they want the local endpoint IP to be, use that (enables privateIP <--> privateIP peering).
-	// Otherwise, discover what the public ip of the node is and provide that to the peers.
-	var localIP string
-	var err error
-	// Darwin/Windows network discovery
-	if ax.os == Darwin.String() || ax.os == Windows.String() {
-		localIP, err = discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
-		if err != nil {
-			return "", fmt.Errorf("%w", err)
-		}
-	}
-
-	// Linux network discovery
-	if ax.os == Linux.String() {
-		linuxIP, err := discoverLinuxAddress(ax.logger, 4)
-		if err != nil {
-			return "", fmt.Errorf("%w", err)
-		}
-		localIP = linuxIP.String()
-	}
-	return localIP, nil
-}
-
-// binaryChecks validate the required binaries are available
-func binaryChecks() error {
-	// Windows userspace binary
-	if GetOS() == Windows.String() {
-		if !IsCommandAvailable(wgWinBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
-		}
-	}
-	// Darwin wireguard-go userspace binary
-	if GetOS() == Darwin.String() {
-		if !IsCommandAvailable(wgGoBinary) {
-			return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
-		}
-	}
-	// all OSs require the wg binary
-	if !IsCommandAvailable(wgBinary) {
-		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
-	}
-	return nil
 }

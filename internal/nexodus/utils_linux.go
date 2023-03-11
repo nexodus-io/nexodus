@@ -181,3 +181,25 @@ func DeleteRoute(prefix, dev string) error {
 
 	return netlink.RouteDel(&routeSpec)
 }
+
+func defaultTunnelDev() string {
+	return wgIface
+}
+
+// binaryChecks validate the required binaries are available
+func binaryChecks() error {
+	// all OSs require the wg binary
+	if !IsCommandAvailable(wgBinary) {
+		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
+	}
+	return nil
+}
+
+// Check OS and report error if the OS is not supported.
+func checkOS(logger *zap.SugaredLogger) error {
+	// ensure the linux wireguard directory exists
+	if err := CreateDirectory(WgLinuxConfPath); err != nil {
+		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)
+	}
+	return nil
+}

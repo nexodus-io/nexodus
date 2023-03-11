@@ -17,29 +17,9 @@ func (ax *Nexodus) DeployWireguardConfig(newPeers []models.Device, firstTime boo
 		Peers:     ax.wgConfig.Peers,
 	}
 
-	switch ax.os {
-	case Linux.String():
-		// re-initialize the wireguard interface if it does not match it's assigned node address
-		if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
-			if err := ax.setupLinuxInterface(ax.logger); err != nil {
-				return err
-			}
-		}
-
-	case Darwin.String():
-		// re-initialize the wireguard interface if it does not match it's assigned node address
-		if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
-			if err := setupDarwinIface(ax.logger, ax.wgLocalAddress, ax.tunnelIface); err != nil {
-				return err
-			}
-		}
-
-	case Windows.String():
-		// re-initialize the wireguard interface if it does not match it's assigned node address
-		if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
-			if err := setupWindowsIface(ax.logger, ax.wgLocalAddress, ax.wireguardPvtKey, ax.tunnelIface); err != nil {
-				ax.logger.Errorf("%v", err)
-			}
+	if ax.wgLocalAddress != getIPv4Iface(ax.tunnelIface).String() {
+		if err := ax.setupInterface(); err != nil {
+			return err
 		}
 	}
 

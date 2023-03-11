@@ -4,10 +4,9 @@ package nexodus
 
 import (
 	"fmt"
-	"net"
-
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
+	"net"
 )
 
 // RouteExists currently only used for darwin build purposes
@@ -55,5 +54,27 @@ func DeleteRoute(prefix, dev string) error {
 		return fmt.Errorf("no route deleted: %w", err)
 	}
 
+	return nil
+}
+
+func defaultTunnelDev() string {
+	return darwinIface
+}
+
+// binaryChecks validate the required binaries are available
+func binaryChecks() error {
+	// Darwin wireguard-go userspace binary
+	if !IsCommandAvailable(wgGoBinary) {
+		return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
+	}
+	return nil
+}
+
+// Check OS and report error if the OS is not supported.
+func checkOS(logger *zap.SugaredLogger) error {
+	// ensure the osx wireguard directory exists
+	if err := CreateDirectory(WgDarwinConfPath); err != nil {
+		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgDarwinConfPath, err)
+	}
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 
 	"go.uber.org/zap"
@@ -33,11 +32,6 @@ func (operatingSystem OperatingSystem) String() string {
 	}
 
 	return "unsupported"
-}
-
-// GetOS get os type
-func GetOS() (operatingSystem string) {
-	return runtime.GOOS
 }
 
 // RunCommand runs the cmd and returns the combined stdout and stderr
@@ -181,19 +175,6 @@ func WriteToFile(logger *zap.SugaredLogger, s, file string, filePermissions int)
 	if err = wr.Flush(); err != nil {
 		logger.Warnf("Unable to write to file [ %s ] %v", file, err)
 	}
-}
-
-func defaultTunnelDev(operatingSystem string) string {
-	switch operatingSystem {
-	case Darwin.String():
-		return darwinIface
-	case Linux.String():
-		return wgIface
-	case Windows.String():
-		return wgIface
-	}
-
-	return ""
 }
 
 func LocalIPv4Address() net.IP {
