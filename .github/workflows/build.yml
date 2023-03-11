@@ -19,76 +19,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go-lint:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Build
-        run: |
-          go build ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.50.0
-
-      - name: Vet
-        run: |
-          go vet ./...
-
-  gen-docs:
+  generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
-      - id: go-cache-paths
-        shell: bash
+      - name: Generate Source Code
         run: |
-          echo "go-bin=$(go env GOPATH)/bin" >> $GITHUB_OUTPUT
-
-      - name: Go Bin Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-bin }}
-          key: ${{ runner.os }}-go-bin-${{ hashFiles('./hack/install-tools.sh') }}
-
-      - name: Generate the Openapi Docs
-        run: |
-          ./hack/install-tools.sh
-          make gen-docs
+          make generate
           
       - name: Check for uncommitted changes
         id: check-changes
@@ -97,39 +39,45 @@ jobs:
             echo "Detected uncommitted changes after build.  See status below:"
             git diff
             echo "========================================================"
-            echo "  run `make gen-docs` and commit the changes"
+            echo "  run `make generate` and commit the changes"
             echo "========================================================"
             exit 1
           fi
+          
+  go-lint:
+    needs: [ generate ]
+    strategy:
+      fail-fast: false
+      matrix:
+        # os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: ["ubuntu-latest"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+
+      - name: Lint Linux
+        run: make go-lint-linux
+      - name: Lint Darwin
+        run: make go-lint-darwin
+      - name: Lint Windows
+        run: make go-lint-windows
+
+#          golangci-lint run -v --timeout 5m ./...
+#
+#      - name: Vet
+#        run: go vet ./...
 
   go-unit:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint, generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Build
         run: |
@@ -140,6 +88,7 @@ jobs:
           go test -v ./...
 
   ui-lint:
+    needs: [ generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -154,6 +103,7 @@ jobs:
         working-directory: ui
 
   k8s-lint:
+    needs: [ generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -190,7 +140,7 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint, generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -255,7 +205,7 @@ jobs:
           path: /tmp/test-ubuntu.tar
 
   build-binaries:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint, generate ]
     strategy:
       fail-fast: false
       matrix:
@@ -275,28 +225,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Test
         run: |
@@ -325,48 +255,21 @@ jobs:
             ${{ steps.build-nexctl.outputs.artifact-name }}
 
   e2e:
-    needs: [go-lint, gen-docs, go-unit, k8s-lint, build-images]
+    needs: [go-lint, generate, go-unit, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
 
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Install deps
         run: |
           sudo apt update
           sudo apt-get -qy install libnss3-tools
-
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
-
-      - name: Install mkcert
-        run: |
-          brew install mkcert
 
       - name: Add hosts to /etc/hosts
         run: |
@@ -463,38 +366,14 @@ jobs:
           aws s3 sync . s3://nexodus-io/
 
   build-rpm:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint, generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
       # Needed for building binaries to generate manpages
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Install make
-        run: |
-          sudo apt -y install make
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Build rpm
         id: build-rpm
