@@ -127,12 +127,16 @@ jobs:
         include:
           - name: apiserver
             tags: quay.io/nexodus/apiserver:latest
+            target:
           - name: frontend
             tags: quay.io/nexodus/frontend:latest
+            target:
           - name: ipam
             tags: quay.io/nexodus/go-ipam:latest
+            target:
           - name: test
             tags: quay.io/nexodus/test:ubuntu
+            target: ubuntu
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
@@ -145,6 +149,8 @@ jobs:
           outputs: type=docker,dest=/tmp/${{ matrix.name }}.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          target: ${{ matrix.target }}
+
       - name: Upload ${{ matrix.name }} artifact
         uses: actions/upload-artifact@v3
         with:
@@ -292,7 +298,7 @@ jobs:
         run: |
           OVERLAY=${{ matrix.overlay }} make setup-kind deploy-operators load-images deploy cacerts
 
-      - name: Run e2e against Crunchy managed Postgres
+      - name: Run e2e Tests
         run: |
           go test -v --tags=integration ./integration-tests/...
 
