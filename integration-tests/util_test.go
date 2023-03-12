@@ -22,6 +22,8 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/util"
+
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -369,18 +371,15 @@ func (suite *NexodusIntegrationSuite) runCommand(cmd ...string) (string, error) 
 
 // nexdStatus checks for a Running status of the nexd process via nexctl
 func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testcontainers.Container) error {
-	var err error
-	var statOut string
-	statusRetry := 10
-
-	nodeName, _ := ctr.Name(ctx)
-	for i := 0; i < statusRetry; i++ {
-		statOut, err = suite.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})
-		if strings.Contains(statOut, "Running") {
-			return nil
-		}
-		time.Sleep(time.Second * 1)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
+		statOut, _ := suite.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})
+		return strings.Contains(statOut, "Running"), nil
+	})
+	if running {
+		return nil
 	}
-
-	return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s: %w", nodeName, err)
+	nodeName, _ := ctr.Name(ctx)
+	return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s", nodeName)
 }
