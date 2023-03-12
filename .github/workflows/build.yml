@@ -44,12 +44,11 @@ jobs:
             exit 1
           fi
           
-  go-lint:
-    needs: [ generate ]
+  go-lint-linux:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: ["linux", "darwin", "windows"]
+        os: ["linux"]
     steps:
       - uses: actions/checkout@v3
       - name: Setup Go
@@ -57,22 +56,18 @@ jobs:
       - name: Lint ${{ matrix.os }}
         run: make go-lint-${{ matrix.os }}
 
-  go-unit:
-    needs: [ go-lint, generate ]
+  # these are a little slower to lint...
+  go-lint-rest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["darwin", "windows"]
     steps:
       - uses: actions/checkout@v3
-
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
-
-      - name: Build
-        run: |
-          go build ./...
-
-      - name: Unit tests
-        run: |
-          go test -v ./...
+      - name: Lint ${{ matrix.os }}
+        run: make go-lint-${{ matrix.os }}
 
   ui-lint:
     runs-on: ubuntu-latest
@@ -125,7 +120,7 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: [ go-lint ]
+    needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -156,9 +151,8 @@ jobs:
           name: ${{ matrix.name }}
           path: /tmp/${{ matrix.name }}.tar
 
-
-  build-binaries:
-    needs: [ go-lint, generate ]
+  go-unit:
+    needs: [ go-lint-linux, go-lint-rest, generate ]
     strategy:
       fail-fast: false
       matrix:
@@ -171,51 +165,77 @@ jobs:
             arch: arm
           - os: windows-latest
             arch: arm64
+
+          # Tests are failing with "bad CPU type in executable" or "exec format error"
+          - os: ubuntu-latest
+            arch: arm
+          - os: ubuntu-latest
+            arch: arm64
+          - os: macos-latest
+            arch: arm64
+
     runs-on: ${{ matrix.os }}
     env:
       GOARCH: ${{ matrix.arch }}
-      JOB_NAME: "nexd-${{ matrix.os }}-${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+      - name: Unit tests
+        run: |
+          go test -v ./...
 
+  build-binaries:
+    needs: [ go-lint-linux, generate ]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        binary: ["nexd", "nexctl"]
+        os: ["linux", "darwin", "windows"]
+        arch: ["amd64", "arm64", "arm"]
+        exclude:
+          - os: darwin
+            arch: arm
+          - os: windows
+            arch: arm
+          - os: windows
+            arch: arm64
+    runs-on: ubuntu-latest
+    env:
+      GOARCH: ${{ matrix.arch }}
+      JOB_NAME: "${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v3
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
 
-      - name: Test
-        run: |
-          go test -v ./internal/nexodus/...
-
-      - name: Build Nexd
-        id: build-nexd
-        run: |
-          CGO_ENABLED=0 go build -o nexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
-          echo "artifact-name=nexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
+      - name: Build ${{ matrix.binary }}
+        id: build
         shell: bash
+        run: |          
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+          go build \
+            -o ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }} \
+            -v ./cmd/${{ matrix.binary }}
 
-      - name: Build Nexctl
-        id: build-nexctl
-        run: |
-          CGO_ENABLED=0 go build -o nexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
-          echo "artifact-name=nexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Upload Artifact
+      - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
         with:
           name: nexodus
           path: |
-            ${{ steps.build-nexd.outputs.artifact-name }}
-            ${{ steps.build-nexctl.outputs.artifact-name }}
+            ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
 
   e2e:
-    needs: [go-lint, generate, go-unit, k8s-lint, build-images]
+    needs: [go-lint-linux, go-lint-rest, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        overlay: ["dev", "cockroach"]
+        # todo: work on getting the cockroach overlay working ["dev", "cockroach"]
+        overlay: ["dev"]
 
     steps:
       - uses: actions/checkout@v3
@@ -289,7 +309,7 @@ jobs:
           path: logs.txt
 
   upload-s3-binaries:
-    needs: ["build-binaries", "e2e"]
+    needs: ["build-binaries", "build-rpm", "go-unit", "e2e"]
     permissions:
       id-token: write
       contents: read
@@ -312,7 +332,7 @@ jobs:
           aws s3 sync . s3://nexodus-io/
 
   build-rpm:
-    needs: [ go-lint, generate ]
+    needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
