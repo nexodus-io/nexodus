@@ -1,4 +1,4 @@
-# Deployment
+# Production and QA Deployments
 
 In order to follow our "Service First" guiding principle, we deploy Nexodus continuously as a service using GitOps.
 
