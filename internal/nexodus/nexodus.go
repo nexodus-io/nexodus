@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -42,6 +43,10 @@ const (
 	NexdStatusAuth
 	// nexd is up and running normally
 	NexdStatusRunning
+)
+
+var (
+	invalidTokenGrant = errors.New("invalid_grant")
 )
 
 type Nexodus struct {
@@ -343,8 +348,25 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		util.RunPeriodically(ctx, pollInterval, func() {
 			if err := ax.Reconcile(ax.organization, false); err != nil {
 				// TODO: Add smarter reconciliation logic
-				// to handle disconnects and/or timeouts etc...
 				ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
+				// if the token grant becomes invalid expires refresh or exit depending on the onboard method
+				if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
+					if ax.username != "" {
+						c, err := client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
+							ax.SetStatus(NexdStatusAuth, msg)
+						}, option)
+						if err != nil {
+							ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
+						} else {
+							ax.client = c
+							ax.SetStatus(NexdStatusRunning, "")
+							ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
+						}
+					} else {
+						ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
+							"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
+					}
+				}
 			}
 		})
 	})
