@@ -4,12 +4,11 @@ metadata:
   name: nexodus-auth-cert
 spec:
   secretName: nexodus-auth-cert
-  duration: 2160h  # 90d
-  renewBefore: 360h  # 15d
+  duration: 2160h0m0s
+  renewBefore: 360h0m0s
   subject:
     organizations:
       - nexodus
-  isCA: false
   privateKey:
     algorithm: RSA
     encoding: PKCS1
