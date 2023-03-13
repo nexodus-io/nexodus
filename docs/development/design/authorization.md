@@ -73,6 +73,7 @@ Whatever solution we pick for authz should support this scenario.
 Our design is to use OPA, either as a library or a service within the Nexodus stack.
 
 Pros:
+
 - Can be run separately or embedded as a library
 - Is a CNCF project
 - Supports a wide range of policies types
@@ -80,6 +81,7 @@ Pros:
 - Has native support for validating JWTs as well as integrations with external data sources
 
 Cons:
+
 - None
 
 ### Implementation Details
@@ -104,28 +106,32 @@ As it stands there are a couple of options:
 
 ### Keycloak Authorization
 
-https://www.keycloak.org/docs/latest/authorization_services/#_service_overview
+[Keycloak Authorization Services](https://www.keycloak.org/docs/latest/authorization_services/#_service_overview)
 
 Built-in to Keycloak and based on OAUTH2 and User Managed Access (UMA) standards.
 
 Pros:
+
 - We already have Keycloak in the stack
 
 Cons:
+
 - The UMA spec seems complicated. See: Permission Tickets.
 - Overhead of one REST call per route for permissions check + a REST call to update the Resource APIs on resource creation.
 - Ties us into Keycloak for Authz, meaning that we lose OIDC provider portability.
 
 ### Casbin
 
-https://github.com/casbin/casbin#how-it-works
+[Casbin](https://github.com/casbin/casbin#how-it-works)
 
 A popular OSS library for authorization.
 
 Pros:
+
 - Can be embedded as a library
 - Supports a wide range of authz policies
 
 Cons:
+
 - While actively maintained, the governance model is unclear.
 - The policy language isn't as easy to grok as OPA.

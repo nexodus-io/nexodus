@@ -9,6 +9,7 @@ It also enables Nexodus to focus on its core, and to defer authentication to ano
 Nexodus authentication goes through a service called [go-oidc-agent](https://github.com/nexodus-io/nexodus/pkg/oidcagent). This service is an implementation of the Backend-For-Frontend (BFF) architecture.
 
 This service:
+
 1. Prevents tokens being compromised by ensuring that the browser has no access to them.
 1. Doesn't require OIDC endpoints to be hard-coded in the frontend code.
 1. Proxies request to the apiserver, adding a Bearer token if we're authenticated.
@@ -61,6 +62,7 @@ Caddy proxy redirects traffic from CLI User-Agents to an instances of go-oidc-ag
 
 In this mode only one endpoint is provided: `login/start`
 This returns:
+
 1. The Device Authorization Endpoint of the Authenication Server
 1. The Client ID to use
 1. The Issuer URL, for use in Resource Owner Password Grant Flows
