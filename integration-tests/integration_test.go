@@ -5,8 +5,10 @@ package integration_tests
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/Nerzal/gocloak/v13"
 	"net"
 	"os"
 	"testing"
@@ -55,9 +57,23 @@ func dockerKindGatewayIP() string {
 
 type NexodusIntegrationSuite struct {
 	suite.Suite
-	logger *zap.SugaredLogger
+	logger  *zap.SugaredLogger
+	gocloak *gocloak.GoCloak
 }
 
+func (suite *NexodusIntegrationSuite) Context() context.Context {
+	return context.WithValue(context.Background(), "suite", suite)
+}
+
+func GetNexodusIntegrationSuite(ctx context.Context) *NexodusIntegrationSuite {
+	if ctx == nil {
+		return nil
+	}
+	if rc, ok := ctx.Value("suite").(*NexodusIntegrationSuite); ok {
+		return rc
+	}
+	return nil
+}
 func TestNexodusIntegrationSuite(t *testing.T) {
 	suite.Run(t, new(NexodusIntegrationSuite))
 }
@@ -65,26 +81,29 @@ func TestNexodusIntegrationSuite(t *testing.T) {
 func (suite *NexodusIntegrationSuite) SetupSuite() {
 	logger := zaptest.NewLogger(suite.T())
 	suite.logger = logger.Sugar()
+	suite.gocloak = gocloak.NewClient("https://auth.try.nexodus.local")
+	suite.gocloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 }
 
 func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
 	defer cancel()
 
-	username := "admin"
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestBasicConnectivity-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "TestBasicConnectivity-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
@@ -178,23 +197,24 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 // TestRequestIPOrganization tests requesting a specific address in a newly created organization
 func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	username := "kitteh1"
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 	node2IP := "100.100.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestRequestIPOrganization-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "TestRequestIPOrganization-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
@@ -267,26 +287,27 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
 	defer cancel()
-	username := "kitteh2"
+
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestHubOrganization-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "TestHubOrganization-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork})
+	node3 := suite.CreateNode(ctx, "TestHubOrganization-node3", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node3.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
@@ -395,8 +416,8 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	orgID := user.Organizations[0]
 
 	allDevices, err := suite.runCommand(nexctl,
-		"--username", "kitteh2",
-		"--password", "floofykittens",
+		"--username", username,
+		"--password", password,
 		"--output", "json-raw",
 		"device", "list", "--organization-id", orgID.String(),
 	)
@@ -414,8 +435,8 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 
 	// delete the device node2
 	_, err = suite.runCommand(nexctl,
-		"--username", "kitteh2",
-		"--password", "floofykittens",
+		"--username", username,
+		"--password", password,
 		"device", "delete",
 		"--device-id", device3ID,
 	)
@@ -437,24 +458,25 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	username := "kitteh3"
+
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 	node1LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNet := "172.16.20.102/32"
 	node1ChildPrefix := "172.16.10.0/24"
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestChildPrefix-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "TestChildPrefix-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
@@ -513,29 +535,30 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 
 // TestRelay validates the scenario where the agent is set to explicitly relay only.
 func (suite *NexodusIntegrationSuite) TestRelay() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
 
-	username := "kitteh4"
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestRelay-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "TestRelay-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork})
+	node3 := suite.CreateNode(ctx, "TestRelay-node3", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
@@ -580,20 +603,20 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 func (suite *NexodusIntegrationSuite) Testnexctl() {
 	assert := suite.Assert()
 	require := suite.Require()
-	parentCtx := context.Background()
+	parentCtx := suite.Context()
 	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
 	defer cancel()
-	username := "kitteh5"
 	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "Testnexctl-node1", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork})
+	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork})
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
 			suite.logger.Errorf("failed to terminate container %v", err)
