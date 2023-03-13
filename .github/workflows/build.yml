@@ -120,7 +120,6 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -233,7 +232,7 @@ jobs:
             ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
 
   e2e:
-    needs: [go-lint-linux, go-lint-rest, k8s-lint, build-images]
+    needs: [build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
