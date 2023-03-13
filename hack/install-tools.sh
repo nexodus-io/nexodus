@@ -6,7 +6,7 @@ if [ -z "$(which kind)" ] || [ "$1" = "--force" ]; then
 fi
 if [ -z "$(which golangci-lint)" ] || [ "$1" = "--force" ]; then
   echo installing golangci-lint
-  go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
+  go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.0
 fi
 if [ -z "$(which swag)" ] || [ "$1" = "--force" ]; then
   echo installing swag

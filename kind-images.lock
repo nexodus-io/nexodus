@@ -1,0 +1,13 @@
+docker.io/library/caddy:2.6-alpine
+docker.io/library/redis:7-alpine
+quay.io/go-oidc-agent/go-oidc-agent:49a615afe56d5bf4d1e7e381fb6d553337e4a014
+quay.io/jetstack/cert-manager-cainjector:v1.10.1
+quay.io/jetstack/cert-manager-controller:v1.10.1
+quay.io/jetstack/cert-manager-webhook:v1.10.1
+quay.io/keycloak/keycloak:20.0.3
+quay.io/nexodus/crunchy-pgbackrest:ubi8-2.41-0
+quay.io/nexodus/crunchy-postgres:ubi8-14.6-0
+registry.developers.crunchydata.com/crunchydata/postgres-operator:ubi8-5.3.0-0
+registry.developers.crunchydata.com/crunchydata/postgres-operator-upgrade:ubi8-5.3.0-0
+registry.k8s.io/ingress-nginx/controller:v1.6.4@sha256:15be4666c53052484dd2992efacf2f50ea77a78ae8aa21ccd91af6baaa7ea22f
+registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20221220-controller-v1.5.1-58-g787ea74b6@sha256:4d99688e557396f5baa150e019ff7d5b7334f9b9f9a8dab64038c5c2a006f6b5

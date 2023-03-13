@@ -19,76 +19,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go-lint:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Build
-        run: |
-          go build ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.50.0
-
-      - name: Vet
-        run: |
-          go vet ./...
-
-  gen-docs:
+  generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
-      - id: go-cache-paths
-        shell: bash
+      - name: Generate Source Code
         run: |
-          echo "go-bin=$(go env GOPATH)/bin" >> $GITHUB_OUTPUT
-
-      - name: Go Bin Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-bin }}
-          key: ${{ runner.os }}-go-bin-${{ hashFiles('./hack/install-tools.sh') }}
-
-      - name: Generate the Openapi Docs
-        run: |
-          ./hack/install-tools.sh
-          make gen-docs
+          make generate
           
       - name: Check for uncommitted changes
         id: check-changes
@@ -97,47 +39,35 @@ jobs:
             echo "Detected uncommitted changes after build.  See status below:"
             git diff
             echo "========================================================"
-            echo "  run `make gen-docs` and commit the changes"
+            echo "  run `make generate` and commit the changes"
             echo "========================================================"
             exit 1
           fi
-
-  go-unit:
-    needs: [ go-lint, gen-docs ]
+          
+  go-lint-linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["linux"]
     steps:
       - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+      - name: Lint ${{ matrix.os }}
+        run: make go-lint-${{ matrix.os }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Build
-        run: |
-          go build ./...
-
-      - name: Unit tests
-        run: |
-          go test -v ./...
+  # these are a little slower to lint...
+  go-lint-rest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["darwin", "windows"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+      - name: Lint ${{ matrix.os }}
+        run: make go-lint-${{ matrix.os }}
 
   ui-lint:
     runs-on: ubuntu-latest
@@ -190,72 +120,45 @@ jobs:
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
   build-images:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: apiserver
+            tags: quay.io/nexodus/apiserver:latest
+            target:
+          - name: frontend
+            tags: quay.io/nexodus/frontend:latest
+            target:
+          - name: ipam
+            tags: quay.io/nexodus/go-ipam:latest
+            target:
+          - name: test
+            tags: quay.io/nexodus/test:ubuntu
+            target: ubuntu
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
-      - name: Build and export apiserver
+      - name: Build and export ${{ matrix.name }}
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Containerfile.apiserver
-          tags: quay.io/nexodus/apiserver:latest
-          outputs: type=docker,dest=/tmp/apiserver.tar
+          file: ./Containerfile.${{ matrix.name }}
+          tags: ${{ matrix.tags }}
+          outputs: type=docker,dest=/tmp/${{ matrix.name }}.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Upload apiserver artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: apiserver
-          path: /tmp/apiserver.tar
-      - name: Build and export frontend
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Containerfile.frontend
-          tags: quay.io/nexodus/frontend:latest
-          outputs: type=docker,dest=/tmp/frontend.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: frontend
-          path: /tmp/frontend.tar
+          target: ${{ matrix.target }}
 
-      - name: Build and export ipam
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Containerfile.ipam
-          tags: quay.io/nexodus/go-ipam:latest
-          outputs: type=docker,dest=/tmp/ipam.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Upload ipam artifact
+      - name: Upload ${{ matrix.name }} artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ipam
-          path: /tmp/ipam.tar
+          name: ${{ matrix.name }}
+          path: /tmp/${{ matrix.name }}.tar
 
-      - name: Build and export test:ubuntu
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Containerfile.test
-          tags: quay.io/nexodus/test:ubuntu
-          outputs: type=docker,dest=/tmp/test-ubuntu.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Upload test:ubuntu artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-ubuntu
-          path: /tmp/test-ubuntu.tar
-
-  build-binaries:
-    needs: [ go-lint, gen-docs ]
+  go-unit:
+    needs: [ go-lint-linux, go-lint-rest, generate ]
     strategy:
       fail-fast: false
       matrix:
@@ -268,105 +171,89 @@ jobs:
             arch: arm
           - os: windows-latest
             arch: arm64
+
+          # Tests are failing with "bad CPU type in executable" or "exec format error"
+          - os: ubuntu-latest
+            arch: arm
+          - os: ubuntu-latest
+            arch: arm64
+          - os: macos-latest
+            arch: arm64
+
     runs-on: ${{ matrix.os }}
     env:
       GOARCH: ${{ matrix.arch }}
-      JOB_NAME: "nexd-${{ matrix.os }}-${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+      - name: Unit tests
+        run: |
+          go test -v ./...
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
+  build-binaries:
+    needs: [ go-lint-linux, generate ]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        binary: ["nexd", "nexctl"]
+        os: ["linux", "darwin", "windows"]
+        arch: ["amd64", "arm64", "arm"]
+        exclude:
+          - os: darwin
+            arch: arm
+          - os: windows
+            arch: arm
+          - os: windows
+            arch: arm64
+    runs-on: ubuntu-latest
+    env:
+      GOARCH: ${{ matrix.arch }}
+      JOB_NAME: "${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
-      - id: go-cache-paths
+      - name: Build ${{ matrix.binary }}
+        id: build
         shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+        run: |          
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+          go build \
+            -o ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }} \
+            -v ./cmd/${{ matrix.binary }}
 
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Test
-        run: |
-          go test -v ./internal/nexodus/...
-
-      - name: Build Nexd
-        id: build-nexd
-        run: |
-          CGO_ENABLED=0 go build -o nexd-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexd
-          echo "artifact-name=nexd-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Build Nexctl
-        id: build-nexctl
-        run: |
-          CGO_ENABLED=0 go build -o nexctl-$(go env GOOS)-$(go env GOARCH) -v ./cmd/nexctl
-          echo "artifact-name=nexctl-$(go env GOOS)-$(go env GOARCH)" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Upload Artifact
+      - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
         with:
           name: nexodus
           path: |
-            ${{ steps.build-nexd.outputs.artifact-name }}
-            ${{ steps.build-nexctl.outputs.artifact-name }}
+            ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
 
   e2e:
-    needs: [go-lint, gen-docs, go-unit, k8s-lint, build-images]
+    needs: [go-lint-linux, go-lint-rest, k8s-lint, build-images]
     name: e2e-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # todo: work on getting the cockroach overlay working ["dev", "cockroach"]
+        overlay: ["dev"]
+
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
 
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Install deps
         run: |
           sudo apt update
           sudo apt-get -qy install libnss3-tools
-
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
-
-      - name: Install mkcert
-        run: |
-          brew install mkcert
 
       - name: Add hosts to /etc/hosts
         run: |
@@ -393,7 +280,7 @@ jobs:
       - name: Download test:ubuntu image
         uses: actions/download-artifact@v3
         with:
-          name: test-ubuntu
+          name: test
           path: /tmp
 
       - name: Load Docker images
@@ -401,7 +288,7 @@ jobs:
           docker load --input /tmp/apiserver.tar
           docker load --input /tmp/frontend.tar
           docker load --input /tmp/ipam.tar
-          docker load --input /tmp/test-ubuntu.tar
+          docker load --input /tmp/test.tar
 
       - name: Build dist
         run: |
@@ -409,23 +296,11 @@ jobs:
 
       - name: Setup KIND
         run: |
-          make setup-kind deploy-operators load-images deploy cacerts
+          OVERLAY=${{ matrix.overlay }} make setup-kind deploy-operators load-images deploy cacerts
 
-      - name: Run e2e against Crunchy managed Postgres
+      - name: Run e2e Tests
         run: |
           go test -v --tags=integration ./integration-tests/...
-
-# TODO: one day, uncomment this so that we also verify that the e2e
-#       tests work against Cockroach DB too.
-#
-#      - name: Switch to Cockroach DB
-#        run: |
-#          make use-cockroach
-#
-#      - name: Run e2e against Cockroach DB
-#        run: |
-#          go clean -testcache
-#          go test -v --tags=integration ./integration-tests/...
 
       - name: Get Logs
         if: always()
@@ -436,11 +311,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: e2e-logs
+          name: e2e-${{ matrix.overlay }}-logs
           path: logs.txt
 
   upload-s3-binaries:
-    needs: ["build-binaries", "e2e"]
+    needs: ["build-binaries", "build-rpm", "go-unit", "e2e"]
     permissions:
       id-token: write
       contents: read
@@ -463,38 +338,14 @@ jobs:
           aws s3 sync . s3://nexodus-io/
 
   build-rpm:
-    needs: [ go-lint, gen-docs ]
+    needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
       # Needed for building binaries to generate manpages
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-
-      - name: Install make
-        run: |
-          sudo apt -y install make
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Build rpm
         id: build-rpm
