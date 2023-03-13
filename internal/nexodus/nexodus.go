@@ -354,7 +354,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 					if ax.username != "" {
 						c, err := client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
 							ax.SetStatus(NexdStatusAuth, msg)
-						}, option)
+						}, options...)
 						if err != nil {
 							ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
 						} else {
