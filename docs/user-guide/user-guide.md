@@ -1,36 +1,5 @@
 # Nexodus User Guide
 
-- [Nexodus User Guide](#nexodus-user-guide)
-  - [Using the Nexctl Utility](#using-the-nexctl-utility)
-    - [Install pre-built binary](#install-pre-built-binary)
-    - [Build from the source code](#build-from-the-source-code)
-  - [Deploying the Nexodus Agent](#deploying-the-nexodus-agent)
-    - [Deploying on a Node](#deploying-on-a-node)
-      - [Installing the Agent](#installing-the-agent)
-        - [Install Script](#install-script)
-        - [RPM from a Copr Repository](#rpm-from-a-copr-repository)
-        - [Custom RPM Build](#custom-rpm-build)
-        - [Systemd](#systemd)
-        - [Starting the Agent](#starting-the-agent)
-      - [Interactive Enrollment](#interactive-enrollment)
-      - [Verifying Agent Setup](#verifying-agent-setup)
-      - [Verifying Organization Connectivity](#verifying-organization-connectivity)
-      - [Cleanup Agent From Node](#cleanup-agent-from-node)
-    - [Deploying on Kubernetes-managed Nodes](#deploying-on-kubernetes-managed-nodes)
-      - [Setup the configuration](#setup-the-configuration)
-      - [Deploying the Agent in the Kind Dev Environment](#deploying-the-agent-in-the-kind-dev-environment)
-      - [Deploying the Nexodus Agent Manifest](#deploying-the-nexodus-agent-manifest)
-      - [Controlling the Agent Deployment](#controlling-the-agent-deployment)
-      - [Verify the deployment](#verify-the-deployment)
-      - [Cleanup Agent Pod From Node](#cleanup-agent-pod-from-node)
-  - [Deploying the Nexodus Relay](#deploying-the-nexodus-relay)
-    - [Setup Nexodus Relay Node](#setup-nexodus-relay-node)
-      - [Interactive OnBoarding](#interactive-onboarding)
-      - [Silent OnBoarding](#silent-onboarding)
-    - [Delete Organization](#delete-organization)
-  - [Additional Features](#additional-features)
-    - [Subnet Routers](#subnet-routers)
-
 This document covers the usage of Nexodus as a user of the service.
 
 ## Using the Nexctl Utility

@@ -1,11 +1,5 @@
 # Deploying the Nexodus Service
 
-- [Deploying the Nexodus Service](#deploying-the-nexodus-service)
-  - [Run on Kubernetes](#run-on-kubernetes)
-    - [Add required DNS entries](#add-required-dns-entries)
-    - [Deploy using KIND](#deploy-using-kind)
-  - [HTTPS](#https)
-
 This document discusses how to run the control plane for Nexodus.
 
 ## Run on Kubernetes

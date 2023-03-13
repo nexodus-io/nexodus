@@ -1,18 +1,10 @@
-# Nexodus Development
+# Running the integration tests
 
-- [Nexodus Development](#nexodus-development)
-  - [Running the integration tests](#running-the-integration-tests)
-    - [Prerequisites](#prerequisites)
-    - [Using Docker](#using-docker)
-    - [Using podman](#using-podman)
-
-## Running the integration tests
-
-### Prerequisites
+## Prerequisites
 
 Prior to running the integration tests, you must start the kind-based development environment. See the [Run on Kubernetes](nexodus-service.md#run-on-kubernetes) docs for further details.
 
-### Using Docker
+## Using Docker
 
 You can simply:
 
@@ -20,7 +12,7 @@ You can simply:
 make e2e
 ```
 
-### Using podman
+## Using podman
 
 Since the test containers require CAP_NET_ADMIN only rootful podman can be used.
 To run the tests requires a little more gymnastics.
