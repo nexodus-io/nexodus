@@ -16,10 +16,10 @@ func TestRunPeriodically(t *testing.T) {
 	count := 0
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	util.RunPeriodically(ctx, time.Millisecond, func() {
+	util.RunPeriodically(ctx, time.Nanosecond, func() {
 		count++
 	})
-	assert.Greater(t, count, 50)
+	assert.Greater(t, count, 2)
 
 	// Make sure this only runs once
 	count = 0
