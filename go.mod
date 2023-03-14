@@ -3,6 +3,7 @@ module github.com/nexodus-io/nexodus
 go 1.19
 
 require (
+	github.com/Nerzal/gocloak/v13 v13.1.0
 	github.com/bufbuild/connect-go v1.5.2
 	github.com/cockroachdb/cockroach-go/v2 v2.3.2
 	github.com/coreos/go-oidc/v3 v3.5.0
@@ -59,6 +60,8 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-resty/resty/v2 v2.7.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/jackc/pgx/v5 v5.3.0 // indirect
@@ -76,12 +79,14 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pion/transport/v2 v2.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/redis/go-redis/v9 v9.0.2 // indirect
+	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21 // indirect

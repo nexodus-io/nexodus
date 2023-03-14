@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Nerzal/gocloak/v13"
+	"github.com/google/uuid"
 	"io"
 	"net"
 	"os"
@@ -129,6 +131,9 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 	return ctr
 }
 
+func sanitizeName(name string) string {
+	return strings.ReplaceAll(name, "/", "-")
+}
 func newClient(ctx context.Context, username, password string) (*client.Client, error) {
 	return client.NewClient(ctx, "http://api.try.nexodus.local", nil, client.WithPasswordGrant(username, password))
 }
@@ -382,4 +387,33 @@ func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testco
 	}
 	nodeName, _ := ctr.Name(ctx)
 	return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s", nodeName)
+}
+
+func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, password string) string {
+	id, err := uuid.NewUUID()
+	suite.Require().NoError(err)
+	userName := "kitteh-" + id.String()
+
+	token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
+	suite.Require().NoError(err)
+
+	userid, err := suite.gocloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
+		FirstName: gocloak.StringP("Test"),
+		LastName:  gocloak.StringP(userName),
+		Email:     gocloak.StringP(userName + "@example.com"),
+		Enabled:   gocloak.BoolP(true),
+		Username:  gocloak.StringP(userName),
+	})
+	suite.Require().NoError(err)
+
+	suite.T().Cleanup(func() {
+		token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
+		if err != nil {
+			_ = suite.gocloak.DeleteUser(ctx, token.AccessToken, "nexodus", userid)
+		}
+	})
+
+	err = suite.gocloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
+	suite.Require().NoError(err)
+	return userName
 }
