@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // key for username in gin.Context
@@ -155,14 +156,16 @@ func (api *API) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
+
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
 			return errUserNotFound
 		}
-		if res := api.db.Delete(&user, "id = ?", userID); res.Error != nil {
-			return res.Error
+		if res := api.db.Select(clause.Associations).Delete(&user); res.Error != nil {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to delete user: %w", res.Error)))
 		}
+
 		return nil
 	})
 
@@ -174,5 +177,69 @@ func (api *API) DeleteUser(c *gin.Context) {
 		}
 		return
 	}
+	c.JSON(http.StatusOK, user)
+}
+
+type UserOrganization struct {
+	UserID         string    `json:"user_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+}
+
+// DeleteUserFromOrganization removes a user from an organization
+// @Summary      Remove a User from an Organization
+// @Description  Deletes an existing organization associated to a user
+// @Tags         User
+// @Accepts		 json
+// @Produce      json
+// @Param        id             path      string  true "User ID"
+// @Param        organization   path      string  true "Organization ID"
+// @Success      204  {object}  models.User
+// @Failure      400  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
+// @Router       /users/{id}/organizations/{organization} [delete]
+func (api *API) DeleteUserFromOrganization(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
+	defer span.End()
+	userID := c.Param("id")
+
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+		return
+	}
+
+	orgID := c.Param("organization")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+		return
+	}
+
+	var user models.User
+	var organization models.Organization
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
+		if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
+			return errUserNotFound
+		}
+		if res := api.db.First(&organization, "id = ?", orgID); res.Error != nil {
+			return errOrgNotFound
+		}
+		if res := api.db.Select(clause.Associations).Where("user_id = ?", userID).Where("organization_id = ?", orgID).Delete(&UserOrganization{}); res.Error != nil {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("WTF failed to remove the association from the user_organizations table: %w", res.Error)))
+		}
+		return nil
+	})
+
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
+		}
+		if errors.Is(err, errOrgNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		}
+		return
+	}
+
 	c.JSON(http.StatusOK, user)
 }

@@ -311,7 +311,7 @@ const docTemplate = `{
                 "tags": [
                     "Organization"
                 ],
-                "summary": "Create a Organization",
+                "summary": "Create an Organization",
                 "parameters": [
                     {
                         "description": "Add Organization",
@@ -664,6 +664,54 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/organizations/{organization}": {
+            "delete": {
+                "description": "Deletes an existing organization associated to a user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Remove a User from an Organization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
                         "schema": {
                             "$ref": "#/definitions/models.User"
                         }

@@ -18,6 +18,7 @@ var (
 	errUserOrOrgNotFound = errors.New("user or organization not found")
 	errUserNotFound      = errors.New("user not found")
 	errDeviceNotFound    = errors.New("device not found")
+	errOrgNotFound       = errors.New("organization not found")
 )
 
 type errDuplicateDevice struct {
@@ -213,8 +214,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		var org models.Organization
 		if res := tx.Model(&org).
-			Joins("inner join user_organization on user_organization.organization_id=organizations.id").
-			Where("user_organization.user_id=? AND organizations.id=?", userId, request.OrganizationID).
+			Joins("inner join user_organizations on user_organizations.organization_id=organizations.id").
+			Where("user_organizations.user_id=? AND organizations.id=?", userId, request.OrganizationID).
 			First(&org); res.Error != nil {
 			return errUserOrOrgNotFound
 		}
