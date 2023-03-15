@@ -11,6 +11,7 @@ configMapGenerator:
       - REDIRECT_URL=https://try.nexodus.local/#/login
       - ORIGINS=https://try.nexodus.local
       - BACKEND=http://apiserver:8080
+      - SCOPES=read:organizations,write:organizations,read:users,write:users,read:devices,write:devices
 resources:
   - deployment.yaml
   - service.yaml

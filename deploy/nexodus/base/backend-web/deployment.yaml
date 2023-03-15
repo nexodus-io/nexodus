@@ -75,6 +75,11 @@ spec:
                 configMapKeyRef:
                   name: backend-web
                   key: BACKEND
+            - name: SCOPES
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-web
+                  key: SCOPES
           resources:
             requests:
               cpu: 100m
