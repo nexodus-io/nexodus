@@ -472,14 +472,14 @@
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "scopeMappings": [
     {
-      "clientScope": "write:device",
+      "clientScope": "write:devices",
       "roles": [
         "admin",
         "user"
       ]
     },
     {
-      "clientScope": "read:peer",
+      "clientScope": "read:users",
       "roles": [
         "admin",
         "user"
@@ -492,27 +492,27 @@
       ]
     },
     {
-      "clientScope": "write:zone",
+      "clientScope": "write:organizations",
       "roles": [
         "admin"
       ]
     },
     {
-      "clientScope": "write:peer",
+      "clientScope": "write:users",
       "roles": [
         "admin",
         "user"
       ]
     },
     {
-      "clientScope": "read:zone",
+      "clientScope": "read:organizations",
       "roles": [
         "admin",
         "user"
       ]
     },
     {
-      "clientScope": "read:device",
+      "clientScope": "read:devices",
       "roles": [
         "admin",
         "user"
@@ -716,15 +716,15 @@
       ],
       "optionalClientScopes": [
         "address",
-        "write:device",
+        "write:devices",
         "phone",
-        "read:peer",
-        "read:device",
+        "read:users",
+        "read:devices",
         "offline_access",
-        "read:zone",
+        "read:organizations",
         "microprofile-jwt",
-        "write:peer",
-        "write:zone"
+        "write:users",
+        "write:organizations"
       ]
     },
     {
@@ -775,15 +775,15 @@
       ],
       "optionalClientScopes": [
         "address",
-        "write:device",
+        "write:devices",
         "phone",
-        "read:peer",
-        "read:device",
+        "read:users",
+        "read:devices",
         "offline_access",
-        "read:zone",
+        "read:organizations",
         "microprofile-jwt",
-        "write:peer",
-        "write:zone"
+        "write:users",
+        "write:organizations"
       ]
     },
     {
@@ -979,7 +979,7 @@
     },
     {
       "id": "741a6ed7-f9d2-4a98-9743-41866c75f49c",
-      "name": "write:device",
+      "name": "write:devices",
       "description": "Onboard new devices",
       "protocol": "openid-connect",
       "attributes": {
@@ -1034,8 +1034,8 @@
     },
     {
       "id": "f72a58a7-adf5-4395-a500-4fb44ca266ae",
-      "name": "read:peer",
-      "description": "Read Peers",
+      "name": "read:users",
+      "description": "Read Users",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -1058,7 +1058,7 @@
     },
     {
       "id": "b9ff629c-bd14-42ca-872c-22a84613b72e",
-      "name": "write:zone",
+      "name": "write:organizations",
       "description": "Zone Write",
       "protocol": "openid-connect",
       "attributes": {
@@ -1070,8 +1070,8 @@
     },
     {
       "id": "ef8c867b-9c17-44c5-8399-d74e73467d43",
-      "name": "write:peer",
-      "description": "Write Peers",
+      "name": "write:users",
+      "description": "Write Users",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -1082,14 +1082,14 @@
     },
     {
       "id": "f9306677-f0ab-49f3-9de4-3e639d177111",
-      "name": "read:zone",
-      "description": "Read Zones",
+      "name": "read:organizations",
+      "description": "Read Organizations",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
         "display.on.consent.screen": "true",
         "gui.order": "",
-        "consent.screen.text": "Read Zones"
+        "consent.screen.text": "Read Organizations"
       }
     },
     {
@@ -1314,7 +1314,7 @@
     },
     {
       "id": "a0830fb0-f208-47e6-91d0-a07c771de77a",
-      "name": "read:device",
+      "name": "read:devices",
       "description": "Read device information",
       "protocol": "openid-connect",
       "attributes": {
@@ -1538,12 +1538,12 @@
     "address",
     "phone",
     "microprofile-jwt",
-    "read:device",
-    "write:device",
-    "read:peer",
-    "write:peer",
-    "read:zone",
-    "write:zone",
+    "read:devices",
+    "write:devices",
+    "read:users",
+    "write:users",
+    "read:organizations",
+    "write:organizations",
     "admin"
   ],
   "browserSecurityHeaders": {
