@@ -19,7 +19,7 @@ const (
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
-var Version = "dev"
+var Version = "DEV"
 
 func main() {
 	// set the log level
