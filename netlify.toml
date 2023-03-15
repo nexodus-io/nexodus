@@ -1,3 +1,4 @@
 [build]
   command = "mkdocs build"
   publish = "site"
+  ignore = "git diff --quiet $COMMIT_REF $CACHED_COMMIT_REF -- docs/"
