@@ -112,12 +112,12 @@ yaml-lint: ## Lint the yaml files
 .PHONY: md-lint
 md-lint: ## Lint markdown files
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[MD LINT]"
-	$(CMD_PREFIX) docker run -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 > /dev/null
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 > /dev/null
 
 .PHONY: ui-lint
 ui-lint: ## Lint the UI source
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[UI LINT]"
-	$(CMD_PREFIX) docker run -v $(CURDIR):/workdir tmknom/prettier --check /workdir/ui/src/ >/dev/null
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier --check /workdir/ui/src/ >/dev/null
 
 policies=$(wildcard internal/routers/*.rego)
 
