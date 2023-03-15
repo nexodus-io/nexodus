@@ -3,6 +3,8 @@ package routers
 import (
 	"context"
 	_ "embed"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -31,11 +33,25 @@ var policy string
 // Naive JWS Key validation
 func ValidateJWT(logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string) (func(*gin.Context), error) {
 	query, err := rego.New(
+		rego.Query("x = data.token.allow"),
 		rego.Module("policy.rego", policy),
 	).PrepareForEval(context.Background())
 	if err != nil {
 		return nil, err
 	}
+
+	res, err := http.Get(jwksURI)
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	keySet := string(body)
 
 	return func(c *gin.Context) {
 		logger := util.WithTrace(c.Request.Context(), logger)
@@ -58,7 +74,7 @@ func ValidateJWT(logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, 
 		}
 
 		input := map[string]interface{}{
-			"jwks":         jwksURI,
+			"jwks":         keySet,
 			"access_token": parts[1],
 			"method":       c.Request.Method,
 			"path":         c.Request.URL.Path,
@@ -77,12 +93,13 @@ func ValidateJWT(logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, 
 			logger.Error("undefined result from authz policy")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
-		} else if _, ok := results[0].Bindings["allow"].(bool); !ok {
+		} else if _, ok := results[0].Bindings["x"].(bool); !ok {
 			logger.Error("unexpect result type")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		if !results[0].Bindings["allow"].(bool) {
+		fmt.Println(results[0])
+		if !results[0].Bindings["x"].(bool) {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
