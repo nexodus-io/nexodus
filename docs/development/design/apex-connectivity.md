@@ -1,6 +1,6 @@
 # Nexodus as a Connectivity Service
 
-Nexodus provides L3 based connectivity between two endpoints. These endpoints can be present across various administrative domains behind different networking environments. Example of these networking environments range from a node that is directly reachable from internet through a public IP address to a node sitting behind a [symmetric NAT](https://datatracker.ietf.org/doc/html/rfc4787) and a firewall. Please refer to [README](../../README.md) for more context about the Nexodus.
+Nexodus provides L3 based connectivity between two endpoints. These endpoints can be present across various administrative domains behind different networking environments. Example of these networking environments range from a node that is directly reachable from internet through a public IP address to a node sitting behind a [symmetric NAT](https://datatracker.ietf.org/doc/html/rfc4787) and a firewall.
 
 This document is an attempt to capture various connectivity scenarios that Nexodus currently supports and share high level details about the internals that enable these connectivity scenarios. Nexodus currently enables the networking connectivity between nodes using [wireguard](https://www.wireguard.com/).
 
@@ -83,7 +83,7 @@ NAT mapping can change for various reasons such as NAT device restart, or mappin
 Currently we use ICE node to solve this problem. ICE node can be any node that is reachable through a public ip address. Introducing the ICE node adds an additional step in the control flow - ICE node must be the first node that should be onboarded. The reason for onboarding the ICE node first is to ensure that all the nodes joining the Nexodus network later will be peer with the ICE node. Given that each node runs the keepalive to all its peers, ICE node will always have an updated reflexive address of its peer. As far as it keep receiving the
 
 > **Note**
-> ICE node runs the same Nexodus agent, but it runs with ICE node configuration. To run Nexodus agent as an ICE Node, you need to provide `--hub-router --stun` option during onboarding of the ICE node. Please refer to the [Deploying Nexodus Relay](../README.md#deploying-the-nexodus-relay) section for details about deploying the ICE node.
+> ICE node runs the same Nexodus agent, but it runs with ICE node configuration. To run Nexodus agent as an ICE Node, you need to provide `--hub-router --stun` option during onboarding of the ICE node. Please refer to the [Deploying Nexodus Relay](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) section for details about deploying the ICE node.
 
 ICE node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's Nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoints-ip to reconcile the broken connections between the peers.
 

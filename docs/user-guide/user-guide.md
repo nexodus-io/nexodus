@@ -88,7 +88,7 @@ sudo systemctl daemon-reload
 ##### Starting the Agent
 
 > **Note**
-> In a self-signed dev environment, each agent machine needs to have the [imported cert](nexodus-service.md#https) and the [host entry](nexodus-service.md#add-required-dns-entries) detailed above.
+> In a self-signed dev environment, each agent machine needs to have the [imported cert](../deployment/nexodus-service.md#https) and the [host entry](../deployment/nexodus-service.md#add-required-dns-entries) detailed above.
 
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
@@ -191,7 +191,7 @@ Instructions mentioned in [Deploying on a Node](#deploying-on-a-node) can be use
 
 #### Setup the configuration
 
-Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample `kustomization.yaml.sample`](../deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
+Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample [`kustomization.yaml.sample`](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
 
 Fetch the CA cert from the Kubernetes cluster that is running the Nexodus controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
 
@@ -204,7 +204,7 @@ Update the `<nexodus_CONTROLLER_IP>` with the IP address where the Nexodus contr
 **Note**
 Current username and password are default configuration for the development environment, which is very likely to change in near future.
 
-You can refer to [kustomization.yaml.sample](../deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
+You can refer to [kustomization.yaml.sample](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
 
 If you have set up your Nexodus stack with a non-default configuration, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory and update the sample file accordingly to create a new overlay for your setup and deploy it.
 
@@ -235,7 +235,7 @@ If your Kubernetes cluster enforces security context to deny privileged containe
 
 #### Controlling the Agent Deployment
 
-By default Nexodus agent is deployed using DaemonSet, so Kubernetes will deploy Nexodus agent pod on each worker node. This might not be the ideal strategy for onboarding Kubernetes worker nodes for many reasons. You can control the Nexodus agent deployment by configuring the `nodeAffinity` in the [node_selector.yaml](../deploy/nexodus-client/overlays/dev/node_selector.yaml).
+By default Nexodus agent is deployed using DaemonSet, so Kubernetes will deploy Nexodus agent pod on each worker node. This might not be the ideal strategy for onboarding Kubernetes worker nodes for many reasons. You can control the Nexodus agent deployment by configuring the `nodeAffinity` in the [node_selector.yaml](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/node_selector.yaml).
 
 The default behavior is set to deploy Nexodus pod on any node that is running Linux Operating System and is tagged with `app.kubernetes.io/nexodus=`. With this deployment strategy, once you apply the Nexodus manifest, Kubernetes won't deploy Nexodus pod on any worker node. To deploy the Nexodus pod on any worker node, tag that node with `app.kubernetes.io/nexodus=` label.
 
@@ -249,7 +249,7 @@ If you want to remove the deployment from that node, just remove the label.
 kubectl label nodes <NODE_NAME> app.kubernetes.io/nexodus-
 ```
 
-If you want to change the deployment strategy for Nexodus pod, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](../deploy/nexodus-client/overlays/sameple/node_selector.yaml.sample) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
+If you want to change the deployment strategy for Nexodus pod, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/node_selector.yaml) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
 
 Currently, the sample file provides two strategies to control the deployment, but feel free to change it based on your requirements.
 

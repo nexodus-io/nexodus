@@ -16,7 +16,7 @@ Note: Please see the troubleshooting section for some additional information aro
 
 ## Deploying Nexodus Controller
 
-Please follow the instructions provided in the [README](../README.md#deploying-the-nexodus-controller) to set up the Nexodus Controller. Make sure you setup the
+Please follow the instructions provided in the [README](../../deployment/nexodus-service.md#deploying-the-nexodus-controller) to set up the Nexodus Controller. Make sure you setup the
 controller on the machine that is reachable from your Kubernetes and MicroShift clusters.
 
 Once your Nexodus controller is set up, please get the CA certification from Nexodus's secret and keep it handy. You will need this CA cert for deploying the Nexodus agent and to access the Nexodus Controller UI.
@@ -27,11 +27,11 @@ kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt
 
 ## Deploying the Nexodus Relay Node
 
-Please follow the instructions provided in the [README Nexodus Relay Section](../README.md#deploying-the-nexodus-relay) to setup a relay node, create a relay enabled zone, move the user to newly created zone and OnBoarding the Relay Node. Once the Relay node is OnBoarded successfully, its time to OnBoard all the nodes that want to be part of the Nexodus Network.
+Please follow the instructions provided in the [README Nexodus Relay Section](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) to setup a relay node, create a relay enabled zone, move the user to newly created zone and OnBoarding the Relay Node. Once the Relay node is OnBoarded successfully, its time to OnBoard all the nodes that want to be part of the Nexodus Network.
 
 ## Deploying Nexodus Agent on Clusters Nodes
 
-Please follow the [README Section](../README.md#deploying-on-kubernetes-managed-node) to deploy the Nexodus agent. It mainly requires two steps
+Please follow the [README Section](../../deployment/nexodus-service.md#deploying-on-kubernetes-managed-node) to deploy the Nexodus agent. It mainly requires two steps
 
 1. Set config data in `./deploy/nexodus-client/overlays/dev/kustomization.yaml` and deploy the Nexodus agent's manifest files
 
