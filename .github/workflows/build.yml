@@ -119,6 +119,17 @@ jobs:
         run: |
           kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
 
+  opa-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Run OPA Tests
+        run: opa test **/*.rego -v
+
   build-images:
     runs-on: ubuntu-latest
     strategy:
