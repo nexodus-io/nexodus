@@ -53,7 +53,7 @@ You can add this repository to your Fedora host with the following command:
 sudo dnf copr enable russellb/nexodus
 ```
 
-Then you should be able to install nexodus with:
+Then you should be able to install Nexodus with:
 
 ```sh
 sudo dnf install nexodus
@@ -88,7 +88,7 @@ sudo systemctl daemon-reload
 ##### Starting the Agent
 
 > **Note**
-> In a self-signed dev environment, each agent machine needs to have the [imported cert](nexodus-service.md#https) and the [host entry](nexodus-service.md#add-required-dns-entries) detailed above.
+> In a self-signed dev environment, each agent machine needs to have the [imported cert](../deployment/nexodus-service.md#https) and the [host entry](../deployment/nexodus-service.md#add-required-dns-entries) detailed above.
 
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
@@ -191,7 +191,7 @@ Instructions mentioned in [Deploying on a Node](#deploying-on-a-node) can be use
 
 #### Setup the configuration
 
-Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample `kustomization.yaml.sample`](../deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
+Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample [`kustomization.yaml.sample`](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
 
 Fetch the CA cert from the Kubernetes cluster that is running the Nexodus controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
 
@@ -204,7 +204,7 @@ Update the `<nexodus_CONTROLLER_IP>` with the IP address where the Nexodus contr
 **Note**
 Current username and password are default configuration for the development environment, which is very likely to change in near future.
 
-You can refer to [kustomization.yaml.sample](../deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
+You can refer to [kustomization.yaml.sample](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) for an example manifest.
 
 If you have set up your Nexodus stack with a non-default configuration, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory and update the sample file accordingly to create a new overlay for your setup and deploy it.
 
@@ -235,7 +235,7 @@ If your Kubernetes cluster enforces security context to deny privileged containe
 
 #### Controlling the Agent Deployment
 
-By default Nexodus agent is deployed using DaemonSet, so Kubernetes will deploy Nexodus agent pod on each worker node. This might not be the ideal strategy for onboarding Kubernetes worker nodes for many reasons. You can control the Nexodus agent deployment by configuring the `nodeAffinity` in the [node_selector.yaml](../deploy/nexodus-client/overlays/dev/node_selector.yaml).
+By default Nexodus agent is deployed using DaemonSet, so Kubernetes will deploy Nexodus agent pod on each worker node. This might not be the ideal strategy for onboarding Kubernetes worker nodes for many reasons. You can control the Nexodus agent deployment by configuring the `nodeAffinity` in the [node_selector.yaml](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/node_selector.yaml).
 
 The default behavior is set to deploy Nexodus pod on any node that is running Linux Operating System and is tagged with `app.kubernetes.io/nexodus=`. With this deployment strategy, once you apply the Nexodus manifest, Kubernetes won't deploy Nexodus pod on any worker node. To deploy the Nexodus pod on any worker node, tag that node with `app.kubernetes.io/nexodus=` label.
 
@@ -249,7 +249,7 @@ If you want to remove the deployment from that node, just remove the label.
 kubectl label nodes <NODE_NAME> app.kubernetes.io/nexodus-
 ```
 
-If you want to change the deployment strategy for Nexodus pod, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](../deploy/nexodus-client/overlays/sameple/node_selector.yaml.sample) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
+If you want to change the deployment strategy for Nexodus pod, please copy the [sample](./../deploy/nexodus-client/overlays/sample/) directory to create a new overlay, and configure the  [node_selector.yaml.sample](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/node_selector.yaml) file as per your requirements. After making the required changes rename the file to `node_selector.yaml` and deploy it.
 
 Currently, the sample file provides two strategies to control the deployment, but feel free to change it based on your requirements.
 
@@ -263,7 +263,7 @@ Currently, the sample file provides two strategies to control the deployment, bu
 2 ) Deploy Nexodus pod on specific node/s in the Kubernetes cluster. Uncomment the following lines in `node_selector.yaml.sample` and add the list of the nodes.
 
 ```yaml
-# Deploy nexodus client on  specific nodes
+# Deploy Nexodus client on  specific nodes
 #              - key: kubernetes.io/hostname
 #                operator: In
 #                values:
@@ -303,7 +303,7 @@ Nexodus Controller makes the best effort to establish a direct peering between t
 
 ### Setup Nexodus Relay Node
 
-Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to set up the node and install the nexodus binary.
+Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to set up the node and install the `nexd` binary.
 
 You can list the available organizations using the following command
 
@@ -317,13 +317,13 @@ dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Defaul
 #### Interactive OnBoarding
 
 ```sh
-sudo nexodus --hub-router --stun https://try.nexodus.local
+sudo nexd --hub-router --stun https://try.nexodus.local
 ```
 
 It will print a URL on stdout to onboard the relay node
 
 ```sh
-$ sudo nexodus --hub-router --stun https://try.nexodus.local
+$ sudo nexd --hub-router --stun https://try.nexodus.local
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
@@ -337,7 +337,7 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
-nexodus --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
+nexd --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
 ```
 
 ### Delete Organization

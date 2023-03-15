@@ -21,7 +21,7 @@ echo "127.0.0.1 auth.try.nexodus.local api.try.nexodus.local try.nexodus.local" 
 ### Deploy using KIND
 
 > **Note**
-> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [Deploying the Nexodus Agent](user-guide.md#deploying-the-nexodus-agent).
+> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [Deploying the Nexodus Agent](../user-guide/user-guide.md#deploying-the-nexodus-agent).
 
 You should first ensure that you have `kind`, `kubectl` and [`mkcert`](https://github.com/FiloSottile/mkcert) installed.
 

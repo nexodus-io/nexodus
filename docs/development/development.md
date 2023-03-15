@@ -4,7 +4,7 @@
 
 Our guiding principles help guide our decision-making. We use these principles when adding new features or making difficult decisions that require weighing different tradeoffs.
 
-1. **Service First** -- We intend for Nexodus to run as a service, whether a public service or one run internally by an organization. To ensure that we get this right, the Nexodus development team must also run it as a service. We are doing this by following [open-source services](https://www.operate-first.cloud/community/open-source-services.html) principles: <http://try.nexodus.io/>. See more in [docs/deployment.md](docs/deployment.md).
+1. **Service First** -- We intend for Nexodus to run as a service, whether a public service or one run internally by an organization. To ensure that we get this right, the Nexodus development team must also run it as a service. We are doing this by following [open-source services](https://www.operate-first.cloud/community/open-source-services.html) principles: <http://try.nexodus.io/>. See more in [the Prod and QA deployments overview](../deployment/deployment.md).
 2. **Simple UX Above Features** -- Networking technology is often made incredibly complex. One key value that the Nexodus service can provide is a simplified user experience for a much more challenging problem. When deciding how or if to add a feature, we value retaining the simplicity of the user experience over functionality.
 3. **Secure by Design** -- Security at all levels is critical for this to be a viable service. No features are worth a regression in security. See [the next section](#nexodus-security) for more commentary on security in Nexodus.
 4. **Optimized Connectivity** -- Forcing traffic through a central hub or other intermediary does not provide ideal network connectivity. Instead, we will implement various techniques to provide direct, mesh connectivity wherever possible, even in places where NAT or firewalls would typically prevent it.
@@ -21,7 +21,7 @@ Security is critical for Nexodus to be a viable service. This document discusses
 5. **Least Privilege** -- Users are assigned only the privileges they require[^2].
 6. **Microsegmentation** -- Users are broken into smaller segments using Zones and may only communicate within the same zone.
 
-[^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal nexodus node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required. In the meantime, security is maintained by having organizations operate their own relays instead of the service running them on their behalf.  
+[^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal Nexodus node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required. In the meantime, security is maintained by having organizations operate their own relays instead of the service running them on their behalf.  
 [^2]: See [Issue #142](https://github.com/nexodus-io/nexodus/issues/142) for tracking the use of oauth scopes to limit actions available to users.
 
 ### Reporting Vulnerabilities

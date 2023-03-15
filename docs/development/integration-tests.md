@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Prior to running the integration tests, you must start the kind-based development environment. See the [Run on Kubernetes](nexodus-service.md#run-on-kubernetes) docs for further details.
+Prior to running the integration tests, you must start the kind-based development environment. See the [Run on Kubernetes](../deployment/nexodus-service.md#run-on-kubernetes) docs for further details.
 
 ## Using Docker
 

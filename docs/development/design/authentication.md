@@ -45,7 +45,7 @@ flowchart TD
 
 ### Web Authentication Flow
 
-Caddy proxy redirects traffic from Web User-Agents to an instances of go-oidc-agent running in Auth Code Flow mode.
+Caddy proxy redirects traffic from Web User-Agents to an instance of go-oidc-agent running in Auth Code Flow mode.
 
 The following endpoints are exposed by go-oidc-agent in this mode:
 

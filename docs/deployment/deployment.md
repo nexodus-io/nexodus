@@ -7,7 +7,7 @@ In order to follow our "Service First" guiding principle, we deploy Nexodus cont
 Our project is deployed to Kubernetes using [kustomize](https://kustomize.io/).
 This enables Nexodus to be easily adapted for different deployment scenarios.
 
-The base nexodus manifests live in `./deploy/nexodus/base`, and we offer a number of overlays:
+The base Nexodus manifests live in `./deploy/nexodus/base`, and we offer a number of overlays:
 
 - Local Development - `./deploy/nexodus/overlays/dev`
 - Operate First (QA) - `./deploy/nexodus/overlays/qa`
@@ -31,4 +31,4 @@ This ensures that the desired state of our deployments is checked into git.
 Deployment of Nexodus on OperateFirst is managed by ArgoCD.
 
 ArgoCD will watch this repository for changes and ensure that our deployment is up-to-date.
-It will prevent our application deviating from the desired state.
+It will prevent our application from deviating from the desired state.

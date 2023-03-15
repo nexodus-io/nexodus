@@ -1,6 +1,6 @@
 # Nexodus as a Connectivity Service
 
-Nexodus provides L3 based connectivity between two endpoints. These endpoints can be present across various administrative domains behind different networking environments. Example of these networking environments range from a node that is directly reachable from internet through a public IP address to a node sitting behind a [symmetric NAT](https://datatracker.ietf.org/doc/html/rfc4787) and a firewall. Please refer to [README](../../README.md) for more context about the Nexodus.
+Nexodus provides L3 based connectivity between two endpoints. These endpoints can be present across various administrative domains behind different networking environments. Example of these networking environments range from a node that is directly reachable from internet through a public IP address to a node sitting behind a [symmetric NAT](https://datatracker.ietf.org/doc/html/rfc4787) and a firewall.
 
 This document is an attempt to capture various connectivity scenarios that Nexodus currently supports and share high level details about the internals that enable these connectivity scenarios. Nexodus currently enables the networking connectivity between nodes using [wireguard](https://www.wireguard.com/).
 
@@ -65,13 +65,13 @@ In this scenario, both the nodes are behind the NAT, so they can't reach each ot
 Respective Nexodus agents will fetch this information from the ApiServer, and add wireguard peer with endpoint-ip set to the respective reflexive address. For example, in the above scenario, Node `A` will get `IP-A':Port-A'` as a reflexive address from the stun server, and Node `B` will get `IP-B':Port-B'`. Node `A` will configure wireguard peer for Node `B` with endpoint-ip set to `IP-B':Port-B'`, similarly Node `B` will add peer for Node `A` with endpoint-ip set to Node `A` reflexive address `IP-A':Port-A'`. Given that reflexive addresses are reachable through the internet, wireguard will send packets to reflexive addresses, and that will bring packet to NAT device, and given that NAT device has mapping for that reflexive ip/port, it will forward the traffic internally.
 
 > **Note**
-> To enable this STUN based discovery of reflexive address (or public endpoint), you need to start nexodus agent with `--stun` option. Otherwise it will only discover the local endpoint (node local's ip) and provide that to the ApiServer, and node will configure wireguard peer with it's local address as a endpoint-ip, and the connectivity will fail, because those endpoint-ip's are not visible beyond NAT.
+> To enable this STUN based discovery of reflexive address (or public endpoint), you need to start Nexodus agent with `--stun` option. Otherwise it will only discover the local endpoint (node local's ip) and provide that to the ApiServer, and node will configure wireguard peer with it's local address as a endpoint-ip, and the connectivity will fail, because those endpoint-ip's are not visible beyond NAT.
 > **Note**
 > STUN based discovery helps in creating the NAT mapping, if the node doesn't have any mapping in the NAT device. This helps enable connectivity without any initial packet drops because of absence of NAT mapping.
 
 #### Challenge 1 - what if the NAT mapping changes ?
 
-NAT mapping can change for various reasons such as NAT device restart, or mapping expiration due to no incoming/outgoing traffic. Mapping expiration issues can be resolved by enabling the `persistent keepalive` for each wireguard peer. Wireguard keepalive sends packet periodically to its peer, and that prevents NAT mapping expiration. But it doesn't help with the other reasons that can cause NAT mapping changes. There is no mechanism provided by wireguard that an nexodus agent can use to determine the connection state (TODO: Need to explore latest handshake option, if that can help), and use that to trigger the STUN based discovery to determine the new NAT mapping (reflexive address).
+NAT mapping can change for various reasons such as NAT device restart, or mapping expiration due to no incoming/outgoing traffic. Mapping expiration issues can be resolved by enabling the `persistent keepalive` for each wireguard peer. Wireguard keepalive sends packet periodically to its peer, and that prevents NAT mapping expiration. But it doesn't help with the other reasons that can cause NAT mapping changes. There is no mechanism provided by wireguard that an Nexodus agent can use to determine the connection state (TODO: Need to explore latest handshake option, if that can help), and use that to trigger the STUN based discovery to determine the new NAT mapping (reflexive address).
 
 > **Note**
 > Currently Nexodus agent does not configure wireguard keepalive for peers, but uses its own probe mechanism (sending ping to peers periodically) to determine the connection state. Currently it just does what wireguard keepalive is supposed to do.
@@ -83,9 +83,9 @@ NAT mapping can change for various reasons such as NAT device restart, or mappin
 Currently we use ICE node to solve this problem. ICE node can be any node that is reachable through a public ip address. Introducing the ICE node adds an additional step in the control flow - ICE node must be the first node that should be onboarded. The reason for onboarding the ICE node first is to ensure that all the nodes joining the Nexodus network later will be peer with the ICE node. Given that each node runs the keepalive to all its peers, ICE node will always have an updated reflexive address of its peer. As far as it keep receiving the
 
 > **Note**
-> ICE node runs the same nexodus agent, but it runs with ICE node configuration. To run Nexodus agent as an ICE Node, you need to provide `--hub-router --stun` option during onboarding of the ICE node. Please refer to the [Deploying Nexodus Relay](../README.md#deploying-the-nexodus-relay) section for details about deploying the ICE node.
+> ICE node runs the same Nexodus agent, but it runs with ICE node configuration. To run Nexodus agent as an ICE Node, you need to provide `--hub-router --stun` option during onboarding of the ICE node. Please refer to the [Deploying Nexodus Relay](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) section for details about deploying the ICE node.
 
-ICE node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoints-ip to reconcile the broken connections between the peers.
+ICE node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's Nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoints-ip to reconcile the broken connections between the peers.
 
 > **ThinkingHatOn**
 > Assuming ICE node is in AWS cloud, I assume we have a similar risk of NAT mapping change? If yes, probably Elastic IP is a better option for ICE nodes?
@@ -108,7 +108,7 @@ In the above scenario, the reflexive address for Node `A` and Node `B` will be t
 Nexodus agent solves this challenge by checking devices with the same reflexive address, and if it finds the devices, it assumes that they are behind the same NAT. In this scenario, it uses their local ip address as an endpoint-ip in the wireguard peers configuration and establishes a direct tunnel between the nodes. This approach is a best effort, because even after using the local ip address as an endpoint-ip, wireguard connectivity can fail due to the restrictive configuration of the network connecting all these local devices.
 
 > **ThinkingHatOn**
-> I think we can leverage the nexodus agent probing to mark the peers disconnected if they were directly connected but the ping probe failed?
+> I think we can leverage the Nexodus agent probing to mark the peers disconnected if they were directly connected but the ping probe failed?
 
 2> Although there is another similar scenario where this solution won't work.
 

@@ -425,7 +425,7 @@ rpm: srpm ## Build an RPM
 		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
 		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
-##@ Manpage Generation
+##@ Documentation
 
 contrib/man:
 	$(CMD_PREFIX) mkdir -p contrib/man
@@ -439,3 +439,11 @@ manpages: contrib/man dist/nexd dist/nexctl image-mock ## Generate manpages in .
 .PHONY: cat
 cat:
 	$(CMD_PREFIX) docker run -it --rm --name nyancat 06kellyjac/nyancat
+
+.PHONY: docs
+docs: ## Generate docs site into site/ directory
+	$(CMD_PREFIX) docker run --rm -it -v ${PWD}:/docs squidfunk/mkdocs-material build
+
+.PHONY: docs-preview
+docs-preview: ## Generate a live preview of project documentation
+	$(CMD_PREFIX) docker run --rm -it -p 8000:8000 -v ${PWD}:/docs squidfunk/mkdocs-material
