@@ -1,11 +1,35 @@
 site_name: Nexodus Documentation
 site_url: https://docs.nexodus.io
 repo_url: https://github.com/nexodus-io/nexodus/
-edit_uri: blob/main/docs/
+edit_uri: edit/main/docs/
 theme:
+  # https://squidfunk.github.io/mkdocs-material
   name: material
   logo: assets/logo.png
   favicon: assets/favicon.ico
+  features:
+    # Provide a link to a github edit page for each doc
+    - content.action.edit
+    # Provide a link to a github view page for each doc
+    - content.action.view
+    # Load the docs as a one-page app for instant loading a linnk
+    - navigation.instant
+    # Anchor tracking, auto update URL for currently viewed section
+    - navigation.tracking
+    # Put top level sections as tabs
+    - navigation.tabs
+    # Auto expand subsections of docs in the navigation tree
+    - navigation.expand
+    # Add a link back to the top
+    - navigation.top
+    # Adjust the ToC view to follow where you are in the doc
+    - toc.follow
+    # Auto complete search suggestions
+    - search.suggest
+    # Highlight search results
+    - search.highlight
+    # Add a share link for sharing a search + results
+    - search.share
   palette: 
   # Palette toggle for light mode
   - media: "(prefers-color-scheme: light)"
@@ -21,6 +45,8 @@ theme:
       name: Switch to light mode
 markdown_extensions:
   - footnotes
+  # Enable mermaid diagrams.
+  # https://squidfunk.github.io/mkdocs-material/reference/diagrams/
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
