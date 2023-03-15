@@ -124,12 +124,12 @@ policies=$(wildcard internal/routers/*.rego)
 .PHONY: opa-lint
 opa-lint: ## Lint the OPA policies
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) >/dev/null
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) >/dev/null
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
-	$(CMD_PREFIX) swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: generate
 generate: gen-docs ## Run all code generators and formatters
