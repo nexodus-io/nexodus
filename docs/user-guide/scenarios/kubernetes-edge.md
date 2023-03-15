@@ -69,9 +69,9 @@ graph
         ms[MicroShift]
     end
 
-    nexodus <-.-> mShift
-    nexodus <-.-> privK8s 
-    nexodus <-.-> pubK8s
+    Nexodus <-.-> mShift
+    Nexodus <-.-> privK8s 
+    Nexodus <-.-> pubK8s
     linkStyle 6 stroke:blue;
     linkStyle 7 stroke:blue;
     linkStyle 8 stroke:blue;

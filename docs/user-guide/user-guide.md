@@ -53,7 +53,7 @@ You can add this repository to your Fedora host with the following command:
 sudo dnf copr enable russellb/nexodus
 ```
 
-Then you should be able to install nexodus with:
+Then you should be able to install Nexodus with:
 
 ```sh
 sudo dnf install nexodus
@@ -263,7 +263,7 @@ Currently, the sample file provides two strategies to control the deployment, bu
 2 ) Deploy Nexodus pod on specific node/s in the Kubernetes cluster. Uncomment the following lines in `node_selector.yaml.sample` and add the list of the nodes.
 
 ```yaml
-# Deploy nexodus client on  specific nodes
+# Deploy Nexodus client on  specific nodes
 #              - key: kubernetes.io/hostname
 #                operator: In
 #                values:
@@ -303,7 +303,7 @@ Nexodus Controller makes the best effort to establish a direct peering between t
 
 ### Setup Nexodus Relay Node
 
-Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to set up the node and install the nexodus binary.
+Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Installing the agent](#installing-the-agent) section to set up the node and install the `nexd` binary.
 
 You can list the available organizations using the following command
 
@@ -317,13 +317,13 @@ dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Defaul
 #### Interactive OnBoarding
 
 ```sh
-sudo nexodus --hub-router --stun https://try.nexodus.local
+sudo nexd --hub-router --stun https://try.nexodus.local
 ```
 
 It will print a URL on stdout to onboard the relay node
 
 ```sh
-$ sudo nexodus --hub-router --stun https://try.nexodus.local
+$ sudo nexd --hub-router --stun https://try.nexodus.local
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
@@ -337,7 +337,7 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
-nexodus --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
+nexd --hub-router --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
 ```
 
 ### Delete Organization

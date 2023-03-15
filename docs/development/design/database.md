@@ -49,7 +49,7 @@ We have 4 concepts:
 - Users: Unique users of the service
 - Devices: A unique end-user device
 - Zone: A way of describing which devices may communicate with eachother
-- Peer: An association between a Device and a Zone. This is used by the nexodus agent to identify who it may peer with.
+- Peer: An association between a Device and a Zone. This is used by the Nexodus agent to identify who it may peer with.
 
 Since connectivity was Zone-based, we would create a "Default Zone" where all devices would be onboarded into. Adding > 1 Zone was disabled, since there were technical challenges around moving a device from one Zone to another, or for a device to have peers in > 1 Zone.
 
