@@ -64,6 +64,7 @@ export const DeviceShow = () => (
       <TextField label="Tunnel IP" source="tunnel_ip" />
       <TextField label="Local IP" source="local_ip" />
       <TextField label="Organization Prefix" source="organization_prefix" />
+      <TextField label="Relay Node" source="relay" />
       <ReferenceField
         label="User"
         source="user_id"

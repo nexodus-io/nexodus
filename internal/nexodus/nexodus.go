@@ -252,6 +252,16 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localEndpointPort = ax.listenPort
 	}
 
+	if ax.relay {
+		existingRelay, err := ax.orgRelayCheck()
+		if err != nil {
+			return err
+		}
+		if existingRelay != uuid.Nil {
+			return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
+		}
+	}
+
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
 	if !ax.symmetricNat && ax.stun && localIP == "" {
 		ipPort, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
@@ -564,4 +574,22 @@ func (ax *Nexodus) nodePrep() {
 		ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
 	}
 
+}
+
+// orgRelayCheck checks if there is an existing relay in the organization that does not match this devices pub key
+func (ax *Nexodus) orgRelayCheck() (uuid.UUID, error) {
+	var relayID uuid.UUID
+
+	peerListing, err := ax.client.GetDeviceInOrganization(ax.organization)
+	if err != nil {
+		return relayID, err
+	}
+
+	for _, p := range peerListing {
+		if p.Relay && ax.wireguardPubKey != p.PublicKey {
+			return p.ID, nil
+		}
+	}
+
+	return relayID, nil
 }
