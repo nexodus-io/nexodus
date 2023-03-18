@@ -15,12 +15,12 @@ func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS", "ENDPOINT IP", "PUBLIC KEY", "ZONE ID")
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID)
+			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
@@ -42,16 +42,16 @@ func listAllDevices(c *client.Client, encodeOut string) error {
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
 				"LOCAL IP", "ALLOWED IPS", "TUNNEL IP", "CHILD PREFIX", "ORGANIZATION PREFIX", "REFLEXIVE IPv4",
-				"ENDPOINT LOCAL IPv4")
+				"ENDPOINT LOCAL IPv4", "RELAY")
 		}
 		for _, dev := range devices {
 			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID,
 				dev.LocalIP, dev.AllowedIPs, dev.TunnelIP, dev.ChildPrefix, dev.OrganizationPrefix, dev.ReflexiveIPv4,
-				dev.EndpointLocalAddressIPv4)
+				dev.EndpointLocalAddressIPv4, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
