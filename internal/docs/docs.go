@@ -870,6 +870,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "discovery": {
+                    "type": "boolean"
+                },
                 "endpoint_local_address_ip4": {
                     "type": "string"
                 },

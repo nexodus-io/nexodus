@@ -30,6 +30,7 @@ type Device struct {
 	TunnelIP                 string
 	ChildPrefix              pq.StringArray `gorm:"type:text[]"`
 	Relay                    bool
+	Discovery                bool
 	OrganizationPrefix       string
 	ReflexiveIPv4            string
 	EndpointLocalAddressIPv4 string
