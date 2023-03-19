@@ -6,8 +6,11 @@ package integration_tests
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"golang.org/x/oauth2"
 	"io"
 	"net"
 	"os"
@@ -373,6 +376,22 @@ func (suite *NexodusIntegrationSuite) runCommand(cmd ...string) (string, error) 
 	return string(output), nil
 }
 
+// NewTLSConfig creates a *tls.Config configured to trust the .certs/rootCA.pem
+func (suite *NexodusIntegrationSuite) NewTLSConfig() *tls.Config {
+	dir, err := findCertsDir()
+	suite.Require().NoError(err)
+	caCert, err := os.ReadFile(filepath.Join(dir, "rootCA.pem"))
+	suite.Require().NoError(err)
+	caCertPool, err := x509.SystemCertPool()
+	suite.Require().NoError(err)
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+	return tlsConfig
+}
+
 // nexdStatus checks for a Running status of the nexd process via nexctl
 func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testcontainers.Container) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*10)
@@ -415,4 +434,15 @@ func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, passwor
 	err = suite.gocloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
 	suite.Require().NoError(err)
 	return userName
+}
+
+func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid, password string) *oauth2.Token {
+	jwt, err := suite.gocloak.Login(ctx, "nexodus-cli", "", "nexodus", userid, password)
+	suite.Require().NoError(err)
+	return &oauth2.Token{
+		AccessToken:  jwt.AccessToken,
+		TokenType:    jwt.TokenType,
+		RefreshToken: jwt.RefreshToken,
+		Expiry:       time.Now().Add(time.Duration(jwt.ExpiresIn) * time.Second),
+	}
 }

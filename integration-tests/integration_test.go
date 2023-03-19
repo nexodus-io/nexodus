@@ -8,8 +8,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/cucumber/godog"
+	"github.com/nexodus-io/nexodus/internal/cucumber"
+
 	"net"
 	"os"
+	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -810,4 +815,70 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	//	"--description", "kitteh5's organization",
 	//)
 	//require.NoError(err)
+}
+
+func (suite *NexodusIntegrationSuite) TestFeatures() {
+
+	// This looks for feature files in the current directory
+	var cucumberOptions = cucumber.DefaultOptions()
+	// configures where to look for feature files.
+	cucumberOptions.Paths = []string{"."}
+	// output more info when test is run in verbose mode.
+	for _, arg := range os.Args[1:] {
+		if arg == "-test.v=true" || arg == "-test.v" || arg == "-v" { // go test transforms -v option
+			cucumberOptions.Format = "pretty"
+		}
+	}
+
+	tlsConfig := suite.NewTLSConfig()
+
+	for i := range cucumberOptions.Paths {
+		root := cucumberOptions.Paths[i]
+
+		err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+
+			suite.Require().NoError(err)
+
+			if info.IsDir() {
+				return nil
+			}
+
+			name := filepath.Base(info.Name())
+			ext := filepath.Ext(info.Name())
+
+			if ext != ".feature" {
+				return nil
+			}
+
+			suite.T().Run(name, func(t *testing.T) {
+
+				// To preserve the current behavior, the test are market to be "safely" run in parallel, however
+				// we may think to introduce a new naming convention i.e. files that ends with _parallel would
+				// cause t.Parallel() to be invoked, other tests won't, so they won't be executed concurrently.
+				//
+				// This could help reducing/removing the need of explicit lock
+				t.Parallel()
+
+				o := cucumberOptions
+				o.TestingT = t
+				o.Paths = []string{path.Join(root, name)}
+
+				s := cucumber.NewTestSuite()
+				s.Context = suite.Context()
+				s.ApiURL = "https://api.try.nexodus.local"
+				s.TlsConfig = tlsConfig
+
+				status := godog.TestSuite{
+					Name:                name,
+					Options:             &o,
+					ScenarioInitializer: s.InitializeScenario,
+				}.Run()
+				if status != 0 {
+					suite.T().Fail()
+				}
+			})
+			return nil
+		})
+		suite.Require().NoError(err)
+	}
 }
