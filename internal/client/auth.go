@@ -85,7 +85,7 @@ func startLogin(client *http.Client, hostname url.URL) (*agent.DeviceStartRepons
 func startDeviceFlow(deviceEndpoint string, clientID string) (*deviceFlowResponse, error) {
 	v := url.Values{}
 	v.Set("client_id", clientID)
-	v.Set("scope", "openid profile email offline_access")
+	v.Set("scope", "openid profile email offline_access read:organizations write:organizations read:users write:users read:devices write:devices")
 	// #nosec -- G107: Potential HTTP request made with variable url (gosec)
 	res, err := http.PostForm(deviceEndpoint, v)
 	if err != nil {

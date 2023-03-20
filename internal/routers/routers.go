@@ -3,6 +3,7 @@ package routers
 import (
 	"context"
 	"crypto/tls"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -74,16 +75,23 @@ func NewAPIRouter(
 	if err != nil {
 		return nil, err
 	}
-	config := &oidc.Config{
-		// Client ID checks are skipped since we perform these later
-		// in the ValidateJWT function
-		SkipClientIDCheck: true,
+
+	var claims struct {
+		JWKSUri string `json:"jwks_uri"`
 	}
-	verifier := provider.Verifier(config)
+	err = provider.Claims(&claims)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	validateJWT, err := ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	private := r.Group("/")
 	{
-		private.Use(ValidateJWT(logger, verifier, clientIdWeb, clientIdCli))
+		private.Use(validateJWT)
 		private.Use(api.CreateUserIfNotExists())
 		// Zones
 		private.GET("/organizations", api.ListOrganizations)

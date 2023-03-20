@@ -49,6 +49,11 @@ spec:
                 configMapKeyRef:
                   name: backend-cli
                   key: BACKEND
+            - name: SCOPES
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-cli
+                  key: SCOPES
           resources:
             requests:
               cpu: 100m

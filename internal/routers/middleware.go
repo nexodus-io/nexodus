@@ -1,11 +1,16 @@
 package routers
 
 import (
-	"github.com/nexodus-io/nexodus/internal/util"
+	"context"
+	_ "embed"
+	"io"
 	"net/http"
 	"strings"
 
-	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/open-policy-agent/opa/rego"
+	"golang.org/x/oauth2"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -13,19 +18,51 @@ import (
 // key for username in gin.Context
 const AuthUserName string = "_nexodus.UserName"
 
-type Claims struct {
-	Scope      string `json:"scope"`
-	FullName   string `json:"name"`
-	UserName   string `json:"preferred_username"`
-	GivenName  string `json:"given_name"`
-	FamilyName string `json:"family_name"`
-	Subject    string `json:"sub"`
-}
+//go:embed token.rego
+var policy string
 
 // Naive JWS Key validation
-func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clientIdWeb string, clientIdCli string) func(*gin.Context) {
+func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string) (func(*gin.Context), error) {
+	query, err := rego.New(
+		rego.Query(`result = {
+			"authorized": data.token.valid_token,
+			"allow": data.token.allow,
+			"user_id": data.token.user_id,
+			"user_name": data.token.user_name,
+			"full_name": data.token.full_name,
+		}`),
+		rego.Module("policy.rego", policy),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	var httpClient *http.Client
+	if ctx != nil {
+		if ctxClient, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+			httpClient = ctxClient
+		}
+	}
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	res, err := httpClient.Get(jwksURI)
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	keySet := string(body)
+
 	return func(c *gin.Context) {
 		logger := util.WithTrace(c.Request.Context(), logger)
+
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
@@ -42,41 +79,90 @@ func ValidateJWT(logger *zap.SugaredLogger, verifier *oidc.IDTokenVerifier, clie
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		token, err := verifier.Verify(c.Request.Context(), parts[1])
+
+		input := map[string]interface{}{
+			"jwks":         keySet,
+			"access_token": parts[1],
+			"method":       c.Request.Method,
+			"path":         c.Request.URL.Path,
+		}
+
+		results, err := query.Eval(c.Request.Context(), rego.EvalInput(input))
 		if err != nil {
-			logger.With("error", err).Debug("verification failed")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		if err != nil {
+			logger.Error(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		} else if len(results) == 0 {
+			logger.Error("undefined result from authz policy")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		result, ok := results[0].Bindings["result"].(map[string]interface{})
+		if !ok {
+			logger.With("result", results[0].Bindings).Error("opa policy result is not a map")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		logger = logger.With("result", result)
+
+		authorized, ok := result["authorized"].(bool)
+		if !ok {
+			logger.Error("authorized is not a bool")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		if !authorized {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		// Skip this for now.
-		// TODO: Add more robust aud/azp checks
-		// Dex sets aud... not sure about azp
-		// Keycloak's aud is account in an access token, but azp is the client-id
-		// for _, audience := range token.Audience {
-		//	if audience != clientIdWeb && audience != clientIdCli {
-		//		c.AbortWithStatus(http.StatusUnauthorized)
-		//		return
-		//	}
-		// }
-
-		logger.Debug("getting claims")
-		var claims Claims
-		if err := token.Claims(&claims); err != nil {
+		allowed, ok := result["allow"].(bool)
+		if !ok {
+			logger.Error("allow is not a bool")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		logger.Debugf("claims: %+v", claims)
-		c.Set(gin.AuthUserKey, claims.Subject)
-		if len(claims.UserName) > 0 {
-			c.Set(AuthUserName, claims.UserName)
-		} else if len(claims.FullName) > 0 {
-			c.Set(AuthUserName, claims.FullName)
-		} else {
-			logger.Debugf("Not able to determine a name for this user -- %s", claims.Subject)
+		if !allowed {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
 		}
-		// c.Set(AuthUserScope, claims.Scope)
-		logger.Debugf("user-id is %s", claims.Subject)
+
+		userID, ok := result["user_id"].(string)
+		if !ok {
+			logger.Error("user_id is not a string")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		username, ok := result["user_name"].(string)
+		if !ok {
+			logger.Error("user_name is not a string")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		fullName, ok := result["full_name"].(string)
+		if !ok {
+			logger.Error("full_name is not a string")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		c.Set(gin.AuthUserKey, userID)
+		if len(username) > 0 {
+			c.Set(AuthUserName, username)
+		} else if len(fullName) > 0 {
+			c.Set(AuthUserName, fullName)
+		} else {
+			logger.Debugf("Not able to determine a name for this user -- %s", userID)
+		}
+
+		logger.Debugf("user-id is %s", userID)
 		c.Next()
-	}
+	}, nil
 }
