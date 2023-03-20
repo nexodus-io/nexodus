@@ -27,15 +27,15 @@ The following scopes will be used to restrict API token usage:
 
 | Resource | Action | Scope |
 |----------|--------|-------|
-| organization | create | admin:organizations |
-| organization | delete | admin:organizations |
+| organization | create | write:organizations |
+| organization | delete | write:organizations |
 | organization | update | write:organizations |
 | organization | read   | read:organizations  |
-| user         | delete | admin:users         |
+| user         | delete | write:users         |
 | user         | update | write:users         |
 | user         | read   | read:users         |
-| device       | create | admin:devices       |
-| device       | delete | admin:devices       |
+| device       | create | write:devices       |
+| device       | delete | write:devices       |
 | device       | update | write:devices       |
 | device       | read   | read:devices        |
 

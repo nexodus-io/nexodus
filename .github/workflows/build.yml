@@ -122,13 +122,14 @@ jobs:
   opa-lint:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@v2
         with:
           version: latest
 
-      - name: Run OPA Tests
-        run: opa test **/*.rego -v
+      - name: OPA Lint and Tests
+        run: make opa-lint
 
   build-images:
     runs-on: ubuntu-latest
