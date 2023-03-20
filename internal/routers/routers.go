@@ -84,7 +84,7 @@ func NewAPIRouter(
 		log.Fatal(err)
 	}
 
-	validateJWT, err := ValidateJWT(logger, claims.JWKSUri, clientIdWeb, clientIdCli)
+	validateJWT, err := ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli)
 	if err != nil {
 		log.Fatal(err)
 	}
