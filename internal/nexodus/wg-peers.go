@@ -113,7 +113,7 @@ func (ax *Nexodus) buildPeersConfig() {
 
 		// If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 		// The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 {
+		if ax.nodeReflexiveAddress == value.ReflexiveIPv4 && !value.Relay {
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
 			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 			// the symmetric NAT peer
