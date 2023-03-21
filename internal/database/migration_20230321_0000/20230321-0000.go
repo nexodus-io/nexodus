@@ -1,4 +1,4 @@
-package migration_20230126_0000
+package migration_20230321_0000
 
 import (
 	"time"
@@ -6,7 +6,6 @@ import (
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/nexodus-io/nexodus/internal/database/migration_20230113_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migrations"
 )
 
@@ -30,6 +29,7 @@ type Device struct {
 	TunnelIP                 string
 	ChildPrefix              pq.StringArray `gorm:"type:text[]"`
 	Relay                    bool
+	Discovery                bool
 	OrganizationPrefix       string
 	ReflexiveIPv4            string
 	EndpointLocalAddressIPv4 string
@@ -40,7 +40,7 @@ type Device struct {
 // Organization contains Users and their Devices
 type Organization struct {
 	Base
-	Users       []*User `gorm:"many2many:user_organization;"`
+	Users       []*User `gorm:"many2many:user_organizations;"`
 	Devices     []*Device
 	Name        string
 	Description string
@@ -48,7 +48,7 @@ type Organization struct {
 	HubZone     bool
 }
 
-// User is the a person who uses Nexodus
+// User is a person who uses Nexodus
 type User struct {
 	// Since the ID comes from the IDP, we have no control over the format...
 	ID            string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
@@ -56,19 +56,14 @@ type User struct {
 	UpdatedAt     time.Time
 	DeletedAt     *time.Time `sql:"index" json:"-"`
 	Devices       []*Device
-	Organizations []*Organization `gorm:"many2many:user_organization"`
+	Organizations []*Organization `gorm:"many2many:user_organizations"`
 	UserName      string
 }
 
 func Migrate() *gormigrate.Migration {
-	migrationId := "20230126-0000"
+	migrationId := "20230321-0000"
 	return migrations.CreateMigrationFromActions(migrationId,
-		// Peers table removed
-		migrations.DropTableAction(&migration_20230113_0000.Peer{}),
-		// Field from peers folded into Devices
-		migrations.CreateTableAction(&Device{}),
-		// Zones => Organizations
-		migrations.RenameTableAction(&migration_20230113_0000.Zone{}, &Organization{}),
-		migrations.CreateTableAction(&Organization{}),
+		// Add the discovery column to the Device table
+		migrations.AddTableColumnAction(&Device{}, "discovery"),
 	)
 }
