@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	USERS        = "/api/users"
-	USER         = "/api/users/%s"
-	CURRENT_USER = "/api/users/me"
+	USERS                = "/api/users"
+	USER                 = "/api/users/%s"
+	DELETE_USER_FROM_ORG = "/api/users/%s/organizations/%s"
+	CURRENT_USER         = "/api/users/me"
 )
 
 func (c *Client) GetCurrentUser() (models.UserJSON, error) {
@@ -140,6 +141,37 @@ func (c *Client) DeleteUser(userID string) (models.UserJSON, error) {
 
 	var u models.UserJSON
 	if err := json.Unmarshal(body, &u); err != nil {
+		return models.UserJSON{}, err
+	}
+
+	return u, nil
+}
+
+func (c *Client) DeleteUserFromOrganization(userID, organizationID string) (models.UserJSON, error) {
+	dest := c.baseURL.JoinPath(fmt.Sprintf(DELETE_USER_FROM_ORG, userID, organizationID)).String()
+	r, err := http.NewRequest(http.MethodDelete, dest, nil)
+	if err != nil {
+		return models.UserJSON{}, err
+	}
+
+	res, err := c.client.Do(r)
+	if err != nil {
+		return models.UserJSON{}, err
+	}
+
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return models.UserJSON{}, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return models.UserJSON{}, fmt.Errorf("http error: %d %s", res.StatusCode, string(resBody))
+	}
+
+	var u models.UserJSON
+	if err := json.Unmarshal(resBody, &u); err != nil {
 		return models.UserJSON{}, err
 	}
 

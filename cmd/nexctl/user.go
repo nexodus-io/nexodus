@@ -61,6 +61,25 @@ func deleteUser(c *client.Client, encodeOut, userID string) error {
 	return nil
 }
 
+func deleteUserFromOrg(c *client.Client, encodeOut, userID, orgID string) error {
+	res, err := c.DeleteUserFromOrganization(userID, orgID)
+	if err != nil {
+		log.Fatalf("user removal failed: %v\n", err)
+	}
+
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		fmt.Printf("successfully removed user %s from organization %s\n", userID, orgID)
+		return nil
+	}
+
+	err = FormatOutput(encodeOut, res)
+	if err != nil {
+		log.Fatalf("failed to print output: %v", err)
+	}
+
+	return nil
+}
+
 func getCurrent(c *client.Client, encodeOut string) error {
 	user, err := c.GetCurrentUser()
 	if err != nil {

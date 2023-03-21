@@ -10,7 +10,7 @@ import (
 // Organization contains Users and their Devices
 type Organization struct {
 	Base
-	Users       []*User `gorm:"many2many:user_organization;"`
+	Users       []*User `gorm:"many2many:user_organizations;"`
 	Devices     []*Device
 	Name        string `gorm:"uniqueIndex"`
 	Description string

@@ -11,8 +11,8 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 // CreateOrganization creates a new Organization
-// @Summary      Create a Organization
+// @Summary      Create an Organization
 // @Description  Creates a named organization with the given CIDR
 // @Tags         Organization
 // @Accept       json
@@ -278,12 +278,12 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		return
 	}
 
-	orgCIDR := org.IpCidr
-
-	if res := api.db.WithContext(ctx).Delete(&org, "id = ?", orgID); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to delete the organization: %w", err)))
 		return
 	}
+
+	orgCIDR := org.IpCidr
 
 	if orgCIDR != "" {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID, orgCIDR); err != nil {

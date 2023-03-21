@@ -67,7 +67,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
 	suite.api.db.Exec("DELETE FROM users")
 	suite.api.db.Exec("DELETE FROM organizations")
-	suite.api.db.Exec("DELETE FROM user_organization")
+	suite.api.db.Exec("DELETE FROM user_organizations")
 	suite.api.db.Exec("DELETE FROM devices")
 	var err error
 	suite.testOrganizationID, err = suite.api.createUserIfNotExists(context.Background(), TestUserID, "testuser")

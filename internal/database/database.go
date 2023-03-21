@@ -8,6 +8,7 @@ import (
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230113_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230126_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230314_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
@@ -84,6 +85,7 @@ func Migrations() *migrations.Migrations {
 		Migrations: []*gormigrate.Migration{
 			migration_20230113_0000.Migrate(),
 			migration_20230126_0000.Migrate(),
+			migration_20230314_0000.Migrate(),
 		},
 	}
 }

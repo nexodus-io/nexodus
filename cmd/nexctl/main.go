@@ -298,6 +298,36 @@ func main() {
 							return deleteUser(c, encodeOut, userID)
 						},
 					},
+					{
+						Name:  "remove-user",
+						Usage: "Remove a user from an organization",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "user-id",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "organization-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							c, err := client.NewClient(cCtx.Context,
+								cCtx.String("host"), nil,
+								client.WithPasswordGrant(
+									cCtx.String("username"),
+									cCtx.String("password"),
+								),
+							)
+							if err != nil {
+								log.Fatal(err)
+							}
+							encodeOut := cCtx.String("output")
+							userID := cCtx.String("user-id")
+							orgID := cCtx.String("organization-id")
+							return deleteUserFromOrg(c, encodeOut, userID, orgID)
+						},
+					},
 				},
 			},
 		},

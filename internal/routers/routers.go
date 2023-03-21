@@ -111,6 +111,7 @@ func NewAPIRouter(
 		private.GET("/users", api.ListUsers)
 		// private.PATCH("/users/:id", api.PatchUser)
 		private.DELETE("/users/:id", api.DeleteUser)
+		private.DELETE("/users/:id/organizations/:organization", api.DeleteUserFromOrganization)
 		// Feature Flags
 		private.GET("fflags", api.ListFeatureFlags)
 		private.GET("fflags/:name", api.GetFeatureFlag)

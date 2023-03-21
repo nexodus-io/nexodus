@@ -356,7 +356,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.BaseError'
-      summary: Create a Organization
+      summary: Create an Organization
       tags:
       - Organization
   /organizations/{id}:
@@ -573,6 +573,38 @@ paths:
           schema:
             $ref: '#/definitions/models.BaseError'
       summary: Get User
+      tags:
+      - User
+  /users/{id}/organizations/{organization}:
+    delete:
+      description: Deletes an existing organization associated to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Organization ID
+        in: path
+        name: organization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Remove a User from an Organization
       tags:
       - User
 securityDefinitions:
