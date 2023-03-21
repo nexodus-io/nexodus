@@ -282,7 +282,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				return err
 			}
 			if existingDiscoveryNode != uuid.Nil {
-				return fmt.Errorf("the organization already contains a discovery node, device %s needs to be deleted before adding a new relay", existingDiscoveryNode)
+				return fmt.Errorf("the organization already contains a discovery node, device %s needs to be deleted before adding a new discovery node", existingDiscoveryNode)
 			}
 		}
 	}
@@ -599,7 +599,7 @@ func (ax *Nexodus) symmetricNatDisco() error {
 	return nil
 }
 
-// orgRelayCheck checks if there is an existing relay in the organization that does not match this devices pub key
+// orgRelayCheck checks if there is an existing Relay node in the organization that does not match this device's pub key
 func (ax *Nexodus) orgRelayCheck(peerListing []models.Device) (uuid.UUID, error) {
 	var relayID uuid.UUID
 	for _, p := range peerListing {
@@ -611,7 +611,7 @@ func (ax *Nexodus) orgRelayCheck(peerListing []models.Device) (uuid.UUID, error)
 	return relayID, nil
 }
 
-// orgRelayCheck checks if there is an existing relay in the organization that does not match this devices pub key
+// orgDiscoveryCheck checks if there is an existing Discovery node in the organization that does not match this device's pub key
 func (ax *Nexodus) orgDiscoveryCheck(peerListing []models.Device) (uuid.UUID, error) {
 	var discoveryID uuid.UUID
 	for _, p := range peerListing {

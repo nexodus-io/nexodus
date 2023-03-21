@@ -77,7 +77,8 @@
   become: yes
   shell: |
     NEXD_LOGLEVEL=debug nexd \
-    --hub-router \
+    --relay-node \
+    --discovery-node \
     --stun \
     --username '{{ nexodus_auth_uid }}' \
     --password '{{ nexodus_auth_password }}' \
