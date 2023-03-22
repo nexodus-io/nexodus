@@ -126,7 +126,7 @@ func main() {
 				Name:     "insecure-skip-tls-verify",
 				Value:    false,
 				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
-				EnvVars:  []string{"APEX_INSECURE_SKIP_TLS_VERIFY"},
+				EnvVars:  []string{"NEXD_INSECURE_SKIP_TLS_VERIFY"},
 				Required: false,
 			},
 		},
