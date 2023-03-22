@@ -1,3 +1,5 @@
+run:
+  allow-parallel-runners: true
 linters:
   enable:
     - gosec
