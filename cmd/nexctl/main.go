@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -53,6 +54,12 @@ func main() {
 				Required: false,
 				Usage:    "Output format: json, json-raw, no-header, column (default columns)",
 			},
+			&cli.BoolFlag{
+				Name:     "insecure-skip-tls-verify",
+				Value:    false,
+				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
+				Required: false,
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -89,10 +96,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -125,10 +129,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -153,10 +154,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -185,10 +183,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 
 							if err != nil {
@@ -218,10 +213,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -243,10 +235,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -261,10 +250,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -285,10 +271,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -314,10 +297,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							c, err := client.NewClient(cCtx.Context,
 								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
+								createClientOptions(cCtx)...,
 							)
 							if err != nil {
 								log.Fatal(err)
@@ -335,6 +315,19 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func createClientOptions(cCtx *cli.Context) []client.Option {
+	options := []client.Option{client.WithPasswordGrant(
+		cCtx.String("username"),
+		cCtx.String("password"),
+	)}
+	if cCtx.Bool("insecure-skip-tls-verify") { // #nosec G402
+		options = append(options, client.WithTLSConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		}))
+	}
+	return options
 }
 
 func newTabWriter() *tabwriter.Writer {

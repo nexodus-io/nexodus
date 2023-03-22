@@ -49,6 +49,7 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 			TLSClientConfig: opts.tlsConfig,
 		},
 	}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 
 	resp, err := startLogin(httpClient, *baseURL)
 	if err != nil {
@@ -97,7 +98,6 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 		return nil, err
 	}
 
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 	c.client = config.Client(ctx, token)
 
 	return &c, nil
