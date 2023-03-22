@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -45,6 +46,16 @@ func main() {
 		Name:      "nexd",
 		Usage:     "Node agent to configure encrypted mesh networking with nexodus.",
 		ArgsUsage: "controller-url",
+		Commands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Get the version of nexd",
+				Action: func(cCtx *cli.Context) error {
+					fmt.Printf("version: %s\n", Version)
+					return nil
+				},
+			},
+		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "public-key",
