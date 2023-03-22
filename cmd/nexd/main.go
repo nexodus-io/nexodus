@@ -42,8 +42,9 @@ func main() {
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	// flags are stored in the global flags variable
 	app := &cli.App{
-		Name:  "nexd",
-		Usage: "Node agent to configure encrypted mesh networking with nexodus.",
+		Name:      "nexd",
+		Usage:     "Node agent to configure encrypted mesh networking with nexodus.",
+		ArgsUsage: "controller-url",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "public-key",
