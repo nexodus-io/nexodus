@@ -3,16 +3,16 @@ package routers
 import (
 	"context"
 	_ "embed"
+	"github.com/gin-gonic/gin"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util/cache"
+	"github.com/open-policy-agent/opa/rego"
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/nexodus-io/nexodus/internal/util"
-	"github.com/open-policy-agent/opa/rego"
-	"golang.org/x/oauth2"
-
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	"time"
 )
 
 // key for username in gin.Context
@@ -20,6 +20,8 @@ const AuthUserName string = "_nexodus.UserName"
 
 //go:embed token.rego
 var policy string
+
+var jwksCache = cache.NewMemoizeCache[string, string](time.Second * 30)
 
 // Naive JWS Key validation
 func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string) (func(*gin.Context), error) {
@@ -37,28 +39,12 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 		return nil, err
 	}
 
-	var httpClient *http.Client
-	if ctx != nil {
-		if ctxClient, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
-			httpClient = ctxClient
-		}
-	}
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-
-	res, err := httpClient.Get(jwksURI)
+	keySet, err := jwksCache.MemoizeCanErr(jwksURI, func() (string, error) {
+		return getURLAsText(ctx, jwksURI)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	keySet := string(body)
 
 	return func(c *gin.Context) {
 		logger := util.WithTrace(c.Request.Context(), logger)
@@ -165,4 +151,28 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 		logger.Debugf("user-id is %s", userID)
 		c.Next()
 	}, nil
+}
+
+func getURLAsText(ctx context.Context, jwksURL string) (string, error) {
+
+	httpClient := http.DefaultClient
+	if ctx != nil {
+		if ctxClient, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+			httpClient = ctxClient
+		}
+	}
+
+	res, err := httpClient.Get(jwksURL)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	keySet := string(body)
+	return keySet, nil
 }
