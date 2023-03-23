@@ -4,12 +4,14 @@ package nexodus
 
 import (
 	"context"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/nexodus-io/nexodus/internal/util"
 )
 
 // TODO make this path configurable
@@ -28,12 +30,13 @@ func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) 
 			// the control server.
 			ctlWg := &sync.WaitGroup{}
 			err := ax.CtlServerLinuxRun(ctx, ctlWg)
-			ctlWg.Done()
+			ctlWg.Wait()
 			if err == nil {
 				// No error means it shut down cleanly because it got a message to stop
 				break
 			}
 			ax.logger.Error("Ctl interface error, restarting: ", err)
+			time.Sleep(time.Second)
 		}
 	})
 }
@@ -62,7 +65,10 @@ func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup)
 		for {
 			conn, err := l.Accept()
 			if err != nil {
-				errChan <- err
+				// Don't return an error if the context was canceled
+				if ctx.Err() == nil {
+					errChan <- err
+				}
 				break
 			}
 			util.GoWithWaitGroup(ctlWg, func() {
