@@ -7,6 +7,7 @@ require (
 	github.com/bufbuild/connect-go v1.5.2
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
 	github.com/coreos/go-oidc/v3 v3.5.0
+	github.com/cucumber/godog v0.12.6
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/zap v0.1.0
@@ -15,8 +16,10 @@ require (
 	github.com/go-session/session/v3 v3.2.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/securecookie v1.1.1
+	github.com/itchyny/gojq v0.12.12
 	github.com/libp2p/go-reuseport v0.2.0
 	github.com/metal-stack/go-ipam v1.11.6
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.4.0
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/files v1.0.0
@@ -56,6 +59,8 @@ require (
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/containerd/containerd v1.6.19 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
+	github.com/cucumber/gherkin-go/v19 v19.0.3 // indirect
+	github.com/cucumber/messages-go/v16 v16.0.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -65,13 +70,19 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-memdb v1.3.2 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/jackc/pgx/v5 v5.3.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mdlayher/genetlink v1.2.0 // indirect
 	github.com/mdlayher/netlink v1.6.2 // indirect
@@ -91,8 +102,10 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/redis/go-redis/v9 v9.0.2 // indirect
+	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21 // indirect
@@ -151,7 +164,7 @@ require (
 	github.com/open-policy-agent/opa v0.50.0
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ugorji/go/codec v1.2.9 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
