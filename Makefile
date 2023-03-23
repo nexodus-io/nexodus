@@ -95,10 +95,6 @@ go-lint-%: go-lint-prereqs $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
 		golangci-lint run --timeout 5m ./...
 
-	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO VET]"
-	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
-		go vet ./...
-
 .PHONY: yaml-lint
 yaml-lint: ## Lint the yaml files
 	$(CMD_PREFIX) if ! which yamllint >/dev/null 2>&1; then \
