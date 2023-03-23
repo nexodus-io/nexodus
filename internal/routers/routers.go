@@ -13,6 +13,7 @@ import (
 	_ "github.com/nexodus-io/nexodus/internal/docs"
 	"github.com/nexodus-io/nexodus/internal/handlers"
 	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
+	"github.com/open-policy-agent/opa/storage"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
@@ -33,8 +34,7 @@ func NewAPIRouter(
 	insecureTLS bool,
 	browserFlow *agent.OidcAgent,
 	deviceFlow *agent.OidcAgent,
-) (*gin.Engine, error) {
-
+	store storage.Store) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -61,7 +61,7 @@ func NewAPIRouter(
 	private := r.Group("/api", loggerMiddleware)
 	{
 
-		validateJWT, err := newValidateJWT(ctx, insecureTLS, oidcURL, oidcBackchannel, logger, clientIdWeb, clientIdCli)
+		validateJWT, err := newValidateJWT(ctx, insecureTLS, oidcURL, oidcBackchannel, logger, clientIdWeb, clientIdCli, store)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func NewAPIRouter(
 	return r, nil
 }
 
-func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchannel string, logger *zap.SugaredLogger, clientIdWeb, clientIdCli string) (func(*gin.Context), error) {
+func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchannel string, logger *zap.SugaredLogger, clientIdWeb, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
 	if insecureTLS {
 		transport := &http.Transport{
 			// #nosec -- G402: TLS InsecureSkipVerify set true.
@@ -138,7 +138,7 @@ func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchan
 		return nil, err
 	}
 
-	return ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli)
+	return ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli, store)
 }
 
 func newPrometheus() *ginprometheus.Prometheus {

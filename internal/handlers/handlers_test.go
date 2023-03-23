@@ -16,6 +16,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/fflags"
 	"github.com/nexodus-io/nexodus/internal/ipam"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/open-policy-agent/opa/storage/inmem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
@@ -58,7 +59,8 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	ipamClient := ipam.NewIPAM(suite.logger, util.TestIPAMClientAddr)
 
 	fflags := fflags.NewFFlags(suite.logger)
-	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags)
+	store := inmem.New()
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

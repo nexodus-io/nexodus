@@ -3,16 +3,18 @@ package routers
 import (
 	"context"
 	_ "embed"
-	"github.com/gin-gonic/gin"
-	"github.com/nexodus-io/nexodus/internal/util"
-	"github.com/nexodus-io/nexodus/internal/util/cache"
-	"github.com/open-policy-agent/opa/rego"
-	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util/cache"
+	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/storage"
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 // key for username in gin.Context
@@ -24,7 +26,7 @@ var policy string
 var jwksCache = cache.NewMemoizeCache[string, string](time.Second * 30)
 
 // Naive JWS Key validation
-func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string) (func(*gin.Context), error) {
+func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
 	query, err := rego.New(
 		rego.Query(`result = {
 			"authorized": data.token.valid_token,
@@ -33,6 +35,7 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			"user_name": data.token.user_name,
 			"full_name": data.token.full_name,
 		}`),
+		rego.Store(store),
 		rego.Module("policy.rego", policy),
 	).PrepareForEval(context.Background())
 	if err != nil {

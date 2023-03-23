@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 
 	"gorm.io/gorm"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/handlers"
 	"github.com/nexodus-io/nexodus/internal/ipam"
 	"github.com/nexodus-io/nexodus/internal/routers"
+	"github.com/open-policy-agent/opa/storage/inmem"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -207,7 +209,9 @@ func main() {
 
 				fflags := fflags.NewFFlags(logger.Sugar())
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags)
+				store := inmem.New()
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -263,6 +267,7 @@ func main() {
 					cCtx.Bool("insecure-tls"),
 					webAuth,
 					cliAuth,
+					store,
 				)
 				if err != nil {
 					log.Fatal(err)
