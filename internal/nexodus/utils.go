@@ -77,16 +77,19 @@ func ValidateCIDR(cidr string) error {
 // discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
 func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port string) (string, error) {
 	controllerSocket := fmt.Sprintf("%s:%s", controller, port)
-	conn, err := net.Dial("udp", controllerSocket)
+	conn, err := net.Dial("udp4", controllerSocket)
 	if err != nil {
 		return "", err
 	}
 	conn.Close()
 	ipAddress := conn.LocalAddr().(*net.UDPAddr)
 	if ipAddress != nil {
-		ipPort := strings.Split(ipAddress.String(), ":")
-		logger.Debugf("Nodes discovered local address is [%s]", ipPort[0])
-		return ipPort[0], nil
+		ip, _, err := net.SplitHostPort(ipAddress.String())
+		if err != nil {
+			return "", err
+		}
+		logger.Debugf("Nodes discovered local address is [%s]", ip)
+		return ip, nil
 	}
 	return "", fmt.Errorf("failed to obtain the local IP")
 }
