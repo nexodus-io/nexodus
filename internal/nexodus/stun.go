@@ -18,7 +18,7 @@ const (
 func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net.UDPAddr, error) {
 
 	logger.Debugf("dialing stun server %s", stunServer)
-	conn, err := reuseport.Dial("udp", fmt.Sprintf(":%d", srcPort), stunServer)
+	conn, err := reuseport.Dial("udp4", fmt.Sprintf(":%d", srcPort), stunServer)
 	if err != nil {
 		logger.Errorf("stun dialing timed out %v", err)
 		return net.UDPAddr{}, fmt.Errorf("failed to dial stun server %s: %w", stunServer, err)
