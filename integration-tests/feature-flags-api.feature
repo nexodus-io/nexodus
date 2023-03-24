@@ -21,4 +21,5 @@ Feature: Feature Flags API
     Then the response code should be 401
     And the response should match:
       """
+      Jwt is missing
       """
