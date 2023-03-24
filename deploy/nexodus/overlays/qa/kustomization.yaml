@@ -9,29 +9,28 @@ components:
   - ../../components/limitador
 configMapGenerator:
   - behavior: replace
-    name: auth-config
     literals:
       - hostname=auth.qa.nexodus.io
       - frontend-url=https://qa.nexodus.io
+    name: auth-config
   - behavior: replace
-    name: realm
     files:
       - files/nexodus.json
+    name: realm
   - behavior: merge
-    name: apiproxy
     literals:
       - APIPROXY_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - APIPROXY_API_DOMAIN=api.qa.nexodus.io
       - APIPROXY_WEB_DOMAIN=qa.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://qa.nexodus.io
+    name: apiproxy
   - behavior: merge
-    name: apiserver
     literals:
       - NEXAPI_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.qa.nexodus.io
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
-
+    name: apiserver
 patchesJson6902:
   - patch: |-
       - op: replace
@@ -96,8 +95,10 @@ patchesJson6902:
       name: frontend
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: fb3c17211d6db2219a18c65e12135f12b6bcdb9e
+    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
+  - name: quay.io/nexodus/envsubst
+    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
   - name: quay.io/nexodus/frontend
-    newTag: fb3c17211d6db2219a18c65e12135f12b6bcdb9e
+    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
   - name: quay.io/nexodus/go-ipam
-    newTag: fb3c17211d6db2219a18c65e12135f12b6bcdb9e
+    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
