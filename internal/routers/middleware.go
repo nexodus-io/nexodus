@@ -74,11 +74,12 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			return
 		}
 
+		path := strings.Split(c.Request.URL.Path, "/")
 		input := map[string]interface{}{
 			"jwks":         keySet,
 			"access_token": parts[1],
 			"method":       c.Request.Method,
-			"path":         c.Request.URL.Path,
+			"path":         path,
 		}
 
 		results, err := query.Eval(c.Request.Context(), rego.EvalInput(input))
