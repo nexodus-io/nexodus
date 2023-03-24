@@ -34,6 +34,10 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			"user_id": data.token.user_id,
 			"user_name": data.token.user_name,
 			"full_name": data.token.full_name,
+			"org_id": data.token.org_id,
+			"user_in_org": data.token.user_in_org,
+			"user_is_self": data.token.user_is_self,
+			"organizations": data.token.organizations,
 		}`),
 		rego.Store(store),
 		rego.Module("policy.rego", policy),
@@ -74,16 +78,17 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			return
 		}
 
-		path := strings.Split(c.Request.URL.Path, "/")
+		path := strings.Split(strings.TrimLeft(c.Request.URL.Path, "/"), "/")
 		input := map[string]interface{}{
 			"jwks":         keySet,
 			"access_token": parts[1],
 			"method":       c.Request.Method,
 			"path":         path,
 		}
-
+		logger = logger.With("input", input)
 		results, err := query.Eval(c.Request.Context(), rego.EvalInput(input))
 		if err != nil {
+			logger.Error(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -102,7 +107,6 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-
 		logger = logger.With("result", result)
 
 		authorized, ok := result["authorized"].(bool)
@@ -123,6 +127,7 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			return
 		}
 		if !allowed {
+			logger.Debug("forbidden by authz policy")
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

@@ -2,11 +2,6 @@ package token
 
 import future.keywords
 
-import input.access_token
-import input.jwks
-import input.method
-import input.path
-
 default valid_token := false
 
 valid_token if {
@@ -16,11 +11,32 @@ valid_token if {
 
 default allow := false
 
+default org_id := false
+
+org_id = input.path[2]
+
+default user_in_org := false
+
+user_in_org if not org_id
+
+user_in_org if data.user_org_map[user_id][org_id]
+
+default user_is_self := false
+
+user_is_self if "me" = input.path[2]
+
+user_is_self if user_id == input.path[2]
+
+default organizations := []
+
+organizations := data.user_org_map[user_id]
+
 allow if {
 	"organizations" = input.path[1]
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:organizations")
+	user_in_org
 }
 
 allow if {
@@ -28,6 +44,7 @@ allow if {
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:organizations")
+	user_in_org
 }
 
 allow if {
@@ -49,6 +66,7 @@ allow if {
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:users")
+	user_is_self
 }
 
 allow if {
@@ -56,6 +74,7 @@ allow if {
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:users")
+	user_is_self
 }
 
 allow if {
