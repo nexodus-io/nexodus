@@ -6,18 +6,44 @@ on:
   push:
     branches: [main]
 
-env:
-  REGISTRY: quay.io
-  REPOSITORY: nexodus
-  APISERVER_IMAGE_NAME: apiserver
-  FRONTEND_IMAGE_NAME: frontend
-  IPAM_IMAGE_NAME: go-ipam
-
 jobs:
   build-images:
     name: Build Images
     runs-on: ubuntu-latest
     environment: image-repositories
+    strategy:
+      matrix:
+        include:
+          - name: apiserver
+            tags: |
+              quay.io/nexodus/apiserver:latest
+              quay.io/nexodus/apiserver:${{ github.sha }}
+              quay.io/nexodus/apiserver:${{ github.ref_name }}
+            target:
+          - name: frontend
+            tags: |
+              quay.io/nexodus/frontend:latest
+              quay.io/nexodus/frontend:${{ github.sha }}
+              quay.io/nexodus/frontend:${{ github.ref_name }}
+            target:
+          - name: ipam
+            tags: |
+              quay.io/nexodus/go-ipam:latest
+              quay.io/nexodus/go-ipam:${{ github.sha }}
+              quay.io/nexodus/go-ipam:${{ github.ref_name }}
+            target:
+          - name: nexd
+            tags: |
+              quay.io/nexodus/nexd:latest
+              quay.io/nexodus/nexd:${{ github.sha }}
+              quay.io/nexodus/nexd:${{ github.ref_name }}
+            target:
+          - name: envsubst
+            tags: |
+              quay.io/nexodus/envsubst:latest
+              quay.io/nexodus/envsubst:${{ github.sha }}
+              quay.io/nexodus/envsubst:${{ github.ref_name }}
+            target:
     steps:
       - uses: actions/checkout@v3
 
@@ -30,67 +56,21 @@ jobs:
       - name: Login to Quay.io
         uses: redhat-actions/podman-login@v1
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: quay.io
           username: ${{ secrets.QUAY_ROBOT_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
-      - name: Build and export apiserver
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          file: ./Containerfile.apiserver
-          tags: |
-            quay.io/nexodus/apiserver:latest
-            quay.io/nexodus/apiserver:${{ github.sha }}
-            quay.io/nexodus/apiserver:${{ github.ref_name }}
+          file: ./Containerfile.${{ matrix.name }}
+          tags: ${{ matrix.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Build and export frontend
-        id: build-frontend
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          file: ./Containerfile.frontend
-          tags: |
-            quay.io/nexodus/frontend:latest
-            quay.io/nexodus/frontend:${{ github.sha }}
-            quay.io/nexodus/frontend:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and export nexodus
-        id: build-nexodus
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          file: ./Containerfile.nexd
-          tags: |
-            quay.io/nexodus/nexd:latest
-            quay.io/nexodus/nexd:${{ github.sha }}
-            quay.io/nexodus/nexd:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and export ipam
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          file: ./Containerfile.ipam
-          tags: |
-            quay.io/nexodus/go-ipam:latest
-            quay.io/nexodus/go-ipam:${{ github.sha }}
-            quay.io/nexodus/go-ipam:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          target: ${{ matrix.target }}
 
   update-deployment:
     name: Update Deployment
@@ -116,9 +96,10 @@ jobs:
       - name: Update QA Images
         run: |
           pushd ./deploy/nexodus/overlays/qa
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${GITHUB_SHA}
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${GITHUB_SHA}
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${IPAM_IMAGE_NAME}:${GITHUB_SHA}
+          kustomize edit set image quay.io/nexodus/apiserver:${GITHUB_SHA}
+          kustomize edit set image quay.io/nexodus/frontend:${GITHUB_SHA}
+          kustomize edit set image quay.io/nexodus/go-ipam:${GITHUB_SHA}
+          kustomize edit set image quay.io/nexodus/envsubst:${GITHUB_SHA}
           yq -i kustomization.yaml
           popd
 

@@ -40,7 +40,7 @@ kubeconfigs/
 
 # Auto generated man pages
 /contrib/man/*
-apiserver-envs.json
+*-envs.json
 
 # site generated with mkdocs
 site/

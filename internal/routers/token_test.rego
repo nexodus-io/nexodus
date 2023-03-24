@@ -30,7 +30,7 @@ mock_decode("user-read-jwt") := [{}, {"scope": "openid profile email read:users"
 mock_decode_verify("bad-jwt", _) := [false, {}, {}]
 
 test_org_get_allowed if {
-	token.allow with input.path as "/organizations"
+	token.allow with input.path as "/api/organizations"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "org-read-jwt"
@@ -39,7 +39,7 @@ test_org_get_allowed if {
 }
 
 test_org_post_allowed if {
-	token.allow with input.path as "/organizations"
+	token.allow with input.path as "/api/organizations"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "org-write-jwt"
@@ -48,7 +48,7 @@ test_org_post_allowed if {
 }
 
 test_org_post_with_read_scope_denied if {
-	not token.allow with input.path as "/organizations"
+	not token.allow with input.path as "/api/organizations"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "org-read-jwt"
@@ -57,14 +57,14 @@ test_org_post_with_read_scope_denied if {
 }
 
 test_org_get_anonymous_denied if {
-	not token.allow with input.path as "/organizations"
+	not token.allow with input.path as "/api/organizations"
 		with input.method as "GET"
 		with io.jwt.decode_verify as mock_decode_verify
 		with io.jwt.decode as mock_decode
 }
 
 test_org_get_bad_jwt_denied if {
-	not token.allow with input.path as "/organizations"
+	not token.allow with input.path as "/api/organizations"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with io.jwt.decode_verify as mock_decode_verify
@@ -72,7 +72,7 @@ test_org_get_bad_jwt_denied if {
 }
 
 test_device_get_allowed if {
-	token.allow with input.path as "/devices"
+	token.allow with input.path as "/api/devices"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "device-read-jwt"
@@ -81,7 +81,7 @@ test_device_get_allowed if {
 }
 
 test_device_post_allowed if {
-	token.allow with input.path as "/devices"
+	token.allow with input.path as "/api/devices"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "device-write-jwt"
@@ -90,7 +90,7 @@ test_device_post_allowed if {
 }
 
 test_device_post_with_read_scope_denied if {
-	not token.allow with input.path as "/devices"
+	not token.allow with input.path as "/api/devices"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "device-read-jwt"
@@ -99,14 +99,14 @@ test_device_post_with_read_scope_denied if {
 }
 
 test_device_get_anonymous_denied if {
-	not token.allow with input.path as "/devices"
+	not token.allow with input.path as "/api/devices"
 		with input.method as "GET"
 		with io.jwt.decode_verify as mock_decode_verify
 		with io.jwt.decode as mock_decode
 }
 
 test_device_get_bad_jwt_denied if {
-	not token.allow with input.path as "/devices"
+	not token.allow with input.path as "/api/devices"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "bad-jwt"
@@ -115,7 +115,7 @@ test_device_get_bad_jwt_denied if {
 }
 
 test_user_get_allowed if {
-	token.allow with input.path as "/users"
+	token.allow with input.path as "/api/users"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "user-read-jwt"
@@ -124,7 +124,7 @@ test_user_get_allowed if {
 }
 
 test_user_post_allowed if {
-	token.allow with input.path as "/users"
+	token.allow with input.path as "/api/users"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "user-write-jwt"
@@ -133,7 +133,7 @@ test_user_post_allowed if {
 }
 
 test_user_post_with_read_scope_denied if {
-	not token.allow with input.path as "/users"
+	not token.allow with input.path as "/api/users"
 		with input.method as "POST"
 		with input.jwks as "my-cert"
 		with input.access_token as "user-read-jwt"
@@ -142,14 +142,14 @@ test_user_post_with_read_scope_denied if {
 }
 
 test_user_get_anonymous_denied if {
-	not token.allow with input.path as "/users"
+	not token.allow with input.path as "/api/users"
 		with input.method as "GET"
 		with io.jwt.decode_verify as mock_decode_verify
 		with io.jwt.decode as mock_decode
 }
 
 test_user_get_bad_jwt_denied if {
-	not token.allow with input.path as "/users"
+	not token.allow with input.path as "/api/users"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "bad-jwt"
@@ -158,7 +158,7 @@ test_user_get_bad_jwt_denied if {
 }
 
 test_get_fflags if {
-	token.allow with input.path as "/fflags"
+	token.allow with input.path as "/api/fflags"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "user-read-jwt"
@@ -167,14 +167,14 @@ test_get_fflags if {
 }
 
 test_get_fflags_anonymous_denied if {
-	not token.allow with input.path as "/fflags"
+	not token.allow with input.path as "/api/fflags"
 		with input.method as "GET"
 		with io.jwt.decode_verify as mock_decode_verify
 		with io.jwt.decode as mock_decode
 }
 
 test_get_fflags_bad_jwt_denied if {
-	not token.allow with input.path as "/fflags"
+	not token.allow with input.path as "/api/fflags"
 		with input.method as "GET"
 		with input.jwks as "my-cert"
 		with input.access_token as "bad-jwt"

@@ -51,8 +51,13 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+
+			accessToken, err := c.Cookie("AccessToken")
+			if err != nil {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			authz = "Bearer " + accessToken
 		}
 
 		parts := strings.Split(authz, " ")

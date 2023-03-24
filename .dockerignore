@@ -3,4 +3,4 @@ Makefile
 !**/rootCA.pem
 Containerfile.*
 dist
-apiserver-envs.json
+*-envs.json

@@ -1,6 +1,5 @@
 docker.io/library/caddy:2.6-alpine
 docker.io/library/redis:7-alpine
-quay.io/go-oidc-agent/go-oidc-agent:49a615afe56d5bf4d1e7e381fb6d553337e4a014
 quay.io/jetstack/cert-manager-cainjector:v1.10.1
 quay.io/jetstack/cert-manager-controller:v1.10.1
 quay.io/jetstack/cert-manager-webhook:v1.10.1

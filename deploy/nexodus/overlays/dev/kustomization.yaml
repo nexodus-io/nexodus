@@ -3,9 +3,11 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
+components:
 # Uncomment this and the patch at the bottom to enable monitoring
-# components:
 #  - ../../components/monitoring
+# Uncomment this to enable rate limiting
+#  - ../../components/limitador
 namespace: nexodus
 configMapGenerator:
   - behavior: merge

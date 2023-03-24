@@ -60,7 +60,7 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 
 func startLogin(client *http.Client, hostname url.URL) (*agent.DeviceStartReponse, error) {
 	dest := hostname
-	dest.Path = "/login/start"
+	dest.Path = "/device/login/start"
 	res, err := client.Post(dest.String(), "application/json", nil)
 	if err != nil {
 		return nil, err

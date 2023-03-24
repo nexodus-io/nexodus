@@ -29,7 +29,7 @@ services:
 
   bff:
     depends_on: [ auth ]
-    image: quay.io/go-oidc-agent/go-oidc-agent:latest
+    image: quay.io/nexodus/oidc:latest
     build:
       context: .
       dockerfile: Containerfile

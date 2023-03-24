@@ -149,22 +149,37 @@ e2e-podman: ## Run e2e tests on podman
 test: ## Run unit tests
 	go test -v ./...
 
-.PHONY: debug-apiserver
-debug-apiserver: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
-	$(CMD_PREFIX) telepresence helm install 2> /dev/null || true
-	$(CMD_PREFIX) telepresence connect
-	$(CMD_PREFIX) telepresence intercept -n nexodus apiserver --port 8080 --env-json=apiserver-envs.json
+telepresence_%: telepresence-prereqs
+	$(CMD_PREFIX) if [ "$(shell telepresence status --output json | jq .user_daemon.status -r)" != "Connected" ]; then \
+		telepresence helm install 2> /dev/null || true ;\
+		telepresence connect ;\
+	fi
+	$(CMD_PREFIX) telepresence intercept -n nexodus $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json
 	@echo "======================================================================================="
 	@echo
-	@echo "   Start the apiserver locally with a debugger with the env variables"
-	@echo "   with the values found in: apiserver-envs.json"
+	@echo "   Start the $(word 2,$(subst _, ,$(basename $@))) locally with a debugger with the env variables"
+	@echo "   with the values found in: $(word 2,$(subst _, ,$(basename $@)))-envs.json"
 	@echo
-	@echo "   Hint:ca use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
+	@echo "   Hint: use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
 	@echo
 
+.PHONY: debug-apiserver
+debug-apiserver: telepresence_apiserver_8080 ## Use telepresence to debug the apiserver deployment
 .PHONY: debug-apiserver-stop
-debug-apiserver-stop: telepresence-prereqs ## Use telepresence to debug the apiserver deployment
-	$(CMD_PREFIX) telepresence leave apiserver
+debug-apiserver-stop: telepresence-prereqs ## Stop using telepresence to debug the apiserver deployment
+	$(CMD_PREFIX) telepresence leave apiserver-nexodus
+
+.PHONY: debug-frontend
+debug-frontend: telepresence_frontend_3000 ## Use telepresence to debug the frontend deployment
+.PHONY: debug-frontend-stop
+debug-frontend-stop: telepresence-prereqs ## Stop using telepresence to debug the frontend deployment
+	$(CMD_PREFIX) telepresence leave frontend-nexodus
+
+.PHONY: debug-backend-web
+debug-backend-web: telepresence_backend-web_8080 ## Use telepresence to debug the backend-web deployment
+.PHONY: debug-backend-web-stop
+debug-backend-web-stop: telepresence-prereqs ## Stop using telepresence to debug the backend-web deployment
+	$(CMD_PREFIX) telepresence leave backend-web-nexodus
 
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-test-container
@@ -193,6 +208,27 @@ else ifeq ($(OVERLAY),cockroach)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
 endif
 
+.PHONY: run-sql-ipam
+run-sql-ipam: ## runs a command line SQL client to interact with the ipammake  database
+ifeq ($(OVERLAY),dev)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		-c database -- psql ipam
+else ifeq ($(OVERLAY),arm64)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U ipam ipam
+else ifeq ($(OVERLAY),cockroach)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user ipam --database ipam
+endif
+
+.PHONY: clear-db
+clear-db:
+	$(CMD_PREFIX) echo "\
+		  delete from apiserver_migrations where 1=1;\
+		  delete from user_organization where 1=1;\
+		  delete from devices where 1=1;\
+		  delete from organizations where 1=1;\
+		  delete from users where 1=1;\
+		  " | make run-sql-apiserver 2> /dev/null
 
 ##@ Container Images
 
@@ -244,8 +280,14 @@ image-ipam:
 	docker build -f Containerfile.ipam -t quay.io/nexodus/go-ipam:$(TAG) .
 	docker tag quay.io/nexodus/go-ipam:$(TAG) quay.io/nexodus/go-ipam:latest
 
+
+.PHONY: image-envsubst ## Build the IPAM image
+image-envsubst:
+	docker build -f Containerfile.envsubst -t quay.io/nexodus/envsubst:$(TAG) .
+	docker tag quay.io/nexodus/envsubst:$(TAG) quay.io/nexodus/envsubst:latest
+
 .PHONY: images
-images: image-frontend image-apiserver image-ipam ## Create container images
+images: image-frontend image-apiserver image-ipam image-envsubst ## Create container images
 
 ##@ Kubernetes - kind dev environment
 
@@ -307,11 +349,13 @@ use-postgres: ## Recreate the database with a simple Postgres server
 
 .PHONY: wait-for-readiness
 wait-for-readiness: # Wait for operators to be installed
-	$(CMD_PREFIX) kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
 	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
 	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
 	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
 	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-resoruce-exists.sh secrets -n ingress-nginx ingress-nginx-admission
+	$(CMD_PREFIX) kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
+	$(CMD_PREFIX) kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
 
 .PHONY: deploy
 deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
@@ -329,11 +373,13 @@ load-images: ## Load images onto kind
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/envsubst:latest
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
 	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
 	$(CMD_PREFIX) kubectl rollout restart deploy/frontend -n nexodus
+	$(CMD_PREFIX) kubectl rollout restart deploy/apiproxy -n nexodus
 
 .PHONY: init-db
 init-db:

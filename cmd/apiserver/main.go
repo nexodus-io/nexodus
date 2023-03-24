@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"log"
 	"net/http"
 	"os"
@@ -65,6 +66,12 @@ func main() {
 				EnvVars: []string{"NEXAPI_DEBUG"},
 			},
 			&cli.StringFlag{
+				Name:    "listen",
+				Value:   "0.0.0.0:8080",
+				Usage:   "The address and port to listen for requests on",
+				EnvVars: []string{"NEXAPI_LISTEN"},
+			},
+			&cli.StringFlag{
 				Name:    "oidc-url",
 				Value:   "https://auth.try.nexodus.local",
 				Usage:   "Address of oidc provider",
@@ -89,8 +96,14 @@ func main() {
 				EnvVars: []string{"NEXAPI_OIDC_CLIENT_ID_WEB"},
 			},
 			&cli.StringFlag{
+				Name:    "oidc-client-secret-web",
+				Value:   "",
+				Usage:   "OIDC client secret for web",
+				EnvVars: []string{"NEXAPI_OIDC_CLIENT_SECRET_WEB"},
+			},
+			&cli.StringFlag{
 				Name:    "oidc-client-id-cli",
-				Value:   "nexodus-web",
+				Value:   "nexodus-cli",
 				Usage:   "OIDC client id for cli",
 				EnvVars: []string{"NEXAPI_OIDC_CLIENT_ID_CLI"},
 			},
@@ -148,7 +161,39 @@ func main() {
 				Usage:   "OTLP endpoint for trace data",
 				EnvVars: []string{"NEXAPI_TRACE_ENDPOINT_OTLP"},
 			},
+
+			&cli.StringFlag{
+				Name:    "redirect-url",
+				Usage:   "Redirect URL. This is the URL of the SPA.",
+				Value:   "https://example.com",
+				EnvVars: []string{"NEXAPI_REDIRECT_URL"},
+			},
+			&cli.StringSliceFlag{
+				Name:    "scopes",
+				Usage:   "Additional OAUTH2 scopes",
+				Value:   &cli.StringSlice{},
+				EnvVars: []string{"NEXAPI_SCOPES"},
+			},
+			&cli.StringSliceFlag{
+				Name:    "origins",
+				Usage:   "Trusted Origins. At least 1 MUST be provided",
+				Value:   &cli.StringSlice{},
+				EnvVars: []string{"NEXAPI_ORIGINS"},
+			},
+			&cli.StringFlag{
+				Name:    "domain",
+				Usage:   "Domain that the agent is running on.",
+				Value:   "api.example.com",
+				EnvVars: []string{"NEXAPI_DOMAIN"},
+			},
+			&cli.StringFlag{
+				Name:    "cookie-key",
+				Usage:   "Key to the cookie jar.",
+				Value:   "p2s5v8y/B?E(G+KbPeShVmYq3t6w9z$C",
+				EnvVars: []string{"NEXAPI_COOKIE_KEY"},
+			},
 		},
+
 		Action: func(cCtx *cli.Context) error {
 			ctx, span := tracer.Start(cCtx.Context, "Run")
 			defer span.End()
@@ -166,6 +211,46 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+				scopes := []string{"openid", "profile", "email"}
+				scopes = append(scopes, cCtx.StringSlice("scopes")...)
+
+				webAuth, err := agent.NewOidcAgent(
+					ctx,
+					logger,
+					cCtx.String("oidc-url"),
+					cCtx.String("oidc-backchannel-url"),
+					cCtx.Bool("insecure-tls"),
+					cCtx.String("oidc-client-id-web"),
+					cCtx.String("oidc-client-secret-web"),
+					cCtx.String("redirect-url"),
+					scopes,
+					cCtx.String("domain"),
+					cCtx.StringSlice("origins"),
+					"", // backend
+					cCtx.String("cookie-key"),
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				cliAuth, err := agent.NewOidcAgent(
+					ctx,
+					logger,
+					cCtx.String("oidc-url"),
+					cCtx.String("oidc-backchannel-url"),
+					cCtx.Bool("insecure-tls"),
+					cCtx.String("oidc-client-id-cli"),
+					"", // clientSecret
+					"", // redirectURL
+					scopes,
+					cCtx.String("domain"),
+					[]string{}, // origins
+					"",         // backend
+					"",         // cookieKey
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
 
 				router, err := routers.NewAPIRouter(
 					ctx,
@@ -176,13 +261,15 @@ func main() {
 					cCtx.String("oidc-url"),
 					cCtx.String("oidc-backchannel-url"),
 					cCtx.Bool("insecure-tls"),
+					webAuth,
+					cliAuth,
 				)
 				if err != nil {
 					log.Fatal(err)
 				}
 
 				server := &http.Server{
-					Addr:              "0.0.0.0:8080",
+					Addr:              cCtx.String("listen"),
 					Handler:           router,
 					ReadTimeout:       5 * time.Second,
 					ReadHeaderTimeout: 5 * time.Second,

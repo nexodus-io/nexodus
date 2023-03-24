@@ -5,50 +5,34 @@ resources:
   - issuer.yaml
   - serviceaccount.yaml
 namespace: nexodus
+components:
+  - ../../components/limitador
 configMapGenerator:
   - behavior: replace
+    name: auth-config
     literals:
       - hostname=auth.try.nexodus.io
       - frontend-url=https://try.nexodus.io
-    name: auth-config
   - behavior: replace
+    name: realm
     files:
       - files/nexodus.json
-    name: realm
+  - behavior: merge
+    name: apiproxy
+    literals:
+      - APIPROXY_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
+      - APIPROXY_API_DOMAIN=api.try.nexodus.io
+      - APIPROXY_WEB_DOMAIN=try.nexodus.io
+      - APIPROXY_WEB_ORIGINS=https://try.nexodus.io
+  - behavior: merge
+    name: apiserver
+    literals:
+      - NEXAPI_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
+      - NEXAPI_DOMAIN=api.try.nexodus.io
+      - NEXAPI_REDIRECT_URL=https://try.nexodus.io/#/login
+      - NEXAPI_ORIGINS=https://try.nexodus.io
+
 patchesJson6902:
-  - patch: |-
-      - op: replace
-        path: /data/NEXAPI_OIDC_URL
-        value: https://auth.try.nexodus.io/realms/nexodus
-    target:
-      kind: ConfigMap
-      name: apiserver
-  - patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: api.try.nexodus.io
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.try.nexodus.io/realms/nexodus
-      - op: replace
-        path: /data/ORIGINS
-        value: https://try.nexodus.io
-      - op: replace
-        path: /data/REDIRECT_URL
-        value: https://try.nexodus.io/#/login
-    target:
-      kind: ConfigMap
-      name: backend-web
-  - patch: |-
-      - op: replace
-        path: /data/DOMAIN
-        value: https://api.try.nexodus.io
-      - op: replace
-        path: /data/OIDC_PROVIDER
-        value: https://auth.try.nexodus.io/realms/nexodus
-    target:
-      kind: ConfigMap
-      name: backend-cli
   - patch: |-
       - op: replace
         path: /spec/rules/0/host

@@ -37,6 +37,7 @@ func (e errDuplicateDevice) Error() string {
 // @Produce      json
 // @Success      200  {object}  []models.Device
 // @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Router       /devices [get]
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
@@ -61,6 +62,7 @@ func (api *API) ListDevices(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Router       /devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDevice", trace.WithAttributes(
@@ -93,6 +95,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Router       /devices/{id} [get]
 func (api *API) UpdateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
@@ -191,6 +194,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure      409  {object}  models.Device
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
@@ -316,10 +320,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Param        id   path      string  true "Device ID"
 // @Success      204  {object}  models.Device
 // @Failure      400  {object}  models.BaseError
-// @Failure		 400  {object}  models.BaseError
-// @Failure		 400  {object}  models.BaseError
-// @Failure      400  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /devices/{id} [delete]
 func (api *API) DeleteDevice(c *gin.Context) {

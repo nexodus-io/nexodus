@@ -5,8 +5,6 @@ resources:
   - apiproxy
   - apiserver
   - auth
-  - backend-cli
-  - backend-web
   - database
   - frontend
   - ipam

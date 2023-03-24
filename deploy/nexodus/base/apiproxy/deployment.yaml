@@ -8,10 +8,91 @@ spec:
     type: Recreate
   template:
     spec:
+      initContainers:
+        - args:
+            - sh
+            - -c
+            - env; cat /configs/envoy-template/envoy.yaml | envsubst > /configs/envoy/envoy.yaml
+          image: quay.io/nexodus/envsubst:latest
+          imagePullPolicy: IfNotPresent
+          name: envsubst
+          env:
+            - name: APIPROXY_OIDC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_OIDC_URL
+            - name: APIPROXY_OIDC_BACKCHANNEL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_OIDC_BACKCHANNEL
+            - name: APIPROXY_API_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_API_DOMAIN
+            - name: APIPROXY_WEB_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_WEB_DOMAIN
+            - name: APIPROXY_WEB_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_WEB_ORIGINS
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: envoy-config-template
+              mountPath: /configs/envoy-template
+            - name: envoy-config
+              mountPath: /configs/envoy
       containers:
-        - name: caddy
-          image: docker.io/library/caddy:2.6-alpine
-          imagePullPolicy: Always
+        - name: envoy
+          image: envoyproxy/envoy:v1.25.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - envoy
+            - --config-path
+            - /configs/envoy/envoy.yaml
+          #  - --component-log-level
+          #  - upstream:info,http:debug,router:debug,jwt:debug
+          ports:
+            - name: api-envoy
+              protocol: TCP
+              containerPort: 9090
+            - name: metrics-envoy
+              protocol: TCP
+              containerPort: 9000
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /configs/envoy
+            - name: envoy-unix-sockets
+              mountPath: /sockets
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9000
+            periodSeconds: 5
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
           resources:
             requests:
               cpu: 100m
@@ -19,14 +100,14 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
-          volumeMounts:
-            - name: config
-              mountPath: /etc/caddy/Caddyfile
-              subPath: Caddyfile
-          securityContext:
-            allowPrivilegeEscalation: true
       restartPolicy: Always
       volumes:
-        - name: config
+        - name: envoy-config-template
           configMap:
-            name: caddyfile
+            name: apiproxy-envoy-config
+        - name: envoy-config
+          emptyDir:
+            medium: Memory
+        - name: envoy-unix-sockets
+          emptyDir:
+            medium: Memory

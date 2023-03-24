@@ -154,6 +154,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: List Devices
       tags:
       - Devices
@@ -185,6 +189,10 @@ paths:
           description: Conflict
           schema:
             $ref: '#/definitions/models.Device'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
         "500":
           description: Internal Server Error
           schema:
@@ -210,6 +218,10 @@ paths:
             $ref: '#/definitions/models.Device'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":
@@ -252,6 +264,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: Update Devices
       tags:
       - Devices
@@ -267,6 +283,10 @@ paths:
             additionalProperties:
               type: boolean
             type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: List Feature Flags
       tags:
       - FFlag
@@ -296,6 +316,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: Get Feature Flag
       tags:
       - FFlag
@@ -313,6 +337,10 @@ paths:
             type: array
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":
@@ -352,6 +380,10 @@ paths:
           description: Method Not Allowed
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
         "500":
           description: Internal Server Error
           schema:
@@ -381,6 +413,10 @@ paths:
             $ref: '#/definitions/models.BaseError'
         "405":
           description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":
@@ -417,6 +453,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: Get Organizations
       tags:
       - Organization
@@ -444,6 +484,10 @@ paths:
             $ref: '#/definitions/models.BaseError'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":
@@ -488,6 +532,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
         "500":
           description: Internal Server Error
           schema:
@@ -511,6 +559,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
       summary: List Users
       tags:
       - User
@@ -532,6 +584,10 @@ paths:
             $ref: '#/definitions/models.User'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":
@@ -566,6 +622,10 @@ paths:
             $ref: '#/definitions/models.BaseError'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
         "500":

@@ -208,6 +208,13 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 		logger.With("session_id", session.SessionID()).Debug("user is logged in")
+
+		expiresIn := 0
+		if !oauth2Token.Expiry.IsZero() {
+			expiresIn = int(time.Until(oauth2Token.Expiry).Seconds())
+		}
+		c.SetCookie("AccessToken", oauth2Token.AccessToken, expiresIn, "/", "", true, true)
+
 		loggedIn = true
 	} else {
 		logger.Debug("checking if user is logged in")
@@ -344,6 +351,12 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+
+	expiresIn := 0
+	if !token.Expiry.IsZero() {
+		expiresIn = int(time.Until(token.Expiry).Seconds())
+	}
+	c.SetCookie("AccessToken", token.AccessToken, expiresIn, "/", "", true, true)
 
 	c.Status(http.StatusNoContent)
 }
