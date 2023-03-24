@@ -95,10 +95,10 @@ patchesJson6902:
       name: frontend
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
+    newTag: de92d51d2556b153d0f7f35d84fd24b03a3fe1ab
   - name: quay.io/nexodus/envsubst
-    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
+    newTag: de92d51d2556b153d0f7f35d84fd24b03a3fe1ab
   - name: quay.io/nexodus/frontend
-    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
+    newTag: de92d51d2556b153d0f7f35d84fd24b03a3fe1ab
   - name: quay.io/nexodus/go-ipam
-    newTag: 7e7d5299a30c057c0225d64918558f0a31bf4d57
+    newTag: de92d51d2556b153d0f7f35d84fd24b03a3fe1ab
