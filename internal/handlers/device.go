@@ -280,6 +280,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			TunnelIP:                 ipamIP,
 			ChildPrefix:              request.ChildPrefix,
 			Relay:                    request.Relay,
+			Discovery:                request.Discovery,
 			OrganizationPrefix:       org.IpCidr,
 			ReflexiveIPv4:            request.ReflexiveIPv4,
 			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,

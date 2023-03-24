@@ -80,15 +80,15 @@ NAT mapping can change for various reasons such as NAT device restart, or mappin
 
 *So how are we solving this problem?*
 
-Currently we use ICE node to solve this problem. ICE node can be any node that is reachable through a public ip address. Introducing the ICE node adds an additional step in the control flow - ICE node must be the first node that should be onboarded. The reason for onboarding the ICE node first is to ensure that all the nodes joining the Nexodus network later will be peer with the ICE node. Given that each node runs the keepalive to all its peers, ICE node will always have an updated reflexive address of its peer. As far as it keep receiving the
+Currently, we use a Discovery node to solve this problem. Discovery nodes can be any node that is reachable through a public ip address (or at the least, reachable on 51820 by all nodes looking to peer). Introducing the Discovery node adds an additional step in the provisioning flow. Given that each node runs the keepalive to all its peers, Discovery nodes will always have an updated reflexive address of its peer.
 
 > **Note**
-> ICE node runs the same Nexodus agent, but it runs with ICE node configuration. To run Nexodus agent as an ICE Node, you need to provide `--hub-router --stun` option during onboarding of the ICE node. Please refer to the [Deploying Nexodus Relay](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) section for details about deploying the ICE node.
+> Discovery nodes run the same Nexodus agent, but it runs with Discovery node configuration. To run Nexodus agent as a Discovery Node, you need to provide `--discovery-node --stun` option during onboarding of the node. Please refer to the [Deploying Nexodus Relay](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) section for details about deploying a relay node.
 
-ICE node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's Nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoints-ip to reconcile the broken connections between the peers.
+The Discovery Node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's Nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoint ip to reconcile the broken connections between the peers. In order to maintain consitent peering and connectivity in a mobile and edge driven world, constant reconciliation is required to adjust to networks with middlebox and network state churn.
 
 > **ThinkingHatOn**
-> Assuming ICE node is in AWS cloud, I assume we have a similar risk of NAT mapping change? If yes, probably Elastic IP is a better option for ICE nodes?
+> Assuming a Discovery node is in AWS cloud, I assume we have a similar risk of NAT mapping change? If yes, Elastic IP is probably a better option for Discovery nodes.
 
 #### Challenge 2 - Multiple nodes behind same NAT
 

@@ -17,6 +17,7 @@ type Device struct {
 	TunnelIP                 string         `json:"tunnel_ip"`
 	ChildPrefix              pq.StringArray `json:"child_prefix" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay                    bool           `json:"relay"`
+	Discovery                bool           `json:"discovery"`
 	OrganizationPrefix       string         `json:"organization_prefix"`
 	ReflexiveIPv4            string         `json:"reflexive_ip4"`
 	EndpointLocalAddressIPv4 string         `json:"endpoint_local_address_ip4"`
@@ -33,6 +34,7 @@ type AddDevice struct {
 	TunnelIP                 string         `json:"tunnel_ip" example:"1.2.3.4"`
 	ChildPrefix              pq.StringArray `json:"child_prefix" example:"172.16.42.0/24"`
 	Relay                    bool           `json:"relay"`
+	Discovery                bool           `json:"discovery"`
 	ReflexiveIPv4            string         `json:"reflexive_ip4"`
 	EndpointLocalAddressIPv4 string         `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
 	SymmetricNat             bool           `json:"symmetric_nat"`

@@ -32,6 +32,8 @@ definitions:
         items:
           type: string
         type: array
+      discovery:
+        type: boolean
       endpoint_local_address_ip4:
         type: string
       hostname:

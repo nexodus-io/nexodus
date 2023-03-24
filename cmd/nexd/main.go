@@ -9,9 +9,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
@@ -106,10 +105,17 @@ func main() {
 				Required: false,
 			},
 			&cli.BoolFlag{
-				Name:     "hub-router",
-				Usage:    "Set if this node is to be the hub in a hub and spoke deployment",
+				Name:     "relay-node",
+				Usage:    "Set if this node is to be the relay node for a hub and spoke scenarios",
 				Value:    false,
-				EnvVars:  []string{"NEXD_HUB_ROUTER"},
+				EnvVars:  []string{"NEXD_RELAY_NODE"},
+				Required: false,
+			},
+			&cli.BoolFlag{
+				Name:     "discovery-node",
+				Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
+				Value:    false,
+				EnvVars:  []string{"NEXD_DISCOVERY_NODE"},
 				Required: false,
 			},
 			&cli.BoolFlag{
@@ -171,7 +177,8 @@ func main() {
 				cCtx.String("local-endpoint-ip"),
 				cCtx.StringSlice("child-prefix"),
 				cCtx.Bool("stun"),
-				cCtx.Bool("hub-router"),
+				cCtx.Bool("relay-node"),
+				cCtx.Bool("discovery-node"),
 				cCtx.Bool("relay-only"),
 				cCtx.Bool("insecure-skip-tls-verify"),
 				Version,
