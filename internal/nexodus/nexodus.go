@@ -178,7 +178,12 @@ func NewNexodus(ctx context.Context,
 		return nil, err
 	}
 
-	ax.nodePrep()
+	// remove orphaned wg interfaces from previous node joins
+	ax.removeExistingInterface()
+
+	if err := ax.symmetricNatDisco(); err != nil {
+		ax.logger.Warn(err)
+	}
 
 	return ax, nil
 }
@@ -547,16 +552,13 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 	return nil
 }
 
-// nodePrep add basic gathering and node condition checks here
-func (ax *Nexodus) nodePrep() {
+// symmetricNatDisco determine if the joining node is within a symmetric NAT cone
+func (ax *Nexodus) symmetricNatDisco() error {
 
-	// remove an existing wg interfaces
-	ax.removeExistingInterface()
-
-	// discover the server reflexive address per ICE RFC8445 = (lol public address)
+	// discover the server reflexive address per ICE RFC8445
 	stunAddr, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
-		ax.logger.Infof("failed to query the stun server: %v", err)
+		return err
 	} else {
 		ax.nodeReflexiveAddress = stunAddr.IP.String()
 	}
@@ -564,7 +566,7 @@ func (ax *Nexodus) nodePrep() {
 	isSymmetric := false
 	stunAddr2, err := StunRequest(ax.logger, stunServer2, ax.listenPort)
 	if err != nil {
-		ax.logger.Error(err)
+		return err
 	} else {
 		isSymmetric = stunAddr.String() != stunAddr2.String()
 	}
@@ -574,6 +576,7 @@ func (ax *Nexodus) nodePrep() {
 		ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
 	}
 
+	return nil
 }
 
 // orgRelayCheck checks if there is an existing relay in the organization that does not match this devices pub key
