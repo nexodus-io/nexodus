@@ -1,11 +1,13 @@
 package nexodus
 
 import (
+	"errors"
 	"fmt"
+	"net"
+
 	"github.com/libp2p/go-reuseport"
 	"github.com/pion/stun"
 	"go.uber.org/zap"
-	"net"
 )
 
 const (
@@ -40,7 +42,11 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	result := net.UDPAddr{}
 	if err := c.Do(message, func(res stun.Event) {
 		if res.Error != nil {
-			logger.Error(res.Error)
+			if res.Error.Error() == errors.New("transaction is timed out").Error() {
+				logger.Debugf("STUN transaction to %s timed out", stunServer)
+			} else {
+				logger.Debug(res.Error)
+			}
 			return
 		}
 		// Decoding XOR-MAPPED-ADDRESS attribute from message.
@@ -54,11 +60,13 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 			Port: xorAddr.Port,
 		}
 	}); err != nil {
-		logger.Error(err)
 		return net.UDPAddr{}, err
 	}
 	if result.IP.IsUnspecified() {
 		return result, fmt.Errorf("no public facing NAT address found for the host")
+	}
+	if result.IP == nil {
+		return result, fmt.Errorf("STUN binding request failed, a firewall may be blocking UDP connections to %s", stunServer)
 	}
 	logger.Debugf("STUN: your IP:port is: %s:%d", result.IP.String(), result.Port)
 	return result, nil
