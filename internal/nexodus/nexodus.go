@@ -60,6 +60,8 @@ type userspaceWG struct {
 	userspaceDev  *device.Device
 	// the last address configured on the userspace wireguard interface
 	userspaceLastAddress string
+	ingresProxies        []*UsProxy
+	egressProxies        []*UsProxy
 }
 
 type Nexodus struct {
@@ -425,6 +427,13 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			}
 		})
 	})
+
+	for _, proxy := range ax.ingresProxies {
+		proxy.Start(ctx, wg, ax.userspaceNet)
+	}
+	for _, proxy := range ax.egressProxies {
+		proxy.Start(ctx, wg, ax.userspaceNet)
+	}
 
 	return nil
 }
