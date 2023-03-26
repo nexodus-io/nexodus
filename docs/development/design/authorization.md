@@ -1,6 +1,6 @@
 # Authorization
 
-> [Issue #142](https://github.com/redhat-et/issues/142)
+> [Issue #142](https://github.com/nexodus-io/nexodus/issues/142)
 
 ## Summary
 

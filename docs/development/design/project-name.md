@@ -1,6 +1,6 @@
 # Enhancement Title
 
-> [Issue #428](https://github.com/redhat-et/issues/428)
+> [Issue #428](https://github.com/nexodus-io/nexodus/issues/428)
 
 ## Summary
 

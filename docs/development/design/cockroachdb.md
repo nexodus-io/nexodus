@@ -1,6 +1,6 @@
 # Support Cockroach DB
 
-> [Issue #598](https://github.com/redhat-et/issues/598)
+> [Issue #598](https://github.com/nexodus-io/nexodus/issues/598)
 
 ## Summary
 
