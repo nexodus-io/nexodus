@@ -1,6 +1,6 @@
 # Enhancement Title
 
-> [Issue #NNN](https://github.com/redhat-et/issues/NNN)
+> [Issue #NNN](https://github.com/nexodus-io/nexodus/issues/NNN)
 
 ## Summary
 

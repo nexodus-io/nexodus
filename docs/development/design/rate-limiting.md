@@ -1,6 +1,6 @@
 ``# Used Envoy for Rate Limiting
 
-[Issue #600](https://github.com/redhat-et/issues/600)
+[Issue #600](https://github.com/nexodus-io/nexodus/issues/600)
 
 ## Summary
 
