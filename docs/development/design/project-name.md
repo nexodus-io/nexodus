@@ -53,6 +53,7 @@ nex.x86_64 : A lexer generator for Go that is similar to Lex/Flex
 * Nexodus Agent: Agent running on each node, communicating with the Nexodus Service and managing local network configuration.
 * Nexodus Relay: A node running the discovery and relay function.
   * At this time, the Nexodus Relay function is part of the Nexodus Agent. We refer to the Agent running in relay mode as the Nexodus Relay. In the future, the Relay function may be split out into its own separate binary.
+* Nexodus Network: When referring to an overlay network managed by Nexodus, we refer to it as a "Nexodus network." At this time, a Nexodus organization maps to a single network, but we should not refer to the network as a "Nexodus organization," as that can be confusing. We should only use "Nexodus organization" when referring to the organizational construct that groups a subset of users and their devices together to communicate over a Nexodus network.
 
 ## Alternatives Considered
 
