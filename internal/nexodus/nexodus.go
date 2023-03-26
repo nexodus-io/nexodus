@@ -21,6 +21,9 @@ import (
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/term"
+	"golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/tun"
+	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
 const (
@@ -48,6 +51,16 @@ const (
 var (
 	invalidTokenGrant = errors.New("invalid_grant")
 )
+
+// embedded in Nexodus struct
+type userspaceWG struct {
+	userspaceMode bool
+	userspaceTun  tun.Device
+	userspaceNet  *netstack.Net
+	userspaceDev  *device.Device
+	// the last address configured on the userspace wireguard interface
+	userspaceLastAddress string
+}
 
 type Nexodus struct {
 	wireguardPubKey         string
@@ -82,7 +95,7 @@ type Nexodus struct {
 	username      string
 	password      string
 	skipTlsVerify bool
-	userspaceMode bool
+	userspaceWG
 }
 
 type wgConfig struct {
@@ -170,9 +183,8 @@ func NewNexodus(ctx context.Context,
 		username:            username,
 		password:            password,
 		skipTlsVerify:       insecureSkipTlsVerify,
-		userspaceMode:       userspaceMode,
 	}
-
+	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
 
 	if ax.relay || ax.discoveryNode {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 
@@ -34,6 +35,9 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
+	// TEMPORARY - this is a hack to allow us to run the userspace mode for demonstration purposes
+	userspaceMode, _ := strconv.ParseBool(os.Getenv("NEXD_USERSPACE_MODE_TEST"))
+
 	nexodus, err := nexodus.NewNexodus(
 		ctx,
 		logger.Sugar(),
@@ -51,7 +55,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 		cCtx.Bool("discovery-node"),
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
-		Version, false,
+		Version, userspaceMode,
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
