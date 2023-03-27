@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+
 	"github.com/nexodus-io/nexodus/internal/database"
+	"github.com/open-policy-agent/opa/storage"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 
@@ -29,10 +31,11 @@ type API struct {
 	fflags        *fflags.FFlags
 	transaction   database.TransactionFunc
 	dialect       database.Dialect
+	store         storage.Store
 }
 
-func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags) (*API, error) {
-	_, span := tracer.Start(parent, "NewAPI")
+func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags, store storage.Store) (*API, error) {
+	ctx, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 
 	transactionFunc, dialect, err := database.GetTransactionFunc(db)
@@ -48,7 +51,13 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		fflags:        fflags,
 		transaction:   transactionFunc,
 		dialect:       dialect,
+		store:         store,
 	}
+
+	if err := api.populateStore(ctx); err != nil {
+		return nil, err
+	}
+
 	return api, nil
 }
 

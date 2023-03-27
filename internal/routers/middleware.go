@@ -3,16 +3,18 @@ package routers
 import (
 	"context"
 	_ "embed"
-	"github.com/gin-gonic/gin"
-	"github.com/nexodus-io/nexodus/internal/util"
-	"github.com/nexodus-io/nexodus/internal/util/cache"
-	"github.com/open-policy-agent/opa/rego"
-	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/nexodus-io/nexodus/internal/util/cache"
+	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/storage"
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 // key for username in gin.Context
@@ -24,7 +26,7 @@ var policy string
 var jwksCache = cache.NewMemoizeCache[string, string](time.Second * 30)
 
 // Naive JWS Key validation
-func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string) (func(*gin.Context), error) {
+func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
 	query, err := rego.New(
 		rego.Query(`result = {
 			"authorized": data.token.valid_token,
@@ -32,7 +34,12 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			"user_id": data.token.user_id,
 			"user_name": data.token.user_name,
 			"full_name": data.token.full_name,
+			"org_id": data.token.org_id,
+			"user_in_org": data.token.user_in_org,
+			"user_is_self": data.token.user_is_self,
+			"organizations": data.token.organizations,
 		}`),
+		rego.Store(store),
 		rego.Module("policy.rego", policy),
 	).PrepareForEval(context.Background())
 	if err != nil {
@@ -71,15 +78,17 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			return
 		}
 
+		path := strings.Split(strings.TrimLeft(c.Request.URL.Path, "/"), "/")
 		input := map[string]interface{}{
 			"jwks":         keySet,
 			"access_token": parts[1],
 			"method":       c.Request.Method,
-			"path":         c.Request.URL.Path,
+			"path":         path,
 		}
-
+		logger = logger.With("input", input)
 		results, err := query.Eval(c.Request.Context(), rego.EvalInput(input))
 		if err != nil {
+			logger.Error(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -98,7 +107,6 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-
 		logger = logger.With("result", result)
 
 		authorized, ok := result["authorized"].(bool)
@@ -119,6 +127,7 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			return
 		}
 		if !allowed {
+			logger.Debug("forbidden by authz policy")
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

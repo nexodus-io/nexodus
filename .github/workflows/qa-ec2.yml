@@ -1,6 +1,13 @@
 name: qa-ec2-e2e
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_size:
+        description: 'deployment size: small | medium | large'
+        required: true
+        default: 'small'
+        type: string
 
 jobs:
   deploy-ec2:
@@ -42,6 +49,21 @@ jobs:
       - name: Install amazon.aws Ansible library
         run: ansible-galaxy collection install amazon.aws
 
+      - name: Set Deployment Size to Small
+        if: github.event.inputs.deployment_size == 'small'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_SMALL }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Medium
+        if: github.event.inputs.deployment_size == 'medium'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_MEDIUM }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Large
+        if: github.event.inputs.deployment_size == 'large'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_LARGE }}" > ./ops/ansible/aws/vars.yml
+
       - name: Create Ansible Secrets
         run: |
           echo "${{ secrets.ANSIBLE_SSH_KEY }}" > nexodus.pem
@@ -50,8 +72,6 @@ jobs:
           chmod 0400 vault-secret.txt
           echo "${{ secrets.ROOT_CA }}" > ./ops/ansible/aws/rootCA.pem
           chmod 0400 ops/ansible/aws/rootCA.pem
-          echo "${{ secrets.ANSIBLE_VARS }}" > ./ops/ansible/aws/vars.yml
-          aws s3 cp ./ops/ansible/aws/vars.yml s3://nexodus-io/ec2-e2e/
 
       - name: Deploy EC2 Playbooks
         run: |

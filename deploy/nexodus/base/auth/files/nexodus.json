@@ -494,7 +494,8 @@
     {
       "clientScope": "write:organizations",
       "roles": [
-        "admin"
+        "admin",
+        "user"
       ]
     },
     {
