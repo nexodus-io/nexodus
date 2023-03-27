@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type extender struct {
@@ -28,6 +29,8 @@ func init() {
 		ctx.Step(`^I am not logged in$`, e.iAmNotLoggedIn)
 		ctx.Step(`^I set the "([^"]*)" header to "([^"]*)"$`, e.iSetTheHeaderTo)
 		ctx.Step(`^I store userid for "([^"]+)" as \${([^}]*)}$`, e.storeUserId)
+		ctx.Step(`^I generate a new public key as \${([^}]*)}$`, e.iGenerateANewPublicKeyAsVariable)
+
 	})
 }
 
@@ -92,5 +95,14 @@ func (s *extender) iSetTheHeaderTo(name string, value string) error {
 	}
 
 	s.Session().Header.Set(name, expanded)
+	return nil
+}
+
+func (s *extender) iGenerateANewPublicKeyAsVariable(name string) error {
+	privateKey, err := wgtypes.GeneratePrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate private key: %w", err)
+	}
+	s.Variables[name] = privateKey.PublicKey().String()
 	return nil
 }

@@ -333,7 +333,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				ChildPrefix:              ax.childPrefix,
 				ReflexiveIPv4:            ax.nodeReflexiveAddress,
 				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
-				SymmetricNat:             ax.symmetricNat,
+				SymmetricNat:             &ax.symmetricNat,
 				Hostname:                 ax.hostname,
 			})
 			if err != nil {

@@ -19,20 +19,34 @@ func Silent(db *gorm.DB) *gorm.DB {
 	})
 }
 
-func GetTransactionFunc(db *gorm.DB) (TransactionFunc, error) {
+type Dialect int
+
+const (
+	DialectSqlLite Dialect = iota
+	DialectPostgreSQL
+	DialectCockroachDB
+)
+
+func GetTransactionFunc(db *gorm.DB) (TransactionFunc, Dialect, error) {
 
 	version := ""
-
 	_ = Silent(db).Raw("SELECT version()").Scan(&version).Error
 
-	if strings.HasPrefix(version, "CockroachDB") {
+	dialect := DialectSqlLite
+	if strings.HasPrefix(version, "PostgreSQL") {
+		dialect = DialectPostgreSQL
+	} else if strings.HasPrefix(version, "CockroachDB") {
+		dialect = DialectCockroachDB
+	}
+
+	if dialect == DialectCockroachDB {
 		return func(ctx context.Context, fn func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {
 			var o *sql.TxOptions = nil
 			if len(opts) > 0 {
 				o = opts[0]
 			}
 			return crdbgorm.ExecuteTx(ctx, db, o, fn)
-		}, nil
+		}, dialect, nil
 	} else {
 		return func(ctx context.Context, fn func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {
 			var o *sql.TxOptions = nil
@@ -40,6 +54,6 @@ func GetTransactionFunc(db *gorm.DB) (TransactionFunc, error) {
 				o = opts[0]
 			}
 			return db.WithContext(ctx).Transaction(fn, o)
-		}, nil
+		}, dialect, nil
 	}
 }
