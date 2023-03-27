@@ -7,6 +7,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 	"net"
+	"strings"
 )
 
 // RouteExistsOS currently only used for darwin build purposes
@@ -18,7 +19,17 @@ func RouteExistsOS(s string) (bool, error) {
 func AddRoute(prefix, dev string) error {
 	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", dev)
 	if err != nil {
-		return fmt.Errorf("route add failed: %w", err)
+		return fmt.Errorf("v4 route add failed: %w", err)
+	}
+
+	return nil
+}
+
+// AddRouteV6 adds a route to the specified interface
+func AddRouteV6(prefix, dev string) error {
+	_, err := RunCommand("route", "-q", "-n", "add", "-inet6", prefix, "-interface", dev)
+	if err != nil {
+		return fmt.Errorf("v6 route add failed: %w", err)
 	}
 
 	return nil
@@ -77,4 +88,17 @@ func checkOS(logger *zap.SugaredLogger) error {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgDarwinConfPath, err)
 	}
 	return nil
+}
+
+// isIPv6Supported returns true if the platform supports IPv6, return true if ifconfig isn't present for whatever reason
+func isIPv6Supported() bool {
+	res, err := RunCommand("ifconfig")
+	if err != nil {
+		return true
+	}
+	if !strings.Contains(res, "inet6") {
+		return false
+	}
+
+	return true
 }

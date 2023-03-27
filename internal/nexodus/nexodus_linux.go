@@ -26,8 +26,8 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		logger.Errorf("failed to create the ip link interface: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
 	}
-	// start the wireguard listener on a well-known port if it is the hub-router as all
-	// nodes need to be able to reach this node for state distribution if hole punching.
+	// start the wireguard listener on a well-known port if it is a discovery or relay node as all
+	// nodes need to be able to reach those services for state distribution, hole punching and relay.
 	if ax.relay {
 		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
 		if err != nil {
@@ -42,16 +42,27 @@ func (ax *Nexodus) setupInterfaceOS() error {
 			return fmt.Errorf("%w", interfaceErr)
 		}
 	}
-	// give the wg interface an address
-	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
+
+	// assign the wg interface a v6 address
+	if ax.ipv6Supported {
+		localAddressIPv6 := fmt.Sprintf("%s/%s", ax.TunnelIpV6, wgOrgIPv6PrefixLen)
+		_, err = RunCommand("ip", "-6", "address", "add", localAddressIPv6, "dev", ax.tunnelIface)
+		if err != nil {
+			logger.Infof("failed to assign an IPv6 address to the local linux ipv6 interface, ensure v6 is supported: %v\n", err)
+		}
+	}
+
+	// assign the wg interface a v4 address, delete the existing if one is present
+	_, err = RunCommand("ip", "address", "add", ax.TunnelIP, "dev", ax.tunnelIface)
 	if err != nil {
 		logger.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
 		wgIP := ax.getIPv4Iface(ax.tunnelIface)
+		// TODO: this is likely legacy from a push model, should be ok to remove the deletes since the agent now deletes wg0 on startup
 		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", ax.tunnelIface)
 		if err != nil {
-			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
+			logger.Errorf("failed to assign an IPv4 address to the local linux interface: %v\n", err)
 		}
-		_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
+		_, err = RunCommand("ip", "address", "add", ax.TunnelIP, "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
 			return fmt.Errorf("%w", interfaceErr)
@@ -77,11 +88,11 @@ func (ax *Nexodus) removeExistingInterface() {
 }
 
 func (ax *Nexodus) findLocalIP() (string, error) {
-
 	// Linux network discovery
 	linuxIP, err := discoverLinuxAddress(ax.logger, 4)
 	if err != nil {
 		return "", err
 	}
+
 	return linuxIP.String(), nil
 }

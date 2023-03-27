@@ -27,16 +27,17 @@ import (
 )
 
 const (
-	pollInterval      = 5 * time.Second
-	wgBinary          = "wg"
-	wgGoBinary        = "wireguard-go"
-	wgWinBinary       = "wireguard.exe"
-	WgLinuxConfPath   = "/etc/wireguard/"
-	WgDarwinConfPath  = "/usr/local/etc/wireguard/"
-	darwinIface       = "utun8"
-	WgDefaultPort     = 51820
-	wgIface           = "wg0"
-	WgWindowsConfPath = "C:/nexd/"
+	pollInterval       = 5 * time.Second
+	wgBinary           = "wg"
+	wgGoBinary         = "wireguard-go"
+	wgWinBinary        = "wireguard.exe"
+	WgLinuxConfPath    = "/etc/wireguard/"
+	WgDarwinConfPath   = "/usr/local/etc/wireguard/"
+	darwinIface        = "utun8"
+	WgDefaultPort      = 51820
+	wgIface            = "wg0"
+	WgWindowsConfPath  = "C:/nexd/"
+	wgOrgIPv6PrefixLen = "64"
 )
 
 const (
@@ -74,7 +75,8 @@ type Nexodus struct {
 	organization            uuid.UUID
 	requestedIP             string
 	userProvidedLocalIP     string
-	LocalIP                 string
+	TunnelIP                string
+	TunnelIpV6              string
 	childPrefix             []string
 	stun                    bool
 	relay                   bool
@@ -84,11 +86,11 @@ type Nexodus struct {
 	client                  *client.Client
 	controllerURL           *url.URL
 	deviceCache             map[uuid.UUID]models.Device
-	wgLocalAddress          string
 	endpointLocalAddress    string
 	nodeReflexiveAddress    string
 	hostname                string
 	symmetricNat            bool
+	ipv6Supported           bool
 	logger                  *zap.SugaredLogger
 	// See the NexdStatus* constants
 	status        int
@@ -102,7 +104,7 @@ type Nexodus struct {
 
 type wgConfig struct {
 	Interface wgLocalConfig
-	Peers     []wgPeerConfig `ini:"Peer,nonunique"`
+	Peers     []wgPeerConfig
 }
 
 type wgPeerConfig struct {
@@ -332,7 +334,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localIP = ip
 		localEndpointPort = ax.listenPort
 	}
-	ax.LocalIP = localIP
+	ax.TunnelIP = localIP
 	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	device, err := ax.client.CreateDevice(models.AddDevice{
@@ -376,6 +378,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.relay {
 		if err := enableForwardingIPv4(ax.logger); err != nil {
+			return err
+		}
+		if err := enableForwardingIPv6(ax.logger); err != nil {
 			return err
 		}
 		relayIpTables(ax.logger, ax.tunnelIface)
@@ -595,6 +600,9 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 		if err := ValidateIp(ax.requestedIP); err != nil {
 			return fmt.Errorf("the IP address passed in --request-ip %s was not valid: %w", ax.requestedIP, err)
 		}
+		if util.IsIPv6Address(ax.requestedIP) {
+			return fmt.Errorf("--request-ip only supports IPv4 addresses")
+		}
 	}
 
 	if ax.requestedIP != "" && ax.relay {
@@ -606,7 +614,19 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 		if err := ValidateCIDR(prefix); err != nil {
 			return err
 		}
+		// TODO: enable child-prefix-v6
+		if util.IsIPv6Prefix(prefix) {
+			return fmt.Errorf("currently --child-prefix only supports IPv4 prefixes")
+		}
 	}
+
+	if !isIPv6Supported() {
+		ax.ipv6Supported = false
+		ax.logger.Warn("IPv6 does not appear to be enabled on this host, only IPv4 will be provisioned or restart nexd with IPv6 enabled on this host")
+	} else {
+		ax.ipv6Supported = true
+	}
+
 	return nil
 }
 

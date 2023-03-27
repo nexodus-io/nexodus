@@ -79,3 +79,9 @@ func checkOS(logger *zap.SugaredLogger) error {
 	}
 	return nil
 }
+
+// isIPv6Supported TODO: add support via powershell, netsh or ipconfig or any system check options if there are any
+func isIPv6Supported() bool {
+	// implmenet ipv4 only on Windows until this TODO is completed and tested (the rest of the functionality is in place)
+	return false
+}

@@ -17,7 +17,7 @@ func (ax *Nexodus) DeployWireguardConfig(newPeers []models.Device, firstTime boo
 		Peers:     ax.wgConfig.Peers,
 	}
 
-	if ax.wgLocalAddress != ax.getIPv4Iface(ax.tunnelIface).String() {
+	if ax.TunnelIP != ax.getIPv4Iface(ax.tunnelIface).String() {
 		if err := ax.setupInterface(); err != nil {
 			return err
 		}

@@ -17,7 +17,7 @@ const defaultDeviceName = "go"
 
 func (ax *Nexodus) setupInterfaceUS() error {
 	tun, tnet, err := netstack.CreateNetTUN(
-		[]netip.Addr{netip.MustParseAddr(ax.wgLocalAddress)},
+		[]netip.Addr{netip.MustParseAddr(ax.TunnelIP)},
 		// TODO - Is there something else that makes more sense as a DNS server?
 		// So far I don't think DNS will ever be used. If Nexodus has its own
 		// built-in DNS, that would make sense here.
@@ -71,7 +71,7 @@ func (ax *Nexodus) setupInterfaceUS() error {
 		return err
 	}
 	ax.logger.Infof("Successfully created userspace device: %s", devName)
-	ax.userspaceLastAddress = ax.wgLocalAddress
+	ax.userspaceLastAddress = ax.TunnelIP
 
 	return nil
 }
