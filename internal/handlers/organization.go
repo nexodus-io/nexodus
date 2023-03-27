@@ -91,6 +91,9 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		span.SetAttributes(attribute.String("id", org.ID.String()))
+		if err := api.addUserOrgMapping(ctx, user.ID, org.ID); err != nil {
+			return err
+		}
 		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
 		return nil
 	})
@@ -282,6 +285,22 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	if res := api.db.WithContext(ctx).First(&org, "id = ?", orgID); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
+	}
+
+	type userOrgMapping struct {
+		UserID         string
+		OrganizationID uuid.UUID
+	}
+	var usersInOrg []userOrgMapping
+	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(usersInOrg); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+		return
+	}
+	for _, u := range usersInOrg {
+		if err := api.deleteUserOrgMapping(ctx, u.UserID, u.OrganizationID); err != nil {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			return
+		}
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {

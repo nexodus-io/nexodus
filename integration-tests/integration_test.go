@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+
 	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
 
@@ -624,23 +625,16 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 		}
 	})
 
-	// validate nexctl user list returns a user
+	// validate nexctl user get-current returns a user
 	userOut, err := suite.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
-		"user", "list",
+		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var users []models.UserJSON
-	err = json.Unmarshal([]byte(userOut), &users)
-	assert.NotEmpty(users)
-
 	var user models.UserJSON
-	for _, u := range users {
-		if u.UserName == username {
-			user = u
-		}
-	}
+	err = json.Unmarshal([]byte(userOut), &user)
+	assert.NotEmpty(user)
 	require.NotEmpty(user.UserName)
 	require.Equal(1, len(user.Organizations))
 
