@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"net"
 	"net/http"
 
@@ -43,12 +44,29 @@ func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
 	defer span.End()
 	devices := make([]models.Device, 0)
-	result := api.db.WithContext(ctx).Scopes(FilterAndPaginate(&models.Device{}, c)).Find(&devices)
+
+	result := api.db.WithContext(ctx).Scopes(
+		api.DeviceIsVisibleToCurrentUser(c),
+		FilterAndPaginate(&models.Device{}, c),
+	).Find(&devices)
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
 	}
 	c.JSON(http.StatusOK, devices)
+}
+
+func (api *API) DeviceIsVisibleToCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+		// this could potentially be driven by rego output
+		if api.dialect == database.DialectSqlLite {
+			return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+		} else {
+			return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+		}
+	}
 }
 
 // GetDevice gets a device by ID
@@ -75,7 +93,9 @@ func (api *API) GetDevice(c *gin.Context) {
 		return
 	}
 	var device models.Device
-	result := api.db.WithContext(ctx).First(&device, "id = ?", k)
+	result := api.db.WithContext(ctx).
+		Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+		First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
@@ -116,7 +136,9 @@ func (api *API) UpdateDevice(c *gin.Context) {
 
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		result := tx.First(&device, "id = ?", k)
+		result := tx.
+			Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+			First(&device, "id = ?", k)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errDeviceNotFound
 		}
@@ -206,6 +228,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
+
 	if request.PublicKey == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("public_key"))
 		return
@@ -334,7 +357,9 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	device := models.Device{}
-	if res := api.db.First(&device, "id = ?", deviceID); res.Error != nil {
+	if res := api.db.
+		Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+		First(&device, "id = ?", deviceID); res.Error != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
 		return
 	}

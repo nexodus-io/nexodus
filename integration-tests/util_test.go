@@ -437,7 +437,15 @@ func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, passwor
 }
 
 func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid, password string) *oauth2.Token {
-	jwt, err := suite.gocloak.Login(ctx, "nexodus-cli", "", "nexodus", userid, password)
+	jwt, err := suite.gocloak.GetToken(ctx, "nexodus",
+		gocloak.TokenOptions{
+			ClientID:     gocloak.StringP("nexodus-cli"),
+			ClientSecret: gocloak.StringP(""),
+			GrantType:    gocloak.StringP("password"),
+			Username:     &userid,
+			Password:     &password,
+			Scope:        gocloak.StringP("openid profile email read:organizations write:organizations read:users write:users read:devices write:devices"),
+		})
 	suite.Require().NoError(err)
 	return &oauth2.Token{
 		AccessToken:  jwt.AccessToken,

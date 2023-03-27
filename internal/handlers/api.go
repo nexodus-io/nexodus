@@ -28,13 +28,14 @@ type API struct {
 	defaultZoneID uuid.UUID
 	fflags        *fflags.FFlags
 	transaction   database.TransactionFunc
+	dialect       database.Dialect
 }
 
 func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags) (*API, error) {
 	_, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 
-	transactionFunc, err := database.GetTransactionFunc(db)
+	transactionFunc, dialect, err := database.GetTransactionFunc(db)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +47,7 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		defaultZoneID: uuid.Nil,
 		fflags:        fflags,
 		transaction:   transactionFunc,
+		dialect:       dialect,
 	}
 	return api, nil
 }
