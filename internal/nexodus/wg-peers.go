@@ -30,6 +30,9 @@ func (ax *Nexodus) buildPeersConfig() {
 		defaultOrganizationPrefixIPv6,
 	}
 
+	// Build the local interface configuration
+	ax.buildLocalConfig()
+
 	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.deviceCache {
 		_, peerPort, err := net.SplitHostPort(value.LocalIP)
@@ -46,10 +49,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.relay && value.Relay {
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				relayAllowedIP = append(relayAllowedIP, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			ax.relayWgIP = relayIP
 			peerHub = wgPeerConfig{
 				value.PublicKey,
@@ -63,10 +63,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the wg config for all peers if this node is the organization's hub-router.
 		if ax.relay {
 			// Config if this node is a relay
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.LocalIP,
@@ -89,10 +86,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
 			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 			// the symmetric NAT peer
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				directLocalPeerEndpointSocket,
@@ -111,10 +105,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
 			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
 			// symmetric nat node, do not add peers as it will relay and not mesh
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.LocalIP,
@@ -131,7 +122,6 @@ func (ax *Nexodus) buildPeersConfig() {
 		}
 	}
 	ax.wgConfig.Peers = peers
-	ax.buildLocalConfig()
 }
 
 // buildLocalConfig builds the configuration for the local interface

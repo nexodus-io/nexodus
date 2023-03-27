@@ -15,21 +15,25 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 	require := suite.Require()
 	organizations := []models.AddOrganization{
 		{
-			Name:   "organization-a",
-			IpCidr: "10.1.1.0/24",
+			Name:     "organization-a",
+			IpCidr:   "10.1.1.0/24",
+			IpCidrV6: "fc00::/20",
 		},
 		{
-			Name:   "organization-b",
-			IpCidr: "10.1.2.0/24",
+			Name:     "organization-b",
+			IpCidr:   "10.1.2.0/24",
+			IpCidrV6: "fc00:1000::/20",
 		},
 		{
-			Name:   "organization-c",
-			IpCidr: "10.1.3.0/24",
+			Name:     "organization-c",
+			IpCidr:   "10.1.3.0/24",
+			IpCidrV6: "fc00:2000::/20",
 		},
 	}
 	organizationDenied := models.AddOrganization{
-		Name:   "organization-denied-multi-organization-off",
-		IpCidr: "10.1.3.0/24",
+		Name:     "organization-denied-multi-organization-off",
+		IpCidr:   "10.1.3.0/24",
+		IpCidrV6: "fc00:3000::/20",
 	}
 
 	for _, organization := range organizations {

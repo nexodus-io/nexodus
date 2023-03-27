@@ -334,7 +334,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localIP = ip
 		localEndpointPort = ax.listenPort
 	}
-	ax.TunnelIP = localIP
 	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	device, err := ax.client.CreateDevice(models.AddDevice{
@@ -608,6 +607,10 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 	if ax.requestedIP != "" && ax.relay {
 		ax.logger.Warnf("request-ip is currently unsupported for the relay node, a dynamic address will be used instead")
 		ax.requestedIP = ""
+	}
+
+	if len(ax.childPrefix) > 0 && ax.relay {
+		return fmt.Errorf("child-prefixes are not supported on relay nodes")
 	}
 
 	for _, prefix := range ax.childPrefix {

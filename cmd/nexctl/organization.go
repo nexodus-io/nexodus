@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"log"
 )
 
 func listOrganizations(c *client.Client, encodeOut string) error {
