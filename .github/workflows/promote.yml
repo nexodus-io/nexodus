@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: mikefarah/yq@v4.32.2
+      - uses: mikefarah/yq@v4.33.1
 
       - name: Read Image SHAs from QA deployment
         id: gitsha
