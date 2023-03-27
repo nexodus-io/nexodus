@@ -22,7 +22,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.4.0
 	github.com/stretchr/testify v1.8.2
-	github.com/swaggo/files v1.0.0
+	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.5.3
 	github.com/swaggo/swag v1.8.10
 	github.com/testcontainers/testcontainers-go v0.19.0
