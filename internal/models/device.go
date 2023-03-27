@@ -48,6 +48,6 @@ type UpdateDevice struct {
 	ChildPrefix              []string  `json:"child_prefix" example:"172.16.42.0/24"`
 	ReflexiveIPv4            string    `json:"reflexive_ip4"`
 	EndpointLocalAddressIPv4 string    `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
-	SymmetricNat             bool      `json:"symmetric_nat"`
+	SymmetricNat             *bool     `json:"symmetric_nat"`
 	Hostname                 string    `json:"hostname" example:"myhost"`
 }

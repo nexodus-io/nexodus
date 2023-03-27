@@ -116,7 +116,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /devices/{id} [get]
+// @Router       /devices/{id} [patch]
 func (api *API) UpdateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -163,8 +163,8 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.ReflexiveIPv4 = request.ReflexiveIPv4
 		}
 
-		if request.SymmetricNat != device.SymmetricNat {
-			device.SymmetricNat = request.SymmetricNat
+		if request.SymmetricNat != nil {
+			device.SymmetricNat = *request.SymmetricNat
 		}
 
 		if request.ChildPrefix != nil {
@@ -360,7 +360,12 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	if res := api.db.
 		Scopes(api.DeviceIsVisibleToCurrentUser(c)).
 		First(&device, "id = ?", deviceID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
+
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+		} else {
+			c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
+		}
 		return
 	}
 

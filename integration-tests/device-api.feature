@@ -75,6 +75,37 @@ Feature: Device API
       }
       """
 
+    # Bob can update his device.
+    When I PATCH path "/api/devices/${device_id}" with json body:
+      """
+      {
+        "hostname": "kittenhome"
+      }
+      """
+    Then the response code should be 200
+    And the response should match json:
+      """
+      {
+        "allowed_ips": [
+          "${response.allowed_ips[0]}"
+        ],
+        "child_prefix": null,
+        "discovery": false,
+        "endpoint_local_address_ip4": "172.17.0.3",
+        "hostname": "kittenhome",
+        "id": "${device_id}",
+        "local_ip": "172.17.0.3:58664",
+        "organization_id": "${organization_id}",
+        "organization_prefix":"${response.organization_prefix}",
+        "public_key": "${public_key}",
+        "reflexive_ip4": "47.196.141.165",
+        "relay": false,
+        "symmetric_nat": true,
+        "tunnel_ip": "${response.tunnel_ip}",
+        "user_id": "${user_id}"
+      }
+      """
+
     # Bob gets an should see 1 device in the device listing..
     When I GET path "/api/devices"
     Then the response code should be 200
@@ -88,7 +119,7 @@ Feature: Device API
           "child_prefix": null,
           "discovery": false,
           "endpoint_local_address_ip4": "172.17.0.3",
-          "hostname": "bbac3081d5e8",
+          "hostname": "kittenhome",
           "id": "${device_id}",
           "local_ip": "172.17.0.3:58664",
           "organization_id": "${organization_id}",
@@ -102,7 +133,6 @@ Feature: Device API
         }
       ]
       """
-
 
     #
     # Verify Alice can't see Bob's stuff
@@ -119,3 +149,50 @@ Feature: Device API
 
     When I GET path "/api/devices/${device_id}"
     Then the response code should be 404
+
+    When I PATCH path "/api/devices/${device_id}" with json body:
+      """
+      {
+        "hostname": "evilkitten"
+      }
+      """
+    Then the response code should be 404
+
+    When I DELETE path "/api/devices/${device_id}"
+    Then the response code should be 404
+    And the response should match json:
+      """
+      {
+        "error": "not found",
+        "resource": "device"
+      }
+      """
+
+    #
+    # Switch back to Bob, and make sure he can delete his device.
+    #
+    Given I am logged in as "Bob"
+    When I DELETE path "/api/devices/${device_id}"
+    Then the response code should be 200
+    And the response should match json:
+      """
+      {
+        "allowed_ips": [
+          "${response.allowed_ips[0]}"
+        ],
+        "child_prefix": null,
+        "discovery": false,
+        "endpoint_local_address_ip4": "172.17.0.3",
+        "hostname": "kittenhome",
+        "id": "${device_id}",
+        "local_ip": "172.17.0.3:58664",
+        "organization_id": "${organization_id}",
+        "organization_prefix":"${response.organization_prefix}",
+        "public_key": "${public_key}",
+        "reflexive_ip4": "47.196.141.165",
+        "relay": false,
+        "symmetric_nat": true,
+        "tunnel_ip": "${response.tunnel_ip}",
+        "user_id": "${user_id}"
+      }
+      """
