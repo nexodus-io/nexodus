@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	defaultOrganizationPrefix = "100.100.0.0/16"
+	defaultOrganizationPrefixIPv4 = "100.100.0.0/16"
+	defaultOrganizationPrefixIPv6 = "200::/64"
 )
 
 // CreateOrganization creates a new Organization
@@ -59,6 +60,10 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr"))
 		return
 	}
+	if request.IpCidrV6 == "" {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr_v6"))
+		return
+	}
 	if request.Name == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("name"))
 		return
@@ -76,6 +81,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			OwnerID:     userId,
 			Description: request.Description,
 			IpCidr:      request.IpCidr,
+			IpCidrV6:    request.IpCidrV6,
 			HubZone:     request.HubZone,
 			Users:       []*models.User{&user},
 		}
@@ -92,8 +98,12 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			return err
 		}
 
+		if err := api.ipam.AssignPrefix(ctx, org.ID, request.IpCidrV6); err != nil {
+			return err
+		}
+
 		span.SetAttributes(attribute.String("id", org.ID.String()))
-		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
+		api.logger.Infof("New organization request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", org.Name, org.IpCidr, org.IpCidrV6)
 		return nil
 	})
 	if err != nil {

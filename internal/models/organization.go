@@ -16,6 +16,7 @@ type Organization struct {
 	Name        string    `gorm:"uniqueIndex" sql:"index"`
 	Description string
 	IpCidr      string
+	IpCidrV6    string
 	HubZone     bool
 	Invitations []*Invitation
 }
@@ -27,6 +28,7 @@ type OrganizationJSON struct {
 	Name        string    `json:"name" example:"zone-red"`
 	Description string    `json:"description" example:"The Red Zone"`
 	IpCidr      string    `json:"cidr" example:"172.16.42.0/24"`
+	IpCidrV6    string    `json:"cidr_v6" example:"200::/8"`
 	HubZone     bool      `json:"hub_zone"`
 }
 
@@ -37,6 +39,7 @@ func (o Organization) MarshalJSON() ([]byte, error) {
 		Name:        o.Name,
 		Description: o.Description,
 		IpCidr:      o.IpCidr,
+		IpCidrV6:    o.IpCidrV6,
 		HubZone:     o.HubZone,
 	}
 	return json.Marshal(org)
@@ -56,5 +59,6 @@ type AddOrganization struct {
 	Name        string `json:"name" example:"zone-red"`
 	Description string `json:"description" example:"The Red Zone"`
 	IpCidr      string `json:"cidr" example:"172.16.42.0/24"`
+	IpCidrV6    string `json:"cidr_v6" example:"0200::/8"`
 	HubZone     bool   `json:"hub_zone"`
 }
