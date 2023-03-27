@@ -113,24 +113,30 @@ INFO[0570] Peer setup complete
 
 ### Verifying Agent Setup
 
-Once the Agent has been started successfully, you should see a wireguard interface with an address assigned. For example, on Linux:
+Once the Agent has been started successfully, you should see a wireguard interface with an IPv4 and IPv6 address assigned. For example, on Linux:
 
 ```sh
 $ ip address show wg0
-161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
+1443: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
     link/none
     inet 100.100.0.1/32 scope global wg0
+       valid_lft forever preferred_lft forever
+    inet6 200::1/64 scope global
        valid_lft forever preferred_lft forever
 ```
 
 ### Verifying Organization Connectivity
 
-Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Nexodus organization is 100.100.0.2. On Linux, we can check the routing table and see:
+Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Nexodus organization is `100.100.0.2` and `200::2`. On Linux, we can check the routing table and see:
 
 ```sh
 $ ip route
 ...
 100.100.0.2 dev wg0 scope link
+
+$ ip -6 route
+200::2 dev wg0 metric 1024 pref medium
+200::/64 dev wg0 proto kernel metric 256 pref medium
 ```
 
 You should now be able to reach that node over the wireguard tunnel.
@@ -138,7 +144,11 @@ You should now be able to reach that node over the wireguard tunnel.
 ```sh
 $ ping 100.100.0.2
 PING 100.100.0.2 (100.100.0.2) 56(84) bytes of data.
-64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=7.63 ms
+64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=1.63 ms
+
+$ ping -6 200::2
+PING 200::2(200::2) 56 data bytes
+64 bytes from 200::2: icmp_seq=1 ttl=64 time=1.16 ms
 ```
 
 You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.127.0.0.1.nip.io/`.
@@ -256,9 +266,11 @@ Login to one of the nodes, and you should see a wireguard interface with an addr
 
 ```sh
 $ ip address show wg0
-161: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
+1448: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN group default qlen 1000
     link/none
     inet 100.100.0.1/32 scope global wg0
+       valid_lft forever preferred_lft forever
+    inet6 200::1/64 scope global
        valid_lft forever preferred_lft forever
 ```
 
