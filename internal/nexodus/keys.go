@@ -1,10 +1,9 @@
 package nexodus
 
 import (
-	"bytes"
 	"fmt"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"os"
-	"os/exec"
 	"strings"
 
 	"go.uber.org/zap"
@@ -24,20 +23,14 @@ const (
 
 // generateKeyPair a key pair and write them to disk
 func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
-	cmd := exec.Command(wgBinary, "genkey")
-	privateKey, err := cmd.Output()
+
+	privateKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
-		return fmt.Errorf("wg genkey error: %w", err)
+		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	cmd = exec.Command(wgBinary, "pubkey")
-	cmd.Stdin = bytes.NewReader(privateKey)
-	publicKey, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("wg pubkey error: %w", err)
-	}
-	ax.wireguardPubKey = strings.TrimSpace(string(publicKey))
-	ax.wireguardPvtKey = strings.TrimSpace(string(privateKey))
+	ax.wireguardPubKey = privateKey.PublicKey().String()
+	ax.wireguardPvtKey = privateKey.String()
 
 	// TODO remove this debug statement at some point
 	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
