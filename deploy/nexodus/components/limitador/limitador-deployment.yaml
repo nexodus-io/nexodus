@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: limitador
-          image: quay.io/kuadrant/limitador:latest
+          image: "quay.io/kuadrant/limitador@sha256:3e90215997572db6aa760818ccdd928f3a3ce6a05b3b44f43a1fea62d3e0eee2"
           imagePullPolicy: IfNotPresent
           env:
             - name: RATE_LIMIT_HEADERS
