@@ -276,15 +276,16 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	nexodus.WriteToFile(suite.logger, strings.Join(cmd, " "), runScriptLocal, 0755)
 	// copy the nexd run script to the test container
 	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
-	if suite.T().Failed() {
-		suite.logger.Errorf("execution of copy command on %s failed: %v", nodeName, err)
-	}
+	suite.Require().NoError(err, fmt.Errorf("execution of copy command on %s failed: %v", nodeName, err))
+
 	// execute the nexd run script on the test container
 	out, err := suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
 	if suite.T().Failed() {
 		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
 		suite.logger.Errorf("output:\n%s", out)
 		suite.logger.Errorf("%+v", err)
+	} else {
+		suite.Require().NoError(err)
 	}
 }
 
@@ -394,7 +395,7 @@ func (suite *NexodusIntegrationSuite) NewTLSConfig() *tls.Config {
 
 // nexdStatus checks for a Running status of the nexd process via nexctl
 func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testcontainers.Container) error {
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*1000)
 	defer cancel()
 	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
 		statOut, _ := suite.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})

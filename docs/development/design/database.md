@@ -79,6 +79,8 @@ erDiagram
     USER ||--o{ DEVICE : has
     USER ||--|{ ORGANIZATION : belongs_to
     ORGANIZATION ||--o{ DEVICE: contains
+    INVITE ||--|| USER : has
+    INVITE ||--|| ORGANIZATION: has
     USER{
         string id
         string username
@@ -106,6 +108,12 @@ erDiagram
         string cidr
         string hub_zone
     }
+    INVITATION{
+        string id
+        string user_id
+        string organization_id
+        string expiry
+    }
 ```
 
 In this simplified model we only have 3 concepts:
@@ -115,6 +123,8 @@ In this simplified model we only have 3 concepts:
 - Organization: A collection of users who have permissions to onboard one or more devices into this organization
 
 Since a `User` is also an `Organization`, once someone has registered to Nexodus we onboard devices into their personal organization.
+
+The addition of users to an `Organization` happens via invitation. An organization owner creates an which is valid for a period of time. During that validity period, a user may accept this invitaion which will add them to the organization. An organization may also revoke and invitation after offer, but before it was accepted.
 
 The device-onboarding flow is as follows:
 

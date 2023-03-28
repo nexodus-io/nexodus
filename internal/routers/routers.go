@@ -75,6 +75,11 @@ func NewAPIRouter(
 		private.DELETE("/organizations/:organization", api.DeleteOrganization)
 		private.GET("/organizations/:organization/devices", api.ListDevicesInOrganization)
 		private.GET("/organizations/:organization/devices/:id", api.GetDeviceInOrganization)
+		private.GET("/organizations/:organization/users", api.ListUsersInOrganization)
+		// Invitations
+		private.POST("/invitations", api.CreateInvitation)
+		private.POST("/invitations/:invitation/accept", api.AcceptInvitation)
+		private.DELETE("/invitations/:invitation", api.DeleteInvitation)
 		// Devices
 		private.GET("/devices", api.ListDevices)
 		private.GET("/devices/:id", api.GetDevice)

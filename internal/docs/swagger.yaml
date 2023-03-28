@@ -60,6 +60,18 @@ definitions:
       user_id:
         type: string
     type: object
+  models.Invitation:
+    properties:
+      expiry:
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      organization_id:
+        type: string
+      user_id:
+        type: string
+    type: object
   models.Organization:
     properties:
       description:
@@ -73,9 +85,15 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      invitations:
+        items:
+          $ref: '#/definitions/models.Invitation'
+        type: array
       ipCidr:
         type: string
       name:
+        type: string
+      ownerID:
         type: string
       users:
         items:
@@ -120,6 +138,10 @@ definitions:
           format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      invitations:
+        items:
+          $ref: '#/definitions/models.Invitation'
+        type: array
       organizations:
         items:
           $ref: '#/definitions/models.Organization'

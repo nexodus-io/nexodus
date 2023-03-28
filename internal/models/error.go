@@ -53,6 +53,15 @@ func NewInvalidField(field string) ValidationError {
 	}
 }
 
+func NewFieldValidationError(field string, reason string) ValidationError {
+	return ValidationError{
+		Field: field,
+		BaseError: BaseError{
+			Error: reason,
+		},
+	}
+}
+
 // ConflictsError is returned in the body of an HTTP 409
 type ConflictsError struct {
 	ID string `json:"id" example:"a1fae5de-dd96-4b20-8362-95f6a574c4b1"`

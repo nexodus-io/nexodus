@@ -963,6 +963,24 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Invitation": {
+            "type": "object",
+            "properties": {
+                "expiry": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Organization": {
             "type": "object",
             "properties": {
@@ -982,10 +1000,19 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
+                "invitations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Invitation"
+                    }
+                },
                 "ipCidr": {
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "ownerID": {
                     "type": "string"
                 },
                 "users": {
@@ -1048,6 +1075,12 @@ const docTemplate = `{
                     "description": "Since the ID comes from the IDP, we have no control over the format...",
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "invitations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Invitation"
+                    }
                 },
                 "organizations": {
                     "type": "array",
