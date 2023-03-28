@@ -76,9 +76,6 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if err := api.addUserOrgMapping(ctx, user.ID, user.Organizations[0].ID); err != nil {
-		return uuid.Nil, err
-	}
 	return user.Organizations[0].ID, nil
 }
 

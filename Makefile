@@ -121,8 +121,8 @@ policies=$(wildcard internal/routers/*.rego)
 .PHONY: opa-lint
 opa-lint: ## Lint the OPA policies
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) >/dev/null
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) >/dev/null
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) > /dev/null
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) > /dev/null
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs

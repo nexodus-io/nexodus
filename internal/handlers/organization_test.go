@@ -2,20 +2,17 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 func (suite *HandlerTestSuite) TestListOrganizations() {
 	assert := suite.Assert()
 	require := suite.Require()
-	var organizationIDs []uuid.UUID
 	organizations := []models.AddOrganization{
 		{
 			Name:   "organization-a",
@@ -55,8 +52,6 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		var o models.OrganizationJSON
 		err = json.Unmarshal(body, &o)
 		require.NoError(err)
-
-		organizationIDs = append(organizationIDs, o.ID)
 	}
 
 	{
@@ -161,7 +156,4 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.Equal("organization-c", actual[0].Name)
 	}
 
-	for _, o := range organizationIDs {
-		assert.True(suite.api.userIsInOrg(context.TODO(), TestUserID, o.String()))
-	}
 }

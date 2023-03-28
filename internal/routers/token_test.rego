@@ -55,17 +55,6 @@ test_org_get_member if {
 		with input.access_token as "org-read-jwt"
 		with io.jwt.decode_verify as mock_decode_verify
 		with io.jwt.decode as mock_decode
-		with data.user_org_map as {"00a7b7f4-f11f-4ea3-89de-7b1cde4316a9": {"foo": true}}
-}
-
-test_org_get_not_member_denied if {
-	not token.allow with input.path as ["api", "organizations", "bar"]
-		with input.method as "GET"
-		with input.jwks as "my-cert"
-		with input.access_token as "org-read-jwt"
-		with io.jwt.decode_verify as mock_decode_verify
-		with io.jwt.decode as mock_decode
-		with data.user_org_map as {"00a7b7f4-f11f-4ea3-89de-7b1cde4316a9": {"foo": true}}
 }
 
 test_org_post_allowed if {

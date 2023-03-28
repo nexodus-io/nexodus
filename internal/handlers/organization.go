@@ -93,9 +93,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		span.SetAttributes(attribute.String("id", org.ID.String()))
-		if err := api.addUserOrgMapping(ctx, user.ID, org.ID); err != nil {
-			return err
-		}
 		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
 		return nil
 	})
@@ -254,7 +251,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	org_id, err := uuid.Parse(c.Param("organization"))
+	orgId, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
@@ -263,7 +260,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	var organization models.Organization
 	result := api.db.WithContext(ctx).
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
-		First(&organization, "id = ?", org_id.String())
+		First(&organization, "id = ?", orgId.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
@@ -276,7 +273,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 
 	var device models.Device
 	result = api.db.WithContext(ctx).
-		Where("organization_id = ?", org_id.String()).
+		Where("organization_id = ?", orgId.String()).
 		First(&device, "id = ?", id.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
@@ -360,12 +357,6 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(usersInOrg); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
-	}
-	for _, u := range usersInOrg {
-		if err := api.deleteUserOrgMapping(ctx, u.UserID, u.OrganizationID); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
-			return
-		}
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
