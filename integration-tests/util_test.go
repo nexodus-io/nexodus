@@ -455,3 +455,22 @@ func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid
 		Expiry:       time.Now().Add(time.Duration(jwt.ExpiresIn) * time.Second),
 	}
 }
+
+// getNodeHostname trims the container ID down to the node hostname
+func (suite *NexodusIntegrationSuite) getNodeHostname(ctx context.Context, ctr testcontainers.Container) (string, error) {
+	var hostname string
+	err := backoff.Retry(func() error {
+		cid := ctr.GetContainerID()
+		if len(cid) == 12 {
+			hostname = ctr.GetContainerID()
+		}
+		if len(cid) < 12 {
+			return fmt.Errorf("invalid container ID: %s", ctr.GetContainerID())
+		} else {
+			hostname = strings.TrimSpace(cid[:12])
+		}
+		return nil
+	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
+
+	return hostname, err
+}

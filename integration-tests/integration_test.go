@@ -8,10 +8,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-
-	"github.com/cucumber/godog"
-	"github.com/nexodus-io/nexodus/internal/cucumber"
-
 	"net"
 	"os"
 	"path"
@@ -21,6 +17,8 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/cucumber/godog"
+	"github.com/nexodus-io/nexodus/internal/cucumber"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/stretchr/testify/suite"
@@ -104,17 +102,7 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "TestBasicConnectivity-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestBasicConnectivity-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "TestBasicConnectivity-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestBasicConnectivity-node2 %v", err)
-		}
-	})
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -215,17 +203,7 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "TestRequestIPOrganization-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container for test TestRequestIPOrganization-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "TestRequestIPOrganization-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestRequestIPOrganization-node2 %v", err)
-		}
-	})
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
@@ -291,6 +269,7 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 
 // TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
 func (suite *NexodusIntegrationSuite) TestHubOrganization() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := suite.Context()
@@ -302,23 +281,8 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "TestHubOrganization-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestHubOrganization-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "TestHubOrganization-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestHubOrganization-node2 %v", err)
-		}
-	})
 	node3 := suite.CreateNode(ctx, "TestHubOrganization-node3", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node3.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestHubOrganization-node3 %v", err)
-		}
-	})
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -427,9 +391,13 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	json.Unmarshal([]byte(allDevices), &devices)
 	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
+	// register node3 device ID for node3 for deletion
 	var device3ID string
+	node3Hostname, err := suite.getNodeHostname(ctx, node3)
+	suite.logger.Infof("deleting node3 running in container: %s", node3Hostname)
+	assert.NoError(err)
 	for _, p := range devices {
-		if p.TunnelIP == node1IP {
+		if p.Hostname == node3Hostname {
 			node3IP = p.TunnelIP
 			device3ID = p.ID.String()
 		}
@@ -458,6 +426,7 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 
 // TestChildPrefix tests requesting a specific address in a newly created organization
 func (suite *NexodusIntegrationSuite) TestChildPrefix() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := suite.Context()
@@ -473,17 +442,7 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "TestChildPrefix-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestChildPrefix-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "TestChildPrefix-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestChildPrefix-node2 %v", err)
-		}
-	})
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
@@ -549,23 +508,8 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "TestRelay-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestRelay-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "TestRelay-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestRelay-node2 %v", err)
-		}
-	})
 	node3 := suite.CreateNode(ctx, "TestRelay-node3", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node3.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestRelay-node3 %v", err)
-		}
-	})
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -603,6 +547,7 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 }
 
 func (suite *NexodusIntegrationSuite) Testnexctl() {
+	suite.T().Parallel()
 	assert := suite.Assert()
 	require := suite.Require()
 	parentCtx := suite.Context()
@@ -613,17 +558,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	// create the nodes
 	node1 := suite.CreateNode(ctx, "Testnexctl-node1", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container Testnexctl-node1 %v", err)
-		}
-	})
 	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork})
-	suite.T().Cleanup(func() {
-		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container Testnexctl-node2 %v", err)
-		}
-	})
 
 	// validate nexctl user get-current returns a user
 	userOut, err := suite.runCommand(nexctl,
@@ -672,14 +607,21 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	json.Unmarshal([]byte(allDevices), &devices)
 	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
-	// register the device IDs for node1 and node2
+	// register the device IDs for node1 and node2 for deletion
 	var node1DeviceID string
 	var node2DeviceID string
+	node1Hostname, err := suite.getNodeHostname(ctx, node1)
+	suite.logger.Infof("deleting Node1 running in container: %s", node1Hostname)
+	assert.NoError(err)
+	node2Hostname, err := suite.getNodeHostname(ctx, node2)
+	suite.logger.Infof("deleting Node2 running in container: %s", node2Hostname)
+	assert.NoError(err)
+
 	for _, p := range devices {
-		if p.TunnelIP == node1IP {
+		if p.Hostname == node1Hostname {
 			node1DeviceID = p.ID.String()
 		}
-		if p.TunnelIP == node2IP {
+		if p.Hostname == node2Hostname {
 			node2DeviceID = p.ID.String()
 		}
 	}
