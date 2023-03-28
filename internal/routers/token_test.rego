@@ -176,15 +176,6 @@ test_user_get_bad_jwt_denied if {
 		with io.jwt.decode as mock_decode
 }
 
-test_user_get_other_user_denied if {
-	not token.allow with input.path as ["api", "users", "other"]
-		with input.method as "GET"
-		with input.jwks as "my-cert"
-		with input.access_token as "user-read-jwt"
-		with io.jwt.decode_verify as mock_decode_verify
-		with io.jwt.decode as mock_decode
-}
-
 test_get_fflags if {
 	token.allow with input.path as ["api", "fflags"]
 		with input.method as "GET"

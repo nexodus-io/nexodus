@@ -15,12 +15,6 @@ default org_id := false
 
 org_id = input.path[2]
 
-default user_is_self := false
-
-user_is_self if "me" = input.path[2]
-
-user_is_self if user_id == input.path[2]
-
 allow if {
 	"organizations" = input.path[1]
 	action_is_read
@@ -68,7 +62,6 @@ allow if {
 	action_is_read
 	valid_token
 	contains(token_payload.scope, "read:users")
-	user_is_self
 }
 
 allow if {
@@ -76,7 +69,6 @@ allow if {
 	action_is_write
 	valid_token
 	contains(token_payload.scope, "write:users")
-	user_is_self
 }
 
 allow if {

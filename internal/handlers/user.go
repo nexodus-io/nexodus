@@ -31,6 +31,15 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	}
 }
 
+func (api *API) UserIsCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+
+		// this could potentially be driven by rego output
+		return db.Where("id = ?", userId)
+	}
+}
+
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
@@ -110,7 +119,11 @@ func (api *API) GetUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := api.db.WithContext(ctx).Preload("Devices").Preload("Organizations").First(&user, "id = ?", userId); res.Error != nil {
+	if res := api.db.WithContext(ctx).
+		Preload("Devices").
+		Preload("Organizations").
+		Scopes(api.UserIsCurrentUser(c)).
+		First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		return
 	}
@@ -131,7 +144,13 @@ func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
 	defer span.End()
 	users := make([]*models.User, 0)
-	result := api.db.WithContext(ctx).Preload("Devices").Preload("Organizations").Scopes(FilterAndPaginate(&models.User{}, c)).Find(&users)
+	result := api.db.WithContext(ctx).
+		Preload("Devices").
+		Preload("Organizations").
+		Scopes(api.UserIsCurrentUser(c)).
+		Scopes(FilterAndPaginate(&models.User{}, c)).
+		Find(&users)
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
@@ -163,7 +182,9 @@ func (api *API) DeleteUser(c *gin.Context) {
 
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		if res := api.db.First(&user, "id = ?", userID); res.Error != nil {
+		if res := api.db.
+			Scopes(api.UserIsCurrentUser(c)).
+			First(&user, "id = ?", userID); res.Error != nil {
 			return errUserNotFound
 		}
 		if res := api.db.Select(clause.Associations).Delete(&user); res.Error != nil {
@@ -227,7 +248,11 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 		if res := api.db.First(&organization, "id = ?", orgID); res.Error != nil {
 			return errOrgNotFound
 		}
-		if res := api.db.Select(clause.Associations).Where("user_id = ?", userID).Where("organization_id = ?", orgID).Delete(&UserOrganization{}); res.Error != nil {
+		if res := api.db.
+			Select(clause.Associations).
+			Where("user_id = ?", userID).
+			Where("organization_id = ?", orgID).
+			Delete(&UserOrganization{}); res.Error != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("WTF failed to remove the association from the user_organizations table: %w", res.Error)))
 		}
 		return nil
