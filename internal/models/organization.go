@@ -35,6 +35,7 @@ type OrganizationJSON struct {
 func (o Organization) MarshalJSON() ([]byte, error) {
 	org := OrganizationJSON{
 		ID:          o.ID,
+		OwnerID:     o.OwnerID,
 		Users:       make([]string, 0),
 		Devices:     make([]uuid.UUID, 0),
 		Name:        o.Name,

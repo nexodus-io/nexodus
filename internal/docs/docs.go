@@ -353,6 +353,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/invitations": {
+            "get": {
+                "description": "Lists all invitations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "List Invitations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Invitation"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
         "/organizations": {
             "get": {
                 "description": "Lists all Organizations",

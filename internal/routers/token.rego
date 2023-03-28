@@ -48,6 +48,20 @@ allow if {
 }
 
 allow if {
+	"invitations" = input.path[1]
+	action_is_read
+	valid_token
+	contains(token_payload.scope, "read:organizations")
+}
+
+allow if {
+	"invitations" = input.path[1]
+	action_is_write
+	valid_token
+	contains(token_payload.scope, "write:organizations")
+}
+
+allow if {
 	"devices" = input.path[1]
 	action_is_read
 	valid_token
@@ -84,7 +98,7 @@ allow if {
 
 action_is_read if input.method in ["GET"]
 
-action_is_write := input.method in ["POST", "PATCH", "DELETE"]
+action_is_write := input.method in ["POST", "PATCH", "DELETE", "PUT"]
 
 token_payload := payload if {
 	[_, payload, _] = io.jwt.decode(input.access_token)

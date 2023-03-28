@@ -305,6 +305,15 @@ func RenameTableAction(from interface{}, to interface{}) MigrationAction {
 	}
 }
 
+func ExecActionIf(applySql string, unapplySql string, condition func(tx *gorm.DB) bool) MigrationAction {
+	action := ExecAction(applySql, unapplySql)
+	return func(tx *gorm.DB, apply bool) error {
+		if condition(tx) {
+			return action(tx, apply)
+		}
+		return nil
+	}
+}
 func ExecAction(applySql string, unapplySql string) MigrationAction {
 	caller := ""
 	if _, file, no, ok := runtime.Caller(1); ok {

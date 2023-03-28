@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/database"
 	"net"
 	"net/http"
 
@@ -47,7 +46,7 @@ func (api *API) ListDevices(c *gin.Context) {
 	devices := make([]models.Device, 0)
 
 	result := api.db.WithContext(ctx).Scopes(
-		api.DeviceIsVisibleToCurrentUser(c),
+		api.DeviceIsOwnedByCurrentUser(c),
 		FilterAndPaginate(&models.Device{}, c),
 	).Find(&devices)
 
@@ -58,15 +57,18 @@ func (api *API) ListDevices(c *gin.Context) {
 	c.JSON(http.StatusOK, devices)
 }
 
-func (api *API) DeviceIsVisibleToCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		userId := c.Value(gin.AuthUserKey).(string)
+
 		// this could potentially be driven by rego output
-		if api.dialect == database.DialectSqlLite {
-			return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
-		} else {
-			return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
-		}
+
+		return db.Where("user_id = ?", userId)
+		//if api.dialect == database.DialectSqlLite {
+		//	return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+		//} else {
+		//	return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+		//}
 	}
 }
 
@@ -95,7 +97,7 @@ func (api *API) GetDevice(c *gin.Context) {
 	}
 	var device models.Device
 	result := api.db.WithContext(ctx).
-		Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 		First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
@@ -138,7 +140,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		result := tx.
-			Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 			First(&device, "id = ?", k)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errDeviceNotFound
@@ -359,7 +361,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	device := models.Device{}
 	if res := api.db.
-		Scopes(api.DeviceIsVisibleToCurrentUser(c)).
+		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 		First(&device, "id = ?", deviceID); res.Error != nil {
 
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {

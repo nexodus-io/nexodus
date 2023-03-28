@@ -44,6 +44,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 				user.Organizations = []*models.Organization{
 					{
 						Name:        userName,
+						OwnerID:     id,
 						Description: fmt.Sprintf("%s's organization", userName),
 						IpCidr:      defaultOrganizationPrefix,
 						HubZone:     true,

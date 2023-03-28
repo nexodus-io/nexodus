@@ -224,11 +224,12 @@ endif
 .PHONY: clear-db
 clear-db:
 	$(CMD_PREFIX) echo "\
-		  delete from apiserver_migrations where 1=1;\
-		  delete from user_organization where 1=1;\
-		  delete from devices where 1=1;\
-		  delete from organizations where 1=1;\
-		  delete from users where 1=1;\
+		  DROP TABLE IF EXISTS invitations;\
+		  DROP TABLE IF EXISTS devices;\
+		  DROP TABLE IF EXISTS user_organizations;\
+		  DROP TABLE IF EXISTS organizations;\
+		  DROP TABLE IF EXISTS users;\
+		  DROP TABLE IF EXISTS apiserver_migrations;\
 		  " | make run-sql-apiserver 2> /dev/null
 
 ##@ Container Images
