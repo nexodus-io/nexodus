@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"net/http"
 	"time"
 
@@ -29,11 +30,25 @@ func (api *API) CreateInvitation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
+
+	// Only allow org owners to create invites...
+	var org models.Organization
+	if res := api.db.WithContext(ctx).
+		Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+		First(&org, "id = ?", request.OrganizationID); res.Error != nil {
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		return
+	}
+
 	var user models.User
-	if res := api.db.WithContext(ctx).Preload("Organizations").Preload("Invitations").First(&user, "id = ?", request.UserID); res.Error != nil {
+	if res := api.db.WithContext(ctx).
+		Preload("Organizations").
+		Preload("Invitations").
+		First(&user, "id = ?", request.UserID); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		return
 	}
+
 	for _, org := range user.Organizations {
 		if org.ID == request.OrganizationID {
 			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("organization", "user is already in requested org"))
@@ -46,12 +61,59 @@ func (api *API) CreateInvitation(c *gin.Context) {
 			return
 		}
 	}
+
 	invite := models.NewInvitation(user.ID, request.OrganizationID)
 	if res := api.db.WithContext(ctx).Create(&invite); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
 	c.JSON(http.StatusCreated, invite)
+}
+
+// ListInvitations lists invitations
+// @Summary      List Invitations
+// @Description  Lists all invitations
+// @Tags         Invitations
+// @Accepts		 json
+// @Produce      json
+// @Success      200  {object}  []models.Invitation
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Router       /invitations [get]
+func (api *API) ListInvitations(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListInvitations")
+	defer span.End()
+	users := make([]*models.Invitation, 0)
+	result := api.db.WithContext(ctx).
+		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
+		Find(&users)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+func (api *API) InvitationIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+
+		// this could potentially be driven by rego output
+		return db.Where("user_id = ?", userId)
+	}
+}
+
+func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+
+		// this could potentially be driven by rego output
+		if api.dialect == database.DialectSqlLite {
+			return db.Where("user_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
+		} else {
+			return db.Where("user_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
+		}
+	}
 }
 
 func (api *API) AcceptInvitation(c *gin.Context) {
@@ -75,7 +137,9 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 
 	var invitation models.Invitation
 	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if res := tx.First(&invitation, "id = ?", k); res.Error != nil {
+		if res := tx.
+			Scopes(api.InvitationIsForCurrentUser(c)).
+			First(&invitation, "id = ?", k); res.Error != nil {
 			return errInvitationNotFound
 		}
 		var user models.User
@@ -131,6 +195,15 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
 		return
 	}
+
+	var invitation models.Invitation
+	if res := api.db.WithContext(ctx).
+		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
+		First(&invitation, "id = ?", k); res.Error != nil {
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("invitation"))
+		return
+	}
+
 	if res := api.db.WithContext(ctx).Delete(&models.Invitation{}, k); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return

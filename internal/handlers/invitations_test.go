@@ -24,6 +24,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 		orgID  uuid.UUID
 		code   int
 		action string
+		login  string
 	}{
 		{
 			name:   "invite to existing org fails",
@@ -33,6 +34,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			action: "invite",
 		},
 		{
+			login:  TestUser2ID,
 			name:   "invite to new org succeeds",
 			code:   http.StatusCreated,
 			userID: TestUserID,
@@ -40,6 +42,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			action: "invite",
 		},
 		{
+			login:  TestUser2ID,
 			name:   "re-invite to same org fails",
 			code:   http.StatusConflict,
 			userID: TestUserID,
@@ -54,6 +57,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			action: "refuse",
 		},
 		{
+			login:  TestUser2ID,
 			name:   "re-invite to same org succeeds",
 			code:   http.StatusCreated,
 			userID: TestUserID,
@@ -90,9 +94,12 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			_, res, err = suite.ServeRequest(
 				http.MethodPost,
 				"/", "/",
-				func(c *gin.Context) {
-					c.Set("_apex.testCreateOrganization", "true")
-					suite.api.CreateInvitation(c)
+				func(ctx *gin.Context) {
+					ctx.Set("_apex.testCreateOrganization", "true")
+					if c.login != "" {
+						ctx.Set(gin.AuthUserKey, c.login)
+					}
+					suite.api.CreateInvitation(ctx)
 				}, bytes.NewReader(reqBody),
 			)
 			require.NoError(err)

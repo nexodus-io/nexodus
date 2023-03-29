@@ -9,10 +9,12 @@ help:
 ifeq ($(NOISY_BUILD),)
     ECHO_PREFIX=@
     CMD_PREFIX=@
+    PIPE_DEV_NULL=> /dev/null 2> /dev/null
 	SWAG_ARGS?=--quiet
 else
     ECHO_PREFIX=@\#
     CMD_PREFIX=
+    PIPE_DEV_NULL=
 	SWAG_ARGS?=
 endif
 
@@ -121,8 +123,8 @@ policies=$(wildcard internal/routers/*.rego)
 .PHONY: opa-lint
 opa-lint: ## Lint the OPA policies
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) >/dev/null
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) >/dev/null
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) $(PIPE_DEV_NULL)
 
 .PHONY: gen-docs
 gen-docs: ## Generate API docs
@@ -224,11 +226,12 @@ endif
 .PHONY: clear-db
 clear-db:
 	$(CMD_PREFIX) echo "\
-		  delete from apiserver_migrations where 1=1;\
-		  delete from user_organization where 1=1;\
-		  delete from devices where 1=1;\
-		  delete from organizations where 1=1;\
-		  delete from users where 1=1;\
+		  DROP TABLE IF EXISTS invitations;\
+		  DROP TABLE IF EXISTS devices;\
+		  DROP TABLE IF EXISTS user_organizations;\
+		  DROP TABLE IF EXISTS organizations;\
+		  DROP TABLE IF EXISTS users;\
+		  DROP TABLE IF EXISTS apiserver_migrations;\
 		  " | make run-sql-apiserver 2> /dev/null
 
 ##@ Container Images

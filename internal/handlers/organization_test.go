@@ -2,20 +2,17 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 func (suite *HandlerTestSuite) TestListOrganizations() {
 	assert := suite.Assert()
 	require := suite.Require()
-	var organizationIDs []uuid.UUID
 	organizations := []models.AddOrganization{
 		{
 			Name:   "organization-a",
@@ -55,8 +52,6 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		var o models.OrganizationJSON
 		err = json.Unmarshal(body, &o)
 		require.NoError(err)
-
-		organizationIDs = append(organizationIDs, o.ID)
 	}
 
 	{
@@ -86,7 +81,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		var actual []models.OrganizationJSON
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
-		assert.Len(actual, 5)
+		assert.Len(actual, 4)
 	}
 
 	{
@@ -105,10 +100,9 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
-		assert.Len(actual, 5)
+		assert.Len(actual, 4)
 		seen := map[string]bool{
 			"testuser":       false,
-			"testuser2":      false,
 			"organization-a": false,
 			"organization-b": false,
 			"organization-c": false,
@@ -157,12 +151,9 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
-		assert.Len(actual, 2)
-		assert.Equal("5", res.Header().Get(TotalCountHeader))
-		assert.Equal("organization-b", actual[0].Name)
+		assert.Len(actual, 1)
+		assert.Equal("4", res.Header().Get(TotalCountHeader))
+		assert.Equal("organization-c", actual[0].Name)
 	}
 
-	for _, o := range organizationIDs {
-		assert.True(suite.api.userIsInOrg(context.TODO(), TestUserID, o.String()))
-	}
 }

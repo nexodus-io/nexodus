@@ -381,6 +381,29 @@ paths:
       summary: Get Feature Flag
       tags:
       - FFlag
+  /invitations:
+    get:
+      description: Lists all invitations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Invitation'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: List Invitations
+      tags:
+      - Invitations
   /organizations:
     get:
       description: Lists all Organizations

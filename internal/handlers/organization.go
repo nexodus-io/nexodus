@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"net/http"
 	"strconv"
 
@@ -72,6 +73,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 		org = models.Organization{
 			Name:        request.Name,
+			OwnerID:     userId,
 			Description: request.Description,
 			IpCidr:      request.IpCidr,
 			HubZone:     request.HubZone,
@@ -91,9 +93,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		span.SetAttributes(attribute.String("id", org.ID.String()))
-		if err := api.addUserOrgMapping(ctx, user.ID, org.ID); err != nil {
-			return err
-		}
 		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
 		return nil
 	})
@@ -106,6 +105,27 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, org)
+}
+
+func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+
+		// this could potentially be driven by rego output
+		if api.dialect == database.DialectSqlLite {
+			return db.Where("owner_id = ? OR id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+		} else {
+			return db.Where("owner_id = ? OR id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+		}
+	}
+}
+
+func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		userId := c.Value(gin.AuthUserKey).(string)
+		// this could potentially be driven by rego output
+		return db.Where("owner_id = ?", userId)
+	}
 }
 
 // ListOrganizations lists all Organizations
@@ -123,7 +143,11 @@ func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
 	var orgs []models.Organization
-	result := api.db.WithContext(ctx).Preload("Devices").Preload("Users").Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
+	result := api.db.WithContext(ctx).
+		Preload("Devices").
+		Preload("Users").
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
 		return
@@ -156,7 +180,11 @@ func (api *API) GetOrganizations(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	result := api.db.WithContext(ctx).Preload("Devices").Preload("Users").First(&org, "id = ?", k.String())
+	result := api.db.WithContext(ctx).
+		Preload("Devices").
+		Preload("Users").
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&org, "id = ?", k.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
@@ -186,7 +214,11 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	res := api.db.WithContext(ctx).Preload("Devices").First(&org, "id = ?", k.String())
+	res := api.db.WithContext(ctx).
+		Preload("Devices").
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&org, "id = ?", k.String())
+
 	if res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
@@ -219,14 +251,16 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	k, err := uuid.Parse(c.Param("organization"))
+	orgId, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 
 	var organization models.Organization
-	result := api.db.WithContext(ctx).First(&organization, "id = ?", k.String())
+	result := api.db.WithContext(ctx).
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&organization, "id = ?", orgId.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
@@ -236,8 +270,11 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
+
 	var device models.Device
-	result = api.db.WithContext(ctx).First(&device, "id = ?", id.String())
+	result = api.db.WithContext(ctx).
+		Where("organization_id = ?", orgId.String()).
+		First(&device, "id = ?", id.String())
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		return
@@ -254,7 +291,10 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	res := api.db.WithContext(ctx).Preload("Users").First(&org, "id = ?", k.String())
+	res := api.db.WithContext(ctx).
+		Preload("Users").
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&org, "id = ?", k.String())
 	if res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
@@ -302,7 +342,9 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	if res := api.db.WithContext(ctx).First(&org, "id = ?", orgID); res.Error != nil {
+	if res := api.db.WithContext(ctx).
+		Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+		First(&org, "id = ?", orgID); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
 	}
@@ -315,12 +357,6 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(usersInOrg); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
-	}
-	for _, u := range usersInOrg {
-		if err := api.deleteUserOrgMapping(ctx, u.UserID, u.OrganizationID); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
-			return
-		}
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
