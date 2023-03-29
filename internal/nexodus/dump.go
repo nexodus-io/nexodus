@@ -1,13 +1,8 @@
 package nexodus
 
 import (
-	"bufio"
-	"errors"
-	"fmt"
-	"io"
-	"strconv"
-	"strings"
-	"time"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 // WgSessions wireguard peer session information
@@ -17,70 +12,31 @@ type WgSessions struct {
 	Endpoint        string
 	AllowedIPs      []string
 	LatestHandshake string
-	Tx              int
-	Rx              int
-}
-
-// ShowDump wireguard interface dump
-func ShowDump(iface string) (string, error) {
-	dumpOut, err := RunCommand("wg", "show", iface, "dump")
-	if err != nil {
-		return "", fmt.Errorf("failed to dump wireguard peers: %w", err)
-	}
-
-	return dumpOut, nil
+	Tx              int64
+	Rx              int64
 }
 
 // DumpPeers dump wireguard peers
 func DumpPeers(iface string) ([]WgSessions, error) {
-	result, err := ShowDump(iface)
+	c, err := wgctrl.New()
 	if err != nil {
-		return nil, fmt.Errorf("error running wg show %s dump: %w", iface, err)
+		return nil, err
 	}
-	r := bufio.NewReader(strings.NewReader(result))
+	device, err := c.Device(iface)
+	if err != nil {
+		return nil, err
+	}
 	peers := make([]WgSessions, 0)
-	for {
-		line, _, err := r.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, fmt.Errorf("failed to read wg dump: %w", err)
-		}
-		column := strings.Split(string(line), "	")
-		if len(column) != 8 {
-			continue
-		}
-		publicKey := column[0]
-		psk := column[1]
-		endpoints := column[2]
-		allowedIPs := strings.Split(column[3], ",")
-		latestHandshake, err := strconv.Atoi(column[4])
-		if err != nil {
-			return nil, fmt.Errorf("latest handshake parse failed: %w", err)
-		}
-		latestHandshakeTime := time.Duration(0)
-		if latestHandshake != 0 {
-			latestHandshakeTime = time.Since(time.Unix(int64(latestHandshake), 0))
-		}
-		tx, err := strconv.Atoi(column[5])
-		if err != nil {
-			return nil, fmt.Errorf("transfer received parse failed: %w", err)
-		}
-		tr, err := strconv.Atoi(column[6])
-		if err != nil {
-			return nil, fmt.Errorf("transfer sent parse failed: %w", err)
-		}
+	for _, peer := range device.Peers {
 		peers = append(peers, WgSessions{
-			PublicKey:       publicKey,
-			PreSharedKey:    psk,
-			Endpoint:        endpoints,
-			AllowedIPs:      allowedIPs,
-			LatestHandshake: latestHandshakeTime.String(),
-			Tx:              tx,
-			Rx:              tr,
+			PublicKey:       peer.PublicKey.String(),
+			PreSharedKey:    peer.PresharedKey.String(),
+			Endpoint:        peer.Endpoint.String(),
+			AllowedIPs:      util.IPNetSliceToStringSlice(peer.AllowedIPs),
+			LatestHandshake: peer.LastHandshakeTime.String(),
+			Tx:              peer.TransmitBytes,
+			Rx:              peer.ReceiveBytes,
 		})
 	}
-
 	return peers, nil
 }
