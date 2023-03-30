@@ -133,6 +133,9 @@ gen-docs: ## Generate API docs
 
 .PHONY: generate
 generate: gen-docs ## Run all code generators and formatters
+	$(ECHO_PREFIX) printf "  %-12s \n" "[OPA FMT]"
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
+
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 

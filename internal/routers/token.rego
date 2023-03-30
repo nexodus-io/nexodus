@@ -7,12 +7,12 @@ default valid_token := false
 default allowed_email := false
 
 allowed_email if {
-    token_payload.from_google
-    endswith(token_payload.email, "redhat.com")
+	token_payload.from_google
+	endswith(token_payload.email, "redhat.com")
 }
 
 allowed_email if {
-    not token_payload.from_google
+	not token_payload.from_google
 }
 
 valid_token if {
