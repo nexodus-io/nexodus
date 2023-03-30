@@ -23,7 +23,7 @@ const AuthUserName string = "_nexodus.UserName"
 //go:embed token.rego
 var policy string
 
-var jwksCache = cache.NewMemoizeCache[string, string](time.Second * 30)
+var jwksCache = cache.NewMemoizeCache[string, string](time.Second*30, time.Second*5)
 
 // Naive JWS Key validation
 func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
@@ -43,15 +43,17 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 		return nil, err
 	}
 
-	keySet, err := jwksCache.MemoizeCanErr(jwksURI, func() (string, error) {
-		return getURLAsText(ctx, jwksURI)
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	return func(c *gin.Context) {
 		logger := util.WithTrace(c.Request.Context(), logger)
+
+		keySet, err := jwksCache.MemoizeCanErr(jwksURI, func() (string, error) {
+			return getURLAsText(ctx, jwksURI)
+		})
+		if err != nil {
+			logger.Error(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
 		authz := c.Request.Header.Get("Authorization")
 		if authz == "" {
