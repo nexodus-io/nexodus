@@ -162,6 +162,11 @@ func main() {
 				return nil
 			}
 
+			_, err = nexodus.CtlStatus(cCtx)
+			if err == nil {
+				return fmt.Errorf("existing nexd service already running")
+			}
+
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
 			nexodus, err := nexodus.NewNexodus(
