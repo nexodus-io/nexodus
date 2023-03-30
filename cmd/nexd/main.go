@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -20,6 +19,52 @@ const (
 
 // This variable is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
+
+func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
+	controller := cCtx.Args().First()
+	if controller == "" {
+		logger.Info("<controller-url> required")
+		return nil
+	}
+
+	_, err := nexodus.CtlStatus(cCtx)
+	if err == nil {
+		return fmt.Errorf("existing nexd service already running")
+	}
+
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+
+	nexodus, err := nexodus.NewNexodus(
+		ctx,
+		logger.Sugar(),
+		controller,
+		cCtx.String("username"),
+		cCtx.String("password"),
+		cCtx.Int("listen-port"),
+		cCtx.String("public-key"),
+		cCtx.String("private-key"),
+		cCtx.String("request-ip"),
+		cCtx.String("local-endpoint-ip"),
+		cCtx.StringSlice("child-prefix"),
+		cCtx.Bool("stun"),
+		cCtx.Bool("relay-node"),
+		cCtx.Bool("discovery-node"),
+		cCtx.Bool("relay-only"),
+		cCtx.Bool("insecure-skip-tls-verify"),
+		Version,
+	)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+
+	wg := &sync.WaitGroup{}
+	if err := nexodus.Start(ctx, wg); err != nil {
+		logger.Fatal(err.Error())
+	}
+	wg.Wait()
+
+	return nil
+}
 
 func main() {
 	// set the log level
@@ -147,58 +192,8 @@ func main() {
 				Required: false,
 			},
 		},
-		Before: func(c *cli.Context) error {
-			if c.IsSet("clean") {
-				log.Print("Cleaning up any existing interfaces")
-				// todo: implement a cleanup function
-			}
-			return nil
-		},
 		Action: func(cCtx *cli.Context) error {
-
-			controller := cCtx.Args().First()
-			if controller == "" {
-				logger.Info("<controller-url> required")
-				return nil
-			}
-
-			_, err = nexodus.CtlStatus(cCtx)
-			if err == nil {
-				return fmt.Errorf("existing nexd service already running")
-			}
-
-			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-
-			nexodus, err := nexodus.NewNexodus(
-				ctx,
-				logger.Sugar(),
-				controller,
-				cCtx.String("username"),
-				cCtx.String("password"),
-				cCtx.Int("listen-port"),
-				cCtx.String("public-key"),
-				cCtx.String("private-key"),
-				cCtx.String("request-ip"),
-				cCtx.String("local-endpoint-ip"),
-				cCtx.StringSlice("child-prefix"),
-				cCtx.Bool("stun"),
-				cCtx.Bool("relay-node"),
-				cCtx.Bool("discovery-node"),
-				cCtx.Bool("relay-only"),
-				cCtx.Bool("insecure-skip-tls-verify"),
-				Version,
-			)
-			if err != nil {
-				logger.Fatal(err.Error())
-			}
-
-			wg := &sync.WaitGroup{}
-			if err := nexodus.Start(ctx, wg); err != nil {
-				logger.Fatal(err.Error())
-			}
-			wg.Wait()
-
-			return nil
+			return nexdRun(cCtx, logger)
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
