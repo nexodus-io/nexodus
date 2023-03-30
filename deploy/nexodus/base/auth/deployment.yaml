@@ -114,8 +114,8 @@ spec:
             - name: realm
               mountPath: "/opt/keycloak/data/import"
               readOnly: true
-          command: [ "/opt/keycloak/bin/kc.sh" ]
-          args: [ "start", "--import-realm", "--features=preview", "--features=declarative-user-profile" ]
+          command: ["/opt/keycloak/bin/kc.sh"]
+          args: ["start", "--import-realm", "--features=preview", "--features=declarative-user-profile"]
       restartPolicy: Always
       volumes:
         - name: certificate
