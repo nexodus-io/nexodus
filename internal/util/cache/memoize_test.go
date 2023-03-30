@@ -11,7 +11,7 @@ import (
 func TestMemoizeCache_Memoize(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
-	cache := NewMemoizeCache[string, string](time.Second * 1)
+	cache := NewMemoizeCache[string, string](time.Second*1, time.Second*1)
 
 	counter := int32(0)
 	pong := func() string {
