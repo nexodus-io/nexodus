@@ -12,29 +12,29 @@ spec:
         - image: quay.io/keycloak/keycloak:20.0.3
           name: keycloak
           env:
-            - name: DB_VENDOR
+            - name: KC_DB_VENDOR
               value: "postgres"
-            - name: DB_ADDR
+            - name: KC_DB_URL_HOST
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
                   key: host
-            - name: DB_PORT
+            - name: KC_DB_URL_PORT
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
                   key: port
-            - name: DB_DATABASE
+            - name: KC_DB_URL_DATABASE
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
                   key: dbname
-            - name: DB_USER
+            - name: KC_DB_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
                   key: user
-            - name: DB_PASSWORD
+            - name: KC_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
@@ -114,8 +114,8 @@ spec:
             - name: realm
               mountPath: "/opt/keycloak/data/import"
               readOnly: true
-          command: ["/opt/keycloak/bin/kc.sh"]
-          args: ["start", "--import-realm"]
+          command: [ "/opt/keycloak/bin/kc.sh" ]
+          args: [ "start", "--import-realm", "--features=preview", "--features=declarative-user-profile" ]
       restartPolicy: Always
       volumes:
         - name: certificate

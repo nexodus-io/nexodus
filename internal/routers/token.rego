@@ -23,10 +23,6 @@ valid_token if {
 
 default allow := false
 
-default org_id := false
-
-org_id = input.path[2]
-
 allow if {
 	"organizations" = input.path[1]
 	action_is_read

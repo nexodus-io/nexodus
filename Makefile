@@ -212,7 +212,7 @@ else ifeq ($(OVERLAY),cockroach)
 endif
 
 .PHONY: run-sql-ipam
-run-sql-ipam: ## runs a command line SQL client to interact with the ipammake  database
+run-sql-ipam: ## runs a command line SQL client to interact with the ipam database
 ifeq ($(OVERLAY),dev)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus \
 		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
@@ -223,16 +223,34 @@ else ifeq ($(OVERLAY),cockroach)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user ipam --database ipam
 endif
 
+.PHONY: run-sql-keycloak
+run-sql-keycloak: ## runs a command line SQL client to interact with the keycloak database
+ifeq ($(OVERLAY),dev)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		-c database -- psql keycloak
+else ifeq ($(OVERLAY),arm64)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U keycloak keycloak
+else ifeq ($(OVERLAY),cockroach)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user keycloak --database keycloak
+endif
+
+
 .PHONY: clear-db
 clear-db:
+	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=0 -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m $(PIPE_DEV_NULL)
+	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLE IF EXISTS] apiserver_migrations"
 	$(CMD_PREFIX) echo "\
-		  DROP TABLE IF EXISTS invitations;\
-		  DROP TABLE IF EXISTS devices;\
-		  DROP TABLE IF EXISTS user_organizations;\
-		  DROP TABLE IF EXISTS organizations;\
-		  DROP TABLE IF EXISTS users;\
-		  DROP TABLE IF EXISTS apiserver_migrations;\
-		  " | make run-sql-apiserver 2> /dev/null
+		DROP TABLE IF EXISTS invitations;\
+		DROP TABLE IF EXISTS devices;\
+		DROP TABLE IF EXISTS user_organizations;\
+		DROP TABLE IF EXISTS organizations;\
+		DROP TABLE IF EXISTS users;\
+		DROP TABLE IF EXISTS apiserver_migrations;\
+		" | make run-sql-apiserver $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=1 -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m
 
 ##@ Container Images
 

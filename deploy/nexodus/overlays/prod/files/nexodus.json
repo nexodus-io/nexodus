@@ -1740,6 +1740,15 @@
         }
       }
     ],
+    "org.keycloak.userprofile.UserProfileProvider" : [ {
+      "id" : "58db5f8e-85d9-4e61-9e7d-5a691d0f341c",
+      "providerId" : "declarative-user-profile",
+      "subComponents" : { },
+      "config" : {
+        "config-piece-0" : [ "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{}}},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"selector\":{\"scopes\":[]},\"permissions\":{\"view\":[\"user\",\"admin\"],\"edit\":[]},\"annotations\":{\"\":\"\"}},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}}},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}}}]}" ],
+        "config-pieces-count" : [ "1" ]
+      }
+    } ],
     "org.keycloak.keys.KeyProvider": [
       {
         "id": "f188581c-1694-4ab5-b1bb-43fb6ff70377",
@@ -2482,6 +2491,7 @@
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
   "attributes": {
+    "userProfileEnabled": "true",
     "cibaBackchannelTokenDeliveryMode": "poll",
     "cibaAuthRequestedUserHint": "login_hint",
     "clientOfflineSessionMaxLifespan": "0",
