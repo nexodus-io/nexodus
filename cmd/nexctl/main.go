@@ -75,14 +75,27 @@ func main() {
 				Usage: "Commands for interacting with the local instance of nexd",
 				Subcommands: []*cli.Command{
 					{
-						Name:   "version",
-						Usage:  "Display the nexd version",
-						Action: cmdLocalVersion,
+						Name:  "version",
+						Usage: "Display the nexd version",
+						Action: func(cCtx *cli.Context) error {
+							err := cmdLocalVersion(cCtx)
+							if err != nil {
+								fmt.Printf("%s\n", err)
+							}
+							return nil
+						},
 					},
 					{
-						Name:   "status",
-						Usage:  "Display the nexd status",
-						Action: cmdLocalStatus,
+						Name:  "status",
+						Usage: "Display the nexd status",
+						Action: func(cCtx *cli.Context) error {
+							c, err := cmdLocalStatus(cCtx)
+							fmt.Printf("%s", c)
+							if err != nil {
+								fmt.Printf("%s\n", err)
+							}
+							return nil
+						},
 					},
 				},
 			},
