@@ -88,9 +88,9 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 			"NET_RAW",
 		},
 		ExtraHosts: []string{
-			fmt.Sprintf("try.nexodus.local:%s", hostDNSName),
-			fmt.Sprintf("api.try.nexodus.local:%s", hostDNSName),
-			fmt.Sprintf("auth.try.nexodus.local:%s", hostDNSName),
+			fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+			fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+			fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 		},
 		AutoRemove: true,
 		Mounts: []testcontainers.ContainerMount{
@@ -137,7 +137,7 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, "/", "-")
 }
 func newClient(ctx context.Context, username, password string) (*client.Client, error) {
-	return client.NewClient(ctx, "http://api.try.nexodus.local", nil, client.WithPasswordGrant(username, password))
+	return client.NewClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
@@ -269,7 +269,7 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
 	cmd := []string{"/bin/nexd"}
 	cmd = append(cmd, args...)
-	cmd = append(cmd, "https://try.nexodus.local")
+	cmd = append(cmd, "https://try.nexodus.127.0.0.1.nip.io")
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
 
 	// write the nexd run command to a local file

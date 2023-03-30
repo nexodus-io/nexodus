@@ -93,7 +93,7 @@ sudo systemctl daemon-reload
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
 ```sh
-sudo nexd-linux-amd64 https://try.nexodus.local
+sudo nexd-linux-amd64 https://try.nexodus.127.0.0.1.nip.io
 ```
 
 Alternatively, you can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service. Then, start the agent with the following command:
@@ -116,7 +116,7 @@ If the agent is able to successfully reach the controller API, it will provide a
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
@@ -127,7 +127,7 @@ Status: WaitingForAuth
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 Once enrollment is completed in the web UI, the agent will show progress.
@@ -168,7 +168,7 @@ PING 100.100.0.2 (100.100.0.2) 56(84) bytes of data.
 64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
 
-You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.local/`.
+You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.127.0.0.1.nip.io/`.
 
 #### Cleanup Agent From Node
 
@@ -309,7 +309,7 @@ Relay and Discovery can be run on the same or separate nodes. Both of these mach
 Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Starting The Agent](#starting-the-agent) section to set up the node and install the `nexd` binary.
 
 ```sh
-sudo nexd --discovery-node --relay-node --stun https://try.nexodus.local
+sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
 ```
 
 You can list the available organizations using the following command
@@ -324,17 +324,17 @@ dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Defaul
 #### Interactive OnBoarding
 
 ```sh
-sudo nexd --discovery-node --relay-node --stun https://try.nexodus.local
+sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
 ```
 
 It will print a URL on stdout to onboard the discovery/relay node
 
 ```sh
-$ sudo nexd --discovery-node --relay-node --stun https://try.nexodus.local
+$ sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
-https://auth.try.nexodus.local/device?user_code=GTLN-RGKP
+https://auth.try.nexodus.127.0.0.1.nip.io/device?user_code=GTLN-RGKP
 ```
 
 Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
@@ -344,7 +344,7 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
-nexd --discovery-node --relay-node --stun --username=kitteh1 --password=floofykittens https://try.nexodus.local
+nexd --discovery-node --relay-node --stun --username=kitteh1 --password=floofykittens https://try.nexodus.127.0.0.1.nip.io
 ```
 
 ### Delete Organization

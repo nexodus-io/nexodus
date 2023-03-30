@@ -49,7 +49,7 @@ func init() {
 // @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @securitydefinitions.oauth2.implicit OAuth2Implicit
-// @authorizationurl https://auth.try.nexodus.local/
+// @authorizationurl https://auth.try.nexodus.127.0.0.1.nip.io/
 //
 // @scope.admin Grants read and write access to administrative information
 // @scope.user Grants read and write access to resources owned by this user
@@ -75,7 +75,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "oidc-url",
-				Value:   "https://auth.try.nexodus.local",
+				Value:   "https://auth.try.nexodus.127.0.0.1.nip.io",
 				Usage:   "Address of oidc provider",
 				EnvVars: []string{"NEXAPI_OIDC_URL"},
 			},

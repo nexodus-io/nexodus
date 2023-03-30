@@ -4,11 +4,11 @@ kind: Kustomization
 configMapGenerator:
   - name: apiproxy
     literals:
-      - APIPROXY_OIDC_URL=https://auth.try.nexodus.local/realms/nexodus
+      - APIPROXY_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - APIPROXY_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
-      - APIPROXY_API_DOMAIN=api.try.nexodus.local
-      - APIPROXY_WEB_DOMAIN=try.nexodus.local
-      - APIPROXY_WEB_ORIGINS=https://try.nexodus.local
+      - APIPROXY_API_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
+      - APIPROXY_WEB_DOMAIN=try.nexodus.127.0.0.1.nip.io
+      - APIPROXY_WEB_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
 
   - name: apiproxy-envoy-config
     files:
