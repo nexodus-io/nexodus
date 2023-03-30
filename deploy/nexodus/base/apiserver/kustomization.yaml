@@ -5,16 +5,16 @@ configMapGenerator:
     literals:
       - NEXAPI_DEBUG=1
       - NEXAPI_IPAM_URL=http://ipam:9090
-      - NEXAPI_OIDC_URL=https://auth.try.nexodus.local/realms/nexodus
+      - NEXAPI_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - NEXAPI_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
       - NEXAPI_INSECURE_TLS=1
       - NEXAPI_TRACE_ENDPOINT_OTLP=""
       - NEXAPI_TRACE_INSECURE="1"
       - NEXAPI_FFLAG_MULTI_ORGANIZATION=false
       - NEXAPI_DB_SSLMODE=require
-      - NEXAPI_DOMAIN=api.try.nexodus.local
-      - NEXAPI_REDIRECT_URL=https://try.nexodus.local/#/login
-      - NEXAPI_ORIGINS=https://try.nexodus.local
+      - NEXAPI_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
+      - NEXAPI_REDIRECT_URL=https://try.nexodus.127.0.0.1.nip.io/#/login
+      - NEXAPI_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
       - NEXAPI_SCOPES=read:organizations,write:organizations,read:users,write:users,read:devices,write:devices
 resources:
   - service.yaml

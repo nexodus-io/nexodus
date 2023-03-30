@@ -4,20 +4,6 @@ This document discusses how to run the control plane for Nexodus.
 
 ## Run on Kubernetes
 
-### Add required DNS entries
-
-The development Nexodus stack requires 3 hostnames to be reachable:
-
-- `auth.try.nexodus.local` - for the authentication service
-- `api.try.nexodus.local` - for the backend apis
-- `try.nexodus.local` - for the frontend
-
-To add these on your own machine for a local development environment:
-
-```console
-echo "127.0.0.1 auth.try.nexodus.local api.try.nexodus.local try.nexodus.local" | sudo tee -a /etc/hosts
-```
-
 ### Deploy using KIND
 
 > **Note**
@@ -35,7 +21,7 @@ This will install:
 
 - `nexodus-dev` kind cluster
 - `ingress-nginx` ingress controller
-- a rewrite rule in coredns to allow `auth.try.nexodus.local` to resolve inside the k8s cluster
+- a rewrite rule in coredns to allow `auth.try.nexodus.127.0.0.1.nip.io` to resolve inside the k8s cluster
 - the `nexodus` stack
 
 To bring the cluster down again:
@@ -52,7 +38,7 @@ The Makefile will install the https certs. You can view the cert in the Nexodus 
 cat .certs/rootCA.pem
 ```
 
-In order to join a self-signed Nexodus controller from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the try.nexodus.local domain for development.
+In order to join a self-signed Nexodus controller from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the try.nexodus.127.0.0.1.nip.io domain for development.
 
 Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following.
 

@@ -269,10 +269,6 @@ jobs:
           sudo apt update
           sudo apt-get -qy install libnss3-tools
 
-      - name: Add hosts to /etc/hosts
-        run: |
-          echo "127.0.0.1 auth.try.nexodus.local api.try.nexodus.local try.nexodus.local" | sudo tee -a /etc/hosts
-
       - name: Download apiserver image
         uses: actions/download-artifact@v3
         with:

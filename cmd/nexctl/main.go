@@ -37,7 +37,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "host",
-				Value: "https://api.try.nexodus.local",
+				Value: "https://api.try.nexodus.127.0.0.1.nip.io",
 				Usage: "Api server URL",
 			},
 			&cli.StringFlag{

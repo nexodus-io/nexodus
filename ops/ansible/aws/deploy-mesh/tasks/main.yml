@@ -58,7 +58,7 @@
       ff02::1 ip6-allnodes
       ff02::2 ip6-allrouters
       ff02::3 ip6-allhosts
-      {{ controller_address }} auth.try.nexodus.local api.try.nexodus.local try.nexodus.local
+      {{ controller_address }} auth.try.nexodus.127.0.0.1.nip.io api.try.nexodus.127.0.0.1.nip.io try.nexodus.127.0.0.1.nip.io
 
 - name: Delete wg0
   become: yes

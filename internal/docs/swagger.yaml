@@ -750,7 +750,7 @@ paths:
       - User
 securityDefinitions:
   OAuth2Implicit:
-    authorizationUrl: https://auth.try.nexodus.local/
+    authorizationUrl: https://auth.try.nexodus.127.0.0.1.nip.io/
     flow: implicit
     scopes:
       admin: ' Grants read and write access to administrative information'
