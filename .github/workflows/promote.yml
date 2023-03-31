@@ -20,7 +20,8 @@ jobs:
       - name: Promote to the prod Tag
         shell: bash
         run: |
-          echo Promoting to prod: $(git rev-parse HEAD)
+          echo Promoting qa ($(git rev-parse HEAD)) to prod
+          git tag prod --force
           git push origin prod --force 
 
 #        id: "prodtag"
