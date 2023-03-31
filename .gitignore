@@ -17,6 +17,12 @@
 # misc
 *.idea
 .DS_Store
+.go-lint-*
+.gen-docs
+.yaml-lint
+.md-lint
+.ui-lint
+.opa-lint
 
 #tests
 ./tests/*.json

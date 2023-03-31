@@ -34,7 +34,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-docs go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
+all: gen-docs go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
@@ -44,13 +44,16 @@ nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64
 .PHONY: nexctl
 nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
 
-COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
+# Only the apiserver depends on internal/docs/*.go
+COMMON_DEPS=$(filter-out $(wildcard ./internal/docs/*.go),$(wildcard ./internal/**/*.go)) go.sum go.mod
 
 NEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexd/*.go)
 
 NEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexctl/*.go)
 
-APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go)
+APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go) $(wildcard internal/docs/*.go)
+
+NEX_ALL_GO=$(COMMON_DEPS) $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
 
 TAG=$(shell git rev-parse HEAD)
 
@@ -77,12 +80,13 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 
 .PHONY: clean
 clean: ## clean built binaries
-	rm -rf dist
+	$(CMD_PREFIX) rm -rf dist
+	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint
 
 ##@ Development
 
 .PHONY: go-lint
-go-lint: go-lint-linux go-lint-darwin go-lint-windows ## Lint the go code
+go-lint: .go-lint-linux .go-lint-darwin .go-lint-windows ## Lint the go code
 
 .PHONY: go-lint-prereqs
 go-lint-prereqs:
@@ -92,14 +96,17 @@ go-lint-prereqs:
 		exit 1 ; \
 	fi
 
-.PHONY: go-lint-%
-go-lint-%: go-lint-prereqs $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
-	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$(basename $@)))\n" "[GO LINT]"
-	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$(basename $@))) GOARCH=amd64 \
+.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs
+	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
 		golangci-lint run --timeout 5m ./...
+	$(CMD_PREFIX) touch $@
 
 .PHONY: yaml-lint
-yaml-lint: ## Lint the yaml files
+yaml-lint: .yaml-lint ## Lint the yaml files
+
+# If gen-docs needs to run, make sure it goes first as it generates internal/docs/swagger.yaml
+.yaml-lint: $(wildcard */**/*.yaml) | gen-docs
 	$(CMD_PREFIX) if ! which yamllint >/dev/null 2>&1; then \
 		echo "Please install yamllint." ; \
 		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
@@ -107,29 +114,42 @@ yaml-lint: ## Lint the yaml files
 	fi
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[YAML LINT]"
 	$(CMD_PREFIX) yamllint -c .yamllint.yaml deploy --strict
+	$(CMD_PREFIX) touch $@
 
 .PHONY: md-lint
-md-lint: ## Lint markdown files
+md-lint: .md-lint ## Lint markdown files
+
+.md-lint: $(wildcard */**/*.md)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[MD LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 > /dev/null
+	$(CMD_PREFIX) touch $@
 
 .PHONY: ui-lint
-ui-lint: ## Lint the UI source
+ui-lint: .ui-lint ## Lint the UI source
+
+.ui-lint: $(filter-out $(wildcard ui/node_modules/*),$(wildcard ui/*) $(wildcard ui/**/*))
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[UI LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier --check /workdir/ui/src/ >/dev/null
+	$(CMD_PREFIX) touch $@
 
 policies=$(wildcard internal/routers/*.rego)
 
 .PHONY: opa-lint
-opa-lint: ## Lint the OPA policies
+opa-lint: .opa-lint ## Lint the OPA policies
+
+.opa-lint: $(policies)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) touch $@
 
 .PHONY: gen-docs
-gen-docs: ## Generate API docs
+gen-docs: .gen-docs ## Generate API docs
+
+.gen-docs: $(NEX_ALL_GO) 
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) touch $@
 
 .PHONY: generate
 generate: gen-docs ## Run all code generators and formatters
