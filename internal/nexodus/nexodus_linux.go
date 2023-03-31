@@ -46,7 +46,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	_, err = RunCommand("ip", "address", "add", ax.wgLocalAddress, "dev", ax.tunnelIface)
 	if err != nil {
 		logger.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
-		wgIP := getIPv4Iface(ax.tunnelIface)
+		wgIP := ax.getIPv4Iface(ax.tunnelIface)
 		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)

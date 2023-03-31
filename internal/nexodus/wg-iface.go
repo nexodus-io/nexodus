@@ -3,8 +3,9 @@ package nexodus
 import (
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"net"
+
+	"go.uber.org/zap"
 )
 
 var interfaceErr = errors.New("interface setup error")
@@ -21,7 +22,19 @@ func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 }
 
 // getIPv4Iface get the IP of the specified net interface
-func getIPv4Iface(ifname string) net.IP {
+func (ax *Nexodus) getIPv4Iface(ifname string) net.IP {
+	if ax.userspaceMode {
+		return ax.getIPv4IfaceUS(ifname)
+	} else {
+		return ax.getIPv4IfaceOS(ifname)
+	}
+}
+
+func (ax *Nexodus) getIPv4IfaceUS(ifname string) net.IP {
+	return net.ParseIP(ax.userspaceLastAddress)
+}
+
+func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	interfaces, _ := net.Interfaces()
 	for _, inter := range interfaces {
 		if inter.Name != ifname {

@@ -1,6 +1,8 @@
 package nexodus
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"strconv"
@@ -36,7 +38,39 @@ func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 
 // addPeerUs handles adding a new wireguard peer when using the userspace-only mode.
 func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
-	return fmt.Errorf("Not implemented")
+	// https://www.wireguard.com/xplatform/#configuration-protocol
+
+	pubDecoded, err := base64.StdEncoding.DecodeString(wgPeerConfig.PublicKey)
+	if err != nil {
+		ax.logger.Errorf("Failed to decode wireguard private key: %w", err)
+		return err
+	}
+
+	// Note: The default behavior is "replace_peers=false". If you try to send
+	// this, it returns an error. The code only handles "replace_peers=true".
+	//config := "replace_peers=false\n"
+	config := fmt.Sprintf("public_key=%s\n", hex.EncodeToString(pubDecoded))
+	for _, aip := range wgPeerConfig.AllowedIPs {
+		config += fmt.Sprintf("allowed_ip=%s\n", aip)
+	}
+	config += fmt.Sprintf("endpoint=%s\n", wgPeerConfig.Endpoint)
+	// See docs/development/design/nexodus-connectivity.md and internal/nexodus/keepalive.go
+	// to see more about what Nexodus is doing instead of the built-in keepalive.
+	// TODO Set this back to 0 once keepalive.go is updated to work with userspace mode.
+	config += "persistent_keepalive_interval=5\n"
+	ax.logger.Debugf("Adding wireguard peer using: %s", config)
+	err = ax.userspaceDev.IpcSet(config)
+	if err != nil {
+		ax.logger.Errorf("Failed to set wireguard config for new peer: %w", err)
+		return err
+	}
+	fullConfig, err := ax.userspaceDev.IpcGet()
+	if err != nil {
+		ax.logger.Errorf("Failed to read back full wireguard config: %w", err)
+		return nil
+	}
+	ax.logger.Debugf("Updated config: %s", fullConfig)
+	return nil
 }
 
 // addPeerOS configures a new wireguard peer when using an OS tun networking interface
@@ -144,7 +178,27 @@ func (ax *Nexodus) deletePeer(publicKey, dev string) error {
 
 // deletePeerUS deletes a wireguard peer when using a userspace device
 func (ax *Nexodus) deletePeerUS(publicKey string) error {
-	return fmt.Errorf("Not implemented")
+	// https://www.wireguard.com/xplatform/#configuration-protocol
+
+	pubDecoded, err := base64.StdEncoding.DecodeString(publicKey)
+	if err != nil {
+		ax.logger.Errorf("Failed to decode wireguard private key: %w", err)
+		return err
+	}
+	config := fmt.Sprintf("public_key=%s\nremove=true\n", hex.EncodeToString(pubDecoded))
+	ax.logger.Debugf("Removing wireguard peer using: %s", config)
+	err = ax.userspaceDev.IpcSet(config)
+	if err != nil {
+		ax.logger.Errorf("Failed to remove wireguard peer (%s): %w", publicKey, err)
+		return err
+	}
+	fullConfig, err := ax.userspaceDev.IpcGet()
+	if err != nil {
+		ax.logger.Errorf("Failed to read back full wireguard config: %w", err)
+		return nil
+	}
+	ax.logger.Debugf("Updated config: %s", fullConfig)
+	return nil
 }
 
 // deletePeerOS deletes a wireguard peer when using an OS tun networking device
