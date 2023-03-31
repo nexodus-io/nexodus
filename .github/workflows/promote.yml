@@ -12,9 +12,12 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout the qa Tag
+        uses: actions/checkout@v3
+        with:
+          tag: "qa"
 
-      - name: Tag the prod release
+      - name: Promote to the prod Tag
         id: "prodtag"
         uses: rickstaa/action-create-tag@v1
         with:
