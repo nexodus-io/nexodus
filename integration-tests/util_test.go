@@ -409,21 +409,29 @@ func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testco
 }
 
 func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, password string) string {
-	id, err := uuid.NewUUID()
+	id, err := suite.createNewUserWithName(ctx, "kitteh", password)
 	suite.Require().NoError(err)
-	userName := "kitteh-" + id.String()
+	return id
+}
+func (suite *NexodusIntegrationSuite) createNewUserWithName(ctx context.Context, name string, password string) (string, error) {
+	id, err := uuid.NewUUID()
+	userName := name + id.String()
 
 	token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
-	suite.Require().NoError(err)
+	if err != nil {
+		return "", fmt.Errorf("admin login to keycloak failed: %w", err)
+	}
 
 	userid, err := suite.gocloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
 		FirstName: gocloak.StringP("Test"),
-		LastName:  gocloak.StringP(userName),
-		Email:     gocloak.StringP(userName + "@example.com"),
+		LastName:  gocloak.StringP(name),
+		Email:     gocloak.StringP(userName + "@redhat.com"),
 		Enabled:   gocloak.BoolP(true),
 		Username:  gocloak.StringP(userName),
 	})
-	suite.Require().NoError(err)
+	if err != nil {
+		return "", fmt.Errorf("user create failed: %w", err)
+	}
 
 	suite.T().Cleanup(func() {
 		token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
@@ -433,8 +441,10 @@ func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, passwor
 	})
 
 	err = suite.gocloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
-	suite.Require().NoError(err)
-	return userName
+	if err != nil {
+		return "", fmt.Errorf("user set password failed: %w", err)
+	}
+	return userName, nil
 }
 
 func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid, password string) *oauth2.Token {

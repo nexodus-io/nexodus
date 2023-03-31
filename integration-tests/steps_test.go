@@ -45,7 +45,10 @@ func (s *extender) aUserNamedWithPassword(username string, password string) erro
 	}
 	ctx := s.Suite.Context
 	suite := GetNexodusIntegrationSuite(ctx)
-	userId := suite.createNewUser(ctx, password)
+	userId, err := suite.createNewUserWithName(ctx, username, password)
+	if err != nil {
+		return err
+	}
 
 	s.Suite.Users[username] = &cucumber.TestUser{
 		Name:     username,
