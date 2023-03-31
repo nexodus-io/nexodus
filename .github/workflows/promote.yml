@@ -15,7 +15,7 @@ jobs:
       - name: Checkout the qa Tag
         uses: actions/checkout@v3
         with:
-          tag: "qa"
+          ref: "qa"
 
       - name: Promote to the prod Tag
         id: "prodtag"
