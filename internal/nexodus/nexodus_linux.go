@@ -10,7 +10,7 @@ import (
 // setupLinuxInterface TODO replace with netlink calls
 // this is called if this is the first run or if the local node
 // address got assigned a new address by the controller
-func (ax *Nexodus) setupInterface() error {
+func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
 	// delete the wireguard ip link interface if it exists

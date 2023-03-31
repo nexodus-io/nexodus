@@ -34,8 +34,8 @@ func route(ipNet *net.IPNet, dev netlink.Link) error {
 	})
 }
 
-// RouteExists checks netlink routes for the destination prefix
-func RouteExists(prefix string) (bool, error) {
+// RouteExistsOS checks netlink routes for the destination prefix
+func RouteExistsOS(prefix string) (bool, error) {
 	destNet, err := ParseIPNet(prefix)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse a valid network address from %s: %w", prefix, err)
@@ -182,7 +182,7 @@ func DeleteRoute(prefix, dev string) error {
 	return netlink.RouteDel(&routeSpec)
 }
 
-func defaultTunnelDev() string {
+func defaultTunnelDevOS() string {
 	return wgIface
 }
 

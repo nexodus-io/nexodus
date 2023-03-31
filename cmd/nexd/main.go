@@ -51,7 +51,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 		cCtx.Bool("discovery-node"),
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
-		Version,
+		Version, false,
 	)
 	if err != nil {
 		logger.Fatal(err.Error())

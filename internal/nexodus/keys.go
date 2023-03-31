@@ -2,15 +2,18 @@ package nexodus
 
 import (
 	"fmt"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"os"
 	"strings"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"go.uber.org/zap"
 )
 
 // default key pair file locations (windows needs work)
 const (
+	workdirPublicKeyFile  = "public.key"
+	workdirPrivateKeyFile = "private.key"
 	linuxPublicKeyFile    = "/etc/wireguard/public.key"
 	linuxPrivateKeyFile   = "/etc/wireguard/private.key"
 	darwinPublicKeyFile   = "/usr/local/etc/wireguard/public.key"

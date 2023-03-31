@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
 	"net"
 	"os"
@@ -20,6 +19,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"golang.org/x/oauth2"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"

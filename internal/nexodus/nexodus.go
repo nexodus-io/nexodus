@@ -82,6 +82,7 @@ type Nexodus struct {
 	username      string
 	password      string
 	skipTlsVerify bool
+	userspaceMode bool
 }
 
 type wgConfig struct {
@@ -117,7 +118,7 @@ func NewNexodus(ctx context.Context,
 	discoveryNode bool,
 	relayOnly bool,
 	insecureSkipTlsVerify bool,
-	version string,
+	version string, userspaceMode bool,
 ) (*Nexodus, error) {
 	if err := binaryChecks(); err != nil {
 		return nil, err
@@ -169,9 +170,10 @@ func NewNexodus(ctx context.Context,
 		username:            username,
 		password:            password,
 		skipTlsVerify:       insecureSkipTlsVerify,
+		userspaceMode:       userspaceMode,
 	}
 
-	ax.tunnelIface = defaultTunnelDev()
+	ax.tunnelIface = ax.defaultTunnelDev()
 
 	if ax.relay || ax.discoveryNode {
 		ax.listenPort = WgDefaultPort
@@ -199,10 +201,16 @@ func (ax *Nexodus) SetStatus(status int, msg string) {
 func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
 
-	if err := ax.CtlServerStart(ctx, wg); err != nil {
-		return fmt.Errorf("CtlServerStart(): %w", err)
+	// TODO
+	//
+	// We must deal with a lack of permissions and the possibility for there
+	// to be more than one instance of nexd running at the same time in this mode
+	// before we can enable it in this mode.
+	if !ax.userspaceMode {
+		if err := ax.CtlServerStart(ctx, wg); err != nil {
+			return fmt.Errorf("CtlServerStart(): %w", err)
+		}
 	}
-
 	var options []client.Option
 	if ax.username == "" {
 		options = append(options, client.WithDeviceFlow())
@@ -410,6 +418,10 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 }
 
 func (ax *Nexodus) Keepalive() {
+	if ax.userspaceMode {
+		ax.logger.Debugf("Keepalive not yet implemented in userspace mode")
+		return
+	}
 	ax.logger.Debug("Sending Keepalive")
 	var peerEndpoints []string
 	if !ax.relay {
@@ -631,4 +643,18 @@ func (ax *Nexodus) getPeerListing() ([]models.Device, error) {
 	}
 
 	return peerListing, nil
+}
+
+func (ax *Nexodus) setupInterface() error {
+	if ax.userspaceMode {
+		return ax.setupInterfaceUS()
+	}
+	return ax.setupInterfaceOS()
+}
+
+func (ax *Nexodus) defaultTunnelDev() string {
+	if ax.userspaceMode {
+		return ax.defaultTunnelDevUS()
+	}
+	return defaultTunnelDevOS()
 }

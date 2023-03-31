@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (ax *Nexodus) setupInterface() error {
+func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
 	localAddress := ax.wgLocalAddress

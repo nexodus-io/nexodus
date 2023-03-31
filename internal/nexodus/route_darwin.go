@@ -9,7 +9,7 @@ import (
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
+func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
 	// Darwin maps to a utunX address which needs to be discovered (currently hardcoded to utun8)
 	devName, err := getInterfaceByIP(net.ParseIP(ax.wgLocalAddress))
 	if err != nil {
@@ -29,7 +29,7 @@ func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
+func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
 		if err := DeleteRoute(allowedIP, dev); err != nil {
 			ax.logger.Debug(err)
