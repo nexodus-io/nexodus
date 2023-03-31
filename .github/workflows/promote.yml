@@ -18,9 +18,14 @@ jobs:
           ref: "qa"
 
       - name: Promote to the prod Tag
-        id: "prodtag"
-        uses: rickstaa/action-create-tag@v1
-        with:
-          tag: "prod"
-          tag_exists_error: false
-          force_push_tag: true
+        shell: bash
+        run: |
+          echo Promoting to prod: $(git rev-parse HEAD)
+          git push origin prod --force 
+
+#        id: "prodtag"
+#        uses: rickstaa/action-create-tag@v1
+#        with:
+#          tag: "prod"
+#          tag_exists_error: false
+#          force_push_tag: true
