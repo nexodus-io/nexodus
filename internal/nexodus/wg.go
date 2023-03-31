@@ -28,6 +28,19 @@ func (ax *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
 
 // addPeer add a wg peer
 func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
+	if ax.userspaceMode {
+		return ax.addPeerUS(wgPeerConfig)
+	}
+	return ax.addPeerOS(wgPeerConfig)
+}
+
+// addPeerUs handles adding a new wireguard peer when using the userspace-only mode.
+func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
+	return fmt.Errorf("Not implemented")
+}
+
+// addPeerOS configures a new wireguard peer when using an OS tun networking interface
+func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -122,6 +135,20 @@ func (ax *Nexodus) handlePeerDelete(peerListing []models.Device) error {
 }
 
 func (ax *Nexodus) deletePeer(publicKey, dev string) error {
+	if ax.userspaceMode {
+		return ax.deletePeerUS(publicKey)
+	} else {
+		return ax.deletePeerOS(publicKey, dev)
+	}
+}
+
+// deletePeerUS deletes a wireguard peer when using a userspace device
+func (ax *Nexodus) deletePeerUS(publicKey string) error {
+	return fmt.Errorf("Not implemented")
+}
+
+// deletePeerOS deletes a wireguard peer when using an OS tun networking device
+func (ax *Nexodus) deletePeerOS(publicKey, dev string) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err

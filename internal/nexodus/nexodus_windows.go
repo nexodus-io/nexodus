@@ -14,7 +14,7 @@ const (
 	windowsWgConfigFile        = "C:/nexd/wg0.conf"
 )
 
-func (ax *Nexodus) setupInterface() error {
+func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
 	localAddress := ax.wgLocalAddress

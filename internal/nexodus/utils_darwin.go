@@ -9,8 +9,8 @@ import (
 	"net"
 )
 
-// RouteExists currently only used for darwin build purposes
-func RouteExists(s string) (bool, error) {
+// RouteExistsOS currently only used for darwin build purposes
+func RouteExistsOS(s string) (bool, error) {
 	return false, nil
 }
 
@@ -57,7 +57,7 @@ func DeleteRoute(prefix, dev string) error {
 	return nil
 }
 
-func defaultTunnelDev() string {
+func defaultTunnelDevOS() string {
 	return darwinIface
 }
 

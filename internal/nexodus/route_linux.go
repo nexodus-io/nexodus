@@ -5,9 +5,9 @@ package nexodus
 import "github.com/nexodus-io/nexodus/internal/models"
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
+func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		routeExists, err := RouteExists(allowedIP)
+		routeExists, err := ax.RouteExists(allowedIP)
 		if err != nil {
 			ax.logger.Warnf("%v", err)
 		}
@@ -20,9 +20,9 @@ func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig models.Device) {
+func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		routeExists, err := RouteExists(allowedIP)
+		routeExists, err := ax.RouteExists(allowedIP)
 		if !routeExists {
 			continue
 		}
