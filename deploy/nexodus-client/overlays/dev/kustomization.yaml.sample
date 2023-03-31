@@ -7,8 +7,8 @@ secretGenerator:
   - name: nexodus-client-secret
     literals:
       - cert=<NEXODUS_CONTROLLER_CERT>
-      - url=https://try.nexodus.local
-      - auth_url=https://auth.try.nexodus.local/token
+      - url=https://try.nexodus.127.0.0.1.nip.io
+      - auth_url=https://auth.try.nexodus.127.0.0.1.nip.io/token
       - username=kitteh1
       - password=floofykittens
 commonLabels:

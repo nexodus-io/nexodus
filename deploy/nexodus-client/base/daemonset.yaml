@@ -20,9 +20,9 @@ spec:
       hostAliases:
         - ip: "127.0.0.1"
           hostnames:
-            - "auth.try.nexodus.local"
-            - "api.try.nexodus.local"
-            - "try.nexodus.local"
+            - "auth.try.nexodus.127.0.0.1.nip.io"
+            - "api.try.nexodus.127.0.0.1.nip.io"
+            - "try.nexodus.127.0.0.1.nip.io"
       serviceAccount: nexodus
       serviceAccountName: nexodus
       tolerations:

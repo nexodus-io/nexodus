@@ -708,6 +708,23 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "protocolMappers" : [ {
+        "id" : "6273d8b6-f6e8-42e5-bece-aba7835e94e2",
+        "name" : "from_google",
+        "protocol" : "openid-connect",
+        "protocolMapper" : "oidc-usermodel-attribute-mapper",
+        "consentRequired" : false,
+        "config" : {
+          "aggregate.attrs" : "false",
+          "userinfo.token.claim" : "false",
+          "multivalued" : "false",
+          "user.attribute" : "from_google",
+          "id.token.claim" : "false",
+          "access.token.claim" : "true",
+          "claim.name" : "from_google",
+          "jsonType.label" : "boolean"
+        }
+      } ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -767,6 +784,23 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "protocolMappers" : [ {
+        "id" : "6273d8b6-f6e8-42e5-bece-aba7835e94e1",
+        "name" : "from_google",
+        "protocol" : "openid-connect",
+        "protocolMapper" : "oidc-usermodel-attribute-mapper",
+        "consentRequired" : false,
+        "config" : {
+          "aggregate.attrs" : "false",
+          "userinfo.token.claim" : "false",
+          "multivalued" : "false",
+          "user.attribute" : "from_google",
+          "id.token.claim" : "false",
+          "access.token.claim" : "true",
+          "claim.name" : "from_google",
+          "jsonType.label" : "boolean"
+        }
+      } ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -1564,8 +1598,40 @@
   "enabledEventTypes": [],
   "adminEventsEnabled": false,
   "adminEventsDetailsEnabled": false,
-  "identityProviders": [],
-  "identityProviderMappers": [],
+  "identityProviders" : [ {
+    "alias" : "google",
+    "internalId" : "32aca1ec-71aa-4889-b32f-dfac8060fcea",
+    "providerId" : "google",
+    "enabled" : true,
+    "updateProfileFirstLoginMode" : "on",
+    "trustEmail" : true,
+    "storeToken" : false,
+    "addReadTokenRoleOnCreate" : false,
+    "authenticateByDefault" : false,
+    "linkOnly" : false,
+    "firstBrokerLoginFlowAlias" : "first broker login",
+    "config" : {
+      "offlineAccess" : "false",
+      "hideOnLoginPage" : "false",
+      "clientId" : "${GOOGLE_CLIENT_ID}",
+      "acceptsPromptNoneForwardFromClient" : "false",
+      "disableUserInfo" : "false",
+      "syncMode" : "IMPORT",
+      "userIp" : "false",
+      "clientSecret" : "${GOOGLE_CLIENT_SECRET}"
+    }
+  } ],
+  "identityProviderMappers" : [ {
+    "id" : "870802b9-27fd-4cba-aabe-62d7051b075a",
+    "name" : "from_google",
+    "identityProviderAlias" : "google",
+    "identityProviderMapper" : "hardcoded-attribute-idp-mapper",
+    "config" : {
+      "syncMode" : "INHERIT",
+      "attribute.value" : "true",
+      "attribute" : "from_google"
+    }
+  } ],
   "components": {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
       {
@@ -1674,6 +1740,15 @@
         }
       }
     ],
+    "org.keycloak.userprofile.UserProfileProvider" : [ {
+      "id" : "58db5f8e-85d9-4e61-9e7d-5a691d0f341c",
+      "providerId" : "declarative-user-profile",
+      "subComponents" : { },
+      "config" : {
+        "config-piece-0" : [ "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{}}},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"selector\":{\"scopes\":[]},\"permissions\":{\"view\":[\"user\",\"admin\"],\"edit\":[]},\"annotations\":{\"\":\"\"}},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}}},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}}}]}" ],
+        "config-pieces-count" : [ "1" ]
+      }
+    } ],
     "org.keycloak.keys.KeyProvider": [
       {
         "id": "f188581c-1694-4ab5-b1bb-43fb6ff70377",
@@ -2416,6 +2491,7 @@
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
   "attributes": {
+    "userProfileEnabled": "true",
     "cibaBackchannelTokenDeliveryMode": "poll",
     "cibaAuthRequestedUserHint": "login_hint",
     "clientOfflineSessionMaxLifespan": "0",
@@ -2444,173 +2520,5 @@
     "policies": []
   },
   "users": [
-    {
-      "id": "01578c9e-8e76-46a4-b2b2-50788cec2ccd",
-      "createdTimestamp": 1666213470033,
-      "username": "admin",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Admin",
-      "lastName": "User",
-      "credentials": [
-        {
-          "id": "5d8289f1-afb3-41d1-b870-900467910074",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213627226,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "admin",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    },
-    {
-      "id": "c8b6f49f-ed34-4a9b-903d-3f9532df1fa2",
-      "createdTimestamp": 1666213497867,
-      "username": "kitteh1",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Kitteh",
-      "lastName": "One",
-      "credentials": [
-        {
-          "id": "f9c64410-7554-4fb3-8f29-8ab88777845d",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213627226,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "user",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    },
-    {
-      "id": "bda461ab-1e28-4da2-b1ee-68c720592345",
-      "createdTimestamp": 1666213553217,
-      "username": "kitteh2",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Kitteh",
-      "lastName": "Two",
-      "credentials": [
-        {
-          "id": "3fc9c09d-3b02-4f98-bcc2-aa00597170a9",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213637431,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "user",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    },
-    {
-      "id": "c7f93da6-4994-4e1d-a522-ca9389c8eef5",
-      "createdTimestamp": 1666213569990,
-      "username": "kitteh3",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Kitteh",
-      "lastName": "Three",
-      "credentials": [
-        {
-          "id": "a4daa139-2d64-44ec-849e-371d08ff9aa2",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213650698,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "user",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    },
-    {
-      "id": "0ecc031c-d233-4b60-b835-d70ac155040d",
-      "createdTimestamp": 1666213569990,
-      "username": "kitteh4",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Kitteh",
-      "lastName": "Four",
-      "credentials": [
-        {
-          "id": "d76ba23d-77db-473e-9e95-94cb3e32de81",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213650698,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "user",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    },
-    {
-      "id": "2a2ad08c-542f-44e1-992a-e760f61e1998",
-      "createdTimestamp": 1666213569990,
-      "username": "kitteh5",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "firstName": "Kitteh",
-      "lastName": "Five",
-      "credentials": [
-        {
-          "id": "6bc7ac8a-027a-43a6-90f2-79b56de917cf",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1666213650698,
-          "secretData": "{\"value\":\"B2eR5AYKrflT2l1lZE1TxZS2baMLeCHZM4AUUBirQKEolV6PAfSaEt+jmnAp9hH/rmOMeu/7AHp+ZKO5S3HQsw==\",\"salt\":\"4sz9d16rCpsTLk7AuaCNjw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "user",
-        "default-roles-nexodus"
-      ],
-      "notBefore": 0,
-      "groups": []
-    }
   ]
 }

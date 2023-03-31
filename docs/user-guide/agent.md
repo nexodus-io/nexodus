@@ -66,7 +66,7 @@ sudo systemctl daemon-reload
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
 ```sh
-sudo nexd-linux-amd64 https://try.nexodus.local
+sudo nexd-linux-amd64 https://try.nexodus.127.0.0.1.nip.io
 ```
 
 Alternatively, you can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service. Then, start the agent with the following command:
@@ -89,7 +89,7 @@ If the agent is able to successfully reach the controller API, it will provide a
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
@@ -100,7 +100,7 @@ Status: WaitingForAuth
 Your device must be registered with Nexodus.
 Your one-time code is: LTCV-OFFS
 Please open the following URL in your browser to sign in:
-https://auth.try.nexodus.local/realms/nexodus/device?user_code=LTCV-OFFS
+https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
 Once enrollment is completed in the web UI, the agent will show progress.
@@ -141,7 +141,7 @@ PING 100.100.0.2 (100.100.0.2) 56(84) bytes of data.
 64 bytes from 100.100.0.2: icmp_seq=1 ttl=64 time=7.63 ms
 ```
 
-You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.local/`.
+You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.127.0.0.1.nip.io/`.
 
 ### Cleanup Agent From Node
 

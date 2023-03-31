@@ -17,7 +17,7 @@ spec:
     - server auth
     - client auth
   dnsNames:
-    - auth.try.nexodus.local
+    - auth.try.nexodus.127.0.0.1.nip.io
   issuerRef:
     name: nexodus-issuer
     kind: Issuer

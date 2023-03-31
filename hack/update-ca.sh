@@ -17,7 +17,7 @@ fi
 if [ -z "$1" ]; then
   echo "To connect this container to the nexodus network, try running:"
   echo
-  echo "   /bin/nexd --username admin --password floofykittens https://try.nexodus.local"
+  echo "   /bin/nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io"
   echo
   exec /bin/bash
 else

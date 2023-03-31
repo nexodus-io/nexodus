@@ -41,6 +41,6 @@ nexodus_azone_prefix: 10.185.0.0/24
 nexodus_auth_uid: kitteh1
 nexodus_auth_password: floofykittens
 nexodus_oidc_client_id_cli: nexodus-cli
-nexodus_oidc_url: https://auth.try.nexodus.local
-nexodus_api_url: https://api.try.nexodus.local
-nexodus_url: https://try.nexodus.local
+nexodus_oidc_url: https://auth.try.nexodus.127.0.0.1.nip.io
+nexodus_api_url: https://api.try.nexodus.127.0.0.1.nip.io
+nexodus_url: https://try.nexodus.127.0.0.1.nip.io

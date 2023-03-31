@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../../base
   - issuer.yaml
+  - sealed-secret.yaml
   - serviceaccount.yaml
 namespace: nexodus
 components:

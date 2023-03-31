@@ -21,20 +21,20 @@ patchesJson6902:
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: api.try.nexodus.local
+        value: api.try.nexodus.127.0.0.1.nip.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: api.try.nexodus.local
+        value: api.try.nexodus.127.0.0.1.nip.io
   - target:
       kind: Ingress
       name: frontend
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: try.nexodus.local
+        value: try.nexodus.127.0.0.1.nip.io
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: try.nexodus.local
+        value: try.nexodus.127.0.0.1.nip.io
   - target:
       kind: Ingress
       name: apiproxy

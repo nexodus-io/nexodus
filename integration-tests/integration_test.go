@@ -85,7 +85,7 @@ func TestNexodusIntegrationSuite(t *testing.T) {
 func (suite *NexodusIntegrationSuite) SetupSuite() {
 	logger := zaptest.NewLogger(suite.T())
 	suite.logger = logger.Sugar()
-	suite.gocloak = gocloak.NewClient("https://auth.try.nexodus.local")
+	suite.gocloak = gocloak.NewClient("https://auth.try.nexodus.127.0.0.1.nip.io")
 	suite.gocloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 }
 
@@ -801,7 +801,7 @@ func (suite *NexodusIntegrationSuite) TestFeatures() {
 
 				s := cucumber.NewTestSuite()
 				s.Context = suite.Context()
-				s.ApiURL = "https://api.try.nexodus.local"
+				s.ApiURL = "https://api.try.nexodus.127.0.0.1.nip.io"
 				s.TlsConfig = tlsConfig
 
 				status := godog.TestSuite{

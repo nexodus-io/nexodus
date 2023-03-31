@@ -1136,7 +1136,7 @@ const docTemplate = `{
         "OAuth2Implicit": {
             "type": "oauth2",
             "flow": "implicit",
-            "authorizationUrl": "https://auth.try.nexodus.local/",
+            "authorizationUrl": "https://auth.try.nexodus.127.0.0.1.nip.io/",
             "scopes": {
                 "admin": " Grants read and write access to administrative information",
                 "user": " Grants read and write access to resources owned by this user"

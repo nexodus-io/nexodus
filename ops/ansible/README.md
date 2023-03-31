@@ -33,12 +33,12 @@ nexodus_zone_name: zone-hub
 nexodus_azone_prefix: 10.185.0.0/24
 
 ### Nexodus Auth ###
-nexodus_auth_uid: kitteh1@try.nexodus.local
+nexodus_auth_uid: kitteh1@try.nexodus.127.0.0.1.nip.io
 nexodus_auth_password: floofykittens
 nexodus_oidc_client_id_cli: nexodus-cli
-nexodus_oidc_url: https://auth.try.nexodus.local
-nexodus_api_url: https://api.try.nexodus.local
-nexodus_url: https://try.nexodus.local
+nexodus_oidc_url: https://auth.try.nexodus.127.0.0.1.nip.io
+nexodus_api_url: https://api.try.nexodus.127.0.0.1.nip.io
+nexodus_url: https://try.nexodus.127.0.0.1.nip.io
 ```
 
 - Run the playbook (the nexd binary is stored in an S3 bucket and pulled down by ansible)

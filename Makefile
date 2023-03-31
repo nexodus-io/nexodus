@@ -131,6 +131,11 @@ gen-docs: ## Generate API docs
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
 
+.PHONY: opa-fmt
+opa-fmt: ## Lint the OPA policies
+	$(ECHO_PREFIX) printf "  %-12s \n" "[OPA FMT]"
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
+
 .PHONY: generate
 generate: gen-docs ## Run all code generators and formatters
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
@@ -193,9 +198,9 @@ run-test-container: ## Run docker container that you can run nexodus in
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
-		--add-host try.nexodus.local:$(NEXODUS_LOCAL_IP) \
-		--add-host api.try.nexodus.local:$(NEXODUS_LOCAL_IP) \
-		--add-host auth.try.nexodus.local:$(NEXODUS_LOCAL_IP) \
+		--add-host try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
+		--add-host api.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
+		--add-host auth.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
 		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
 
@@ -212,7 +217,7 @@ else ifeq ($(OVERLAY),cockroach)
 endif
 
 .PHONY: run-sql-ipam
-run-sql-ipam: ## runs a command line SQL client to interact with the ipammake  database
+run-sql-ipam: ## runs a command line SQL client to interact with the ipam database
 ifeq ($(OVERLAY),dev)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus \
 		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
@@ -223,16 +228,34 @@ else ifeq ($(OVERLAY),cockroach)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user ipam --database ipam
 endif
 
+.PHONY: run-sql-keycloak
+run-sql-keycloak: ## runs a command line SQL client to interact with the keycloak database
+ifeq ($(OVERLAY),dev)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		-c database -- psql keycloak
+else ifeq ($(OVERLAY),arm64)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U keycloak keycloak
+else ifeq ($(OVERLAY),cockroach)
+	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user keycloak --database keycloak
+endif
+
+
 .PHONY: clear-db
 clear-db:
+	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=0 -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m $(PIPE_DEV_NULL)
+	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLE IF EXISTS] apiserver_migrations"
 	$(CMD_PREFIX) echo "\
-		  DROP TABLE IF EXISTS invitations;\
-		  DROP TABLE IF EXISTS devices;\
-		  DROP TABLE IF EXISTS user_organizations;\
-		  DROP TABLE IF EXISTS organizations;\
-		  DROP TABLE IF EXISTS users;\
-		  DROP TABLE IF EXISTS apiserver_migrations;\
-		  " | make run-sql-apiserver 2> /dev/null
+		DROP TABLE IF EXISTS invitations;\
+		DROP TABLE IF EXISTS devices;\
+		DROP TABLE IF EXISTS user_organizations;\
+		DROP TABLE IF EXISTS organizations;\
+		DROP TABLE IF EXISTS users;\
+		DROP TABLE IF EXISTS apiserver_migrations;\
+		" | make run-sql-apiserver $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=1 -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m
 
 ##@ Container Images
 

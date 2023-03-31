@@ -88,9 +88,9 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 			"NET_RAW",
 		},
 		ExtraHosts: []string{
-			fmt.Sprintf("try.nexodus.local:%s", hostDNSName),
-			fmt.Sprintf("api.try.nexodus.local:%s", hostDNSName),
-			fmt.Sprintf("auth.try.nexodus.local:%s", hostDNSName),
+			fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+			fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+			fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 		},
 		AutoRemove: true,
 		Mounts: []testcontainers.ContainerMount{
@@ -137,7 +137,7 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, "/", "-")
 }
 func newClient(ctx context.Context, username, password string) (*client.Client, error) {
-	return client.NewClient(ctx, "http://api.try.nexodus.local", nil, client.WithPasswordGrant(username, password))
+	return client.NewClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
@@ -269,7 +269,7 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
 	cmd := []string{"/bin/nexd"}
 	cmd = append(cmd, args...)
-	cmd = append(cmd, "https://try.nexodus.local")
+	cmd = append(cmd, "https://try.nexodus.127.0.0.1.nip.io")
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
 
 	// write the nexd run command to a local file
@@ -409,21 +409,29 @@ func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testco
 }
 
 func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, password string) string {
-	id, err := uuid.NewUUID()
+	id, err := suite.createNewUserWithName(ctx, "kitteh", password)
 	suite.Require().NoError(err)
-	userName := "kitteh-" + id.String()
+	return id
+}
+func (suite *NexodusIntegrationSuite) createNewUserWithName(ctx context.Context, name string, password string) (string, error) {
+	id, err := uuid.NewUUID()
+	userName := name + id.String()
 
 	token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
-	suite.Require().NoError(err)
+	if err != nil {
+		return "", fmt.Errorf("admin login to keycloak failed: %w", err)
+	}
 
 	userid, err := suite.gocloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
 		FirstName: gocloak.StringP("Test"),
-		LastName:  gocloak.StringP(userName),
-		Email:     gocloak.StringP(userName + "@example.com"),
+		LastName:  gocloak.StringP(name),
+		Email:     gocloak.StringP(userName + "@redhat.com"),
 		Enabled:   gocloak.BoolP(true),
 		Username:  gocloak.StringP(userName),
 	})
-	suite.Require().NoError(err)
+	if err != nil {
+		return "", fmt.Errorf("user create failed: %w", err)
+	}
 
 	suite.T().Cleanup(func() {
 		token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
@@ -433,8 +441,10 @@ func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, passwor
 	})
 
 	err = suite.gocloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
-	suite.Require().NoError(err)
-	return userName
+	if err != nil {
+		return "", fmt.Errorf("user set password failed: %w", err)
+	}
+	return userName, nil
 }
 
 func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid, password string) *oauth2.Token {

@@ -4,3 +4,6 @@ Makefile
 Containerfile.*
 dist
 *-envs.json
+
+# config
+.auth-providers.yaml
