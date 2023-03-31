@@ -6,13 +6,6 @@ on:
   workflow_call:
   workflow_dispatch:
 
-env:
-  REGISTRY: quay.io
-  REPOSITORY: nexodus
-  APISERVER_IMAGE_NAME: apiserver
-  FRONTEND_IMAGE_NAME: frontend
-  IPAM_IMAGE_NAME: go-ipam
-
 jobs:
   update-prod:
     name: Update Production Deployment
@@ -20,41 +13,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: mikefarah/yq@v4.33.1
 
-      - name: Read Image SHAs from QA deployment
-        id: gitsha
-        run: |
-          tag=$(yq '.images[0].newTag' ./deploy/nexodus/overlays/qa/kustomization.yaml)
-          echo "tag=${tag}" >> $GITHUB_OUTPUT
-          echo "short=${tag:0:8}" >> $GITHUB_OUTPUT
-
-      - name: Set up Kustomize
-        run: |
-          mkdir -p $HOME/.local/bin
-          pushd $HOME/.local/bin
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s 4.5.7
-          popd
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Prod Images
-        run: |
-          pushd ./deploy/nexodus/overlays/prod
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${APISERVER_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${FRONTEND_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
-          kustomize edit set image ${REGISTRY}/${REPOSITORY}/${IPAM_IMAGE_NAME}:${{ steps.gitsha.outputs.tag }}
-          yq -i kustomization.yaml
-          popd
-
-      - name: Check for changes
-        run: |
-          git diff --quiet || echo "COMMIT_CHANGES=1" >> $GITHUB_ENV
-
-      - name: Commit Changes
-        id: commit
-        if: env.COMMIT_CHANGES == 1
-        uses: devops-infra/action-commit-push@master
+      - name: Tag the prod release
+        id: "prodtag"
+        uses: rickstaa/action-create-tag@v1
         with:
-          github_token: "${{ secrets.GITHUB_TOKEN }}"
-          commit_prefix: "[deploy] "
-          commit_message: "Update prod images to ${{ steps.gitsha.outputs.short }}"
+          tag: "prod"
+          tag_exists_error: false
+          force_push_tag: true
