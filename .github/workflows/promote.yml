@@ -20,13 +20,5 @@ jobs:
       - name: Promote to the prod Tag
         shell: bash
         run: |
-          echo Promoting qa ($(git rev-parse HEAD)) to prod
           git tag prod --force
           git push origin prod --force 
-
-#        id: "prodtag"
-#        uses: rickstaa/action-create-tag@v1
-#        with:
-#          tag: "prod"
-#          tag_exists_error: false
-#          force_push_tag: true
