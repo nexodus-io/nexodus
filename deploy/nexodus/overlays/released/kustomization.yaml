@@ -1,0 +1,18 @@
+#
+# Changes th deployment to use the latest released builds of the images.
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+components:
+  - ../../components/limitador
+images:
+  - name: quay.io/nexodus/apiserver
+    newTag: b2a221be9ae440c3889b69e467012bddf6d3642a
+  - name: quay.io/nexodus/envsubst
+    newTag: b2a221be9ae440c3889b69e467012bddf6d3642a
+  - name: quay.io/nexodus/frontend
+    newTag: b2a221be9ae440c3889b69e467012bddf6d3642a
+  - name: quay.io/nexodus/go-ipam
+    newTag: b2a221be9ae440c3889b69e467012bddf6d3642a

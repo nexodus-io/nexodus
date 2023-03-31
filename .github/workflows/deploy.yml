@@ -95,7 +95,7 @@ jobs:
 
       - name: Update QA Images
         run: |
-          pushd ./deploy/nexodus/overlays/qa
+          pushd ./deploy/nexodus/overlays/released
           kustomize edit set image quay.io/nexodus/apiserver:${GITHUB_SHA}
           kustomize edit set image quay.io/nexodus/frontend:${GITHUB_SHA}
           kustomize edit set image quay.io/nexodus/go-ipam:${GITHUB_SHA}
