@@ -701,56 +701,38 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	json.Unmarshal([]byte(devicesInOrganization), &devices)
 	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
 
-	// TODO: this gets resolved with #439 (org delete)
-	// re-register the device IDs for node1 and node2 as they have been re-created w/new IDs
-	//for _, p := range devices {
-	//	if p.TunnelIP == node1IP {
-	//		node1DeviceID = p.ID.String()
-	//	}
-	//	if p.TunnelIP == node2IP {
-	//		node2DeviceID = p.ID.String()
-	//	}
-	//}
-	//// delete all devices from the organization as currently required to avoid sql key
-	//// constraints, then delete the organization, then recreate the organization to ensure the
-	//// IPAM prefix was released. If it was not released the creation will fail.
-	//_, err = suite.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"device", "delete",
-	//	"--device-id", node1DeviceID,
-	//)
-	//require.NoError(err)
-	//
-	//_, err = suite.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"device", "delete",
-	//	"--device-id", node2DeviceID,
-	//)
-	//require.NoError(err)
-	//
-	//// delete the organization
-	//_, err = suite.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"--output", "json",
-	//	"organization", "delete",
-	//	"--organization-id", user.Organizations[0].String(),
-	//)
-	//require.NoError(err)
-	//
-	//// re-create the deleted organization, this will fail if the IPAM
-	//// prefix was not released from the prior deletion
-	//_, err = suite.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"organization", "create",
-	//	"--name", "kitteh5",
-	//	"--cidr", "100.100.1.0/20",
-	//	"--description", "kitteh5's organization",
-	//)
-	//require.NoError(err)
+	// List users and register the current user's ID for deletion
+	userList, err := suite.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json-raw",
+		"user", "list",
+	)
+	var users []models.User
+	json.Unmarshal([]byte(userList), &users)
+	assert.NoErrorf(err, "nexctl user list error: %v\n", err)
+
+	var deleteUserID string
+	for _, u := range users {
+		if u.UserName == username {
+			deleteUserID = u.ID
+		}
+	}
+	_, err = suite.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"user", "delete",
+		"--user-id", deleteUserID,
+	)
+	require.NoError(err)
+
+	// negative test ensuring the user was deleted
+	_, err = suite.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"user", "list",
+	)
+	require.Error(err)
 }
 
 func (suite *NexodusIntegrationSuite) TestFeatures() {
