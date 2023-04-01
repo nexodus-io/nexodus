@@ -4,6 +4,7 @@ config:
   first-line-heading: false
   code-block-style: false
   no-duplicate-header: false
+  single-trailing-newline: false
 globs:
  - "**/*.md"
 ignores:
