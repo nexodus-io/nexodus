@@ -2,7 +2,7 @@
 
 ## Summary
 
-This proposal documents the decisions made around the Nexodus software stack.
+This proposal documents the decisions made around the Nexodus Service.
 
 ## Proposal
 
@@ -20,7 +20,8 @@ To support use of KIND for local development, and OpenShift for production deplo
 - We only support deployment on K8s
 - Kustomize is our deployment configuration tool
 - All manifests in `deploy/base` MUST be useable in any K8s distribution.
-- We allow operators to be used, provided they may also be installed on any K8s distribution.
+- We allow operators to be used, provided that either 1) they may also be installed on any K8s distribution, or 2) they are an optional component and are not needed for simple K8s deployment.
+- While we may use OpenShift for the project's production cluster, we will not make any changes that require the use of OpenShift to run a production instance of the service.
 
 ### Microservices First
 
@@ -32,7 +33,10 @@ This resulted in the following decisions:
 
 1. IPAM would be a separate service, consumed over gRPC, since it already has an [upstream project](https://github.com/metal-stack/go-ipam).
 1. Authentication would use Open ID Connect (OIDC), provided by default in our stack by Keycloak.
-1. The `go-oidc-agent` proxy would be deployed as a binary, in-front of existing services vs. embedding that logic as library code in the apiserver.
+1. <!-- We no longer do the following.
+
+  The `go-oidc-agent` proxy would be deployed as a binary, in-front of existing services vs. embedding that logic as library code in the apiserver.
+-->
 1. We would use [gorm](https://gorm.io) as an ORM to give us choice to switch out the DB implementation if required.
 1. We would use PostgreSQL as our database of choice, and deploy it via the Crunchy Data Postgres Operator.
 
@@ -55,6 +59,8 @@ If Microservices are truly important to us, we should reconsider the design of t
 - Device onboarding service: Onboards/offboards a device into an organization
 - Peering service: handles peer updates for devices
 
+<!--
 ## References
 
 *Leave links to helpful references related to this proposal.*
+-->
