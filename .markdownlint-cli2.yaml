@@ -2,6 +2,7 @@ config:
   line-length: false
   no-emphasis-as-header: false
   first-line-heading: false
+  code-block-style: false
 globs:
  - "**/*.md"
 ignores:

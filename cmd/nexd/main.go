@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 
@@ -18,10 +17,17 @@ const (
 	nexodusLogEnv = "NEXD_LOGLEVEL"
 )
 
+type nexdMode int
+
+const (
+	nexdModeAgent nexdMode = iota
+	nexdModeProxy
+)
+
 // This variable is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
 
-func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
+func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	controller := cCtx.Args().First()
 	if controller == "" {
 		logger.Info("<controller-url> required")
@@ -35,10 +41,21 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
-	// TEMPORARY - this is a hack to allow us to run the userspace mode for demonstration purposes
-	userspaceMode, _ := strconv.ParseBool(os.Getenv("NEXD_USERSPACE_MODE_TEST"))
+	userspaceMode := false
+	relayNode := false
+	discoveryNode := false
+	var childPrefix []string
+	switch mode {
+	case nexdModeAgent:
+		childPrefix = cCtx.StringSlice("child-prefix")
+		relayNode = cCtx.Bool("relay-node")
+		discoveryNode = cCtx.Bool("discovery-node")
+	case nexdModeProxy:
+		userspaceMode = true
+		logger.Info("Starting in L4 proxy mode")
+	}
 
-	nexodus, err := nexodus.NewNexodus(
+	nex, err := nexodus.NewNexodus(
 		ctx,
 		logger.Sugar(),
 		controller,
@@ -49,10 +66,10 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 		cCtx.String("private-key"),
 		cCtx.String("request-ip"),
 		cCtx.String("local-endpoint-ip"),
-		cCtx.StringSlice("child-prefix"),
+		childPrefix,
 		cCtx.Bool("stun"),
-		cCtx.Bool("relay-node"),
-		cCtx.Bool("discovery-node"),
+		relayNode,
+		discoveryNode,
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version, userspaceMode,
@@ -62,7 +79,19 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger) error {
 	}
 
 	wg := &sync.WaitGroup{}
-	if err := nexodus.Start(ctx, wg); err != nil {
+	for _, egressRule := range cCtx.StringSlice("egress") {
+		err := nex.UserspaceProxyAdd(ctx, wg, egressRule, nexodus.ProxyTypeEgress)
+		if err != nil {
+			logger.Sugar().Errorf("Failed to add egress proxy rule (%s): %v", egressRule, err)
+		}
+	}
+	for _, ingressRule := range cCtx.StringSlice("ingress") {
+		err := nex.UserspaceProxyAdd(ctx, wg, ingressRule, nexodus.ProxyTypeIngress)
+		if err != nil {
+			logger.Sugar().Errorf("Failed to add ingress proxy rule (%s): %v", ingressRule, err)
+		}
+	}
+	if err := nex.Start(ctx, wg); err != nil {
 		logger.Fatal(err.Error())
 	}
 	wg.Wait()
@@ -101,6 +130,25 @@ func main() {
 				Action: func(cCtx *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
+				},
+			},
+			{
+				Name:  "proxy",
+				Usage: "Run nexd as an L4 proxy instead of creating a network interface",
+				Action: func(cCtx *cli.Context) error {
+					return nexdRun(cCtx, logger, nexdModeProxy)
+				},
+				Flags: []cli.Flag{
+					&cli.StringSliceFlag{
+						Name:     "ingress",
+						Usage:    "Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+						Required: false,
+					},
+					&cli.StringSliceFlag{
+						Name:     "egress",
+						Usage:    "Forward connections from a locally accessible network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via the Nexodus network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+						Required: false,
+					},
 				},
 			},
 		},
@@ -197,7 +245,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			return nexdRun(cCtx, logger)
+			return nexdRun(cCtx, logger, nexdModeAgent)
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
