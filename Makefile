@@ -34,7 +34,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-docs go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
+all: generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 

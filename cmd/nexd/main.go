@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
 	"sync"
 	"syscall"
 
@@ -98,6 +99,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 
 	return nil
 }
+
+var additionalPlatformFlags []cli.Flag = nil
 
 func main() {
 	// set the log level
@@ -248,6 +251,12 @@ func main() {
 			return nexdRun(cCtx, logger, nexdModeAgent)
 		},
 	}
+
+	app.Flags = append(app.Flags, additionalPlatformFlags...)
+	sort.Slice(app.Flags, func(i, j int) bool {
+		return app.Flags[i].Names()[0] < app.Flags[j].Names()[0]
+	})
+
 	if err := app.Run(os.Args); err != nil {
 		logger.Fatal(err.Error())
 	}

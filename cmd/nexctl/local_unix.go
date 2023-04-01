@@ -1,17 +1,58 @@
+//go:build linux || darwin
+
 package main
 
 import (
 	"fmt"
-	"net"
-	"net/rpc/jsonrpc"
-	"runtime"
-
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/urfave/cli/v2"
+	"net"
+	"net/rpc/jsonrpc"
 )
 
+func init() {
+	additionalPlatformCommands = append(additionalPlatformCommands, &cli.Command{
+		Name:  "nexd",
+		Usage: "Commands for interacting with the local instance of nexd",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "unix-socket",
+				Usage:       "Path to the unix socket nexd is listening against",
+				Value:       nexodus.UnixSocketPath,
+				Destination: &nexodus.UnixSocketPath,
+				Required:    false,
+			},
+		},
+		Subcommands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Display the nexd version",
+				Action: func(cCtx *cli.Context) error {
+					err := cmdLocalVersion(cCtx)
+					if err != nil {
+						fmt.Printf("%s\n", err)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "status",
+				Usage: "Display the nexd status",
+				Action: func(cCtx *cli.Context) error {
+					c, err := cmdLocalStatus(cCtx)
+					fmt.Printf("%s", c)
+					if err != nil {
+						fmt.Printf("%s\n", err)
+					}
+					return nil
+				},
+			},
+		},
+	})
+}
+
 func callNexd(method string) (string, error) {
-	conn, err := net.Dial("unix", "/run/nexd.sock")
+	conn, err := net.Dial("unix", nexodus.UnixSocketPath)
 	if err != nil {
 		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
 	}
@@ -44,9 +85,6 @@ func checkVersion() error {
 
 func cmdLocalVersion(cCtx *cli.Context) error {
 	fmt.Printf("nexctl version: %s\n", Version)
-	if runtime.GOOS != nexodus.Linux.String() {
-		return fmt.Errorf("nexd ctl interface not currently supported on %s", runtime.GOOS)
-	}
 
 	result, err := callNexd("Version")
 	if err == nil {
@@ -57,10 +95,6 @@ func cmdLocalVersion(cCtx *cli.Context) error {
 }
 
 func cmdLocalStatus(cCtx *cli.Context) (string, error) {
-	if runtime.GOOS != nexodus.Linux.String() {
-		return "", fmt.Errorf("nexd ctl interface not yet supported on %s", runtime.GOOS)
-	}
-
 	if err := checkVersion(); err != nil {
 		return "", err
 	}
