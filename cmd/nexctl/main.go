@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/google/uuid"
@@ -22,6 +23,8 @@ const (
 
 // This variable is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
+
+var additionalPlatformCommands []*cli.Command = nil
 
 func main() {
 	// Override usage to capitalize "Show"
@@ -68,35 +71,6 @@ func main() {
 				Action: func(cCtx *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
-				},
-			},
-			{
-				Name:  "nexd",
-				Usage: "Commands for interacting with the local instance of nexd",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "version",
-						Usage: "Display the nexd version",
-						Action: func(cCtx *cli.Context) error {
-							err := cmdLocalVersion(cCtx)
-							if err != nil {
-								fmt.Printf("%s\n", err)
-							}
-							return nil
-						},
-					},
-					{
-						Name:  "status",
-						Usage: "Display the nexd status",
-						Action: func(cCtx *cli.Context) error {
-							c, err := cmdLocalStatus(cCtx)
-							fmt.Printf("%s", c)
-							if err != nil {
-								fmt.Printf("%s\n", err)
-							}
-							return nil
-						},
-					},
 				},
 			},
 			{
@@ -409,6 +383,12 @@ func main() {
 			},
 		},
 	}
+
+	app.Commands = append(app.Commands, additionalPlatformCommands...)
+	sort.Slice(app.Commands, func(i, j int) bool {
+		return app.Commands[i].Name < app.Commands[j].Name
+	})
+
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}

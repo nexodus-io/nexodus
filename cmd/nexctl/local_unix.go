@@ -1,21 +1,58 @@
+//go:build linux || darwin
+
 package main
 
 import (
 	"fmt"
-	"net"
-	"net/rpc/jsonrpc"
-	"runtime"
-
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/urfave/cli/v2"
+	"net"
+	"net/rpc/jsonrpc"
 )
 
-func callNexd(method string) (string, error) {
-	if runtime.GOOS != nexodus.Linux.String() && runtime.GOOS != nexodus.Darwin.String() {
-		return "", fmt.Errorf("nexd ctl interface not currently supported on %s", runtime.GOOS)
-	}
+func init() {
+	additionalPlatformCommands = append(additionalPlatformCommands, &cli.Command{
+		Name:  "nexd",
+		Usage: "Commands for interacting with the local instance of nexd",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "unix-socket",
+				Usage:       "Path to the unix socket nexd is listening against",
+				Value:       nexodus.UnixSocketPath,
+				Destination: &nexodus.UnixSocketPath,
+				Required:    false,
+			},
+		},
+		Subcommands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Display the nexd version",
+				Action: func(cCtx *cli.Context) error {
+					err := cmdLocalVersion(cCtx)
+					if err != nil {
+						fmt.Printf("%s\n", err)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "status",
+				Usage: "Display the nexd status",
+				Action: func(cCtx *cli.Context) error {
+					c, err := cmdLocalStatus(cCtx)
+					fmt.Printf("%s", c)
+					if err != nil {
+						fmt.Printf("%s\n", err)
+					}
+					return nil
+				},
+			},
+		},
+	})
+}
 
-	conn, err := net.Dial("unix", nexodus.UnixSocketPath())
+func callNexd(method string) (string, error) {
+	conn, err := net.Dial("unix", nexodus.UnixSocketPath)
 	if err != nil {
 		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
 	}

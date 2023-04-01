@@ -1,4 +1,4 @@
-//go:build unix
+//go:build linux || darwin
 
 package nexodus
 
@@ -8,30 +8,25 @@ import (
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 )
 
-// TODO make this path configurable
-const unixSocketPathLinux = "/run/nexd.sock"
-const unixSocketPathDarwin = "/var/run/nexd.sock"
-
 func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
-	ax.CtlServerLinuxStart(ctx, wg)
+	ax.CtlServerUnixStart(ctx, wg)
 	return nil
 }
 
-func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) {
+func (ax *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) {
 	util.GoWithWaitGroup(wg, func() {
 		for {
 			// Use a different waitgroup here, because we want to make sure
 			// all of the subroutines have exited before we attempt to restart
 			// the control server.
 			ctlWg := &sync.WaitGroup{}
-			err := ax.CtlServerLinuxRun(ctx, ctlWg)
+			err := ax.CtlServerUnixRun(ctx, ctlWg)
 			ctlWg.Wait()
 			if err == nil {
 				// No error means it shut down cleanly because it got a message to stop
@@ -43,17 +38,9 @@ func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) 
 	})
 }
 
-func UnixSocketPath() string {
-	if runtime.GOOS == Darwin.String() {
-		return unixSocketPathDarwin
-	} else {
-		return unixSocketPathLinux
-	}
-}
-
-func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
-	os.Remove(UnixSocketPath())
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath(), Net: "unix"})
+func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
+	os.Remove(UnixSocketPath)
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath, Net: "unix"})
 	if err != nil {
 		ax.logger.Error("Error creating unix socket: ", err)
 		return err
