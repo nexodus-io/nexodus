@@ -75,3 +75,57 @@ flowchart TD
  dest(Source application connecting to port 443 on 10.10.100.151<br/><br/>Local Network IP: 10.10.100.152)-->|tcp|container
  end
 ```
+
+## Demo Using Containers
+
+This section provides instructions on running an end-to-end demonstration of using `nexd proxy` on both ends of a connection. We will run two containers: one running an http server, and another that would like to reach that http server. `nexd` in each container will negotiate an encrypted tunnel directly between each other. The connection will go over this tunnel.
+
+```mermaid
+flowchart TD
+ linkStyle default interpolate basis
+ device1[Container running nexd proxy and curl<br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:80]-->|tunnel|network{Nexodus Network<br/><br/>100.100.0.0/16}
+ network-->|tunnel|container[Container running nexd proxy and an http server.<br/><br/>Nexodus IP: 100.100.0.2<br/><br/>Accepts connections on 100.100.0.2:80 and forwards to 127.0.0.1:8080]
+```
+
+### Container with a proxy and an HTTP server
+
+ First, start a container to act as the http server.
+
+```console
+docker run -it --rm --name nexd-proxy-demo-server quay.io/nexodus/nexd
+```
+
+From within the container, start an http server and then start `nexd proxy`. Follow the authentication instructions in the output.
+
+!!! note
+
+     Once the device has authenticated with the Nexodus control plane, watch the output to see what IP has been assigned to this proxy. The rest of this demo assumes it was `100.100.0.1`.
+
+```console
+echo "It works!" > index.html
+python3 -m http.server 8080 &
+
+./nexd proxy --ingress tcp:80:127.0.0.1:8080 https://try.nexodus.io
+```
+
+### Container with a proxy and an HTTP client
+
+Next we need a second container that will act as the http client that will connect to a locally running `nexd proxy` to reach its destination. Start the container:
+
+```console
+docker run -it --rm --name nexd-proxy-demo-client quay.io/nexodus/nexd
+```
+
+From within the second container, start `nexd proxy` in the background, and follow the authentication instructions in the output from `nexd`.
+
+```console
+REMOTE_NEXD_IP=100.100.0.1
+./nexd proxy --egress tcp:80:${REMOTE_NEXD_IP}:80 https://try.nexodus.io &
+```
+
+Once the device has succcessfully connected and authenticated with Nexodus, you should be able to reach the http server from the first container over a Nexodus managed tunnel.
+
+```console
+$ curl http://localhost
+It works!
+```
