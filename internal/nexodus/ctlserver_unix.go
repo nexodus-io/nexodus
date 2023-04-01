@@ -1,4 +1,4 @@
-//go:build linux
+//go:build unix
 
 package nexodus
 
@@ -8,6 +8,7 @@ import (
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 )
 
 // TODO make this path configurable
-const UnixSocketPath = "/run/nexd.sock"
+const unixSocketPathLinux = "/run/nexd.sock"
+const unixSocketPathDarwin = "/var/run/nexd.sock"
 
 func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.CtlServerLinuxStart(ctx, wg)
@@ -41,9 +43,17 @@ func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) 
 	})
 }
 
+func UnixSocketPath() string {
+	if runtime.GOOS == Darwin.String() {
+		return unixSocketPathDarwin
+	} else {
+		return unixSocketPathLinux
+	}
+}
+
 func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
-	os.Remove(UnixSocketPath)
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath, Net: "unix"})
+	os.Remove(UnixSocketPath())
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath(), Net: "unix"})
 	if err != nil {
 		ax.logger.Error("Error creating unix socket: ", err)
 		return err

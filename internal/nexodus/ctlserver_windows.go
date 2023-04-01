@@ -11,3 +11,6 @@ func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error
 	ax.logger.Debugf("Ctl interface not yet supported on Windows")
 	return nil
 }
+func UnixSocketPath() string {
+	return ""
+}

@@ -11,7 +11,11 @@ import (
 )
 
 func callNexd(method string) (string, error) {
-	conn, err := net.Dial("unix", "/run/nexd.sock")
+	if runtime.GOOS != nexodus.Linux.String() && runtime.GOOS != nexodus.Darwin.String() {
+		return "", fmt.Errorf("nexd ctl interface not currently supported on %s", runtime.GOOS)
+	}
+
+	conn, err := net.Dial("unix", nexodus.UnixSocketPath())
 	if err != nil {
 		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
 	}
@@ -44,9 +48,6 @@ func checkVersion() error {
 
 func cmdLocalVersion(cCtx *cli.Context) error {
 	fmt.Printf("nexctl version: %s\n", Version)
-	if runtime.GOOS != nexodus.Linux.String() {
-		return fmt.Errorf("nexd ctl interface not currently supported on %s", runtime.GOOS)
-	}
 
 	result, err := callNexd("Version")
 	if err == nil {
@@ -57,10 +58,6 @@ func cmdLocalVersion(cCtx *cli.Context) error {
 }
 
 func cmdLocalStatus(cCtx *cli.Context) (string, error) {
-	if runtime.GOOS != nexodus.Linux.String() {
-		return "", fmt.Errorf("nexd ctl interface not yet supported on %s", runtime.GOOS)
-	}
-
 	if err := checkVersion(); err != nil {
 		return "", err
 	}

@@ -62,7 +62,7 @@ dist:
 
 dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -tags unix -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
@@ -71,7 +71,8 @@ dist/nexctl: $(NEXCTL_DEPS) | dist
 dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+		go build $(if $(or $(findstring linux,$@),$(findstring darwin,$@)),-tags unix) \
+		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
