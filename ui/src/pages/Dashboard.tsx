@@ -65,42 +65,42 @@ const Dashboard = () => {
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faApple as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-darwin-amd64"
+            href="https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexd"
           >
             Download (x86_64)
           </Button>
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faApple as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-darwin-arm64"
+            href="https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexd"
           >
             Download (aarch64)
           </Button>
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faWindows as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-windows-amd64"
+            href="https://nexodus-io.s3.amazonaws.com/windows-amd64/nexd.exe"
           >
             Download (x86_64)
           </Button>
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-linux-arm64"
+            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
           >
             Download (x86_64)
           </Button>
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-linux-arm64"
+            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
           >
             Download (aarch64)
           </Button>
           <Button
             size="small"
             startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/nexd-linux-arm64"
+            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
           >
             Download (arm)
           </Button>

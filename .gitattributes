@@ -1,0 +1,24 @@
+# See: https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings#per-repository-settings
+
+# Default to auto conversion.
+* text=auto
+
+# These are text files..
+*.md text
+
+# Unix text files...
+*.sh text eol=lf
+*.go text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.tsx text eol=lf
+*.ts text eol=lf
+
+# Windows text files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# These are binaries
+*.png binary
+*.jpg binary

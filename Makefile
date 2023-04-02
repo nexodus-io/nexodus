@@ -39,10 +39,10 @@ all: generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run lint
 ##@ Binaries
 
 .PHONY: nexd
-nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64 ## Build the nexd binary for all architectures
+nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
 
 .PHONY: nexctl
-nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
+nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
 
 # Only the apiserver depends on internal/docs/*.go
 COMMON_DEPS=$(filter-out $(wildcard ./internal/docs/*.go),$(wildcard ./internal/**/*.go)) go.sum go.mod
