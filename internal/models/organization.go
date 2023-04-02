@@ -10,10 +10,10 @@ import (
 // Organization contains Users and their Devices
 type Organization struct {
 	Base
-	OwnerID     string  `gorm:"owner_id;"`
-	Users       []*User `gorm:"many2many:user_organizations;"`
-	Devices     []*Device
-	Name        string `gorm:"uniqueIndex" sql:"index"`
+	OwnerID     string    `gorm:"owner_id;"`
+	Users       []*User   `gorm:"many2many:user_organizations;" json:"-"`
+	Devices     []*Device `json:"-"`
+	Name        string    `gorm:"uniqueIndex" sql:"index"`
 	Description string
 	IpCidr      string
 	HubZone     bool
@@ -24,8 +24,8 @@ type Organization struct {
 type OrganizationJSON struct {
 	ID          uuid.UUID   `json:"id"`
 	OwnerID     string      `json:"owner_id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
-	Users       []string    `json:"users" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
-	Devices     []uuid.UUID `json:"devices" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
+	Users       []string    `json:"-" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
+	Devices     []uuid.UUID `json:"-" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
 	Name        string      `json:"name" example:"zone-red"`
 	Description string      `json:"description" example:"The Red Zone"`
 	IpCidr      string      `json:"cidr" example:"172.16.42.0/24"`

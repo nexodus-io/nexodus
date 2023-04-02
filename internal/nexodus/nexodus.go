@@ -261,17 +261,22 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	user, err := ax.client.GetCurrentUser()
 	if err != nil {
-		return fmt.Errorf("get organization error: %w", err)
+		return fmt.Errorf("get user error: %w", err)
 	}
 
-	if len(user.Organizations) == 0 {
+	organizations, err := ax.client.GetOrganizations()
+	if err != nil {
+		return fmt.Errorf("get organizations error: %w", err)
+	}
+
+	if len(organizations) == 0 {
 		return fmt.Errorf("user does not belong to any organizations")
 	}
-	if len(user.Organizations) != 1 {
+	if len(organizations) != 1 {
 		return fmt.Errorf("user being in > 1 organization is not yet supported")
 	}
-	ax.logger.Infof("Device belongs in organization: %s", user.Organizations[0])
-	ax.organization = user.Organizations[0]
+	ax.logger.Infof("Device belongs in organization: %s (%s)", organizations[0].Name, organizations[0].ID)
+	ax.organization = organizations[0].ID
 
 	var localIP string
 	var localEndpointPort int

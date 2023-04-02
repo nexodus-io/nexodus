@@ -12,14 +12,24 @@ Feature: Invitations API
     Given I am logged in as "Johnson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${johnson_organization_id}
     Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${johnson_organization_id}
+    Given I store the ${response[0]} as ${johnson_organization}
+
 
     Given I am logged in as "Thompson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${thompson_organization_id}
     Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${thompson_organization_id}
+    Given I store the ${response[0]} as ${thompson_organization}
+
 
     # Current user is Thompson.. try to self add to Johnson's org.
     # this should not be allowed.
@@ -129,20 +139,11 @@ Feature: Invitations API
       """
 
     # Johnson should be in two orgs now...
-    When I GET path "/api/users/me"
+    When I GET path "/api/organizations"
     Then the response code should be 200
     And the response should match json:
       """
-      {
-        "devices": [],
-        "id": "${johnson_user_id}",
-        "invitations": [],
-        "organizations": [
-          "${johnson_organization_id}",
-          "${thompson_organization_id}"
-        ],
-        "username": "${response.username}"
-      }
+      [ ${johnson_organization}, ${thompson_organization} ]
       """
 
   Scenario: Receiver of invitation can delete the invitation
@@ -150,14 +151,21 @@ Feature: Invitations API
     Given I am logged in as "Johnson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${johnson_organization_id}
     Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${johnson_organization_id}
 
     Given I am logged in as "Thompson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${thompson_organization_id}
     Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${thompson_organization_id}
+
 
     # Create the invite.
     When I POST path "/api/invitations" with json body:
@@ -189,14 +197,20 @@ Feature: Invitations API
     Given I am logged in as "Johnson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${johnson_organization_id}
     Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${johnson_organization_id}
 
     Given I am logged in as "Thompson"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${thompson_organization_id}
     Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${thompson_organization_id}
 
     # Create the invite.
     When I POST path "/api/invitations" with json body:

@@ -45,7 +45,9 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	defer span.End()
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		res := tx.Preload("Organizations").First(&user, "id = ?", id)
+		res := tx.
+			Preload("Organizations").
+			First(&user, "id = ?", id)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				user.ID = id
@@ -120,8 +122,6 @@ func (api *API) GetUser(c *gin.Context) {
 	}
 
 	if res := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Organizations").
 		Scopes(api.UserIsCurrentUser(c)).
 		First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
@@ -145,10 +145,8 @@ func (api *API) ListUsers(c *gin.Context) {
 	defer span.End()
 	users := make([]*models.User, 0)
 	result := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Organizations").
 		Scopes(api.UserIsCurrentUser(c)).
-		Scopes(FilterAndPaginate(&models.User{}, c)).
+		Scopes(FilterAndPaginate(&models.User{}, c, "user_name")).
 		Find(&users)
 
 	if result.Error != nil {

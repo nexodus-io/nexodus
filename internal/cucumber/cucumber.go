@@ -168,61 +168,85 @@ func (s *TestScenario) JsonMustMatch(actual, expected string, expand bool) error
 
 // Expand replaces ${var} or $var in the string based on saved Variables in the session/test scenario.
 func (s *TestScenario) Expand(value string, skippedVars []string) (result string, rerr error) {
-	session := s.Session()
 	return os.Expand(value, func(name string) string {
 		if contains(skippedVars, name) {
 			return "$" + name
 		}
-
-		arrayResponse := strings.HasPrefix(name, "response[")
-		if strings.HasPrefix(name, "response.") || arrayResponse {
-
-			selector := "." + name
-			query, err := gojq.Parse(selector)
-			if err != nil {
-				rerr = err
-				return ""
-			}
-
-			j, err := session.RespJson()
-			if err != nil {
-				rerr = err
-				return ""
-			}
-
-			j = map[string]interface{}{
-				"response": j,
-			}
-
-			iter := query.Run(j)
-			if next, found := iter.Next(); found {
-				switch next := next.(type) {
-				case string:
-					return next
-				case float32:
-				case float64:
-					// handle int64 returned as float in json
-					return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", next), "0"), ".")
-				case nil:
-					rerr = fmt.Errorf("field ${%s} not found in json response:\n%s", name, string(session.RespBytes))
-					return ""
-				case error:
-					rerr = fmt.Errorf("failed to evaluate selection: %s: %w", name, next)
-					return ""
-				default:
-					return fmt.Sprintf("%s", next)
-				}
-			} else {
-				rerr = fmt.Errorf("field ${%s} not found in json response:\n%s", name, string(session.RespBytes))
-				return ""
-			}
-		}
-		value, found := s.Variables[name]
-		if !found {
+		res, err := s.ResolveString(name)
+		if err != nil {
+			rerr = err
 			return ""
 		}
-		return fmt.Sprint(value)
+		return res
 	}), rerr
+}
+
+func (s *TestScenario) ResolveString(name string) (string, error) {
+
+	value, err := s.Resolve(name)
+	if err != nil {
+		return "", err
+	}
+
+	switch value := value.(type) {
+	case string:
+		return value, nil
+	case bool:
+		if value {
+			return "true", nil
+		} else {
+			return "false", nil
+		}
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", value), nil
+	case float32, float64:
+		// handle int64 returned as float in json
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", value), "0"), "."), nil
+	case nil:
+		return "", nil
+	case error:
+		return "", fmt.Errorf("failed to evaluate selection: %s: %w", name, value)
+	}
+
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func (s *TestScenario) Resolve(name string) (interface{}, error) {
+	session := s.Session()
+	if name == "response" {
+		return session.RespJson()
+	} else if strings.HasPrefix(name, "response.") || strings.HasPrefix(name, "response[") {
+		selector := "." + name
+		query, err := gojq.Parse(selector)
+		if err != nil {
+			return nil, err
+		}
+
+		j, err := session.RespJson()
+		if err != nil {
+			return nil, err
+		}
+
+		j = map[string]interface{}{
+			"response": j,
+		}
+
+		iter := query.Run(j)
+		if next, found := iter.Next(); found {
+			return next, nil
+		} else {
+			return nil, fmt.Errorf("field ${%s} not found in json response:\n%s", name, string(session.RespBytes))
+		}
+	}
+	value, found := s.Variables[name]
+	if !found {
+		return nil, fmt.Errorf("variable ${%s} not defined yet", name)
+	}
+	return value, nil
 }
 
 func contains(s []string, e string) bool {

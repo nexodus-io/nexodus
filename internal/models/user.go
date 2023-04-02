@@ -14,19 +14,19 @@ type User struct {
 	ID            string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	DeletedAt     *time.Time `sql:"index" json:"-"`
-	Devices       []*Device
-	Organizations []*Organization `gorm:"many2many:user_organizations"`
+	DeletedAt     *time.Time      `sql:"index" json:"-"`
+	Devices       []*Device       `json:"-"`
+	Organizations []*Organization `gorm:"many2many:user_organizations" json:"-"`
 	UserName      string
-	Invitations   []*Invitation
+	Invitations   []*Invitation `json:"-"`
 }
 
 type UserJSON struct {
 	ID            string        `json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
-	Devices       []uuid.UUID   `json:"devices" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
-	Organizations []uuid.UUID   `json:"organizations" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
+	Devices       []uuid.UUID   `json:"-" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
+	Organizations []uuid.UUID   `json:"-" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
 	UserName      string        `json:"username" example:"admin"`
-	Invitations   []*Invitation `json:"invitations"`
+	Invitations   []*Invitation `json:"-"`
 }
 
 func (u User) MarshalJSON() ([]byte, error) {
