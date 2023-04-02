@@ -76,7 +76,6 @@ func (ax *Nexodus) buildPeersConfig() {
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.relay && value.Relay {
 			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
 				relayAllowedIP = append(relayAllowedIP, prefix)
 			}
 			ax.relayWgIP = relayIP
@@ -92,10 +91,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the wg config for all peers if this node is the organization's hub-router.
 		if ax.relay {
 			// Config if the node is a relay
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.LocalIP,
@@ -117,10 +113,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
 			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
 			// the symmetric NAT peer
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				directLocalPeerEndpointSocket,
@@ -139,10 +132,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
 			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
 			// symmetric nat node, do not add peers as it will relay and not mesh
-			for _, prefix := range value.ChildPrefix {
-				ax.addChildPrefixRoute(prefix)
-				value.AllowedIPs = append(value.AllowedIPs, prefix)
-			}
+			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				value.LocalIP,
