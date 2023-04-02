@@ -280,14 +280,8 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	suite.Require().NoError(err, fmt.Errorf("execution of copy command on %s failed: %v", nodeName, err))
 
 	// execute the nexd run script on the test container
-	out, err := suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
-	if suite.T().Failed() {
-		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
-		suite.logger.Errorf("output:\n%s", out)
-		suite.logger.Errorf("%+v", err)
-	} else {
-		suite.Require().NoError(err)
-	}
+	_, err = suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
+	suite.Require().NoError(err)
 }
 
 func networkAddr(n *net.IPNet) net.IP {
