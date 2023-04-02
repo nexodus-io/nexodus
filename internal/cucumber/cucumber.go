@@ -48,7 +48,6 @@ import (
 func NewTestSuite() *TestSuite {
 	return &TestSuite{
 		ApiURL:    "http://localhost:8000",
-		Users:     map[string]*TestUser{},
 		nextOrgId: 20000000,
 	}
 }
@@ -71,7 +70,6 @@ type TestSuite struct {
 	Context   context.Context
 	ApiURL    string
 	Mu        sync.Mutex
-	Users     map[string]*TestUser
 	nextOrgId uint32
 	TlsConfig *tls.Config
 }
@@ -95,13 +93,14 @@ type TestScenario struct {
 	PathPrefix      string
 	sessions        map[string]*TestSession
 	Variables       map[string]interface{}
+	Users           map[string]*TestUser
 	hasTestCaseLock bool
 }
 
 func (s *TestScenario) User() *TestUser {
 	s.Suite.Mu.Lock()
 	defer s.Suite.Mu.Unlock()
-	return s.Suite.Users[s.CurrentUser]
+	return s.Users[s.CurrentUser]
 }
 
 func (s *TestScenario) Session() *TestSession {
@@ -280,6 +279,7 @@ var StepModules []func(ctx *godog.ScenarioContext, s *TestScenario)
 func (suite *TestSuite) InitializeScenario(ctx *godog.ScenarioContext) {
 	s := &TestScenario{
 		Suite:     suite,
+		Users:     map[string]*TestUser{},
 		sessions:  map[string]*TestSession{},
 		Variables: map[string]interface{}{},
 	}

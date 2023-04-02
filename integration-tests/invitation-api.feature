@@ -97,7 +97,7 @@ Feature: Invitations API
       []
       """
 
-    # Only Johnson should be able to accept the invitation.
+    # Others cannot accept the invitation.
     Given I am logged in as "EvilBob"
     When I POST path "/api/invitations/${invitation_id}/accept"
     Then the response code should be 404
@@ -114,6 +114,7 @@ Feature: Invitations API
       {"error":"not found","resource":"invitation"}
       """
 
+    # Only Johnson should be able to accept the invitation.
     Given I am logged in as "Johnson"
     When I POST path "/api/invitations/${invitation_id}/accept"
     Then the response code should be 204
@@ -143,3 +144,72 @@ Feature: Invitations API
         "username": "${response.username}"
       }
       """
+
+  Scenario: Receiver of invitation can delete the invitation
+
+    Given I am logged in as "Johnson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".organizations[0]" selection from the response as ${johnson_organization_id}
+    Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    Given I am logged in as "Thompson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".organizations[0]" selection from the response as ${thompson_organization_id}
+    Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    # Create the invite.
+    When I POST path "/api/invitations" with json body:
+      """
+      {
+        "user_id": "${johnson_user_id}",
+        "organization_id": "${thompson_organization_id}"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ".id" selection from the response as ${invitation_id}
+
+    # EvilBob cannot delete the invitation.
+    Given I am logged in as "EvilBob"
+    When I DELETE path "/api/invitations/${invitation_id}"
+    Then the response code should be 404
+    And the response should match json:
+      """
+      {"error":"not found","resource":"invitation"}
+      """
+
+    Given I am logged in as "Johnson"
+    When I DELETE path "/api/invitations/${invitation_id}"
+    Then the response code should be 204
+    And the response should match ""
+
+  Scenario: Sender of invitation can delete the invitation
+
+    Given I am logged in as "Johnson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".organizations[0]" selection from the response as ${johnson_organization_id}
+    Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    Given I am logged in as "Thompson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".organizations[0]" selection from the response as ${thompson_organization_id}
+    Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    # Create the invite.
+    When I POST path "/api/invitations" with json body:
+      """
+      {
+        "user_id": "${johnson_user_id}",
+        "organization_id": "${thompson_organization_id}"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ".id" selection from the response as ${invitation_id}
+
+    Given I am logged in as "Thompson"
+    When I DELETE path "/api/invitations/${invitation_id}"
+    Then the response code should be 204
+    And the response should match ""
