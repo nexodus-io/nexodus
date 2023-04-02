@@ -81,7 +81,7 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist
-	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint
+	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate
 
 ##@ Development
 
@@ -157,12 +157,15 @@ opa-fmt: ## Lint the OPA policies
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
 
 .PHONY: generate
-generate: gen-docs ## Run all code generators and formatters
+generate: .generate ## Run all code generators and formatters
+
+.generate: .gen-docs
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
 	$(CMD_PREFIX) go fmt ./...
+	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests

@@ -23,6 +23,7 @@
 .md-lint
 .ui-lint
 .opa-lint
+.generate
 
 #tests
 ./tests/*.json
