@@ -52,6 +52,15 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		relayNode = cCtx.Bool("relay-node")
 		discoveryNode = cCtx.Bool("discovery-node")
 	case nexdModeProxy:
+		// These are top-level flags that are not compatible with `nexd proxy`.
+		// It would be nicer to convert these to subcommands, but that's for
+		// another day. TODO
+		proxyBadFlags := [3]string{"child-prefix", "relay-node", "discovery-node"}
+		for _, flag := range proxyBadFlags {
+			if cCtx.IsSet(flag) {
+				return fmt.Errorf("flag %s is not compatible with `nexd proxy`", flag)
+			}
+		}
 		userspaceMode = true
 		logger.Info("Starting in L4 proxy mode")
 	}
