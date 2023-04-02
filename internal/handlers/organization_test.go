@@ -150,10 +150,10 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		var actual []models.OrganizationJSON
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
-
+		// The orgs are sorted by name..
 		assert.Len(actual, 1)
 		assert.Equal("4", res.Header().Get(TotalCountHeader))
-		assert.Equal("organization-c", actual[0].Name)
+		assert.Equal("testuser", actual[0].Name)
 	}
 
 }
