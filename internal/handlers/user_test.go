@@ -26,5 +26,5 @@ func (suite *HandlerTestSuite) TestGetUser() {
 	err = json.Unmarshal(body, &actual)
 	require.NoError(err, string(body))
 
-	assert.Equal(1, len(actual.Organizations))
+	assert.NotEmpty(actual.ID)
 }

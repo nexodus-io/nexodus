@@ -370,21 +370,32 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	assert.NoErrorf(err, gather)
 
 	// get the device id for node3
-	userOut, err := suite.runCommand(nexctl,
-		"--username", username, "--password", password,
+	commandOut, err := suite.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
 		"--output", "json",
 		"user", "get-current",
 	)
-	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
 	var user models.UserJSON
-	err = json.Unmarshal([]byte(userOut), &user)
-	assert.Equal(1, len(user.Organizations))
-	orgID := user.Organizations[0]
+	err = json.Unmarshal([]byte(commandOut), &user)
+	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
+
+	commandOut, err = suite.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "list",
+	)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	var organizations []models.OrganizationJSON
+	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.Equal(1, len(organizations))
+	orgID := organizations[0].ID
 
 	allDevices, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
-		"--output", "json-raw",
+		"--output", "json",
 		"device", "list", "--organization-id", orgID.String(),
 	)
 	var devices []models.Device
@@ -561,17 +572,26 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork})
 
 	// validate nexctl user get-current returns a user
-	userOut, err := suite.runCommand(nexctl,
+	commandOut, err := suite.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var user models.UserJSON
-	err = json.Unmarshal([]byte(userOut), &user)
+	err = json.Unmarshal([]byte(commandOut), &user)
 	assert.NotEmpty(user)
 	require.NotEmpty(user.UserName)
-	require.Equal(1, len(user.Organizations))
+
+	commandOut, err = suite.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "list",
+	)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	var organizations []models.OrganizationJSON
+	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.Equal(1, len(organizations))
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -695,7 +715,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 		"--password", password,
 		"--output", "json-raw",
 		"device", "list",
-		"--organization-id", user.Organizations[0].String(),
+		"--organization-id", organizations[0].ID.String(),
 	)
 
 	json.Unmarshal([]byte(devicesInOrganization), &devices)

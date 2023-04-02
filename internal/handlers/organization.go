@@ -307,10 +307,11 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 		First(&device, "id = ?", id.String())
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			models.NewNotFoundError("device")
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
 		}
+		return
 	}
 	c.JSON(http.StatusOK, device)
 }
