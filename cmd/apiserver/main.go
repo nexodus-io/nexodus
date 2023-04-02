@@ -194,6 +194,18 @@ func main() {
 				Value:   "p2s5v8y/B?E(G+KbPeShVmYq3t6w9z$C",
 				EnvVars: []string{"NEXAPI_COOKIE_KEY"},
 			},
+			&cli.StringFlag{
+				Name:    "redis-server",
+				Usage:   "Redis host:port address",
+				Value:   "redis:6379",
+				EnvVars: []string{"NEXAPI_REDIS_SERVER"},
+			},
+			&cli.IntFlag{
+				Name:    "redis-db",
+				Usage:   "Redis database to be selected after connecting to the server.",
+				Value:   1,
+				EnvVars: []string{"NEXAPI_REDIS_DB"},
+			},
 		},
 
 		Action: func(cCtx *cli.Context) error {
@@ -256,19 +268,20 @@ func main() {
 					log.Fatal(err)
 				}
 
-				router, err := routers.NewAPIRouter(
-					ctx,
-					logger.Sugar(),
-					api,
-					cCtx.String("oidc-client-id-web"),
-					cCtx.String("oidc-client-id-cli"),
-					cCtx.String("oidc-url"),
-					cCtx.String("oidc-backchannel-url"),
-					cCtx.Bool("insecure-tls"),
-					webAuth,
-					cliAuth,
-					store,
-				)
+				router, err := routers.NewAPIRouter(ctx, routers.APIRouterOptions{
+					Logger:          logger.Sugar(),
+					Api:             api,
+					ClientIdWeb:     cCtx.String("oidc-client-id-web"),
+					ClientIdCli:     cCtx.String("oidc-client-id-cli"),
+					OidcURL:         cCtx.String("oidc-url"),
+					OidcBackchannel: cCtx.String("oidc-backchannel-url"),
+					InsecureTLS:     cCtx.Bool("insecure-tls"),
+					BrowserFlow:     webAuth,
+					DeviceFlow:      cliAuth,
+					Store:           store,
+					RedisServer:     cCtx.String("redis-server"),
+					RedisDB:         cCtx.Int("redis-db"),
+				})
 				if err != nil {
 					log.Fatal(err)
 				}
