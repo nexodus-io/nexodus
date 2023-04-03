@@ -160,12 +160,12 @@ func newClient(ctx context.Context, username, password string) (*client.Client, 
 	return client.NewClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
-func getContainerIfaceIP(ctx context.Context, family, dev string, ctr testcontainers.Container) (string, error) {
+func getContainerIfaceIP(ctx context.Context, family ipFamily, dev string, ctr testcontainers.Container) (string, error) {
 	var ip string
 	err := backoff.Retry(func() error {
 		code, outputRaw, err := ctr.Exec(
 			ctx,
-			[]string{"ip", "--brief", family, "address", "show", dev},
+			[]string{"ip", "--brief", family.String(), "address", "show", dev},
 		)
 		if err != nil {
 			return err
@@ -195,11 +195,11 @@ func getContainerIfaceIP(ctx context.Context, family, dev string, ctr testcontai
 	return ip, err
 }
 
-func ping(ctx context.Context, ctr testcontainers.Container, family, address string) error {
+func ping(ctx context.Context, ctr testcontainers.Container, family ipFamily, address string) error {
 	err := backoff.Retry(func() error {
 		code, outputRaw, err := ctr.Exec(
 			ctx,
-			[]string{"ping", family, "-c", "2", "-w", "2", address},
+			[]string{"ping", family.String(), "-c", "2", "-w", "2", address},
 		)
 		if err != nil {
 			return err

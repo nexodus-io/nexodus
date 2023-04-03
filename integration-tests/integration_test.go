@@ -34,9 +34,18 @@ var ipamDriver string
 
 const (
 	nexctl = "../dist/nexctl"
-	inetV4 = "-4"
-	inetV6 = "-6"
 )
+
+type ipFamily string
+
+const (
+	inetV4 ipFamily = "-4"
+	inetV6 ipFamily = "-6"
+)
+
+func (f ipFamily) String() string {
+	return string(f)
+}
 
 type v6Enable bool
 
