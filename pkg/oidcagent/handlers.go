@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -76,7 +77,7 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	logger.Debug("set cookies")
-	c.JSON(http.StatusOK, LoginStartReponse{
+	c.JSON(http.StatusOK, models.LoginStartReponse{
 		AuthorizationRequestURL: o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce)),
 	})
 }
@@ -90,7 +91,7 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 // @Success      200
 // @Router       /login/end [post]
 func (o *OidcAgent) LoginEnd(c *gin.Context) {
-	var data LoginEndRequest
+	var data models.LoginEndRequest
 	err := c.BindJSON(&data)
 	if err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -223,7 +224,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 
 	session := ginsession.FromContext(c)
 	logger.With("session_id", session.SessionID()).With("logged_in", loggedIn).Debug("complete")
-	res := LoginEndResponse{
+	res := models.LoginEndResponse{
 		Handled:  handleAuth,
 		LoggedIn: loggedIn,
 	}
@@ -272,7 +273,7 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 		return
 	}
 	o.logger.With("claims", claims).Debug("got claims from id_token")
-	res := UserInfoResponse{
+	res := models.UserInfoResponse{
 		Subject:           info.Subject,
 		PreferredUsername: claims.Username,
 		GivenName:         claims.GivenName,
@@ -389,7 +390,7 @@ func (o *OidcAgent) Logout(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, LogoutResponse{
+	c.JSON(http.StatusOK, models.LogoutResponse{
 		LogoutURL: logoutURL.String(),
 	})
 }
@@ -433,7 +434,7 @@ func isLoggedIn(c *gin.Context) bool {
 }
 
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
-	c.JSON(http.StatusOK, DeviceStartReponse{
+	c.JSON(http.StatusOK, models.DeviceStartReponse{
 		DeviceAuthURL: o.deviceAuthURL,
 		Issuer:        o.oidcIssuer,
 		ClientID:      o.clientID,
