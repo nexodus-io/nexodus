@@ -166,7 +166,7 @@ generate: gen-docs ## Run all code generators and formatters
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests
-	go test -v --tags=integration ./integration-tests/...
+	go test -v --tags=integration ./integration-tests/... $(if $(NEX_TEST),-run $(NEX_TEST),)
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
