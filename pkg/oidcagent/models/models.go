@@ -1,4 +1,4 @@
-package oidcagent
+package models
 
 type LoginStartReponse struct {
 	AuthorizationRequestURL string `json:"authorization_request_url"`

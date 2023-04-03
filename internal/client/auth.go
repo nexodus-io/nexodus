@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
-	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"golang.org/x/oauth2"
 )
 
@@ -58,7 +58,7 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 	return token, idToken, nil
 }
 
-func startLogin(client *http.Client, hostname url.URL) (*agent.DeviceStartReponse, error) {
+func startLogin(client *http.Client, hostname url.URL) (*models.DeviceStartReponse, error) {
 	dest := hostname
 	dest.Path = "/device/login/start"
 	res, err := client.Post(dest.String(), "application/json", nil)
@@ -75,7 +75,7 @@ func startLogin(client *http.Client, hostname url.URL) (*agent.DeviceStartRepons
 		return nil, err
 	}
 
-	var resp agent.DeviceStartReponse
+	var resp models.DeviceStartReponse
 	if err = json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}

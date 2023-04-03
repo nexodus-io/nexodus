@@ -4,6 +4,7 @@ package nexodus
 
 import (
 	"context"
+	"github.com/nexodus-io/nexodus/internal/api"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -39,8 +40,8 @@ func (ax *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
-	os.Remove(UnixSocketPath)
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath, Net: "unix"})
+	os.Remove(api.UnixSocketPath)
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: api.UnixSocketPath, Net: "unix"})
 	if err != nil {
 		ax.logger.Error("Error creating unix socket: ", err)
 		return err

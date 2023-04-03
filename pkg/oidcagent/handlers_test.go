@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -44,7 +45,7 @@ func TestLoginStart(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response LoginStartReponse
+	var response models.LoginStartReponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -63,7 +64,7 @@ func TestLoginEnd_AuthErrorLoginRequired(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := LoginEndRequest{
+	loginEndRequest := models.LoginEndRequest{
 		RequestURL: "https://example.com?state=foo&error=login_required",
 	}
 	reqBody, err := json.Marshal(&loginEndRequest)
@@ -82,7 +83,7 @@ func TestLoginEnd_AuthErrorOther(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := LoginEndRequest{
+	loginEndRequest := models.LoginEndRequest{
 		RequestURL: "https://example.com?state=foo&error=kittens",
 	}
 	reqBody, err := json.Marshal(&loginEndRequest)
@@ -130,7 +131,7 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	r := gin.New()
 	r.Use(ginsession.New())
 	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := LoginEndRequest{
+	loginEndRequest := models.LoginEndRequest{
 		RequestURL: "https://example.com?state=foo&code=kittens",
 	}
 	reqBody, err := json.Marshal(&loginEndRequest)
@@ -152,7 +153,7 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response LoginEndResponse
+	var response models.LoginEndResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -190,7 +191,7 @@ func TestLoginEnd_LoggedIn(t *testing.T) {
 	})
 
 	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := LoginEndRequest{
+	loginEndRequest := models.LoginEndRequest{
 		RequestURL: "https://example.com",
 	}
 	reqBody, err := json.Marshal(&loginEndRequest)
@@ -204,7 +205,7 @@ func TestLoginEnd_LoggedIn(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response LoginEndResponse
+	var response models.LoginEndResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -228,7 +229,7 @@ func TestLoginEnd_NotLoggedIn(t *testing.T) {
 	)
 	r.Use(ginsession.New())
 	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := LoginEndRequest{
+	loginEndRequest := models.LoginEndRequest{
 		RequestURL: "https://example.com",
 	}
 	reqBody, err := json.Marshal(&loginEndRequest)
@@ -242,7 +243,7 @@ func TestLoginEnd_NotLoggedIn(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response LoginEndResponse
+	var response models.LoginEndResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -341,7 +342,7 @@ func TestUserInfo_LoggedIn(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response UserInfoResponse
+	var response models.UserInfoResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -387,7 +388,7 @@ func TestDeviceStart(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response DeviceStartReponse
+	var response models.DeviceStartReponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
