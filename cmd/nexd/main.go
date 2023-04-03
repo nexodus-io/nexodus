@@ -52,6 +52,15 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		relayNode = cCtx.Bool("relay-node")
 		discoveryNode = cCtx.Bool("discovery-node")
 	case nexdModeProxy:
+		// These are top-level flags that are not compatible with `nexd proxy`.
+		// It would be nicer to convert these to subcommands, but that's for
+		// another day. TODO
+		proxyBadFlags := [3]string{"child-prefix", "relay-node", "discovery-node"}
+		for _, flag := range proxyBadFlags {
+			if cCtx.IsSet(flag) {
+				return fmt.Errorf("flag %s is not compatible with `nexd proxy`", flag)
+			}
+		}
 		userspaceMode = true
 		logger.Info("Starting in L4 proxy mode")
 	}
@@ -180,7 +189,7 @@ func main() {
 			&cli.StringFlag{
 				Name:     "request-ip",
 				Value:    "",
-				Usage:    "Request a specific `IP` address from Ipam if available (optional)",
+				Usage:    "Request a specific `IPv4` address from IPAM if available (optional)",
 				EnvVars:  []string{"NEXD_REQUESTED_IP"},
 				Required: false,
 			},
@@ -193,7 +202,7 @@ func main() {
 			},
 			&cli.StringSliceFlag{
 				Name:     "child-prefix",
-				Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
+				Usage:    "Request an `IPv4 CIDR` range of addresses that will be advertised from this node (optional)",
 				EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
 				Required: false,
 			},

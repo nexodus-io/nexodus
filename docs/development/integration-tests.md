@@ -26,3 +26,11 @@ go test -c --tags=integration ./integration-tests/...
 # Run integration tests using rootful podman
 sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 ```
+
+## Run a Specific Test
+
+You can run a specific integration test by setting `NEX_TEST`. For example:
+
+```console
+NEX_TEST=TestNexodusIntegrationSuite/TestProxyEgress make e2e
+```

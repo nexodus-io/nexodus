@@ -7,6 +7,9 @@ definitions:
       cidr:
         example: 172.16.42.0/24
         type: string
+      cidr_v6:
+        example: 0200::/8
+        type: string
       description:
         example: The Red Zone
         type: string
@@ -43,9 +46,13 @@ definitions:
         type: string
       local_ip:
         type: string
+      local_ip_v6:
+        type: string
       organization_id:
         type: string
       organization_prefix:
+        type: string
+      organization_prefix_v6:
         type: string
       public_key:
         type: string
@@ -56,6 +63,8 @@ definitions:
       symmetric_nat:
         type: boolean
       tunnel_ip:
+        type: string
+      tunnel_ip_v6:
         type: string
       user_id:
         type: string
@@ -76,10 +85,6 @@ definitions:
     properties:
       description:
         type: string
-      devices:
-        items:
-          $ref: '#/definitions/models.Device'
-        type: array
       hubZone:
         type: boolean
       id:
@@ -91,14 +96,12 @@ definitions:
         type: array
       ipCidr:
         type: string
+      ipCidrV6:
+        type: string
       name:
         type: string
       ownerID:
         type: string
-      users:
-        items:
-          $ref: '#/definitions/models.User'
-        type: array
     type: object
   models.UpdateDevice:
     properties:
@@ -129,23 +132,11 @@ definitions:
     properties:
       createdAt:
         type: string
-      devices:
-        items:
-          $ref: '#/definitions/models.Device'
-        type: array
       id:
         description: Since the ID comes from the IDP, we have no control over the
           format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      invitations:
-        items:
-          $ref: '#/definitions/models.Invitation'
-        type: array
-      organizations:
-        items:
-          $ref: '#/definitions/models.Organization'
-        type: array
       updatedAt:
         type: string
       userName:

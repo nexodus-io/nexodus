@@ -32,19 +32,27 @@ var defaultNetwork string
 var hostDNSName string
 var ipamDriver string
 
-const nexctl = "../dist/nexctl"
+const (
+	nexctl    = "../dist/nexctl"
+	inetV4    = "-4"
+	inetV6    = "-6"
+	disableV6 = 0
+	enableV6  = 1
+)
 
 func init() {
 	if os.Getenv("NEXODUS_TEST_PODMAN") != "" {
 		fmt.Println("Using podman")
 		providerType = testcontainers.ProviderPodman
 		defaultNetwork = "podman"
+		//defaultNetwork = "nexodus"
 		ipamDriver = "host-local"
 		hostDNSName = "10.88.0.1"
 	} else {
 		fmt.Println("Using docker")
 		providerType = testcontainers.ProviderDocker
 		defaultNetwork = "bridge"
+		//defaultNetwork = "nexodus"
 		ipamDriver = "default"
 		hostDNSName = dockerKindGatewayIP()
 	}
@@ -101,8 +109,8 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestBasicConnectivity-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "TestBasicConnectivity-node2", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestBasicConnectivity-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestBasicConnectivity-node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -113,18 +121,31 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
-	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
 
 	gather := suite.gatherFail(ctx, node1, node2)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
+	assert.NoErrorf(err, gather)
+
+	node1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+	require.NoError(err)
+	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+	require.NoError(err)
+
+	suite.logger.Infof("Pinging %s from node1", node1IPv6)
+	err = ping(ctx, node1, inetV6, node1IPv6)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node2IPv6)
+	err = ping(ctx, node2, inetV6, node2IPv6)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Info("killing nexodus and re-joining nodes with new keys")
@@ -146,15 +167,23 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	go suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
 	var newNode1IP string
+	var newNode1IPv6 string
 	err = backoff.Retry(
 		func() error {
 			var err error
-			newNode1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
+			newNode1IP, err = getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 			if err != nil {
 				return err
 			}
 			if newNode1IP == node1IP {
-				return fmt.Errorf("new node1IP is the same as old ip")
+				return fmt.Errorf("new node1IP is the same as the old ip, it should be the next addr in the pool")
+			}
+			newNode1IPv6, err = getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+			if err != nil {
+				return err
+			}
+			if newNode1IPv6 == node1IPv6 {
+				return fmt.Errorf("new node1IPv6 is the same as the old ip, it should be the next addr in the pool")
 			}
 			return nil
 		},
@@ -163,15 +192,23 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	require.NoError(err)
 
 	var newNode2IP string
+	var newNode2IPv6 string
 	err = backoff.Retry(
 		func() error {
 			var err error
-			newNode2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
+			newNode2IP, err = getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 			if err != nil {
 				return err
 			}
 			if newNode2IP == node2IP {
-				return fmt.Errorf("new node1IP is the same as old ip")
+				return fmt.Errorf("new node1IP is the same as the old ip, it should be the next addr in the pool")
+			}
+			newNode2IPv6, err = getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+			if err != nil {
+				return err
+			}
+			if newNode2IPv6 == node2IPv6 {
+				return fmt.Errorf("new node1IPv6 is the same as the old ip, it should be the next addr in the pool")
 			}
 			return nil
 		},
@@ -181,11 +218,19 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 	gather = suite.gatherFail(ctx, node1, node2)
 	suite.logger.Infof("Pinging %s from node1", newNode2IP)
-	err = ping(ctx, node1, newNode2IP)
+	err = ping(ctx, node1, inetV4, newNode2IP)
 	assert.NoError(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", newNode1IP)
-	err = ping(ctx, node2, newNode1IP)
+	err = ping(ctx, node2, inetV4, newNode1IP)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node1", newNode2IPv6)
+	err = ping(ctx, node1, inetV6, newNode2IPv6)
+	assert.NoError(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", newNode1IPv6)
+	err = ping(ctx, node2, inetV6, newNode1IPv6)
 	assert.NoErrorf(err, gather)
 }
 
@@ -202,8 +247,8 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	node2IP := "100.100.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestRequestIPOrganization-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "TestRequestIPOrganization-node2", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestRequestIPOrganization-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestRequestIPOrganization-node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
@@ -218,18 +263,18 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
 
 	gather := suite.gatherFail(ctx, node1, node2)
 
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Info("killing nexodus and re-joining nodes")
@@ -259,11 +304,11 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 
 	// ping the requested IP address (--request-ip)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
 	assert.NoErrorf(err, gather)
 }
 
@@ -280,9 +325,9 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestHubOrganization-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "TestHubOrganization-node2", []string{defaultNetwork})
-	node3 := suite.CreateNode(ctx, "TestHubOrganization-node3", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestHubOrganization-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestHubOrganization-node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "TestHubOrganization-node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -294,29 +339,29 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
 	suite.runNexd(ctx, node3, "--username", username, "--password", password)
 
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
-	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
-	node3IP, err := getContainerIfaceIP(ctx, "wg0", node3)
+	node3IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node3)
 	require.NoError(err)
 
 	gather := suite.gatherFail(ctx, node1, node2, node3)
 
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node1", node3IP)
-	err = ping(ctx, node1, node3IP)
+	err = ping(ctx, node1, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node3", node1IP)
-	err = ping(ctx, node3, node2IP)
+	err = ping(ctx, node2, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node3IP)
-	err = ping(ctx, node2, node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	hubOrganizationChildPrefix := "10.188.100.0/24"
@@ -341,11 +386,11 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	require.NoError(err)
 
 	// address will be the same, this is just a readiness check for gather data
-	node1IP, err = getContainerIfaceIP(ctx, "wg0", node1)
+	node1IP, err = getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
-	node2IP, err = getContainerIfaceIP(ctx, "wg0", node2)
+	node2IP, err = getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
-	node3IP, err = getContainerIfaceIP(ctx, "wg0", node3)
+	node3IP, err = getContainerIfaceIP(ctx, inetV4, "wg0", node3)
 	require.NoError(err)
 
 	gather = suite.gatherFail(ctx, node1, node2, node3)
@@ -354,37 +399,48 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2ChildPrefixLoopbackNet)
 
 	suite.T().Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
-	err = ping(ctx, node3, node2LoopbackIP.String())
+	err = ping(ctx, node2, inetV4, node2LoopbackIP.String())
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node1", node3IP)
-	err = ping(ctx, node1, node3IP)
+	err = ping(ctx, node1, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node3", node1IP)
-	err = ping(ctx, node3, node2IP)
+	err = ping(ctx, node2, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node3IP)
-	err = ping(ctx, node2, node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	// get the device id for node3
-	userOut, err := suite.runCommand(nexctl,
-		"--username", username, "--password", password,
+	commandOut, err := suite.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
 		"--output", "json",
 		"user", "get-current",
 	)
-	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
 	var user models.UserJSON
-	err = json.Unmarshal([]byte(userOut), &user)
-	assert.Equal(1, len(user.Organizations))
-	orgID := user.Organizations[0]
+	err = json.Unmarshal([]byte(commandOut), &user)
+	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
+
+	commandOut, err = suite.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "list",
+	)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	var organizations []models.OrganizationJSON
+	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.Equal(1, len(organizations))
+	orgID := organizations[0].ID
 
 	allDevices, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
-		"--output", "json-raw",
+		"--output", "json",
 		"device", "list", "--organization-id", orgID.String(),
 	)
 	var devices []models.Device
@@ -417,7 +473,7 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	gather = suite.gatherFail(ctx, node1, node2, node3)
 
 	// verify the deleted device details are no longer in a device's tables
-	node2routes := suite.routesDump(ctx, node2)
+	node2routes := suite.routesDumpV4(ctx, node2)
 	node2dump := suite.wgDump(ctx, node2)
 
 	assert.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device", gather)
@@ -435,18 +491,18 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 
 	password := "floofykittens"
 	username := suite.createNewUser(ctx, password)
-	node1LoopbackNet := "172.16.10.101/32"
+	node3LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNet := "172.16.20.102/32"
-	node1ChildPrefix := "172.16.10.0/24"
+	node3ChildPrefix := "172.16.10.0/24"
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestChildPrefix-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "TestChildPrefix-node2", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestChildPrefix-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestChildPrefix-node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "TestChildPrefix-node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
-		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
 		"--username", username, "--password", password,
 	)
 
@@ -459,38 +515,43 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 		"--username", username, "--password", password,
 	)
 
+	suite.runNexd(ctx, node3,
+		fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
+		"--username", username, "--password", password,
+	)
+
 	// add loopbacks to the containers that are contained in the node's child prefix
-	_, err = suite.containerExec(ctx, node1, []string{"ip", "addr", "add", node1LoopbackNet, "dev", "lo"})
+	_, err = suite.containerExec(ctx, node3, []string{"ip", "addr", "add", node3LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 
 	// parse the loopback ip from the loopback prefix
-	node1LoopbackIP, _, _ := net.ParseCIDR(node1LoopbackNet)
+	node3LoopbackIP, _, _ := net.ParseCIDR(node3LoopbackNet)
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2LoopbackNet)
 
 	// address will be the same, this is just a readiness check for gather data
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	node3IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node3)
 	require.NoError(err)
-	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
 
-	gather := suite.gatherFail(ctx, node1, node2)
+	gather := suite.gatherFail(ctx, node1, node2, node3)
 
-	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	suite.logger.Infof("Pinging %s from node3", node2IP)
+	err = ping(ctx, node3, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
+	suite.logger.Infof("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s from node1", node2LoopbackIP)
-	err = ping(ctx, node1, node2LoopbackIP.String())
+	suite.logger.Infof("Pinging %s from node3", node2LoopbackIP)
+	err = ping(ctx, node3, inetV4, node2LoopbackIP.String())
 	assert.NoErrorf(err, gather)
 
-	suite.logger.Infof("Pinging %s from node2", node1LoopbackIP)
-	err = ping(ctx, node2, node1LoopbackIP.String())
+	suite.logger.Infof("Pinging %s from node2", node3LoopbackIP)
+	err = ping(ctx, node2, inetV4, node3LoopbackIP.String())
 	assert.NoErrorf(err, gather)
 }
 
@@ -507,9 +568,9 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestRelay-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "TestRelay-node2", []string{defaultNetwork})
-	node3 := suite.CreateNode(ctx, "TestRelay-node3", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "TestRelay-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestRelay-node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "TestRelay-node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -521,28 +582,53 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
 	suite.runNexd(ctx, node3, "--username", username, "--password", password, "--relay-only")
 
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	// v4 relay connectivity checks
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
-	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
-	node3IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+	node3IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
 
 	gather := suite.gatherFail(ctx, node1, node2, node3)
 	suite.logger.Infof("Pinging %s from node1", node3IP)
-	err = ping(ctx, node1, node3IP)
+	err = ping(ctx, node1, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node3IP)
-	err = ping(ctx, node2, node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node3", node1IP)
-	err = ping(ctx, node3, node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node3", node2IP)
-	err = ping(ctx, node3, node2IP)
+	err = ping(ctx, node2, inetV4, node2IP)
+	assert.NoErrorf(err, gather)
+
+	// v6 relay connectivity checks
+	node1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+	require.NoError(err)
+	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+	require.NoError(err)
+	node3IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+	require.NoError(err)
+
+	suite.logger.Infof("Pinging %s from node1", node3IPv6)
+	err = ping(ctx, node1, inetV6, node3IPv6)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node2", node3IPv6)
+	err = ping(ctx, node2, inetV6, node3IPv6)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node3", node1IPv6)
+	err = ping(ctx, node2, inetV6, node1IPv6)
+	assert.NoErrorf(err, gather)
+
+	suite.logger.Infof("Pinging %s from node3", node2IPv6)
+	err = ping(ctx, node2, inetV6, node2IPv6)
 	assert.NoErrorf(err, gather)
 }
 
@@ -557,21 +643,30 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "Testnexctl-node1", []string{defaultNetwork})
-	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork})
+	node1 := suite.CreateNode(ctx, "Testnexctl-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork}, enableV6)
 
 	// validate nexctl user get-current returns a user
-	userOut, err := suite.runCommand(nexctl,
+	commandOut, err := suite.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var user models.UserJSON
-	err = json.Unmarshal([]byte(userOut), &user)
+	err = json.Unmarshal([]byte(commandOut), &user)
 	assert.NotEmpty(user)
 	require.NotEmpty(user.UserName)
-	require.Equal(1, len(user.Organizations))
+
+	commandOut, err = suite.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "list",
+	)
+	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	var organizations []models.OrganizationJSON
+	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.Equal(1, len(organizations))
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -582,19 +677,28 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
 
-	node1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	// validate nexd has started
+	err = suite.nexdStatus(ctx, node2)
 	require.NoError(err)
-	node2IP, err := getContainerIfaceIP(ctx, "wg0", node2)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
 	require.NoError(err)
 
 	gather := suite.gatherFail(ctx, node1, node2)
 	suite.logger.Infof("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	assert.NoErrorf(err, gather)
 
 	suite.logger.Infof("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
 	assert.NoErrorf(err, gather)
+
+	node1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+	require.NoError(err)
+	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+	require.NoError(err)
 
 	// validate list devices and register IDs and IPs
 	allDevices, err := suite.runCommand(nexctl,
@@ -633,20 +737,22 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	require.NoError(err)
 
 	// delete both devices from nexodus
-	_, err = suite.runCommand(nexctl,
+	node1Delete, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
 		"--device-id", node1DeviceID,
 	)
 	require.NoError(err)
-	_, err = suite.runCommand(nexctl,
+	suite.logger.Infof("nexctl node1 delete results: %s", node1Delete)
+	node2Delete, err := suite.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"device", "delete",
 		"--device-id", node2DeviceID,
 	)
 	require.NoError(err)
+	suite.logger.Infof("nexctl node2 delete results: %s", node2Delete)
 
 	// delete the keys on both nodes to force ensure the deleted device released it's
 	// IPAM address and will re-issue that address to a new device with a new keypair.
@@ -665,7 +771,11 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
 
-	newNode1IP, err := getContainerIfaceIP(ctx, "wg0", node1)
+	// validate nexd has started
+	err = suite.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	newNode1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
 	gather = suite.gatherFail(ctx, node1, node2)
 
@@ -676,17 +786,38 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	if newNode1IP == node2IP {
 		addressMatch = true
 		suite.logger.Infof("Pinging %s from node1", node1IP)
-		err = ping(ctx, node1, node1IP)
+		err = ping(ctx, node1, inetV4, node1IP)
 		assert.NoErrorf(err, gather)
 	}
 	if newNode1IP == node1IP {
 		addressMatch = true
 		suite.logger.Infof("Pinging %s from node1", node2IP)
-		err = ping(ctx, node1, node2IP)
+		err = ping(ctx, node1, inetV4, node2IP)
 		assert.NoErrorf(err, gather)
 	}
 	if !addressMatch {
-		assert.Failf("ipam/device delete failed", fmt.Sprintf("Node did not receive the proper IPAM address %s, it should have been %s or %s\n %s", newNode1IP, node1IP, node2IP, gather))
+		assert.Failf("ipam/device IPv4 delete failed", fmt.Sprintf("Node did not receive the proper IPAM IPv4 address %s, it should have been %s or %s\n %s", newNode1IP, node1IP, node2IP, gather))
+	}
+
+	// same as above but for v6, ensure IPAM released the leases from the deleted nodes and re-issued them
+	newNode1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+	require.NoError(err)
+
+	var addressMatchV6 bool
+	if newNode1IPv6 == node2IPv6 {
+		addressMatchV6 = true
+		suite.logger.Infof("Pinging %s from node1", node1IPv6)
+		err = ping(ctx, node1, inetV6, node1IPv6)
+		assert.NoErrorf(err, gather)
+	}
+	if newNode1IPv6 == node1IPv6 {
+		addressMatchV6 = true
+		suite.logger.Infof("Pinging %s from node1", node2IPv6)
+		err = ping(ctx, node1, inetV6, node2IPv6)
+		assert.NoErrorf(err, gather)
+	}
+	if !addressMatchV6 {
+		assert.Failf("ipam/device IPv6 delete failed", fmt.Sprintf("Node did not receive the proper IPAM IPv6 address %s, it should have been %s or %s\n %s", newNode1IPv6, node1IPv6, node2IPv6, gather))
 	}
 
 	// validate list devices in a organization
@@ -695,7 +826,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 		"--password", password,
 		"--output", "json-raw",
 		"device", "list",
-		"--organization-id", user.Organizations[0].String(),
+		"--organization-id", organizations[0].ID.String(),
 	)
 
 	json.Unmarshal([]byte(devicesInOrganization), &devices)
@@ -733,6 +864,55 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 		"user", "list",
 	)
 	require.Error(err)
+}
+
+// TestV6Disabled validate that a node that does support ipv6 provisions with v4 successfully
+func (suite *NexodusIntegrationSuite) TestV6Disabled() {
+	suite.T().Parallel()
+	assert := suite.Assert()
+	require := suite.Require()
+	parentCtx := suite.Context()
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
+	// create the nodes
+	node1 := suite.CreateNode(ctx, "TestV6Disabled-node1", []string{defaultNetwork}, disableV6)
+	suite.T().Cleanup(func() {
+		if err := node1.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container TestV6Disabled-node1 %v", err)
+		}
+	})
+	node2 := suite.CreateNode(ctx, "TestV6Disabled-node2", []string{defaultNetwork}, disableV6)
+	suite.T().Cleanup(func() {
+		if err := node2.Terminate(parentCtx); err != nil {
+			suite.logger.Errorf("failed to terminate container TestV6Disabled-node2 %v", err)
+		}
+	})
+
+	// start nexodus on the nodes
+	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	suite.runNexd(ctx, node2, "--username", username, "--password", password)
+	err = suite.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
+	require.NoError(err)
+
+	// TODO: add v6 disabled support to gather
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	assert.NoError(err)
+
+	suite.logger.Infof("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
+	assert.NoError(err)
 }
 
 func (suite *NexodusIntegrationSuite) TestFeatures() {

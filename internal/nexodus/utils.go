@@ -147,14 +147,6 @@ func ParseIPNet(s string) (*net.IPNet, error) {
 	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
 }
 
-func parseNetworkStr(cidr string) (string, error) {
-	_, nw, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return "", err
-	}
-	return nw.String(), nil
-}
-
 // WriteToFile overwrite the contents of a file
 func WriteToFile(logger *zap.SugaredLogger, s, file string, filePermissions int) {
 	// overwrite the existing file contents

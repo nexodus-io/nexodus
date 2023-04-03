@@ -19,7 +19,7 @@ else
 endif
 
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
-NEXODUS_RELEASE?=$(shell git describe --always)
+NEXODUS_RELEASE?=$(shell git describe --always --exclude qa --exclude prod)
 NEXODUS_LDFLAGS?=-X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 NEXODUS_GCFLAGS?=
 
@@ -39,10 +39,10 @@ all: generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run lint
 ##@ Binaries
 
 .PHONY: nexd
-nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64 ## Build the nexd binary for all architectures
+nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
 
 .PHONY: nexctl
-nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
+nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
 
 # Only the apiserver depends on internal/docs/*.go
 COMMON_DEPS=$(filter-out $(wildcard ./internal/docs/*.go),$(wildcard ./internal/**/*.go)) go.sum go.mod
@@ -81,7 +81,7 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist
-	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint
+	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate
 
 ##@ Development
 
@@ -157,16 +157,19 @@ opa-fmt: ## Lint the OPA policies
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
 
 .PHONY: generate
-generate: gen-docs ## Run all code generators and formatters
+generate: .generate ## Run all code generators and formatters
+
+.generate: .gen-docs
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
 	$(CMD_PREFIX) go fmt ./...
+	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
 e2e: e2eprereqs test-images ## Run e2e tests
-	go test -v --tags=integration ./integration-tests/...
+	go test -v --tags=integration ./integration-tests/... $(if $(NEX_TEST),-run $(NEX_TEST),)
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman

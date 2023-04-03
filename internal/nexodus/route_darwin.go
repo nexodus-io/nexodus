@@ -4,25 +4,44 @@ package nexodus
 
 import (
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/models"
 	"net"
+
+	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/util"
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
 	// Darwin maps to a utunX address which needs to be discovered (currently hardcoded to utun8)
-	devName, err := getInterfaceByIP(net.ParseIP(ax.wgLocalAddress))
+	devName, err := getInterfaceByIP(net.ParseIP(ax.TunnelIP))
 	if err != nil {
-		ax.logger.Debugf("failed to find the darwin interface with the address [ %s ] %v", ax.wgLocalAddress, err)
+		ax.logger.Debugf("failed to find the darwin interface with the address [ %s ] %v", ax.TunnelIP, err)
 	}
 	// If child prefix split the two prefixes (host /32) and child prefix
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		_, err := RunCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", devName)
-		if err != nil {
-			ax.logger.Debugf("no route deleted: %v", err)
+		// if the host does not support v6, skip adding the route
+		if util.IsIPv6Prefix(allowedIP) && !ax.ipv6Supported {
+			continue
 		}
-		if err := AddRoute(allowedIP, devName); err != nil {
-			ax.logger.Debugf("%v", err)
+
+		if util.IsIPv4Prefix(allowedIP) {
+			_, err := RunCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", devName)
+			if err != nil {
+				ax.logger.Debugf("no route deleted: %v", err)
+			}
+			if err := AddRoute(allowedIP, devName); err != nil {
+				ax.logger.Debugf("%v", err)
+			}
+		}
+
+		if util.IsIPv6Prefix(allowedIP) {
+			_, err := RunCommand("route", "-q", "-n", "delete", "-inet6", allowedIP, "-interface", devName)
+			if err != nil {
+				ax.logger.Debugf("no route deleted: %v", err)
+			}
+			if err := AddRouteV6(allowedIP, devName); err != nil {
+				ax.logger.Debugf("%v", err)
+			}
 		}
 	}
 
@@ -31,11 +50,14 @@ func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
 // handlePeerRoute when a peer is this handles route deletion
 func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
+		// if the host does not support v6, skip adding the route
+		if util.IsIPv6Prefix(allowedIP) && !ax.ipv6Supported {
+			continue
+		}
 		if err := DeleteRoute(allowedIP, dev); err != nil {
 			ax.logger.Debug(err)
 		}
 	}
-
 }
 
 // getInterfaceByIP looks up an interface by the IP provided

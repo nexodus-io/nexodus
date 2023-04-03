@@ -9,7 +9,7 @@
     spoke_range_end: "{{ node_count_blue + node_count_red + node_count_green + relay_node_count_red + 1 }}"
 
 - name: Get the first 3 octets of the zone prefix
-  shell: echo {{ nexodus_zone_prefix }} | head -c -6
+  shell: echo {{ nexodus_org_prefix }} | head -c -6
   register: ip_prefix
 
 - set_fact:

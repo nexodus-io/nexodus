@@ -919,6 +919,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "172.16.42.0/24"
                 },
+                "cidr_v6": {
+                    "type": "string",
+                    "example": "0200::/8"
+                },
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
@@ -972,10 +976,16 @@ const docTemplate = `{
                 "local_ip": {
                     "type": "string"
                 },
+                "local_ip_v6": {
+                    "type": "string"
+                },
                 "organization_id": {
                     "type": "string"
                 },
                 "organization_prefix": {
+                    "type": "string"
+                },
+                "organization_prefix_v6": {
                     "type": "string"
                 },
                 "public_key": {
@@ -991,6 +1001,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "tunnel_ip": {
+                    "type": "string"
+                },
+                "tunnel_ip_v6": {
                     "type": "string"
                 },
                 "user_id": {
@@ -1022,12 +1035,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "devices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Device"
-                    }
-                },
                 "hubZone": {
                     "type": "boolean"
                 },
@@ -1044,17 +1051,14 @@ const docTemplate = `{
                 "ipCidr": {
                     "type": "string"
                 },
+                "ipCidrV6": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
                 "ownerID": {
                     "type": "string"
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.User"
-                    }
                 }
             }
         },
@@ -1100,28 +1104,10 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "devices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Device"
-                    }
-                },
                 "id": {
                     "description": "Since the ID comes from the IDP, we have no control over the format...",
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                },
-                "invitations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Invitation"
-                    }
-                },
-                "organizations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Organization"
-                    }
                 },
                 "updatedAt": {
                     "type": "string"

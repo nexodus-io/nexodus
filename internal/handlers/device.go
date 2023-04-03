@@ -3,12 +3,12 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
@@ -47,7 +47,7 @@ func (api *API) ListDevices(c *gin.Context) {
 
 	result := api.db.WithContext(ctx).Scopes(
 		api.DeviceIsOwnedByCurrentUser(c),
-		FilterAndPaginate(&models.Device{}, c),
+		FilterAndPaginate(&models.Device{}, c, "hostname"),
 	).Find(&devices)
 
 	if result.Error != nil {
@@ -258,7 +258,6 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return res.Error
 		}
 
-		ipamPrefix := org.IpCidr
 		var relay bool
 		// determine if the node joining is a relay node
 		if request.Relay {
@@ -266,19 +265,29 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 
 		var ipamIP string
+		var ipamIPv6 string
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.TunnelIP != "" {
 			var err error
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, ipamPrefix, request.TunnelIP)
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, org.IpCidr, request.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
+			// Currently only support v4 requesting of specific addresses
+			ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
+			if err != nil {
+				return fmt.Errorf("failed to request ipam v6 address: %w", err)
+			}
 		} else {
 			var err error
-			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID, ipamPrefix)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidr)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
+			}
+			ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
+			if err != nil {
+				return fmt.Errorf("failed to request ipam v6 address: %w", err)
 			}
 		}
 		// allocate a child prefix if requested
@@ -288,14 +297,28 @@ func (api *API) CreateDevice(c *gin.Context) {
 			}
 		}
 
-		// append a /32 to the IPAM assignment unless it is a relay prefix
-		hostPrefix := ipamIP
-		if net.ParseIP(ipamIP) != nil && !relay {
-			hostPrefix = fmt.Sprintf("%s/32", ipamIP)
+		hostPrefixV4 := ipamIP
+		hostPrefixV6 := ipamIPv6
+		var err error
+		// append a host prefix length to the leased v4 IPAM address to add to the allowed-ips slice
+		if !relay {
+			hostPrefixV4, err = util.AppendPrefixMask(hostPrefixV4, 32)
+			if err != nil {
+				return fmt.Errorf("failed to append a v4 prefix length to the IPAM address: %w", err)
+			}
+		}
+		// append a host prefix length to the leased v6 IPAM address to add to the allowed-ips slice
+		if !relay {
+			hostPrefixV6, err = util.AppendPrefixMask(hostPrefixV6, 128)
+			if err != nil {
+				return fmt.Errorf("failed to append a v4 prefix length to the IPAM address: %w", err)
+			}
 		}
 
 		var allowedIPs []string
-		allowedIPs = append(allowedIPs, hostPrefix)
+		// append the IPAM leases to the allowed-ips list to be distributed to peers
+		allowedIPs = append(allowedIPs, hostPrefixV4)
+		allowedIPs = append(allowedIPs, hostPrefixV6)
 
 		device = models.Device{
 			UserID:                   userId,
@@ -304,10 +327,12 @@ func (api *API) CreateDevice(c *gin.Context) {
 			LocalIP:                  request.LocalIP,
 			AllowedIPs:               allowedIPs,
 			TunnelIP:                 ipamIP,
+			TunnelIpV6:               ipamIPv6,
 			ChildPrefix:              request.ChildPrefix,
 			Relay:                    request.Relay,
 			Discovery:                request.Discovery,
 			OrganizationPrefix:       org.IpCidr,
+			OrganizationPrefixV6:     org.IpCidrV6,
 			ReflexiveIPv4:            request.ReflexiveIPv4,
 			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
 			SymmetricNat:             request.SymmetricNat,
@@ -384,7 +409,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddress, orgPrefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release address to pool: %w", err)))
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
 			return
 		}
 	}
@@ -392,6 +417,16 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	for _, prefix := range childPrefix {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID, prefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release child prefix: %w", err)))
+			return
+		}
+	}
+
+	ipamAddressV6 := device.TunnelIpV6
+	orgPrefixV6 := device.OrganizationPrefixV6
+
+	if ipamAddressV6 != "" && orgPrefixV6 != "" {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddressV6, orgPrefixV6); err != nil {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
 			return
 		}
 	}

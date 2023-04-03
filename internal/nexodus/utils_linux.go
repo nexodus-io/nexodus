@@ -5,6 +5,8 @@ package nexodus
 import (
 	"fmt"
 	"net"
+	"os"
+	"strings"
 
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
@@ -202,4 +204,22 @@ func checkOS(logger *zap.SugaredLogger) error {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)
 	}
 	return nil
+}
+
+// isIPv6Supported returns true if the platform supports IPv6
+func isIPv6Supported() bool {
+	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {
+		return false
+	}
+
+	data, err := os.ReadFile("/proc/sys/net/ipv6/conf/all/disable_ipv6")
+	if err != nil {
+		return false
+	}
+
+	if strings.TrimSpace(string(data)) == "1" {
+		return false
+	}
+
+	return true
 }

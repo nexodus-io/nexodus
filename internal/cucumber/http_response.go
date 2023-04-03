@@ -67,6 +67,7 @@ func init() {
 		ctx.Step(`^the response should match:$`, s.theResponseShouldMatchText)
 		ctx.Step(`^the response should match "([^"]*)"$`, s.theResponseShouldMatchText)
 		ctx.Step(`^I store the "([^"]*)" selection from the response as \${([^"]*)}$`, s.iStoreTheSelectionFromTheResponseAs)
+		ctx.Step(`^I store the \${([^"]*)} as \${([^"]*)}$`, s.iStoreVariableAsVariable)
 		ctx.Step(`^I store json as \${([^"]*)}:$`, s.iStoreJsonAsInput)
 		ctx.Step(`^the "(.*)" selection from the response should match "([^"]*)"$`, s.theSelectionFromTheResponseShouldMatch)
 		ctx.Step(`^the response header "([^"]*)" should match "([^"]*)"$`, s.theResponseHeaderShouldMatch)
@@ -135,6 +136,15 @@ func (s *TestScenario) theResponseHeaderShouldMatch(header, expected string) err
 	return nil
 }
 
+func (s *TestScenario) iStoreVariableAsVariable(name string, as string) error {
+	value, err := s.Resolve(name)
+	if err != nil {
+		return err
+	}
+	s.Variables[as] = value
+	return nil
+}
+
 func (s *TestScenario) iStoreTheSelectionFromTheResponseAs(selector string, as string) error {
 
 	session := s.Session()
@@ -150,16 +160,7 @@ func (s *TestScenario) iStoreTheSelectionFromTheResponseAs(selector string, as s
 
 	iter := query.Run(doc)
 	if next, found := iter.Next(); found {
-		switch next.(type) {
-		case map[interface{}]interface{}, []interface{}:
-			bytes, err := json.Marshal(next)
-			if err != nil {
-				return err
-			}
-			s.Variables[as] = string(bytes)
-		default:
-			s.Variables[as] = fmt.Sprintf("%v", next)
-		}
+		s.Variables[as] = next
 		return nil
 	}
 	return fmt.Errorf("expected JSON does not have node that matches selector: %s", selector)

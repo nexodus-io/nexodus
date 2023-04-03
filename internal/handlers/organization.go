@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	defaultOrganizationPrefix = "100.100.0.0/16"
+	defaultOrganizationPrefixIPv4 = "100.100.0.0/16"
+	defaultOrganizationPrefixIPv6 = "200::/64"
 )
 
 // CreateOrganization creates a new Organization
@@ -59,6 +60,10 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr"))
 		return
 	}
+	if request.IpCidrV6 == "" {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr_v6"))
+		return
+	}
 	if request.Name == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("name"))
 		return
@@ -76,6 +81,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			OwnerID:     userId,
 			Description: request.Description,
 			IpCidr:      request.IpCidr,
+			IpCidrV6:    request.IpCidrV6,
 			HubZone:     request.HubZone,
 			Users:       []*models.User{&user},
 		}
@@ -92,8 +98,12 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			return err
 		}
 
+		if err := api.ipam.AssignPrefix(ctx, org.ID, request.IpCidrV6); err != nil {
+			return err
+		}
+
 		span.SetAttributes(attribute.String("id", org.ID.String()))
-		api.logger.Debugf("New organization request [ %s ] and ipam [ %s ] request", org.Name, org.IpCidr)
+		api.logger.Infof("New organization request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", org.Name, org.IpCidr, org.IpCidrV6)
 		return nil
 	})
 	if err != nil {
@@ -144,14 +154,19 @@ func (api *API) ListOrganizations(c *gin.Context) {
 	defer span.End()
 	var orgs []models.Organization
 	result := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Users").
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
-		Scopes(FilterAndPaginate(&models.Organization{}, c)).Find(&orgs)
+		Scopes(FilterAndPaginate(&models.Organization{}, c, "name")).
+		Find(&orgs)
+
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
+
 	c.JSON(http.StatusOK, orgs)
 }
 
@@ -181,14 +196,18 @@ func (api *API) GetOrganizations(c *gin.Context) {
 	}
 	var org models.Organization
 	result := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Users").
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
 		First(&org, "id = ?", k.String())
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.Status(http.StatusNotFound)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
+
 	c.JSON(http.StatusOK, org)
 }
 
@@ -206,6 +225,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // @Failure		 500  {object}  models.BaseError
 // @Router       /organizations/{id}/devices [get]
 func (api *API) ListDevicesInOrganization(c *gin.Context) {
+
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInOrganization")
 	defer span.End()
 	k, err := uuid.Parse(c.Param("organization"))
@@ -214,19 +234,34 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	res := api.db.WithContext(ctx).
-		Preload("Devices").
+	result := api.db.WithContext(ctx).
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
 		First(&org, "id = ?", k.String())
 
-	if res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
+
+	var devices []*models.Device
+	result = api.db.WithContext(ctx).
+		Scopes(FilterAndPaginate(&models.Device{}, c, "hostname")).
+		Where("organization_id = ?", k.String()).
+		Find(&devices)
+
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		return
+	}
+
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
-	c.Header(TotalCountHeader, strconv.Itoa(len(org.Devices)))
-	c.JSON(http.StatusOK, org.Devices)
+	c.Header(TotalCountHeader, strconv.Itoa(len(devices)))
+	c.JSON(http.StatusOK, devices)
 }
 
 // GetDeviceInOrganization gets a device in a Organization
@@ -261,10 +296,15 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	result := api.db.WithContext(ctx).
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
 		First(&organization, "id = ?", orgId.String())
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -275,8 +315,12 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	result = api.db.WithContext(ctx).
 		Where("organization_id = ?", orgId.String()).
 		First(&device, "id = ?", id.String())
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
 	c.JSON(http.StatusOK, device)
@@ -291,18 +335,35 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	res := api.db.WithContext(ctx).
-		Preload("Users").
+	result := api.db.WithContext(ctx).
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
 		First(&org, "id = ?", k.String())
-	if res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
+
+	var users []*models.User
+	result = api.db.WithContext(ctx).
+		Joins("inner join user_organizations on user_organizations.user_id=users.id").
+		Where("user_organizations.organization_id = ?", k.String()).
+		Scopes(FilterAndPaginate(&models.User{}, c, "user_name")).
+		Find(&users)
+
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		return
+	}
+
 	// For pagination
 	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
-	c.Header(TotalCountHeader, strconv.Itoa(len(org.Users)))
-	c.JSON(http.StatusOK, org.Users)
+	c.Header(TotalCountHeader, strconv.Itoa(len(users)))
+	c.JSON(http.StatusOK, users)
 }
 
 // DeleteOrganization handles deleting an existing organization and associated ipam prefix
@@ -342,10 +403,16 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	if res := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
-		First(&org, "id = ?", orgID); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+	result := api.db.WithContext(ctx).
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&org, "id = ?", orgID)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
 		return
 	}
 

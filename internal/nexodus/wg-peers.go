@@ -1,12 +1,15 @@
 package nexodus
 
 import (
-	"fmt"
 	"net"
-	"os"
 	"runtime"
 
 	"go.uber.org/zap"
+)
+
+const (
+	defaultOrganizationPrefixIPv4 = "100.100.0.0/16"
+	defaultOrganizationPrefixIPv6 = "0200::/64"
 )
 
 // buildPeersConfig builds the peer configuration based off peer cache and peer listings from the controller
@@ -14,51 +17,22 @@ func (ax *Nexodus) buildPeersConfig() {
 
 	var peers []wgPeerConfig
 	var relayIP string
-	//var localInterface wgLocalConfig
-	var orgPrefix string
-	var hubOrg bool
-	var err error
-
 	for _, device := range ax.deviceCache {
 		if device.PublicKey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
 		if device.Relay {
 			relayIP = device.AllowedIPs[0]
-			if ax.organization == device.OrganizationID {
-				orgPrefix = device.OrganizationPrefix
-			}
 		}
 	}
-	// orgPrefix will be empty if a hub-router is not defined in the organization
-	if orgPrefix != "" {
-		hubOrg = true
-	}
-	// if this is a org router but does not have a relay node joined yet throw an error
-	if relayIP == "" && hubOrg {
-		ax.logger.Errorf("there is no hub router detected in this organization, please add one using `--hub-router`")
-		return
-	}
-	// Get a valid netmask from the organization prefix
-	var relayAllowedIP []string
-	if hubOrg {
-		orgCidr, err := ParseIPNet(orgPrefix)
-		if err != nil {
-			ax.logger.Errorf("failed to parse a valid network organization prefix cidr %s: %v", orgPrefix, err)
-			os.Exit(1)
-		}
-		orgMask, _ := orgCidr.Mask.Size()
-		relayNetAddress := fmt.Sprintf("%s/%d", relayIP, orgMask)
-		relayNetAddress, err = parseNetworkStr(relayNetAddress)
-		if err != nil {
-			ax.logger.Errorf("failed to parse a valid hub router prefix from %s: %v", relayNetAddress, err)
-		}
-		relayAllowedIP = []string{relayNetAddress}
+	relayAllowedIP := []string{
+		defaultOrganizationPrefixIPv4,
+		defaultOrganizationPrefixIPv6,
 	}
 
-	if err != nil {
-		ax.logger.Errorf("invalid hub router network found: %v", err)
-	}
+	// Build the local interface configuration
+	ax.buildLocalConfig()
+
 	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.deviceCache {
 		_, peerPort, err := net.SplitHostPort(value.LocalIP)
@@ -67,7 +41,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			continue
 		}
 		if value.PublicKey == ax.wireguardPubKey {
-			// we found ourself in the peer list
+			// we found ourselves in the peer list
 			continue
 		}
 
@@ -75,9 +49,7 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.relay && value.Relay {
-			for _, prefix := range value.ChildPrefix {
-				relayAllowedIP = append(relayAllowedIP, prefix)
-			}
+      relayAllowedIP = append(relayAllowedIP,  value.ChildPrefix...)
 			ax.relayWgIP = relayIP
 			peerHub = wgPeerConfig{
 				value.PublicKey,
@@ -99,11 +71,12 @@ func (ax *Nexodus) buildPeersConfig() {
 				persistentHubKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
+			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP IPv4 [ %s ] TunnelIP IPv6 [ %s ] Organization [ %s ]",
 				value.AllowedIPs,
 				value.LocalIP,
 				value.PublicKey,
 				value.TunnelIP,
+				value.TunnelIpV6,
 				value.OrganizationID)
 		}
 
@@ -149,7 +122,6 @@ func (ax *Nexodus) buildPeersConfig() {
 		}
 	}
 	ax.wgConfig.Peers = peers
-	ax.buildLocalConfig()
 }
 
 // buildLocalConfig builds the configuration for the local interface
@@ -160,20 +132,21 @@ func (ax *Nexodus) buildLocalConfig() {
 		// build the local interface configuration if this node is a Organization router
 		if value.PublicKey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
-			if ax.wgLocalAddress != value.TunnelIP {
-				ax.logger.Infof("New local Wireguard interface address assigned: %s", value.TunnelIP)
+			if ax.TunnelIP != value.TunnelIP {
+				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", value.TunnelIP, value.TunnelIpV6)
 				if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
 					if err := delLink(ax.tunnelIface); err != nil {
 						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}
 				}
 			}
-			ax.wgLocalAddress = value.TunnelIP
+			ax.TunnelIP = value.TunnelIP
+			ax.TunnelIpV6 = value.TunnelIpV6
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
 				ax.listenPort,
 			}
-			ax.logger.Debugf("Local Node Configuration - Wireguard IP [ %s ]", ax.wgLocalAddress)
+			ax.logger.Debugf("Local Node Configuration - Wireguard IPv4 [ %s ] IPv6 [ %s ]", ax.TunnelIP, ax.TunnelIpV6)
 			// set the node unique local interface configuration
 			ax.wgConfig.Interface = localInterface
 		}
@@ -184,6 +157,10 @@ func (ax *Nexodus) buildLocalConfig() {
 func relayIpTables(logger *zap.SugaredLogger, dev string) {
 	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
 	if err != nil {
-		logger.Debugf("the hub router iptables rule was not added: %v", err)
+		logger.Debugf("the relay node v4 iptables rule was not added: %v", err)
+	}
+	_, err = RunCommand("ip6tables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
+	if err != nil {
+		logger.Debugf("tthe relay node v6 ip6tables rule was not added: %v", err)
 	}
 }

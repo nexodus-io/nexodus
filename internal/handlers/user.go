@@ -45,7 +45,9 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	defer span.End()
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		res := tx.Preload("Organizations").First(&user, "id = ?", id)
+		res := tx.
+			Preload("Organizations").
+			First(&user, "id = ?", id)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				user.ID = id
@@ -55,7 +57,8 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 						Name:        userName,
 						OwnerID:     id,
 						Description: fmt.Sprintf("%s's organization", userName),
-						IpCidr:      defaultOrganizationPrefix,
+						IpCidr:      defaultOrganizationPrefixIPv4,
+						IpCidrV6:    defaultOrganizationPrefixIPv6,
 						HubZone:     true,
 					},
 				}
@@ -65,8 +68,11 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID); err != nil {
 					return fmt.Errorf("failed to create ipam namespace: %w", err)
 				}
-				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefix); err != nil {
-					return fmt.Errorf("can't assign default ipam prefix: %w", err)
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv4); err != nil {
+					return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+				}
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv6); err != nil {
+					return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 				}
 			} else {
 				return fmt.Errorf("can't find record for user id %s", id)
@@ -120,8 +126,6 @@ func (api *API) GetUser(c *gin.Context) {
 	}
 
 	if res := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Organizations").
 		Scopes(api.UserIsCurrentUser(c)).
 		First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
@@ -145,10 +149,8 @@ func (api *API) ListUsers(c *gin.Context) {
 	defer span.End()
 	users := make([]*models.User, 0)
 	result := api.db.WithContext(ctx).
-		Preload("Devices").
-		Preload("Organizations").
 		Scopes(api.UserIsCurrentUser(c)).
-		Scopes(FilterAndPaginate(&models.User{}, c)).
+		Scopes(FilterAndPaginate(&models.User{}, c, "user_name")).
 		Find(&users)
 
 	if result.Error != nil {

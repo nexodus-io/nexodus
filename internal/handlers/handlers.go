@@ -53,7 +53,7 @@ func (q *Query) GetFilter() (map[string]interface{}, error) {
 	return parts, nil
 }
 
-func FilterAndPaginate(model interface{}, c *gin.Context) func(db *gorm.DB) *gorm.DB {
+func FilterAndPaginate(model interface{}, c *gin.Context, orderBy string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		var query Query
 		if err := c.BindQuery(&query); err != nil {
@@ -62,6 +62,8 @@ func FilterAndPaginate(model interface{}, c *gin.Context) func(db *gorm.DB) *gor
 
 		if order, err := query.GetSort(); err == nil {
 			db = db.Order(order)
+		} else if orderBy != "" {
+			db = db.Order(orderBy)
 		}
 
 		if filter, err := query.GetFilter(); err == nil {

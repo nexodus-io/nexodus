@@ -9,20 +9,19 @@ Feature: Device API
 
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${organization_id}
     Given I store the ".id" selection from the response as ${user_id}
     And the response should match json:
       """
       {
-        "devices": [],
         "id": "${user_id}",
-        "invitations": [],
-        "organizations": [
-          "${organization_id}"
-        ],
         "username": "${response.username}"
       }
       """
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${organization_id}
+
 
     # Bob gets an empty list of devices..
     When I GET path "/api/devices"
@@ -41,7 +40,9 @@ Feature: Device API
         "organization_id": "${organization_id}",
         "public_key": "${public_key}",
         "local_ip": "172.17.0.3:58664",
+        "local_ip_v6": "",
         "tunnel_ip": "",
+        "tunnel_ip_v6": "",
         "child_prefix": null,
         "relay": false,
         "discovery": false,
@@ -57,7 +58,8 @@ Feature: Device API
       """
       {
         "allowed_ips": [
-          "${response.allowed_ips[0]}"
+          "${response.allowed_ips[0]}",
+          "${response.allowed_ips[1]}"
         ],
         "child_prefix": null,
         "discovery": false,
@@ -65,13 +67,16 @@ Feature: Device API
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
         "local_ip": "172.17.0.3:58664",
+        "local_ip_v6": "",
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
+        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,
         "symmetric_nat": true,
         "tunnel_ip": "${response.tunnel_ip}",
+        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
         "user_id": "${user_id}"
       }
       """
@@ -88,7 +93,8 @@ Feature: Device API
       """
       {
         "allowed_ips": [
-          "${response.allowed_ips[0]}"
+          "${response.allowed_ips[0]}",
+          "${response.allowed_ips[1]}"
         ],
         "child_prefix": null,
         "discovery": false,
@@ -96,13 +102,16 @@ Feature: Device API
         "hostname": "kittenhome",
         "id": "${device_id}",
         "local_ip": "172.17.0.3:58664",
+        "local_ip_v6": "",
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
+        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,
         "symmetric_nat": true,
         "tunnel_ip": "${response.tunnel_ip}",
+        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
         "user_id": "${user_id}"
       }
       """
@@ -115,7 +124,8 @@ Feature: Device API
       [
         {
           "allowed_ips": [
-            "${response[0].allowed_ips[0]}"
+            "${response[0].allowed_ips[0]}",
+            "${response[0].allowed_ips[1]}"
           ],
           "child_prefix": null,
           "discovery": false,
@@ -123,13 +133,16 @@ Feature: Device API
           "hostname": "kittenhome",
           "id": "${device_id}",
           "local_ip": "172.17.0.3:58664",
+          "local_ip_v6": "",
           "organization_id": "${organization_id}",
           "organization_prefix":"${response[0].organization_prefix}",
+          "organization_prefix_v6":"${response[0].organization_prefix_v6}",
           "public_key": "${public_key}",
           "reflexive_ip4": "47.196.141.165",
           "relay": false,
           "symmetric_nat": true,
           "tunnel_ip": "${response[0].tunnel_ip}",
+          "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
           "user_id": "${user_id}"
         }
       ]
@@ -179,7 +192,8 @@ Feature: Device API
       """
       {
         "allowed_ips": [
-          "${response.allowed_ips[0]}"
+          "${response.allowed_ips[0]}",
+          "${response.allowed_ips[1]}"
         ],
         "child_prefix": null,
         "discovery": false,
@@ -187,13 +201,16 @@ Feature: Device API
         "hostname": "kittenhome",
         "id": "${device_id}",
         "local_ip": "172.17.0.3:58664",
+        "local_ip_v6": "",
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
+        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,
         "symmetric_nat": true,
         "tunnel_ip": "${response.tunnel_ip}",
+        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
         "user_id": "${user_id}"
       }
       """

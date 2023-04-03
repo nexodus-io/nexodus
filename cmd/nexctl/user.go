@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"strings"
-
 	"github.com/nexodus-io/nexodus/internal/client"
+	"log"
 )
 
 func listUsers(c *client.Client, encodeOut string) error {
@@ -16,17 +14,13 @@ func listUsers(c *client.Client, encodeOut string) error {
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\n"
+		fs := "%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "USER ID", "USER NAME", "ORGANIZATION ID")
+			fmt.Fprintf(w, fs, "USER ID", "USER NAME")
 		}
 
 		for _, user := range users {
-			var orgs []string
-			for _, o := range user.Organizations {
-				orgs = append(orgs, o.String())
-			}
-			fmt.Fprintf(w, fs, user.ID, user.UserName, strings.Join(orgs, ","))
+			fmt.Fprintf(w, fs, user.ID, user.UserName)
 		}
 
 		w.Flush()
@@ -88,16 +82,12 @@ func getCurrent(c *client.Client, encodeOut string) error {
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\n"
+		fs := "%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "USER ID", "USER NAME", "ORGANIZATION ID")
+			fmt.Fprintf(w, fs, "USER ID", "USER NAME")
 		}
 
-		var orgs []string
-		for _, o := range user.Organizations {
-			orgs = append(orgs, o.String())
-		}
-		fmt.Fprintf(w, fs, user.ID, user.UserName, strings.Join(orgs, ","))
+		fmt.Fprintf(w, fs, user.ID, user.UserName)
 
 		w.Flush()
 

@@ -24,6 +24,7 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
@@ -74,7 +75,21 @@ func (c FnConsumer) Accept(l testcontainers.Log) {
 }
 
 // CreateNode creates a container
-func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string) testcontainers.Container {
+func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string, v6 int) testcontainers.Container {
+
+	// Host modifiers differ for a container for a container with and without v6 enabled
+	var hostConfSysctl map[string]string
+	if v6 == enableV6 {
+		hostConfSysctl = map[string]string{
+			"net.ipv6.conf.all.disable_ipv6": "0",
+			"net.ipv4.ip_forward":            "1",
+			"net.ipv6.conf.all.forwarding":   "1",
+		}
+	} else {
+		hostConfSysctl = map[string]string{
+			"net.ipv4.ip_forward": "1",
+		}
+	}
 
 	certsDir, err := findCertsDir()
 	require.NoError(suite.T(), err)
@@ -83,17 +98,21 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 		Image:    "quay.io/nexodus/test:ubuntu",
 		Name:     name,
 		Networks: networks,
-		CapAdd: []string{
-			"SYS_MODULE",
-			"NET_ADMIN",
-			"NET_RAW",
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Sysctls = hostConfSysctl
+			hostConfig.CapAdd = []string{
+				"SYS_MODULE",
+				"NET_ADMIN",
+				"NET_RAW",
+			}
+			hostConfig.ExtraHosts = []string{
+				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+			}
+			hostConfig.AutoRemove = true
+			//>>>>>>> 5890300 (Enabled v6 in e2e nodes and added v6 tests)
 		},
-		ExtraHosts: []string{
-			fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-			fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-			fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-		},
-		AutoRemove: true,
 		Mounts: []testcontainers.ContainerMount{
 			{
 				Source: testcontainers.GenericBindMountSource{
@@ -141,12 +160,12 @@ func newClient(ctx context.Context, username, password string) (*client.Client, 
 	return client.NewClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
-func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Container) (string, error) {
+func getContainerIfaceIP(ctx context.Context, family, dev string, ctr testcontainers.Container) (string, error) {
 	var ip string
 	err := backoff.Retry(func() error {
 		code, outputRaw, err := ctr.Exec(
 			ctx,
-			[]string{"ip", "--brief", "-4", "address", "show", dev},
+			[]string{"ip", "--brief", family, "address", "show", dev},
 		)
 		if err != nil {
 			return err
@@ -176,11 +195,11 @@ func getContainerIfaceIP(ctx context.Context, dev string, ctr testcontainers.Con
 	return ip, err
 }
 
-func ping(ctx context.Context, ctr testcontainers.Container, address string) error {
+func ping(ctx context.Context, ctr testcontainers.Container, family, address string) error {
 	err := backoff.Retry(func() error {
 		code, outputRaw, err := ctr.Exec(
 			ctx,
-			[]string{"ping", "-c", "2", "-w", "2", address},
+			[]string{"ping", family, "-c", "2", "-w", "2", address},
 		)
 		if err != nil {
 			return err
@@ -207,7 +226,7 @@ func (suite *NexodusIntegrationSuite) containerExec(ctx context.Context, contain
 		return "", err
 	}
 	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "/bin/nexd" {
+	if cmd[0] != "wg" && cmd[0] != "cat" {
 		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	output, err := io.ReadAll(outputRaw)
@@ -264,11 +283,12 @@ func lineCount(s string) (int, error) {
 	return count, nil
 }
 
+// runNexd copies the nexd command to a file on the container and runs it piping the logs to a file
 func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcontainers.Container, args ...string) {
 	nodeName, _ := node.Name(ctx)
 	runScript := fmt.Sprintf("%s-nexd-run.sh", strings.TrimPrefix(nodeName, "/"))
 	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
-	cmd := []string{"/bin/nexd"}
+	cmd := []string{"NEXD_LOGLEVEL=debug", "/bin/nexd"}
 	cmd = append(cmd, args...)
 	cmd = append(cmd, "https://try.nexodus.127.0.0.1.nip.io")
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
@@ -280,14 +300,8 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	suite.Require().NoError(err, fmt.Errorf("execution of copy command on %s failed: %v", nodeName, err))
 
 	// execute the nexd run script on the test container
-	out, err := suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
-	if suite.T().Failed() {
-		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
-		suite.logger.Errorf("output:\n%s", out)
-		suite.logger.Errorf("%+v", err)
-	} else {
-		suite.Require().NoError(err)
-	}
+	_, err = suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
+	suite.Require().NoError(err)
 }
 
 func networkAddr(n *net.IPNet) net.IP {
@@ -308,8 +322,8 @@ func (suite *NexodusIntegrationSuite) wgDump(ctx context.Context, container test
 	return wgDump
 }
 
-// routesDump dump routes for failed test debugging
-func (suite *NexodusIntegrationSuite) routesDump(ctx context.Context, container testcontainers.Container) string {
+// routesDumpV4 dump v4 routes for failed test debugging
+func (suite *NexodusIntegrationSuite) routesDumpV4(ctx context.Context, container testcontainers.Container) string {
 	routesDump, err := suite.containerExec(ctx, container, []string{"ip", "route"})
 	if err != nil {
 		return ""
@@ -318,7 +332,17 @@ func (suite *NexodusIntegrationSuite) routesDump(ctx context.Context, container 
 	return routesDump
 }
 
-// routesDump dump routes for failed test debugging
+// routesDumpV6 dump v6 routes for failed test debugging
+func (suite *NexodusIntegrationSuite) routesDumpV6(ctx context.Context, container testcontainers.Container) string {
+	routesDump, err := suite.containerExec(ctx, container, []string{"ip", "-6", "route"})
+	if err != nil {
+		return ""
+	}
+
+	return routesDump
+}
+
+// logsDump dump routes for failed test debugging
 func (suite *NexodusIntegrationSuite) logsDump(ctx context.Context, container testcontainers.Container) string {
 	logsDump, err := suite.containerExec(ctx, container, []string{"cat", "/nexd.logs"})
 	if err != nil {
@@ -333,16 +357,30 @@ func (suite *NexodusIntegrationSuite) gatherFail(ctx context.Context, containers
 	var gatherOut []string
 
 	for _, c := range containers {
-		ip, _ := getContainerIfaceIP(ctx, "wg0", c)
+		ip, _ := getContainerIfaceIP(ctx, inetV4, "wg0", c)
 		nodeName, _ := c.Name(ctx)
-		routes := fmt.Sprintf("%s wg0 IP:\n %s, ", nodeName, ip)
+		routes := fmt.Sprintf("%s wg0 IPv4:\n %s, ", nodeName, ip)
 		gatherOut = append(gatherOut, routes)
 	}
 
 	for _, c := range containers {
-		ip, _ := getContainerIfaceIP(ctx, "eth0", c)
+		ip, _ := getContainerIfaceIP(ctx, inetV6, "wg0", c)
 		nodeName, _ := c.Name(ctx)
-		routes := fmt.Sprintf("%s eth0 IP:\n %s, ", nodeName, ip)
+		routes := fmt.Sprintf("%s wg0 IPv6:\n %s, ", nodeName, ip)
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		ip, _ := getContainerIfaceIP(ctx, inetV4, "eth0", c)
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s eth0 IPv4:\n %s, ", nodeName, ip)
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		ip, _ := getContainerIfaceIP(ctx, inetV6, "eth0", c)
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s eth0 IPv6:\n %s, ", nodeName, ip)
 		gatherOut = append(gatherOut, routes)
 	}
 
@@ -354,7 +392,13 @@ func (suite *NexodusIntegrationSuite) gatherFail(ctx context.Context, containers
 
 	for _, c := range containers {
 		nodeName, _ := c.Name(ctx)
-		routes := fmt.Sprintf("%s routes:\n %s, ", nodeName, suite.routesDump(ctx, c))
+		routes := fmt.Sprintf("%s routes:\n %s, ", nodeName, suite.routesDumpV4(ctx, c))
+		gatherOut = append(gatherOut, routes)
+	}
+
+	for _, c := range containers {
+		nodeName, _ := c.Name(ctx)
+		routes := fmt.Sprintf("%s routes:\n %s, ", nodeName, suite.routesDumpV6(ctx, c))
 		gatherOut = append(gatherOut, routes)
 	}
 
