@@ -4,7 +4,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/api"
 	"github.com/urfave/cli/v2"
 	"net"
 	"net/rpc/jsonrpc"
@@ -18,8 +18,8 @@ func init() {
 			&cli.StringFlag{
 				Name:        "unix-socket",
 				Usage:       "Path to the unix socket nexd is listening against",
-				Value:       nexodus.UnixSocketPath,
-				Destination: &nexodus.UnixSocketPath,
+				Value:       api.UnixSocketPath,
+				Destination: &api.UnixSocketPath,
 				Required:    false,
 			},
 		},
@@ -52,7 +52,7 @@ func init() {
 }
 
 func callNexd(method string) (string, error) {
-	conn, err := net.Dial("unix", nexodus.UnixSocketPath)
+	conn, err := net.Dial("unix", api.UnixSocketPath)
 	if err != nil {
 		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
 	}

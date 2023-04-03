@@ -1,5 +1,5 @@
 //go:build darwin
 
-package nexodus
+package api
 
 var UnixSocketPath = "/var/run/nexd.sock"

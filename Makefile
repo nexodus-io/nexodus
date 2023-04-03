@@ -547,3 +547,24 @@ docs: ## Generate docs site into site/ directory
 .PHONY: docs-preview
 docs-preview: ## Generate a live preview of project documentation
 	$(CMD_PREFIX) docker run --rm -it -p 8000:8000 -v ${PWD}:/docs squidfunk/mkdocs-material
+
+
+.PHONY: graph-prereqs
+graph-prereqs:
+	$(CMD_PREFIX) if ! which godepgraph >/dev/null 2>&1; then \
+		echo "Please install godepgraph:" ; \
+		echo "   go install github.com/kisielk/godepgraph@latest"; \
+		exit 1 ; \
+	fi
+	$(CMD_PREFIX) if ! which dot >/dev/null 2>&1; then \
+		echo "Please install Graphviz." ; \
+		echo "See: https://graphviz.org/download/" ; \
+		exit 1 ; \
+	fi
+
+.PHONY: graph-all
+graph-all: graph-nexd graph-nexctl graph-apiserver ## Graph the package dependencies of the binaries
+graph-%: graph-prereqs
+	@mkdir dist || true
+	$(ECHO_PREFIX) printf "  %-12s dist/graph-$(word 2,$(subst -, ,$@)).png\n" "[GRAPHING]"
+	$(CMD_PREFIX) godepgraph -s ./cmd/$(word 2,$(subst -, ,$@)) | dot -Tpng -o dist/graph-$(word 2,$(subst -, ,$@)).png

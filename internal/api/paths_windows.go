@@ -1,5 +1,5 @@
 //go:build windows
 
-package nexodus
+package api
 
 var UnixSocketPath = "C://nexd/nexd.sock"
