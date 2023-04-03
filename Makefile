@@ -81,7 +81,7 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist
-	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate
+	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate .test-images
 
 ##@ Development
 
@@ -283,10 +283,13 @@ clear-db:
 ##@ Container Images
 
 .PHONY: test-images
-test-images: dist/nexd dist/nexctl ## Create test images for e2e
+test-images: .test-images ## Create test images for e2e
+
+.test-images: dist/nexd dist/nexctl
 	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
+	$(CMD_PREFIX) touch .test-images
 
 .PHONY: e2eprereqs
 e2eprereqs:

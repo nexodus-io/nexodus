@@ -24,6 +24,7 @@
 .ui-lint
 .opa-lint
 .generate
+.test-images
 
 #tests
 ./tests/*.json
