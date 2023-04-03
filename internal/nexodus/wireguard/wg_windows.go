@@ -36,31 +36,31 @@ func (wg *WireGuard) setupInterfaceOS(relay bool) error {
 
 	var wgOut string
 	var err error
-	if ifaceExists(logger, dev) {
-		wgOut, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", dev)
+	if wg.ifaceExists() {
+		wgOut, err = runCommand("wireguard.exe", "/uninstalltunnelservice", dev)
 		if err != nil {
 			logger.Debugf("failed to down the wireguard interface (this is generally ok): %w", err)
 		}
-		if ifaceExists(logger, dev) {
+		if wg.ifaceExists() {
 			logger.Debugf("existing windows iface %s has not been torn down yet, pausing for 1 second", dev)
 			time.Sleep(time.Second * 1)
 		}
 	}
 	logger.Debugf("stopped windows tunnel svc:%v\n", wgOut)
 	// sleep for one second to give the wg async exe time to tear down any existing wg0 configuration
-	wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
+	wgOut, err = runCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
 	if err != nil {
 		logger.Errorf("failed to start the wireguard interface: %w", err)
 		return fmt.Errorf("%w", interfaceErr)
 	}
 	logger.Debugf("started windows tunnel svc: %v\n", wgOut)
 	// ensure the link is created before adding peers
-	if !ifaceExists(logger, dev) {
+	if !wg.ifaceExists() {
 		logger.Debugf("windows iface %s has not been created yet, pausing for 1 second", dev)
 		time.Sleep(time.Second * 1)
 	}
 	// fatal out if the interface is not created
-	if !ifaceExists(logger, dev) {
+	if !wg.ifaceExists() {
 		logger.Errorf("failed to create the windows wireguard interface: %w", err)
 		return fmt.Errorf("%w", interfaceErr)
 	}

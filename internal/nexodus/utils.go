@@ -52,26 +52,6 @@ func ValidateCIDR(cidr string) error {
 	return nil
 }
 
-// discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
-func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port string) (string, error) {
-	controllerSocket := fmt.Sprintf("%s:%s", controller, port)
-	conn, err := net.Dial("udp4", controllerSocket)
-	if err != nil {
-		return "", err
-	}
-	conn.Close()
-	ipAddress := conn.LocalAddr().(*net.UDPAddr)
-	if ipAddress != nil {
-		ip, _, err := net.SplitHostPort(ipAddress.String())
-		if err != nil {
-			return "", err
-		}
-		logger.Debugf("Nodes discovered local address is [%s]", ip)
-		return ip, nil
-	}
-	return "", fmt.Errorf("failed to obtain the local IP")
-}
-
 // ParseIPNet return an IPNet from a string
 func parseIPNet(s string) (*net.IPNet, error) {
 	ip, ipNet, err := net.ParseCIDR(s)
@@ -118,4 +98,50 @@ func relayIpTables(logger *zap.SugaredLogger, dev string) {
 	if err != nil {
 		logger.Warnf("the hub router iptables rule was not added: %v", err)
 	}
+}
+
+// discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
+func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port string) (string, error) {
+	controllerSocket := fmt.Sprintf("%s:%s", controller, port)
+	conn, err := net.Dial("udp4", controllerSocket)
+	if err != nil {
+		return "", err
+	}
+	conn.Close()
+	ipAddress := conn.LocalAddr().(*net.UDPAddr)
+	if ipAddress != nil {
+		ip, _, err := net.SplitHostPort(ipAddress.String())
+		if err != nil {
+			return "", err
+		}
+		logger.Debugf("Nodes discovered local address is [%s]", ip)
+		return ip, nil
+	}
+	return "", fmt.Errorf("failed to obtain the local IP")
+}
+
+func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (bool, error) {
+	var hostIP string
+	var err error
+	if nodeOS == Darwin.String() || nodeOS == Windows.String() {
+		hostIP, err = discoverGenericIPv4(logger, controller, port)
+		if err != nil {
+			return false, err
+		}
+	}
+	if nodeOS == Linux.String() {
+		linuxIP, err := discoverLinuxAddress(logger, 4)
+		if err != nil {
+			return false, err
+		}
+		hostIP = linuxIP.String()
+	}
+	ipAndPort, err := stunRequest(logger, stunServer1, 0)
+	if err != nil {
+		return false, err
+	}
+	if hostIP != ipAndPort.IP.String() {
+		return true, nil
+	}
+	return false, nil
 }

@@ -2,12 +2,16 @@
 
 package wireguard
 
-import "github.com/nexodus-io/nexodus/internal/models"
+import (
+	"fmt"
+
+	"github.com/nexodus-io/nexodus/internal/models"
+)
 
 // handlePeerRouteOS when a new configuration is deployed, delete/add the peer allowedIPs
 func (wg *WireGuard) handlePeerRouteOS(wgPeerConfig WgPeerConfig) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		if err := AddRoute(allowedIP, wg.TunnelIface); err != nil {
+		if err := addRoute(allowedIP, wg.TunnelIface); err != nil {
 			wg.Logger.Debugf("route add failed: %v", err)
 		}
 	}
@@ -17,7 +21,7 @@ func (wg *WireGuard) handlePeerRouteOS(wgPeerConfig WgPeerConfig) {
 func (wg *WireGuard) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
 	// TODO: Windoze route lookups
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		if err := DeleteRoute(allowedIP, dev); err != nil {
+		if err := deleteRoute(allowedIP, dev); err != nil {
 			wg.Logger.Debug(err)
 		}
 	}
@@ -31,7 +35,7 @@ func routeExistsOS(s string) (bool, error) {
 // addRoute adds a windows route to the specified interface
 func addRoute(prefix, dev string) error {
 	// TODO: replace with powershell
-	_, err := RunCommand("netsh", "int", "ipv4", "add", "route", prefix, dev)
+	_, err := runCommand("netsh", "int", "ipv4", "add", "route", prefix, dev)
 	if err != nil {
 		return fmt.Errorf("no windows route added: %w", err)
 	}
@@ -41,7 +45,7 @@ func addRoute(prefix, dev string) error {
 
 // deleteRoute deletes a windows route
 func deleteRoute(prefix, dev string) error {
-	_, err := RunCommand("netsh", "int", "ipv4", "del", "route", prefix, dev)
+	_, err := runCommand("netsh", "int", "ipv4", "del", "route", prefix, dev)
 	if err != nil {
 		return fmt.Errorf("no route deleted: %w", err)
 	}

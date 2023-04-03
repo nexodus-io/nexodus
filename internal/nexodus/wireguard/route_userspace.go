@@ -29,8 +29,3 @@ func routeExistsUS(prefix string) (bool, error) {
 	// no-op
 	return false, nil
 }
-
-func (wg *WireGuard) addRouteUS(prefix string) error {
-	// no-op
-	return nil
-}

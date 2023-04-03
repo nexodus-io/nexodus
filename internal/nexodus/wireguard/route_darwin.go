@@ -18,11 +18,11 @@ func (wg *WireGuard) handlePeerRouteOS(wgPeerConfig WgPeerConfig) {
 	}
 	// If child prefix split the two prefixes (host /32) and child prefix
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		_, err := RunCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", devName)
+		_, err := runCommand("route", "-q", "-n", "delete", "-inet", allowedIP, "-interface", devName)
 		if err != nil {
 			wg.Logger.Debugf("no route deleted: %v", err)
 		}
-		if err := AddRoute(allowedIP, devName); err != nil {
+		if err := addRoute(allowedIP, devName); err != nil {
 			wg.Logger.Debugf("%v", err)
 		}
 	}
@@ -31,7 +31,7 @@ func (wg *WireGuard) handlePeerRouteOS(wgPeerConfig WgPeerConfig) {
 
 func (wg *WireGuard) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
-		if err := DeleteRoute(allowedIP, dev); err != nil {
+		if err := deleteRoute(allowedIP, dev); err != nil {
 			wg.Logger.Debug(err)
 		}
 	}
@@ -71,7 +71,7 @@ func routeExistsOS(s string) (bool, error) {
 
 // AddRoute adds a route to the specified interface
 func addRoute(prefix, dev string) error {
-	_, err := RunCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", dev)
+	_, err := runCommand("route", "-q", "-n", "add", "-inet", prefix, "-interface", dev)
 	if err != nil {
 		return fmt.Errorf("route add failed: %w", err)
 	}
@@ -81,7 +81,7 @@ func addRoute(prefix, dev string) error {
 
 // deleteRoute deletes a darwin route
 func deleteRoute(prefix, dev string) error {
-	_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix, "-interface", dev)
+	_, err := runCommand("route", "-q", "-n", "delete", "-inet", prefix, "-interface", dev)
 	if err != nil {
 		return fmt.Errorf("no route deleted: %w", err)
 	}
