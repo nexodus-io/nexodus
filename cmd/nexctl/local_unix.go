@@ -21,6 +21,7 @@ func init() {
 				Value:       nexodus.UnixSocketPath,
 				Destination: &nexodus.UnixSocketPath,
 				Required:    false,
+				Category:    "Agent Options",
 			},
 		},
 		Subcommands: []*cli.Command{

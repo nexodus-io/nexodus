@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"sort"
 	"sync"
 	"syscall"
@@ -15,7 +16,8 @@ import (
 )
 
 const (
-	nexodusLogEnv = "NEXD_LOGLEVEL"
+	nexodusLogEnv        = "NEXD_LOGLEVEL"
+	Linux         string = "linux"
 )
 
 type nexdMode int
@@ -23,6 +25,8 @@ type nexdMode int
 const (
 	nexdModeAgent nexdMode = iota
 	nexdModeProxy
+	nexdModeRouter
+	nexdModeRelay
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
@@ -43,29 +47,24 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
 	userspaceMode := false
-	relayNode := false
-	discoveryNode := false
-	var childPrefix []string
 	switch mode {
 	case nexdModeAgent:
-		childPrefix = cCtx.StringSlice("child-prefix")
-		relayNode = cCtx.Bool("relay-node")
-		discoveryNode = cCtx.Bool("discovery-node")
+		runNexdAgent(cCtx, ctx, logger, controller, userspaceMode)
+	case nexdModeRouter:
+		runNexdAgent(cCtx, ctx, logger, controller, userspaceMode)
 	case nexdModeProxy:
-		// These are top-level flags that are not compatible with `nexd proxy`.
-		// It would be nicer to convert these to subcommands, but that's for
-		// another day. TODO
-		proxyBadFlags := [3]string{"child-prefix", "relay-node", "discovery-node"}
-		for _, flag := range proxyBadFlags {
-			if cCtx.IsSet(flag) {
-				return fmt.Errorf("flag %s is not compatible with `nexd proxy`", flag)
-			}
-		}
 		userspaceMode = true
+		runNexdAgent(cCtx, ctx, logger, controller, userspaceMode)
 		logger.Info("Starting in L4 proxy mode")
+	case nexdModeRelay:
+		runNexRelay(cCtx, ctx, logger, controller)
 	}
 
-	nex, err := nexodus.NewNexodus(
+	return nil
+}
+
+func runNexdAgent(cCtx *cli.Context, ctx context.Context, logger *zap.Logger, controller string, userspaceMode bool) {
+	nexa, err := nexodus.NewNexAgent(
 		ctx,
 		logger.Sugar(),
 		controller,
@@ -76,13 +75,12 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		cCtx.String("private-key"),
 		cCtx.String("request-ip"),
 		cCtx.String("local-endpoint-ip"),
-		childPrefix,
+		cCtx.StringSlice("child-prefix"),
 		cCtx.Bool("stun"),
-		relayNode,
-		discoveryNode,
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
-		Version, userspaceMode,
+		Version,
+		userspaceMode,
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -90,23 +88,49 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 
 	wg := &sync.WaitGroup{}
 	for _, egressRule := range cCtx.StringSlice("egress") {
-		err := nex.UserspaceProxyAdd(ctx, wg, egressRule, nexodus.ProxyTypeEgress)
+		err := nexa.UserspaceProxyAdd(ctx, wg, egressRule, nexodus.ProxyTypeEgress)
 		if err != nil {
 			logger.Sugar().Errorf("Failed to add egress proxy rule (%s): %v", egressRule, err)
 		}
 	}
 	for _, ingressRule := range cCtx.StringSlice("ingress") {
-		err := nex.UserspaceProxyAdd(ctx, wg, ingressRule, nexodus.ProxyTypeIngress)
+		err := nexa.UserspaceProxyAdd(ctx, wg, ingressRule, nexodus.ProxyTypeIngress)
 		if err != nil {
 			logger.Sugar().Errorf("Failed to add ingress proxy rule (%s): %v", ingressRule, err)
 		}
 	}
-	if err := nex.Start(ctx, wg); err != nil {
+	if err := nexa.Start(ctx, wg); err != nil {
 		logger.Fatal(err.Error())
 	}
 	wg.Wait()
+}
 
-	return nil
+func runNexRelay(cCtx *cli.Context, ctx context.Context, logger *zap.Logger, controller string) {
+	nexr, err := nexodus.NewNexRelay(
+		ctx,
+		logger.Sugar(),
+		controller,
+		cCtx.String("username"),
+		cCtx.String("password"),
+		cCtx.Int("listen-port"),
+		cCtx.String("public-key"),
+		cCtx.String("private-key"),
+		cCtx.String("request-ip"),
+		cCtx.String("local-endpoint-ip"),
+		cCtx.Bool("stun"),
+		cCtx.Bool("enable-discovery"),
+		cCtx.Bool("insecure-skip-tls-verify"),
+		Version,
+	)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+
+	wg := &sync.WaitGroup{}
+	if err := nexr.Start(ctx, wg); err != nil {
+		logger.Fatal(err.Error())
+	}
+	wg.Wait()
 }
 
 var additionalPlatformFlags []cli.Flag = nil
@@ -163,6 +187,55 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:  "router",
+				Usage: "Enable child-prefix function of the node agent to enable prefix forwarding.",
+				Action: func(cCtx *cli.Context) error {
+					return nexdRun(cCtx, logger, nexdModeRouter)
+				},
+				Flags: []cli.Flag{
+					&cli.StringSliceFlag{
+						Name:     "child-prefix",
+						Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
+						EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
+						Required: false,
+						Action: func(ctx *cli.Context, childPrefixes []string) error {
+							for _, prefix := range childPrefixes {
+								if err := nexodus.ValidateCIDR(prefix); err != nil {
+									return fmt.Errorf("Child prefix CIDRs passed in --child-prefix %s is not valid: %w", prefix, err)
+								}
+							}
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:  "relay",
+				Usage: "Enable relay and discovery support function for the node agent.",
+				Action: func(cCtx *cli.Context) error {
+					if runtime.GOOS != Linux {
+						return fmt.Errorf("Relay node is only supported for Linux Operating System")
+					}
+
+					return nexdRun(cCtx, logger, nexdModeRelay)
+				},
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:     "enable-discovery",
+						Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
+						Value:    false,
+						EnvVars:  []string{"NEXD_DISCOVERY_NODE"},
+						Required: false,
+						Action: func(ctx *cli.Context, discoNode bool) error {
+							if discoNode && runtime.GOOS != Linux {
+								return fmt.Errorf("Discovery node is only supported for Linux Operating System")
+							}
+							return nil
+						},
+					},
+				},
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -171,6 +244,7 @@ func main() {
 				Usage:    "Base64 encoded public `key` for the local host - agent generates keys by default",
 				EnvVars:  []string{"NEXD_PUB_KEY"},
 				Required: false,
+				Category: "Wireguard Options",
 			},
 			&cli.StringFlag{
 				Name:     "private-key",
@@ -178,6 +252,7 @@ func main() {
 				Usage:    "Base64 encoded private `key` for the local host (dev purposes only - soon to be removed)",
 				EnvVars:  []string{"NEXD_PRIVATE_KEY"},
 				Required: false,
+				Category: "Wireguard Options",
 			},
 			&cli.IntFlag{
 				Name:     "listen-port",
@@ -185,6 +260,7 @@ func main() {
 				Usage:    "Wireguard `port` to listen on for incoming peers",
 				EnvVars:  []string{"NEXD_LISTEN_PORT"},
 				Required: false,
+				Category: "Wireguard Options",
 			},
 			&cli.StringFlag{
 				Name:     "request-ip",
@@ -192,6 +268,15 @@ func main() {
 				Usage:    "Request a specific `IP` address from Ipam if available (optional)",
 				EnvVars:  []string{"NEXD_REQUESTED_IP"},
 				Required: false,
+				Category: "Wireguard Options",
+				Action: func(ctx *cli.Context, ip string) error {
+					if ip != "" {
+						if err := nexodus.ValidateIp(ip); err != nil {
+							return fmt.Errorf("the IP address passed in --request-ip %s is not valid: %w", ip, err)
+						}
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:     "local-endpoint-ip",
@@ -199,12 +284,15 @@ func main() {
 				Usage:    "Specify the endpoint `IP` address of this node instead of being discovered (optional)",
 				EnvVars:  []string{"NEXD_LOCAL_ENDPOINT_IP"},
 				Required: false,
-			},
-			&cli.StringSliceFlag{
-				Name:     "child-prefix",
-				Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
-				EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
-				Required: false,
+				Category: "Wireguard Options",
+				Action: func(ctx *cli.Context, ip string) error {
+					if ip != "" {
+						if err := nexodus.ValidateIp(ip); err != nil {
+							return fmt.Errorf("the IP address passed in --local-endpoint-ip %s is not valid: %w", ip, err)
+						}
+					}
+					return nil
+				},
 			},
 			&cli.BoolFlag{
 				Name:     "stun",
@@ -212,20 +300,7 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_STUN"},
 				Required: false,
-			},
-			&cli.BoolFlag{
-				Name:     "relay-node",
-				Usage:    "Set if this node is to be the relay node for a hub and spoke scenarios",
-				Value:    false,
-				EnvVars:  []string{"NEXD_RELAY_NODE"},
-				Required: false,
-			},
-			&cli.BoolFlag{
-				Name:     "discovery-node",
-				Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
-				Value:    false,
-				EnvVars:  []string{"NEXD_DISCOVERY_NODE"},
-				Required: false,
+				Category: "Agent Options",
 			},
 			&cli.BoolFlag{
 				Name:     "relay-only",
@@ -233,6 +308,7 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_RELAY_ONLY"},
 				Required: false,
+				Category: "Agent Options",
 			},
 			&cli.StringFlag{
 				Name:     "username",
@@ -240,6 +316,7 @@ func main() {
 				Usage:    "Username `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_USERNAME"},
 				Required: false,
+				Category: "ApiServer Options",
 			},
 			&cli.StringFlag{
 				Name:     "password",
@@ -247,6 +324,7 @@ func main() {
 				Usage:    "Password `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_PASSWORD"},
 				Required: false,
+				Category: "ApiServer Options",
 			},
 			&cli.BoolFlag{
 				Name:     "insecure-skip-tls-verify",
@@ -254,6 +332,7 @@ func main() {
 				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
 				EnvVars:  []string{"NEXD_INSECURE_SKIP_TLS_VERIFY"},
 				Required: false,
+				Category: "ApiServer Options",
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
