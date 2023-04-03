@@ -75,7 +75,7 @@ func (c FnConsumer) Accept(l testcontainers.Log) {
 }
 
 // CreateNode creates a container
-func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string, v6 int) testcontainers.Container {
+func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string, v6 v6Enable) testcontainers.Container {
 
 	// Host modifiers differ for a container for a container with and without v6 enabled
 	var hostConfSysctl map[string]string
