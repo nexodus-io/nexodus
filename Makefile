@@ -19,7 +19,7 @@ else
 endif
 
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
-NEXODUS_RELEASE?=$(shell git describe --always)
+NEXODUS_RELEASE?=$(shell git describe --always --exclude qa --exclude prod)
 NEXODUS_LDFLAGS?=-X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 NEXODUS_GCFLAGS?=
 
