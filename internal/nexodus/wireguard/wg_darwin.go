@@ -1,17 +1,24 @@
 //go:build darwin
 
-package nexodus
+package wireguard
 
 import (
 	"fmt"
 	"go.uber.org/zap"
 )
 
-func (ax *Nexodus) setupInterfaceOS() error {
+func (wg *WireGuard) setupInterface() error {
+	if wg.UserspaceMode {
+		return wg.setupInterfaceUS()
+	}
+	return wg.setupInterfaceOS(wg.Relay)
+}
 
-	logger := ax.logger
-	localAddress := ax.wgLocalAddress
-	dev := ax.tunnelIface
+func (wg *WireGuard) setupInterfaceOS(relay bool) error {
+
+	logger := wg.Logger
+	localAddress := wg.WgLocalAddress
+	dev := wg.TunnelIface
 
 	if ifaceExists(logger, dev) {
 		deleteDarwinIface(logger, dev)
@@ -44,9 +51,9 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	return nil
 }
 
-func (ax *Nexodus) removeExistingInterface() {
-	if ifaceExists(ax.logger, ax.tunnelIface) {
-		deleteDarwinIface(ax.logger, ax.tunnelIface)
+func (wg *WireGuard) RemoveExistingInterface() {
+	if ifaceExists(wg.Logger, wg.TunnelIface) {
+		deleteDarwinIface(wg.Logger, wg.TunnelIface)
 	}
 }
 
@@ -63,8 +70,4 @@ func deleteDarwinIface(logger *zap.SugaredLogger, dev string) {
 	if err != nil {
 		logger.Debugf("failed to delete darwin interface: %v", err)
 	}
-}
-
-func (ax *Nexodus) findLocalIP() (string, error) {
-	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 }

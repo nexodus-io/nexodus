@@ -1,13 +1,12 @@
-package nexodus
+package wireguard
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-
 	"go.uber.org/zap"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // default key pair file locations (windows needs work)
@@ -25,28 +24,28 @@ const (
 )
 
 // generateKeyPair a key pair and write them to disk
-func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
+func (wg *WireGuard) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	ax.wireguardPubKey = privateKey.PublicKey().String()
-	ax.wireguardPvtKey = privateKey.String()
+	wg.WireguardPubKey = privateKey.PublicKey().String()
+	wg.WireguardPvtKey = privateKey.String()
 
 	// TODO remove this debug statement at some point
-	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
+	wg.Logger.Debugf("Public Key [ %s ] Private Key [ %s ]", wg.WireguardPubKey, wg.WireguardPvtKey)
 	// write the new keys to disk
-	WriteToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
-	WriteToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+	WriteToFile(wg.Logger, wg.WireguardPubKey, publicKeyFile, publicKeyPermissions)
+	WriteToFile(wg.Logger, wg.WireguardPvtKey, privateKeyFile, privateKeyPermissions)
 
 	return nil
 }
 
 // readKeyFile reads the contents of a key file
 func readKeyFile(logger *zap.SugaredLogger, keyFile string) string {
-	if !FileExists(keyFile) {
+	if !fileExists(keyFile) {
 		return ""
 	}
 	key, err := readKeyFileToString(keyFile)

@@ -1,9 +1,10 @@
 //go:build windows
 
-package nexodus
+package wireguard
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"text/template"
 	"time"
@@ -14,15 +15,23 @@ const (
 	windowsWgConfigFile        = "C:/nexd/wg0.conf"
 )
 
-func (ax *Nexodus) setupInterfaceOS() error {
+func (wg *WireGuard) setupInterface() error {
+	if wg.UserspaceMode {
+		return wg.setupInterfaceUS()
+	}
+	return wg.setupInterfaceOS(wg.Relay)
+}
 
-	logger := ax.logger
-	localAddress := ax.wgLocalAddress
-	privateKey := ax.wireguardPvtKey
-	dev := ax.tunnelIface
+func (wg *WireGuard) setupInterfaceOS(relay bool) error {
+
+	logger := wg.Logger
+	localAddress := wg.WgLocalAddress
+	privateKey := wg.WireguardPvtKey
+	dev := wg.TunnelIface
 
 	if err := buildWindowsWireguardIfaceConf(privateKey, localAddress); err != nil {
-		return fmt.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
+		logger.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	var wgOut string
@@ -41,7 +50,8 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	// sleep for one second to give the wg async exe time to tear down any existing wg0 configuration
 	wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
 	if err != nil {
-		return fmt.Errorf("failed to start the wireguard interface: %w", err)
+		logger.Errorf("failed to start the wireguard interface: %w", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 	logger.Debugf("started windows tunnel svc: %v\n", wgOut)
 	// ensure the link is created before adding peers
@@ -51,17 +61,24 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	}
 	// fatal out if the interface is not created
 	if !ifaceExists(logger, dev) {
-		return fmt.Errorf("failed to create the windows wireguard interface: %w", err)
+		logger.Errorf("failed to create the windows wireguard interface: %w", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	return nil
 }
 
-func (ax *Nexodus) removeExistingInterface() {
-}
-
-func (ax *Nexodus) findLocalIP() (string, error) {
-	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
+func (wg *WireGuard) RemoveExistingInterface() {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		wg.Logger.Warnf("localAddresses: %w\n", err)
+	}
+	for _, iface := range ifaces {
+		if iface.Name == wg.TunnelIface {
+			wg.Logger.Debugf("Existing wireguard interface %s found.", iface.Name)
+			//TODO: Implement delete interface
+		}
+	}
 }
 
 func buildWindowsWireguardIfaceConf(pvtKey, wgAddress string) error {

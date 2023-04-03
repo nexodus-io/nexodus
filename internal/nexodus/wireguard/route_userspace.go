@@ -1,4 +1,4 @@
-package nexodus
+package wireguard
 
 import (
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -16,21 +16,21 @@ import (
 // code, but we can't get to it.
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) {
+func (wg *WireGuard) handlePeerRouteUS(wgPeerConfig WgPeerConfig) {
 	// no-op
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDeleteUS(dev string, wgPeerConfig models.Device) {
+func (wg *WireGuard) handlePeerRouteDeleteUS(dev string, wgPeerConfig models.Device) {
 	// no-op
 }
 
-func RouteExistsUS(prefix string) (bool, error) {
+func routeExistsUS(prefix string) (bool, error) {
 	// no-op
 	return false, nil
 }
 
-func (ax *Nexodus) AddRouteUS(prefix string) error {
+func (wg *WireGuard) addRouteUS(prefix string) error {
 	// no-op
 	return nil
 }

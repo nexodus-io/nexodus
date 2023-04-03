@@ -1,4 +1,4 @@
-package nexodus
+package wireguard
 
 import (
 	"github.com/nexodus-io/nexodus/internal/util"

@@ -1,4 +1,4 @@
-package nexodus
+package wireguard
 
 import (
 	"errors"
@@ -11,10 +11,10 @@ import (
 var interfaceErr = errors.New("interface setup error")
 
 // ifaceExists returns true if the input matches a net interface
-func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
-	_, err := net.InterfaceByName(iface)
+func (wg *WireGuard) ifaceExists() bool {
+	_, err := net.InterfaceByName(wg.TunnelIface)
 	if err != nil {
-		logger.Debugf("existing link not found: %s", iface)
+		wg.Logger.Debugf("existing link not found: %s", wg.TunnelIface)
 		return false
 	}
 
@@ -22,19 +22,19 @@ func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 }
 
 // getIPv4Iface get the IP of the specified net interface
-func (ax *Nexodus) getIPv4Iface(ifname string) net.IP {
-	if ax.userspaceMode {
-		return ax.getIPv4IfaceUS(ifname)
+func (wg *WireGuard) getIPv4Iface() net.IP {
+	if wg.UserspaceMode {
+		return getIPv4IfaceUS(wg.UserspaceLastAddress)
 	} else {
-		return ax.getIPv4IfaceOS(ifname)
+		return getIPv4IfaceOS(wg.TunnelIface)
 	}
 }
 
-func (ax *Nexodus) getIPv4IfaceUS(ifname string) net.IP {
-	return net.ParseIP(ax.userspaceLastAddress)
+func getIPv4IfaceUS(ifname string) net.IP {
+	return net.ParseIP(ifname)
 }
 
-func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
+func getIPv4IfaceOS(ifname string) net.IP {
 	interfaces, _ := net.Interfaces()
 	for _, inter := range interfaces {
 		if inter.Name != ifname {
@@ -57,9 +57,9 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	return nil
 }
 
-// enableForwardingIPv4 for linux nodes that are hub bouncers
-func enableForwardingIPv4(logger *zap.SugaredLogger) error {
-	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
+// EnableForwardingIPv4 for linux nodes that are hub bouncers
+func EnableForwardingIPv4(logger *zap.SugaredLogger) error {
+	cmdOut, err := runCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
 	if err != nil {
 		return fmt.Errorf("failed to enable IP Forwarding for this hub-router: %w", err)
 	}
