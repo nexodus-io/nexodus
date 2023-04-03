@@ -218,16 +218,16 @@ func ping(ctx context.Context, ctr testcontainers.Container, family, address str
 
 // containerExec exec container commands
 func (suite *NexodusIntegrationSuite) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
+	nodeName, _ := container.Name(ctx)
+	if cmd[0] != "wg" && cmd[0] != "cat" {
+		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
+	}
 	code, outputRaw, err := container.Exec(
 		ctx,
 		cmd,
 	)
 	if err != nil {
 		return "", err
-	}
-	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "wg" && cmd[0] != "cat" {
-		suite.logger.Infof("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	output, err := io.ReadAll(outputRaw)
 	if err != nil {
