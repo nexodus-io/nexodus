@@ -58,7 +58,7 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 	return token, idToken, nil
 }
 
-func startLogin(client *http.Client, hostname url.URL) (*models.DeviceStartReponse, error) {
+func startLogin(client *http.Client, hostname url.URL) (*models.DeviceStartResponse, error) {
 	dest := hostname
 	dest.Path = "/device/login/start"
 	res, err := client.Post(dest.String(), "application/json", nil)
@@ -75,7 +75,7 @@ func startLogin(client *http.Client, hostname url.URL) (*models.DeviceStartRepon
 		return nil, err
 	}
 
-	var resp models.DeviceStartReponse
+	var resp models.DeviceStartResponse
 	if err = json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}

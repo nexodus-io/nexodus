@@ -7,3 +7,11 @@ dist
 
 # config
 .auth-providers.yaml
+
+# misc
+*.idea
+.DS_Store
+.go-lint-*
+.gen-*
+.*-lint
+.generate

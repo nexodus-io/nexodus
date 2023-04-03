@@ -24,7 +24,8 @@ const (
 // CreateOrganization creates a new Organization
 // @Summary      Create an Organization
 // @Description  Creates a named organization with the given CIDR
-// @Tags         Organization
+// @Id			 CreateOrganization
+// @Tags         Organizations
 // @Accept       json
 // @Produce      json
 // @Param        Organization  body     models.AddOrganization  true  "Add Organization"
@@ -34,7 +35,7 @@ const (
 // @Failure		 405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /organizations [post]
+// @Router       /api/organizations [post]
 func (api *API) CreateOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateOrganization")
 	defer span.End()
@@ -141,14 +142,15 @@ func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.D
 // ListOrganizations lists all Organizations
 // @Summary      List Organizations
 // @Description  Lists all Organizations
-// @Tags         Organization
+// @Id 			 ListOrganizations
+// @Tags         Organizations
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.Organization
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
-// @Router       /organizations [get]
+// @Router       /api/organizations [get]
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
@@ -173,7 +175,8 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // GetOrganizations gets a specific Organization
 // @Summary      Get Organizations
 // @Description  Gets a Organization by Organization ID
-// @Tags         Organization
+// @Id 			 GetOrganizations
+// @Tags         Organizations
 // @Accepts		 json
 // @Produce      json
 // @Param		 id   path      string true "Organization ID"
@@ -182,7 +185,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
-// @Router       /organizations/{id} [get]
+// @Router       /api/organizations/{id} [get]
 func (api *API) GetOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
 		trace.WithAttributes(
@@ -214,16 +217,17 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // ListDevicesInOrganization lists all devices in a Organization
 // @Summary      List Devices
 // @Description  Lists all devices for this Organization
+// @Id           ListDevicesInOrganization
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
-// @Param		 id   path       string true "Organization ID"
+// @Param		 organization_id path   string true "Organization ID"
 // @Success      200  {object}  []models.Device
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
-// @Router       /organizations/{id}/devices [get]
+// @Router       /api/organizations/{organization_id}/devices [get]
 func (api *API) ListDevicesInOrganization(c *gin.Context) {
 
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInOrganization")
@@ -267,18 +271,19 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 // GetDeviceInOrganization gets a device in a Organization
 // @Summary      Get Device
 // @Description  Gets a device in a organization by ID
+// @Id 			 GetDeviceInOrganization
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
 // @Param		 organization_id path   string true "Organization ID"
 // @Param		 device_id path   string true "Device ID"
-// @Success      200  {object}  []models.Device
+// @Success      200  {object}  models.Device
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure		 500  {object}  models.BaseError
-// @Router       /organizations/{organization_id}/devices/{device_id} [get]
+// @Router       /api/organizations/{organization_id}/devices/{device_id} [get]
 func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceInOrganization",
 		trace.WithAttributes(
@@ -326,6 +331,20 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
+// ListUsersInOrganization lists all users in a Organization
+// @Summary      List Users
+// @Description  Lists all users for this Organization
+// @Id           ListUsersInOrganization
+// @Tags         Users
+// @Accepts		 json
+// @Produce      json
+// @Param		 id   path       string true "Organization ID"
+// @Success      200  {object}  []models.User
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure		 500  {object}  models.BaseError
+// @Router       /api/organizations/{id}/devices [get]
 func (api *API) ListUsersInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsersInOrganization")
 	defer span.End()
@@ -369,6 +388,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 // DeleteOrganization handles deleting an existing organization and associated ipam prefix
 // @Summary      Delete Organization
 // @Description  Deletes an existing organization and associated IPAM prefix
+// @Id 			 DeleteOrganization
 // @Tags         Organizations
 // @Accepts		 json
 // @Produce      json
@@ -378,7 +398,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /organizations/{id} [delete]
+// @Router       /api/organizations/{id} [delete]
 func (api *API) DeleteOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteOrganization",
 		trace.WithAttributes(

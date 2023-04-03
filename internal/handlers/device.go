@@ -33,13 +33,14 @@ func (e errDuplicateDevice) Error() string {
 // ListDevices lists all devices
 // @Summary      List Devices
 // @Description  Lists all devices
+// @Id  		 ListDevices
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.Device
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /devices [get]
+// @Router       /api/devices [get]
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
 	defer span.End()
@@ -75,6 +76,7 @@ func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *go
 // GetDevice gets a device by ID
 // @Summary      Get Devices
 // @Description  Gets a device by ID
+// @Id  		 GetDevice
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
@@ -84,7 +86,7 @@ func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *go
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /devices/{id} [get]
+// @Router       /api/devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDevice", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -109,6 +111,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // UpdateDevice updates a Device
 // @Summary      Update Devices
 // @Description  Updates a device by ID
+// @Id  		 UpdateDevice
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
@@ -119,7 +122,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /devices/{id} [patch]
+// @Router       /api/devices/{id} [patch]
 func (api *API) UpdateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -210,20 +213,21 @@ func (api *API) UpdateDevice(c *gin.Context) {
 
 // CreateDevice handles adding a new device
 // @Summary      Add Devices
-// @Description  Adds a new device
+// @Id  		 CreateDevice
 // @Tags         Devices
+// @Description  Adds a new device
 // @Accepts		 json
 // @Produce      json
-// @Param        device  body   models.AddDevice  true "Add Device"
+// @Param        Device  body   models.AddDevice  true "Add Device"
 // @Success      201  {object}  models.Device
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
-// @Failure      409  {object}  models.Device
+// @Failure      409  {object}  models.ConflictsError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /devices [post]
+// @Router       /api/devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "CreateDevice")
+	ctx, span := tracer.Start(c.Request.Context(), "AddDevice")
 	defer span.End()
 	var request models.AddDevice
 	// Call BindJSON to bind the received JSON
@@ -366,6 +370,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 // DeleteDevice handles deleting an existing device and associated ipam lease
 // @Summary      Delete Device
 // @Description  Deletes an existing device and associated IPAM lease
+// @Id 			 DeleteDevice
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
@@ -374,7 +379,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /devices/{id} [delete]
+// @Router       /api/devices/{id} [delete]
 func (api *API) DeleteDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteDevice")
 	defer span.End()

@@ -81,7 +81,7 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist
-	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate .test-images
+	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate .test-images .gen-openapi-client
 
 ##@ Development
 
@@ -136,7 +136,6 @@ policies=$(wildcard internal/routers/*.rego)
 
 .PHONY: opa-lint
 opa-lint: .opa-lint ## Lint the OPA policies
-
 .opa-lint: $(policies)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) $(PIPE_DEV_NULL)
@@ -145,10 +144,33 @@ opa-lint: .opa-lint ## Lint the OPA policies
 
 .PHONY: gen-docs
 gen-docs: .gen-docs ## Generate API docs
+.PHONY: openapi-lint
+openapi-lint: .openapi-lint ## Lint the OpenAPI document
+.PHONY: openapi-lint
+.openapi-lint: internal/docs/swagger.yaml
+	$(ECHO_PREFIX) printf "  %-12s \n" "[OPENAPI LINT]"
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
+		validate -i /src/internal/docs/swagger.yaml
+	$(CMD_PREFIX) touch $@
 
 .gen-docs: $(NEX_ALL_GO) 
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
-	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) --exclude pkg -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
+internal/docs/swagger.yaml: .gen-docs
+
+.PHONY: gen-openapi-client
+gen-openapi-client: .gen-openapi-client ## Generate the OpenAPI Client
+.gen-openapi-client: internal/docs/swagger.yaml
+	$(ECHO_PREFIX) printf "  %-12s internal/docs/swagger.yaml\n" "[OPENAPI CLIENT GEN]"
+	$(CMD_PREFIX) rm -rf internal/api/public
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
+		generate -i /src/internal/docs/swagger.yaml -g go \
+		--package-name public \
+		-o /src/internal/api/public \
+		-t /src/hack/openapi-templates \
+		--ignore-file-override /src/.openapi-generator-ignore $(PIPE_DEV_NULL)
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
+	$(CMD_PREFIX) go fmt ./... $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) touch $@
 
 .PHONY: opa-fmt

@@ -10,12 +10,13 @@ import (
 // ListFeatureFlags lists all feature flags
 // @Summary      List Feature Flags
 // @Description  Lists all feature flags
+// @Id           ListFeatureFlags
 // @Tags         FFlag
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object} map[string]bool
 // @Failure		 429  {object}  models.BaseError
-// @Router       /fflags [get]
+// @Router       /api/fflags [get]
 func (api *API) ListFeatureFlags(c *gin.Context) {
 	c.JSON(http.StatusOK, api.fflags.ListFlags())
 }
@@ -23,6 +24,7 @@ func (api *API) ListFeatureFlags(c *gin.Context) {
 // GetFeatureFlag gets a feature flag by name
 // @Summary      Get Feature Flag
 // @Description  Gets a Feature Flag by name
+// @Id           GetFeatureFlag
 // @Tags         FFlag
 // @Accepts		 json
 // @Produce      json
@@ -31,7 +33,7 @@ func (api *API) ListFeatureFlags(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /fflags/{name} [get]
+// @Router       /api/fflags/{name} [get]
 func (api *API) GetFeatureFlag(c *gin.Context) {
 	flagName := c.Param("name")
 	if flagName == "" {

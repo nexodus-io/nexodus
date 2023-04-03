@@ -48,12 +48,14 @@ func (o *OidcAgent) prepareContext(c *gin.Context) context.Context {
 }
 
 // LoginStart starts a login request
-// @Summary      Start Login
+// @Summary      Start Web Login
 // @Description  Starts a login request for the frontend application
+// @Id 			 WebStart
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
-// @Success      200  {object}  LoginStartResponse
-// @Router       /login/start [post]
+// @Success      200  {object}  models.LoginStartResponse
+// @Router       /web/login/start [post]
 func (o *OidcAgent) LoginStart(c *gin.Context) {
 	logger := o.logger
 	state, err := randString(16)
@@ -77,19 +79,21 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	logger.Debug("set cookies")
-	c.JSON(http.StatusOK, models.LoginStartReponse{
+	c.JSON(http.StatusOK, models.LoginStartResponse{
 		AuthorizationRequestURL: o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce)),
 	})
 }
 
 // LoginEnd ends a login request
-// @Summary      End Login
-// @Description  Called by the frontend to finish the auth flow or check whether the user is logged in
+// @Summary      End Web Login
+// @Description  Called auth server redirect to finish the Oauth login
+// @Id 			 WebEnd
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
-// @Param        data  body   LoginEndRequest  true "End Login"
-// @Success      200
-// @Router       /login/end [post]
+// @Param        data  body models.LoginEndRequest  true "End Login"
+// @Success      200 {object}  models.LoginEndResponse
+// @Router       /web/login/end [post]
 func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	var data models.LoginEndRequest
 	err := c.BindJSON(&data)
@@ -234,10 +238,12 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 // UserInfo gets information about the current user
 // @Summary      User Info
 // @Description  Returns information about the currently logged-in user
+// @Id 			 UserInfo
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
-// @Success      200	{object}	UserInfo
-// @Router       /user_info [get]
+// @Success      200	{object}	models.UserInfoResponse
+// @Router       /web/user_info [get]
 func (o *OidcAgent) UserInfo(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -288,10 +294,12 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 // Claims gets the claims of the users access token
 // @Summary      Claims
 // @Description  Gets the claims of the users access token
+// @Id 			 Claims
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
 // @Success      200	{object}	map[string]interface{}
-// @Router       /claims [get]
+// @Router       /web/claims [get]
 func (o *OidcAgent) Claims(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -318,10 +326,12 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 // Refresh refreshes the access token
 // @Summary      Refresh
 // @Description  Refreshes the access token
+// @Id 			 Refresh
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
-// @Success      200	{object}	Claims
-// @Router       /refresh [get]
+// @Success      204
+// @Router       /web/refresh [get]
 func (o *OidcAgent) Refresh(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -365,10 +375,12 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 // Logout returns the URL to logout the current user
 // @Summary      Logout
 // @Description  Returns the URL to logout the current user
+// @Id 			 Logout
+// @Tags         Auth
 // @Accepts		 json
 // @Produce      json
-// @Success      200	{object}	LogoutResponse
-// @Router       /logout [post]
+// @Success      200	{object}	models.LogoutResponse
+// @Router       /web/logout [post]
 func (o *OidcAgent) Logout(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	idToken, ok := session.Get(IDTokenKey)
@@ -433,8 +445,17 @@ func isLoggedIn(c *gin.Context) bool {
 	return ok
 }
 
+// DeviceStart starts a device login request
+// @Summary      Start Login
+// @Description  Starts a device login request
+// @Id 			 DeviceStart
+// @Tags         Auth
+// @Accepts		 json
+// @Produce      json
+// @Success      200  {object}  models.DeviceStartResponse
+// @Router       /device/login/start [post]
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
-	c.JSON(http.StatusOK, models.DeviceStartReponse{
+	c.JSON(http.StatusOK, models.DeviceStartResponse{
 		DeviceAuthURL: o.deviceAuthURL,
 		Issuer:        o.oidcIssuer,
 		ClientID:      o.clientID,
