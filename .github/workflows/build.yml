@@ -248,7 +248,7 @@ jobs:
       - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
         with:
-          name: nexodus
+          name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}}
 
@@ -345,11 +345,29 @@ jobs:
     runs-on: ubuntu-latest
     environment: image-repositories
     if: github.ref == 'refs/heads/main'
+
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        os: ["linux", "darwin"]
+        arch: ["amd64", "arm64", "arm"]
+        exclude:
+          - os: darwin
+            arch: arm
+        include:
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: amd64
+
     steps:
       - name: download binary artifacts
         uses: actions/download-artifact@v3
         with:
-          name: nexodus
+          name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ matrix.os }}-${{ matrix.arch }}
+
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
