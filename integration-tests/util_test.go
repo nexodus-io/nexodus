@@ -27,7 +27,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/nexodus/wireguard"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -274,7 +274,7 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
 
 	// write the nexd run command to a local file
-	nexodus.WriteToFile(suite.logger, strings.Join(cmd, " "), runScriptLocal, 0755)
+	wireguard.WriteToFile(suite.logger, strings.Join(cmd, " "), runScriptLocal, 0755)
 	// copy the nexd run script to the test container
 	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
 	suite.Require().NoError(err, fmt.Errorf("execution of copy command on %s failed: %v", nodeName, err))
