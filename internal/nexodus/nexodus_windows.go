@@ -17,7 +17,7 @@ const (
 func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
-	localAddress := ax.wgLocalAddress
+	localAddress := ax.TunnelIP
 	privateKey := ax.wireguardPvtKey
 	dev := ax.tunnelIface
 

@@ -7,6 +7,9 @@ definitions:
       cidr:
         example: 172.16.42.0/24
         type: string
+      cidr_v6:
+        example: 0200::/8
+        type: string
       description:
         example: The Red Zone
         type: string
@@ -43,9 +46,13 @@ definitions:
         type: string
       local_ip:
         type: string
+      local_ip_v6:
+        type: string
       organization_id:
         type: string
       organization_prefix:
+        type: string
+      organization_prefix_v6:
         type: string
       public_key:
         type: string
@@ -56,6 +63,8 @@ definitions:
       symmetric_nat:
         type: boolean
       tunnel_ip:
+        type: string
+      tunnel_ip_v6:
         type: string
       user_id:
         type: string
@@ -86,6 +95,8 @@ definitions:
           $ref: '#/definitions/models.Invitation'
         type: array
       ipCidr:
+        type: string
+      ipCidrV6:
         type: string
       name:
         type: string

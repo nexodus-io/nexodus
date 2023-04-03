@@ -10,7 +10,8 @@ import (
 func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
-	localAddress := ax.wgLocalAddress
+	localAddress := ax.TunnelIP
+	localAddressIPv6 := fmt.Sprintf("%s/%s", ax.TunnelIpV6, wgOrgIPv6PrefixLen)
 	dev := ax.tunnelIface
 
 	if ifaceExists(logger, dev) {
@@ -25,8 +26,16 @@ func (ax *Nexodus) setupInterfaceOS() error {
 
 	_, err = RunCommand("ifconfig", dev, "inet", localAddress, localAddress, "alias")
 	if err != nil {
-		logger.Errorf("failed to assign an address to the local osx interface: %v\n", err)
+		logger.Errorf("failed to assign an IPv4 address to the local osx interface: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
+	}
+
+	if ax.ipv6Supported {
+		_, err = RunCommand("ifconfig", dev, "inet6", localAddressIPv6, "alias")
+		if err != nil {
+			logger.Errorf("failed to assign an IPv6 address to the local osx interface: %v\n", err)
+			return fmt.Errorf("%w", interfaceErr)
+		}
 	}
 
 	_, err = RunCommand("ifconfig", dev, "up")
@@ -57,7 +66,7 @@ func deleteDarwinIface(logger *zap.SugaredLogger, dev string) {
 	if err != nil {
 		logger.Debugf("failed to delete darwin interface: %v", err)
 	}
-	// /var/run/wireguard/wg0.name doesnt currently exist since utun8 isnt mapped to wg0 (fails silently)
+	// /var/run/wireguard/wg0.name doesn't currently exist since utun8 isn't mapped to wg0 (fails silently)
 	wgName := fmt.Sprintf("/var/run/wireguard/%s.name", dev)
 	_, err = RunCommand("rm", "-f", wgName)
 	if err != nil {

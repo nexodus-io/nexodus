@@ -108,6 +108,10 @@ func main() {
 								Name:     "cidr",
 								Required: true,
 							},
+							&cli.StringFlag{
+								Name:     "cidr-v6",
+								Required: true,
+							},
 							&cli.BoolFlag{
 								Name:  "hub-organization",
 								Value: false,
@@ -125,8 +129,9 @@ func main() {
 							organizationName := cCtx.String("name")
 							organizationDescrip := cCtx.String("description")
 							organizationCIDR := cCtx.String("cidr")
+							organizationCIDRv6 := cCtx.String("cidr-v6")
 							organizationHub := cCtx.Bool("hub-organization")
-							return createOrganization(c, encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationHub)
+							return createOrganization(c, encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6, organizationHub)
 						},
 					},
 					{

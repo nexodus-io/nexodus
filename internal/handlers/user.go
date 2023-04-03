@@ -57,7 +57,8 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 						Name:        userName,
 						OwnerID:     id,
 						Description: fmt.Sprintf("%s's organization", userName),
-						IpCidr:      defaultOrganizationPrefix,
+						IpCidr:      defaultOrganizationPrefixIPv4,
+						IpCidrV6:    defaultOrganizationPrefixIPv6,
 						HubZone:     true,
 					},
 				}
@@ -67,8 +68,11 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID); err != nil {
 					return fmt.Errorf("failed to create ipam namespace: %w", err)
 				}
-				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefix); err != nil {
-					return fmt.Errorf("can't assign default ipam prefix: %w", err)
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv4); err != nil {
+					return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+				}
+				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv6); err != nil {
+					return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 				}
 			} else {
 				return fmt.Errorf("can't find record for user id %s", id)

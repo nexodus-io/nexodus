@@ -57,11 +57,21 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	return nil
 }
 
-// enableForwardingIPv4 for linux nodes that are hub bouncers
+// enableForwardingIPv4 for v4 linux nodes that are relay nodes
 func enableForwardingIPv4(logger *zap.SugaredLogger) error {
 	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
 	if err != nil {
-		return fmt.Errorf("failed to enable IP Forwarding for this hub-router: %w", err)
+		return fmt.Errorf("failed to enable IPv4 Forwarding for this relay node: %w", err)
+	}
+	logger.Debugf("%v", cmdOut)
+	return nil
+}
+
+// enableForwardingIPv6 for v6 linux nodes that are relay nodes
+func enableForwardingIPv6(logger *zap.SugaredLogger) error {
+	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv6.conf.all.forwarding=1")
+	if err != nil {
+		return fmt.Errorf("failed to enable IPv6 Forwarding for this relay node: %w", err)
 	}
 	logger.Debugf("%v", cmdOut)
 	return nil

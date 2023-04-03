@@ -15,7 +15,7 @@ ansible_user: nexodus
 controller_address: <CONTROLLER_ADDRESS>
 nexodus_binary: https://nexodus-io.s3.amazonaws.com/nexodus-amd64-linux
 nexodus_zone_name: zone-hub
-nexodus_zone_prefix: 10.185.0.0/20
+nexodus_org_prefix: 100.100.0.0/16
 
 ### Nexodus Auth ###
 nexodus_auth_uid: kitteh1

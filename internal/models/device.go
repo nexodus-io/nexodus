@@ -13,12 +13,15 @@ type Device struct {
 	OrganizationID           uuid.UUID      `json:"organization_id"`
 	PublicKey                string         `json:"public_key"`
 	LocalIP                  string         `json:"local_ip"`
+	LocalIpV6                string         `json:"local_ip_v6"`
 	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
 	TunnelIP                 string         `json:"tunnel_ip"`
+	TunnelIpV6               string         `json:"tunnel_ip_v6"`
 	ChildPrefix              pq.StringArray `json:"child_prefix" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay                    bool           `json:"relay"`
 	Discovery                bool           `json:"discovery"`
 	OrganizationPrefix       string         `json:"organization_prefix"`
+	OrganizationPrefixV6     string         `json:"organization_prefix_v6"`
 	ReflexiveIPv4            string         `json:"reflexive_ip4"`
 	EndpointLocalAddressIPv4 string         `json:"endpoint_local_address_ip4"`
 	SymmetricNat             bool           `json:"symmetric_nat"`
@@ -32,6 +35,7 @@ type AddDevice struct {
 	PublicKey                string         `json:"public_key"`
 	LocalIP                  string         `json:"local_ip" example:"10.1.1.1"`
 	TunnelIP                 string         `json:"tunnel_ip" example:"1.2.3.4"`
+	TunnelIpV6               string         `json:"tunnel_ip_v6" example:"200::1"`
 	ChildPrefix              pq.StringArray `json:"child_prefix" example:"172.16.42.0/24"`
 	Relay                    bool           `json:"relay"`
 	Discovery                bool           `json:"discovery"`

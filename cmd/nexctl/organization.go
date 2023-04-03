@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
@@ -19,11 +18,11 @@ func listOrganizations(c *client.Client, encodeOut string) error {
 		w := newTabWriter()
 		fs := "%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "Organization ID", "NAME", "CIDR", "DESCRIPTION", "RELAY/HUB ENABLED")
+			fmt.Fprintf(w, fs, "Organization ID", "NAME", "IPV4 CIDR", "IPV6 CIDR", "DESCRIPTION")
 		}
 
 		for _, org := range orgs {
-			fmt.Fprintf(w, fs, org.ID, org.Name, org.IpCidr, org.Description, strconv.FormatBool(org.HubZone))
+			fmt.Fprintf(w, fs, org.ID, org.Name, org.IpCidr, org.IpCidrV6, org.Description)
 		}
 
 		w.Flush()
@@ -39,8 +38,8 @@ func listOrganizations(c *client.Client, encodeOut string) error {
 	return nil
 }
 
-func createOrganization(c *client.Client, encodeOut, name, description, cidr string, hub bool) error {
-	res, err := c.CreateOrganization(name, description, cidr, hub)
+func createOrganization(c *client.Client, encodeOut, name, description, cidr string, cidrV6 string, hub bool) error {
+	res, err := c.CreateOrganization(name, description, cidr, cidrV6, hub)
 	if err != nil {
 		log.Fatal(err)
 	}
