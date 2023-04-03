@@ -40,7 +40,7 @@ func (s *extender) aUserNamedWithPassword(username string, password string) erro
 	defer s.Suite.Mu.Unlock()
 
 	// user already exists...
-	if s.Suite.Users[username] != nil {
+	if s.Users[username] != nil {
 		return nil
 	}
 	ctx := s.Suite.Context
@@ -50,7 +50,7 @@ func (s *extender) aUserNamedWithPassword(username string, password string) erro
 		return err
 	}
 
-	s.Suite.Users[username] = &cucumber.TestUser{
+	s.Users[username] = &cucumber.TestUser{
 		Name:     username,
 		Password: password,
 		Subject:  userId,
@@ -61,7 +61,7 @@ func (s *extender) aUserNamedWithPassword(username string, password string) erro
 func (s *extender) storeUserId(name, varName string) error {
 	s.Suite.Mu.Lock()
 	defer s.Suite.Mu.Unlock()
-	user := s.Suite.Users[name]
+	user := s.Users[name]
 	if user != nil {
 		s.Variables[varName] = user.Subject
 	}
@@ -70,7 +70,7 @@ func (s *extender) storeUserId(name, varName string) error {
 
 func (s *extender) iAmLoggedInAs(username string) error {
 	s.Suite.Mu.Lock()
-	user := s.Suite.Users[username]
+	user := s.Users[username]
 	s.Suite.Mu.Unlock()
 
 	if user == nil {

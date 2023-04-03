@@ -47,7 +47,7 @@ func (api *API) ListDevices(c *gin.Context) {
 
 	result := api.db.WithContext(ctx).Scopes(
 		api.DeviceIsOwnedByCurrentUser(c),
-		FilterAndPaginate(&models.Device{}, c),
+		FilterAndPaginate(&models.Device{}, c, "hostname"),
 	).Find(&devices)
 
 	if result.Error != nil {

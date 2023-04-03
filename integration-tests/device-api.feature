@@ -9,20 +9,19 @@ Feature: Device API
 
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${organization_id}
     Given I store the ".id" selection from the response as ${user_id}
     And the response should match json:
       """
       {
-        "devices": [],
         "id": "${user_id}",
-        "invitations": [],
-        "organizations": [
-          "${organization_id}"
-        ],
         "username": "${response.username}"
       }
       """
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${organization_id}
+
 
     # Bob gets an empty list of devices..
     When I GET path "/api/devices"

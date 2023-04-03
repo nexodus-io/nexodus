@@ -76,10 +76,6 @@ definitions:
     properties:
       description:
         type: string
-      devices:
-        items:
-          $ref: '#/definitions/models.Device'
-        type: array
       hubZone:
         type: boolean
       id:
@@ -95,10 +91,6 @@ definitions:
         type: string
       ownerID:
         type: string
-      users:
-        items:
-          $ref: '#/definitions/models.User'
-        type: array
     type: object
   models.UpdateDevice:
     properties:
@@ -129,23 +121,11 @@ definitions:
     properties:
       createdAt:
         type: string
-      devices:
-        items:
-          $ref: '#/definitions/models.Device'
-        type: array
       id:
         description: Since the ID comes from the IDP, we have no control over the
           format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      invitations:
-        items:
-          $ref: '#/definitions/models.Invitation'
-        type: array
-      organizations:
-        items:
-          $ref: '#/definitions/models.Organization'
-        type: array
       updatedAt:
         type: string
       userName:

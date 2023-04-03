@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -14,36 +13,23 @@ type User struct {
 	ID            string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	DeletedAt     *time.Time `sql:"index" json:"-"`
-	Devices       []*Device
-	Organizations []*Organization `gorm:"many2many:user_organizations"`
+	DeletedAt     *time.Time      `sql:"index" json:"-"`
+	Devices       []*Device       `json:"-"`
+	Organizations []*Organization `gorm:"many2many:user_organizations" json:"-"`
 	UserName      string
-	Invitations   []*Invitation
+	Invitations   []*Invitation `json:"-"`
 }
 
 type UserJSON struct {
-	ID            string        `json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
-	Devices       []uuid.UUID   `json:"devices" example:"4902c991-3dd1-49a6-9f26-d82496c80aff"`
-	Organizations []uuid.UUID   `json:"organizations" example:"94deb404-c4eb-4097-b59d-76b024ff7867"`
-	UserName      string        `json:"username" example:"admin"`
-	Invitations   []*Invitation `json:"invitations"`
+	ID       string `json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
+	UserName string `json:"username" example:"admin"`
 }
 
 func (u User) MarshalJSON() ([]byte, error) {
 	user := UserJSON{
-		ID:            u.ID,
-		Devices:       make([]uuid.UUID, 0),
-		Organizations: make([]uuid.UUID, 0),
-		UserName:      u.UserName,
-		Invitations:   make([]*Invitation, 0),
+		ID:       u.ID,
+		UserName: u.UserName,
 	}
-	for _, device := range u.Devices {
-		user.Devices = append(user.Devices, device.ID)
-	}
-	for _, org := range u.Organizations {
-		user.Organizations = append(user.Organizations, org.ID)
-	}
-	user.Invitations = append(user.Invitations, u.Invitations...)
 	return json.Marshal(user)
 }
 

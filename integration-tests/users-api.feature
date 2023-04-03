@@ -15,20 +15,18 @@ Feature: Users API
     Given I am logged in as "EvilUrsala"
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".organizations[0]" selection from the response as ${organization_id}
     Given I store the ".id" selection from the response as ${ursala_id}
     And the response should match json:
       """
       {
-        "devices": [],
         "id": "${ursala_id}",
-        "invitations": [],
-        "organizations": [
-          "${organization_id}"
-        ],
         "username": "${response.username}"
       }
       """
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${organization_id}
 
     # EvilUrsala can only see her own user id...
     When I GET path "/api/users"
@@ -37,12 +35,7 @@ Feature: Users API
       """
       [
         {
-          "devices": [],
           "id": "${ursala_id}",
-          "invitations": [],
-          "organizations": [
-            "${organization_id}"
-          ],
           "username": "${response[0].username}"
         }
       ]
@@ -54,12 +47,7 @@ Feature: Users API
     And the response should match json:
       """
       {
-        "devices": [],
         "id": "${ursala_id}",
-        "invitations": [],
-        "organizations": [
-          "${organization_id}"
-        ],
         "username": "${response.username}"
       }
       """
@@ -86,10 +74,7 @@ Feature: Users API
     And the response should match json:
       """
       {
-        "devices": [],
         "id": "${ursala_id}",
-        "invitations": [],
-        "organizations": [],
         "username": "${response.username}"
       }
       """

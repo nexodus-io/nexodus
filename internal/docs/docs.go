@@ -1022,12 +1022,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "devices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Device"
-                    }
-                },
                 "hubZone": {
                     "type": "boolean"
                 },
@@ -1049,12 +1043,6 @@ const docTemplate = `{
                 },
                 "ownerID": {
                     "type": "string"
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.User"
-                    }
                 }
             }
         },
@@ -1100,28 +1088,10 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "devices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Device"
-                    }
-                },
                 "id": {
                     "description": "Since the ID comes from the IDP, we have no control over the format...",
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                },
-                "invitations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Invitation"
-                    }
-                },
-                "organizations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Organization"
-                    }
                 },
                 "updatedAt": {
                     "type": "string"

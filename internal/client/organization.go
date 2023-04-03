@@ -120,6 +120,37 @@ func (c *Client) GetOrganization(id uuid.UUID) (models.OrganizationJSON, error) 
 	return data, nil
 }
 
+func (c *Client) GetOrganizations() ([]models.OrganizationJSON, error) {
+	dest := c.baseURL.JoinPath(ORGANIZATIONS).String()
+
+	req, err := http.NewRequest(http.MethodGet, dest, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get organizations %d", res.StatusCode)
+	}
+
+	var data []models.OrganizationJSON
+	if err := json.Unmarshal(resBody, &data); err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
 // GetOrganizations gets an organization by ID
 func (c *Client) GetDeviceInOrganization(id uuid.UUID) ([]models.Device, error) {
 	dest := c.baseURL.JoinPath(fmt.Sprintf(ORGANIZATION_DEVICES, id.String())).String()
