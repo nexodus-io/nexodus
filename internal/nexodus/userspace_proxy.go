@@ -70,7 +70,7 @@ func parsePort(portStr string) (int, error) {
 	return port, nil
 }
 
-func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType) error {
+func (ax *NexAgent) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType) error {
 	typeStr, err := proxyTypeStr(ruleType)
 	if err != nil {
 		return err

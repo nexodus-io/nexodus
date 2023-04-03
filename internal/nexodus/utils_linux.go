@@ -5,59 +5,12 @@ package nexodus
 import (
 	"fmt"
 	"net"
+	"net/url"
 
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
-
-func AddRoute(prefix, dev string) error {
-	link, err := netlink.LinkByName(dev)
-	if err != nil {
-		return fmt.Errorf("failed to lookup netlink device %s: %w", dev, err)
-	}
-
-	destNet, err := ParseIPNet(prefix)
-	if err != nil {
-		return fmt.Errorf("failed to parse a valid network address from %s: %w", prefix, err)
-	}
-
-	return route(destNet, link)
-}
-
-// AddRoute adds a netlink route pointing to the linux device
-func route(ipNet *net.IPNet, dev netlink.Link) error {
-	return netlink.RouteAdd(&netlink.Route{
-		LinkIndex: dev.Attrs().Index,
-		Scope:     netlink.SCOPE_UNIVERSE,
-		Dst:       ipNet,
-	})
-}
-
-// RouteExistsOS checks netlink routes for the destination prefix
-func RouteExistsOS(prefix string) (bool, error) {
-	destNet, err := ParseIPNet(prefix)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse a valid network address from %s: %w", prefix, err)
-	}
-
-	destRoute := &netlink.Route{Dst: destNet}
-	family := netlink.FAMILY_V6
-	if destNet.IP.To4() != nil {
-		family = netlink.FAMILY_V4
-	}
-
-	match, err := netlink.RouteListFiltered(family, destRoute, netlink.RT_FILTER_DST)
-	if err != nil {
-		return true, fmt.Errorf("error retrieving netlink routes: %w", err)
-	}
-
-	if len(match) > 0 {
-		return true, nil
-	}
-
-	return false, nil
-}
 
 func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	iface, _, err := getDefaultGatewayIface(logger, family)
@@ -143,63 +96,12 @@ func getDefaultGatewayIface(logger *zap.SugaredLogger, family int) (string, net.
 	return "", net.IP{}, fmt.Errorf("failed to get default gateway interface")
 }
 
-// deleteIface checks to see if  is an interface exists and deletes it
-func linkExists(ifaceName string) bool {
-	if _, err := netlink.LinkByName(ifaceName); err != nil {
-		return false
-	}
+func findLocalIP(logger *zap.SugaredLogger, controllerURL *url.URL) (string, error) {
 
-	return true
-}
-
-// delLink deletes the link and assumes it exists
-func delLink(ifaceName string) error {
-	if link, err := netlink.LinkByName(ifaceName); err == nil {
-		if err = netlink.LinkDel(link); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// DeleteRoute deletes a netlink route
-func DeleteRoute(prefix, dev string) error {
-	link, err := netlink.LinkByName(dev)
+	// Linux network discovery
+	linuxIP, err := discoverLinuxAddress(logger, 4)
 	if err != nil {
-		return fmt.Errorf("unable to lookup interface %s", dev)
+		return "", err
 	}
-
-	ipNet, err := ParseIPNet(prefix)
-	if err != nil {
-		return err
-	}
-	routeSpec := netlink.Route{
-		Dst:       ipNet,
-		LinkIndex: link.Attrs().Index,
-	}
-
-	return netlink.RouteDel(&routeSpec)
-}
-
-func defaultTunnelDevOS() string {
-	return wgIface
-}
-
-// binaryChecks validate the required binaries are available
-func binaryChecks() error {
-	// all OSs require the wg binary
-	if !IsCommandAvailable(wgBinary) {
-		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
-	}
-	return nil
-}
-
-// Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
-	// ensure the linux wireguard directory exists
-	if err := CreateDirectory(WgLinuxConfPath); err != nil {
-		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)
-	}
-	return nil
+	return linuxIP.String(), nil
 }

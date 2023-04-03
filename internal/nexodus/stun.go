@@ -15,7 +15,7 @@ const (
 	stunServer2 = "stun2.l.google.com:19302"
 )
 
-func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net.UDPAddr, error) {
+func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net.UDPAddr, error) {
 
 	logger.Debugf("dialing stun server %s", stunServer)
 	conn, err := reuseport.Dial("udp4", fmt.Sprintf(":%d", srcPort), stunServer)
@@ -70,4 +70,41 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	}
 	logger.Debugf("STUN: your IP:port is: %s:%d", result.IP.String(), result.Port)
 	return result, nil
+}
+
+// symmetricNatDisco determine if the joining node is within a symmetric NAT cone
+func symmetricNatDisco(logger *zap.SugaredLogger, wgListenPort int) (bool, string, error) {
+
+	nodeReflexiveAddress := ""
+	isSymmetric := false
+	// discover the server reflexive address per ICE RFC8445
+	stunAddr, err := stunRequest(logger, stunServer1, wgListenPort)
+	if err != nil {
+		return isSymmetric, nodeReflexiveAddress, err
+	} else {
+		nodeReflexiveAddress = stunAddr.IP.String()
+	}
+
+	stunAddr2, err := stunRequest(logger, stunServer2, wgListenPort)
+	if err != nil {
+		return false, "", err
+	} else {
+		isSymmetric = stunAddr.String() != stunAddr2.String()
+	}
+
+	return isSymmetric, nodeReflexiveAddress, nil
+}
+
+// getReflexiveAddress returns the reflexive address
+func getReflexiveAddress(logger *zap.SugaredLogger, wgListenPort int) (string, error) {
+
+	nodeReflexiveAddress := ""
+	stunAddr, err := stunRequest(logger, stunServer1, wgListenPort)
+	if err != nil {
+		return nodeReflexiveAddress, err
+	} else {
+		nodeReflexiveAddress = stunAddr.IP.String()
+	}
+
+	return nodeReflexiveAddress, nil
 }
