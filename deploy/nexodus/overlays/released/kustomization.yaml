@@ -9,10 +9,10 @@ components:
   - ../../components/limitador
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 48640484318ba1cf47ece00a6427b932305da6af
+    newTag: ac5c7bd14dc70bc61a01afa12d21dc938a40351b
   - name: quay.io/nexodus/envsubst
-    newTag: 48640484318ba1cf47ece00a6427b932305da6af
+    newTag: ac5c7bd14dc70bc61a01afa12d21dc938a40351b
   - name: quay.io/nexodus/frontend
-    newTag: 48640484318ba1cf47ece00a6427b932305da6af
+    newTag: ac5c7bd14dc70bc61a01afa12d21dc938a40351b
   - name: quay.io/nexodus/go-ipam
-    newTag: 48640484318ba1cf47ece00a6427b932305da6af
+    newTag: ac5c7bd14dc70bc61a01afa12d21dc938a40351b
