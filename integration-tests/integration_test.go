@@ -33,11 +33,25 @@ var hostDNSName string
 var ipamDriver string
 
 const (
-	nexctl    = "../dist/nexctl"
-	inetV4    = "-4"
-	inetV6    = "-6"
-	disableV6 = 0
-	enableV6  = 1
+	nexctl = "../dist/nexctl"
+)
+
+type ipFamily string
+
+const (
+	inetV4 ipFamily = "-4"
+	inetV6 ipFamily = "-6"
+)
+
+func (f ipFamily) String() string {
+	return string(f)
+}
+
+type v6Enable bool
+
+const (
+	disableV6 v6Enable = false
+	enableV6  v6Enable = true
 )
 
 func init() {
