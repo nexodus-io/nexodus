@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"log"
 )
 
-func listUsers(c *client.Client, encodeOut string) error {
-	users, err := c.ListUsers()
+func listUsers(c *client.APIClient, encodeOut string) error {
+	users, _, err := c.UsersApi.ListUsers(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -20,7 +21,7 @@ func listUsers(c *client.Client, encodeOut string) error {
 		}
 
 		for _, user := range users {
-			fmt.Fprintf(w, fs, user.ID, user.UserName)
+			fmt.Fprintf(w, fs, user.Id, user.UserName)
 		}
 
 		w.Flush()
@@ -36,14 +37,14 @@ func listUsers(c *client.Client, encodeOut string) error {
 	return nil
 }
 
-func deleteUser(c *client.Client, encodeOut, userID string) error {
-	res, err := c.DeleteUser(userID)
+func deleteUser(c *client.APIClient, encodeOut, userID string) error {
+	res, _, err := c.UsersApi.DeleteUser(context.Background(), userID).Execute()
 	if err != nil {
 		log.Fatalf("user delete failed: %v\n", err)
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted user %s\n", res.ID)
+		fmt.Printf("successfully deleted user %s\n", res.Id)
 		return nil
 	}
 
@@ -55,8 +56,8 @@ func deleteUser(c *client.Client, encodeOut, userID string) error {
 	return nil
 }
 
-func deleteUserFromOrg(c *client.Client, encodeOut, userID, orgID string) error {
-	res, err := c.DeleteUserFromOrganization(userID, orgID)
+func deleteUserFromOrg(c *client.APIClient, encodeOut, userID, orgID string) error {
+	res, _, err := c.UsersApi.DeleteUserFromOrganization(context.Background(), userID, orgID).Execute()
 	if err != nil {
 		log.Fatalf("user removal failed: %v\n", err)
 	}
@@ -74,8 +75,8 @@ func deleteUserFromOrg(c *client.Client, encodeOut, userID, orgID string) error 
 	return nil
 }
 
-func getCurrent(c *client.Client, encodeOut string) error {
-	user, err := c.GetCurrentUser()
+func getCurrent(c *client.APIClient, encodeOut string) error {
+	user, _, err := c.UsersApi.GetUser(context.Background(), "me").Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func getCurrent(c *client.Client, encodeOut string) error {
 			fmt.Fprintf(w, fs, "USER ID", "USER NAME")
 		}
 
-		fmt.Fprintf(w, fs, user.ID, user.UserName)
+		fmt.Fprintf(w, fs, user.Id, user.UserName)
 
 		w.Flush()
 
