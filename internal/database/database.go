@@ -84,7 +84,7 @@ func NewTestDatabase() (*gorm.DB, error) {
 	return db, nil
 }
 
-// gormigrate is a wrapper for gorm's migration functions that adds schema versioning and rollback capabilities.
+// Migrations gormigrate is a wrapper for gorm's migration functions that adds schema versioning and rollback capabilities.
 // For help writing migration steps, see the gorm documentation on migrations: https://gorm.io/docs/migration.html
 func Migrations() *migrations.Migrations {
 	return &migrations.Migrations{
