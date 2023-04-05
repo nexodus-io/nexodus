@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strings"
@@ -193,4 +194,14 @@ func LocalIPv4Address() net.IP {
 		}
 	}
 	return nil
+}
+
+// parseIPfromAddrPort splits an address:port string and returns the address as a string
+func parseIPfromAddrPort(addrPort string) string {
+	ip, err := netip.ParseAddrPort(addrPort)
+	if err != nil {
+		return ""
+	}
+
+	return ip.Addr().String()
 }

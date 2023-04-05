@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"reflect"
@@ -66,32 +67,32 @@ type userspaceWG struct {
 }
 
 type Nexodus struct {
-	wireguardPubKey         string
-	wireguardPvtKey         string
-	wireguardPubKeyInConfig bool
-	tunnelIface             string
-	controllerIP            string
-	listenPort              int
-	organization            uuid.UUID
-	requestedIP             string
-	userProvidedLocalIP     string
-	TunnelIP                string
-	TunnelIpV6              string
-	childPrefix             []string
-	stun                    bool
-	relay                   bool
-	discoveryNode           bool
-	relayWgIP               string
-	wgConfig                wgConfig
-	client                  *client.Client
-	controllerURL           *url.URL
-	deviceCache             map[uuid.UUID]models.Device
-	endpointLocalAddress    string
-	nodeReflexiveAddress    string
-	hostname                string
-	symmetricNat            bool
-	ipv6Supported           bool
-	logger                  *zap.SugaredLogger
+	wireguardPubKey          string
+	wireguardPvtKey          string
+	wireguardPubKeyInConfig  bool
+	tunnelIface              string
+	controllerIP             string
+	listenPort               int
+	organization             uuid.UUID
+	requestedIP              string
+	userProvidedLocalIP      string
+	TunnelIP                 string
+	TunnelIpV6               string
+	childPrefix              []string
+	stun                     bool
+	relay                    bool
+	discoveryNode            bool
+	relayWgIP                string
+	wgConfig                 wgConfig
+	client                   *client.Client
+	controllerURL            *url.URL
+	deviceCache              map[uuid.UUID]models.Device
+	endpointLocalAddress     string
+	nodeReflexiveAddressIPv4 netip.AddrPort
+	hostname                 string
+	symmetricNat             bool
+	ipv6Supported            bool
+	logger                   *zap.SugaredLogger
 	// See the NexdStatus* constants
 	status        int
 	statusMsg     string
@@ -343,7 +344,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		LocalIP:                  endpointSocket,
 		TunnelIP:                 ax.requestedIP,
 		ChildPrefix:              ax.childPrefix,
-		ReflexiveIPv4:            ax.nodeReflexiveAddress,
+		ReflexiveIPv4:            ax.nodeReflexiveAddressIPv4.String(),
 		EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 		SymmetricNat:             ax.symmetricNat,
 		Hostname:                 ax.hostname,
@@ -359,7 +360,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			device, err = ax.client.UpdateDevice(deviceID, models.UpdateDevice{
 				LocalIP:                  endpointSocket,
 				ChildPrefix:              ax.childPrefix,
-				ReflexiveIPv4:            ax.nodeReflexiveAddress,
+				ReflexiveIPv4:            ax.nodeReflexiveAddressIPv4.String(),
 				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
 				SymmetricNat:             &ax.symmetricNat,
 				Hostname:                 ax.hostname,
@@ -641,7 +642,7 @@ func (ax *Nexodus) symmetricNatDisco() error {
 	if err != nil {
 		return err
 	} else {
-		ax.nodeReflexiveAddress = stunAddr.IP.String()
+		ax.nodeReflexiveAddressIPv4 = stunAddr.AddrPort()
 	}
 
 	isSymmetric := false
