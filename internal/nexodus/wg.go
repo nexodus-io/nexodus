@@ -4,11 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"strconv"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/models"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -147,21 +147,21 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
-func (ax *Nexodus) handlePeerDelete(peerListing []models.Device) error {
+func (ax *Nexodus) handlePeerDelete(peerListing []public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range ax.deviceCache {
 		if inPeerListing(peerListing, p) {
 			continue
 		}
-		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.ID])
-		if err := ax.deletePeer(ax.deviceCache[p.ID].PublicKey, ax.tunnelIface); err != nil {
+		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.Id])
+		if err := ax.deletePeer(ax.deviceCache[p.Id].PublicKey, ax.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
 		}
 		// delete the peer route(s)
 		ax.handlePeerRouteDelete(ax.tunnelIface, p)
 		// remove peer from local peer and key cache
-		delete(ax.deviceCache, p.ID)
-		delete(ax.deviceCache, p.ID)
+		delete(ax.deviceCache, p.Id)
+		delete(ax.deviceCache, p.Id)
 
 	}
 
@@ -234,9 +234,9 @@ func (ax *Nexodus) deletePeerOS(publicKey, dev string) error {
 	return nil
 }
 
-func inPeerListing(peers []models.Device, p models.Device) bool {
+func inPeerListing(peers []public.ModelsDevice, p public.ModelsDevice) bool {
 	for _, peer := range peers {
-		if peer.ID == p.ID {
+		if peer.Id == p.Id {
 			return true
 		}
 	}

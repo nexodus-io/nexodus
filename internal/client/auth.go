@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
 	"io"
 	"net/http"
 	"net/url"
@@ -56,30 +55,6 @@ func newDeviceFlowToken(ctx context.Context, deviceEndpoint, tokenEndpoint, clie
 	fmt.Println("Authentication succeeded.")
 
 	return token, idToken, nil
-}
-
-func startLogin(client *http.Client, hostname url.URL) (*models.DeviceStartResponse, error) {
-	dest := hostname
-	dest.Path = "/device/login/start"
-	res, err := client.Post(dest.String(), "application/json", nil)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request %s failed with %d", dest.String(), res.StatusCode)
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp models.DeviceStartResponse
-	if err = json.Unmarshal(body, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
 }
 
 func startDeviceFlow(deviceEndpoint string, clientID string) (*deviceFlowResponse, error) {

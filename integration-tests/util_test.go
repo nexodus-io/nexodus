@@ -156,8 +156,8 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, "/", "-")
 }
-func newClient(ctx context.Context, username, password string) (*client.Client, error) {
-	return client.NewClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
+func newClient(ctx context.Context, username, password string) (*client.APIClient, error) {
+	return client.NewAPIClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, family ipFamily, dev string, ctr testcontainers.Container) (string, error) {

@@ -4,9 +4,9 @@ package nexodus
 
 import (
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 
-	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 )
 
@@ -48,8 +48,8 @@ func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig models.Device) {
-	for _, allowedIP := range wgPeerConfig.AllowedIPs {
+func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.ModelsDevice) {
+	for _, allowedIP := range wgPeerConfig.AllowedIps {
 		// if the host does not support v6, skip adding the route
 		if util.IsIPv6Prefix(allowedIP) && !ax.ipv6Supported {
 			continue

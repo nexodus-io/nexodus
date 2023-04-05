@@ -15,7 +15,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/fflags"
 	"github.com/nexodus-io/nexodus/internal/ipam"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/open-policy-agent/opa/storage/inmem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -44,7 +43,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 		suite.T().Fatal(err)
 	}
 	suite.logger = zaptest.NewLogger(suite.T()).Sugar()
-	suite.ipam = util.NewTestIPAMServer()
+	suite.ipam = ipam.NewTestIPAMServer()
 	suite.wg = &sync.WaitGroup{}
 	suite.wg.Add(1)
 
@@ -58,7 +57,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 		}
 	}()
 
-	ipamClient := ipam.NewIPAM(suite.logger, util.TestIPAMClientAddr)
+	ipamClient := ipam.NewIPAM(suite.logger, ipam.TestIPAMClientAddr)
 
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
