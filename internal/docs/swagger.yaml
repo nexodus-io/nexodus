@@ -1,6 +1,51 @@
-basePath: /api
+basePath: /
 definitions:
   models.AddDevice:
+    properties:
+      child_prefix:
+        example:
+        - 172.16.42.0/24
+        items:
+          type: string
+        type: array
+      discovery:
+        type: boolean
+      endpoint_local_address_ip4:
+        example: 1.2.3.4
+        type: string
+      hostname:
+        example: myhost
+        type: string
+      local_ip:
+        example: 10.1.1.1
+        type: string
+      organization_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+      public_key:
+        type: string
+      reflexive_ip4:
+        type: string
+      relay:
+        type: boolean
+      symmetric_nat:
+        type: boolean
+      tunnel_ip:
+        example: 1.2.3.4
+        type: string
+      tunnel_ip_v6:
+        example: 200::1
+        type: string
+      user_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
+  models.AddInvitation:
+    properties:
+      organization_id:
+        type: string
+      user_id:
+        type: string
     type: object
   models.AddOrganization:
     properties:
@@ -23,6 +68,15 @@ definitions:
     properties:
       error:
         example: something bad
+        type: string
+    type: object
+  models.ConflictsError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      id:
+        example: a1fae5de-dd96-4b20-8362-95f6a574c4b1
         type: string
     type: object
   models.Device:
@@ -69,6 +123,18 @@ definitions:
       user_id:
         type: string
     type: object
+  models.DeviceStartResponse:
+    properties:
+      client_id:
+        type: string
+      device_authorization_endpoint:
+        description: |-
+          TODO: Remove this once golang/oauth2 supports device flow
+          and when coreos/go-oidc adds device_authorization_endpoint discovery
+        type: string
+      issuer:
+        type: string
+    type: object
   models.Invitation:
     properties:
       expiry:
@@ -81,11 +147,37 @@ definitions:
       user_id:
         type: string
     type: object
+  models.LoginEndRequest:
+    properties:
+      request_url:
+        type: string
+    type: object
+  models.LoginEndResponse:
+    properties:
+      handled:
+        type: boolean
+      logged_in:
+        type: boolean
+    type: object
+  models.LoginStartResponse:
+    properties:
+      authorization_request_url:
+        type: string
+    type: object
+  models.LogoutResponse:
+    properties:
+      logout_url:
+        type: string
+    type: object
   models.Organization:
     properties:
+      cidr:
+        type: string
+      cidr_v6:
+        type: string
       description:
         type: string
-      hubZone:
+      hub_zone:
         type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -94,13 +186,9 @@ definitions:
         items:
           $ref: '#/definitions/models.Invitation'
         type: array
-      ipCidr:
-        type: string
-      ipCidrV6:
-        type: string
       name:
         type: string
-      ownerID:
+      owner_id:
         type: string
     type: object
   models.UpdateDevice:
@@ -142,6 +230,21 @@ definitions:
       userName:
         type: string
     type: object
+  models.UserInfoResponse:
+    properties:
+      family_name:
+        type: string
+      given_name:
+        type: string
+      picture:
+        type: string
+      preferred_username:
+        type: string
+      sub:
+        type: string
+      updated_at:
+        type: integer
+    type: object
 info:
   contact:
     name: The Nexodus Authors
@@ -153,9 +256,10 @@ info:
   title: Nexodus API
   version: "1.0"
 paths:
-  /devices:
+  /api/devices:
     get:
       description: Lists all devices
+      operationId: ListDevices
       produces:
       - application/json
       responses:
@@ -178,10 +282,11 @@ paths:
       - Devices
     post:
       description: Adds a new device
+      operationId: CreateDevice
       parameters:
       - description: Add Device
         in: body
-        name: device
+        name: Device
         required: true
         schema:
           $ref: '#/definitions/models.AddDevice'
@@ -203,7 +308,7 @@ paths:
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/models.Device'
+            $ref: '#/definitions/models.ConflictsError'
         "429":
           description: Too Many Requests
           schema:
@@ -215,9 +320,10 @@ paths:
       summary: Add Devices
       tags:
       - Devices
-  /devices/{id}:
+  /api/devices/{id}:
     delete:
       description: Deletes an existing device and associated IPAM lease
+      operationId: DeleteDevice
       parameters:
       - description: Device ID
         in: path
@@ -248,6 +354,7 @@ paths:
       - Devices
     get:
       description: Gets a device by ID
+      operationId: GetDevice
       parameters:
       - description: Device ID
         in: path
@@ -282,6 +389,7 @@ paths:
       - Devices
     patch:
       description: Updates a device by ID
+      operationId: UpdateDevice
       parameters:
       - description: Device ID
         in: path
@@ -320,9 +428,10 @@ paths:
       summary: Update Devices
       tags:
       - Devices
-  /fflags:
+  /api/fflags:
     get:
       description: Lists all feature flags
+      operationId: ListFeatureFlags
       produces:
       - application/json
       responses:
@@ -339,9 +448,10 @@ paths:
       summary: List Feature Flags
       tags:
       - FFlag
-  /fflags/{name}:
+  /api/fflags/{name}:
     get:
       description: Gets a Feature Flag by name
+      operationId: GetFeatureFlag
       parameters:
       - description: feature flag name
         in: path
@@ -372,9 +482,10 @@ paths:
       summary: Get Feature Flag
       tags:
       - FFlag
-  /invitations:
+  /api/invitations:
     get:
       description: Lists all invitations
+      operationId: ListInvitations
       produces:
       - application/json
       responses:
@@ -394,10 +505,109 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: List Invitations
       tags:
-      - Invitations
-  /organizations:
+      - Invitation
+    post:
+      description: Create an invitation to an organization
+      operationId: CreateInvitation
+      parameters:
+      - description: Add Invitation
+        in: body
+        name: Invitation
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddInvitation'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Invitation'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Create an invitation
+      tags:
+      - Invitation
+  /api/invitations/:invitation/accept:
+    post:
+      description: Accept an invitation to an organization
+      operationId: AcceptInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitation
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Accept an invitation
+      tags:
+      - Invitation
+  /api/invitations/{invitation}:
+    delete:
+      description: Deletes an existing invitation
+      operationId: DeleteInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitation
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Delete Invitation
+      tags:
+      - Invitation
+  /api/organizations:
     get:
       description: Lists all Organizations
+      operationId: ListOrganizations
       produces:
       - application/json
       responses:
@@ -421,11 +631,12 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: List Organizations
       tags:
-      - Organization
+      - Organizations
     post:
       consumes:
       - application/json
       description: Creates a named organization with the given CIDR
+      operationId: CreateOrganization
       parameters:
       - description: Add Organization
         in: body
@@ -462,10 +673,11 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: Create an Organization
       tags:
-      - Organization
-  /organizations/{id}:
+      - Organizations
+  /api/organizations/{id}:
     delete:
       description: Deletes an existing organization and associated IPAM prefix
+      operationId: DeleteOrganization
       parameters:
       - description: Organization ID
         in: path
@@ -500,6 +712,7 @@ paths:
       - Organizations
     get:
       description: Gets a Organization by Organization ID
+      operationId: GetOrganizations
       parameters:
       - description: Organization ID
         in: path
@@ -531,14 +744,53 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: Get Organizations
       tags:
-      - Organization
-  /organizations/{id}/devices:
+      - Organizations
+  /api/organizations/{id}/devices:
     get:
-      description: Lists all devices for this Organization
+      description: Lists all users for this Organization
+      operationId: ListUsersInOrganization
       parameters:
       - description: Organization ID
         in: path
         name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: List Users
+      tags:
+      - Users
+  /api/organizations/{organization_id}/devices:
+    get:
+      description: Lists all devices for this Organization
+      operationId: ListDevicesInOrganization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
         required: true
         type: string
       produces:
@@ -569,9 +821,10 @@ paths:
       summary: List Devices
       tags:
       - Devices
-  /organizations/{organization_id}/devices/{device_id}:
+  /api/organizations/{organization_id}/devices/{device_id}:
     get:
       description: Gets a device in a organization by ID
+      operationId: GetDeviceInOrganization
       parameters:
       - description: Organization ID
         in: path
@@ -589,9 +842,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Device'
-            type: array
+            $ref: '#/definitions/models.Device'
         "400":
           description: Bad Request
           schema:
@@ -615,9 +866,10 @@ paths:
       summary: Get Device
       tags:
       - Devices
-  /users:
+  /api/users:
     get:
       description: Lists all users
+      operationId: ListUsers
       produces:
       - application/json
       responses:
@@ -637,10 +889,11 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: List Users
       tags:
-      - User
-  /users/{id}:
+      - Users
+  /api/users/{id}:
     delete:
       description: Delete a user
+      operationId: DeleteUser
       parameters:
       - description: User ID
         in: path
@@ -668,9 +921,10 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: Delete User
       tags:
-      - User
+      - Users
     get:
       description: Gets a user
+      operationId: GetUser
       parameters:
       - description: User ID
         in: path
@@ -706,10 +960,11 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: Get User
       tags:
-      - User
-  /users/{id}/organizations/{organization}:
+      - Users
+  /api/users/{id}/organizations/{organization}:
     delete:
       description: Deletes an existing organization associated to a user
+      operationId: DeleteUserFromOrganization
       parameters:
       - description: User ID
         in: path
@@ -738,7 +993,111 @@ paths:
             $ref: '#/definitions/models.BaseError'
       summary: Remove a User from an Organization
       tags:
-      - User
+      - Users
+  /device/login/start:
+    post:
+      description: Starts a device login request
+      operationId: DeviceStart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeviceStartResponse'
+      summary: Start Login
+      tags:
+      - Auth
+  /web/claims:
+    get:
+      description: Gets the claims of the users access token
+      operationId: Claims
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Claims
+      tags:
+      - Auth
+  /web/login/end:
+    post:
+      description: Called auth server redirect to finish the Oauth login
+      operationId: WebEnd
+      parameters:
+      - description: End Login
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginEndRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginEndResponse'
+      summary: End Web Login
+      tags:
+      - Auth
+  /web/login/start:
+    post:
+      description: Starts a login request for the frontend application
+      operationId: WebStart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginStartResponse'
+      summary: Start Web Login
+      tags:
+      - Auth
+  /web/logout:
+    post:
+      description: Returns the URL to logout the current user
+      operationId: Logout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LogoutResponse'
+      summary: Logout
+      tags:
+      - Auth
+  /web/refresh:
+    get:
+      description: Refreshes the access token
+      operationId: Refresh
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Refresh
+      tags:
+      - Auth
+  /web/user_info:
+    get:
+      description: Returns information about the currently logged-in user
+      operationId: UserInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserInfoResponse'
+      summary: User Info
+      tags:
+      - Auth
 securityDefinitions:
   OAuth2Implicit:
     authorizationUrl: https://auth.try.nexodus.127.0.0.1.nip.io/

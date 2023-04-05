@@ -54,7 +54,7 @@ func init() {
 // @scope.admin Grants read and write access to administrative information
 // @scope.user Grants read and write access to resources owned by this user
 
-// @BasePath  		/api
+// @BasePath  		/
 func main() {
 	// Override to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/client"
 )
 
-func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string) error {
-	devices, err := c.GetDeviceInOrganization(organizationID)
+func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut string) error {
+	devices, _, err := c.DevicesApi.ListDevicesInOrganization(context.Background(), organizationID.String()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -20,7 +21,7 @@ func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS IPV4", "NODE ADDRESS IPV6", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.TunnelIpV6, dev.LocalIP, dev.PublicKey, dev.OrganizationID, fmt.Sprintf("%t", dev.Relay))
+			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, dev.LocalIp, dev.PublicKey, dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
@@ -35,8 +36,8 @@ func listOrgDevices(c *client.Client, organizationID uuid.UUID, encodeOut string
 	return nil
 }
 
-func listAllDevices(c *client.Client, encodeOut string) error {
-	devices, err := c.ListDevices()
+func listAllDevices(c *public.APIClient, encodeOut string) error {
+	devices, _, err := c.DevicesApi.ListDevices(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,9 +52,9 @@ func listAllDevices(c *client.Client, encodeOut string) error {
 				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.ID, dev.Hostname, dev.TunnelIP, dev.LocalIP, dev.PublicKey, dev.OrganizationID,
-				dev.LocalIP, dev.AllowedIPs, dev.TunnelIP, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, dev.ReflexiveIPv4, dev.EndpointLocalAddressIPv4, fmt.Sprintf("%t", dev.Relay))
+			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.LocalIp, dev.PublicKey, dev.OrganizationId,
+				dev.LocalIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
+				dev.OrganizationPrefixV6, dev.ReflexiveIp4, dev.EndpointLocalAddressIp4, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
@@ -68,19 +69,19 @@ func listAllDevices(c *client.Client, encodeOut string) error {
 	return nil
 }
 
-func deleteDevice(c *client.Client, encodeOut, devID string) error {
+func deleteDevice(c *public.APIClient, encodeOut, devID string) error {
 	devUUID, err := uuid.Parse(devID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
 	}
 
-	res, err := c.DeleteDevice(devUUID)
+	res, _, err := c.DevicesApi.DeleteDevice(context.Background(), devUUID.String()).Execute()
 	if err != nil {
 		log.Fatalf("device delete failed: %v\n", err)
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted device %s\n", res.ID.String())
+		fmt.Printf("successfully deleted device %s\n", res.Id)
 		return nil
 	}
 

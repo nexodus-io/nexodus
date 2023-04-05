@@ -1,8 +1,7 @@
 package nexodus
 
 import (
-	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 const (
@@ -11,7 +10,7 @@ const (
 	persistentHubKeepalive = "0"
 )
 
-func (ax *Nexodus) DeployWireguardConfig(newPeers []models.Device, firstTime bool) error {
+func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice, firstTime bool) error {
 	cfg := &wgConfig{
 		Interface: ax.wgConfig.Interface,
 		Peers:     ax.wgConfig.Peers,
@@ -34,7 +33,7 @@ func (ax *Nexodus) DeployWireguardConfig(newPeers []models.Device, firstTime boo
 
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, newPeer := range newPeers {
-		if newPeer.ID != uuid.Nil {
+		if newPeer.Id != "" {
 			// add routes for each peer candidate (unless the key matches the local nodes key)
 			for _, peer := range cfg.Peers {
 				if peer.PublicKey == newPeer.PublicKey && newPeer.PublicKey != ax.wireguardPubKey {

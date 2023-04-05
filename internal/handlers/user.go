@@ -97,7 +97,8 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 // GetUser gets a user
 // @Summary      Get User
 // @Description  Gets a user
-// @Tags         User
+// @Id           GetUser
+// @Tags         Users
 // @Accepts		 json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
@@ -107,7 +108,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /users/{id} [get]
+// @Router       /api/users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetUser",
 		trace.WithAttributes(
@@ -137,13 +138,14 @@ func (api *API) GetUser(c *gin.Context) {
 // ListUsers lists users
 // @Summary      List Users
 // @Description  Lists all users
-// @Tags         User
+// @Id           ListUsers
+// @Tags         Users
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.User
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /users [get]
+// @Router       /api/users [get]
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
 	defer span.End()
@@ -163,7 +165,8 @@ func (api *API) ListUsers(c *gin.Context) {
 // DeleteUser delete a user
 // @Summary      Delete User
 // @Description  Delete a user
-// @Tags         User
+// @Id           DeleteUser
+// @Tags         Users
 // @Accepts		 json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
@@ -172,7 +175,7 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /users/{id} [delete]
+// @Router       /api/users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
 	defer span.End()
@@ -215,7 +218,8 @@ type UserOrganization struct {
 // DeleteUserFromOrganization removes a user from an organization
 // @Summary      Remove a User from an Organization
 // @Description  Deletes an existing organization associated to a user
-// @Tags         User
+// @Id			 DeleteUserFromOrganization
+// @Tags         Users
 // @Accepts		 json
 // @Produce      json
 // @Param        id             path      string  true "User ID"
@@ -224,7 +228,7 @@ type UserOrganization struct {
 // @Failure      400  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
-// @Router       /users/{id}/organizations/{organization} [delete]
+// @Router       /api/users/{id}/organizations/{organization} [delete]
 func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
 	defer span.End()

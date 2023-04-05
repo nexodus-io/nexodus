@@ -1,0 +1,49 @@
+{{! DO NOT MODIFY THIS. }}
+{{! THIS FILE IS NEEDED TO ALLOW US TO MODIFY FIELD NAMES WHILE KEEP IT BACKWARD COMPATIBLE. }}
+{{! THIS FILE IS BASED ON THIS: https://github.com/OpenAPITools/openapi-generator/blob/v4.3.1/modules/openapi-generator/src/main/resources/go/model.mustache }}
+{{>partial_header}}
+package {{packageName}}
+{{#models}}
+{{#imports}}
+{{#-first}}
+import (
+{{/-first}}
+	"{{import}}"
+{{#-last}}
+)
+{{/-last}}
+{{/imports}}
+{{#model}}
+{{#isEnum}}
+// {{{classname}}} {{#description}}{{{.}}}{{/description}}{{^description}}the model '{{{classname}}}'{{/description}}
+type {{{classname}}} {{^format}}{{dataType}}{{/format}}{{#format}}{{{format}}}{{/format}}
+
+// List of {{{name}}}
+const (
+	{{#allowableValues}}
+	{{#enumVars}}
+	{{^-first}}
+	{{/-first}}
+	{{#enumClassPrefix}}{{{classname.toUpperCase}}}_{{/enumClassPrefix}}{{name}} {{{classname}}} = {{{value}}}
+	{{/enumVars}}
+	{{/allowableValues}}
+)
+{{/isEnum}}
+{{^isEnum}}
+// {{classname}}{{#description}} {{{description}}}{{/description}}{{^description}} struct for {{{classname}}}{{/description}}
+type {{classname}} struct {
+{{#allVars}}
+{{^-first}}
+{{/-first}}
+{{#description}}
+	// {{{description}}}
+{{/description}}
+{{#deprecated}}
+    // Deprecated
+{{/deprecated}}
+	{{#deprecated}}Deprecated{{/deprecated}}{{name}} {{#isNullable}}*{{/isNullable}}{{{dataType}}} `json:"{{baseName}}{{^required}},omitempty{{/required}}"{{#withXml}} xml:"{{baseName}}{{#isXmlAttribute}},attr{{/isXmlAttribute}}"{{/withXml}}{{#vendorExtensions.x-go-custom-tag}} {{{.}}}{{/vendorExtensions.x-go-custom-tag}}`
+{{/allVars}}
+}
+{{/isEnum}}
+{{/model}}
+{{/models}}

@@ -7,7 +7,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"os"
 	"path"
@@ -1209,4 +1213,61 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressAndEgress() {
 	node1.Terminate(ctx)
 	node2.Terminate(ctx)
 	wg.Wait()
+}
+
+func (suite *NexodusIntegrationSuite) TestApiClientConflictError() {
+	suite.T().Parallel()
+	//assert := suite.Assert()
+	require := suite.Require()
+	parentCtx := suite.Context()
+
+	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
+
+	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+		username,
+		password,
+	))
+	require.NoError(err)
+	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
+	require.NoError(err)
+	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
+	require.NoError(err)
+
+	privateKey, err := wgtypes.GeneratePrivateKey()
+	require.NoError(err)
+	publicKey := privateKey.PublicKey().String()
+
+	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
+		EndpointLocalAddressIp4: "172.17.0.3",
+		Hostname:                "bbac3081d5e8",
+		LocalIp:                 "172.17.0.3:58664",
+		OrganizationId:          orgs[0].Id,
+		PublicKey:               publicKey,
+		ReflexiveIp4:            "47.196.141.165",
+		UserId:                  user.Id,
+	}).Execute()
+	require.NoError(err)
+
+	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
+		EndpointLocalAddressIp4: "172.17.0.3",
+		Hostname:                "bbac3081d5e8",
+		LocalIp:                 "172.17.0.3:58664",
+		OrganizationId:          orgs[0].Id,
+		PublicKey:               publicKey,
+		ReflexiveIp4:            "47.196.141.165",
+		UserId:                  user.Id,
+	}).Execute()
+	require.Error(err)
+	require.NotNil(resp)
+
+	var apiError *public.GenericOpenAPIError
+	require.True(errors.As(err, &apiError))
+
+	conflict, ok := apiError.Model().(public.ModelsConflictsError)
+	require.True(ok)
+	require.Equal(device.Id, conflict.Id)
 }

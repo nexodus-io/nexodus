@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
 )
 
-func listOrganizations(c *client.Client, encodeOut string) error {
-	orgs, err := c.ListOrganizations()
+func listOrganizations(c *client.APIClient, encodeOut string) error {
+	orgs, _, err := c.OrganizationsApi.ListOrganizations(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,7 +24,7 @@ func listOrganizations(c *client.Client, encodeOut string) error {
 		}
 
 		for _, org := range orgs {
-			fmt.Fprintf(w, fs, org.ID, org.Name, org.IpCidr, org.IpCidrV6, org.Description)
+			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description)
 		}
 
 		w.Flush()
@@ -38,14 +40,20 @@ func listOrganizations(c *client.Client, encodeOut string) error {
 	return nil
 }
 
-func createOrganization(c *client.Client, encodeOut, name, description, cidr string, cidrV6 string, hub bool) error {
-	res, err := c.CreateOrganization(name, description, cidr, cidrV6, hub)
+func createOrganization(c *client.APIClient, encodeOut, name, description, cidr string, cidrV6 string, hub bool) error {
+	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
+		Name:        name,
+		Description: description,
+		Cidr:        cidr,
+		CidrV6:      cidrV6,
+		HubZone:     hub,
+	}).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println(res.ID)
+		fmt.Println(res.Id)
 		return nil
 	}
 
@@ -58,7 +66,7 @@ func createOrganization(c *client.Client, encodeOut, name, description, cidr str
 }
 
 /*
-func moveUserToOrganization(c *client.Client, encodeOut, username, OrganizationID string) error {
+func moveUserToOrganization(c *client.APIClient, encodeOut, username, OrganizationID string) error {
 	OrganizationUUID, err := uuid.Parse(OrganizationID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationID, err)
@@ -83,19 +91,19 @@ func moveUserToOrganization(c *client.Client, encodeOut, username, OrganizationI
 }
 */
 
-func deleteOrganization(c *client.Client, encodeOut, OrganizationID string) error {
+func deleteOrganization(c *client.APIClient, encodeOut, OrganizationID string) error {
 	OrganizationUUID, err := uuid.Parse(OrganizationID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationUUID, err)
 	}
 
-	res, err := c.DeleteOrganization(OrganizationUUID)
+	res, _, err := c.OrganizationsApi.DeleteOrganization(context.Background(), OrganizationUUID.String()).Execute()
 	if err != nil {
 		log.Fatalf("Organization delete failed: %v\n", err)
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted Organization %s\n", res.ID.String())
+		fmt.Printf("successfully deleted Organization %s\n", res.Id)
 		return nil
 	}
 

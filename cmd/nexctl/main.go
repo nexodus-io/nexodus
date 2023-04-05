@@ -81,7 +81,7 @@ func main() {
 						Name:  "list",
 						Usage: "List organizations",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -118,7 +118,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -144,7 +144,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -173,7 +173,8 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -203,7 +204,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -225,7 +226,7 @@ func main() {
 						Name:  "list",
 						Usage: "List all users",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -240,7 +241,7 @@ func main() {
 						Name:  "get-current",
 						Usage: "Get current user",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -261,7 +262,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -287,7 +288,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								createClientOptions(cCtx)...,
 							)
@@ -320,7 +321,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
@@ -346,7 +347,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),
@@ -370,7 +371,7 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewClient(cCtx.Context,
+							c, err := client.NewAPIClient(cCtx.Context,
 								cCtx.String("host"), nil,
 								client.WithPasswordGrant(
 									cCtx.String("username"),

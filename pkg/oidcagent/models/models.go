@@ -1,6 +1,6 @@
 package models
 
-type LoginStartReponse struct {
+type LoginStartResponse struct {
 	AuthorizationRequestURL string `json:"authorization_request_url"`
 }
 
@@ -26,7 +26,7 @@ type UserInfoResponse struct {
 	Picture           string `json:"picture"`
 }
 
-type DeviceStartReponse struct {
+type DeviceStartResponse struct {
 	// TODO: Remove this once golang/oauth2 supports device flow
 	// and when coreos/go-oidc adds device_authorization_endpoint discovery
 	DeviceAuthURL string `json:"device_authorization_endpoint"`

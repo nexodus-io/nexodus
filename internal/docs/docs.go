@@ -22,7 +22,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/devices": {
+        "/api/devices": {
             "get": {
                 "description": "Lists all devices",
                 "produces": [
@@ -32,6 +32,7 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "List Devices",
+                "operationId": "ListDevices",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -65,10 +66,11 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Add Devices",
+                "operationId": "CreateDevice",
                 "parameters": [
                     {
                         "description": "Add Device",
-                        "name": "device",
+                        "name": "Device",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -98,7 +100,7 @@ const docTemplate = `{
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/models.Device"
+                            "$ref": "#/definitions/models.ConflictsError"
                         }
                     },
                     "429": {
@@ -116,7 +118,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/devices/{id}": {
+        "/api/devices/{id}": {
             "get": {
                 "description": "Gets a device by ID",
                 "produces": [
@@ -126,6 +128,7 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Get Devices",
+                "operationId": "GetDevice",
                 "parameters": [
                     {
                         "type": "string",
@@ -177,6 +180,7 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Delete Device",
+                "operationId": "DeleteDevice",
                 "parameters": [
                     {
                         "type": "string",
@@ -222,6 +226,7 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Update Devices",
+                "operationId": "UpdateDevice",
                 "parameters": [
                     {
                         "type": "string",
@@ -274,7 +279,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/fflags": {
+        "/api/fflags": {
             "get": {
                 "description": "Lists all feature flags",
                 "produces": [
@@ -284,6 +289,7 @@ const docTemplate = `{
                     "FFlag"
                 ],
                 "summary": "List Feature Flags",
+                "operationId": "ListFeatureFlags",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -303,7 +309,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/fflags/{name}": {
+        "/api/fflags/{name}": {
             "get": {
                 "description": "Gets a Feature Flag by name",
                 "produces": [
@@ -313,6 +319,7 @@ const docTemplate = `{
                     "FFlag"
                 ],
                 "summary": "Get Feature Flag",
+                "operationId": "GetFeatureFlag",
                 "parameters": [
                     {
                         "type": "string",
@@ -353,16 +360,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/invitations": {
+        "/api/invitations": {
             "get": {
                 "description": "Lists all invitations",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Invitations"
+                    "Invitation"
                 ],
                 "summary": "List Invitations",
+                "operationId": "ListInvitations",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -386,18 +394,166 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Create an invitation to an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Create an invitation",
+                "operationId": "CreateInvitation",
+                "parameters": [
+                    {
+                        "description": "Add Invitation",
+                        "name": "Invitation",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddInvitation"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Invitation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
             }
         },
-        "/organizations": {
+        "/api/invitations/:invitation/accept": {
+            "post": {
+                "description": "Accept an invitation to an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Accept an invitation",
+                "operationId": "AcceptInvitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "invitation",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invitations/{invitation}": {
+            "delete": {
+                "description": "Deletes an existing invitation",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Delete Invitation",
+                "operationId": "DeleteInvitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "invitation",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations": {
             "get": {
                 "description": "Lists all Organizations",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Organization"
+                    "Organizations"
                 ],
                 "summary": "List Organizations",
+                "operationId": "ListOrganizations",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -437,9 +593,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Organization"
+                    "Organizations"
                 ],
                 "summary": "Create an Organization",
+                "operationId": "CreateOrganization",
                 "parameters": [
                     {
                         "description": "Add Organization",
@@ -491,16 +648,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/organizations/{id}": {
+        "/api/organizations/{id}": {
             "get": {
                 "description": "Gets a Organization by Organization ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Organization"
+                    "Organizations"
                 ],
                 "summary": "Get Organizations",
+                "operationId": "GetOrganizations",
                 "parameters": [
                     {
                         "type": "string",
@@ -552,6 +710,7 @@ const docTemplate = `{
                     "Organizations"
                 ],
                 "summary": "Delete Organization",
+                "operationId": "DeleteOrganization",
                 "parameters": [
                     {
                         "type": "string",
@@ -595,7 +754,64 @@ const docTemplate = `{
                 }
             }
         },
-        "/organizations/{id}/devices": {
+        "/api/organizations/{id}/devices": {
+            "get": {
+                "description": "Lists all users for this Organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List Users",
+                "operationId": "ListUsersInOrganization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.User"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/{organization_id}/devices": {
             "get": {
                 "description": "Lists all devices for this Organization",
                 "produces": [
@@ -605,11 +821,12 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "List Devices",
+                "operationId": "ListDevicesInOrganization",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "id",
+                        "name": "organization_id",
                         "in": "path",
                         "required": true
                     }
@@ -651,7 +868,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/organizations/{organization_id}/devices/{device_id}": {
+        "/api/organizations/{organization_id}/devices/{device_id}": {
             "get": {
                 "description": "Gets a device in a organization by ID",
                 "produces": [
@@ -661,6 +878,7 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Get Device",
+                "operationId": "GetDeviceInOrganization",
                 "parameters": [
                     {
                         "type": "string",
@@ -681,10 +899,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Device"
-                            }
+                            "$ref": "#/definitions/models.Device"
                         }
                     },
                     "400": {
@@ -720,16 +935,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
+        "/api/users": {
             "get": {
                 "description": "Lists all users",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "Users"
                 ],
                 "summary": "List Users",
+                "operationId": "ListUsers",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -755,16 +971,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}": {
+        "/api/users/{id}": {
             "get": {
                 "description": "Gets a user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "Users"
                 ],
                 "summary": "Get User",
+                "operationId": "GetUser",
                 "parameters": [
                     {
                         "type": "string",
@@ -819,9 +1036,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "Users"
                 ],
                 "summary": "Delete User",
+                "operationId": "DeleteUser",
                 "parameters": [
                     {
                         "type": "string",
@@ -859,16 +1077,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/organizations/{organization}": {
+        "/api/users/{id}/organizations/{organization}": {
             "delete": {
                 "description": "Deletes an existing organization associated to a user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "Users"
                 ],
                 "summary": "Remove a User from an Organization",
+                "operationId": "DeleteUserFromOrganization",
                 "parameters": [
                     {
                         "type": "string",
@@ -906,11 +1125,232 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/device/login/start": {
+            "post": {
+                "description": "Starts a device login request",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Start Login",
+                "operationId": "DeviceStart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.DeviceStartResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/web/claims": {
+            "get": {
+                "description": "Gets the claims of the users access token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Claims",
+                "operationId": "Claims",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/web/login/end": {
+            "post": {
+                "description": "Called auth server redirect to finish the Oauth login",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "End Web Login",
+                "operationId": "WebEnd",
+                "parameters": [
+                    {
+                        "description": "End Login",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginEndRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginEndResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/web/login/start": {
+            "post": {
+                "description": "Starts a login request for the frontend application",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Start Web Login",
+                "operationId": "WebStart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginStartResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/web/logout": {
+            "post": {
+                "description": "Returns the URL to logout the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "operationId": "Logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LogoutResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/web/refresh": {
+            "get": {
+                "description": "Refreshes the access token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh",
+                "operationId": "Refresh",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/web/user_info": {
+            "get": {
+                "description": "Returns information about the currently logged-in user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User Info",
+                "operationId": "UserInfo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserInfoResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
         "models.AddDevice": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "child_prefix": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "172.16.42.0/24"
+                    ]
+                },
+                "discovery": {
+                    "type": "boolean"
+                },
+                "endpoint_local_address_ip4": {
+                    "type": "string",
+                    "example": "1.2.3.4"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "local_ip": {
+                    "type": "string",
+                    "example": "10.1.1.1"
+                },
+                "organization_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "reflexive_ip4": {
+                    "type": "string"
+                },
+                "relay": {
+                    "type": "boolean"
+                },
+                "symmetric_nat": {
+                    "type": "boolean"
+                },
+                "tunnel_ip": {
+                    "type": "string",
+                    "example": "1.2.3.4"
+                },
+                "tunnel_ip_v6": {
+                    "type": "string",
+                    "example": "200::1"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
+        "models.AddInvitation": {
+            "type": "object",
+            "properties": {
+                "organization_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
         },
         "models.AddOrganization": {
             "type": "object",
@@ -942,6 +1382,19 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "something bad"
+                }
+            }
+        },
+        "models.ConflictsError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "something bad"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1fae5de-dd96-4b20-8362-95f6a574c4b1"
                 }
             }
         },
@@ -1011,6 +1464,21 @@ const docTemplate = `{
                 }
             }
         },
+        "models.DeviceStartResponse": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "device_authorization_endpoint": {
+                    "description": "TODO: Remove this once golang/oauth2 supports device flow\nand when coreos/go-oidc adds device_authorization_endpoint discovery",
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Invitation": {
             "type": "object",
             "properties": {
@@ -1029,13 +1497,54 @@ const docTemplate = `{
                 }
             }
         },
+        "models.LoginEndRequest": {
+            "type": "object",
+            "properties": {
+                "request_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LoginEndResponse": {
+            "type": "object",
+            "properties": {
+                "handled": {
+                    "type": "boolean"
+                },
+                "logged_in": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.LoginStartResponse": {
+            "type": "object",
+            "properties": {
+                "authorization_request_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LogoutResponse": {
+            "type": "object",
+            "properties": {
+                "logout_url": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Organization": {
             "type": "object",
             "properties": {
+                "cidr": {
+                    "type": "string"
+                },
+                "cidr_v6": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
-                "hubZone": {
+                "hub_zone": {
                     "type": "boolean"
                 },
                 "id": {
@@ -1048,16 +1557,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.Invitation"
                     }
                 },
-                "ipCidr": {
-                    "type": "string"
-                },
-                "ipCidrV6": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
-                "ownerID": {
+                "owner_id": {
                     "type": "string"
                 }
             }
@@ -1116,6 +1619,29 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "models.UserInfoResponse": {
+            "type": "object",
+            "properties": {
+                "family_name": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "preferred_username": {
+                    "type": "string"
+                },
+                "sub": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -1135,7 +1661,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Nexodus API",
 	Description:      "This is the Nexodus API Server.",

@@ -3,22 +3,17 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net/http"
 	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
-type Client struct {
-	logger  *zap.SugaredLogger
-	options *options
-	baseURL *url.URL
-	client  *http.Client
-}
+type APIClient = public.APIClient
 
-func NewClient(ctx context.Context, addr string, authcb func(string), options ...Option) (*Client, error) {
+func NewAPIClient(ctx context.Context, addr string, authcb func(string), options ...Option) (*APIClient, error) {
 	opts, err := newOptions(options...)
 	if err != nil {
 		return nil, err
@@ -29,29 +24,20 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 		return nil, err
 	}
 
-	c := Client{
-		options: opts,
-		baseURL: baseURL,
-	}
-
-	if c.options.logger != nil {
-		c.logger = c.options.logger
-	} else {
-		l, err := zap.NewDevelopment()
-		if err != nil {
-			return nil, err
-		}
-		c.logger = l.Sugar()
-	}
-
-	httpClient := &http.Client{
+	clientConfig := public.NewConfiguration()
+	clientConfig.HTTPClient = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: opts.tlsConfig,
 		},
 	}
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, clientConfig.HTTPClient)
 
-	resp, err := startLogin(httpClient, *baseURL)
+	clientConfig.Host = baseURL.Host
+	clientConfig.Scheme = baseURL.Scheme
+
+	apiClient := public.NewAPIClient(clientConfig)
+
+	resp, _, err := apiClient.AuthApi.DeviceStart(ctx).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -62,27 +48,27 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 	}
 
 	oidcConfig := &oidc.Config{
-		ClientID: resp.ClientID,
+		ClientID: resp.ClientId,
 	}
 
 	verifier := provider.Verifier(oidcConfig)
 
 	config := &oauth2.Config{
-		ClientID:     resp.ClientID,
-		ClientSecret: c.options.clientSecret,
+		ClientID:     resp.ClientId,
+		ClientSecret: opts.clientSecret,
 		Endpoint:     provider.Endpoint(),
 		Scopes:       []string{"openid", "profile", "email", "offline_access", "read:organizations", "write:organizations", "read:users", "write:users", "read:devices", "write:devices"},
 	}
 
 	var token *oauth2.Token
 	var rawIdToken interface{}
-	if c.options.deviceFlow {
-		token, rawIdToken, err = newDeviceFlowToken(ctx, resp.DeviceAuthURL, provider.Endpoint().TokenURL, resp.ClientID, authcb)
+	if opts.deviceFlow {
+		token, rawIdToken, err = newDeviceFlowToken(ctx, resp.DeviceAuthorizationEndpoint, provider.Endpoint().TokenURL, resp.ClientId, authcb)
 		if err != nil {
 			return nil, err
 		}
-	} else if c.options.username != "" && c.options.password != "" {
-		token, err = config.PasswordCredentialsToken(ctx, c.options.username, c.options.password)
+	} else if opts.username != "" && opts.password != "" {
+		token, err = config.PasswordCredentialsToken(ctx, opts.username, opts.password)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +84,6 @@ func NewClient(ctx context.Context, addr string, authcb func(string), options ..
 		return nil, err
 	}
 
-	c.client = config.Client(ctx, token)
-
-	return &c, nil
+	clientConfig.HTTPClient = config.Client(ctx, token)
+	return public.NewAPIClient(clientConfig), nil
 }

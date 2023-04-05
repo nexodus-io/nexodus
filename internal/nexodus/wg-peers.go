@@ -22,7 +22,7 @@ func (ax *Nexodus) buildPeersConfig() {
 			ax.wireguardPubKeyInConfig = true
 		}
 		if device.Relay {
-			relayIP = device.AllowedIPs[0]
+			relayIP = device.AllowedIps[0]
 		}
 	}
 	relayAllowedIP := []string{
@@ -35,7 +35,7 @@ func (ax *Nexodus) buildPeersConfig() {
 
 	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.deviceCache {
-		_, peerPort, err := net.SplitHostPort(value.LocalIP)
+		_, peerPort, err := net.SplitHostPort(value.LocalIp)
 		if err != nil {
 			ax.logger.Debugf("failed parse the endpoint address for node (likely still converging) : %v\n", err)
 			continue
@@ -49,11 +49,11 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.relay && value.Relay {
-			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
+			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			ax.relayWgIP = relayIP
 			peerHub = wgPeerConfig{
 				value.PublicKey,
-				value.LocalIP,
+				value.LocalIp,
 				relayAllowedIP,
 				persistentKeepalive,
 			}
@@ -63,62 +63,62 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the wg config for all peers if this node is the organization's hub-router.
 		if ax.relay {
 			// Config if this node is a relay
-			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
+			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
-				value.LocalIP,
-				value.AllowedIPs,
+				value.LocalIp,
+				value.AllowedIps,
 				persistentHubKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Node Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP IPv4 [ %s ] TunnelIP IPv6 [ %s ] Organization [ %s ]",
-				value.AllowedIPs,
-				value.LocalIP,
+			ax.logger.Infof("Peer Node Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIp IPv4 [ %s ] TunnelIp IPv6 [ %s ] Organization [ %s ]",
+				value.AllowedIps,
+				value.LocalIp,
 				value.PublicKey,
-				value.TunnelIP,
+				value.TunnelIp,
 				value.TunnelIpV6,
-				value.OrganizationID)
+				value.OrganizationId)
 		}
 
 		// If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 		// The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(value.ReflexiveIPv4) && !value.Relay {
-			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIPv4, peerPort)
-			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIPv4)
+		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(value.ReflexiveIp4) && !value.Relay {
+			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIp4, peerPort)
+			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIp4)
 			// the symmetric NAT peer
-			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
+			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
 				directLocalPeerEndpointSocket,
-				value.AllowedIPs,
+				value.AllowedIps,
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
-				value.AllowedIPs,
+			ax.logger.Infof("Peer Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIp [ %s ] Organization [ %s ]",
+				value.AllowedIps,
 				directLocalPeerEndpointSocket,
 				value.PublicKey,
-				value.TunnelIP,
-				value.OrganizationID)
+				value.TunnelIp,
+				value.OrganizationId)
 		} else if !ax.symmetricNat && !value.SymmetricNat && !value.Relay {
 			// the bulk of the peers will be added here except for local address peers. Endpoint sockets added here are likely
 			// to be changed from the state discovered by the relay node if peering with nodes with NAT in between.
 			// if the node itself (ax.symmetricNat) or the peer (value.SymmetricNat) is a
 			// symmetric nat node, do not add peers as it will relay and not mesh
-			value.AllowedIPs = append(value.AllowedIPs, value.ChildPrefix...)
+			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
-				value.LocalIP,
-				value.AllowedIPs,
+				value.LocalIp,
+				value.AllowedIps,
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
-			ax.logger.Infof("Peer Configuration - Peer AllowedIPs [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIP [ %s ] Organization [ %s ]",
-				value.AllowedIPs,
-				value.LocalIP,
+			ax.logger.Infof("Peer Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIp [ %s ] Organization [ %s ]",
+				value.AllowedIps,
+				value.LocalIp,
 				value.PublicKey,
-				value.TunnelIP,
-				value.OrganizationID)
+				value.TunnelIp,
+				value.OrganizationId)
 		}
 	}
 	ax.wgConfig.Peers = peers
@@ -132,15 +132,15 @@ func (ax *Nexodus) buildLocalConfig() {
 		// build the local interface configuration if this node is a Organization router
 		if value.PublicKey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
-			if ax.TunnelIP != value.TunnelIP {
-				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", value.TunnelIP, value.TunnelIpV6)
+			if ax.TunnelIP != value.TunnelIp {
+				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", value.TunnelIp, value.TunnelIpV6)
 				if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
 					if err := delLink(ax.tunnelIface); err != nil {
 						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}
 				}
 			}
-			ax.TunnelIP = value.TunnelIP
+			ax.TunnelIP = value.TunnelIp
 			ax.TunnelIpV6 = value.TunnelIpV6
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,

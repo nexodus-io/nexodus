@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"net/netip"
 	"net/url"
@@ -16,9 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/term"
@@ -73,7 +72,7 @@ type Nexodus struct {
 	tunnelIface              string
 	controllerIP             string
 	listenPort               int
-	organization             uuid.UUID
+	organization             string
 	requestedIP              string
 	userProvidedLocalIP      string
 	TunnelIP                 string
@@ -84,9 +83,9 @@ type Nexodus struct {
 	discoveryNode            bool
 	relayWgIP                string
 	wgConfig                 wgConfig
-	client                   *client.Client
+	client                   *client.APIClient
 	controllerURL            *url.URL
-	deviceCache              map[uuid.UUID]models.Device
+	deviceCache              map[string]public.ModelsDevice
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
 	hostname                 string
@@ -178,7 +177,7 @@ func NewNexodus(ctx context.Context,
 		stun:                stun,
 		relay:               relay,
 		discoveryNode:       discoveryNode,
-		deviceCache:         make(map[uuid.UUID]models.Device),
+		deviceCache:         make(map[string]public.ModelsDevice),
 		controllerURL:       controllerURL,
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
@@ -249,7 +248,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}))
 	}
 
-	ax.client, err = client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
+	ax.client, err = client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
 		ax.SetStatus(NexdStatusAuth, msg)
 	}, options...)
 	if err != nil {
@@ -262,12 +261,12 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
 
-	user, err := ax.client.GetCurrentUser()
+	user, _, err := ax.client.UsersApi.GetUser(ctx, "me").Execute()
 	if err != nil {
 		return fmt.Errorf("get user error: %w", err)
 	}
 
-	organizations, err := ax.client.GetOrganizations()
+	organizations, _, err := ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
 	if err != nil {
 		return fmt.Errorf("get organizations error: %w", err)
 	}
@@ -278,8 +277,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if len(organizations) != 1 {
 		return fmt.Errorf("user being in > 1 organization is not yet supported")
 	}
-	ax.logger.Infof("Device belongs in organization: %s (%s)", organizations[0].Name, organizations[0].ID)
-	ax.organization = organizations[0].ID
+	ax.logger.Infof("Device belongs in organization: %s (%s)", organizations[0].Name, organizations[0].Id)
+	ax.organization = organizations[0].Id
 
 	var localIP string
 	var localEndpointPort int
@@ -301,7 +300,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			if err != nil {
 				return err
 			}
-			if existingRelay != uuid.Nil {
+			if existingRelay != "" {
 				return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
 			}
 		}
@@ -311,7 +310,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			if err != nil {
 				return err
 			}
-			if existingDiscoveryNode != uuid.Nil {
+			if existingDiscoveryNode != "" {
 				return fmt.Errorf("the organization already contains a discovery node, device %s needs to be deleted before adding a new discovery node", existingDiscoveryNode)
 			}
 		}
@@ -335,45 +334,47 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localIP = ip
 		localEndpointPort = ax.listenPort
 	}
+
 	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
-	device, err := ax.client.CreateDevice(models.AddDevice{
-		UserID:                   user.ID,
-		OrganizationID:           ax.organization,
-		PublicKey:                ax.wireguardPubKey,
-		LocalIP:                  endpointSocket,
-		TunnelIP:                 ax.requestedIP,
-		ChildPrefix:              ax.childPrefix,
-		ReflexiveIPv4:            ax.nodeReflexiveAddressIPv4.String(),
-		EndpointLocalAddressIPv4: ax.endpointLocalAddress,
-		SymmetricNat:             ax.symmetricNat,
-		Hostname:                 ax.hostname,
-		Relay:                    ax.relay,
-	})
+	device, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
+		UserId:                  user.Id,
+		OrganizationId:          ax.organization,
+		PublicKey:               ax.wireguardPubKey,
+		LocalIp:                 endpointSocket,
+		TunnelIp:                ax.requestedIP,
+		ChildPrefix:             ax.childPrefix,
+		ReflexiveIp4:            ax.nodeReflexiveAddressIPv4.String(),
+		EndpointLocalAddressIp4: ax.endpointLocalAddress,
+		SymmetricNat:            ax.symmetricNat,
+		Hostname:                ax.hostname,
+		Relay:                   ax.relay,
+	}).Execute()
 	if err != nil {
-		var conflict client.ErrConflict
-		if errors.As(err, &conflict) {
-			deviceID, err := uuid.Parse(conflict.ID)
-			if err != nil {
-				return fmt.Errorf("error parsing conflicting device id: %w", err)
-			}
-			device, err = ax.client.UpdateDevice(deviceID, models.UpdateDevice{
-				LocalIP:                  endpointSocket,
-				ChildPrefix:              ax.childPrefix,
-				ReflexiveIPv4:            ax.nodeReflexiveAddressIPv4.String(),
-				EndpointLocalAddressIPv4: ax.endpointLocalAddress,
-				SymmetricNat:             &ax.symmetricNat,
-				Hostname:                 ax.hostname,
-			})
-			if err != nil {
-				return fmt.Errorf("error updating device: %w", err)
+		var apiError *public.GenericOpenAPIError
+		if errors.As(err, &apiError) {
+			switch model := apiError.Model().(type) {
+			case public.ModelsConflictsError:
+				device, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
+					LocalIp:                 endpointSocket,
+					ChildPrefix:             ax.childPrefix,
+					ReflexiveIp4:            ax.nodeReflexiveAddressIPv4.String(),
+					EndpointLocalAddressIp4: ax.endpointLocalAddress,
+					SymmetricNat:            ax.symmetricNat,
+					Hostname:                ax.hostname,
+				}).Execute()
+				if err != nil {
+					return fmt.Errorf("error updating device: %w", err)
+				}
+			default:
+				return fmt.Errorf("error creating device: %w", err)
 			}
 		} else {
 			return fmt.Errorf("error creating device: %w", err)
 		}
 	}
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", device))
-	ax.logger.Infof("Successfully registered device with UUID: %+v", device.ID)
+	ax.logger.Infof("Successfully registered device with UUID: %+v", device.Id)
 
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.relay {
@@ -419,7 +420,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				// if the token grant becomes invalid expires refresh or exit depending on the onboard method
 				if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
 					if ax.username != "" {
-						c, err := client.NewClient(ctx, ax.controllerURL.String(), func(msg string) {
+						c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
 							ax.SetStatus(NexdStatusAuth, msg)
 						}, options...)
 						if err != nil {
@@ -457,10 +458,10 @@ func (ax *Nexodus) Keepalive() {
 	var peerEndpoints []string
 	if !ax.relay {
 		for _, value := range ax.deviceCache {
-			nodeAddr := value.TunnelIP
+			nodeAddr := value.TunnelIp
 			// strip the /32 from the prefix if present
-			if net.ParseIP(value.TunnelIP) == nil {
-				nodeIP, _, err := net.ParseCIDR(value.TunnelIP)
+			if net.ParseIP(value.TunnelIp) == nil {
+				nodeIP, _, err := net.ParseCIDR(value.TunnelIp)
 				nodeAddr = nodeIP.String()
 				if err != nil {
 					ax.logger.Debugf("failed parsing an ip from the prefix %v", err)
@@ -473,23 +474,23 @@ func (ax *Nexodus) Keepalive() {
 	_ = probePeers(peerEndpoints, ax.logger)
 }
 
-func (ax *Nexodus) Reconcile(orgID uuid.UUID, firstTime bool) error {
-	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
+func (ax *Nexodus) Reconcile(orgID string, firstTime bool) error {
+	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), orgID).Execute()
 	if err != nil {
 		return err
 	}
-	var newPeers []models.Device
+	var newPeers []public.ModelsDevice
 	if firstTime {
 		// Initial peer list processing branches from here
 		ax.logger.Debugf("Initializing peers for the first time")
 		for _, p := range peerListing {
-			existing, ok := ax.deviceCache[p.ID]
+			existing, ok := ax.deviceCache[p.Id]
 			if !ok {
-				ax.deviceCache[p.ID] = p
+				ax.deviceCache[p.Id] = p
 				newPeers = append(newPeers, p)
 			}
 			if !reflect.DeepEqual(existing, p) {
-				ax.deviceCache[p.ID] = p
+				ax.deviceCache[p.Id] = p
 				newPeers = append(newPeers, p)
 			}
 		}
@@ -504,15 +505,15 @@ func (ax *Nexodus) Reconcile(orgID uuid.UUID, firstTime bool) error {
 	// all subsequent peer listings updates get branched from here
 	changed := false
 	for _, p := range peerListing {
-		existing, ok := ax.deviceCache[p.ID]
+		existing, ok := ax.deviceCache[p.Id]
 		if !ok {
 			changed = true
-			ax.deviceCache[p.ID] = p
+			ax.deviceCache[p.Id] = p
 			newPeers = append(newPeers, p)
 		}
 		if !reflect.DeepEqual(existing, p) {
 			changed = true
-			ax.deviceCache[p.ID] = p
+			ax.deviceCache[p.Id] = p
 			newPeers = append(newPeers, p)
 		}
 	}
@@ -534,9 +535,9 @@ func (ax *Nexodus) Reconcile(orgID uuid.UUID, firstTime bool) error {
 }
 
 // discoveryStateReconcile collect state from the discovery node and rejoin nodes with the dynamic state
-func (ax *Nexodus) discoveryStateReconcile(orgID uuid.UUID) error {
+func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 	ax.logger.Debugf("Reconciling peers from relay state")
-	peerListing, err := ax.client.GetDeviceInOrganization(orgID)
+	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), orgID).Execute()
 	if err != nil {
 		return err
 	}
@@ -556,7 +557,7 @@ func (ax *Nexodus) discoveryStateReconcile(orgID uuid.UUID) error {
 	for _, peer := range peerListing {
 		// if the peer is behind a symmetric NAT, skip to the next peer
 		if peer.SymmetricNat {
-			ax.logger.Debugf("skipping symmetric NAT node %s", peer.LocalIP)
+			ax.logger.Debugf("skipping symmetric NAT node %s", peer.LocalIp)
 			continue
 		}
 		_, ok := discoData[peer.PublicKey]
@@ -571,9 +572,10 @@ func (ax *Nexodus) discoveryStateReconcile(orgID uuid.UUID) error {
 				}
 				endpointReflexiveAddress := discoData[peer.PublicKey].Endpoint
 				// update the peer endpoint to the new reflexive address learned from the wg session
-				_, err = ax.client.UpdateDevice(peer.ID, models.UpdateDevice{
-					LocalIP: endpointReflexiveAddress,
-				})
+				_, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), peer.Id).Update(public.ModelsUpdateDevice{
+					LocalIp: endpointReflexiveAddress,
+				}).Execute()
+
 				if err != nil {
 					ax.logger.Errorf("failed updating peer: %+v", err)
 				}
@@ -662,36 +664,31 @@ func (ax *Nexodus) symmetricNatDisco() error {
 }
 
 // orgRelayCheck checks if there is an existing Relay node in the organization that does not match this device's pub key
-func (ax *Nexodus) orgRelayCheck(peerListing []models.Device) (uuid.UUID, error) {
-	var relayID uuid.UUID
+func (ax *Nexodus) orgRelayCheck(peerListing []public.ModelsDevice) (string, error) {
 	for _, p := range peerListing {
 		if p.Relay && ax.wireguardPubKey != p.PublicKey {
-			return p.ID, nil
+			return p.Id, nil
 		}
 	}
-
-	return relayID, nil
+	return "", nil
 }
 
 // orgDiscoveryCheck checks if there is an existing Discovery node in the organization that does not match this device's pub key
-func (ax *Nexodus) orgDiscoveryCheck(peerListing []models.Device) (uuid.UUID, error) {
-	var discoveryID uuid.UUID
+func (ax *Nexodus) orgDiscoveryCheck(peerListing []public.ModelsDevice) (string, error) {
 	for _, p := range peerListing {
 		if p.Discovery && ax.wireguardPubKey != p.PublicKey {
-			return p.ID, nil
+			return p.Id, nil
 		}
 	}
-
-	return discoveryID, nil
+	return "", nil
 }
 
 // getPeerListing return the peer listing for the current user account
-func (ax *Nexodus) getPeerListing() ([]models.Device, error) {
-	peerListing, err := ax.client.GetDeviceInOrganization(ax.organization)
+func (ax *Nexodus) getPeerListing() ([]public.ModelsDevice, error) {
+	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), ax.organization).Execute()
 	if err != nil {
 		return nil, err
 	}
-
 	return peerListing, nil
 }
 

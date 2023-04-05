@@ -45,7 +45,7 @@ func TestLoginStart(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response models.LoginStartReponse
+	var response models.LoginStartResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 
@@ -388,7 +388,7 @@ func TestDeviceStart(t *testing.T) {
 	data, err := io.ReadAll(w.Body)
 	require.NoError(t, err)
 
-	var response models.DeviceStartReponse
+	var response models.DeviceStartResponse
 	err = json.Unmarshal(data, &response)
 	require.NoError(t, err)
 

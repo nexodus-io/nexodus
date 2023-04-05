@@ -12,6 +12,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// CreateInvitation creates an invitation
+// @Summary      Create an invitation
+// @Description  Create an invitation to an organization
+// @Id           CreateInvitation
+// @Tags         Invitation
+// @Accepts		 json
+// @Produce      json
+// @Param        Invitation  body     models.AddInvitation  true  "Add Invitation"
+// @Success      201  {object}  models.Invitation
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Router       /api/invitations [post]
 func (api *API) CreateInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
 	defer span.End()
@@ -73,13 +86,14 @@ func (api *API) CreateInvitation(c *gin.Context) {
 // ListInvitations lists invitations
 // @Summary      List Invitations
 // @Description  Lists all invitations
-// @Tags         Invitations
+// @Id           ListInvitations
+// @Tags         Invitation
 // @Accepts		 json
 // @Produce      json
 // @Success      200  {object}  []models.Invitation
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /invitations [get]
+// @Router       /api/invitations [get]
 func (api *API) ListInvitations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListInvitations")
 	defer span.End()
@@ -116,6 +130,19 @@ func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context) func(db *go
 	}
 }
 
+// AcceptInvitation accepts an invitation
+// @Summary      Accept an invitation
+// @Description  Accept an invitation to an organization
+// @Id           AcceptInvitation
+// @Tags         Invitation
+// @Accepts		 json
+// @Produce      json
+// @Param        invitation   path      string  true "Invitation ID"
+// @Success      204
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Router       /api/invitations/:invitation/accept [post]
 func (api *API) AcceptInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
 	defer span.End()
@@ -177,6 +204,20 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// DeleteInvitation handles deleting an existing organization and associated ipam prefix
+// @Summary      Delete Invitation
+// @Description  Deletes an existing invitation
+// @Id 			 DeleteInvitation
+// @Tags         Invitation
+// @Accepts		 json
+// @Produce      json
+// @Param        invitation   path      string  true "Invitation ID"
+// @Success      204  {object}  models.Organization
+// @Failure      400  {object}  models.BaseError
+// @Failure      405  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.BaseError
+// @Router       /api/invitations/{invitation} [delete]
 func (api *API) DeleteInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation")
 	defer span.End()

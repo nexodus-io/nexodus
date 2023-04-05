@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
@@ -26,9 +25,9 @@ type IpamTestSuite struct {
 }
 
 func (suite *IpamTestSuite) SetupSuite() {
-	suite.server = util.NewTestIPAMServer()
+	suite.server = NewTestIPAMServer()
 	suite.logger = zaptest.NewLogger(suite.T()).Sugar()
-	suite.ipam = NewIPAM(suite.logger, util.TestIPAMClientAddr)
+	suite.ipam = NewIPAM(suite.logger, TestIPAMClientAddr)
 	suite.wg = sync.WaitGroup{}
 	suite.wg.Add(1)
 	listener, err := net.Listen("tcp", "[::1]:9090")

@@ -10,14 +10,14 @@ import (
 // Organization contains Users and their Devices
 type Organization struct {
 	Base
-	OwnerID     string    `gorm:"owner_id;"`
-	Users       []*User   `gorm:"many2many:user_organizations;" json:"-"`
+	OwnerID     string    `json:"owner_id" gorm:"owner_id;"`
+	Users       []*User   `json:"-" gorm:"many2many:user_organizations;"`
 	Devices     []*Device `json:"-"`
-	Name        string    `gorm:"uniqueIndex" sql:"index"`
-	Description string
-	IpCidr      string
-	IpCidrV6    string
-	HubZone     bool
+	Name        string    `json:"name" gorm:"uniqueIndex" sql:"index"`
+	Description string    `json:"description"`
+	IpCidr      string    `json:"cidr"`
+	IpCidrV6    string    `json:"cidr_v6"`
+	HubZone     bool      `json:"hub_zone"`
 	Invitations []*Invitation
 }
 
