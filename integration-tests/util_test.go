@@ -111,7 +111,6 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 			}
 			hostConfig.AutoRemove = true
-			//>>>>>>> 5890300 (Enabled v6 in e2e nodes and added v6 tests)
 		},
 		Mounts: []testcontainers.ContainerMount{
 			{

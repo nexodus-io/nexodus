@@ -673,6 +673,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	var user models.UserJSON
 	err = json.Unmarshal([]byte(commandOut), &user)
 	assert.NotEmpty(user)
+	assert.NotEmpty(user.ID)
 	require.NotEmpty(user.UserName)
 
 	commandOut, err = suite.runCommand(nexctl,
@@ -684,6 +685,13 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	var organizations []models.OrganizationJSON
 	err = json.Unmarshal([]byte(commandOut), &organizations)
 	require.Equal(1, len(organizations))
+
+	// validate no org fields are empty
+	assert.NotEmpty(organizations[0].ID)
+	assert.NotEmpty(organizations[0].Name)
+	assert.NotEmpty(organizations[0].IpCidr)
+	assert.NotEmpty(organizations[0].IpCidrV6)
+	assert.NotEmpty(organizations[0].Description)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -727,6 +735,20 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	var devices []models.Device
 	json.Unmarshal([]byte(allDevices), &devices)
 	assert.NoErrorf(err, "nexctl device list error: %v\n", err)
+
+	// validate device fields that should always have values
+	assert.NotEmpty(devices[0].ID)
+	assert.NotEmpty(devices[0].LocalIP)
+	assert.NotEmpty(devices[0].Hostname)
+	assert.NotEmpty(devices[0].PublicKey)
+	assert.NotEmpty(devices[0].TunnelIP)
+	assert.NotEmpty(devices[0].TunnelIpV6)
+	assert.NotEmpty(devices[0].AllowedIPs)
+	assert.NotEmpty(devices[0].OrganizationID)
+	assert.NotEmpty(devices[0].OrganizationPrefix)
+	assert.NotEmpty(devices[0].OrganizationPrefixV6)
+	assert.NotEmpty(devices[0].EndpointLocalAddressIPv4)
+	// TODO: add assert.NotEmpty(devices[0].ReflexiveIPv4) with #739
 
 	// register the device IDs for node1 and node2 for deletion
 	var node1DeviceID string
