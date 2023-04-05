@@ -44,16 +44,11 @@ nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64
 .PHONY: nexctl
 nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
 
-# Only the apiserver depends on internal/docs/*.go
-COMMON_DEPS=$(filter-out $(wildcard ./internal/docs/*.go),$(wildcard ./internal/**/*.go)) go.sum go.mod
-
-NEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexd/*.go)
-
-NEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexctl/*.go)
-
-APISERVER_DEPS=$(COMMON_DEPS) $(wildcard cmd/apiserver/*.go) $(wildcard internal/docs/*.go)
-
-NEX_ALL_GO=$(COMMON_DEPS) $(NEXD_DEPS) $(NEXCTL_DEPS) $(APISERVER_DEPS)
+# Use go list to find all the go files that make up a binary.
+NEXD_DEPS:=     $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexd)
+NEXCTL_DEPS:=   $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexctl)
+APISERVER_DEPS:=$(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/apiserver)
+NEX_ALL_GO:=    $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./...)
 
 TAG=$(shell git rev-parse HEAD)
 
