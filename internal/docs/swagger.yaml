@@ -171,9 +171,13 @@ definitions:
     type: object
   models.Organization:
     properties:
+      cidr:
+        type: string
+      cidr_v6:
+        type: string
       description:
         type: string
-      hubZone:
+      hub_zone:
         type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -182,13 +186,9 @@ definitions:
         items:
           $ref: '#/definitions/models.Invitation'
         type: array
-      ipCidr:
-        type: string
-      ipCidrV6:
-        type: string
       name:
         type: string
-      ownerID:
+      owner_id:
         type: string
     type: object
   models.UpdateDevice:
@@ -256,39 +256,6 @@ info:
   title: Nexodus API
   version: "1.0"
 paths:
-  /api/api/invitations:
-    post:
-      description: Create an invitation to an organization
-      operationId: CreateInvitation
-      parameters:
-      - description: Add Invitation
-        in: body
-        name: Invitation
-        required: true
-        schema:
-          $ref: '#/definitions/models.AddInvitation'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Invitation'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-      summary: Create an invitation
-      tags:
-      - Invitation
   /api/devices:
     get:
       description: Lists all devices
@@ -537,6 +504,38 @@ paths:
           schema:
             $ref: '#/definitions/models.BaseError'
       summary: List Invitations
+      tags:
+      - Invitation
+    post:
+      description: Create an invitation to an organization
+      operationId: CreateInvitation
+      parameters:
+      - description: Add Invitation
+        in: body
+        name: Invitation
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddInvitation'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Invitation'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Create an invitation
       tags:
       - Invitation
   /api/invitations/:invitation/accept:

@@ -22,56 +22,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/api/invitations": {
-            "post": {
-                "description": "Create an invitation to an organization",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Invitation"
-                ],
-                "summary": "Create an invitation",
-                "operationId": "CreateInvitation",
-                "parameters": [
-                    {
-                        "description": "Add Invitation",
-                        "name": "Invitation",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.AddInvitation"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.Invitation"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/devices": {
             "get": {
                 "description": "Lists all devices",
@@ -433,6 +383,54 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create an invitation to an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Create an invitation",
+                "operationId": "CreateInvitation",
+                "parameters": [
+                    {
+                        "description": "Add Invitation",
+                        "name": "Invitation",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddInvitation"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Invitation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
@@ -1537,10 +1535,16 @@ const docTemplate = `{
         "models.Organization": {
             "type": "object",
             "properties": {
+                "cidr": {
+                    "type": "string"
+                },
+                "cidr_v6": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
-                "hubZone": {
+                "hub_zone": {
                     "type": "boolean"
                 },
                 "id": {
@@ -1553,16 +1557,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.Invitation"
                     }
                 },
-                "ipCidr": {
-                    "type": "string"
-                },
-                "ipCidrV6": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
-                "ownerID": {
+                "owner_id": {
                     "type": "string"
                 }
             }

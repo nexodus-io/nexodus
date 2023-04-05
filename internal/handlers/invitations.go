@@ -24,7 +24,7 @@ import (
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Router       /api/api/invitations [post]
+// @Router       /api/invitations [post]
 func (api *API) CreateInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
 	defer span.End()
