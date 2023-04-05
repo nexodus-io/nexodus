@@ -285,7 +285,7 @@ clear-db:
 .PHONY: test-images
 test-images: .test-images ## Create test images for e2e
 
-.test-images: dist/nexd dist/nexctl
+.test-images: dist/nexd dist/nexctl Containerfile.test
 	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
