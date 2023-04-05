@@ -1023,9 +1023,18 @@ func (suite *NexodusIntegrationSuite) TestProxyEgress() {
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
 
-	suite.logger.Info("Got node IP for node1", node1IP)
-
 	suite.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")))
+
+	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
+	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
+	// IP address from the running nexd.
+	node2IP := "100.100.0.2"
+
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
 
 	// run an http server on node1
 	wg := sync.WaitGroup{}
@@ -1041,7 +1050,7 @@ func (suite *NexodusIntegrationSuite) TestProxyEgress() {
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
 		output, err := suite.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
 		if err != nil {
-			suite.logger.Infof("curl failed (retrying up to 10 seconds): %v -- %s", err, output)
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
 		suite.True(strings.Contains(output, "bananas"))
@@ -1083,6 +1092,12 @@ func (suite *NexodusIntegrationSuite) TestProxyIngress() {
 	// IP address from the running nexd.
 	node2IP := "100.100.0.2"
 
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
 	// run an http server on node2
 	wg := sync.WaitGroup{}
 	util.GoWithWaitGroup(&wg, func() {
@@ -1097,7 +1112,7 @@ func (suite *NexodusIntegrationSuite) TestProxyIngress() {
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
 		output, err := suite.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
 		if err != nil {
-			suite.logger.Infof("curl failed (retrying up to 10 seconds): %v -- %s", err, output)
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
 		suite.True(strings.Contains(output, "bananas"))
@@ -1144,6 +1159,12 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressAndEgress() {
 	// IP address from the running nexd.
 	node2IP := "100.100.0.2"
 
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
 	// run an http server on node1 and node2
 	wg := sync.WaitGroup{}
 	util.GoWithWaitGroup(&wg, func() {
@@ -1163,7 +1184,7 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressAndEgress() {
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
 		output, err := suite.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
 		if err != nil {
-			suite.logger.Infof("curl failed (retrying up to 10 seconds): %v -- %s", err, output)
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
 		suite.True(strings.Contains(output, "bananas"))
@@ -1177,7 +1198,7 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressAndEgress() {
 	success, err = util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
 		output, err := suite.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
 		if err != nil {
-			suite.logger.Infof("curl failed (retrying up to 10 seconds): %v -- %s", err, output)
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
 		suite.True(strings.Contains(output, "pancakes"))
