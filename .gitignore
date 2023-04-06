@@ -17,11 +17,6 @@
 # misc
 *.idea
 .DS_Store
-.go-lint-*
-.gen-*
-.*-lint
-.generate
-.test-images
 
 #tests
 ./tests/*.json

@@ -76,12 +76,11 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist
-	$(CMD_PREFIX) rm -f .go-lint-* .gen-docs .yaml-lint .md-lint .ui-lint .opa-lint .generate .test-images .gen-openapi-client
 
 ##@ Development
 
 .PHONY: go-lint
-go-lint: .go-lint-linux .go-lint-darwin .go-lint-windows ## Lint the go code
+go-lint: dist/.go-lint-linux dist/.go-lint-darwin dist/.go-lint-windows ## Lint the go code
 
 .PHONY: go-lint-prereqs
 go-lint-prereqs:
@@ -91,17 +90,17 @@ go-lint-prereqs:
 		exit 1 ; \
 	fi
 
-.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs
+dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
 		golangci-lint run --timeout 5m ./...
 	$(CMD_PREFIX) touch $@
 
 .PHONY: yaml-lint
-yaml-lint: .yaml-lint ## Lint the yaml files
+yaml-lint: dist/.yaml-lint ## Lint the yaml files
 
 # If gen-docs needs to run, make sure it goes first as it generates internal/docs/swagger.yaml
-.yaml-lint: $(wildcard */**/*.yaml) | gen-docs
+dist/.yaml-lint: $(wildcard */**/*.yaml) | gen-docs dist
 	$(CMD_PREFIX) if ! which yamllint >/dev/null 2>&1; then \
 		echo "Please install yamllint." ; \
 		echo "See: https://yamllint.readthedocs.io/en/stable/quickstart.html" ; \
@@ -112,17 +111,17 @@ yaml-lint: .yaml-lint ## Lint the yaml files
 	$(CMD_PREFIX) touch $@
 
 .PHONY: md-lint
-md-lint: .md-lint ## Lint markdown files
+md-lint: dist/.md-lint ## Lint markdown files
 
-.md-lint: $(wildcard */**/*.md)
+dist/.md-lint: $(wildcard */**/*.md) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[MD LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir docker.io/davidanson/markdownlint-cli2:v0.6.0 > /dev/null
 	$(CMD_PREFIX) touch $@
 
 .PHONY: ui-lint
-ui-lint: .ui-lint ## Lint the UI source
+ui-lint: dist/.ui-lint ## Lint the UI source
 
-.ui-lint: $(filter-out $(wildcard ui/node_modules/*),$(wildcard ui/*) $(wildcard ui/**/*))
+dist/.ui-lint: $(filter-out $(wildcard ui/node_modules/*),$(wildcard ui/*) $(wildcard ui/**/*)) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[UI LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier --check /workdir/ui/src/ >/dev/null
 	$(CMD_PREFIX) touch $@
@@ -130,32 +129,32 @@ ui-lint: .ui-lint ## Lint the UI source
 policies=$(wildcard internal/routers/*.rego)
 
 .PHONY: opa-lint
-opa-lint: .opa-lint ## Lint the OPA policies
-.opa-lint: $(policies)
+opa-lint: dist/.opa-lint ## Lint the OPA policies
+dist/.opa-lint: $(policies) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) touch $@
 
 .PHONY: gen-docs
-gen-docs: .gen-docs ## Generate API docs
+gen-docs: dist/.gen-docs ## Generate API docs
 .PHONY: openapi-lint
-openapi-lint: .openapi-lint ## Lint the OpenAPI document
+openapi-lint: dist/.openapi-lint ## Lint the OpenAPI document
 .PHONY: openapi-lint
-.openapi-lint: internal/docs/swagger.yaml
+dist/.openapi-lint: internal/docs/swagger.yaml | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[OPENAPI LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
 		validate -i /src/internal/docs/swagger.yaml
 	$(CMD_PREFIX) touch $@
 
-.gen-docs: $(NEX_ALL_GO) 
+dist/.gen-docs: $(NEX_ALL_GO) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
-internal/docs/swagger.yaml: .gen-docs
+internal/docs/swagger.yaml: dist/.gen-docs
 
 .PHONY: gen-openapi-client
-gen-openapi-client: .gen-openapi-client ## Generate the OpenAPI Client
-.gen-openapi-client: internal/docs/swagger.yaml
+gen-openapi-client: dist\.gen-openapi-client ## Generate the OpenAPI Client
+dist/.gen-openapi-client: internal/docs/swagger.yaml | dist
 	$(ECHO_PREFIX) printf "  %-12s internal/docs/swagger.yaml\n" "[OPENAPI CLIENT GEN]"
 	$(CMD_PREFIX) rm -rf internal/api/public
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
@@ -174,9 +173,9 @@ opa-fmt: ## Lint the OPA policies
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
 
 .PHONY: generate
-generate: .generate ## Run all code generators and formatters
+generate: dist/.generate ## Run all code generators and formatters
 
-.generate: .gen-docs
+dist/.generate: dist/.gen-docs | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
@@ -300,9 +299,9 @@ clear-db:
 ##@ Container Images
 
 .PHONY: test-images
-test-images: .test-images ## Create test images for e2e
+test-images: dist/.test-images ## Create test images for e2e
 
-.test-images: dist/nexd dist/nexctl Containerfile.test
+dist/.test-images: dist/nexd dist/nexctl Containerfile.test | dist
 	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
 	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
