@@ -3,11 +3,13 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"golang.org/x/oauth2"
 )
 
@@ -27,7 +29,14 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 	clientConfig := public.NewConfiguration()
 	clientConfig.HTTPClient = &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: opts.tlsConfig,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			TLSClientConfig:       opts.tlsConfig,
 		},
 	}
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, clientConfig.HTTPClient)
