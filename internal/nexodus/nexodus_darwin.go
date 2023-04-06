@@ -4,6 +4,8 @@ package nexodus
 
 import (
 	"fmt"
+	"strconv"
+
 	"go.uber.org/zap"
 )
 
@@ -44,7 +46,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 
-	_, err = RunCommand("wg", "set", dev, "private-key", darwinPrivateKeyFile)
+	_, err = RunCommand("wg", "set", dev, "listen-port", strconv.Itoa(ax.listenPort), "private-key", darwinPrivateKeyFile)
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
