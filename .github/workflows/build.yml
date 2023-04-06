@@ -54,7 +54,7 @@ jobs:
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
       - name: Lint ${{ matrix.os }}
-        run: make .go-lint-${{ matrix.os }}
+        run: make dist/.go-lint-${{ matrix.os }}
 
   # these are a little slower to lint...
   go-lint-rest:
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
       - name: Lint ${{ matrix.os }}
-        run: make .go-lint-${{ matrix.os }}
+        run: make dist/.go-lint-${{ matrix.os }}
 
   ui-lint:
     runs-on: ubuntu-latest
