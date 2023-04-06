@@ -30,6 +30,7 @@
 !Containerfile.test
 *.test
 integration-tests/tmp/
+internal/client/tmp/
 
 # config
 .env.*

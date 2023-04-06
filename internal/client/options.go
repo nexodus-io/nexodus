@@ -9,6 +9,7 @@ type options struct {
 	clientSecret string
 	username     string
 	password     string
+	tokenFile    string
 	tlsConfig    *tls.Config
 }
 
@@ -48,6 +49,15 @@ func WithTLSConfig(
 func WithDeviceFlow() Option {
 	return func(o *options) error {
 		o.deviceFlow = true
+		return nil
+	}
+}
+
+func WithTokenFile(
+	file string,
+) Option {
+	return func(o *options) error {
+		o.tokenFile = file
 		return nil
 	}
 }

@@ -81,15 +81,8 @@ func main() {
 						Name:  "list",
 						Usage: "List organizations",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
-							return listOrganizations(c, encodeOut)
+							return listOrganizations(mustCreateAPIClient(cCtx), encodeOut)
 						},
 					},
 					{
@@ -118,20 +111,13 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							organizationName := cCtx.String("name")
 							organizationDescrip := cCtx.String("description")
 							organizationCIDR := cCtx.String("cidr")
 							organizationCIDRv6 := cCtx.String("cidr-v6")
 							organizationHub := cCtx.Bool("hub-organization")
-							return createOrganization(c, encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6, organizationHub)
+							return createOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6, organizationHub)
 						},
 					},
 					{
@@ -144,16 +130,9 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							organizationID := cCtx.String("organization-id")
-							return deleteOrganization(c, encodeOut, organizationID)
+							return deleteOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationID)
 						},
 					},
 				},
@@ -173,15 +152,6 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							orgID := cCtx.String("organization-id")
 							if orgID != "" {
@@ -189,9 +159,9 @@ func main() {
 								if err != nil {
 									log.Fatal(err)
 								}
-								return listOrgDevices(c, id, encodeOut)
+								return listOrgDevices(mustCreateAPIClient(cCtx), id, encodeOut)
 							}
-							return listAllDevices(c, encodeOut)
+							return listAllDevices(mustCreateAPIClient(cCtx), encodeOut)
 						},
 					},
 					{
@@ -204,16 +174,9 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							devID := cCtx.String("device-id")
-							return deleteDevice(c, encodeOut, devID)
+							return deleteDevice(mustCreateAPIClient(cCtx), encodeOut, devID)
 						},
 					},
 				},
@@ -226,30 +189,16 @@ func main() {
 						Name:  "list",
 						Usage: "List all users",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
-							return listUsers(c, encodeOut)
+							return listUsers(mustCreateAPIClient(cCtx), encodeOut)
 						},
 					},
 					{
 						Name:  "get-current",
 						Usage: "Get current user",
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
-							return getCurrent(c, encodeOut)
+							return getCurrent(mustCreateAPIClient(cCtx), encodeOut)
 						},
 					},
 					{
@@ -262,16 +211,9 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
-							return deleteUser(c, encodeOut, userID)
+							return deleteUser(mustCreateAPIClient(cCtx), encodeOut, userID)
 						},
 					},
 					{
@@ -288,17 +230,10 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								createClientOptions(cCtx)...,
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
 							orgID := cCtx.String("organization-id")
-							return deleteUserFromOrg(c, encodeOut, userID, orgID)
+							return deleteUserFromOrg(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
 						},
 					},
 				},
@@ -321,20 +256,10 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
 							orgID := cCtx.String("org-id")
-							return createInvitation(c, encodeOut, userID, orgID)
+							return createInvitation(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
 						},
 					},
 					{
@@ -347,18 +272,8 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							userID := cCtx.String("inv-id")
-							return deleteInvitation(c, userID)
+							return deleteInvitation(mustCreateAPIClient(cCtx), userID)
 						},
 					},
 					{
@@ -371,18 +286,8 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							c, err := client.NewAPIClient(cCtx.Context,
-								cCtx.String("host"), nil,
-								client.WithPasswordGrant(
-									cCtx.String("username"),
-									cCtx.String("password"),
-								),
-							)
-							if err != nil {
-								log.Fatal(err)
-							}
 							userID := cCtx.String("inv-id")
-							return acceptInvitation(c, userID)
+							return acceptInvitation(mustCreateAPIClient(cCtx), userID)
 						},
 					},
 				},
@@ -398,6 +303,17 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
+	c, err := client.NewAPIClient(cCtx.Context,
+		cCtx.String("host"), nil,
+		createClientOptions(cCtx)...,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return c
 }
 
 func createClientOptions(cCtx *cli.Context) []client.Option {

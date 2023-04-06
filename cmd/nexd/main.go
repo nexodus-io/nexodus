@@ -66,7 +66,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	}
 
 	nex, err := nexodus.NewNexodus(
-		ctx,
 		logger.Sugar(),
 		controller,
 		cCtx.String("username"),
@@ -82,7 +81,9 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		discoveryNode,
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
-		Version, userspaceMode,
+		Version,
+		userspaceMode,
+		cCtx.String("state-dir"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -254,6 +255,12 @@ func main() {
 				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
 				EnvVars:  []string{"NEXD_INSECURE_SKIP_TLS_VERIFY"},
 				Required: false,
+			},
+			&cli.StringFlag{
+				Name:    "state-dir",
+				Usage:   "Directory to store state in",
+				Value:   "",
+				EnvVars: []string{"NEXD_STATE_DIR"},
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
