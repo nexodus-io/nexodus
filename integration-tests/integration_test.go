@@ -9,9 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"os"
 	"path"
@@ -20,6 +17,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
@@ -1089,6 +1090,79 @@ func (suite *NexodusIntegrationSuite) TestProxyEgress() {
 	wg.Wait()
 }
 
+// TestProxyEgress tests that nexd proxy can be used with multiple egress rules
+func (suite *NexodusIntegrationSuite) TestProxyEgressMultipleRules() {
+	suite.T().Parallel()
+	require := suite.Require()
+	parentCtx := suite.Context()
+	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
+
+	// create the nodes
+	node1 := suite.CreateNode(ctx, "TestProxyEgressMultipleRules-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestProxyEgressMultipleRules-node2", []string{defaultNetwork}, enableV6)
+
+	// start nexodus on the nodes
+	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+
+	suite.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
+		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")),
+		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IP, "8080")))
+
+	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
+	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
+	// IP address from the running nexd.
+	node2IP := "100.100.0.2"
+
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	// run an http server on node1
+	wg := sync.WaitGroup{}
+	util.GoWithWaitGroup(&wg, func() {
+		_, err := suite.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
+		require.NoError(err)
+		_, _ = suite.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "8080"})
+	})
+
+	// run curl on node2 (to the local proxy) to reach the server on node1
+	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer curlCancel()
+	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
+		output, err := suite.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		if err != nil {
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
+			return false, nil
+		}
+		output2, err := suite.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost:81"})
+		if err != nil {
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
+			return false, nil
+		}
+		suite.True(strings.Contains(output, "bananas"))
+		suite.True(strings.Contains(output2, "bananas"))
+		return true, nil
+	})
+	suite.True(success)
+
+	node1.Terminate(ctx)
+	node2.Terminate(ctx)
+	wg.Wait()
+}
+
 // TestProxyIngress tests that nexd proxy with a single ingress rule
 func (suite *NexodusIntegrationSuite) TestProxyIngress() {
 	suite.T().Parallel()
@@ -1139,6 +1213,75 @@ func (suite *NexodusIntegrationSuite) TestProxyIngress() {
 		output, err := suite.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
 		if err != nil {
 			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
+			return false, nil
+		}
+		suite.True(strings.Contains(output, "bananas"))
+		return true, nil
+	})
+	suite.True(success)
+
+	node1.Terminate(ctx)
+	node2.Terminate(ctx)
+	wg.Wait()
+}
+
+// TestProxyIngress tests that nexd proxy with multiple ingress rules
+func (suite *NexodusIntegrationSuite) TestProxyIngressMultipleRules() {
+	suite.T().Parallel()
+	require := suite.Require()
+	parentCtx := suite.Context()
+	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
+
+	// create the nodes
+	node1 := suite.CreateNode(ctx, "TestProxyIngressMultipleRules-node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "TestProxyIngressMultipleRules-node2", []string{defaultNetwork}, enableV6)
+
+	// start nexodus on the nodes
+	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+
+	// validate nexd has started on the discovery node
+	err := suite.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	suite.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
+		"--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")),
+		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("127.0.0.1", "8080")))
+
+	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
+	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
+	// IP address from the running nexd.
+	node2IP := "100.100.0.2"
+
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	suite.logger.Infof("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	// run an http server on node2
+	wg := sync.WaitGroup{}
+	util.GoWithWaitGroup(&wg, func() {
+		_, err := suite.containerExec(ctx, node2, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
+		require.NoError(err)
+		_, _ = suite.containerExec(ctx, node2, []string{"python3", "-m", "http.server", "8080"})
+	})
+
+	// run curl on node1 to the server on node2 (running the proxy)
+	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer curlCancel()
+	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
+		output, err := suite.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
+		if err != nil {
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
+			return false, nil
+		}
+		output2, err := suite.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8081"))})
+		if err != nil {
+			suite.logger.Infof("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
 			return false, nil
 		}
 		suite.True(strings.Contains(output, "bananas"))
