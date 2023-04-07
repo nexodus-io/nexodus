@@ -7,6 +7,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	stateDirDefault = "/var/lib/nexd"
+)
+
 func init() {
 	additionalPlatformFlags = append(additionalPlatformFlags,
 		&cli.StringFlag{

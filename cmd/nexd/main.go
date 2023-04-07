@@ -258,8 +258,8 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "state-dir",
-				Usage:   "Directory to store state in",
-				Value:   "",
+				Usage:   fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
+				Value:   stateDirDefault,
 				EnvVars: []string{"NEXD_STATE_DIR"},
 			},
 		},
