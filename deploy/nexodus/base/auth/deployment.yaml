@@ -12,7 +12,7 @@ spec:
         - image: quay.io/keycloak/keycloak:21.0.2
           name: keycloak
           env:
-            - name: KC_DB_VENDOR
+            - name: KC_DB
               value: "postgres"
             - name: KC_DB_URL_HOST
               valueFrom:
