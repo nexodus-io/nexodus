@@ -4,8 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 
 	"go.uber.org/zap"
+)
+
+const (
+	fwdFilePathV4 = "/proc/sys/net/ipv4/ip_forward"
+	fwdFilePathV6 = "/proc/sys/net/ipv6/conf/all/forwarding"
 )
 
 var interfaceErr = errors.New("interface setup error")
@@ -57,22 +64,68 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	return nil
 }
 
+// relayPrep prepare a node to be a relay, enable ip forwarding if not already done so and iptables rules for v4/v6
+func (ax *Nexodus) relayPrep() error {
+	ipv4FwdEnabled, err := isIPForwardingEnabled(fwdFilePathV4)
+	if err != nil {
+		return err
+	}
+
+	if !ipv4FwdEnabled {
+		if err := enableForwardingIPv4(); err != nil {
+			return err
+		}
+	}
+
+	ipv6FwdEnabled, err := isIPForwardingEnabled(fwdFilePathV6)
+	if err != nil {
+		return err
+	}
+
+	if !ipv6FwdEnabled {
+		if err := enableForwardingIPv6(); err != nil {
+			return err
+		}
+	}
+
+	if err := relayIpTables(ax.logger, ax.tunnelIface); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // enableForwardingIPv4 for v4 linux nodes that are relay nodes
-func enableForwardingIPv4(logger *zap.SugaredLogger) error {
-	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
+func enableForwardingIPv4() error {
+	_, err := RunCommand("sysctl", "-w", "net.ipv4.ip_forward=1")
 	if err != nil {
 		return fmt.Errorf("failed to enable IPv4 Forwarding for this relay node: %w", err)
 	}
-	logger.Debugf("%v", cmdOut)
+
 	return nil
 }
 
 // enableForwardingIPv6 for v6 linux nodes that are relay nodes
-func enableForwardingIPv6(logger *zap.SugaredLogger) error {
-	cmdOut, err := RunCommand("sysctl", "-w", "net.ipv6.conf.all.forwarding=1")
+func enableForwardingIPv6() error {
+	_, err := RunCommand("sysctl", "-w", "net.ipv6.conf.all.forwarding=1")
 	if err != nil {
 		return fmt.Errorf("failed to enable IPv6 Forwarding for this relay node: %w", err)
 	}
-	logger.Debugf("%v", cmdOut)
+
 	return nil
+}
+
+// isIPForwardingEnabled checks the proc kernel setting to see if ip forwarding is enabled for the specified family
+func isIPForwardingEnabled(ipForwardFilePath string) (bool, error) {
+	content, err := os.ReadFile(ipForwardFilePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to check the linux proc filepath on this relay node: %w", err)
+	}
+
+	value := strings.TrimSpace(string(content))
+	if value == "1" {
+		return true, nil
+	}
+
+	return false, nil
 }

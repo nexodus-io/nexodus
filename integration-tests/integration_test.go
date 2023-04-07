@@ -936,7 +936,7 @@ func (suite *NexodusIntegrationSuite) TestV6Disabled() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node")
 	err := suite.nexdStatus(ctx, node1)
 	require.NoError(err)
 
