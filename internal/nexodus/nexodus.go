@@ -454,15 +454,13 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	})
 
 	// Experimental STUN discovery
-	if runtime.GOOS == Linux.String() {
-		util.GoWithWaitGroup(wg, func() {
-			util.RunPeriodically(ctx, time.Second*20, func() {
-				if err := ax.reconcileStun(device.Id); err != nil {
-					ax.logger.Debug(err)
-				}
-			})
+	util.GoWithWaitGroup(wg, func() {
+		util.RunPeriodically(ctx, time.Second*20, func() {
+			if err := ax.reconcileStun(device.Id); err != nil {
+				ax.logger.Debug(err)
+			}
 		})
-	}
+	})
 
 	for _, proxy := range ax.ingresProxies {
 		proxy.Start(ctx, wg, ax.userspaceNet)

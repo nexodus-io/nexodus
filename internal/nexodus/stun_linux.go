@@ -221,7 +221,7 @@ func stunBpfFilter(port uint16) ([]bpf.RawInstruction, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("stun bpf filter failed: %v", err)
+		return nil, fmt.Errorf("stun bpf filter failed: %w", err)
 	}
 
 	return r, nil

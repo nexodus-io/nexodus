@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
-	"strconv"
 )
 
 func (ax *Nexodus) setupInterfaceOS() error {
