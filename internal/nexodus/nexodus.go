@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -99,6 +100,7 @@ type Nexodus struct {
 	username      string
 	password      string
 	skipTlsVerify bool
+	stateDir      string
 	userspaceWG
 }
 
@@ -119,7 +121,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(ctx context.Context,
+func NewNexodus(
 	logger *zap.SugaredLogger,
 	controller string,
 	username string,
@@ -135,8 +137,11 @@ func NewNexodus(ctx context.Context,
 	discoveryNode bool,
 	relayOnly bool,
 	insecureSkipTlsVerify bool,
-	version string, userspaceMode bool,
+	version string,
+	userspaceMode bool,
+	stateDir string,
 ) (*Nexodus, error) {
+
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
@@ -187,6 +192,7 @@ func NewNexodus(ctx context.Context,
 		username:            username,
 		password:            password,
 		skipTlsVerify:       insecureSkipTlsVerify,
+		stateDir:            stateDir,
 	}
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
@@ -228,6 +234,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 	var options []client.Option
+	if ax.stateDir != "" {
+		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, "apitoken.json")))
+	}
 	if ax.username == "" {
 		options = append(options, client.WithDeviceFlow())
 	} else if ax.username != "" && ax.password == "" {

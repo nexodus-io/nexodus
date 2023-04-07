@@ -15,3 +15,12 @@ dist
 .gen-*
 .*-lint
 .generate
+
+#tests
+./tests/*.json
+./tests/*.key
+/*.key
+!Containerfile.test
+*.test
+integration-tests/tmp/
+internal/client/tmp/
