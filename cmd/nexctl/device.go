@@ -16,12 +16,12 @@ func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut str
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS IPV4", "NODE ADDRESS IPV6", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "RELAY")
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS IPV4", "NODE ADDRESS IPV6", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "OS", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, dev.LocalIp, dev.PublicKey, dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
+			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, dev.LocalIp, dev.PublicKey, dev.OrganizationId, dev.Os, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
@@ -43,18 +43,18 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS",
 				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
 				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
 				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
-				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "RELAY")
+				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "RELAY")
 		}
 		for _, dev := range devices {
 			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.LocalIp, dev.PublicKey, dev.OrganizationId,
 				dev.LocalIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, dev.ReflexiveIp4, dev.EndpointLocalAddressIp4, fmt.Sprintf("%t", dev.Relay))
+				dev.OrganizationPrefixV6, dev.ReflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 

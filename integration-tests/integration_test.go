@@ -18,13 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/cucumber/godog"
+	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
@@ -33,6 +31,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var providerType testcontainers.ProviderType

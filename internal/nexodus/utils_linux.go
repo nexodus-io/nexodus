@@ -197,8 +197,8 @@ func binaryChecks() error {
 	return nil
 }
 
-// Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
+// prepOS perform OS specific OS changes
+func prepOS(logger *zap.SugaredLogger) error {
 	// ensure the linux wireguard directory exists
 	if err := CreateDirectory(WgLinuxConfPath); err != nil {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)

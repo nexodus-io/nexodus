@@ -1315,6 +1315,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 },
+                "os": {
+                    "type": "string"
+                },
                 "public_key": {
                     "type": "string"
                 },
@@ -1439,6 +1442,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "organization_prefix_v6": {
+                    "type": "string"
+                },
+                "os": {
                     "type": "string"
                 },
                 "public_key": {

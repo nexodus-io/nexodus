@@ -22,6 +22,8 @@ definitions:
       organization_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
+      os:
+        type: string
       public_key:
         type: string
       reflexive_ip4:
@@ -107,6 +109,8 @@ definitions:
       organization_prefix:
         type: string
       organization_prefix_v6:
+        type: string
+      os:
         type: string
       public_key:
         type: string

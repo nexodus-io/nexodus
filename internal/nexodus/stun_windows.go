@@ -1,27 +1,23 @@
+//go:build windows
+
 package nexodus
 
 import (
 	"errors"
 	"fmt"
-	"net"
+	"net/netip"
 
 	"github.com/libp2p/go-reuseport"
 	"github.com/pion/stun"
-	"go.uber.org/zap"
 )
 
-const (
-	stunServer1 = "stun1.l.google.com:19302"
-	stunServer2 = "stun2.l.google.com:19302"
-)
-
-func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net.UDPAddr, error) {
+func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (netip.AddrPort, error) {
 
 	logger.Debugf("dialing stun server %s", stunServer)
 	conn, err := reuseport.Dial("udp4", fmt.Sprintf(":%d", srcPort), stunServer)
 	if err != nil {
 		logger.Errorf("stun dialing timed out %v", err)
-		return net.UDPAddr{}, fmt.Errorf("failed to dial stun server %s: %w", stunServer, err)
+		return netip.AddrPort{}, fmt.Errorf("failed to dial stun server %s: %w", stunServer, err)
 	}
 	defer func() {
 		_ = conn.Close()
@@ -30,7 +26,7 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	c, err := stun.NewClient(conn)
 	if err != nil {
 		logger.Error(err)
-		return net.UDPAddr{}, err
+		return netip.AddrPort{}, err
 	}
 	defer func() {
 		_ = c.Close()
@@ -39,35 +35,29 @@ func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	// Building binding request with random transaction id.
 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	// Sending request to STUN server, waiting for response message.
-	result := net.UDPAddr{}
+	var xorAddr stun.XORMappedAddress
 	if err := c.Do(message, func(res stun.Event) {
 		if res.Error != nil {
 			if res.Error.Error() == errors.New("transaction is timed out").Error() {
-				logger.Debugf("STUN transaction to %s timed out", stunServer)
+				logger.Debugf("STUN transaction timed out, if this continues check if a firewall is blocking UDP connections to %s", stunServer)
 			} else {
 				logger.Debug(res.Error)
 			}
 			return
 		}
 		// Decoding XOR-MAPPED-ADDRESS attribute from message.
-		var xorAddr stun.XORMappedAddress
 		if err := xorAddr.GetFrom(res.Message); err != nil {
 			return
 		}
-
-		result = net.UDPAddr{
-			IP:   xorAddr.IP,
-			Port: xorAddr.Port,
-		}
 	}); err != nil {
-		return net.UDPAddr{}, err
+		return netip.AddrPort{}, err
 	}
-	if result.IP.IsUnspecified() {
-		return result, fmt.Errorf("no public facing NAT address found for the host")
+
+	xorBinding, err := netip.ParseAddrPort(xorAddr.String())
+	if err != nil {
+		return netip.AddrPort{}, fmt.Errorf("failed to parse a valid address:port binding from the stun response: %w", err)
 	}
-	if result.IP == nil {
-		return result, fmt.Errorf("STUN binding request failed, a firewall may be blocking UDP connections to %s", stunServer)
-	}
-	logger.Debugf("STUN: your IP:port is: %s:%d", result.IP.String(), result.Port)
-	return result, nil
+	logger.Debugf("STUN: your public facing ip:port binding is: %s", xorBinding.String())
+
+	return xorBinding, nil
 }

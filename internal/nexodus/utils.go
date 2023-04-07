@@ -111,11 +111,11 @@ func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (b
 		}
 		hostIP = linuxIP.String()
 	}
-	ipAndPort, err := StunRequest(logger, stunServer1, 0)
+	ipAndPort, err := stunRequest(logger, stunServer1, 0)
 	if err != nil {
 		return false, err
 	}
-	if hostIP != ipAndPort.IP.String() {
+	if hostIP != ipAndPort.Addr().String() {
 		return true, nil
 	}
 	return false, nil
