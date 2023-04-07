@@ -88,7 +88,8 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, nameSuffix
 		}
 	} else {
 		hostConfSysctl = map[string]string{
-			"net.ipv4.ip_forward": "1",
+			"net.ipv4.ip_forward":          "1",
+			"net.ipv6.conf.all.forwarding": "1",
 		}
 	}
 

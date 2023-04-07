@@ -387,13 +387,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
 	if ax.relay {
-		if err := enableForwardingIPv4(ax.logger); err != nil {
+		if err := ax.relayPrep(); err != nil {
 			return err
 		}
-		if err := enableForwardingIPv6(ax.logger); err != nil {
-			return err
-		}
-		relayIpTables(ax.logger, ax.tunnelIface)
 	}
 
 	if err := ax.Reconcile(ax.organization, true); err != nil {

@@ -1,6 +1,7 @@
 package nexodus
 
 import (
+	"fmt"
 	"net"
 	"runtime"
 
@@ -154,13 +155,15 @@ func (ax *Nexodus) buildLocalConfig() {
 }
 
 // relayIpTables iptables for the relay node
-func relayIpTables(logger *zap.SugaredLogger, dev string) {
+func relayIpTables(logger *zap.SugaredLogger, dev string) error {
 	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
 	if err != nil {
-		logger.Debugf("the relay node v4 iptables rule was not added: %v", err)
+		return fmt.Errorf("the relay node v4 iptables rule was not added: %w", err)
 	}
 	_, err = RunCommand("ip6tables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
 	if err != nil {
-		logger.Debugf("tthe relay node v6 ip6tables rule was not added: %v", err)
+		return fmt.Errorf("the relay node v6 ip6tables rule was not added: %w", err)
 	}
+
+	return nil
 }
