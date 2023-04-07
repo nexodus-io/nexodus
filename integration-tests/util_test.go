@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -75,7 +76,7 @@ func (c FnConsumer) Accept(l testcontainers.Log) {
 }
 
 // CreateNode creates a container
-func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name string, networks []string, v6 v6Enable) testcontainers.Container {
+func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, nameSuffix string, networks []string, v6 v6Enable) testcontainers.Container {
 
 	// Host modifiers differ for a container for a container with and without v6 enabled
 	var hostConfSysctl map[string]string
@@ -89,6 +90,16 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, name strin
 		hostConfSysctl = map[string]string{
 			"net.ipv4.ip_forward": "1",
 		}
+	}
+
+	// Name containers <test>-<nameSuffix>, where <test> is the name of the calling function
+	name := nameSuffix
+	pc, _, _, ok := runtime.Caller(1)
+	if !ok {
+		suite.logger.Error("runtime.Caller: failed")
+	} else {
+		callerParts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
+		name = fmt.Sprintf("%s-%s", callerParts[len(callerParts)-1], nameSuffix)
 	}
 
 	certsDir, err := findCertsDir()

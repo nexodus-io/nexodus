@@ -131,8 +131,8 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestBasicConnectivity-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestBasicConnectivity-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -269,8 +269,8 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	node2IP := "100.100.0.102"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestRequestIPOrganization-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestRequestIPOrganization-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
@@ -347,9 +347,9 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestHubOrganization-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestHubOrganization-node2", []string{defaultNetwork}, enableV6)
-	node3 := suite.CreateNode(ctx, "TestHubOrganization-node3", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
@@ -519,9 +519,9 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 	node2ChildPrefix := "172.16.20.0/24"
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestChildPrefix-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestChildPrefix-node2", []string{defaultNetwork}, enableV6)
-	node3 := suite.CreateNode(ctx, "TestChildPrefix-node3", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--discovery-node", "--relay-node",
@@ -590,9 +590,9 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestRelay-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestRelay-node2", []string{defaultNetwork}, enableV6)
-	node3 := suite.CreateNode(ctx, "TestRelay-node3", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	node3 := suite.CreateNode(ctx, "node3", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -665,8 +665,8 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "Testnexctl-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "Testnexctl-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// validate nexctl user get-current returns a user
 	commandOut, err := suite.runCommand(nexctl,
@@ -922,16 +922,16 @@ func (suite *NexodusIntegrationSuite) TestV6Disabled() {
 	password := "floofykittens"
 	username := suite.createNewUser(ctx, password)
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestV6Disabled-node1", []string{defaultNetwork}, disableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
 	suite.T().Cleanup(func() {
 		if err := node1.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestV6Disabled-node1 %v", err)
+			suite.logger.Errorf("failed to terminate container node1 %v", err)
 		}
 	})
-	node2 := suite.CreateNode(ctx, "TestV6Disabled-node2", []string{defaultNetwork}, disableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
 	suite.T().Cleanup(func() {
 		if err := node2.Terminate(parentCtx); err != nil {
-			suite.logger.Errorf("failed to terminate container TestV6Disabled-node2 %v", err)
+			suite.logger.Errorf("failed to terminate container node2 %v", err)
 		}
 	})
 
@@ -1037,8 +1037,8 @@ func (suite *NexodusIntegrationSuite) TestProxyEgress() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestProxyEgress-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestProxyEgress-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -1102,8 +1102,8 @@ func (suite *NexodusIntegrationSuite) TestProxyEgressMultipleRules() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestProxyEgressMultipleRules-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestProxyEgressMultipleRules-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -1175,8 +1175,8 @@ func (suite *NexodusIntegrationSuite) TestProxyIngress() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestProxyIngress-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestProxyIngress-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -1237,8 +1237,8 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressMultipleRules() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestProxyIngressMultipleRules-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestProxyIngressMultipleRules-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
@@ -1306,8 +1306,8 @@ func (suite *NexodusIntegrationSuite) TestProxyIngressAndEgress() {
 	username := suite.createNewUser(ctx, password)
 
 	// create the nodes
-	node1 := suite.CreateNode(ctx, "TestProxyIngressAndEgress-node1", []string{defaultNetwork}, enableV6)
-	node2 := suite.CreateNode(ctx, "TestProxyIngressAndEgress-node2", []string{defaultNetwork}, enableV6)
+	node1 := suite.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	node2 := suite.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 
 	// start nexodus on the nodes
 	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
