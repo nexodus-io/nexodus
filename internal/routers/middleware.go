@@ -3,6 +3,9 @@ package routers
 import (
 	"context"
 	_ "embed"
+	"github.com/go-session/redis/v3"
+	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
 	"io"
 	"net/http"
 	"strings"
@@ -12,8 +15,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/nexodus-io/nexodus/internal/util/cache"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/open-policy-agent/opa/storage"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -26,7 +27,7 @@ var policy string
 var jwksCache = cache.NewMemoizeCache[string, string](time.Second*30, time.Second*5)
 
 // Naive JWS Key validation
-func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string, clientIdWeb string, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
+func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(*gin.Context), error) {
 	query, err := rego.New(
 		rego.Query(`result = {
 			"authorized": data.token.valid_token,
@@ -35,7 +36,7 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 			"user_name": data.token.user_name,
 			"full_name": data.token.full_name,
 		}`),
-		rego.Store(store),
+		rego.Store(o.Store),
 		rego.Module("policy.rego", policy),
 	).PrepareForEval(context.Background())
 	if err != nil {
@@ -43,7 +44,7 @@ func ValidateJWT(ctx context.Context, logger *zap.SugaredLogger, jwksURI string,
 	}
 
 	return func(c *gin.Context) {
-		logger := util.WithTrace(c.Request.Context(), logger)
+		logger := util.WithTrace(c.Request.Context(), o.Logger)
 
 		keySet, err := jwksCache.MemoizeCanErr(jwksURI, func() (string, error) {
 			return getURLAsText(ctx, jwksURI)
@@ -187,4 +188,13 @@ func getURLAsText(ctx context.Context, jwksURL string) (string, error) {
 
 	keySet := string(body)
 	return keySet, nil
+}
+
+func RedisSessionMiddleware(o APIRouterOptions) gin.HandlerFunc {
+	return ginsession.New(
+		session.SetCookieName("sid"),
+		session.SetStore(redis.NewRedisStore(&redis.Options{
+			Addr: o.RedisServer,
+			DB:   o.RedisDB,
+		})))
 }

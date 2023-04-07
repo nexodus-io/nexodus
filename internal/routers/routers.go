@@ -23,45 +23,53 @@ import (
 
 const name = "github.com/nexodus-io/nexodus/internal/routers"
 
-func NewAPIRouter(
-	ctx context.Context,
-	logger *zap.SugaredLogger,
-	api *handlers.API,
-	clientIdWeb string,
-	clientIdCli string,
-	oidcURL string,
-	oidcBackchannel string,
-	insecureTLS bool,
-	browserFlow *agent.OidcAgent,
-	deviceFlow *agent.OidcAgent,
-	store storage.Store) (*gin.Engine, error) {
+type APIRouterOptions struct {
+	Logger          *zap.SugaredLogger
+	Api             *handlers.API
+	ClientIdWeb     string
+	ClientIdCli     string
+	OidcURL         string
+	OidcBackchannel string
+	InsecureTLS     bool
+	BrowserFlow     *agent.OidcAgent
+	DeviceFlow      *agent.OidcAgent
+	Store           storage.Store
+	RedisServer     string
+	RedisDB         int
+}
+
+func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	loggerMiddleware := ginzap.GinzapWithConfig(logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
+	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
 	r.Use(otelgin.Middleware(name))
-	r.Use(ginzap.RecoveryWithZap(logger.Desugar(), true))
+	r.Use(ginzap.RecoveryWithZap(o.Logger.Desugar(), true))
 
 	newPrometheus().Use(r)
 
 	device := r.Group("/device", loggerMiddleware)
 	{
-		device.POST("/login/start", deviceFlow.DeviceStart)
+		device.POST("/login/start", o.DeviceFlow.DeviceStart)
 	}
 	web := r.Group("/web", loggerMiddleware)
 	{
-		web.Use(browserFlow.OriginVerifier())
-		web.Use(browserFlow.CookieSessionMiddleware())
-		web.POST("/login/start", browserFlow.LoginStart)
-		web.POST("/login/end", browserFlow.LoginEnd)
-		web.GET("/user_info", browserFlow.UserInfo)
-		web.GET("/claims", browserFlow.Claims)
-		web.POST("/logout", browserFlow.Logout)
+		web.Use(o.BrowserFlow.OriginVerifier())
+		if o.RedisServer == "" {
+			web.Use(o.BrowserFlow.CookieSessionMiddleware())
+		} else {
+			web.Use(RedisSessionMiddleware(o))
+		}
+		web.POST("/login/start", o.BrowserFlow.LoginStart)
+		web.POST("/login/end", o.BrowserFlow.LoginEnd)
+		web.GET("/user_info", o.BrowserFlow.UserInfo)
+		web.GET("/claims", o.BrowserFlow.Claims)
+		web.POST("/logout", o.BrowserFlow.Logout)
 	}
 	private := r.Group("/api", loggerMiddleware)
 	{
-
-		validateJWT, err := newValidateJWT(ctx, insecureTLS, oidcURL, oidcBackchannel, logger, clientIdWeb, clientIdCli, store)
+		api := o.Api
+		validateJWT, err := newValidateJWT(ctx, o)
 		if err != nil {
 			return nil, err
 		}
@@ -115,8 +123,8 @@ func NewAPIRouter(
 	return r, nil
 }
 
-func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchannel string, logger *zap.SugaredLogger, clientIdWeb, clientIdCli string, store storage.Store) (func(*gin.Context), error) {
-	if insecureTLS {
+func newValidateJWT(ctx context.Context, o APIRouterOptions) (func(*gin.Context), error) {
+	if o.InsecureTLS {
 		transport := &http.Transport{
 			// #nosec -- G402: TLS InsecureSkipVerify set true.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -125,11 +133,10 @@ func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchan
 		ctx = oidc.ClientContext(ctx, client)
 	}
 
-	if oidcBackchannel != "" {
-		ctx = oidc.InsecureIssuerURLContext(ctx,
-			oidcURL,
-		)
-		oidcURL = oidcBackchannel
+	oidcURL := o.OidcURL
+	if o.OidcBackchannel != "" {
+		ctx = oidc.InsecureIssuerURLContext(ctx, o.OidcURL)
+		oidcURL = o.OidcBackchannel
 	}
 	provider, err := oidc.NewProvider(ctx, oidcURL)
 	if err != nil {
@@ -144,7 +151,7 @@ func newValidateJWT(ctx context.Context, insecureTLS bool, oidcURL, oidcBackchan
 		return nil, err
 	}
 
-	return ValidateJWT(ctx, logger, claims.JWKSUri, clientIdWeb, clientIdCli, store)
+	return ValidateJWT(ctx, o, claims.JWKSUri)
 }
 
 func newPrometheus() *ginprometheus.Prometheus {

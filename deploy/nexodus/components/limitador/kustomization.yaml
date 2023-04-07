@@ -3,8 +3,6 @@ kind: Component
 resources:
   - limitador-deployment.yaml
   - limitador-service.yaml
-  - redis-statefulset.yaml
-  - redis-service.yaml
 configMapGenerator:
   - name: limitador-config
     files:

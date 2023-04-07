@@ -8,5 +8,6 @@ resources:
   - database
   - frontend
   - ipam
+  - redis
 commonLabels:
   app.kubernetes.io/part-of: nexodus
