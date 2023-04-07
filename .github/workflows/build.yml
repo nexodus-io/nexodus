@@ -138,19 +138,14 @@ jobs:
         include:
           - name: apiserver
             tags: quay.io/nexodus/apiserver:latest
-            target:
           - name: frontend
             tags: quay.io/nexodus/frontend:latest
-            target:
           - name: ipam
             tags: quay.io/nexodus/go-ipam:latest
-            target:
-          - name: test
-            tags: quay.io/nexodus/test:ubuntu
-            target: ubuntu
+          - name: nexd
+            tags: quay.io/nexodus/nexd:latest
           - name: envsubst
             tags: quay.io/nexodus/envsubst:latest
-            target:
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-buildx-action@v2
@@ -293,10 +288,10 @@ jobs:
           name: ipam
           path: /tmp
 
-      - name: Download test:ubuntu image
+      - name: Download nexd image
         uses: actions/download-artifact@v3
         with:
-          name: test
+          name: nexd
           path: /tmp
 
       - name: Download envsubst image
@@ -310,7 +305,7 @@ jobs:
           docker load --input /tmp/apiserver.tar
           docker load --input /tmp/frontend.tar
           docker load --input /tmp/ipam.tar
-          docker load --input /tmp/test.tar
+          docker load --input /tmp/nexd.tar
           docker load --input /tmp/envsubst.tar
 
       - name: Build dist

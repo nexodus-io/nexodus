@@ -1,31 +1,39 @@
-FROM docker.io/library/golang:1.20-alpine as build-nexd
-ARG TARGETOS
-ARG TARGETARCH
+FROM docker.io/library/golang:1.20-alpine as build
 
 WORKDIR /src
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
+RUN cd / && CGO_ENABLED=0 go install filippo.io/mkcert@v1.4.4
+
 COPY . .
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o nexd ./cmd/nexd
 
-FROM docker.io/library/golang:1.20-alpine as build-mkcert
-ARG TARGETOS
-ARG TARGETARCH
-
-WORKDIR /
-RUN git clone https://github.com/FiloSottile/mkcert && cd mkcert && \
-    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
-    -ldflags "-extldflags=-static -X main.Version=$(git describe --tags)"
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o nexctl ./cmd/nexctl
 
 FROM fedora:36 as fedora
 
-COPY --from=build-nexd /src/nexd /nexd
-COPY --from=build-mkcert /mkcert/mkcert /mkcert
-RUN dnf update -y && \
-    dnf install wireguard-tools iproute -y && \
-    dnf clean all -y && \
+RUN dnf update -qy && \
+    dnf install --setopt=install_weak_deps=False -qy \
+    ca-certificates \
+    iputils \
+    iproute \
+    psmisc \
+    procps-ng \
+    wireguard-tools \
+    nftables \
+    hostname \
+    && \
+    dnf clean all -y &&\
     rm -rf /var/cache/yum
+
+COPY --chmod=755 ./hack/update-ca.sh /update-ca.sh
+COPY --chmod=755 --from=build /src/nexd /bin/nexd
+COPY --chmod=755 --from=build /src/nexctl /bin/nexctl
+COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
+

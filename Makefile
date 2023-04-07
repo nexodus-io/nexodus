@@ -189,7 +189,7 @@ dist/.generate: dist/.gen-docs | dist
 	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
-e2e: e2eprereqs test-images ## Run e2e tests
+e2e: e2eprereqs image-nexd ## Run e2e tests
 	go test -v --tags=integration ./integration-tests/... $(if $(NEX_TEST),-run $(NEX_TEST),)
 
 .PHONY: e2e-podman
@@ -234,19 +234,20 @@ debug-backend-web-stop: telepresence-prereqs ## Stop using telepresence to debug
 	$(CMD_PREFIX) telepresence leave backend-web-nexodus
 
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
-.PHONY: run-test-container
-TEST_CONTAINER_DISTRO?=ubuntu
-run-test-container: ## Run docker container that you can run nexodus in
-	$(CMD_PREFIX) docker build -f Containerfile.test -t quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) --target $(TEST_CONTAINER_DISTRO) .
+.PHONY: run-nexd-container
+run-nexd-container: image-nexd ## Run a container that you can run nexodus in
 	$(CMD_PREFIX) docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
 		--cap-add NET_RAW \
+		--sysctl net.ipv4.ip_forward=1 \
+		--sysctl net.ipv6.conf.all.disable_ipv6=0 \
+		--sysctl net.ipv6.conf.all.forwarding=1 \
 		--add-host try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
 		--add-host api.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
 		--add-host auth.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
-		quay.io/nexodus/test:$(TEST_CONTAINER_DISTRO) /update-ca.sh
+		quay.io/nexodus/nexd:latest /update-ca.sh
 
 .dev-container: Containerfile.dev
 	$(CMD_PREFIX) docker build -f Containerfile.dev -t quay.io/nexodus/dev:latest .
@@ -322,15 +323,6 @@ clear-db:
 
 ##@ Container Images
 
-.PHONY: test-images
-test-images: dist/.test-images ## Create test images for e2e
-
-dist/.test-images: dist/nexd dist/nexctl Containerfile.test | dist
-	docker build -f Containerfile.test -t quay.io/nexodus/test:alpine --target alpine .
-	docker build -f Containerfile.test -t quay.io/nexodus/test:fedora --target fedora .
-	docker build -f Containerfile.test -t quay.io/nexodus/test:ubuntu --target ubuntu .
-	$(CMD_PREFIX) touch .test-images
-
 .PHONY: e2eprereqs
 e2eprereqs:
 	$(CMD_PREFIX) if [ -z "$(shell which kind)" ]; then \
@@ -364,9 +356,11 @@ image-apiserver:
 	docker tag quay.io/nexodus/apiserver:$(TAG) quay.io/nexodus/apiserver:latest
 
 .PHONY: image-nexd ## Build the nexodus agent image
-image-nexd:
-	docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
-	docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
+image-nexd: dist/.image-nexd
+dist/.image-nexd: $(NEXD_DEPS) $(NEXCTL_DEPS) Containerfile.nexd | dist
+	$(CMD_PREFIX) docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
+	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
+	$(CMD_PREFIX) touch $@
 
 .PHONY: image-ipam ## Build the IPAM image
 image-ipam:
