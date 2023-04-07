@@ -34,7 +34,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
+all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
@@ -147,13 +147,18 @@ dist/.openapi-lint: internal/docs/swagger.yaml | dist
 		validate -i /src/internal/docs/swagger.yaml
 	$(CMD_PREFIX) touch $@
 
-dist/.gen-docs: $(NEX_ALL_GO) | dist
+dist/.gen-docs: $(APISERVER_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
-	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir ghcr.io/swaggo/swag:v1.8.10 /root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) docker run \--platform linux/x86_64 --rm \
+		-v $(CURDIR):/workdir -w /workdir \
+		ghcr.io/swaggo/swag:v1.8.10 \
+		/root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
+	$(CMD_PREFIX) touch $@
+
 internal/docs/swagger.yaml: dist/.gen-docs
 
 .PHONY: gen-openapi-client
-gen-openapi-client: dist\.gen-openapi-client ## Generate the OpenAPI Client
+gen-openapi-client: dist/.gen-openapi-client ## Generate the OpenAPI Client
 dist/.gen-openapi-client: internal/docs/swagger.yaml | dist
 	$(ECHO_PREFIX) printf "  %-12s internal/docs/swagger.yaml\n" "[OPENAPI CLIENT GEN]"
 	$(CMD_PREFIX) rm -rf internal/api/public

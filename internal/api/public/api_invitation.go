@@ -193,7 +193,7 @@ func (a *InvitationApiService) CreateInvitationExecute(r ApiCreateInvitationRequ
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/api/invitations"
+	localVarPath := localBasePath + "/api/invitations"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
