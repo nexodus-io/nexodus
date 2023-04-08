@@ -107,7 +107,7 @@ func (suite *NexodusIntegrationSuite) CreateNode(ctx context.Context, nameSuffix
 	require.NoError(suite.T(), err)
 
 	req := testcontainers.ContainerRequest{
-		Image:    "quay.io/nexodus/test:ubuntu",
+		Image:    "quay.io/nexodus/nexd:latest",
 		Name:     name,
 		Networks: networks,
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
