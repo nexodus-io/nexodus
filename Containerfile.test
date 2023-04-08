@@ -17,7 +17,7 @@ FROM alpine:3.16 as alpine
 RUN apk add --no-cache \
     iputils \
     wireguard-tools \
-    iptables \
+    nftables \
     psmisc \
     ca-certificates
 COPY --from=build /src/dist/nexd /bin/nexd
@@ -34,7 +34,7 @@ RUN dnf update -qy && \
     psmisc \
     procps-ng \
     wireguard-tools \
-    iptables \
+    nftables \
     hostname \
     && \
     dnf clean all
@@ -51,7 +51,7 @@ RUN apt-get update -qy && \
     iputils-ping \
     iproute2 \
     wireguard-tools \
-    iptables \
+    nftables \
     net-tools \
     traceroute \
     tcpdump \

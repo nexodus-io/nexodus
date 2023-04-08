@@ -14,6 +14,7 @@
       - fping
       - iperf3
       - mkcert
+      - nftables
     state: latest
 
 - name: Create the certs dir

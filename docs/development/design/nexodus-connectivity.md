@@ -187,6 +187,6 @@ I((Internet))<-.-> ICE[ICE NODE] -.->NB[symNAT\n IP-B:Port-B -> IP-B':Port-B']
 NB[symNAT\n IP-B:Port-B -> IP-B':Port-B']-.-> B(IP-B:Port-B <- B)
 ```
 
-Nexodus agent discovers that the node is behind the symmetric nat, and the peer listing that fetched from the ApiServer will have a relay node as a peer. Nexodus agent will add the ICE node as a wireguard peer. ICE node also receives the peer listing from ApiServer (because it's also a node in the network), and it can determine all the nodes that are behind the symmetric NAT (Nexodus agent pushes that information to API server during onboarding). It uses that peer information to set up iptables rules on the ICE node to enable the traffic forwarding between the symmetric NAT nodes.
+Nexodus agent discovers that the node is behind the symmetric nat, and the peer listing that fetched from the ApiServer will have a relay node as a peer. Nexodus agent will add the ICE node as a wireguard peer. ICE node also receives the peer listing from ApiServer (because it's also a node in the network), and it can determine all the nodes that are behind the symmetric NAT (Nexodus agent pushes that information to API server during onboarding). It uses that peer information to set up nftables rules on the ICE node to enable the traffic forwarding between the symmetric NAT nodes.
 
 2> Using ICE offer/answer mechanism to do direct hole punching.
