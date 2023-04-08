@@ -239,11 +239,9 @@ jobs:
         id: build
         shell: bash
         run: |
+          CGO_ENABLED=0 make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
           mkdir ${{ matrix.os }}-${{ matrix.arch }}
-          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
-          go build \
-            -o ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}} \
-            -v ./cmd/${{ matrix.binary }}
+          cp dist/* ${{ matrix.os }}-${{ matrix.arch }}/.
 
       - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
