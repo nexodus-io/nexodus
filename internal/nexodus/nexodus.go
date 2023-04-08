@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"net/netip"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
@@ -385,7 +385,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", device))
 	ax.logger.Infof("Successfully registered device with UUID: %+v", device.Id)
 
-	// a hub router requires ip forwarding and iptables rules, OS type has already been checked
+	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
 		if err := ax.relayPrep(); err != nil {
 			return err

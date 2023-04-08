@@ -1,11 +1,8 @@
 package nexodus
 
 import (
-	"fmt"
 	"net"
 	"runtime"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -152,18 +149,4 @@ func (ax *Nexodus) buildLocalConfig() {
 			ax.wgConfig.Interface = localInterface
 		}
 	}
-}
-
-// relayIpTables iptables for the relay node
-func relayIpTables(logger *zap.SugaredLogger, dev string) error {
-	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
-	if err != nil {
-		return fmt.Errorf("the relay node v4 iptables rule was not added: %w", err)
-	}
-	_, err = RunCommand("ip6tables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
-	if err != nil {
-		return fmt.Errorf("the relay node v6 ip6tables rule was not added: %w", err)
-	}
-
-	return nil
 }

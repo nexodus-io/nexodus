@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 
 	"go.uber.org/zap"
 )
 
 const (
-	fwdFilePathV4 = "/proc/sys/net/ipv4/ip_forward"
-	fwdFilePathV6 = "/proc/sys/net/ipv6/conf/all/forwarding"
+	fwdFilePathV4  = "/proc/sys/net/ipv4/ip_forward"
+	fwdFilePathV6  = "/proc/sys/net/ipv6/conf/all/forwarding"
+	nftablesBinary = "nft"
 )
 
 var interfaceErr = errors.New("interface setup error")
@@ -64,7 +66,7 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	return nil
 }
 
-// relayPrep prepare a node to be a relay, enable ip forwarding if not already done so and iptables rules for v4/v6
+// relayPrep prepare a node to be a relay, enable ip forwarding if not already done so and nftable rules for v4/v6
 func (ax *Nexodus) relayPrep() error {
 	ipv4FwdEnabled, err := isIPForwardingEnabled(fwdFilePathV4)
 	if err != nil {
@@ -88,7 +90,11 @@ func (ax *Nexodus) relayPrep() error {
 		}
 	}
 
-	if err := relayIpTables(ax.logger, ax.tunnelIface); err != nil {
+	if !IsCommandAvailable(nftablesBinary) {
+		return fmt.Errorf("required relay command %s not found, verify %s is installed", nftablesBinary, nftablesBinary)
+	}
+
+	if err := setupNftables(wgIface); err != nil {
 		return err
 	}
 
@@ -128,4 +134,41 @@ func isIPForwardingEnabled(ipForwardFilePath string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// setupNftables adds v4/v6 nftables rules for the relay node
+func setupNftables(dev string) error {
+	nftV4 := []string{
+		"add table ip filter",
+		"add chain ip filter FORWARD { type filter hook forward priority 0; }",
+		fmt.Sprintf(`add rule ip filter FORWARD iifname "%s" counter accept`, dev),
+	}
+
+	for _, cmd := range nftV4 {
+		if err := runNftCommand(cmd); err != nil {
+			return err
+		}
+	}
+
+	nftV6 := []string{
+		"add table ip6 filter",
+		"add chain ip6 filter FORWARD { type filter hook forward priority 0; }",
+		fmt.Sprintf(`add rule ip6 filter FORWARD iifname "%s" counter accept`, dev),
+	}
+
+	for _, cmd := range nftV6 {
+		if err := runNftCommand(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runNftCommand(cmd string) error {
+	nft := exec.Command("nft", cmd)
+	output, err := nft.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("nft command: %q failed: %w\noutput: %s", cmd, err, output)
+	}
+	return nil
 }
