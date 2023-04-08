@@ -33,7 +33,19 @@ func (ax *Nexodus) buildPeersConfig() {
 
 	// map the peer list for the local node depending on the node's network
 	for _, value := range ax.deviceCache {
-		_, peerPort, err := net.SplitHostPort(value.LocalIp)
+
+		localIp := ""
+		reflexiveIp4 := ""
+		for _, endpoint := range value.Endpoints {
+			if endpoint.Source == "local" {
+				localIp = endpoint.Address
+			} else {
+				reflexiveIp4 = endpoint.Address
+			}
+		}
+
+		host, p, err2 := net.SplitHostPort(localIp)
+		_, peerPort, err := host, p, err2
 		if err != nil {
 			ax.logger.Debugf("failed parse the endpoint address for node (likely still converging) : %v\n", err)
 			continue
@@ -46,12 +58,12 @@ func (ax *Nexodus) buildPeersConfig() {
 		// Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 		// This is the only peer a symmetric NAT node will get unless it also has a direct peering
 		if !ax.relay && value.Relay {
-			if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(value.ReflexiveIp4) {
+			if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIp4) {
 				value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 				ax.relayWgIP = relayIP
 				peerHub = wgPeerConfig{
 					value.PublicKey,
-					value.LocalIp,
+					localIp,
 					relayAllowedIP,
 					persistentKeepalive,
 				}
@@ -60,7 +72,7 @@ func (ax *Nexodus) buildPeersConfig() {
 				ax.relayWgIP = relayIP
 				peerHub = wgPeerConfig{
 					value.PublicKey,
-					value.ReflexiveIp4,
+					reflexiveIp4,
 					relayAllowedIP,
 					persistentKeepalive,
 				}
@@ -74,14 +86,14 @@ func (ax *Nexodus) buildPeersConfig() {
 			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
-				value.ReflexiveIp4,
+				reflexiveIp4,
 				value.AllowedIps,
 				persistentHubKeepalive,
 			}
 			peers = append(peers, peer)
 			ax.logger.Infof("Peer Node Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIp IPv4 [ %s ] TunnelIp IPv6 [ %s ] Organization [ %s ]",
 				value.AllowedIps,
-				value.ReflexiveIp4,
+				reflexiveIp4,
 				value.PublicKey,
 				value.TunnelIp,
 				value.TunnelIpV6,
@@ -90,10 +102,10 @@ func (ax *Nexodus) buildPeersConfig() {
 
 		// If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 		// The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(value.ReflexiveIp4) && !value.Relay {
+		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIp4) && !value.Relay {
 			// TODO: deal with the scenario where a symmetric node is no longer sharing the same reflexive address and the entry needs to be removed.
 			directLocalPeerEndpointSocket := net.JoinHostPort(value.EndpointLocalAddressIp4, peerPort)
-			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, value.ReflexiveIp4)
+			ax.logger.Debugf("ICE candidate match for local address peering is [ %s ] with a STUN Address of [ %s ]", directLocalPeerEndpointSocket, reflexiveIp4)
 			// the symmetric NAT peer
 			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
@@ -117,14 +129,14 @@ func (ax *Nexodus) buildPeersConfig() {
 			value.AllowedIps = append(value.AllowedIps, value.ChildPrefix...)
 			peer := wgPeerConfig{
 				value.PublicKey,
-				value.ReflexiveIp4,
+				reflexiveIp4,
 				value.AllowedIps,
 				persistentKeepalive,
 			}
 			peers = append(peers, peer)
 			ax.logger.Infof("Peer Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ] TunnelIp [ %s ] Organization [ %s ]",
 				value.AllowedIps,
-				value.ReflexiveIp4,
+				reflexiveIp4,
 				value.PublicKey,
 				value.TunnelIp,
 				value.OrganizationId)

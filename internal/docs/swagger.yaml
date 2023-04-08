@@ -13,11 +13,12 @@ definitions:
       endpoint_local_address_ip4:
         example: 1.2.3.4
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/models.Endpoint'
+        type: array
       hostname:
         example: myhost
-        type: string
-      local_ip:
-        example: 10.1.1.1
         type: string
       organization_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
@@ -25,8 +26,6 @@ definitions:
       os:
         type: string
       public_key:
-        type: string
-      reflexive_ip4:
         type: string
       relay:
         type: boolean
@@ -95,14 +94,14 @@ definitions:
         type: boolean
       endpoint_local_address_ip4:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/models.Endpoint'
+        type: array
       hostname:
         type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
-        type: string
-      local_ip:
-        type: string
-      local_ip_v6:
         type: string
       organization_id:
         type: string
@@ -113,8 +112,6 @@ definitions:
       os:
         type: string
       public_key:
-        type: string
-      reflexive_ip4:
         type: string
       relay:
         type: boolean
@@ -137,6 +134,20 @@ definitions:
           and when coreos/go-oidc adds device_authorization_endpoint discovery
         type: string
       issuer:
+        type: string
+    type: object
+  models.Endpoint:
+    properties:
+      address:
+        description: IP address and port of the endpoint.
+        example: 10.1.1.1:51820
+        type: string
+      distance:
+        description: Distance in milliseconds from the node to the ip address
+        example: 12
+        type: integer
+      source:
+        description: How the endpoint was discovered
         type: string
     type: object
   models.Invitation:
@@ -206,16 +217,15 @@ definitions:
       endpoint_local_address_ip4:
         example: 1.2.3.4
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/models.Endpoint'
+        type: array
       hostname:
         example: myhost
         type: string
-      local_ip:
-        example: 10.1.1.1
-        type: string
       organization_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
-        type: string
-      reflexive_ip4:
         type: string
       symmetric_nat:
         type: boolean

@@ -21,7 +21,14 @@ func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut str
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS IPV4", "NODE ADDRESS IPV6", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "OS", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, dev.LocalIp, dev.PublicKey, dev.OrganizationId, dev.Os, fmt.Sprintf("%t", dev.Relay))
+			localIp := ""
+			for _, endpoint := range dev.Endpoints {
+				if endpoint.Source == "local" {
+					localIp = endpoint.Address
+					break
+				}
+			}
+			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, localIp, dev.PublicKey, dev.OrganizationId, dev.Os, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 
@@ -52,9 +59,19 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "RELAY")
 		}
 		for _, dev := range devices {
-			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.LocalIp, dev.PublicKey, dev.OrganizationId,
-				dev.LocalIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, dev.ReflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, fmt.Sprintf("%t", dev.Relay))
+			localIp := ""
+			reflexiveIp4 := []string{}
+			for _, endpoint := range dev.Endpoints {
+				if endpoint.Source == "local" {
+					localIp = endpoint.Address
+				} else {
+					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
+				}
+			}
+
+			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, localIp, dev.PublicKey, dev.OrganizationId,
+				localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
+				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 

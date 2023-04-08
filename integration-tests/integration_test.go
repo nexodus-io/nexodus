@@ -742,7 +742,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 
 	// validate device fields that should always have values
 	assert.NotEmpty(devices[0].ID)
-	assert.NotEmpty(devices[0].LocalIP)
+	assert.NotEmpty(devices[0].Endpoints)
 	assert.NotEmpty(devices[0].Hostname)
 	assert.NotEmpty(devices[0].PublicKey)
 	assert.NotEmpty(devices[0].TunnelIP)
@@ -1408,22 +1408,42 @@ func (suite *NexodusIntegrationSuite) TestApiClientConflictError() {
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
 		EndpointLocalAddressIp4: "172.17.0.3",
 		Hostname:                "bbac3081d5e8",
-		LocalIp:                 "172.17.0.3:58664",
 		OrganizationId:          orgs[0].Id,
 		PublicKey:               publicKey,
-		ReflexiveIp4:            "47.196.141.165",
 		UserId:                  user.Id,
+		Endpoints: []public.ModelsEndpoint{
+			{
+				Source:   "local",
+				Address:  "172.17.0.3:58664",
+				Distance: 0,
+			},
+			{
+				Source:   "stun:",
+				Address:  "47.196.141.165",
+				Distance: 12,
+			},
+		},
 	}).Execute()
 	require.NoError(err)
 
 	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
 		EndpointLocalAddressIp4: "172.17.0.3",
 		Hostname:                "bbac3081d5e8",
-		LocalIp:                 "172.17.0.3:58664",
 		OrganizationId:          orgs[0].Id,
 		PublicKey:               publicKey,
-		ReflexiveIp4:            "47.196.141.165",
 		UserId:                  user.Id,
+		Endpoints: []public.ModelsEndpoint{
+			{
+				Source:   "local",
+				Address:  "172.17.0.3:58664",
+				Distance: 0,
+			},
+			{
+				Source:   "stun:",
+				Address:  "47.196.141.165",
+				Distance: 12,
+			},
+		},
 	}).Execute()
 	require.Error(err)
 	require.NotNil(resp)
