@@ -90,7 +90,7 @@ go-lint-prereqs:
 		exit 1 ; \
 	fi
 
-dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist
+dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist gen-openapi-client
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
 		golangci-lint run --timeout 5m ./...
