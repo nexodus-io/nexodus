@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -156,6 +157,14 @@ func loadTokenFromFile(file string) (*oauth2.Token, error) {
 
 // Saves a token to a file path.
 func saveTokenToFile(path string, token *oauth2.Token) error {
+	// Create the path to the file if it doesn't exist.
+	dir := filepath.Dir(path)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0600); err != nil {
+			return err
+		}
+	}
+	// Save the token to a file at the given path.
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
