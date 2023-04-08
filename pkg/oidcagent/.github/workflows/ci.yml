@@ -19,7 +19,7 @@ jobs:
 
     - name: Go Format
       run: |
-        go fmt ./...
+        [ -z "$(gofmt -l .)" ] || (echo "$(gofmt -l .)" && exit 1)
 
     - name: Build
       run: |
