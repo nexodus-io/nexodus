@@ -10,10 +10,10 @@ The following sections contain general instructions to deploy the Nexodus agent 
 
 The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
 
-The `hack/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
+The `contrib/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
 
 ```sh
-hack/nexodus_installer.sh
+contrib/nexodus_installer.sh
 ```
 
 #### RPM from a Copr Repository
