@@ -5,6 +5,7 @@ package nexodus
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"text/template"
 	"time"
 )
@@ -17,11 +18,10 @@ const (
 func (ax *Nexodus) setupInterfaceOS() error {
 
 	logger := ax.logger
-	localAddress := ax.TunnelIP
-	privateKey := ax.wireguardPvtKey
 	dev := ax.tunnelIface
+	listenPortStr := strconv.Itoa(ax.listenPort)
 
-	if err := buildWindowsWireguardIfaceConf(privateKey, localAddress); err != nil {
+	if err := buildWindowsWireguardIfaceConf(ax.wireguardPvtKey, ax.TunnelIP, listenPortStr); err != nil {
 		return fmt.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
 	}
 
@@ -64,7 +64,7 @@ func (ax *Nexodus) findLocalIP() (string, error) {
 	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 }
 
-func buildWindowsWireguardIfaceConf(pvtKey, wgAddress string) error {
+func buildWindowsWireguardIfaceConf(pvtKey, wgAddress, wgListenPort string) error {
 	f, err := fileHandle(windowsWgConfigFile, windowsConfFilePermissions)
 	if err != nil {
 		return err
@@ -74,11 +74,13 @@ func buildWindowsWireguardIfaceConf(pvtKey, wgAddress string) error {
 
 	t := template.Must(template.New("wgconf").Parse(windowsIfaceConfig))
 	if err := t.Execute(f, struct {
-		PrivateKey string
-		WgAddress  string
+		PrivateKey   string
+		WgAddress    string
+		WgListenPort string
 	}{
-		PrivateKey: pvtKey,
-		WgAddress:  wgAddress,
+		PrivateKey:   pvtKey,
+		WgAddress:    wgAddress,
+		WgListenPort: wgListenPort,
 	}); err != nil {
 		return fmt.Errorf("failed to fill windows template %s: %w", windowsWgConfigFile, err)
 	}
@@ -101,4 +103,5 @@ var windowsIfaceConfig = `
 [Interface]
 PrivateKey = {{ .PrivateKey }}
 Address = {{ .WgAddress }}
+ListenPort = {{ .WgListenPort }}
 `
