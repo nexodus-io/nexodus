@@ -47,10 +47,10 @@ func stunRequest(logger *zap.SugaredLogger, stunSvr string, srcPort int) (netip.
 	LocalListenPort := uint16(srcPort)
 
 	conn, err := stunConnect(logger, LocalListenPort, stunSvr)
-	defer conn.stunClose()
 	if err != nil {
 		return netip.AddrPort{}, fmt.Errorf("failed to stunConnect to the STUN server: %w", err)
 	}
+	defer conn.stunClose()
 
 	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	responseData, err := conn.stunTransact(logger, request, conn.RemoteAddr)
@@ -63,14 +63,14 @@ func stunRequest(logger *zap.SugaredLogger, stunSvr string, srcPort int) (netip.
 	if err != nil {
 		return netip.AddrPort{}, fmt.Errorf("failed to parse a valid address:port binding from the bpf stun response: %w", err)
 	}
-	logger.Debugf("reflexive binding is: %s\n", xorBinding.String())
+	logger.Debugf("reflexive binding is: %s", xorBinding.String())
 
 	return xorBinding, nil
 }
 
 func (c *stunSession) stunTransact(logger *zap.SugaredLogger, msg *stun.Message, addr net.Addr) (*stun.Message, error) {
 	_ = msg.NewTransactionID()
-	logger.Debugf("Send to %v: (%v bytes)\n", addr, msg.Length)
+	logger.Debugf("send to %v: (%v bytes)", addr, msg.Length)
 	sendUdp := &udpHeader{
 		srcPort:  c.LocalPort,
 		dstPort:  uint16(c.RemoteAddr.Port),
@@ -167,7 +167,7 @@ func stunListen(logger *zap.SugaredLogger, conn *ipv4.PacketConn) (messages chan
 				close(messages)
 				return
 			}
-			logger.Debugf("Response from %v: (%v bytes)\n", addr, n)
+			logger.Debugf("response from %v: (%v bytes)", addr, n)
 			// cut UDP header, cut postfix
 			buf = buf[8:n]
 
@@ -175,7 +175,7 @@ func stunListen(logger *zap.SugaredLogger, conn *ipv4.PacketConn) (messages chan
 			m.Raw = buf
 			err = m.Decode()
 			if err != nil {
-				logger.Debugf("error decoding STUN msg: %v\n", err)
+				logger.Debugf("error decoding STUN msg: %v", err)
 				close(messages)
 				return
 			}

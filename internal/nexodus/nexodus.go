@@ -498,15 +498,15 @@ func (ax *Nexodus) Keepalive() {
 }
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
+	ax.logger.Debug("sending stun request")
 	reflexiveIP, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
-		return fmt.Errorf("bpf stun request error: %w", err)
+		return fmt.Errorf("stun request error: %w", err)
 	}
 
 	if ax.nodeReflexiveAddressIPv4 != reflexiveIP {
 		ax.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, ax.nodeReflexiveAddressIPv4, reflexiveIP)
 		res, _, err := ax.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
-			LocalIp:      reflexiveIP.String(),
 			ReflexiveIp4: reflexiveIP.String(),
 		}).Execute()
 		if err != nil {
@@ -514,6 +514,10 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 		} else {
 			ax.logger.Debugf("update device response %+v", res)
 			ax.nodeReflexiveAddressIPv4 = reflexiveIP
+			// reinitialize peers if the NAT binding has changed for the node
+			if err = ax.Reconcile(ax.organization, true); err != nil {
+				ax.logger.Debugf("reconcile failed %v", res)
+			}
 		}
 	}
 	ax.logger.Debugf("relfexive binding is %s", reflexiveIP)
@@ -602,11 +606,6 @@ func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 	}
 	// re-join peers with updated state from the discovery node
 	for _, peer := range peerListing {
-		// Uncomment to update Linux nodes that are getting reflexive changes via STUN as well
-		//if peer.Os == Linux.String() {
-		//	ax.logger.Debug("skipping Linux node")
-		//	continue
-		//}
 		// if the peer is behind a symmetric NAT, skip to the next peer
 		if peer.SymmetricNat {
 			ax.logger.Debugf("skipping symmetric NAT node %s", peer.LocalIp)

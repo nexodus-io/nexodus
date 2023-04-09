@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-reuseport"
 	"github.com/pion/stun"
+	"go.uber.org/zap"
 )
 
 func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (netip.AddrPort, error) {
