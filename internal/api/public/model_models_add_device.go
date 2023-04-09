@@ -18,6 +18,7 @@ type ModelsAddDevice struct {
 	Hostname                string   `json:"hostname,omitempty"`
 	LocalIp                 string   `json:"local_ip,omitempty"`
 	OrganizationId          string   `json:"organization_id,omitempty"`
+	Os                      string   `json:"os,omitempty"`
 	PublicKey               string   `json:"public_key,omitempty"`
 	ReflexiveIp4            string   `json:"reflexive_ip4,omitempty"`
 	Relay                   bool     `json:"relay,omitempty"`

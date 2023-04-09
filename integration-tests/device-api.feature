@@ -49,7 +49,8 @@ Feature: Device API
         "reflexive_ip4": "47.196.141.165",
         "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
-        "hostname": "bbac3081d5e8"
+        "hostname": "bbac3081d5e8",
+        "os": "linux"
       }
       """
     Then the response code should be 201
@@ -71,6 +72,7 @@ Feature: Device API
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "os": "linux",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,
@@ -106,6 +108,7 @@ Feature: Device API
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "os": "linux",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,
@@ -137,6 +140,7 @@ Feature: Device API
           "organization_id": "${organization_id}",
           "organization_prefix":"${response[0].organization_prefix}",
           "organization_prefix_v6":"${response[0].organization_prefix_v6}",
+          "os": "linux",
           "public_key": "${public_key}",
           "reflexive_ip4": "47.196.141.165",
           "relay": false,
@@ -205,6 +209,7 @@ Feature: Device API
         "organization_id": "${organization_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "os": "linux",
         "public_key": "${public_key}",
         "reflexive_ip4": "47.196.141.165",
         "relay": false,

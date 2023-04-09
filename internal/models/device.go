@@ -26,6 +26,7 @@ type Device struct {
 	EndpointLocalAddressIPv4 string         `json:"endpoint_local_address_ip4"`
 	SymmetricNat             bool           `json:"symmetric_nat"`
 	Hostname                 string         `json:"hostname"`
+	Os                       string         `json:"os"`
 }
 
 // AddDevice is the information needed to add a new Device.
@@ -43,6 +44,7 @@ type AddDevice struct {
 	EndpointLocalAddressIPv4 string    `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
 	SymmetricNat             bool      `json:"symmetric_nat"`
 	Hostname                 string    `json:"hostname" example:"myhost"`
+	Os                       string    `json:"os"`
 }
 
 // UpdateDevice is the information needed to update a Device.

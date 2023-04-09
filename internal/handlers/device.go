@@ -341,6 +341,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
 			SymmetricNat:             request.SymmetricNat,
 			Hostname:                 request.Hostname,
+			Os:                       request.Os,
 		}
 
 		if res := tx.Create(&device); res.Error != nil {

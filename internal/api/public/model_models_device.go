@@ -23,6 +23,7 @@ type ModelsDevice struct {
 	OrganizationId          string   `json:"organization_id,omitempty"`
 	OrganizationPrefix      string   `json:"organization_prefix,omitempty"`
 	OrganizationPrefixV6    string   `json:"organization_prefix_v6,omitempty"`
+	Os                      string   `json:"os,omitempty"`
 	PublicKey               string   `json:"public_key,omitempty"`
 	ReflexiveIp4            string   `json:"reflexive_ip4,omitempty"`
 	Relay                   bool     `json:"relay,omitempty"`

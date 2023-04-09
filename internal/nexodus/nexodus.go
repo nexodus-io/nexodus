@@ -50,6 +50,11 @@ const (
 	NexdStatusRunning
 )
 
+const (
+	stunServer1 = "stun1.l.google.com:19302"
+	stunServer2 = "stun2.l.google.com:19302"
+)
+
 var (
 	invalidTokenGrant = errors.New("invalid_grant")
 )
@@ -92,6 +97,7 @@ type Nexodus struct {
 	hostname                 string
 	symmetricNat             bool
 	ipv6Supported            bool
+	os                       string
 	logger                   *zap.SugaredLogger
 	// See the NexdStatus* constants
 	status        int
@@ -155,10 +161,6 @@ func NewNexodus(
 	controllerURL.Host = "api." + controllerURL.Host
 	controllerURL.Path = ""
 
-	if err := checkOS(logger); err != nil {
-		return nil, err
-	}
-
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -202,6 +204,10 @@ func NewNexodus(
 	}
 
 	if err := ax.checkUnsupportedConfigs(); err != nil {
+		return nil, err
+	}
+
+	if err := prepOS(logger); err != nil {
 		return nil, err
 	}
 
@@ -327,12 +333,12 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
 	if !ax.symmetricNat && ax.stun && localIP == "" {
-		ipPort, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
+		ipPort, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
 			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		} else {
-			localIP = ipPort.IP.String()
-			localEndpointPort = ipPort.Port
+			localIP = ipPort.Addr().String()
+			localEndpointPort = int(ipPort.Port())
 		}
 	}
 	if localIP == "" {
@@ -343,6 +349,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localIP = ip
 		localEndpointPort = ax.listenPort
 	}
+
+	ax.os = runtime.GOOS
 
 	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
@@ -358,6 +366,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		SymmetricNat:            ax.symmetricNat,
 		Hostname:                ax.hostname,
 		Relay:                   ax.relay,
+		Os:                      ax.os,
 	}).Execute()
 	if err != nil {
 		var apiError *public.GenericOpenAPIError
@@ -444,6 +453,15 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		})
 	})
 
+	// Experimental STUN discovery
+	util.GoWithWaitGroup(wg, func() {
+		util.RunPeriodically(ctx, time.Second*20, func() {
+			if err := ax.reconcileStun(device.Id); err != nil {
+				ax.logger.Debug(err)
+			}
+		})
+	})
+
 	for _, proxy := range ax.ingresProxies {
 		proxy.Start(ctx, wg, ax.userspaceNet)
 	}
@@ -477,6 +495,34 @@ func (ax *Nexodus) Keepalive() {
 	}
 
 	_ = probePeers(peerEndpoints, ax.logger)
+}
+
+func (ax *Nexodus) reconcileStun(deviceID string) error {
+	ax.logger.Debug("sending stun request")
+	reflexiveIP, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
+	if err != nil {
+		return fmt.Errorf("stun request error: %w", err)
+	}
+
+	if ax.nodeReflexiveAddressIPv4 != reflexiveIP {
+		ax.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, ax.nodeReflexiveAddressIPv4, reflexiveIP)
+		res, _, err := ax.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
+			ReflexiveIp4: reflexiveIP.String(),
+		}).Execute()
+		if err != nil {
+			return fmt.Errorf("failed to update this device's new NAT binding, likely still reconnecting to the api-server, retrying in 20s: %w", err)
+		} else {
+			ax.logger.Debugf("update device response %+v", res)
+			ax.nodeReflexiveAddressIPv4 = reflexiveIP
+			// reinitialize peers if the NAT binding has changed for the node
+			if err = ax.Reconcile(ax.organization, true); err != nil {
+				ax.logger.Debugf("reconcile failed %v", res)
+			}
+		}
+	}
+	ax.logger.Debugf("relfexive binding is %s", reflexiveIP)
+
+	return nil
 }
 
 func (ax *Nexodus) Reconcile(orgID string, firstTime bool) error {
@@ -645,15 +691,15 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 func (ax *Nexodus) symmetricNatDisco() error {
 
 	// discover the server reflexive address per ICE RFC8445
-	stunAddr, err := StunRequest(ax.logger, stunServer1, ax.listenPort)
+	stunAddr, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return err
 	} else {
-		ax.nodeReflexiveAddressIPv4 = stunAddr.AddrPort()
+		ax.nodeReflexiveAddressIPv4 = stunAddr
 	}
 
 	isSymmetric := false
-	stunAddr2, err := StunRequest(ax.logger, stunServer2, ax.listenPort)
+	stunAddr2, err := stunRequest(ax.logger, stunServer2, ax.listenPort)
 	if err != nil {
 		return err
 	} else {
