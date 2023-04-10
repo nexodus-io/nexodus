@@ -234,14 +234,15 @@ jobs:
         id: build
         shell: bash
         run: |
-          CGO_ENABLED=0 make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
+          CGO_ENABLED=0 make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
           mkdir ${{ matrix.os }}-${{ matrix.arch }}
-          cp dist/* ${{ matrix.os }}-${{ matrix.arch }}/.
+          cp dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{ matrix.suffix }}
 
       - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
         with:
           name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
+          if-no-files-found: error
           path: |
             ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}}
 
