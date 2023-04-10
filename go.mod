@@ -3,7 +3,7 @@ module github.com/nexodus-io/nexodus
 go 1.19
 
 require (
-	github.com/Nerzal/gocloak/v13 v13.1.0
+	github.com/Nerzal/gocloak/v13 v13.2.0
 	github.com/bufbuild/connect-go v1.6.0
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
 	github.com/coreos/go-oidc/v3 v3.5.0
