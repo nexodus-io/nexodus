@@ -242,6 +242,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
+          if-no-files-found: error
           path: |
             ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}}
 
