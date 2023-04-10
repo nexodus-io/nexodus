@@ -88,7 +88,7 @@ EOF
         if [[ "$(uname -a)" = *ARM64* ]]; then
           arch="arm64"
         fi
-        sudo curl -fSL https://nexodus-io.s3.amazonaws.com/nexd-darwin-${arch} --output /usr/local/bin/nexd
+        sudo curl -fSL https://nexodus-io.s3.amazonaws.com/darwin-${arch}/nexd --output /usr/local/bin/nexd
         sudo chmod +x /usr/local/bin/nexd
         pass_message "Nexodus is installed successfully."
     fi
@@ -119,7 +119,7 @@ EOF
         fi
 
         info_message "Installing Nexodus..."
-        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexd-linux-amd64 --output /usr/local/sbin/nexd
+        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/linux-amd64/nexd --output /usr/local/sbin/nexd
         sudo chmod +x /usr/local/sbin/nexd
         pass_message "Nexodus is installed successfully."
 
