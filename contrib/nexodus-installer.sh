@@ -84,7 +84,11 @@ EOF
             fi
         fi
         info_message "Installing Nexodus..."
-        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexd-darwin-amd64 --output /usr/local/bin/nexd
+        arch=amd64
+        if [[ "$(uname -a)" = *ARM64* ]]; then
+          arch="arm64"
+        fi
+        sudo curl -fSL https://nexodus-io.s3.amazonaws.com/darwin-${arch}/nexd --output /usr/local/bin/nexd
         sudo chmod +x /usr/local/bin/nexd
         pass_message "Nexodus is installed successfully."
     fi
@@ -115,7 +119,7 @@ EOF
         fi
 
         info_message "Installing Nexodus..."
-        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/nexd-linux-amd64 --output /usr/local/sbin/nexd
+        sudo curl -fsSL https://nexodus-io.s3.amazonaws.com/linux-amd64/nexd --output /usr/local/sbin/nexd
         sudo chmod +x /usr/local/sbin/nexd
         pass_message "Nexodus is installed successfully."
 
@@ -177,16 +181,19 @@ function help() {
     printf "\t-i Install Nexodus and all required dependencies.\n"
     printf "\t-y Provide \"yes\" response to install warning prompt in advance.\n"
     printf "\t-u Uninstall Nexodus and it's dependencies. \n"
+    printf "\t-v Verbose output. \n"
     printf "\t-h help\n"
     exit 1
 }
 
 OP=""
-while getopts "iuyh" opt; do
+V=""
+while getopts "iuyvh" opt; do
     case $opt in
         i ) OP="setup";;
         u ) OP="cleanup";;
         y ) YES="y";;
+        v ) V="y";;
         h ) help
         exit 0;;
         *) help
@@ -195,6 +202,9 @@ while getopts "iuyh" opt; do
 done
 if [ $# -eq 0 ]; then 
     help;exit 0 
+fi
+if [ -n "${V}" ]; then
+  set -x
 fi
 if [ "$OP" == "setup" ]; then
     setup
