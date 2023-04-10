@@ -4,14 +4,16 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"strconv"
 	"time"
 
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+const keepaliveInterval = time.Second * 20
 
 // handlePeerTunnel build wg tunnels
 func (ax *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
@@ -54,10 +56,8 @@ func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
 		config += fmt.Sprintf("allowed_ip=%s\n", aip)
 	}
 	config += fmt.Sprintf("endpoint=%s\n", wgPeerConfig.Endpoint)
-	// See docs/development/design/nexodus-connectivity.md and internal/nexodus/keepalive.go
-	// to see more about what Nexodus is doing instead of the built-in keepalive.
-	// TODO Set this back to 0 once keepalive.go is updated to work with userspace mode.
-	config += "persistent_keepalive_interval=5\n"
+	config += fmt.Sprintf("persistent_keepalive_interval=%d\n", keepaliveInterval/time.Second)
+
 	ax.logger.Debugf("Adding wireguard peer using: %s", config)
 	err = ax.userspaceDev.IpcSet(config)
 	if err != nil {
@@ -111,7 +111,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 		Port: port,
 	}
 
-	interval := time.Second * 0
+	keepalive := keepaliveInterval
 
 	// relay nodes do not set explicit endpoints
 	cfg := wgtypes.Config{}
@@ -123,7 +123,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 					PublicKey:                   pubKey,
 					Remove:                      false,
 					AllowedIPs:                  allowedIP,
-					PersistentKeepaliveInterval: &interval,
+					PersistentKeepaliveInterval: &keepalive,
 				},
 			},
 		}
@@ -138,7 +138,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 					Remove:                      false,
 					Endpoint:                    udpAddr,
 					AllowedIPs:                  allowedIP,
-					PersistentKeepaliveInterval: &interval,
+					PersistentKeepaliveInterval: &keepalive,
 				},
 			},
 		}
