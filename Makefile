@@ -23,6 +23,8 @@ NEXODUS_RELEASE?=$(shell git describe --always --exclude qa --exclude prod)
 NEXODUS_LDFLAGS?=-X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 NEXODUS_GCFLAGS?=
 
+SWAGGER_YAML:=internal/docs/swagger.yaml
+
 # Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
 UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_M),arm64)
@@ -137,7 +139,7 @@ dist/.opa-lint: $(policies) | dist
 	$(CMD_PREFIX) touch $@
 
 .PHONY: gen-docs
-gen-docs: dist/.gen-docs ## Generate API docs
+gen-docs: $(SWAGGER_YAML) ## Generate API docs
 .PHONY: openapi-lint
 openapi-lint: dist/.openapi-lint ## Lint the OpenAPI document
 .PHONY: openapi-lint
@@ -147,19 +149,16 @@ dist/.openapi-lint: internal/docs/swagger.yaml | dist
 		validate -i /src/internal/docs/swagger.yaml
 	$(CMD_PREFIX) touch $@
 
-dist/.gen-docs: $(APISERVER_DEPS) | dist
+$(SWAGGER_YAML): $(APISERVER_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) docker run \--platform linux/x86_64 --rm \
 		-v $(CURDIR):/workdir -w /workdir \
 		ghcr.io/swaggo/swag:v1.8.10 \
 		/root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
-	$(CMD_PREFIX) touch $@
-
-internal/docs/swagger.yaml: dist/.gen-docs
 
 .PHONY: gen-openapi-client
-gen-openapi-client: dist/.gen-openapi-client ## Generate the OpenAPI Client
-dist/.gen-openapi-client: internal/docs/swagger.yaml | dist
+gen-openapi-client: internal/api/public/client.go ## Generate the OpenAPI Client
+internal/api/public/client.go: internal/docs/swagger.yaml | dist
 	$(ECHO_PREFIX) printf "  %-12s internal/docs/swagger.yaml\n" "[OPENAPI CLIENT GEN]"
 	$(CMD_PREFIX) rm -rf internal/api/public
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
@@ -170,7 +169,6 @@ dist/.gen-openapi-client: internal/docs/swagger.yaml | dist
 		--ignore-file-override /src/.openapi-generator-ignore $(PIPE_DEV_NULL)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
 	$(CMD_PREFIX) [ -z "$(shell gofmt -l .)" ] || (echo "$(shell gofmt -l .)" && exit 1)
-	$(CMD_PREFIX) touch $@
 
 .PHONY: opa-fmt
 opa-fmt: ## Lint the OPA policies
@@ -180,7 +178,7 @@ opa-fmt: ## Lint the OPA policies
 .PHONY: generate
 generate: dist/.generate ## Run all code generators and formatters
 
-dist/.generate: dist/.gen-docs | dist
+dist/.generate: $(SWAGGER_YAML) | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
