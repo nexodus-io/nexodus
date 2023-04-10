@@ -54,16 +54,23 @@ func (q *Query) GetFilter() (map[string]interface{}, error) {
 }
 
 func FilterAndPaginate(model interface{}, c *gin.Context, orderBy string) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		var query Query
-		if err := c.BindQuery(&query); err != nil {
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		return func(db *gorm.DB) *gorm.DB {
+			db.Error = err
 			return db
 		}
+	}
+	return FilterAndPaginateWithQuery(model, c, query, orderBy)
+}
+
+func FilterAndPaginateWithQuery(model interface{}, c *gin.Context, query Query, defaultOrderBy string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
 
 		if order, err := query.GetSort(); err == nil {
 			db = db.Order(order)
-		} else if orderBy != "" {
-			db = db.Order(orderBy)
+		} else if defaultOrderBy != "" {
+			db = db.Order(defaultOrderBy)
 		}
 
 		if filter, err := query.GetFilter(); err == nil {

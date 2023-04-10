@@ -389,3 +389,9 @@ func CreateMigrationFromActions(id string, actions ...MigrationAction) *gormigra
 		},
 	}
 }
+
+func NotOnSqlLite(db *gorm.DB) bool {
+	// this SQL does not work well against Sqlite.
+	version := ""
+	return db.Raw("SELECT sqlite_version()").Scan(&version).Error != nil
+}

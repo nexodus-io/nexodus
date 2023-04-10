@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"io"
 	"net"
 	"net/http"
@@ -61,7 +62,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
-	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store)
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus())
 	if err != nil {
 		suite.T().Fatal(err)
 	}

@@ -824,6 +824,12 @@ const docTemplate = `{
                 "operationId": "ListDevicesInOrganization",
                 "parameters": [
                     {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Organization ID",
                         "name": "organization_id",
@@ -1452,6 +1458,9 @@ const docTemplate = `{
                 "relay": {
                     "type": "boolean"
                 },
+                "revision": {
+                    "type": "integer"
+                },
                 "symmetric_nat": {
                     "type": "boolean"
                 },
@@ -1615,6 +1624,9 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                },
+                "revision": {
+                    "type": "integer"
                 },
                 "symmetric_nat": {
                     "type": "boolean"

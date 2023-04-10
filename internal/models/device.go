@@ -25,6 +25,7 @@ type Device struct {
 	Hostname                 string         `json:"hostname"`
 	Os                       string         `json:"os"`
 	Endpoints                []Endpoint     `json:"endpoints" gorm:"type:JSONB; serializer:json"`
+	Revision                 uint64         `json:"revision" gorm:"type:bigserial;index:"`
 }
 
 // AddDevice is the information needed to add a new Device.
@@ -52,4 +53,5 @@ type UpdateDevice struct {
 	SymmetricNat             *bool      `json:"symmetric_nat"`
 	Hostname                 string     `json:"hostname" example:"myhost"`
 	Endpoints                []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
+	Revision                 *uint64    `json:"revision"`
 }

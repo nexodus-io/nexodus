@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230409_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230411_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230412_0000"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -41,7 +42,7 @@ func NewDatabase(
 	dbname string,
 	port string,
 	sslmode string,
-) (*gorm.DB, error) {
+) (*gorm.DB, string, error) {
 	ctx, span := tracer.Start(parent, "NewDatabase")
 	defer span.End()
 	gormLogger := NewLogger(logger)
@@ -60,12 +61,12 @@ func NewDatabase(
 	}
 	err := backoff.Retry(connectDb, backoff.WithContext(backoff.NewExponentialBackOff(), ctx))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := db.Use(otelgorm.NewPlugin()); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return db, nil
+	return db, dsn, nil
 }
 
 func NewTestDatabase() (*gorm.DB, error) {
@@ -108,6 +109,7 @@ func Migrations() *migrations.Migrations {
 			migration_20230403_0000.Migrate(),
 			migration_20230409_0000.Migrate(),
 			migration_20230411_0000.Migrate(),
+			migration_20230412_0000.Migrate(),
 		},
 	}
 }

@@ -758,6 +758,13 @@ type ApiListDevicesInOrganizationRequest struct {
 	ctx            context.Context
 	ApiService     *DevicesApiService
 	organizationId string
+	gtRevision     *int32
+}
+
+// greater than revision
+func (r ApiListDevicesInOrganizationRequest) GtRevision(gtRevision int32) ApiListDevicesInOrganizationRequest {
+	r.gtRevision = &gtRevision
+	return r
 }
 
 func (r ApiListDevicesInOrganizationRequest) Execute() ([]ModelsDevice, *http.Response, error) {
@@ -804,6 +811,9 @@ func (a *DevicesApiService) ListDevicesInOrganizationExecute(r ApiListDevicesInO
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
 
+	if r.gtRevision != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
+	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
 

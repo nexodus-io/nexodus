@@ -17,5 +17,6 @@ type ModelsUpdateDevice struct {
 	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname                string           `json:"hostname,omitempty"`
 	OrganizationId          string           `json:"organization_id,omitempty"`
+	Revision                int32            `json:"revision,omitempty"`
 	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
 }
