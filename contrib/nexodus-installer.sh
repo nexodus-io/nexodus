@@ -181,16 +181,19 @@ function help() {
     printf "\t-i Install Nexodus and all required dependencies.\n"
     printf "\t-y Provide \"yes\" response to install warning prompt in advance.\n"
     printf "\t-u Uninstall Nexodus and it's dependencies. \n"
+    printf "\t-v Verbose output. \n"
     printf "\t-h help\n"
     exit 1
 }
 
 OP=""
-while getopts "iuyh" opt; do
+V=""
+while getopts "iuyvh" opt; do
     case $opt in
         i ) OP="setup";;
         u ) OP="cleanup";;
         y ) YES="y";;
+        v ) V="y";;
         h ) help
         exit 0;;
         *) help
@@ -199,6 +202,9 @@ while getopts "iuyh" opt; do
 done
 if [ $# -eq 0 ]; then 
     help;exit 0 
+fi
+if [ -n "${V}" ]; then
+  set -x
 fi
 if [ "$OP" == "setup" ]; then
     setup
