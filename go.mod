@@ -41,7 +41,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.14.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/net v0.9.0
-	golang.org/x/oauth2 v0.6.0
+	golang.org/x/oauth2 v0.7.0
 	golang.org/x/sys v0.7.0
 	golang.org/x/term v0.7.0
 	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c
