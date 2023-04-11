@@ -1303,13 +1303,15 @@ const docTemplate = `{
                     "type": "string",
                     "example": "1.2.3.4"
                 },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Endpoint"
+                    }
+                },
                 "hostname": {
                     "type": "string",
                     "example": "myhost"
-                },
-                "local_ip": {
-                    "type": "string",
-                    "example": "10.1.1.1"
                 },
                 "organization_id": {
                     "type": "string",
@@ -1319,9 +1321,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "public_key": {
-                    "type": "string"
-                },
-                "reflexive_ip4": {
                     "type": "string"
                 },
                 "relay": {
@@ -1422,18 +1421,18 @@ const docTemplate = `{
                 "endpoint_local_address_ip4": {
                     "type": "string"
                 },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Endpoint"
+                    }
+                },
                 "hostname": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                },
-                "local_ip": {
-                    "type": "string"
-                },
-                "local_ip_v6": {
-                    "type": "string"
                 },
                 "organization_id": {
                     "type": "string"
@@ -1448,9 +1447,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "public_key": {
-                    "type": "string"
-                },
-                "reflexive_ip4": {
                     "type": "string"
                 },
                 "relay": {
@@ -1481,6 +1477,25 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "issuer": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Endpoint": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "description": "IP address and port of the endpoint.",
+                    "type": "string",
+                    "example": "10.1.1.1:51820"
+                },
+                "distance": {
+                    "description": "Distance in milliseconds from the node to the ip address",
+                    "type": "integer",
+                    "example": 12
+                },
+                "source": {
+                    "description": "How the endpoint was discovered",
                     "type": "string"
                 }
             }
@@ -1587,20 +1602,19 @@ const docTemplate = `{
                     "type": "string",
                     "example": "1.2.3.4"
                 },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Endpoint"
+                    }
+                },
                 "hostname": {
                     "type": "string",
                     "example": "myhost"
                 },
-                "local_ip": {
-                    "type": "string",
-                    "example": "10.1.1.1"
-                },
                 "organization_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
-                },
-                "reflexive_ip4": {
-                    "type": "string"
                 },
                 "symmetric_nat": {
                     "type": "boolean"

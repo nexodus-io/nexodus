@@ -157,16 +157,12 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.Hostname = request.Hostname
 		}
 
-		if request.LocalIP != "" {
-			device.LocalIP = request.LocalIP
+		if len(request.Endpoints) > 0 {
+			device.Endpoints = request.Endpoints
 		}
 
 		if request.OrganizationID != uuid.Nil {
 			device.OrganizationID = request.OrganizationID
-		}
-
-		if request.ReflexiveIPv4 != "" {
-			device.ReflexiveIPv4 = request.ReflexiveIPv4
 		}
 
 		if request.SymmetricNat != nil {
@@ -328,7 +324,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			UserID:                   userId,
 			OrganizationID:           org.ID,
 			PublicKey:                request.PublicKey,
-			LocalIP:                  request.LocalIP,
+			Endpoints:                request.Endpoints,
 			AllowedIPs:               allowedIPs,
 			TunnelIP:                 ipamIP,
 			TunnelIpV6:               ipamIPv6,
@@ -337,7 +333,6 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Discovery:                request.Discovery,
 			OrganizationPrefix:       org.IpCidr,
 			OrganizationPrefixV6:     org.IpCidrV6,
-			ReflexiveIPv4:            request.ReflexiveIPv4,
 			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
 			SymmetricNat:             request.SymmetricNat,
 			Hostname:                 request.Hostname,

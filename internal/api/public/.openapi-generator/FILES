@@ -13,6 +13,7 @@ model_models_base_error.go
 model_models_conflicts_error.go
 model_models_device.go
 model_models_device_start_response.go
+model_models_endpoint.go
 model_models_invitation.go
 model_models_login_end_request.go
 model_models_login_end_response.go

@@ -12,23 +12,21 @@ package public
 
 // ModelsDevice struct for ModelsDevice
 type ModelsDevice struct {
-	AllowedIps              []string `json:"allowed_ips,omitempty"`
-	ChildPrefix             []string `json:"child_prefix,omitempty"`
-	Discovery               bool     `json:"discovery,omitempty"`
-	EndpointLocalAddressIp4 string   `json:"endpoint_local_address_ip4,omitempty"`
-	Hostname                string   `json:"hostname,omitempty"`
-	Id                      string   `json:"id,omitempty"`
-	LocalIp                 string   `json:"local_ip,omitempty"`
-	LocalIpV6               string   `json:"local_ip_v6,omitempty"`
-	OrganizationId          string   `json:"organization_id,omitempty"`
-	OrganizationPrefix      string   `json:"organization_prefix,omitempty"`
-	OrganizationPrefixV6    string   `json:"organization_prefix_v6,omitempty"`
-	Os                      string   `json:"os,omitempty"`
-	PublicKey               string   `json:"public_key,omitempty"`
-	ReflexiveIp4            string   `json:"reflexive_ip4,omitempty"`
-	Relay                   bool     `json:"relay,omitempty"`
-	SymmetricNat            bool     `json:"symmetric_nat,omitempty"`
-	TunnelIp                string   `json:"tunnel_ip,omitempty"`
-	TunnelIpV6              string   `json:"tunnel_ip_v6,omitempty"`
-	UserId                  string   `json:"user_id,omitempty"`
+	AllowedIps              []string         `json:"allowed_ips,omitempty"`
+	ChildPrefix             []string         `json:"child_prefix,omitempty"`
+	Discovery               bool             `json:"discovery,omitempty"`
+	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`
+	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
+	Hostname                string           `json:"hostname,omitempty"`
+	Id                      string           `json:"id,omitempty"`
+	OrganizationId          string           `json:"organization_id,omitempty"`
+	OrganizationPrefix      string           `json:"organization_prefix,omitempty"`
+	OrganizationPrefixV6    string           `json:"organization_prefix_v6,omitempty"`
+	Os                      string           `json:"os,omitempty"`
+	PublicKey               string           `json:"public_key,omitempty"`
+	Relay                   bool             `json:"relay,omitempty"`
+	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
+	TunnelIp                string           `json:"tunnel_ip,omitempty"`
+	TunnelIpV6              string           `json:"tunnel_ip_v6,omitempty"`
+	UserId                  string           `json:"user_id,omitempty"`
 }

@@ -354,19 +354,30 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
+	endpoints := []public.ModelsEndpoint{
+		{
+			Source:   "local",
+			Address:  endpointSocket,
+			Distance: 0,
+		},
+		{
+			Source:   "stun:" + stunServer1,
+			Address:  ax.nodeReflexiveAddressIPv4.String(),
+			Distance: 0,
+		},
+	}
 	device, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
 		UserId:                  user.Id,
 		OrganizationId:          ax.organization,
 		PublicKey:               ax.wireguardPubKey,
-		LocalIp:                 endpointSocket,
 		TunnelIp:                ax.requestedIP,
 		ChildPrefix:             ax.childPrefix,
-		ReflexiveIp4:            ax.nodeReflexiveAddressIPv4.String(),
 		EndpointLocalAddressIp4: ax.endpointLocalAddress,
 		SymmetricNat:            ax.symmetricNat,
 		Hostname:                ax.hostname,
 		Relay:                   ax.relay,
 		Os:                      ax.os,
+		Endpoints:               endpoints,
 	}).Execute()
 	if err != nil {
 		var apiError *public.GenericOpenAPIError
@@ -374,12 +385,11 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			switch model := apiError.Model().(type) {
 			case public.ModelsConflictsError:
 				device, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					LocalIp:                 endpointSocket,
 					ChildPrefix:             ax.childPrefix,
-					ReflexiveIp4:            ax.nodeReflexiveAddressIPv4.String(),
 					EndpointLocalAddressIp4: ax.endpointLocalAddress,
 					SymmetricNat:            ax.symmetricNat,
 					Hostname:                ax.hostname,
+					Endpoints:               endpoints,
 				}).Execute()
 				if err != nil {
 					return fmt.Errorf("error updating device: %w", err)
@@ -472,8 +482,20 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 
 	if ax.nodeReflexiveAddressIPv4 != reflexiveIP {
 		ax.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, ax.nodeReflexiveAddressIPv4, reflexiveIP)
+
 		res, _, err := ax.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
-			ReflexiveIp4: reflexiveIP.String(),
+			Endpoints: []public.ModelsEndpoint{
+				{
+					Source:   "local",
+					Address:  net.JoinHostPort(ax.endpointLocalAddress, fmt.Sprintf("%d", ax.listenPort)),
+					Distance: 0,
+				},
+				{
+					Source:   "stun:" + stunServer1,
+					Address:  reflexiveIP.String(),
+					Distance: 0,
+				},
+			},
 		}).Execute()
 		if err != nil {
 			return fmt.Errorf("failed to update this device's new NAT binding, likely still reconnecting to the api-server, retrying in 20s: %w", err)
@@ -574,7 +596,7 @@ func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 	for _, peer := range peerListing {
 		// if the peer is behind a symmetric NAT, skip to the next peer
 		if peer.SymmetricNat {
-			ax.logger.Debugf("skipping symmetric NAT node %s", peer.LocalIp)
+			ax.logger.Debugf("skipping symmetric NAT node %s", peer.Hostname)
 			continue
 		}
 		_, ok := discoData[peer.PublicKey]
@@ -589,9 +611,15 @@ func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 				}
 				endpointReflexiveAddress := discoData[peer.PublicKey].Endpoint
 				// update the peer endpoint to the new reflexive address learned from the wg session
-				_, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), peer.Id).Update(public.ModelsUpdateDevice{
-					LocalIp: endpointReflexiveAddress,
-				}).Execute()
+				for i := range peer.Endpoints {
+					if peer.Endpoints[i].Source == "local" {
+						peer.Endpoints[i].Address = endpointReflexiveAddress
+						_, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), peer.Id).Update(public.ModelsUpdateDevice{
+							Endpoints: peer.Endpoints,
+						}).Execute()
+						break
+					}
+				}
 
 				if err != nil {
 					ax.logger.Errorf("failed updating peer: %+v", err)
