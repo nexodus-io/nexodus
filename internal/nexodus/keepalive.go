@@ -9,11 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type probeResults struct {
-	peer   string
-	status bool
-}
-
 type dialer struct {
 	logger zap.SugaredLogger
 	dial   func(string, string) (net.Conn, error)
@@ -21,41 +16,36 @@ type dialer struct {
 
 const (
 	iterations                         = 1
-	interval                           = 600
-	timeWait                           = 1000
+	interval                           = 800
+	timeWait                           = 1200
 	PACKETSIZE                         = 64
 	ICMP_TYPE_ECHO_REQUEST             = 8
 	ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET = 20
 )
 
-// probePeers initial simple proofing of a peer discovery
-func probePeers(peers []string, logger *zap.SugaredLogger) []string {
-	c := make(chan probeResults)
-	for _, peer := range peers {
-		go runProbe(peer, c)
-	}
-	var reachablePeers []string
-	result := make([]probeResults, len(peers))
-	for i := range result {
-		result[i] = <-c
-		if result[i].status {
-			reachablePeers = append(reachablePeers, result[i].peer)
-			logger.Debugf("peer [ %s ] is reachable", result[i].peer)
-		} else {
-			logger.Debugf("peer [ %s ] is not reachable", result[i].peer)
-		}
-	}
-	return reachablePeers
+type KeepaliveStatus struct {
+	WgIP        string `json:"wg_ip"`
+	IsReachable bool   `json:"is_reachable"`
+	Hostname    string `json:"hostname"`
 }
 
-func runProbe(peer string, c chan probeResults) {
-	err := ping(peer)
+func runProbe(peerStatus KeepaliveStatus, c chan struct {
+	KeepaliveStatus
+	IsReachable bool
+}) {
+	err := ping(peerStatus.WgIP)
 	if err != nil {
 		// peer is not replying
-		c <- probeResults{peer, false}
+		c <- struct {
+			KeepaliveStatus
+			IsReachable bool
+		}{peerStatus, false}
 	} else {
 		// peer is replying
-		c <- probeResults{peer, true}
+		c <- struct {
+			KeepaliveStatus
+			IsReachable bool
+		}{peerStatus, true}
 	}
 }
 

@@ -71,10 +71,9 @@ Respective Nexodus agents will fetch this information from the ApiServer, and ad
 
 #### Challenge 1 - what if the NAT mapping changes ?
 
-NAT mapping can change for various reasons such as NAT device restart, or mapping expiration due to no incoming/outgoing traffic. Mapping expiration issues can be resolved by enabling the `persistent keepalive` for each wireguard peer. Wireguard keepalive sends packet periodically to its peer, and that prevents NAT mapping expiration. But it doesn't help with the other reasons that can cause NAT mapping changes. There is no mechanism provided by wireguard that an Nexodus agent can use to determine the connection state (TODO: Need to explore latest handshake option, if that can help), and use that to trigger the STUN based discovery to determine the new NAT mapping (reflexive address).
+NAT mapping can change for various reasons such as NAT device restart, or mapping expiration due to no incoming/outgoing traffic. Mapping expiration issues can be resolved by enabling the `persistent keepalive` for each wireguard peer. Wireguard keepalive sends packet periodically to its peer, and that prevents NAT mapping expiration. But it doesn't help with the other reasons that can cause NAT mapping changes. There is no mechanism provided by wireguard that a Nexodus agent can use to determine the connection state (TODO: Need to explore latest handshake option, if that can help), and use that to trigger the STUN based discovery to determine the new NAT mapping (reflexive address). Currently, we set the keepalive for Wireguard peers to 20 seconds. This keepalive interval is aggressive enough to be compatible with the known firewall/middlebox connection tracking timers.
 
 > **Note**
-> Currently Nexodus agent does not configure wireguard keepalive for peers, but uses its own probe mechanism (sending ping to peers periodically) to determine the connection state. Currently it just does what wireguard keepalive is supposed to do.
 > **ThinkingHatOn**
 > do we want to extend it to help trigger the discovery for disconnected peers?
 

@@ -405,15 +405,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return err
 	}
 
-	// send keepalives to all peers periodically
-	if !ax.relay {
-		util.GoWithWaitGroup(wg, func() {
-			util.RunPeriodically(ctx, time.Second*10, func() {
-				ax.Keepalive()
-			})
-		})
-	}
-
 	// gather wireguard state from the relay node periodically
 	if ax.discoveryNode {
 		util.GoWithWaitGroup(wg, func() {
@@ -470,31 +461,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	return nil
-}
-
-func (ax *Nexodus) Keepalive() {
-	if ax.userspaceMode {
-		ax.logger.Debugf("Keepalive not yet implemented in userspace mode")
-		return
-	}
-	ax.logger.Debug("Sending Keepalive")
-	var peerEndpoints []string
-	if !ax.relay {
-		for _, value := range ax.deviceCache {
-			nodeAddr := value.TunnelIp
-			// strip the /32 from the prefix if present
-			if net.ParseIP(value.TunnelIp) == nil {
-				nodeIP, _, err := net.ParseCIDR(value.TunnelIp)
-				nodeAddr = nodeIP.String()
-				if err != nil {
-					ax.logger.Debugf("failed parsing an ip from the prefix %v", err)
-				}
-			}
-			peerEndpoints = append(peerEndpoints, nodeAddr)
-		}
-	}
-
-	_ = probePeers(peerEndpoints, ax.logger)
 }
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
