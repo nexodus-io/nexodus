@@ -25,7 +25,7 @@ COPY --from=build /src/dist/nexctl /bin/nexctl
 COPY ./hack/update-ca.sh /update-ca.sh
 RUN chmod a+x /update-ca.sh
 
-FROM fedora:36 as fedora
+FROM fedora:latest as fedora
 RUN dnf update -qy && \
     dnf install --setopt=install_weak_deps=False -qy \
     ca-certificates \

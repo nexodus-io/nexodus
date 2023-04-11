@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o nexctl ./cmd/nexctl
 
-FROM fedora:36 as fedora
+FROM fedora:latest as fedora
 
 RUN dnf update -qy && \
     dnf install --setopt=install_weak_deps=False -qy \
