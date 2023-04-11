@@ -9,6 +9,10 @@ on:
         default: 'small'
         type: string
 
+  repository_dispatch:
+    types:
+      - argocd-webhook
+
 jobs:
   deploy-ec2:
     name: deploy-ec2-e2e
