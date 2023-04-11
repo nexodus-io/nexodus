@@ -528,16 +528,31 @@ cacerts: ## Install the Self-Signed CA Certificate
 dist/rpm:
 	$(CMD_PREFIX) mkdir -p dist/rpm
 
+MOCK_ROOTS:=fedora-37-x86_64 fedora-38-x86_64
+MOCK_DEPS:=golang systemd-rpm-macros systemd-units
+
 .PHONY: image-mock
-image-mock:
-	docker build -f Containerfile.mock -t quay.io/nexodus/mock:$(TAG) .
-	docker tag quay.io/nexodus/mock:$(TAG) quay.io/nexodus/mock:latest
+image-mock: ## Build and publish updated mock images to quay.io used for building rpms
+	docker build -f Containerfile.mock -t quay.io/nexodus/mock:base .
+	docker rm -f mock-base
+	for MOCK_ROOT in $(MOCK_ROOTS) ; do \
+		docker run --rm --name mock-base --privileged=true -d quay.io/nexodus/mock:base sleep 1800 ; \
+		echo "Building mock root for $$MOCK_ROOT" ; \
+		docker exec -it mock-base mock -r $$MOCK_ROOT --init ; \
+		for MOCK_DEP in $(MOCK_DEPS) ; do \
+			echo "Installing $$MOCK_DEP into $$MOCK_ROOT" ; \
+			docker exec -it mock-base mock -r $$MOCK_ROOT --no-clean --no-cleanup-after --install $$MOCK_DEP ; \
+		done ; \
+		docker commit mock-base quay.io/nexodus/mock:$$MOCK_ROOT ; \
+		docker rm -f mock-base ; \
+		docker push quay.io/nexodus/mock:$$MOCK_ROOT ; \
+	done
 
 MOCK_ROOT?=fedora-37-x86_64
 SRPM_DISTRO?=fc37
 
 .PHONY: srpm
-srpm: dist/rpm image-mock manpages ## Build a source RPM
+srpm: dist/rpm manpages ## Build a source RPM
 	go mod vendor
 	rm -rf dist/rpm/nexodus-${NEXODUS_RELEASE}
 	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
@@ -549,14 +564,14 @@ srpm: dist/rpm image-mock manpages ## Build a source RPM
 	cd dist/rpm && tar czf nexodus-${NEXODUS_RELEASE}.tar.gz nexodus-${NEXODUS_RELEASE} && rm -rf nexodus-${NEXODUS_RELEASE}
 	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:${MOCK_ROOT} \
 		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
 		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_ROOT}
 	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
 rpm: srpm ## Build an RPM
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:latest \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:${MOCK_ROOT} \
 		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
 		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
@@ -566,7 +581,7 @@ contrib/man:
 	$(CMD_PREFIX) mkdir -p contrib/man
 
 .PHONY: manpages
-manpages: contrib/man dist/nexd dist/nexctl image-mock ## Generate manpages in ./contrib/man
+manpages: contrib/man dist/nexd dist/nexctl ## Generate manpages in ./contrib/man
 	dist/nexd -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexd | gzip > contrib/man/nexd.8.gz
 	dist/nexctl -h | docker run -i --rm --name txt2man quay.io/nexodus/mock:latest txt2man -t nexctl | gzip > contrib/man/nexctl.8.gz
 
