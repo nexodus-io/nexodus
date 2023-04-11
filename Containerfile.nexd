@@ -21,7 +21,7 @@ RUN git clone https://github.com/FiloSottile/mkcert && cd mkcert && \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags "-extldflags=-static -X main.Version=$(git describe --tags)"
 
-FROM fedora:36 as fedora
+FROM fedora:latest as fedora
 
 COPY --from=build-nexd /src/nexd /nexd
 COPY --from=build-mkcert /mkcert/mkcert /mkcert
