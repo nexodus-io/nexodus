@@ -43,55 +43,74 @@ func (api *API) UserIsCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
-	var user models.User
-	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		res := tx.
-			Preload("Organizations").
-			First(&user, "id = ?", id)
+	span.SetAttributes(
+		attribute.String("user-id", id),
+		attribute.String("username", userName),
+	)
+	org := models.Organization{}
+	return org.ID, api.transaction(ctx, func(tx *gorm.DB) error {
+		var user models.User
+		res := tx.Unscoped().First(&user, "id = ?", id)
 		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				user.ID = id
-				user.UserName = userName
-				user.Organizations = []*models.Organization{
-					{
-						Name:        userName,
-						OwnerID:     id,
-						Description: fmt.Sprintf("%s's organization", userName),
-						IpCidr:      defaultOrganizationPrefixIPv4,
-						IpCidrV6:    defaultOrganizationPrefixIPv6,
-						HubZone:     true,
-					},
-				}
-				if res := tx.Create(&user); res.Error != nil {
-					return fmt.Errorf("can't create user record: %w", res.Error)
-				}
-				if err := api.ipam.CreateNamespace(ctx, user.Organizations[0].ID); err != nil {
-					return fmt.Errorf("failed to create ipam namespace: %w", err)
-				}
-				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv4); err != nil {
-					return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
-				}
-				if err := api.ipam.AssignPrefix(ctx, user.Organizations[0].ID, defaultOrganizationPrefixIPv6); err != nil {
-					return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
-				}
-			} else {
+			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("can't find record for user id %s", id)
 			}
+			user.ID = id
+			user.UserName = userName
+			if res = tx.Create(&user); res.Error != nil {
+				return fmt.Errorf("can't create user record: %w", res.Error)
+			}
 		}
-		span.SetAttributes(
-			attribute.String("user-id", id),
-			attribute.String("username", userName),
-		)
+
+		// The user was previously deleted... lets make him active again.
+		if user.DeletedAt.Valid {
+			user.DeletedAt = gorm.DeletedAt{}
+			res = tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
+			if res.Error != nil {
+				return res.Error
+			}
+		}
+
 		// Check if the UserName has changed since the last time we saw this user
 		if user.UserName != userName {
-			tx.Model(&user).Update("UserName", userName)
+			res = tx.Model(&user).Update("UserName", userName)
+			if res.Error != nil {
+				return res.Error
+			}
+		}
+
+		// Do we need to create am org for the user?
+		res = tx.Where("owner_id = ?", user.ID).First(&org)
+		if res.Error != nil {
+			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				return res.Error
+			}
+
+			org = models.Organization{
+				Name:        userName,
+				OwnerID:     id,
+				Description: fmt.Sprintf("%s's organization", userName),
+				IpCidr:      defaultOrganizationPrefixIPv4,
+				IpCidrV6:    defaultOrganizationPrefixIPv6,
+				HubZone:     true,
+				Users:       []*models.User{&user},
+			}
+			if res = tx.Create(&org); res.Error != nil {
+				return fmt.Errorf("can't create organization record: %w", res.Error)
+			}
+			if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
+				return fmt.Errorf("failed to create ipam namespace: %w", err)
+			}
+			if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
+				return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+			}
+			if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
+				return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+			}
+
 		}
 		return nil
 	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return user.Organizations[0].ID, nil
 }
 
 // GetUser gets a user
