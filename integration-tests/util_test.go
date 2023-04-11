@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 	"unicode"
 
@@ -434,13 +435,14 @@ func (suite *NexodusIntegrationSuite) runCommand(cmd ...string) (string, error) 
 }
 
 // NewTLSConfig creates a *tls.Config configured to trust the .certs/rootCA.pem
-func (suite *NexodusIntegrationSuite) NewTLSConfig() *tls.Config {
+func NewTLSConfig(t *testing.T) *tls.Config {
+	require := require.New(t)
 	dir, err := findCertsDir()
-	suite.Require().NoError(err)
+	require.NoError(err)
 	caCert, err := os.ReadFile(filepath.Join(dir, "rootCA.pem"))
-	suite.Require().NoError(err)
+	require.NoError(err)
 	caCertPool, err := x509.SystemCertPool()
-	suite.Require().NoError(err)
+	require.NoError(err)
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	tlsConfig := &tls.Config{
@@ -465,20 +467,23 @@ func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testco
 }
 
 func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, password string) string {
-	id, err := suite.createNewUserWithName(ctx, "kitteh", password)
+	id, cleanup, err := createNewUserWithName(ctx, "kitteh", password)
+	if cleanup != nil {
+		suite.T().Cleanup(cleanup)
+	}
 	suite.Require().NoError(err)
 	return id
 }
-func (suite *NexodusIntegrationSuite) createNewUserWithName(ctx context.Context, name string, password string) (string, error) {
+func createNewUserWithName(ctx context.Context, name string, password string) (string, func(), error) {
 	id, err := uuid.NewUUID()
 	userName := name + id.String()
 
-	token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
+	token, err := keycloak.LoginAdmin(ctx, "admin", "floofykittens", "master")
 	if err != nil {
-		return "", fmt.Errorf("admin login to keycloak failed: %w", err)
+		return "", nil, fmt.Errorf("admin login to keycloak failed: %w", err)
 	}
 
-	userid, err := suite.gocloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
+	userid, err := keycloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
 		FirstName: gocloak.StringP("Test"),
 		LastName:  gocloak.StringP(name),
 		Email:     gocloak.StringP(userName + "@redhat.com"),
@@ -486,25 +491,26 @@ func (suite *NexodusIntegrationSuite) createNewUserWithName(ctx context.Context,
 		Username:  gocloak.StringP(userName),
 	})
 	if err != nil {
-		return "", fmt.Errorf("user create failed: %w", err)
+		return "", nil, fmt.Errorf("user create failed: %w", err)
 	}
-
-	suite.T().Cleanup(func() {
-		token, err := suite.gocloak.LoginAdmin(suite.Context(), "admin", "floofykittens", "master")
-		if err != nil {
-			_ = suite.gocloak.DeleteUser(ctx, token.AccessToken, "nexodus", userid)
+	deleteUser := func() {
+		// use a new context as the original is likely canceled now.
+		ctx := context.Background()
+		token, err := keycloak.LoginAdmin(ctx, "admin", "floofykittens", "master")
+		if err == nil {
+			_ = keycloak.DeleteUser(ctx, token.AccessToken, "nexodus", userid)
 		}
-	})
-
-	err = suite.gocloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
-	if err != nil {
-		return "", fmt.Errorf("user set password failed: %w", err)
 	}
-	return userName, nil
+
+	err = keycloak.SetPassword(ctx, token.AccessToken, userid, "nexodus", password, false)
+	if err != nil {
+		return "", deleteUser, fmt.Errorf("user set password failed: %w", err)
+	}
+	return userName, deleteUser, nil
 }
 
-func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid, password string) *oauth2.Token {
-	jwt, err := suite.gocloak.GetToken(ctx, "nexodus",
+func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token, error) {
+	jwt, err := keycloak.GetToken(ctx, "nexodus",
 		gocloak.TokenOptions{
 			ClientID:     gocloak.StringP("nexodus-cli"),
 			ClientSecret: gocloak.StringP(""),
@@ -513,13 +519,15 @@ func (suite *NexodusIntegrationSuite) getOauth2Token(ctx context.Context, userid
 			Password:     &password,
 			Scope:        gocloak.StringP("openid profile email read:organizations write:organizations read:users write:users read:devices write:devices"),
 		})
-	suite.Require().NoError(err)
+	if err != nil {
+		return nil, err
+	}
 	return &oauth2.Token{
 		AccessToken:  jwt.AccessToken,
 		TokenType:    jwt.TokenType,
 		RefreshToken: jwt.RefreshToken,
 		Expiry:       time.Now().Add(time.Duration(jwt.ExpiresIn) * time.Second),
-	}
+	}, nil
 }
 
 // getNodeHostname trims the container ID down to the node hostname

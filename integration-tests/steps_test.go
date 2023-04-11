@@ -4,6 +4,7 @@
 package integration_tests
 
 import (
+	"context"
 	"fmt"
 	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
@@ -12,11 +13,14 @@ import (
 
 type extender struct {
 	*cucumber.TestScenario
+	cleanups []func()
 }
 
 func init() {
 	cucumber.StepModules = append(cucumber.StepModules, func(ctx *godog.ScenarioContext, s *cucumber.TestScenario) {
-		e := &extender{s}
+		e := &extender{
+			TestScenario: s,
+		}
 		ctx.Step(`^a user named "([^"]*)" with password "([^"]*)"$`, e.aUserNamedWithPassword)
 
 		//ctx.Step(`^a user named "([^"]*)"$`, s.Suite.createUserNamed)
@@ -31,6 +35,15 @@ func init() {
 		ctx.Step(`^I store userid for "([^"]+)" as \${([^}]*)}$`, e.storeUserId)
 		ctx.Step(`^I generate a new public key as \${([^}]*)}$`, e.iGenerateANewPublicKeyAsVariable)
 
+		ctx.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
+			if err == nil {
+				for _, cleanup := range e.cleanups {
+					cleanup()
+				}
+				e.cleanups = nil
+			}
+			return ctx, nil
+		})
 	})
 }
 
@@ -44,11 +57,11 @@ func (s *extender) aUserNamedWithPassword(username string, password string) erro
 		return nil
 	}
 	ctx := s.Suite.Context
-	suite := GetNexodusIntegrationSuite(ctx)
-	userId, err := suite.createNewUserWithName(ctx, username, password)
+	userId, cleanup, err := createNewUserWithName(ctx, username, password)
 	if err != nil {
 		return err
 	}
+	s.cleanups = append(s.cleanups, cleanup)
 
 	s.Users[username] = &cucumber.TestUser{
 		Name:     username,
@@ -79,9 +92,11 @@ func (s *extender) iAmLoggedInAs(username string) error {
 
 	// do the oauth login...
 	ctx := s.Suite.Context
-	suite := GetNexodusIntegrationSuite(ctx)
-	user.Token = suite.getOauth2Token(ctx, user.Subject, user.Password)
-
+	var err error
+	user.Token, err = getOauth2Token(ctx, user.Subject, user.Password)
+	if err != nil {
+		return err
+	}
 	s.Session().Header.Del("Authorization")
 	s.CurrentUser = username
 	return nil

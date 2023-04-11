@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -20,10 +18,8 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/nexodus-io/nexodus/internal/cucumber"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -61,6 +57,8 @@ const (
 	enableV6  v6Enable = true
 )
 
+var keycloak *gocloak.GoCloak
+
 func init() {
 	if os.Getenv("NEXODUS_TEST_PODMAN") != "" {
 		fmt.Println("Using podman")
@@ -78,6 +76,8 @@ func init() {
 		hostDNSName = dockerKindGatewayIP()
 	}
 	_ = nexodus.CreateDirectory("tmp")
+	keycloak = gocloak.NewClient("https://auth.try.nexodus.127.0.0.1.nip.io")
+	keycloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 }
 
 func dockerKindGatewayIP() string {
@@ -90,8 +90,7 @@ func dockerKindGatewayIP() string {
 
 type NexodusIntegrationSuite struct {
 	suite.Suite
-	logger  *zap.SugaredLogger
-	gocloak *gocloak.GoCloak
+	logger *zap.SugaredLogger
 }
 
 func (suite *NexodusIntegrationSuite) Context() context.Context {
@@ -114,8 +113,6 @@ func TestNexodusIntegrationSuite(t *testing.T) {
 func (suite *NexodusIntegrationSuite) SetupSuite() {
 	logger := zaptest.NewLogger(suite.T())
 	suite.logger = logger.Sugar()
-	suite.gocloak = gocloak.NewClient("https://auth.try.nexodus.127.0.0.1.nip.io")
-	suite.gocloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 }
 
 func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
@@ -957,72 +954,6 @@ func (suite *NexodusIntegrationSuite) TestV6Disabled() {
 	suite.logger.Infof("Pinging %s from node2", node1IP)
 	err = ping(ctx, node2, inetV4, node1IP)
 	assert.NoError(err)
-}
-
-func (suite *NexodusIntegrationSuite) TestFeatures() {
-
-	// This looks for feature files in the current directory
-	var cucumberOptions = cucumber.DefaultOptions()
-	// configures where to look for feature files.
-	cucumberOptions.Paths = []string{"."}
-	// output more info when test is run in verbose mode.
-	for _, arg := range os.Args[1:] {
-		if arg == "-test.v=true" || arg == "-test.v" || arg == "-v" { // go test transforms -v option
-			cucumberOptions.Format = "pretty"
-		}
-	}
-
-	tlsConfig := suite.NewTLSConfig()
-
-	for i := range cucumberOptions.Paths {
-		root := cucumberOptions.Paths[i]
-
-		err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
-
-			suite.Require().NoError(err)
-
-			if info.IsDir() {
-				return nil
-			}
-
-			name := filepath.Base(info.Name())
-			ext := filepath.Ext(info.Name())
-
-			if ext != ".feature" {
-				return nil
-			}
-
-			suite.T().Run(name, func(t *testing.T) {
-
-				// To preserve the current behavior, the test are market to be "safely" run in parallel, however
-				// we may think to introduce a new naming convention i.e. files that ends with _parallel would
-				// cause t.Parallel() to be invoked, other tests won't, so they won't be executed concurrently.
-				//
-				// This could help reducing/removing the need of explicit lock
-				t.Parallel()
-
-				o := cucumberOptions
-				o.TestingT = t
-				o.Paths = []string{path.Join(root, name)}
-
-				s := cucumber.NewTestSuite()
-				s.Context = suite.Context()
-				s.ApiURL = "https://api.try.nexodus.127.0.0.1.nip.io"
-				s.TlsConfig = tlsConfig
-
-				status := godog.TestSuite{
-					Name:                name,
-					Options:             &o,
-					ScenarioInitializer: s.InitializeScenario,
-				}.Run()
-				if status != 0 {
-					suite.T().Fail()
-				}
-			})
-			return nil
-		})
-		suite.Require().NoError(err)
-	}
 }
 
 // TestProxyEgress tests that nexd proxy can be used with a single egress rule

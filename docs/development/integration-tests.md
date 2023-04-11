@@ -34,3 +34,9 @@ You can run a specific integration test by setting `NEX_TEST`. For example:
 ```console
 NEX_TEST=TestNexodusIntegrationSuite/TestProxyEgress make e2e
 ```
+
+or
+
+```console
+NEX_TEST=TestFeatures/organization-api/Show_basic_organization_api_in_action make e2e
+```
