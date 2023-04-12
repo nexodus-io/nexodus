@@ -307,10 +307,6 @@ jobs:
           docker load --input /tmp/nexd.tar
           docker load --input /tmp/envsubst.tar
 
-      - name: Build dist
-        run: |
-          make dist/nexd dist/nexctl
-
       - name: Setup KIND
         run: |
           OVERLAY=${{ matrix.overlay }} make setup-kind deploy-operators load-images deploy cacerts
