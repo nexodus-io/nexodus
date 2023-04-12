@@ -8,7 +8,7 @@
   set_fact:
     spoke_range_end: "{{ node_count_blue + node_count_red + node_count_green + relay_node_count_red + 1 }}"
 
-- name: Get the first 3 octets of the zone prefix
+- name: Get the first 3 octets of the org prefix
   shell: echo {{ nexodus_org_prefix }} | head -c -6
   register: ip_prefix
 
@@ -19,7 +19,7 @@
   debug:
     msg: "Running connectivity test on spoke node: {{ inventory_hostname }}"
 
-- name: Verify Connectivity from the relay node to all spokes
+- name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
     printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt

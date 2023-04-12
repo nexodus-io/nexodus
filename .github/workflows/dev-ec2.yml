@@ -116,7 +116,15 @@ jobs:
           --extra-vars "controller_address=${{ vars.EC2_API_SERVER_ADDR }}"
 
       - name: Mesh Connectivity Results
-        run: cat ./ops/ansible/aws/connectivity-results.txt
+        run: |
+          set -e
+          cat ./ops/ansible/aws/connectivity-results.txt
+          if grep -q '0 unreachable' ./ops/ansible/aws/connectivity-results.txt; then
+            echo "Connectivity results contain '0 unreachable' nodes"
+          else
+            echo "Connectivity results do not contain '0 unreachable' nodes, check the connectivity results for details, failing this job"
+            exit 1
+          fi
 
       - name: Terminate EC2 Instances
         if: always()

@@ -17,6 +17,13 @@
       - nftables
     state: latest
 
+# Remove with https://github.com/nexodus-io/nexodus/issues/789
+- name: Remove the stored token
+  become: yes
+  shell: |
+    rm /var/lib/nexd/apitoken.json
+  ignore_errors: yes
+
 - name: Create the certs dir
   shell: |
     mkdir -p .certs

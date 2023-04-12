@@ -1,5 +1,5 @@
 ---
-# tasks file for deploy-hub-router
+# tasks file for deploy-relay
 - name: Update repo cache
   become: yes
   apt:
@@ -15,6 +15,13 @@
       - mkcert
       - nftables
     state: latest
+
+# Remove with https://github.com/nexodus-io/nexodus/issues/789
+- name: Remove the stored token
+  become: yes
+  shell: |
+    rm /var/lib/nexd/apitoken.json
+  ignore_errors: yes
 
 - name: Create the certs dir
   shell: |
@@ -68,18 +75,11 @@
     sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
     sudo chmod +x /usr/local/sbin/nexd
 
-- name: Copy the verifier script
-  copy:
-    src: verify-connectivity.sh
-    dest: /home/{{ ansible_user }}/
-    mode: '0755'
-
-- name: Attach the Hub Router to the Controller
+- name: Attach the Relay Node to the Controller
   become: yes
   shell: |
     NEXD_LOGLEVEL=debug nexd \
     --relay-node \
-    --discovery-node \
     --stun \
     --username '{{ nexodus_auth_uid }}' \
     --password '{{ nexodus_auth_password }}' \

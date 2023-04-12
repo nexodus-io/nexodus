@@ -8,13 +8,6 @@
   roles:
     - role: setup-ec2
 
-# Deploy and start the hub router
-- hosts: relayNode
-  vars_files:
-    - vars.yml
-  roles:
-    - role: deploy-hub-router
-
 # Deploy and start the agent
 - hosts: nexodusNodes
   vars_files:
@@ -22,7 +15,14 @@
   roles:
     - role: deploy-mesh
 
-# Deploy and start the relay only agents
+# Deploy and start the relay server (--relay-node)
+- hosts: relayNode
+  vars_files:
+    - vars.yml
+  roles:
+    - role: deploy-relay
+
+# Deploy and start the relay only agents (--relay-only)
 - hosts: nexodusRelayNodes
   vars_files:
     - vars.yml
