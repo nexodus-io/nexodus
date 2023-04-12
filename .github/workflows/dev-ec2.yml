@@ -1,10 +1,14 @@
-# This workflow is for attaching ec2 nodes to the nexodus qa environment and is triggered via an argocd webhook
-name: qa-ec2-e2e
+# This workflow is for attaching to an arbitrary api-server specified in the vars secrets
+name: dev-ec2
 
 on:
-  repository_dispatch:
-    types:
-      - argocd-webhook
+  workflow_dispatch:
+    inputs:
+      deployment_size:
+        description: 'deployment size: small | medium | large'
+        required: true
+        default: 'small'
+        type: string
 
 jobs:
   deploy-ec2:
@@ -44,9 +48,20 @@ jobs:
       - name: Install amazon.aws Ansible library
         run: ansible-galaxy collection install amazon.aws
 
-      - name: Set Deployment Vars
+      - name: Set Deployment Size to Small
+        if: github.event.inputs.deployment_size == 'small'
         run: |
-          echo "${{ secrets.ANSIBLE_VARS_QA }}" > ./ops/ansible/aws/vars.yml
+          echo "${{ secrets.ANSIBLE_VARS_SMALL }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Medium
+        if: github.event.inputs.deployment_size == 'medium'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_MEDIUM }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Large
+        if: github.event.inputs.deployment_size == 'large'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_LARGE }}" > ./ops/ansible/aws/vars.yml
 
       - name: Create Ansible Secrets
         run: |
@@ -54,7 +69,6 @@ jobs:
           chmod 0400 nexodus.pem
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault-secret.txt
           chmod 0400 vault-secret.txt
-          # this rootCA import is not necessary for qa env but will preserve a single set of playbooks for qa & dev without ansible surgery
           echo "${{ secrets.ROOT_CA }}" > ./ops/ansible/aws/rootCA.pem
           chmod 0400 ops/ansible/aws/rootCA.pem
 
