@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package integration_tests
 
@@ -20,7 +19,7 @@ func TestFeatures(t *testing.T) {
 	// This looks for feature files in the current directory
 	var cucumberOptions = cucumber.DefaultOptions()
 	// configures where to look for feature files.
-	cucumberOptions.Paths = []string{"."}
+	cucumberOptions.Paths = []string{"features"}
 	// output more info when test is run in verbose mode.
 	for _, arg := range os.Args[1:] {
 		if arg == "-test.v=true" || arg == "-test.v" || arg == "-v" { // go test transforms -v option
