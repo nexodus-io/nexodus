@@ -13,7 +13,7 @@ type User struct {
 	ID            string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	DeletedAt     *time.Time      `sql:"index" json:"-"`
+	DeletedAt     gorm.DeletedAt  `gorm:"index" json:"-"`
 	Devices       []*Device       `json:"-"`
 	Organizations []*Organization `gorm:"many2many:user_organizations" json:"-"`
 	UserName      string

@@ -78,3 +78,14 @@ Feature: Users API
         "username": "${response.username}"
       }
       """
+
+    # Using the API again should recreate the user.
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    And the response should match json:
+      """
+      {
+        "id": "${ursala_id}",
+        "username": "${response.username}"
+      }
+      """
