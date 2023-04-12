@@ -270,7 +270,7 @@ run-dev-container: .dev-container ## Run docker container that you can develop a
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
 		-c database -- psql apiserver
 else ifeq ($(OVERLAY),arm64)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
@@ -282,7 +282,7 @@ endif
 run-sql-ipam: ## runs a command line SQL client to interact with the ipam database
 ifeq ($(OVERLAY),dev)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
 		-c database -- psql ipam
 else ifeq ($(OVERLAY),arm64)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U ipam ipam
@@ -294,7 +294,7 @@ endif
 run-sql-keycloak: ## runs a command line SQL client to interact with the keycloak database
 ifeq ($(OVERLAY),dev)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name) \
+		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
 		-c database -- psql keycloak
 else ifeq ($(OVERLAY),arm64)
 	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U keycloak keycloak
