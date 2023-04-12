@@ -311,6 +311,10 @@ jobs:
         run: |
           OVERLAY=${{ matrix.overlay }} make setup-kind deploy-operators load-images deploy cacerts
 
+      - name: Build dist
+        run: |
+          make dist/nexd dist/nexctl
+
       - name: Run e2e Tests
         run: |
           go test -v --tags=integration ./integration-tests/...
