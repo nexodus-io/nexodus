@@ -188,7 +188,7 @@ dist/.generate: $(SWAGGER_YAML) | dist
 
 .PHONY: e2e
 e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e tests
-	go test -race -v --tags=integration ./integration-tests/... $(if $(NEX_TEST),-run $(NEX_TEST),)
+	go test -race -v --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman

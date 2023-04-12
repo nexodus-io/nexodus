@@ -29,14 +29,14 @@ sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integ
 
 ## Run a Specific Test
 
-You can run a specific integration test by setting `NEX_TEST`. For example:
+You can run a specific integration test by setting `NEX_TEST` to a regex. For example:
 
 ```console
-NEX_TEST=TestNexodusIntegrationSuite/TestProxyEgress make e2e
+NEX_TEST='^TestProxyEgress$' make e2e
 ```
 
 or
 
 ```console
-NEX_TEST=TestFeatures/organization-api/Show_basic_organization_api_in_action make e2e
+NEX_TEST='TestFeatures/organization-api/Show_basic_organization_api_in_action' make e2e
 ```
