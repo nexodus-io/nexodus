@@ -1,6 +1,9 @@
 # This workflow is for attaching to an arbitrary api-server specified in the vars secrets
 name: dev-ec2
 
+concurrency:
+  group: dev-ec2
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +12,11 @@ on:
         required: true
         default: 'small'
         type: string
+
+      pr_or_branch:
+        description: 'pull request number or branch name'
+        required: true
+        default: 'main'
 
 jobs:
   deploy-ec2:
@@ -25,7 +33,27 @@ jobs:
       ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
       ANSIBLE_HOST_KEY_CHECKING: "false"
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Determine if pr_or_branch is a PR number
+        id: check_pr
+        run: |
+          if [[ "${{ github.event.inputs.pr_or_branch }}" =~ ^[0-9]+$ ]]; then
+            echo "::set-output name=is_pr::true"
+          else
+            echo "::set-output name=is_pr::false"
+          fi
+
+      - name: Fetch and checkout PR
+        if: steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          git fetch origin pull/${{ github.event.inputs.pr_or_branch }}/head:pr-${{ github.event.inputs.pr_or_branch }}
+          git checkout pr-${{ github.event.inputs.pr_or_branch }}
+
+      - name: Checkout branch
+        if: steps.check_pr.outputs.is_pr == 'false'
+        run: git checkout ${{ github.event.inputs.pr_or_branch }}
 
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
@@ -72,20 +100,23 @@ jobs:
           echo "${{ secrets.ROOT_CA }}" > ./ops/ansible/aws/rootCA.pem
           chmod 0400 ops/ansible/aws/rootCA.pem
 
-      - name: Deploy EC2 Playbooks
+      - name: Initialize the api-server Images
+        run: |
+          curl https://nexodus-io.s3.amazonaws.com/ec2-e2e/aws-e2e-pr-build.yml -o ./ops/ansible/aws/aws-e2e-pr-build.yml
+          ansible-playbook -vv ./ops/ansible/aws/aws-e2e-pr-build.yml \
+          --private-key nexodus.pem \
+          -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} pr_or_branch=${{ github.event.inputs.pr_or_branch }} ansible_user=ubuntu"
+
+      - name: Deploy EC2 Agent Nodes
         run: |
           ansible-playbook -vv ./ops/ansible/aws/deploy-ec2.yml \
           -i ./ops/ansible/aws/inventory.txt \
           --private-key nexodus.pem \
-          --vault-password-file vault-secret.txt
+          --vault-password-file vault-secret.txt \
+          --extra-vars "controller_address=${{ vars.EC2_API_SERVER_ADDR }}"
 
       - name: Mesh Connectivity Results
         run: cat ./ops/ansible/aws/connectivity-results.txt
-
-      - name: Reset the Nexodus Stack
-        if: always()
-        run: |
-          ansible-playbook -vv ./ops/ansible/aws/recreate-api-db.yml -u ubuntu
 
       - name: Terminate EC2 Instances
         if: always()
