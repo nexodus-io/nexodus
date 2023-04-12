@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"io"
 	"os/exec"
@@ -28,7 +27,6 @@ type Helper struct {
 	*testing.T
 	require *require.Assertions
 	assert  *assert.Assertions
-	logger  *zap.SugaredLogger
 }
 
 func NewHelper(t *testing.T) *Helper {
@@ -160,11 +158,15 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 			text := strings.TrimRightFunc(string(l.Content), unicode.IsSpace)
 			if text == "ready" {
 				wg.Done()
-				ctr.StopLogProducer()
+				err = ctr.StopLogProducer()
+				if err != nil {
+					helper.Log("could not stop log producer: %w", err)
+				}
 			}
 		},
 	})
-	ctr.StartLogProducer(ctx)
+	err = ctr.StartLogProducer(ctx)
+	helper.require.NoError(err)
 	wg.Wait()
 	return ctr, stop
 }
@@ -233,7 +235,7 @@ func (helper *Helper) runNexd(ctx context.Context, node testcontainers.Container
 	nexodus.WriteToFile(logger, strings.Join(cmd, " "), runScriptLocal, 0755)
 	// copy the nexd run script to the test container
 	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
-	helper.require.NoError(err, fmt.Errorf("execution of copy command on %s failed: %v", nodeName, err))
+	helper.require.NoError(err, fmt.Errorf("execution of copy command on %s failed: %w", nodeName, err))
 
 	// execute the nexd run script on the test container
 	_, err = helper.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
@@ -318,9 +320,10 @@ func (helper *Helper) gatherFail(c testcontainers.Container) string {
 // runCommand runs the cmd and returns the combined stdout and stderr
 func (helper *Helper) runCommand(cmd ...string) (string, error) {
 	helper.logf("Running command: %s", strings.Join(cmd, " "))
+	// #nosec G204
 	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to run %q: %s (%s)", strings.Join(cmd, " "), err, output)
+		return "", fmt.Errorf("failed to run %q: %w (%s)", strings.Join(cmd, " "), err, output)
 	}
 
 	return string(output), nil

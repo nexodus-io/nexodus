@@ -20,7 +20,6 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -106,7 +105,7 @@ func findCertsDir() (string, error) {
 		return false
 	})
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("certs directory error: %v, try running 'make cacerts'", err))
+		return "", fmt.Errorf("certs directory error: %w, try running 'make cacerts'", err)
 	}
 	return filepath.Join(dir, ".certs"), nil
 }
@@ -117,13 +116,6 @@ type FnConsumer struct {
 
 func (c FnConsumer) Accept(l testcontainers.Log) {
 	c.Apply(l)
-}
-
-func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, "/", "-")
-}
-func newClient(ctx context.Context, username, password string) (*client.APIClient, error) {
-	return client.NewAPIClient(ctx, "http://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(username, password))
 }
 
 func getContainerIfaceIP(ctx context.Context, family ipFamily, dev string, ctr testcontainers.Container) (string, error) {
@@ -187,8 +179,8 @@ func ping(ctx context.Context, ctr testcontainers.Container, family ipFamily, ad
 	return err
 }
 
-// lineCount for validating peer counts
-func lineCount(s string) (int, error) {
+// LineCount for validating peer counts
+func LineCount(s string) (int, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 	count := 0
 	for {
@@ -205,7 +197,7 @@ func lineCount(s string) (int, error) {
 	return count, nil
 }
 
-func networkAddr(n *net.IPNet) net.IP {
+func NetworkAddr(n *net.IPNet) net.IP {
 	network := net.ParseIP("0.0.0.0").To4()
 	for i := 0; i < len(n.IP); i++ {
 		network[i] = n.IP[i] & n.Mask[i]
@@ -224,6 +216,7 @@ func NewTLSConfig(t *testing.T) *tls.Config {
 	require.NoError(err)
 	caCertPool.AppendCertsFromPEM(caCert)
 
+	// #nosec G402
 	tlsConfig := &tls.Config{
 		RootCAs: caCertPool,
 	}
@@ -233,9 +226,10 @@ func NewTLSConfig(t *testing.T) *tls.Config {
 func createNewUserWithName(ctx context.Context, name string, password string) (string, func(), error) {
 
 	keycloak := gocloak.NewClient("https://auth.try.nexodus.127.0.0.1.nip.io")
+	// #nosec G402
 	keycloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 
-	id, err := uuid.NewUUID()
+	id, _ := uuid.NewUUID()
 	userName := name + id.String()
 
 	token, err := keycloak.LoginAdmin(ctx, "admin", "floofykittens", "master")
@@ -272,6 +266,7 @@ func createNewUserWithName(ctx context.Context, name string, password string) (s
 
 func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token, error) {
 	keycloak := gocloak.NewClient("https://auth.try.nexodus.127.0.0.1.nip.io")
+	// #nosec G402
 	keycloak.RestyClient().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 
 	jwt, err := keycloak.GetToken(ctx, "nexodus",

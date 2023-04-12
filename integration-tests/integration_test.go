@@ -355,6 +355,8 @@ func TestHubOrganization(t *testing.T) {
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var organizations []models.OrganizationJSON
 	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
+
 	require.Equal(1, len(organizations))
 	orgID := organizations[0].ID
 
@@ -364,9 +366,10 @@ func TestHubOrganization(t *testing.T) {
 		"--output", "json",
 		"device", "list", "--organization-id", orgID.String(),
 	)
-	var devices []models.Device
-	json.Unmarshal([]byte(allDevices), &devices)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+	var devices []models.Device
+	err = json.Unmarshal([]byte(allDevices), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
 
 	// register node3 device ID for node3 for deletion
 	var device3ID string
@@ -580,6 +583,8 @@ func TestNexctl(t *testing.T) {
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var user models.UserJSON
 	err = json.Unmarshal([]byte(commandOut), &user)
+	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
+
 	require.NotEmpty(user)
 	require.NotEmpty(user.ID)
 	require.NotEmpty(user.UserName)
@@ -592,6 +597,7 @@ func TestNexctl(t *testing.T) {
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
 	var organizations []models.OrganizationJSON
 	err = json.Unmarshal([]byte(commandOut), &organizations)
+	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 	require.Equal(1, len(organizations))
 
 	// validate no org fields are empty
@@ -639,9 +645,10 @@ func TestNexctl(t *testing.T) {
 		"--output", "json-raw",
 		"device", "list",
 	)
-	var devices []models.Device
-	json.Unmarshal([]byte(allDevices), &devices)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+	var devices []models.Device
+	err = json.Unmarshal([]byte(allDevices), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
 
 	// validate device fields that should always have values
 	require.NotEmpty(devices[0].ID)
@@ -773,9 +780,10 @@ func TestNexctl(t *testing.T) {
 		"device", "list",
 		"--organization-id", organizations[0].ID.String(),
 	)
-
-	json.Unmarshal([]byte(devicesInOrganization), &devices)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+
+	err = json.Unmarshal([]byte(devicesInOrganization), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
 
 	// List users and register the current user's ID for deletion
 	userList, err := helper.runCommand(nexctl,
@@ -784,9 +792,10 @@ func TestNexctl(t *testing.T) {
 		"--output", "json-raw",
 		"user", "list",
 	)
-	var users []models.User
-	json.Unmarshal([]byte(userList), &users)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
+	var users []models.User
+	err = json.Unmarshal([]byte(userList), &users)
+	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 
 	var deleteUserID string
 	for _, u := range users {
@@ -914,6 +923,7 @@ func TestProxyEgress(t *testing.T) {
 		require.True(strings.Contains(output, "bananas"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 	wg.Wait()
 }
@@ -987,6 +997,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 		require.True(strings.Contains(output2, "bananas"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 	wg.Wait()
 }
@@ -1049,6 +1060,7 @@ func TestProxyIngress(t *testing.T) {
 		require.True(strings.Contains(output, "bananas"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 	wg.Wait()
 }
@@ -1118,6 +1130,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 		require.True(strings.Contains(output, "bananas"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 	wg.Wait()
 }
@@ -1190,6 +1203,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 		require.True(strings.Contains(output, "bananas"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 
 	// run curl on node2 (to the local proxy) to reach the server on node1 (this exercises the ingress rule)
@@ -1204,6 +1218,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 		require.True(strings.Contains(output, "pancakes"))
 		return true, nil
 	})
+	require.NoError(err)
 	require.True(success)
 	wg.Wait()
 }
@@ -1345,6 +1360,7 @@ func TestWatchDevices(t *testing.T) {
 	assert.Equal(*device, watchedDevice)
 
 	device, _, err = c.DevicesApi.DeleteDevice(ctx, device.Id).Execute()
+	require.NoError(err)
 
 	// We should get sent an event for the device that was deleted
 	kind, watchedDevice, err = watch.Receive()
