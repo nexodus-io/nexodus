@@ -34,7 +34,6 @@ relay_node_count_red: 1                   # Number of relay client nodes
 ### Controller Section (values are there for example, replace with your environment) ###
 controller_address: <CONTROLLER_ADDRESS>
 nexodus_binary: https://nexodus-io.s3.amazonaws.com/nexodus-amd64-linux
-nexodus_zone_name: zone-hub
 nexodus_org_prefix: 100.100.0.0/16
 nexodus_org_prefix_v6: 200::/64
 
