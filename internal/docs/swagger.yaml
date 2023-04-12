@@ -115,6 +115,8 @@ definitions:
         type: string
       relay:
         type: boolean
+      revision:
+        type: integer
       symmetric_nat:
         type: boolean
       tunnel_ip:
@@ -227,6 +229,8 @@ definitions:
       organization_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
+      revision:
+        type: integer
       symmetric_nat:
         type: boolean
     type: object
@@ -802,6 +806,10 @@ paths:
       description: Lists all devices for this Organization
       operationId: ListDevicesInOrganization
       parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
       - description: Organization ID
         in: path
         name: organization_id

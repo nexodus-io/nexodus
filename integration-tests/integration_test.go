@@ -1456,3 +1456,73 @@ func (suite *NexodusIntegrationSuite) TestApiClientConflictError() {
 	require.True(ok)
 	require.Equal(device.Id, conflict.Id)
 }
+func (suite *NexodusIntegrationSuite) TestWatchDevices() {
+	suite.T().Parallel()
+	require := suite.Require()
+	assert := suite.Assert()
+	parentCtx := suite.Context()
+
+	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username := suite.createNewUser(ctx, password)
+
+	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+		username,
+		password,
+	))
+	require.NoError(err)
+	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
+	require.NoError(err)
+	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
+	require.NoError(err)
+
+	privateKey, err := wgtypes.GeneratePrivateKey()
+	require.NoError(err)
+	publicKey := privateKey.PublicKey().String()
+
+	watch, _, err := c.DevicesApi.ListDevicesInOrganization(ctx, orgs[0].Id).Watch()
+	require.NoError(err)
+	defer watch.Close()
+
+	kind, _, err := watch.Receive()
+	require.NoError(err)
+	assert.Equal("bookmark", kind)
+
+	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
+		EndpointLocalAddressIp4: "172.17.0.3",
+		Hostname:                "bbac3081d5e8",
+		OrganizationId:          orgs[0].Id,
+		PublicKey:               publicKey,
+		UserId:                  user.Id,
+		Endpoints: []public.ModelsEndpoint{
+			{
+				Source:   "local",
+				Address:  "172.17.0.3:58664",
+				Distance: 0,
+			},
+			{
+				Source:   "stun:",
+				Address:  "47.196.141.165",
+				Distance: 12,
+			},
+		},
+	}).Execute()
+	require.NoError(err)
+
+	// We should get sent an event for the device that was created
+	kind, watchedDevice, err := watch.Receive()
+	require.NoError(err)
+	assert.Equal("change", kind)
+	assert.Equal(*device, watchedDevice)
+
+	//device, _, err = c.DevicesApi.DeleteDevice(ctx, device.Id).Execute()
+	//
+	//// We should get sent an event for the device that was deleted
+	//kind, watchedDevice, err = watch.Receive()
+	//require.NoError(err)
+	//assert.Equal("delete", kind)
+	//assert.Equal(*device, watchedDevice)
+
+}

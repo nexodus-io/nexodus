@@ -3,7 +3,6 @@ package migration_20230328_0000
 import (
 	"github.com/go-gormigrate/gormigrate/v2"
 	. "github.com/nexodus-io/nexodus/internal/database/migrations"
-	"gorm.io/gorm"
 )
 
 func Migrate() *gormigrate.Migration {
@@ -18,10 +17,6 @@ func Migrate() *gormigrate.Migration {
 				FROM (SELECT user_id, organization_id FROM  user_organizations) AS subquery
 				WHERE organizations.id=subquery.organization_id AND organizations.owner_id='';
 				`,
-			``, func(db *gorm.DB) bool {
-				// this SQL does not work well against Sqlite.
-				version := ""
-				return db.Raw("SELECT sqlite_version()").Scan(&version).Error != nil
-			}),
+			``, NotOnSqlLite),
 	)
 }

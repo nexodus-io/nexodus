@@ -6,6 +6,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -214,13 +215,14 @@ func (api *API) GetOrganizations(c *gin.Context) {
 	c.JSON(http.StatusOK, org)
 }
 
-// ListDevicesInOrganization lists all devices in a Organization
+// ListDevicesInOrganization lists all devices in an Organization
 // @Summary      List Devices
 // @Description  Lists all devices for this Organization
 // @Id           ListDevicesInOrganization
 // @Tags         Devices
 // @Accepts		 json
 // @Produce      json
+// @Param		 gt_revision     query  uint64 false "greater than revision"
 // @Param		 organization_id path   string true "Organization ID"
 // @Success      200  {object}  []models.Device
 // @Failure      400  {object}  models.BaseError
@@ -232,6 +234,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInOrganization")
 	defer span.End()
+
 	k, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
@@ -251,21 +254,129 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 
-	var devices []*models.Device
-	result = api.db.WithContext(ctx).
-		Scopes(FilterAndPaginate(&models.Device{}, c, "hostname")).
-		Where("organization_id = ?", k.String()).
-		Find(&devices)
-
-	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
 		return
 	}
+	defaultOrderBy := "hostname"
 
-	// For pagination
-	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
-	c.Header(TotalCountHeader, strconv.Itoa(len(devices)))
-	c.JSON(http.StatusOK, devices)
+	gtRevision := uint64(0)
+	if v := c.Query("gt_revision"); v != "" {
+		gtRevision, _ = strconv.ParseUint(v, 10, 0)
+	}
+
+	includeDeleted := false
+
+	getList := func() ([]*models.Device, error) {
+		var devices []*models.Device
+
+		db := api.db.WithContext(ctx)
+		if includeDeleted {
+			db = db.Unscoped()
+		}
+		db = db.Scopes(FilterAndPaginateWithQuery(&models.Device{}, c, query, defaultOrderBy)).
+			Where("organization_id = ?", k.String())
+
+		if gtRevision != 0 {
+			db = db.Where("revision > ?", gtRevision)
+		}
+
+		result = db.Find(&devices)
+
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return devices, nil
+	}
+
+	if v := c.Query("watch"); v == "true" {
+		query.Sort = ""
+		defaultOrderBy = "revision"
+		includeDeleted = true
+		sub := api.signalBus.Subscribe(fmt.Sprintf("/devices/org=%s", k.String()))
+		defer sub.Close()
+
+		idx := 1
+		var list []*models.Device
+		bookmarkSent := false
+
+		c.Header("Content-Type", "application/json;stream=watch")
+		c.Status(http.StatusOK)
+		stream(c, func() models.WatchEvent {
+			// This function blocks until there is an event to return...
+			for {
+				if err != nil {
+					return models.WatchEvent{
+						Type:  "error",
+						Value: err.Error(),
+					}
+				}
+				if idx < len(list) {
+					result := list[idx]
+					gtRevision = result.Revision
+					idx += 1
+
+					if result.DeletedAt.Valid {
+						return models.WatchEvent{
+							Type:  "delete",
+							Value: result,
+						}
+					} else {
+						return models.WatchEvent{
+							Type:  "change",
+							Value: result,
+						}
+					}
+				} else {
+
+					// get the next list...
+					list, err = getList()
+					if err != nil {
+						return models.WatchEvent{
+							Type:  "error",
+							Value: err.Error(),
+						}
+					}
+					idx = 0
+
+					// did we run out of items to send?
+					if len(list) == 0 {
+
+						// bookmark idea taken from: https://kubernetes.io/docs/reference/using-api/api-concepts/#watch-bookmarks
+						if !bookmarkSent {
+							bookmarkSent = true
+							return models.WatchEvent{
+								Type: "bookmark",
+							}
+						}
+
+						// Wait for some items to come into the list
+						if waitForCancelOrTimeoutOrNotification(ctx, 30*time.Second, sub) {
+							// ctx was canceled... likely due to the http connection being closed by
+							// the client.  Signal the event stream is done.
+							return models.WatchEvent{
+								Type: "close",
+							}
+						}
+					}
+				}
+			}
+		})
+
+	} else {
+		devices, err := getList()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			return
+		}
+
+		// For pagination
+		c.Header("Access-Control-Expose-Headers", TotalCountHeader)
+		c.Header(TotalCountHeader, strconv.Itoa(len(devices)))
+		c.JSON(http.StatusOK, devices)
+	}
+
 }
 
 // GetDeviceInOrganization gets a device in a Organization

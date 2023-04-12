@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"github.com/nexodus-io/nexodus/internal/signalbus"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -209,13 +212,18 @@ func main() {
 		},
 
 		Action: func(cCtx *cli.Context) error {
-			ctx, span := tracer.Start(cCtx.Context, "Run")
+			ctx, _ := signal.NotifyContext(cCtx.Context, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+			ctx, span := tracer.Start(ctx, "Run")
 			defer span.End()
-			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
+			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
 
 				if err := database.Migrations().Migrate(ctx, db); err != nil {
 					log.Fatal(err)
 				}
+
+				signalBus := signalbus.NewPgSignalBus(signalbus.NewSignalBus(), db, dsn, logger.Sugar())
+				wg := &sync.WaitGroup{}
+				signalBus.Start(ctx, wg)
 
 				ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
 
@@ -223,7 +231,7 @@ func main() {
 
 				store := inmem.New()
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store)
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -300,10 +308,10 @@ func main() {
 					}
 				}()
 
-				ch := make(chan os.Signal, 1)
-				signal.Notify(ch, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-				<-ch
-
+				util.GoWithWaitGroup(wg, func() {
+					<-ctx.Done()
+				})
+				wg.Wait() // context is canceled via signal.
 				server.Close()
 			})
 			return nil
@@ -314,7 +322,7 @@ func main() {
 		Usage: "Rollback the last database migration",
 		Action: func(cCtx *cli.Context) error {
 			ctx := cCtx.Context
-			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB) {
+			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
 				if err := database.Migrations().RollbackLast(ctx, db); err != nil {
 					log.Fatal(err)
 				}
@@ -328,7 +336,7 @@ func main() {
 	}
 }
 
-func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB)) {
+func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
 
 	var logger *zap.Logger
 	var err error
@@ -352,7 +360,7 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 		}
 	}()
 
-	db, err := database.NewDatabase(
+	db, dsn, err := database.NewDatabase(
 		ctx,
 		logger.Sugar(),
 		cCtx.String("db-host"),
@@ -366,7 +374,7 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 		log.Fatal(err)
 	}
 
-	f(logger, db)
+	f(logger, db, dsn)
 }
 
 func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func(context.Context) error {

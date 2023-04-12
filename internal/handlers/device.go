@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -190,9 +191,12 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.ChildPrefix = request.ChildPrefix
 		}
 
-		if res := tx.Save(&device); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Save(&device); res.Error != nil {
 			return res.Error
 		}
+
 		return nil
 	})
 
@@ -204,6 +208,8 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		}
 		return
 	}
+
+	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 	c.JSON(http.StatusOK, device)
 }
 
@@ -339,12 +345,15 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Os:                       request.Os,
 		}
 
-		if res := tx.Create(&device); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Create(&device); res.Error != nil {
 			return res.Error
 		}
 		span.SetAttributes(
 			attribute.String("id", device.ID.String()),
 		)
+
 		return nil
 	})
 
@@ -360,6 +369,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		return
 	}
 
+	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 	c.JSON(http.StatusCreated, device)
 }
 
@@ -403,10 +413,14 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	orgPrefix := device.OrganizationPrefix
 	childPrefix := device.ChildPrefix
 
-	if res := api.db.WithContext(ctx).Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
+	if res := api.db.WithContext(ctx).
+		Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+		Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
 		return
 	}
+
+	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddress, orgPrefix); err != nil {
