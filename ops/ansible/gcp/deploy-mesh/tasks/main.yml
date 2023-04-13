@@ -66,13 +66,6 @@
     sudo ip link del wg0
   ignore_errors: yes
 
-- name: Copy the verifier script
-  copy:
-    src: verify-connectivity.sh
-    dest: /home/{{ ansible_user }}/
-    mode: '0755'
-  ignore_errors: yes
-
 - name: Download the Nexodus Agent Binary
   shell: |
     sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd

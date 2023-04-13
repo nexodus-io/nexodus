@@ -54,24 +54,7 @@ cd /nexodus/ops/ansible/
 ansible-playbook -vv ./deploy.yml 
 ```
 
-- Once the nodes are finished provisioning, ssh to the `relayNode` from the ansible inventory and run the validation test that verifies connectivity across VPCs.
-
-```shell
-ssh -i <key_name>.pem ubuntu@<ip_from_inventory>
-
-# copy the node addresses to a file
-sudo grep 10.180.0 /etc/wireguard/wg0.conf | awk '{print $3}'
-
-./verify-connectivity.sh <name of file you copied the node addresses to>
-node 10.180.0.6 is up
-node 10.180.0.2 is up
-node 10.180.0.3 is up
-node 10.180.0.4 is up
-node 10.180.0.5 is up
-...
-
-# The best test is to initiate the test from a spoke node to make sure end-to-end traffic traverses the hub and direct peerings
-```
+A good test is to initiate the test from a spoke node to make sure end-to-end traffic traverses the relay and direct peerings. Fping is also a useful utility for ping sweeping.
 
 - Add your own machine to the mesh, for example, a mac or linux dev machine by creating a toml file of any name with your host's details:
 - This will redirect to a web page to enter the pass code provided from registration (also under daily development).
