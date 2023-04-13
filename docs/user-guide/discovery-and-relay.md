@@ -10,7 +10,7 @@ Relay and Discovery can be run on the same or separate nodes. Both of these mach
 Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Starting The Agent](agent.md#starting-the-agent) section to set up the node and install the `nexd` binary.
 
 ```sh
-sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
+sudo nexd --stun relay --enable-discovery https://try.nexodus.127.0.0.1.nip.io
 ```
 
 You can list the available organizations using the following command
@@ -25,13 +25,13 @@ dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Defaul
 ### Interactive OnBoarding
 
 ```sh
-sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
+sudo nexd --stun relay --enable-discovery https://try.nexodus.127.0.0.1.nip.io
 ```
 
 It will print a URL on stdout to onboard the discovery/relay node
 
 ```sh
-$ sudo nexd --discovery-node --relay-node --stun https://try.nexodus.127.0.0.1.nip.io
+$ sudo nexd --stun relay --enable-discovery https://try.nexodus.127.0.0.1.nip.io
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
@@ -45,5 +45,5 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
-nexd --discovery-node --relay-node --stun --username=kitteh1 --password=floofykittens https://try.nexodus.127.0.0.1.nip.io
+nexd --stun --username=kitteh1 --password=floofykittens relay --enable-discovery https://try.nexodus.127.0.0.1.nip.io
 ```

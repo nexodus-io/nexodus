@@ -1,11 +1,11 @@
 # Mesh network between containers running on connected nodes
 
 Imagine a user wants to not only communicate between the node address each member of the mesh but also want to advertise
-some additional IP prefixes for additional services running on a node. This can be accomplished with the `--child-prefix` flag.
-Prefixes have to be unique within a zone but can overlap on separate zones.
+some additional IP prefixes for additional services running on a node. This can be accomplished with the `--child-prefix` flag
+of `router` subcommand. Prefixes have to be unique within a zone but can overlap on separate zones.
 
 The following example allows a user to connect Docker container directly to one another without exposing a port on the node.
-These nodes could be in different data centers or CSPs. This example uses the `--child-prefix` option to advertise the private
+These nodes could be in different data centers or CSPs. This example uses the `router --child-prefix` option to advertise the private
 container networks to the mesh and enable connectivity.
 
 For simplicity, we are just using the default, built-in zone `default`.
@@ -15,8 +15,7 @@ For simplicity, we are just using the default, built-in zone `default`.
 Join node1 to the `default` zone network
 
 ```shell
-sudo nexd <CONTROLLER_URL> \
-    --child-prefix=172.24.0.0/24
+sudo nexd router --child-prefix=172.24.0.0/24 <CONTROLLER_URL>
 ```
 
 Create the container network:
@@ -42,8 +41,7 @@ docker run -it --rm --network=net1 busybox bash
 Join node2 to the `default` zone network
 
 ```shell
-sudo nexd <CONTROLLER_URL> \
-    --child-prefix=172.28.0.0/24
+sudo nexd router --child-prefix=172.28.0.0/24 <CONTROLLER_URL>
 ```
 
 Setup a docker network and start a node on it:

@@ -4,10 +4,10 @@ Typically, the Nexodus agent runs on every host that you intend to have connecti
 
 In the following diagram, `Host X` acts as a Subnet Router, allowing all hosts within Nexodus Organization A to access `192.168.100.0/24`.
 
-To configure this scenario, the `nexd` agent on `Host X` must be run with the `--child-prefix` parameter.
+To configure this scenario, the `nexd` agent on `Host X` must be run with the `router --child-prefix` parameter.
 
 ```sh
-sudo nexd --child-prefix 192.168.100.0/24 [...]
+sudo nexd router --child-prefix 192.168.100.0/24 [...]
 ```
 
 The subnet exposed to the Nexodus Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).

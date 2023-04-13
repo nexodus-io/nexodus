@@ -23,7 +23,7 @@ While `local_ip_v6` (v6 tunnel endpoint) is not used in the dual stack implement
 
 ### CLI Changes
 
-The only CLI changes are some details in descriptions specifically calling out IPv4 only support to features such as `--child-prefix` and `tunnel-ip` that are not implemented in the initial work. Ideally we don't add flag bloat here and accept v4/v6 in applicable fields rather than net new fields for v6. For example, `--child-prefix=172.17.20.0/24,2001:db8:abcd:0012::0/64`.
+The only CLI changes are some details in descriptions specifically calling out IPv4 only support to features such as `router --child-prefix` and `tunnel-ip` that are not implemented in the initial work. Ideally we don't add flag bloat here and accept v4/v6 in applicable fields rather than net new fields for v6. For example, `--child-prefix=172.17.20.0/24,2001:db8:abcd:0012::0/64`.
 
 ### IPv4 Only Support
 
@@ -36,7 +36,7 @@ This should probably be transparent to the users. There probably isn't much valu
 Relay support for v6 is required just as it is for v4.
 
 - Spoke node: If a node is in a symmetric NAT cone or been passed the `--relay-only` option, the joining node will receive a supernet prefix of the Organization's v6 CIDR of `200:/64` to the driver dev.
-- Relay node: The `--relay-node` needs to have v6 forwarding enabled on initialization (enable it if it is not enabled). Next an ip6tables rules are added to forward traffic in and out of the driver interface for relay only spokes.
+- Relay node: The `relay` needs to have v6 forwarding enabled on initialization (enable it if it is not enabled). Next an ip6tables rules are added to forward traffic in and out of the driver interface for relay only spokes.
 
 ### Default Org v6 Prefix
 
