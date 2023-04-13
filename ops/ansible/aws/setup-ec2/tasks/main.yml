@@ -20,7 +20,7 @@
       - proto: all
         cidr_ip: "0.0.0.0/0"
 
-### Hub Router Setup ###
+### Relay Node Server Setup (--relay-node) ###
 - name: Launching Hub Router in VPC Blue
   amazon.aws.ec2_instance:
     name: "hub-router-zone-blue"
@@ -169,6 +169,7 @@
   register: nodeIP
   loop: "{{ range(0, node_count_red | int) }}"
 
+### Relay only agents (--relay-only) ###
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
