@@ -56,7 +56,8 @@ const (
 )
 
 var (
-	invalidTokenGrant = errors.New("invalid_grant")
+	invalidTokenGrant   = errors.New("invalid_grant")
+	deviceNotRegistered = errors.New("device not registered")
 )
 
 // embedded in Nexodus struct
@@ -399,6 +400,14 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if err := ax.Reconcile(true); err != nil {
+		if errors.Is(err, deviceNotRegistered) {
+			if err = ax.client.ClearToken(); err != nil {
+				ax.logger.Errorf("Failed to clear the api token.")
+			}
+			return fmt.Errorf(
+				"Device %s is not registered with the organization %s. Please re-register the device.",
+				ax.wireguardPubKey, ax.organization)
+		}
 		return fmt.Errorf("initial reconcile failed: %w", err)
 	}
 
@@ -436,6 +445,15 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
 	if err := ax.Reconcile(false); err != nil {
 		// TODO: Add smarter reconciliation logic
+		if errors.Is(err, deviceNotRegistered) {
+			if err := ax.client.ClearToken(); err != nil {
+				ax.logger.Errorf("Failed to clear the api token.")
+			}
+			ax.logger.Fatalf(
+				"Device %s is not registered with the organization %s. Please re-register the device.",
+				ax.wireguardPubKey, ax.organization)
+		}
+
 		ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
 		// if the token grant becomes invalid expires refresh or exit depending on the onboard method
 		if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
@@ -502,10 +520,14 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 			// reinitialize peers if the NAT binding has changed for the node
 			if err = ax.Reconcile(true); err != nil {
 				ax.logger.Debugf("reconcile failed %v", res)
+				if errors.Is(err, deviceNotRegistered) {
+					return fmt.Errorf("Device %s is not registered with the organization %s. Please re-register the device.", ax.wireguardPubKey, ax.organization)
+				}
+
 			}
 		}
 	}
-	ax.logger.Debugf("relfexive binding is %s", reflexiveIP)
+	ax.logger.Debugf("reflexive binding is %s", reflexiveIP)
 
 	return nil
 }
@@ -515,11 +537,16 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 	if err != nil {
 		return err
 	}
+
+	selfDeviceCheck := false
 	var newPeers []public.ModelsDevice
 	if firstTime {
 		// Initial peer list processing branches from here
 		ax.logger.Debugf("Initializing peers for the first time")
 		for _, p := range peerListing {
+			if ax.wireguardPubKey == p.PublicKey {
+				selfDeviceCheck = true
+			}
 			existing, ok := ax.deviceCache[p.Id]
 			if !ok {
 				ax.deviceCache[p.Id] = p
@@ -529,6 +556,9 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 				ax.deviceCache[p.Id] = p
 				newPeers = append(newPeers, p)
 			}
+		}
+		if !selfDeviceCheck {
+			return deviceNotRegistered
 		}
 		ax.buildPeersConfig()
 		if err := ax.DeployWireguardConfig(newPeers, firstTime); err != nil {
@@ -540,7 +570,12 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 	}
 	// all subsequent peer listings updates get branched from here
 	changed := false
+	selfDeviceCheck = false
+
 	for _, p := range peerListing {
+		if ax.wireguardPubKey == p.PublicKey {
+			selfDeviceCheck = true
+		}
 		existing, ok := ax.deviceCache[p.Id]
 		if !ok {
 			changed = true
@@ -552,6 +587,9 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 			ax.deviceCache[p.Id] = p
 			newPeers = append(newPeers, p)
 		}
+	}
+	if !selfDeviceCheck {
+		return deviceNotRegistered
 	}
 
 	if changed {

@@ -16,7 +16,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type APIClient = public.APIClient
+type APIClient struct {
+	*public.APIClient
+	options *options
+}
 
 func NewAPIClient(ctx context.Context, addr string, authcb func(string), options ...Option) (*APIClient, error) {
 	opts, err := newOptions(options...)
@@ -118,7 +121,11 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 	}
 
 	clientConfig.HTTPClient = oauth2.NewClient(ctx, source)
-	return public.NewAPIClient(clientConfig), nil
+	apiclient := &APIClient{
+		public.NewAPIClient(clientConfig),
+		opts,
+	}
+	return apiclient, nil
 }
 
 type storeOnChangeSource struct {
@@ -171,4 +178,15 @@ func saveTokenToFile(path string, token *oauth2.Token) error {
 	}
 	defer f.Close()
 	return json.NewEncoder(f).Encode(token)
+}
+
+func (as *APIClient) ClearToken() error {
+	if as.options.tokenFile != "" {
+		if _, err := os.Stat(as.options.tokenFile); !os.IsNotExist(err) {
+			if err := os.Remove(as.options.tokenFile); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

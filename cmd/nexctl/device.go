@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
+
+	"github.com/nexodus-io/nexodus/internal/client"
 
 	"github.com/google/uuid"
 )
 
-func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut string) error {
+func listOrgDevices(c *client.APIClient, organizationID uuid.UUID, encodeOut string) error {
 	devices, _, err := c.DevicesApi.ListDevicesInOrganization(context.Background(), organizationID.String()).Execute()
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +44,7 @@ func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut str
 	return nil
 }
 
-func listAllDevices(c *public.APIClient, encodeOut string) error {
+func listAllDevices(c *client.APIClient, encodeOut string) error {
 	devices, _, err := c.DevicesApi.ListDevices(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
@@ -86,7 +87,7 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 	return nil
 }
 
-func deleteDevice(c *public.APIClient, encodeOut, devID string) error {
+func deleteDevice(c *client.APIClient, encodeOut, devID string) error {
 	devUUID, err := uuid.Parse(devID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
