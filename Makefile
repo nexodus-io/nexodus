@@ -95,7 +95,7 @@ go-lint-prereqs:
 dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist gen-openapi-client
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
-		golangci-lint run --timeout 5m ./...
+		golangci-lint run --build-tags integration --timeout 5m ./...
 	$(CMD_PREFIX) touch $@
 
 .PHONY: yaml-lint
@@ -188,7 +188,7 @@ dist/.generate: $(SWAGGER_YAML) | dist
 
 .PHONY: e2e
 e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e tests
-	go test -v --tags=integration ./integration-tests/... $(if $(NEX_TEST),-run $(NEX_TEST),)
+	go test -race -v --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
