@@ -6,6 +6,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230409_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230411_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230412_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230413_0000"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -110,6 +111,7 @@ func Migrations() *migrations.Migrations {
 			migration_20230409_0000.Migrate(),
 			migration_20230411_0000.Migrate(),
 			migration_20230412_0000.Migrate(),
+			migration_20230413_0000.Migrate(),
 		},
 	}
 }
