@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -13,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"net/http"
 )
 
 // key for username in gin.Context
@@ -40,6 +39,8 @@ func (api *API) UserIsCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
+var noUUID = uuid.UUID{}
+
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
@@ -47,27 +48,17 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		attribute.String("user-id", id),
 		attribute.String("username", userName),
 	)
-	org := models.Organization{}
-	return org.ID, api.transaction(ctx, func(tx *gorm.DB) error {
-		var user models.User
-		res := tx.Unscoped().First(&user, "id = ?", id)
-		if res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("can't find record for user id %s", id)
-			}
-			user.ID = id
-			user.UserName = userName
-			if res = tx.Create(&user); res.Error != nil {
-				return fmt.Errorf("can't create user record: %w", res.Error)
-			}
-		}
+	tx := api.db
+	var user models.User
+	res := tx.Unscoped().First(&user, "id = ?", id)
+	if res.Error == nil {
 
-		// The user was previously deleted... lets make him active again.
+		// Was the user was previously deleted... lets make him active again.
 		if user.DeletedAt.Valid {
 			user.DeletedAt = gorm.DeletedAt{}
 			res = tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
 			if res.Error != nil {
-				return res.Error
+				return noUUID, res.Error
 			}
 		}
 
@@ -75,42 +66,84 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		if user.UserName != userName {
 			res = tx.Model(&user).Update("UserName", userName)
 			if res.Error != nil {
-				return res.Error
+				return noUUID, res.Error
 			}
 		}
 
-		// Do we need to create am org for the user?
-		res = tx.Where("owner_id = ?", user.ID).First(&org)
-		if res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				return res.Error
-			}
+		return api.createUserOrgIfNotExists(ctx, id, userName)
+	}
 
-			org = models.Organization{
-				Name:        userName,
-				OwnerID:     id,
-				Description: fmt.Sprintf("%s's organization", userName),
-				IpCidr:      defaultOrganizationPrefixIPv4,
-				IpCidrV6:    defaultOrganizationPrefixIPv6,
-				HubZone:     true,
-				Users:       []*models.User{&user},
-			}
-			if res = tx.Create(&org); res.Error != nil {
-				return fmt.Errorf("can't create organization record: %w", res.Error)
-			}
-			if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
-				return fmt.Errorf("failed to create ipam namespace: %w", err)
-			}
-			if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
-				return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
-			}
-			if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
-				return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
-			}
+	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return noUUID, fmt.Errorf("can't find record for user id %s", id)
+	}
+	user.ID = id
+	user.UserName = userName
+	res = tx.Create(&user)
+	if res.Error == nil {
+		return api.createUserOrgIfNotExists(ctx, id, userName)
+	}
+	if res.Error.Error() != "duplicated key not allowed" {
+		return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
+	}
 
+	// is another concurrent request creating the user???
+	user = models.User{}
+	if tx.Unscoped().First(&user, "id = ?", id).Error == nil {
+		return api.createUserOrgIfNotExists(ctx, id, userName)
+	}
+
+	return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
+}
+
+func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, userName string) (uuid.UUID, error) {
+
+	// Get the first org the use owns.
+	org := models.Organization{}
+	res := api.db.Where("owner_id = ?", userId).First(&org)
+	if res.Error == nil {
+		return org.ID, nil
+	}
+	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return noUUID, res.Error
+	}
+
+	org = models.Organization{
+		Name:        userName,
+		OwnerID:     userId,
+		Description: fmt.Sprintf("%s's organization", userName),
+		IpCidr:      defaultOrganizationPrefixIPv4,
+		IpCidrV6:    defaultOrganizationPrefixIPv6,
+		HubZone:     true,
+		Users: []*models.User{&models.User{
+			ID: userId,
+		}},
+	}
+	if res = api.db.Create(&org); res.Error == nil {
+
+		if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
+			return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
 		}
-		return nil
-	})
+		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
+			return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+		}
+		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
+			return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+		}
+
+		return org.ID, nil
+	}
+
+	if res.Error.Error() != "duplicated key not allowed" {
+		return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
+	}
+
+	// maybe another concurrent request created it...
+	org = models.Organization{}
+	if api.db.Where("owner_id = ?", userId).First(&org).Error == nil {
+		return org.ID, nil
+	}
+
+	return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
 }
 
 // GetUser gets a user

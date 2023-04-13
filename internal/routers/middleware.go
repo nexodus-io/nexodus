@@ -84,7 +84,7 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			"method":       c.Request.Method,
 			"path":         path,
 		}
-		logger = logger.With("input", input)
+
 		results, err := query.Eval(c.Request.Context(), rego.EvalInput(input))
 		if err != nil {
 			logger.Error(err)
