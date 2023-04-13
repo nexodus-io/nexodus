@@ -64,7 +64,8 @@ jobs:
 
       - name:  Copy Agent Binary to S3
         run: |
-          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/
+          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e
+          aws s3 cp ./hack/e2e-scripts/init-pr-e2e.sh s3://nexodus-io/ec2-e2e/
 
       - uses: actions/setup-python@v4
         with:
@@ -102,8 +103,7 @@ jobs:
 
       - name: Initialize the api-server Images
         run: |
-          curl https://nexodus-io.s3.amazonaws.com/ec2-e2e/aws-e2e-pr-build.yml -o ./ops/ansible/aws/aws-e2e-pr-build.yml
-          ansible-playbook -vv ./ops/ansible/aws/aws-e2e-pr-build.yml \
+          ansible-playbook -vv ./hack/e2e-scripts/aws-e2e-pr-build.yml \
           --private-key nexodus.pem \
           -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} pr_or_branch=${{ github.event.inputs.pr_or_branch }} ansible_user=ubuntu"
 
