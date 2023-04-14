@@ -633,11 +633,8 @@ func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Nexodus) checkUnsupportedConfigs() error {
 
-	if !isIPv6Supported() {
-		ax.ipv6Supported = false
+	if ax.ipv6Supported = isIPv6Supported(); !ax.ipv6Supported {
 		ax.logger.Warn("IPv6 does not appear to be enabled on this host, only IPv4 will be provisioned or restart nexd with IPv6 enabled on this host")
-	} else {
-		ax.ipv6Supported = true
 	}
 
 	return nil
