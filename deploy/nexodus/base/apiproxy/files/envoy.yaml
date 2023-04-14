@@ -152,6 +152,8 @@ static_resources:
                 stat_prefix: ingress
                 common_http_protocol_options:
                   idle_timeout: 120s
+                upgrade_configs:
+                  - upgrade_type: websocket
                 http_filters:
 
 

@@ -12,6 +12,7 @@ Tools and tips that will aid you in the development and testing of Nexodus on yo
 * bash - we use a few bash scripts to set things up.
 * [docker](https://www.docker.com) or [podman](https://podman.io/)/[buildah](https://buildah.io/) - to build and run containers
 * [kubectl](https://kubernetes.io/docs/tasks/tools/) - to interact with your kube deployments
+* [jq](https://stedolan.github.io/jq/) - A lightweight and flexible command-line JSON processor
 
 ### Go Based Build Tools
 
