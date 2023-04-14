@@ -17,11 +17,10 @@ import (
 )
 
 const (
-	nexodusLogEnv    = "NEXD_LOGLEVEL"
-	Linux            = "linux"
-	wireguardOptions = "Wireguard Options"
-	agentOptions     = "Agent Options"
-	apiserverOptions = "ApiServer Options"
+	nexodusLogEnv     = "NEXD_LOGLEVEL"
+	wireguardOptions  = "Wireguard Options"
+	agentOptions      = "Agent Options"
+	nexServiceOptions = "Nexodus Service Options"
 )
 
 type nexdMode int
@@ -199,7 +198,7 @@ func main() {
 				Name:  "relay",
 				Usage: "Enable relay and discovery support function for the node agent.",
 				Action: func(cCtx *cli.Context) error {
-					if runtime.GOOS != Linux {
+					if runtime.GOOS != nexodus.Linux.String() {
 						return fmt.Errorf("Relay node is only supported for Linux Operating System")
 					}
 
@@ -213,7 +212,7 @@ func main() {
 						EnvVars:  []string{"NEXD_ENABLE_DISCOVERY"},
 						Required: false,
 						Action: func(ctx *cli.Context, discoNode bool) error {
-							if discoNode && runtime.GOOS != Linux {
+							if discoNode && runtime.GOOS != nexodus.Linux.String() {
 								return fmt.Errorf("Discovery node is only supported for Linux Operating System")
 							}
 							return nil
@@ -304,7 +303,7 @@ func main() {
 				Usage:    "Username `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_USERNAME"},
 				Required: false,
-				Category: apiserverOptions,
+				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
 				Name:     "password",
@@ -312,7 +311,7 @@ func main() {
 				Usage:    "Password `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_PASSWORD"},
 				Required: false,
-				Category: apiserverOptions,
+				Category: nexServiceOptions,
 			},
 			&cli.BoolFlag{
 				Name:     "insecure-skip-tls-verify",
@@ -320,14 +319,14 @@ func main() {
 				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
 				EnvVars:  []string{"NEXD_INSECURE_SKIP_TLS_VERIFY"},
 				Required: false,
-				Category: apiserverOptions,
+				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
 				Name:     "state-dir",
 				Usage:    fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
 				Value:    stateDirDefault,
 				EnvVars:  []string{"NEXD_STATE_DIR"},
-				Category: apiserverOptions,
+				Category: nexServiceOptions,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
