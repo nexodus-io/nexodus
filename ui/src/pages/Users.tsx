@@ -11,6 +11,7 @@ import {
   ReferenceField,
   BulkExportButton,
   BulkDeleteButton,
+  ReferenceManyField,
 } from "react-admin";
 
 const UserListBulkActions = () => (
@@ -24,20 +25,6 @@ export const UserList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<UserListBulkActions />}>
       <TextField label="Username" source="username" />
-      <ReferenceArrayField
-        label="Organizations"
-        source="organizations"
-        reference="organizations"
-      >
-        <SingleFieldList linkType="show">
-          <ChipField source="name" />
-        </SingleFieldList>
-      </ReferenceArrayField>
-      <ReferenceArrayField label="Devices" source="devices" reference="devices">
-        <SingleFieldList linkType="show">
-          <ChipField source="hostname" />
-        </SingleFieldList>
-      </ReferenceArrayField>
     </Datagrid>
   </List>
 );
@@ -47,21 +34,28 @@ export const UserShow = () => (
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Username" source="username" />
-      <ReferenceArrayField
-        label="Organizations"
-        source="organizations"
+
+      <ReferenceManyField
+        label="Owned Organizations"
         reference="organizations"
+        target="owner_id"
       >
-        <SingleFieldList linkType="show">
-          <ChipField source="name" />
-        </SingleFieldList>
-      </ReferenceArrayField>
-      <ReferenceArrayField label="Devices" source="devices" reference="devices">
-        <Datagrid rowClick="show" bulkActionButtons={false}>
-          <TextField label="Hostname" source="hostname" />
-          <TextField label="ID" source="id" />
+        <Datagrid>
+          <TextField label="Name" source="name" />
+          <TextField label="Description" source="description" />
         </Datagrid>
-      </ReferenceArrayField>
+      </ReferenceManyField>
+
+      <ReferenceManyField
+        label="Owned Devices"
+        reference="devices"
+        target="user_id"
+      >
+        <Datagrid>
+          <TextField label="Hostname" source="hostname" />
+          <TextField label="Tunnel IP" source="tunnel_ip" />
+        </Datagrid>
+      </ReferenceManyField>
     </SimpleShowLayout>
   </Show>
 );

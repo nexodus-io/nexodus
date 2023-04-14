@@ -63,6 +63,13 @@ const App = () => {
         recordRepresentation={(record) => `${record.name}`}
       />
       <Resource
+        name="organizations"
+        list={OrganizationList}
+        show={OrganizationShow}
+        icon={OrganizationIcon}
+        recordRepresentation={(record) => `${record.name}`}
+      />
+      <Resource
         name="devices"
         list={DeviceList}
         show={DeviceShow}
