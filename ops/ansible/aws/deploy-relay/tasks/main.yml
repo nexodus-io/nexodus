@@ -79,8 +79,8 @@
   become: yes
   shell: |
     NEXD_LOGLEVEL=debug nexd \
-    --relay-node \
     --stun \
     --username '{{ nexodus_auth_uid }}' \
     --password '{{ nexodus_auth_password }}' \
+    relay \
     {{ nexodus_url }} > nexodus-logs.txt 2>&1 &

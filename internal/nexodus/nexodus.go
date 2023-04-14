@@ -632,44 +632,6 @@ func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Nexodus) checkUnsupportedConfigs() error {
-	if ax.relay && runtime.GOOS == Darwin.String() {
-		return fmt.Errorf("OSX nodes cannot be a relay node, only Linux nodes")
-	}
-	if ax.relay && runtime.GOOS == Windows.String() {
-		return fmt.Errorf("Windows nodes cannot be a relay node, only Linux nodes")
-	}
-	if ax.userProvidedLocalIP != "" {
-		if err := ValidateIp(ax.userProvidedLocalIP); err != nil {
-			return fmt.Errorf("the IP address passed in --local-endpoint-ip %s was not valid: %w", ax.userProvidedLocalIP, err)
-		}
-	}
-	if ax.requestedIP != "" {
-		if err := ValidateIp(ax.requestedIP); err != nil {
-			return fmt.Errorf("the IP address passed in --request-ip %s was not valid: %w", ax.requestedIP, err)
-		}
-		if util.IsIPv6Address(ax.requestedIP) {
-			return fmt.Errorf("--request-ip only supports IPv4 addresses")
-		}
-	}
-
-	if ax.requestedIP != "" && ax.relay {
-		ax.logger.Warnf("request-ip is currently unsupported for the relay node, a dynamic address will be used instead")
-		ax.requestedIP = ""
-	}
-
-	if len(ax.childPrefix) > 0 && ax.relay {
-		return fmt.Errorf("child-prefixes are not supported on relay nodes")
-	}
-
-	for _, prefix := range ax.childPrefix {
-		if err := ValidateCIDR(prefix); err != nil {
-			return err
-		}
-		// TODO: enable child-prefix-v6
-		if util.IsIPv6Prefix(prefix) {
-			return fmt.Errorf("currently --child-prefix only supports IPv4 prefixes")
-		}
-	}
 
 	if !isIPv6Supported() {
 		ax.ipv6Supported = false

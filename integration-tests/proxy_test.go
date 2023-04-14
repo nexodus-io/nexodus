@@ -32,7 +32,7 @@ func TestProxyEgress(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -98,7 +98,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -172,7 +172,7 @@ func TestProxyIngress(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -235,7 +235,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -305,7 +305,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)

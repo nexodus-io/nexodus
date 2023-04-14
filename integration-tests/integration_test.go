@@ -32,7 +32,7 @@ func TestBasicConnectivity(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -170,8 +170,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--discovery-node", "--relay-node",
-		"--username", username, "--password", password)
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -203,10 +202,8 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	// restart nexodus and ensure the nodes receive the same re-quested address
 	helper.Log("Restarting nexodus on two spoke nodes and re-joining")
-	helper.runNexd(ctx, node1, "--discovery-node", "--relay-node",
-		"--username", username, "--password", password,
-		fmt.Sprintf("--request-ip=%s", node1IP),
-	)
+	helper.runNexd(ctx, node1, "--username", username, "--password", password,
+		fmt.Sprintf("--request-ip=%s", node1IP), "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err = helper.nexdStatus(ctx, node1)
@@ -248,7 +245,7 @@ func TestHubOrganization(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -294,7 +291,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
-		fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
+		"router", fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 	)
 
 	// validate nexd has started on the discovery node
@@ -421,8 +418,9 @@ func TestChildPrefix(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--discovery-node", "--relay-node",
+	helper.runNexd(ctx, node1,
 		"--username", username, "--password", password,
+		"relay", "--enable-discovery",
 	)
 
 	// validate nexd has started on the discovery node
@@ -430,13 +428,13 @@ func TestChildPrefix(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2,
-		fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
 		"--username", username, "--password", password,
+		"router", fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
 	)
 
 	helper.runNexd(ctx, node3,
-		fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
 		"--username", username, "--password", password,
+		"router", fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
 	)
 
 	// add loopbacks to the containers that are contained in the node's child prefix
@@ -493,7 +491,7 @@ func TestRelay(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node", "--relay-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
@@ -601,13 +599,13 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(organizations[0].Description)
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--discovery-node", "--relay-node", "--username", username, "--password", password)
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 
 	// validate nexd has started on the discovery node
 	err = helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "router", "--child-prefix=100.22.100.0/24")
 
 	// validate nexd has started
 	err = helper.nexdStatus(ctx, node2)
@@ -709,7 +707,7 @@ func TestNexctl(t *testing.T) {
 
 	time.Sleep(time.Second * 10)
 	// re-join both nodes, flipping the child-prefix to node1 to ensure the child-prefix was released
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "router", "--child-prefix=100.22.100.0/24")
 
 	// validate nexd has started on the discovery node
 	err = helper.nexdStatus(ctx, node1)
@@ -832,7 +830,7 @@ func TestV6Disabled(t *testing.T) {
 	defer stop()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--discovery-node")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 

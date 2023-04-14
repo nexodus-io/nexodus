@@ -5,17 +5,23 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"sort"
 	"sync"
 	"syscall"
 
 	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
 const (
-	nexodusLogEnv = "NEXD_LOGLEVEL"
+	nexodusLogEnv    = "NEXD_LOGLEVEL"
+	Linux            = "linux"
+	wireguardOptions = "Wireguard Options"
+	agentOptions     = "Agent Options"
+	apiserverOptions = "ApiServer Options"
 )
 
 type nexdMode int
@@ -23,6 +29,8 @@ type nexdMode int
 const (
 	nexdModeAgent nexdMode = iota
 	nexdModeProxy
+	nexdModeRouter
+	nexdModeRelay
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
@@ -48,19 +56,15 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	var childPrefix []string
 	switch mode {
 	case nexdModeAgent:
+		logger.Info("Starting node agent with wireguard driver")
+	case nexdModeRouter:
 		childPrefix = cCtx.StringSlice("child-prefix")
-		relayNode = cCtx.Bool("relay-node")
-		discoveryNode = cCtx.Bool("discovery-node")
+		logger.Info("Starting node agent with wireguard driver and router function")
+	case nexdModeRelay:
+		relayNode = true
+		discoveryNode = cCtx.Bool("enable-discovery")
+		logger.Info("Starting relay agent with wireguard driver")
 	case nexdModeProxy:
-		// These are top-level flags that are not compatible with `nexd proxy`.
-		// It would be nicer to convert these to subcommands, but that's for
-		// another day. TODO
-		proxyBadFlags := [3]string{"child-prefix", "relay-node", "discovery-node"}
-		for _, flag := range proxyBadFlags {
-			if cCtx.IsSet(flag) {
-				return fmt.Errorf("flag %s is not compatible with `nexd proxy`", flag)
-			}
-		}
 		userspaceMode = true
 		logger.Info("Starting in L4 proxy mode")
 	}
@@ -164,6 +168,59 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:  "router",
+				Usage: "Enable child-prefix function of the node agent to enable prefix forwarding.",
+				Action: func(cCtx *cli.Context) error {
+					return nexdRun(cCtx, logger, nexdModeRouter)
+				},
+				Flags: []cli.Flag{
+					&cli.StringSliceFlag{
+						Name:     "child-prefix",
+						Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
+						EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
+						Required: true,
+						Action: func(ctx *cli.Context, childPrefixes []string) error {
+							for _, prefix := range childPrefixes {
+								if err := nexodus.ValidateCIDR(prefix); err != nil {
+									return fmt.Errorf("Child prefix CIDRs passed in --child-prefix %s is not valid: %w", prefix, err)
+								}
+								if util.IsIPv6Prefix(prefix) {
+									return fmt.Errorf("currently --child-prefix only supports IPv4 prefixes")
+								}
+
+							}
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:  "relay",
+				Usage: "Enable relay and discovery support function for the node agent.",
+				Action: func(cCtx *cli.Context) error {
+					if runtime.GOOS != Linux {
+						return fmt.Errorf("Relay node is only supported for Linux Operating System")
+					}
+
+					return nexdRun(cCtx, logger, nexdModeRelay)
+				},
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:     "enable-discovery",
+						Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
+						Value:    false,
+						EnvVars:  []string{"NEXD_ENABLE_DISCOVERY"},
+						Required: false,
+						Action: func(ctx *cli.Context, discoNode bool) error {
+							if discoNode && runtime.GOOS != Linux {
+								return fmt.Errorf("Discovery node is only supported for Linux Operating System")
+							}
+							return nil
+						},
+					},
+				},
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -172,6 +229,7 @@ func main() {
 				Usage:    "Base64 encoded public `key` for the local host - agent generates keys by default",
 				EnvVars:  []string{"NEXD_PUB_KEY"},
 				Required: false,
+				Category: wireguardOptions,
 			},
 			&cli.StringFlag{
 				Name:     "private-key",
@@ -179,6 +237,7 @@ func main() {
 				Usage:    "Base64 encoded private `key` for the local host (dev purposes only - soon to be removed)",
 				EnvVars:  []string{"NEXD_PRIVATE_KEY"},
 				Required: false,
+				Category: wireguardOptions,
 			},
 			&cli.IntFlag{
 				Name:     "listen-port",
@@ -186,6 +245,7 @@ func main() {
 				Usage:    "Wireguard `port` to listen on for incoming peers",
 				EnvVars:  []string{"NEXD_LISTEN_PORT"},
 				Required: false,
+				Category: wireguardOptions,
 			},
 			&cli.StringFlag{
 				Name:     "request-ip",
@@ -193,6 +253,18 @@ func main() {
 				Usage:    "Request a specific `IPv4` address from IPAM if available (optional)",
 				EnvVars:  []string{"NEXD_REQUESTED_IP"},
 				Required: false,
+				Category: wireguardOptions,
+				Action: func(ctx *cli.Context, ip string) error {
+					if ip != "" {
+						if err := nexodus.ValidateIp(ip); err != nil {
+							return fmt.Errorf("the IP address passed in --request-ip %s is not valid: %w", ip, err)
+						}
+						if util.IsIPv6Address(ip) {
+							return fmt.Errorf("--request-ip only supports IPv4 addresses")
+						}
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:     "local-endpoint-ip",
@@ -200,12 +272,15 @@ func main() {
 				Usage:    "Specify the endpoint `IP` address of this node instead of being discovered (optional)",
 				EnvVars:  []string{"NEXD_LOCAL_ENDPOINT_IP"},
 				Required: false,
-			},
-			&cli.StringSliceFlag{
-				Name:     "child-prefix",
-				Usage:    "Request an `IPv4 CIDR` range of addresses that will be advertised from this node (optional)",
-				EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
-				Required: false,
+				Category: wireguardOptions,
+				Action: func(ctx *cli.Context, ip string) error {
+					if ip != "" {
+						if err := nexodus.ValidateIp(ip); err != nil {
+							return fmt.Errorf("the IP address passed in --local-endpoint-ip %s is not valid: %w", ip, err)
+						}
+					}
+					return nil
+				},
 			},
 			&cli.BoolFlag{
 				Name:     "stun",
@@ -213,20 +288,7 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_STUN"},
 				Required: false,
-			},
-			&cli.BoolFlag{
-				Name:     "relay-node",
-				Usage:    "Set if this node is to be the relay node for a hub and spoke scenarios",
-				Value:    false,
-				EnvVars:  []string{"NEXD_RELAY_NODE"},
-				Required: false,
-			},
-			&cli.BoolFlag{
-				Name:     "discovery-node",
-				Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
-				Value:    false,
-				EnvVars:  []string{"NEXD_DISCOVERY_NODE"},
-				Required: false,
+				Category: agentOptions,
 			},
 			&cli.BoolFlag{
 				Name:     "relay-only",
@@ -234,6 +296,7 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_RELAY_ONLY"},
 				Required: false,
+				Category: agentOptions,
 			},
 			&cli.StringFlag{
 				Name:     "username",
@@ -241,6 +304,7 @@ func main() {
 				Usage:    "Username `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_USERNAME"},
 				Required: false,
+				Category: apiserverOptions,
 			},
 			&cli.StringFlag{
 				Name:     "password",
@@ -248,6 +312,7 @@ func main() {
 				Usage:    "Password `string` for accessing the nexodus service",
 				EnvVars:  []string{"NEXD_PASSWORD"},
 				Required: false,
+				Category: apiserverOptions,
 			},
 			&cli.BoolFlag{
 				Name:     "insecure-skip-tls-verify",
@@ -255,12 +320,14 @@ func main() {
 				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
 				EnvVars:  []string{"NEXD_INSECURE_SKIP_TLS_VERIFY"},
 				Required: false,
+				Category: apiserverOptions,
 			},
 			&cli.StringFlag{
-				Name:    "state-dir",
-				Usage:   fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
-				Value:   stateDirDefault,
-				EnvVars: []string{"NEXD_STATE_DIR"},
+				Name:     "state-dir",
+				Usage:    fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
+				Value:    stateDirDefault,
+				EnvVars:  []string{"NEXD_STATE_DIR"},
+				Category: apiserverOptions,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
