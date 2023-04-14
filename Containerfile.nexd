@@ -16,6 +16,14 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o nexctl ./cmd/nexctl
 
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o udping ./hack/udping
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-extldflags=-static" \
+    -o udpong ./hack/udpong
+
 FROM fedora:latest as fedora
 
 RUN dnf update -qy && \
@@ -28,6 +36,7 @@ RUN dnf update -qy && \
     wireguard-tools \
     nftables \
     hostname \
+    netcat \
     && \
     dnf clean all -y &&\
     rm -rf /var/cache/yum
@@ -36,4 +45,5 @@ COPY --chmod=755 ./hack/update-ca.sh /update-ca.sh
 COPY --chmod=755 --from=build /src/nexd /bin/nexd
 COPY --chmod=755 --from=build /src/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
-
+COPY --chmod=755 --from=build /src/udping /bin/udping
+COPY --chmod=755 --from=build /src/udpong /bin/udpong

@@ -5,12 +5,13 @@ package integration_tests
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"net"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/util"
 )
 
 // TestProxyEgress tests that nexd proxy can be used with a single egress rule
@@ -72,6 +73,72 @@ func TestProxyEgress(t *testing.T) {
 			return false, nil
 		}
 		require.True(strings.Contains(output, "bananas"))
+		return true, nil
+	})
+	require.NoError(err)
+	require.True(success)
+	wg.Wait()
+}
+
+// TestProxyEgressUDP tests that nexd proxy can be used with a single UDP egress rule
+func TestProxyEgressUDP(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	helper.Logf("Starting nexd on node1")
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
+
+	// validate nexd has started on the discovery node
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+
+	helper.Logf("Starting nexd on node2")
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4242")))
+
+	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
+	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
+	// IP address from the running nexd.
+	node2IP := "100.100.0.2"
+
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	// run an UDP server on node1
+	wg := sync.WaitGroup{}
+	util.GoWithWaitGroup(&wg, func() {
+		_, _ = helper.containerExec(ctx, node1, []string{"udpong", "4242"})
+	})
+
+	// run a UDP client on node2 (to the local proxy) to reach the server on node1
+	ctxTimeout, clientCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer clientCancel()
+	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
+		output, err := helper.containerExec(ctx, node2, []string{"udping", "127.0.0.1", "4242"})
+		if err != nil {
+			helper.Logf("Retrying udp client for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
+			return false, nil
+		}
+		require.True(strings.Contains(output, "pong"))
 		return true, nil
 	})
 	require.NoError(err)

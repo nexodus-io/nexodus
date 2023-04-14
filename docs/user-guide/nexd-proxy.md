@@ -54,7 +54,7 @@ Egress proxy rules are specified with the `--egress` flag. This flag can be spec
 --egress protocol:port:destination:destination_port
 ```
 
-* `protocol` - must be `tcp`
+* `protocol` - may be `tcp` or `udp`
 * `port` - the port that `nexd` will accept connections to made to its IP address within the Nexodus organization this device is a member of.
 * `destination` - the IP address or hostname of the destination on a network accessible to the device that the proxy will forward traffic to.
 * `destination_port` - the port on the destination on a network accessible to the device that the proxy will forward traffic to.
@@ -75,6 +75,10 @@ flowchart TD
  dest(Source application connecting to port 443 on 10.10.100.151<br/><br/>Local Network IP: 10.10.100.152)-->|tcp|container
  end
 ```
+
+### UDP Proxy Behavior
+
+Since UDP is a connectionless protocol, `nexd proxy` must maintain its own state for each UDP flow to ensure that return traffic is forwarded appropriately. These flows time out after 60 seconds of inactivity.
 
 ## Demo Using Containers
 
