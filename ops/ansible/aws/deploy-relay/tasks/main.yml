@@ -97,6 +97,6 @@
 - name: Copy file from remote host to localhost
   fetch:
     src: /home/{{ ansible_user }}/nexodus-logs.txt
-    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-relay-node-nexodus-logs.txt
     flat: yes
   ignore_errors: yes
