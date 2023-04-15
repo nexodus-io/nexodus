@@ -65,7 +65,7 @@ func TestProxyEgress(t *testing.T) {
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
@@ -75,6 +75,7 @@ func TestProxyEgress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -139,6 +140,7 @@ func TestProxyEgressUDP(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "udpong"})
 	wg.Wait()
 }
 
@@ -195,12 +197,12 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
-		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost:81"})
+		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1:81"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
 			return false, nil
@@ -211,6 +213,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -272,6 +275,7 @@ func TestProxyIngress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -340,6 +344,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -418,7 +423,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	ctxTimeout, curlCancel = context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err = util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
@@ -428,5 +433,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
