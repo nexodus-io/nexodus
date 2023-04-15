@@ -1,0 +1,16 @@
+---
+- name: Export and copy api-server logs back to the runner
+  hosts: localhost
+  gather_facts: true
+  tasks:
+    - name: Gather api-server logs
+      shell: |
+        kubectl logs deployment/apiserver -n nexodus --kubeconfig /home/{{ ansible_user }}/.kube/config > api-server-logs.txt
+      delegate_to: "{{ target_host }}"
+
+    - name: Fetch api-server logs from the remote host to localhost
+      fetch:
+        src: /home/{{ ansible_user }}/api-server-logs.txt
+        dest: /home/runner/work/nexodus/nexodus/ops/ansible/aws/nexd-logs/api-server/
+        flat: yes
+      delegate_to: "{{ target_host }}"

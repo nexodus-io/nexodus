@@ -107,7 +107,7 @@
   shell: |
     cat /home/{{ ansible_user }}/nexodus-logs.txt
 
-- name: Copy file from remote host to local host
+- name: Copy file from remote host to localhost
   fetch:
     src: /home/{{ ansible_user }}/nexodus-logs.txt
     dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
