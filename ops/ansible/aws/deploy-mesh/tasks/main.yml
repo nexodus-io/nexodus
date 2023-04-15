@@ -113,3 +113,12 @@
     dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
     flat: yes
   ignore_errors: yes
+  when: "'nexodusNodes' in group_names"
+
+- name: Copy file from remote host to localhost when the node is --relay-only (symmetric NAT)
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-relay-only-symmetric-nat-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'nexodusRelayNodes' in group_names"
