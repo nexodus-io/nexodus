@@ -71,6 +71,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           target: ${{ matrix.target }}
+          build-args: |
+            BUILD_PROFILE=prod
 
   update-deployment:
     name: Update Deployment

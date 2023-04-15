@@ -35,11 +35,14 @@ const (
 // This variable is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
 
+// Optionally set at build time using ldflags
+var DefaultServiceURL = "https://try.nexodus.io"
+
 func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
-	controller := cCtx.Args().First()
-	if controller == "" {
-		logger.Info("<controller-url> required")
-		return nil
+	serviceURL := cCtx.Args().First()
+	if serviceURL == "" && DefaultServiceURL != "" {
+		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
+		serviceURL = DefaultServiceURL
 	}
 
 	_, err := nexodus.CtlStatus(cCtx)
@@ -70,7 +73,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
-		controller,
+		serviceURL,
 		cCtx.String("username"),
 		cCtx.String("password"),
 		cCtx.Int("listen-port"),
@@ -138,7 +141,7 @@ func main() {
 	app := &cli.App{
 		Name:      "nexd",
 		Usage:     "Node agent to configure encrypted mesh networking with nexodus.",
-		ArgsUsage: "controller-url",
+		ArgsUsage: "service-url",
 		Commands: []*cli.Command{
 			{
 				Name:  "version",

@@ -8,4 +8,5 @@
 #
 # If additional arguments are needed, add them prior to the URL.
 #
-NEXD_ARGS="https://try.nexodus.127.0.0.1.nip.io"
+#NEXD_ARGS="https://try.nexodus.127.0.0.1.nip.io"
+NEXD_ARGS="https://try.nexodus.io"
