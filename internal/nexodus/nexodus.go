@@ -154,7 +154,11 @@ func NewNexodus(
 
 	controllerURL, err := url.Parse(controller)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid controller-url provided: %s error: %w, please use the following format https://<controller-url>", controller, err)
+	}
+
+	if !strings.HasPrefix(controller, "https://") {
+		return nil, fmt.Errorf("invalid controller-url provided: %s, please use the following format https://<controller-url>", controller)
 	}
 
 	// Force controller URL be api.${DOMAIN}
