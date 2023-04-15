@@ -3,15 +3,6 @@ package integration_tests
 import (
 	"context"
 	"fmt"
-	"github.com/cenkalti/backoff/v4"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/nexodus-io/nexodus/internal/nexodus"
-	"github.com/nexodus-io/nexodus/internal/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"go.uber.org/zap/zaptest"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +12,16 @@ import (
 	"testing"
 	"time"
 	"unicode"
+
+	"github.com/cenkalti/backoff/v4"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"go.uber.org/zap/zaptest"
 )
 
 type Helper struct {

@@ -7,15 +7,17 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/nexodus"
-	"golang.org/x/oauth2"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"golang.org/x/oauth2"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/cenkalti/backoff/v4"
@@ -158,6 +160,15 @@ func getContainerIfaceIPNoRetry(ctx context.Context, family ipFamily, dev string
 	return ipAddr.String(), nil
 }
 
+func getTunnelIP(ctx context.Context, helper *Helper, family ipFamily, ctr testcontainers.Container) (string, error) {
+	args := []string{"nexctl", "nexd", "get", "tunnelip"}
+	if family == inetV6 {
+		args = append(args, "--ipv6")
+	}
+	tunnelIP, err := helper.containerExec(ctx, ctr, args)
+	return clearString(tunnelIP), err
+}
+
 func ping(ctx context.Context, ctr testcontainers.Container, family ipFamily, address string) error {
 	err := backoff.Retry(func() error {
 		code, outputRaw, err := ctr.Exec(
@@ -287,4 +298,10 @@ func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token
 		RefreshToken: jwt.RefreshToken,
 		Expiry:       time.Now().Add(time.Duration(jwt.ExpiresIn) * time.Second),
 	}, nil
+}
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9\.\[\] ]+`)
+
+func clearString(str string) string {
+	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }
