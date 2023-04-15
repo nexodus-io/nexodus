@@ -228,16 +228,8 @@ func (ax *Nexodus) SetStatus(status int, msg string) {
 
 func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
-
-	// TODO
-	//
-	// We must deal with a lack of permissions and the possibility for there
-	// to be more than one instance of nexd running at the same time in this mode
-	// before we can enable it in this mode.
-	if !ax.userspaceMode {
-		if err := ax.CtlServerStart(ctx, wg); err != nil {
-			return fmt.Errorf("CtlServerStart(): %w", err)
-		}
+	if err := ax.CtlServerStart(ctx, wg); err != nil {
+		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
 	var options []client.Option
 	if ax.stateDir != "" {

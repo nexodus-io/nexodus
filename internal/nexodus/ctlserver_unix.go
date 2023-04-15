@@ -4,13 +4,15 @@ package nexodus
 
 import (
 	"context"
-	"github.com/nexodus-io/nexodus/internal/api"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/api"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 )
@@ -40,8 +42,12 @@ func (ax *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
-	os.Remove(api.UnixSocketPath)
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: api.UnixSocketPath, Net: "unix"})
+	socketPath := api.UnixSocketPath
+	if ax.userspaceMode {
+		socketPath = filepath.Base(socketPath)
+	}
+	os.Remove(socketPath)
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
 	if err != nil {
 		ax.logger.Error("Error creating unix socket: ", err)
 		return err

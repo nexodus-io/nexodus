@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc/jsonrpc"
+	"path/filepath"
 
 	"github.com/nexodus-io/nexodus/internal/api"
 	"github.com/urfave/cli/v2"
@@ -91,7 +92,10 @@ func init() {
 func callNexd(method string) (string, error) {
 	conn, err := net.Dial("unix", api.UnixSocketPath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
+		conn, err = net.Dial("unix", filepath.Base(api.UnixSocketPath))
+		if err != nil {
+			return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
+		}
 	}
 	defer conn.Close()
 
