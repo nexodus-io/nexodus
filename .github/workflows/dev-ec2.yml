@@ -64,7 +64,7 @@ jobs:
 
       - name:  Copy Agent Binary to S3
         run: |
-          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e
+          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/
           aws s3 cp ./hack/e2e-scripts/init-pr-e2e.sh s3://nexodus-io/ec2-e2e/
 
       - uses: actions/setup-python@v4
