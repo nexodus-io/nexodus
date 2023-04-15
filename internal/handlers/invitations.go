@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"github.com/nexodus-io/nexodus/internal/database"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"time"
 
@@ -54,11 +56,24 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	}
 
 	var user models.User
-	if res := api.db.WithContext(ctx).
-		Preload("Organizations").
-		Preload("Invitations").
-		First(&user, "id = ?", request.UserID); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
+	if request.UserID != "" {
+		if res := api.db.WithContext(ctx).
+			Preload("Organizations").
+			Preload("Invitations").
+			First(&user, "id = ?", request.UserID); res.Error != nil {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
+			return
+		}
+	} else if request.UserName != "" {
+		if res := api.db.WithContext(ctx).Debug().
+			Preload("Organizations").
+			Preload("Invitations").
+			First(&user, "user_name = ?", request.UserName); res.Error != nil {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("username or user_id"))
 		return
 	}
 
@@ -97,15 +112,58 @@ func (api *API) CreateInvitation(c *gin.Context) {
 func (api *API) ListInvitations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListInvitations")
 	defer span.End()
-	users := make([]*models.Invitation, 0)
+	invitations := make([]*models.Invitation, 0)
 	result := api.db.WithContext(ctx).
 		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
-		Find(&users)
+		Scopes(FilterAndPaginate(&models.Invitation{}, c, "id")).
+		Find(&invitations)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, invitations)
+}
+
+// GetInvitation gets a specific Invitation
+// @Summary      Get Invitation
+// @Description  Gets an Invitation by Invitation ID
+// @Id 			 GetInvitation
+// @Tags         Invitation
+// @Accepts		 json
+// @Produce      json
+// @Param		 id   path      string true "Invitation ID"
+// @Success      200  {object}  models.Organization
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Router       /api/organizations/{id} [get]
+func (api *API) GetInvitation(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
+		trace.WithAttributes(
+			attribute.String("invitation", c.Param("invitation")),
+		))
+	defer span.End()
+	k, err := uuid.Parse(c.Param("invitation"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		return
+	}
+	var org models.Invitation
+	result := api.db.WithContext(ctx).
+		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
+		First(&org, "id = ?", k.String())
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("invitation"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, org)
 }
 
 func (api *API) InvitationIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {

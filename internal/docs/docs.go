@@ -1356,6 +1356,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "description": "The user id to invite (one of username or user_id is required)",
+                    "type": "string"
+                },
+                "user_name": {
+                    "description": "The username to invite (one of username or user_id is required)",
                     "type": "string"
                 }
             }

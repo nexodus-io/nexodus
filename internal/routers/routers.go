@@ -87,6 +87,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		// Invitations
 		private.POST("/invitations", api.CreateInvitation)
 		private.GET("/invitations", api.ListInvitations)
+		private.GET("/invitations/:invitation", api.GetInvitation)
 		private.POST("/invitations/:invitation/accept", api.AcceptInvitation)
 		private.DELETE("/invitations/:invitation", api.DeleteInvitation)
 		// Devices

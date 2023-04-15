@@ -25,6 +25,9 @@ func NewInvitation(userID string, orgID uuid.UUID) Invitation {
 }
 
 type AddInvitation struct {
+	// The username to invite (one of username or user_id is required)
+	UserName string `json:"user_name"`
+	// The user id to invite (one of username or user_id is required)
 	UserID         string    `json:"user_id"`
 	OrganizationID uuid.UUID `json:"organization_id"`
 }

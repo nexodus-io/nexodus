@@ -6,6 +6,7 @@ import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 import DeviceIcon from "@mui/icons-material/Devices";
 import OrganizationIcon from "@mui/icons-material/VpnLock";
 import UserIcon from "@mui/icons-material/People";
+import InvitationIcon from "@mui/icons-material/Rsvp";
 
 // pages
 import { UserShow, UserList } from "./pages/Users";
@@ -14,6 +15,11 @@ import { OrganizationList, OrganizationShow } from "./pages/Organizations";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
+import {
+  InvitationCreate,
+  InvitationList,
+  InvitationShow,
+} from "./pages/Invitations";
 
 const fetchJson = (url: URL, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
@@ -67,6 +73,14 @@ const App = () => {
         list={DeviceList}
         show={DeviceShow}
         icon={DeviceIcon}
+        recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="invitations"
+        list={InvitationList}
+        show={InvitationShow}
+        icon={InvitationIcon}
+        create={InvitationCreate}
         recordRepresentation={(record) => `${record.hostname}`}
       />
     </Admin>
