@@ -4,10 +4,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api"
-	"github.com/urfave/cli/v2"
 	"net"
 	"net/rpc/jsonrpc"
+
+	"github.com/nexodus-io/nexodus/internal/api"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
@@ -45,6 +46,42 @@ func init() {
 						fmt.Printf("%s\n", err)
 					}
 					return nil
+				},
+			},
+			{
+				Name:  "get",
+				Usage: "Get a value from the local nexd instance",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "tunnelip",
+						Usage: "Get the tunnel IP address",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "ipv6",
+								Aliases: []string{"6"},
+								Usage:   "Get the IPv6 tunnel IP address",
+								Value:   false,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							var result string
+							var err error
+							if err := checkVersion(); err != nil {
+								return err
+							}
+							if cCtx.Bool("ipv6") {
+								result, err = callNexd("GetTunnelIPv6")
+							} else {
+								result, err = callNexd("GetTunnelIPv4")
+							}
+							if err != nil {
+								fmt.Printf("%s\n", err)
+								return err
+							}
+							fmt.Printf("%s\n", result)
+							return nil
+						},
+					},
 				},
 			},
 		},
