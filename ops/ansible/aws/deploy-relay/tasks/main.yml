@@ -84,3 +84,19 @@
     --password '{{ nexodus_auth_password }}' \
     relay \
     {{ nexodus_url }} > nexodus-logs.txt 2>&1 &
+
+- name: Pause for 10 seconds for the onboard to complete to scrape the logs
+  pause:
+    seconds: 10
+
+- name: Display the nexd logs to stdout
+  become: yes
+  shell: |
+    cat /home/{{ ansible_user }}/nexodus-logs.txt
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
+    flat: yes
+  ignore_errors: yes

@@ -103,6 +103,7 @@ jobs:
 
       - name: Initialize the api-server Images
         run: |
+          mkdir -p ./ops/ansible/aws/nexd-logs/api-server
           ansible-playbook -vv ./hack/e2e-scripts/aws-e2e-pr-build.yml \
           --private-key nexodus.pem \
           -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} pr_or_branch=${{ github.event.inputs.pr_or_branch }} ansible_user=ubuntu"
@@ -126,7 +127,23 @@ jobs:
             exit 1
           fi
 
+      - name: Gather api-server Server Logs
+        if: always()
+        run: |
+          ansible-playbook -vv \
+          ./hack/e2e-scripts/aws-e2e-pr-gather.yml \
+          --private-key nexodus.pem \
+          -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} ansible_user=ubuntu"
+
       - name: Terminate EC2 Instances
         if: always()
         run: |
           ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml
+
+      - name: Upload nexd and api-server Logs to Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dev-ec2-artifacts
+          path: ./ops/ansible/aws/nexd-logs/
+          retention-days: 10
