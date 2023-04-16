@@ -13,5 +13,8 @@ package public
 // ModelsAddInvitation struct for ModelsAddInvitation
 type ModelsAddInvitation struct {
 	OrganizationId string `json:"organization_id,omitempty"`
-	UserId         string `json:"user_id,omitempty"`
+	// The user id to invite (one of username or user_id is required)
+	UserId string `json:"user_id,omitempty"`
+	// The username to invite (one of username or user_id is required)
+	UserName string `json:"user_name,omitempty"`
 }
