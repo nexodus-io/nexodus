@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	TestUserID  = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
-	TestUser2ID = "3381dcaf-f61e-4671-8787-3e53490894ae"
+	TestUserID     = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
+	TestUser2ID    = "3381dcaf-f61e-4671-8787-3e53490894ae"
+	ipamClientAddr = "http://localhost:9090"
 )
 
 type HandlerTestSuite struct {
@@ -57,7 +58,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 		}
 	}()
 
-	ipamClient := ipam.NewIPAM(suite.logger, ipam.TestIPAMClientAddr)
+	ipamClient := ipam.NewIPAM(suite.logger, ipamClientAddr)
 
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
