@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	TestIPAMClientAddr = "http://localhost:9090"
+	TestIPAMClientAddr = "http://localhost:9091"
 )
 
 func NewTestIPAMServer() *http.Server {

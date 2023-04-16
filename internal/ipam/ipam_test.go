@@ -30,7 +30,7 @@ func (suite *IpamTestSuite) SetupSuite() {
 	suite.ipam = NewIPAM(suite.logger, TestIPAMClientAddr)
 	suite.wg = sync.WaitGroup{}
 	suite.wg.Add(1)
-	listener, err := net.Listen("tcp", "[::1]:9090")
+	listener, err := net.Listen("tcp", "[::1]:9091")
 	suite.Require().NoError(err)
 
 	go func() {
