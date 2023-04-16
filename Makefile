@@ -175,10 +175,18 @@ opa-fmt: ## Lint the OPA policies
 	$(ECHO_PREFIX) printf "  %-12s \n" "[OPA FMT]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --write $(policies)
 
+
+.PHONY: ui-fmt
+ui-fmt: dist/.ui-fmt ## Format the UI sources
+dist/.ui-fmt: $(wildcard ui/*) $(wildcard ui/src/**) | dist
+	$(ECHO_PREFIX) printf "  %-12s \n" "[UI FMT]"
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier --write /workdir/ui/src/ $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) touch $@
+
 .PHONY: generate
 generate: dist/.generate ## Run all code generators and formatters
 
-dist/.generate: $(SWAGGER_YAML) | dist
+dist/.generate: $(SWAGGER_YAML) ui-fmt | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 

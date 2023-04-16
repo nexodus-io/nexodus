@@ -13,6 +13,7 @@ import {
   Loading,
   BulkExportButton,
   BulkDeleteButton,
+  ArrayField,
 } from "react-admin";
 
 const ZoneNameFromPeer = () => {
@@ -44,9 +45,21 @@ export const DeviceList = () => (
     <Datagrid rowClick="show" bulkActionButtons={<DeviceListBulkActions />}>
       <TextField label="Hostname" source="hostname" />
       <TextField label="Tunnel IP" source="tunnel_ip" />
-      <TextField label="Endpoint IP" source="local_ip" />
+
+      <ArrayField label="Endpoints" source="endpoints">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="Distance" source="distance" />
+        </Datagrid>
+      </ArrayField>
       <ReferenceField
-        label="User"
+        label="Organization"
+        source="organization_id"
+        reference="organizations"
+        link="show"
+      />
+      <ReferenceField
+        label="Owner"
         source="user_id"
         reference="users"
         link="show"
@@ -60,24 +73,30 @@ export const DeviceShow = () => (
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Hostname" source="hostname" />
-      <TextField label="Allowed IPs" source="allowed_ips" />
+      <TextField label="Public Key" source="public_key" />
       <TextField label="Tunnel IP" source="tunnel_ip" />
-      <TextField label="Local IP" source="local_ip" />
       <TextField label="Organization Prefix" source="organization_prefix" />
+      <TextField label="Allowed IPs" source="allowed_ips" />
+      <ArrayField label="Endpoints" source="endpoints">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="Distance" source="distance" />
+          <TextField label="Source" source="source" />
+        </Datagrid>
+      </ArrayField>
       <TextField label="Relay Node" source="relay" />
       <ReferenceField
-        label="User"
+        label="Organization"
+        source="organization_id"
+        reference="organizations"
+        link="show"
+      />
+      <ReferenceField
+        label="Owner"
         source="user_id"
         reference="users"
         link="show"
       />
-      <TextField label="Public Key" source="public_key" />
-      <ReferenceArrayField label="Peers" source="peers" reference="peers">
-        <Datagrid rowClick="show" bulkActionButtons={false}>
-          <TextField label="ID" source="id" />
-          <TextField label="IP Address" source="allowed_ips" />
-        </Datagrid>
-      </ReferenceArrayField>
     </SimpleShowLayout>
   </Show>
 );
