@@ -34,8 +34,6 @@ func TestProxyEgress(t *testing.T) {
 
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
-
-	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
@@ -43,11 +41,11 @@ func TestProxyEgress(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -67,7 +65,7 @@ func TestProxyEgress(t *testing.T) {
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
@@ -77,6 +75,7 @@ func TestProxyEgress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -101,21 +100,19 @@ func TestProxyEgressUDP(t *testing.T) {
 	helper.Logf("Starting nexd on node1")
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
-
-	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
 
 	helper.Logf("Starting nexd on node2")
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4242")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -143,6 +140,7 @@ func TestProxyEgressUDP(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "udpong"})
 	wg.Wait()
 }
 
@@ -166,22 +164,20 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
-
-	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")),
 		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IP, "8080")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -201,12 +197,12 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
 		}
-		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost:81"})
+		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1:81"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
 			return false, nil
@@ -217,6 +213,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -240,17 +237,15 @@ func TestProxyIngress(t *testing.T) {
 
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
-
-	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -280,6 +275,7 @@ func TestProxyIngress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -303,19 +299,17 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
-
-	// validate nexd has started on the discovery node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")),
 		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("127.0.0.1", "8080")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -350,6 +344,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
 
@@ -378,17 +373,17 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")),
 		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")))
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
 
-	// TODO - This makes an assumption about ipam behavior that could change. We can't read the IP address
-	// from "wg0" for the proxy case as there's no wg0 interface. We need a new nexctl command to read the
-	// IP address from the running nexd.
-	node2IP := "100.100.0.2"
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
 	// before moving on to exercising the proxy functionality.
@@ -428,7 +423,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	ctxTimeout, curlCancel = context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err = util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://localhost"})
+		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
 		if err != nil {
 			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
 			return false, nil
@@ -438,5 +433,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }

@@ -32,3 +32,13 @@ func (ac *NexdCtl) Version(_ string, result *string) error {
 	*result = ac.ax.version
 	return nil
 }
+
+func (ac *NexdCtl) GetTunnelIPv4(_ string, result *string) error {
+	*result = ac.ax.TunnelIP
+	return nil
+}
+
+func (ac *NexdCtl) GetTunnelIPv6(_ string, result *string) error {
+	*result = ac.ax.TunnelIpV6
+	return nil
+}
