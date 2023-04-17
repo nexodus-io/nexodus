@@ -84,6 +84,37 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
+dist/packages: \
+	dist/packages/linux-amd64 \
+	dist/packages/linux-amd64 \
+	dist/packages/linux-arm \
+	dist/packages/linux-arm64 \
+	dist/packages/darwin-amd64 \
+	dist/packages/darwin-arm64 \
+	dist/packages/windows-amd64
+
+dist/packages/%:
+
+	$(CMD_PREFIX) mkdir -p $@
+	$(ECHO_PREFIX) printf "  %-12s $@/nexd\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 1,$(subst -, ,$(shell basename $@))) GOARCH=$(word 2,$(subst -, ,$(shell basename $@))) \
+		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@/nexd$(if $(findstring windows,$@),.exe,) ./cmd/nexd
+	$(ECHO_PREFIX) printf "  %-12s $@/nexctl\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 1,$(subst -, ,$(shell basename $@))) GOARCH=$(word 2,$(subst -, ,$(shell basename $@))) \
+		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@/nexctl$(if $(findstring windows,$@),.exe,) ./cmd/nexctl
+	$(CMD_PREFIX) cp -r docs/user-guide $@/user-guide
+	$(CMD_PREFIX) cp LICENSE $@
+
+	$(CMD_PREFIX)  if [ "$(word 1,$(subst -, ,$(shell basename $@)))" == "windows" ] ; then \
+		printf "  %-12s $@\n" "[ZIP]" ;\
+		cd $@ ;\
+		zip -q9r ../nexodus-$(shell basename $@).zip . ;\
+	else \
+		printf "  %-12s $@\n" "[TAR]" ;\
+		cd $@ ;\
+		tar -cf ../nexodus-$(shell basename $@).tgz .  ;\
+	fi
+
 .PHONY: clean
 clean: ## clean built binaries
 	$(CMD_PREFIX) rm -rf dist

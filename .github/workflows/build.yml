@@ -186,25 +186,18 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        binary: ["nexd", "nexctl"]
         os: ["linux", "darwin"]
         arch: ["amd64", "arm64", "arm"]
         exclude:
           - os: darwin
             arch: arm
         include:
-          - binary: nexd
             os: windows
             arch: amd64
-            suffix: ".exe"
-          - binary: nexctl
-            os: windows
-            arch: amd64
-            suffix: ".exe"
     runs-on: ubuntu-latest
     env:
       GOARCH: ${{ matrix.arch }}
-      JOB_NAME: "${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
+      JOB_NAME: "${{ matrix.os }}-${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Go
@@ -214,9 +207,9 @@ jobs:
         id: build
         shell: bash
         run: |
-          CGO_ENABLED=0 NEXODUS_BUILD_PROFILE=prod make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
-          mkdir ${{ matrix.os }}-${{ matrix.arch }}
-          cp dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{ matrix.suffix }}
+          CGO_ENABLED=0 NEXODUS_BUILD_PROFILE=prod make dist/package/${{ matrix.os }}-${{ matrix.arch }}
+          mkdir -p qa
+          cp dist/package/nexodus-${{ matrix.os }}-${{ matrix.arch }}.* qa/
 
       - name: Upload ${{ matrix.binary }}
         uses: actions/upload-artifact@v3
@@ -224,7 +217,7 @@ jobs:
           name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
           if-no-files-found: error
           path: |
-            ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}}
+            qa/*
 
   e2e:
     needs: [build-images]
