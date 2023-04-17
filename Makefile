@@ -92,7 +92,7 @@ go-lint-prereqs:
 		exit 1 ; \
 	fi
 
-dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist gen-openapi-client
+dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist gen-openapi-client $(wildcard internal/api/public/*.go)
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
 		golangci-lint run --build-tags integration --timeout 5m ./...
@@ -169,6 +169,8 @@ internal/api/public/client.go: internal/docs/swagger.yaml | dist
 		--ignore-file-override /src/.openapi-generator-ignore $(PIPE_DEV_NULL)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
 	$(CMD_PREFIX) [ -z "$(shell gofmt -l .)" ] || gofmt -w .
+
+internal/api/public/%.go: internal/api/public/client.go
 
 .PHONY: opa-fmt
 opa-fmt: ## Lint the OPA policies
