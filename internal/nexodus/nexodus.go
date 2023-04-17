@@ -108,6 +108,8 @@ type Nexodus struct {
 	skipTlsVerify bool
 	stateDir      string
 	userspaceWG
+	informer     *public.ApiListDevicesInOrganizationInformer
+	informerStop context.CancelFunc
 }
 
 type wgConfig struct {
@@ -291,6 +293,10 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.logger.Infof("Device belongs in organization: %s (%s)", organizations[0].Name, organizations[0].Id)
 	ax.organization = organizations[0].Id
 
+	informerCtx, informerCancel := context.WithCancel(ctx)
+	ax.informerStop = informerCancel
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
+
 	var localIP string
 	var localEndpointPort int
 
@@ -301,7 +307,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if ax.relay || ax.discoveryNode {
-		peerListing, err := ax.getPeerListing()
+		peerListing, _, err := ax.informer.Execute()
 		if err != nil {
 			return err
 		}
@@ -407,8 +413,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
-	if err := ax.Reconcile(ax.organization, true); err != nil {
-		return err
+	if err := ax.Reconcile(true); err != nil {
+		return fmt.Errorf("initial reconcile failed: %w", err)
 	}
 
 	// gather wireguard state from the relay node periodically
@@ -416,7 +422,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		util.GoWithWaitGroup(wg, func() {
 			util.RunPeriodically(ctx, time.Second*30, func() {
 				ax.logger.Debugf("Reconciling peers from relay state")
-				if err := ax.discoveryStateReconcile(ax.organization); err != nil {
+				if err := ax.discoveryStateReconcile(); err != nil {
 					ax.logger.Error(err)
 				}
 			})
@@ -424,39 +430,24 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	util.GoWithWaitGroup(wg, func() {
-		util.RunPeriodically(ctx, pollInterval, func() {
-			if err := ax.Reconcile(ax.organization, false); err != nil {
-				// TODO: Add smarter reconciliation logic
-				ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
-				// if the token grant becomes invalid expires refresh or exit depending on the onboard method
-				if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
-					if ax.username != "" {
-						c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
-							ax.SetStatus(NexdStatusAuth, msg)
-						}, options...)
-						if err != nil {
-							ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
-						} else {
-							ax.client = c
-							ax.SetStatus(NexdStatusRunning, "")
-							ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
-						}
-					} else {
-						ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
-							"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
-					}
+		stunTicker := time.NewTicker(time.Second * 20)
+		defer stunTicker.Stop()
+		pollTicker := time.NewTicker(pollInterval)
+		defer pollTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-stunTicker.C:
+				if err := ax.reconcileStun(device.Id); err != nil {
+					ax.logger.Debug(err)
 				}
+			case <-ax.informer.Changed():
+				ax.reconcileDevices(ctx, options)
+			case <-pollTicker.C:
+				ax.reconcileDevices(ctx, options)
 			}
-		})
-	})
-
-	// Experimental STUN discovery
-	util.GoWithWaitGroup(wg, func() {
-		util.RunPeriodically(ctx, time.Second*20, func() {
-			if err := ax.reconcileStun(device.Id); err != nil {
-				ax.logger.Debug(err)
-			}
-		})
+		}
 	})
 
 	for _, proxy := range ax.ingresProxies {
@@ -467,6 +458,43 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	return nil
+}
+
+func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
+	if err := ax.Reconcile(false); err != nil {
+		// TODO: Add smarter reconciliation logic
+		ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
+		// if the token grant becomes invalid expires refresh or exit depending on the onboard method
+		if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
+			if ax.username != "" {
+				// do we need to stop the informer?
+				if ax.informerStop != nil {
+					ax.informerStop()
+					ax.informerStop = nil
+				}
+
+				c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+					ax.SetStatus(NexdStatusAuth, msg)
+				}, options...)
+				if err != nil {
+					ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
+					return
+				}
+
+				ax.client = c
+				informerCtx, informerCancel := context.WithCancel(ctx)
+				ax.informerStop = informerCancel
+				ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
+
+				ax.SetStatus(NexdStatusRunning, "")
+				ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
+
+			} else {
+				ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
+					"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
+			}
+		}
+	}
 }
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
@@ -499,7 +527,7 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 			ax.logger.Debugf("update device response %+v", res)
 			ax.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
-			if err = ax.Reconcile(ax.organization, true); err != nil {
+			if err = ax.Reconcile(true); err != nil {
 				ax.logger.Debugf("reconcile failed %v", res)
 			}
 		}
@@ -509,8 +537,8 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 	return nil
 }
 
-func (ax *Nexodus) Reconcile(orgID string, firstTime bool) error {
-	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), orgID).Execute()
+func (ax *Nexodus) Reconcile(firstTime bool) error {
+	peerListing, _, err := ax.informer.Execute()
 	if err != nil {
 		return err
 	}
@@ -570,9 +598,9 @@ func (ax *Nexodus) Reconcile(orgID string, firstTime bool) error {
 }
 
 // discoveryStateReconcile collect state from the discovery node and rejoin nodes with the dynamic state
-func (ax *Nexodus) discoveryStateReconcile(orgID string) error {
+func (ax *Nexodus) discoveryStateReconcile() error {
 	ax.logger.Debugf("Reconciling peers from relay state")
-	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), orgID).Execute()
+	peerListing, _, err := ax.informer.Execute()
 	if err != nil {
 		return err
 	}
@@ -681,15 +709,6 @@ func (ax *Nexodus) orgDiscoveryCheck(peerListing []public.ModelsDevice) (string,
 		}
 	}
 	return "", nil
-}
-
-// getPeerListing return the peer listing for the current user account
-func (ax *Nexodus) getPeerListing() ([]public.ModelsDevice, error) {
-	peerListing, _, err := ax.client.DevicesApi.ListDevicesInOrganization(context.Background(), ax.organization).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return peerListing, nil
 }
 
 func (ax *Nexodus) setupInterface() error {

@@ -3,10 +3,14 @@ package public
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"sync"
 )
 
 type DeviceStream struct {
@@ -148,4 +152,147 @@ func (a *DevicesApiService) ListDevicesInOrganizationWatch(r ApiListDevicesInOrg
 		close:   localVarHTTPResponse.Body.Close,
 		decoder: json.NewDecoder(localVarHTTPResponse.Body),
 	}, localVarHTTPResponse, nil
+}
+
+// Informer creates a *ApiListDevicesInOrganizationInformer which provides a simpler
+// API to list devices but which is implemented with the Watch api.  The *ApiListDevicesInOrganizationInformer
+// maintains a local device cache which gets updated with the Watch events.
+func (r ApiListDevicesInOrganizationRequest) Informer() *ApiListDevicesInOrganizationInformer {
+	res := &ApiListDevicesInOrganizationInformer{
+		request:        r,
+		modifiedSignal: make(chan struct{}, 1),
+	}
+	return res
+}
+
+type ApiListDevicesInOrganizationInformer struct {
+	request        ApiListDevicesInOrganizationRequest
+	stream         *DeviceStream
+	inSync         chan struct{}
+	modifiedSignal chan struct{}
+	mu             sync.RWMutex
+	data           []ModelsDevice
+	response       *http.Response
+	err            error
+	lastRevision   int32
+}
+
+var ErrContextCanceled = errors.New("context canceled")
+
+func (s *ApiListDevicesInOrganizationInformer) Changed() <-chan struct{} {
+	return s.modifiedSignal
+}
+
+func (s *ApiListDevicesInOrganizationInformer) Execute() ([]ModelsDevice, *http.Response, error) {
+
+	s.mu.Lock()
+	if s.stream == nil {
+		// after an error we can recover by resuming event's from the last revision.
+		s.request.GtRevision(s.lastRevision)
+		s.stream, s.response, s.err = s.request.ApiService.ListDevicesInOrganizationWatch(s.request)
+		if s.err == nil {
+			s.inSync = make(chan struct{})
+			go s.readStream(s.lastRevision)
+		}
+	}
+	s.mu.Unlock()
+
+	// initial api request may have failed...
+	if s.err != nil {
+		return s.data, s.response, s.err
+	}
+
+	// avoid returning a partial data list by, waiting for the bookmark event
+	// which signals that all known data items have sent.  We wait for the inSync
+	// chanel to close (or the context to be canceled).
+	select {
+	case <-s.request.ctx.Done():
+		return s.data, s.response, ErrContextCanceled
+	case <-s.inSync:
+	}
+
+	// s.data, s.response, s.err are modified with the s.mu write lock
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.data, s.response, s.err
+}
+
+func (s *ApiListDevicesInOrganizationInformer) readStream(lastRevision int32) {
+	isInSync := false
+
+	defer func() {
+		s.mu.Lock()
+		err := s.stream.Close()
+		if err != nil {
+			s.err = err
+		}
+		s.stream = nil
+		s.mu.Unlock()
+		if !isInSync {
+			isInSync = true
+			close(s.inSync)
+		}
+	}()
+
+	items := map[string]ModelsDevice{}
+	for {
+		event, item, err := s.stream.Receive()
+		if err != nil {
+			s.setResult(nil, lastRevision, err)
+			return
+		}
+		switch event {
+		case "change":
+			lastRevision = item.Revision
+			items[item.Id] = item
+			if isInSync {
+				s.setResult(dataByIdToArray(items), lastRevision, nil)
+			}
+		case "delete":
+			lastRevision = item.Revision
+			delete(items, item.Id)
+			if isInSync {
+				s.setResult(dataByIdToArray(items), lastRevision, nil)
+			}
+		case "bookmark":
+			if !isInSync {
+				isInSync = true
+				s.setResult(dataByIdToArray(items), lastRevision, nil)
+				close(s.inSync)
+			}
+		case "close":
+			return
+		case "error":
+			return
+		default:
+			s.setResult(nil, lastRevision, fmt.Errorf("unknown event type: %s", event))
+			return
+		}
+	}
+}
+
+func dataByIdToArray(dataById map[string]ModelsDevice) []ModelsDevice {
+	// Convert to a sorted list...
+	data := []ModelsDevice{}
+	for _, i := range dataById {
+		data = append(data, i)
+	}
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Id < data[j].Id
+	})
+	return data
+}
+
+func (s *ApiListDevicesInOrganizationInformer) setResult(data []ModelsDevice, lastRevision int32, err error) {
+	s.mu.Lock()
+	s.data = data
+	s.err = err
+	s.lastRevision = lastRevision
+	s.mu.Unlock()
+
+	select {
+	// try to signal...
+	case s.modifiedSignal <- struct{}{}:
+	default: // so we don't block if a signal is pending.
+	}
 }

@@ -196,3 +196,84 @@ func TestConcurrentApiAccess(t *testing.T) {
 	}
 
 }
+
+func TestDevicesInformer(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cancel := helper.createNewUser(ctx, password)
+	defer cancel()
+
+	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+		username,
+		password,
+	))
+	require.NoError(err)
+	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
+	require.NoError(err)
+	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
+	require.NoError(err)
+
+	privateKey, err := wgtypes.GeneratePrivateKey()
+	require.NoError(err)
+	publicKey := privateKey.PublicKey().String()
+
+	syncer := c.DevicesApi.ListDevicesInOrganization(ctx, orgs[0].Id).Informer()
+	isChanged := func() bool {
+		select {
+		case <-syncer.Changed():
+			return true
+		default:
+		}
+		return false
+	}
+	require.False(isChanged())
+
+	devices, _, err := syncer.Execute()
+	require.NoError(err)
+	require.Len(devices, 0)
+
+	require.True(isChanged())
+
+	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
+		EndpointLocalAddressIp4: "172.17.0.3",
+		Hostname:                "bbac3081d5e8",
+		OrganizationId:          orgs[0].Id,
+		PublicKey:               publicKey,
+		UserId:                  user.Id,
+		Endpoints: []public.ModelsEndpoint{
+			{
+				Source:   "local",
+				Address:  "172.17.0.3:58664",
+				Distance: 0,
+			},
+			{
+				Source:   "stun:",
+				Address:  "47.196.141.165",
+				Distance: 12,
+			},
+		},
+	}).Execute()
+	require.NoError(err)
+
+	require.Eventually(isChanged, 2*time.Second, time.Millisecond)
+
+	devices, _, err = syncer.Execute()
+	require.NoError(err)
+	require.Len(devices, 1)
+
+	// We should get s
+	_, _, err = c.DevicesApi.DeleteDevice(ctx, device.Id).Execute()
+	require.NoError(err)
+
+	require.Eventually(isChanged, 2*time.Second, time.Millisecond)
+
+	devices, _, err = syncer.Execute()
+	require.NoError(err)
+	require.Len(devices, 0)
+
+}
