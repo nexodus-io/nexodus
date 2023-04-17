@@ -185,11 +185,13 @@ func (s *ApiListDevicesInOrganizationInformer) Changed() <-chan struct{} {
 
 func (s *ApiListDevicesInOrganizationInformer) Execute() ([]ModelsDevice, *http.Response, error) {
 
+	var err error
 	s.mu.Lock()
 	if s.stream == nil {
 		// after an error we can recover by resuming event's from the last revision.
 		s.request.GtRevision(s.lastRevision)
 		s.stream, s.response, s.err = s.request.ApiService.ListDevicesInOrganizationWatch(s.request)
+		err = s.err
 		if s.err == nil {
 			s.inSync = make(chan struct{})
 			go s.readStream(s.lastRevision)
@@ -198,7 +200,7 @@ func (s *ApiListDevicesInOrganizationInformer) Execute() ([]ModelsDevice, *http.
 	s.mu.Unlock()
 
 	// initial api request may have failed...
-	if s.err != nil {
+	if err != nil {
 		return s.data, s.response, s.err
 	}
 
