@@ -41,80 +41,12 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader title="Download Nexodus Installer" />
-        <CardContent>
-          Nexodus Installer installs the nexd agent and its dependencies.
-        </CardContent>
-        <CardActions>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faDownload as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/installer/nexodus-installer.sh"
-          >
-            Nexodus Installer
-          </Button>
-        </CardActions>
-      </Card>
-      <Card>
-        <CardHeader title="Download Nexodus Binaries" />
-        <CardContent>
-          If you want to download only the Nexodus agent to run on your system,
-          please download it here.
-        </CardContent>
-        <CardActions>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faApple as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexd"
-          >
-            Download (x86_64)
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faApple as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexd"
-          >
-            Download (aarch64)
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faWindows as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/windows-amd64/nexd.exe"
-          >
-            Download (x86_64)
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
-          >
-            Download (x86_64)
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
-          >
-            Download (aarch64)
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faLinux as IconProp} />}
-            href="https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd"
-          >
-            Download (arm)
-          </Button>
-        </CardActions>
-      </Card>
-      <Card>
-        <CardHeader title="QuickStart" />
+        <CardHeader title="Quick Start" />
         <CardContent>
           <Typography variant="body1">
-            On a host with the Nexodus agent installed, run the following
-            command and follow the instructions it gives you:
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            $ sudo nexd {window.location.protocol}//{window.location.host}
+            See the{" "}
+            <a href="https://docs.nexodus.io/quickstart/">quick start</a>
+            guide for instructions on how to get started.
           </Typography>
         </CardContent>
       </Card>
