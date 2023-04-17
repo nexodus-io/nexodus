@@ -10,7 +10,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/cucumber/godog v0.12.6
 	github.com/docker/docker v23.0.1+incompatible
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.15.0
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.9.0
@@ -89,7 +89,7 @@ require (
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mdlayher/genetlink v1.2.0 // indirect
