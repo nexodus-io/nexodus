@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       deployment_size:
-        description: 'deployment size: small | medium | large'
+        description: 'deployment size: small | medium | large | xlarge'
         required: true
         default: 'small'
         type: string
@@ -91,6 +91,11 @@ jobs:
         if: github.event.inputs.deployment_size == 'large'
         run: |
           echo "${{ secrets.ANSIBLE_VARS_LARGE }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to XLarge
+        if: github.event.inputs.deployment_size == 'xlarge'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_XLARGE }}" > ./ops/ansible/aws/vars.yml
 
       - name: Create Ansible Secrets
         run: |
