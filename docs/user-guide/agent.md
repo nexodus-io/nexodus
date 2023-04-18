@@ -6,17 +6,7 @@ The following sections contain general instructions to deploy the Nexodus agent 
 
 ### Installing the Agent
 
-#### Install Script
-
-The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
-
-The `contrib/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
-
-```sh
-contrib/nexodus_installer.sh
-```
-
-#### RPM from a Copr Repository
+#### Fedora - RPM
 
 A Fedora [Copr repository](https://copr.fedorainfracloud.org/coprs/russellb/nexodus/) is updated with new rpms after each new commit to the `main` branch that passes CI. The rpm will include `nexctl`, `nexd`, and integration with systemd.
 
@@ -30,6 +20,25 @@ Then you should be able to install Nexodus with:
 
 ```sh
 sudo dnf install nexodus
+```
+
+#### Mac - Brew
+
+For Mac, you can install the Nexodus Agent via [Homebrew](https://brew.sh/).
+
+```sh
+brew tap nexodus-io/nexodus
+brew install nexodus
+```
+
+#### Install Script
+
+The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
+
+The `contrib/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
+
+```sh
+contrib/nexodus_installer.sh
 ```
 
 #### Custom RPM Build
@@ -66,7 +75,7 @@ sudo systemctl daemon-reload
 You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
 
 ```sh
-sudo nexd-linux-amd64 https://try.nexodus.127.0.0.1.nip.io
+sudo nexd https://try.nexodus.127.0.0.1.nip.io
 ```
 
 Alternatively, you can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service. Then, start the agent with the following command:
@@ -110,6 +119,16 @@ Authentication succeeded.
 ...
 INFO[0570] Peer setup complete
 ```
+
+### User / Password Enrollment
+
+If you would like to use a username and password to enroll your node, you can do so by passing the `--username` and `--password` flags to `nexd`. For example:
+
+```sh
+sudo nexd --username user --password pw https://try.nexodus.io
+```
+
+For [try.nexodus.io](https://try.nexodus.io), you may set a password for your account by visiting the [Keycloak user management UI](https://auth.try.nexodus.io/realms/nexodus/account/#/security/signingin).
 
 ### Verifying Agent Setup
 
