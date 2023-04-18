@@ -234,7 +234,7 @@ jobs:
         id: build
         shell: bash
         run: |
-          CGO_ENABLED=0 make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
+          CGO_ENABLED=0 NEXODUS_BUILD_PROFILE=prod make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
           mkdir ${{ matrix.os }}-${{ matrix.arch }}
           cp dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{ matrix.suffix }}
 

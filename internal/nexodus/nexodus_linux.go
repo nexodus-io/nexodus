@@ -20,6 +20,12 @@ func (ax *Nexodus) setupInterfaceOS() error {
 			logger.Debugf("failed to delete the ip link interface: %v\n", err)
 		}
 	}
+
+	if ax.TunnelIP == "" || ax.TunnelIpV6 == "" {
+		logger.Infof("Have not received full local node configuration from the service, skipping interface setup")
+		return nil
+	}
+
 	// create the wireguard ip link interface
 	_, err := RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
 	if err != nil {

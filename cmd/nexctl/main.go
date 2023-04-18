@@ -24,6 +24,9 @@ const (
 // This variable is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
 
+// Optionally set at build time using ldflags
+var DefaultServiceURL = "https://try.nexodus.io"
+
 var additionalPlatformCommands []*cli.Command = nil
 
 func main() {
@@ -40,7 +43,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "host",
-				Value: "https://api.try.nexodus.127.0.0.1.nip.io",
+				Value: DefaultServiceURL,
 				Usage: "Api server URL",
 			},
 			&cli.StringFlag{

@@ -1,5 +1,4 @@
 ui/node_modules
-Makefile
 !**/rootCA.pem
 Containerfile.*
 dist

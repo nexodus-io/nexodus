@@ -1,20 +1,20 @@
 FROM docker.io/library/golang:1.20-alpine as build
 
+ARG BUILD_PROFILE=dev
 WORKDIR /src
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-
-RUN cd / && CGO_ENABLED=0 go install filippo.io/mkcert@v1.4.4
-
 COPY . .
-RUN CGO_ENABLED=0 go build \
-    -ldflags="-extldflags=-static" \
-    -o nexd ./cmd/nexd
+RUN go mod download
+RUN apk add make git
 
-RUN CGO_ENABLED=0 go build \
-    -ldflags="-extldflags=-static" \
-    -o nexctl ./cmd/nexctl
+RUN CGO_ENABLED=0 NOISY_BUILD=y \
+    NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
+    make dist/nexd
+
+RUN CGO_ENABLED=0 NOISY_BUILD=y \
+    NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
+    make dist/nexctl
 
 RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
@@ -23,6 +23,8 @@ RUN CGO_ENABLED=0 go build \
 RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o udpong ./hack/udpong
+
+RUN cd / && CGO_ENABLED=0 go install filippo.io/mkcert@v1.4.4
 
 FROM fedora:latest as fedora
 
@@ -42,8 +44,8 @@ RUN dnf update -qy && \
     rm -rf /var/cache/yum
 
 COPY --chmod=755 ./hack/update-ca.sh /update-ca.sh
-COPY --chmod=755 --from=build /src/nexd /bin/nexd
-COPY --chmod=755 --from=build /src/nexctl /bin/nexctl
+COPY --chmod=755 --from=build /src/dist/nexd /bin/nexd
+COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
 COPY --chmod=755 --from=build /src/udping /bin/udping
 COPY --chmod=755 --from=build /src/udpong /bin/udpong
