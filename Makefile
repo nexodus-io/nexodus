@@ -72,7 +72,7 @@ dist/nexd: $(NEXD_DEPS) | dist
 
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
@@ -82,7 +82,7 @@ dist/nexd-%: $(NEXD_DEPS) | dist
 dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
+		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 .PHONY: clean
 clean: ## clean built binaries
