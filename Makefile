@@ -214,14 +214,16 @@ telepresence_%: telepresence-prereqs
 		telepresence helm install 2> /dev/null || true ;\
 		telepresence connect ;\
 	fi
-	$(CMD_PREFIX) telepresence intercept -n nexodus $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json
-	@echo "======================================================================================="
-	@echo
-	@echo "   Start the $(word 2,$(subst _, ,$(basename $@))) locally with a debugger with the env variables"
-	@echo "   with the values found in: $(word 2,$(subst _, ,$(basename $@)))-envs.json"
-	@echo
-	@echo "   Hint: use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile"
-	@echo
+	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
+		telepresence intercept -n nexodus $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json ;\
+		echo "=======================================================================================" ;\
+		echo ;\
+		echo "   Start the $(word 2,$(subst _, ,$(basename $@))) locally with a debugger with the env variables" ;\
+		echo "   with the values found in: $(word 2,$(subst _, ,$(basename $@)))-envs.json" ;\
+		echo ;\
+		echo "   Hint: use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile" ;\
+		echo ;\
+	fi
 
 .PHONY: debug-apiserver
 debug-apiserver: telepresence_apiserver_8080 ## Use telepresence to debug the apiserver deployment
@@ -229,17 +231,17 @@ debug-apiserver: telepresence_apiserver_8080 ## Use telepresence to debug the ap
 debug-apiserver-stop: telepresence-prereqs ## Stop using telepresence to debug the apiserver deployment
 	$(CMD_PREFIX) telepresence leave apiserver-nexodus
 
+dist/.npm-install:
+	$(CMD_PREFIX) cd ui; npm install
+	$(CMD_PREFIX) touch $@
+
 .PHONY: debug-frontend
-debug-frontend: telepresence_frontend_3000 ## Use telepresence to debug the frontend deployment
+debug-frontend: telepresence_frontend_3000 dist/.npm-install ## Use telepresence to debug the frontend deployment
+	$(CMD_PREFIX) cd ui; npm start
+
 .PHONY: debug-frontend-stop
 debug-frontend-stop: telepresence-prereqs ## Stop using telepresence to debug the frontend deployment
 	$(CMD_PREFIX) telepresence leave frontend-nexodus
-
-.PHONY: debug-backend-web
-debug-backend-web: telepresence_backend-web_8080 ## Use telepresence to debug the backend-web deployment
-.PHONY: debug-backend-web-stop
-debug-backend-web-stop: telepresence-prereqs ## Stop using telepresence to debug the backend-web deployment
-	$(CMD_PREFIX) telepresence leave backend-web-nexodus
 
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-nexd-container
