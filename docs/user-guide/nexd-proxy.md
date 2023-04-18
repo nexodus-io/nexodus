@@ -24,7 +24,7 @@ Ingress proxy rules are specified with the `--ingress` flag. This flag can be sp
 --ingress protocol:port:destination_ip:destination_port
 ```
 
-* `protocol` - must be `tcp`
+* `protocol` - may be `tcp` or `udp`
 * `port` - the port on the host that the proxy will listen on for connections made from a network able to access this device.
 * `destination_ip` - the IP address of the destination within a Nexodus organization that the proxy will forward traffic to.
 * `destination_port` - the port on the destination within a Nexodus organization that the proxy will forward traffic to.

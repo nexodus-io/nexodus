@@ -183,43 +183,93 @@ func (proxy *UsProxy) run(ctx context.Context, proxyWg *sync.WaitGroup) error {
 	}
 }
 
-func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error {
-	switch proxy.ruleType {
-	case ProxyTypeEgress:
-		return proxy.runUDPEgress(ctx, proxyWg)
-	case ProxyTypeIngress:
-		return proxy.runUDPIngress(ctx, proxyWg)
-	default:
-		return fmt.Errorf("Unexpected proxy rule type: %v", proxy.ruleType)
-	}
+// An instance of a UDP proxy.
+// ingress or egress is determined by looking at the parent UsProxy
+type udpProxy struct {
+	// Parent UsProxy
+	proxy *UsProxy
+	// Listener egress proxy
+	conn *net.UDPConn
+	// Listener for ingress proxy
+	goConn *gonet.UDPConn
 }
 
+// State tracking for a flow initiated to the UDP proxy,
+// including the connection to the destination.
 type udpProxyConn struct {
+	// Parent udpProxy
+	udpProxy *udpProxy
 	// The client that originated a stream to the UDP proxy
 	clientAddr *net.UDPAddr
-	// The connection with the originator
-	conn *net.UDPConn
-	// The connection with the destination
-	proxyConn *gonet.UDPConn
+	// The connection with the destination for an egress proxy
+	goProxyConn *gonet.UDPConn
+	// The connection with the destination for an ingress proxy
+	proxyConn *net.UDPConn
 	// Notify when the connection is to be closed
 	closeChan chan string
 	// track the last time inbound traffic was received
 	lastActivity time.Time
 }
 
-func (proxy *UsProxy) runUDPEgress(ctx context.Context, proxyWg *sync.WaitGroup) error {
-	var conn *net.UDPConn
+func (udpProxy *udpProxy) setupListener() error {
 	var err error
+	if udpProxy.proxy.ruleType == ProxyTypeEgress {
+		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", udpProxy.proxy.listenPort))
+		if err != nil {
+			return fmt.Errorf("Failed to resolve UDP address: %w", err)
+		}
+		udpProxy.conn, err = net.ListenUDP("udp", addr)
+		if err != nil {
+			return fmt.Errorf("Failed to listen on UDP port: %w", err)
+		}
+	} else {
+		udpProxy.goConn, err = udpProxy.proxy.userspaceNet.ListenUDP(&net.UDPAddr{Port: udpProxy.proxy.listenPort})
+		if err != nil {
+			return fmt.Errorf("Failed to listen on UDP port: %w", err)
+		}
+	}
+	return nil
+}
 
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", proxy.listenPort))
-	if err != nil {
-		return fmt.Errorf("Failed to resolve UDP address: %w", err)
+func (udpProxy *udpProxy) setReadDeadline() error {
+	var err error
+	// Don't block for more than a second
+	if udpProxy.proxy.ruleType == ProxyTypeEgress {
+		err = udpProxy.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	} else {
+		err = udpProxy.goConn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	}
-	conn, err = net.ListenUDP("udp", addr)
-	if err != nil {
-		return fmt.Errorf("Failed to listen on UDP port: %w", err)
+	return err
+}
+
+func (udpProxy *udpProxy) readFromUDP(buffer []byte) (int, *net.UDPAddr, error) {
+	var n int
+	var clientAddr *net.UDPAddr
+	var err error
+	if udpProxy.proxy.ruleType == ProxyTypeEgress {
+		n, clientAddr, err = udpProxy.conn.ReadFromUDP(buffer)
+	} else {
+		var netAddr net.Addr
+		n, netAddr, err = udpProxy.goConn.ReadFrom(buffer)
+		if err == nil {
+			clientAddr, err = net.ResolveUDPAddr("udp", netAddr.String())
+		}
 	}
-	defer conn.Close()
+	return n, clientAddr, err
+}
+
+func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error {
+	var err error
+	udpProxy := &udpProxy{proxy: proxy}
+
+	if err = udpProxy.setupListener(); err != nil {
+		return err
+	}
+	if proxy.ruleType == ProxyTypeEgress {
+		defer udpProxy.conn.Close()
+	} else {
+		defer udpProxy.goConn.Close()
+	}
 
 	buffer := make([]byte, udpMaxPayloadSize)
 	proxyConns := make(map[string]*udpProxyConn)
@@ -242,15 +292,19 @@ func (proxy *UsProxy) runUDPEgress(ctx context.Context, proxyWg *sync.WaitGroup)
 			if proxy.debugTraffic {
 				proxy.logger.Debug("Closing proxy connection for client:", clientAddrStr)
 			}
-			proxyConn.proxyConn.Close()
+			if proxy.ruleType == ProxyTypeEgress {
+				proxyConn.goProxyConn.Close()
+			} else {
+				proxyConn.proxyConn.Close()
+			}
 			delete(proxyConns, clientAddrStr)
 		default:
-			// Read from the UDP socket, but don't block for more than a second
-			if err = conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			// read a packet from the originator sent to the proxy
+			if err = udpProxy.setReadDeadline(); err != nil {
 				proxy.logger.Warn("Error setting UDP read deadline:", err)
 				continue
 			}
-			n, clientAddr, err = conn.ReadFromUDP(buffer)
+			n, clientAddr, err = udpProxy.readFromUDP(buffer)
 			if err != nil {
 				var timeoutError net.Error
 				if errors.As(err, &timeoutError); timeoutError.Timeout() {
@@ -263,9 +317,12 @@ func (proxy *UsProxy) runUDPEgress(ctx context.Context, proxyWg *sync.WaitGroup)
 				proxy.logger.Debug("Read from UDP client:", clientAddr, n, buffer[:n])
 			}
 
+			// find the appropriate destination connection for this packet.
+			// It may be a new connection, or an existing one.
 			var proxyConn *udpProxyConn
 			if proxyConn = proxyConns[clientAddr.String()]; proxyConn == nil {
-				proxyConn = &udpProxyConn{conn: conn, clientAddr: clientAddr, closeChan: closeChan}
+				// new connection, start a goroutine to handle packets in the reverse direction
+				proxyConn = &udpProxyConn{udpProxy: udpProxy, clientAddr: clientAddr, closeChan: closeChan}
 				err = proxy.createUDPProxyConn(ctx, proxyWg, proxyConn)
 				if err != nil {
 					proxy.logger.Warn("Error creating UDP proxy connection:", err)
@@ -273,24 +330,92 @@ func (proxy *UsProxy) runUDPEgress(ctx context.Context, proxyWg *sync.WaitGroup)
 				}
 				proxyConns[clientAddr.String()] = proxyConn
 			}
-			_, err = proxyConn.proxyConn.Write(buffer[:n])
+
+			// forward the original packet to the destination
+			err = proxyConn.writeToDestination(buffer, n)
 			if err != nil {
 				proxy.logger.Warn("Error writing to UDP proxy destination:", err)
 			} else if proxy.debugTraffic {
-				proxy.logger.Info("Wrote to UDP proxy destination:", proxyConn.proxyConn.RemoteAddr(), n, buffer[:n])
+				proxy.logger.Info("Wrote to UDP proxy destination:", proxyConn.goProxyConn.RemoteAddr(), n, buffer[:n])
 			}
+
+			// keep track of the last time we saw a packet in this direction.
+			// This is used to help determine when to time out the connection
+			// and remove it from our cache (proxyConns).
 			proxyConn.lastActivity = time.Now()
 		}
 	}
 }
 
-func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.WaitGroup, proxyConn *udpProxyConn) error {
-	newConn, err := proxy.userspaceNet.DialUDP(nil, &net.UDPAddr{Port: proxy.destPort, IP: net.ParseIP(proxy.destHost)})
-	if err != nil {
-		return fmt.Errorf("Error dialing UDP proxy destination: %w", err)
+func (proxyConn *udpProxyConn) writeToDestination(buf []byte, n int) error {
+	var err error
+	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+		_, err = proxyConn.goProxyConn.Write(buf[:n])
+	} else {
+		_, err = proxyConn.proxyConn.Write(buf[:n])
 	}
-	proxyConn.proxyConn = newConn
+	return err
+}
 
+func (proxyConn *udpProxyConn) setReadDeadline() error {
+	var err error
+	// Don't block for more than a second
+	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+		err = proxyConn.goProxyConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	} else {
+		err = proxyConn.proxyConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	}
+	return err
+}
+
+func (proxyConn *udpProxyConn) readFromUDP(buffer []byte) (int, *net.UDPAddr, error) {
+	var n int
+	var clientAddr *net.UDPAddr
+	var err error
+	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeIngress {
+		n, clientAddr, err = proxyConn.proxyConn.ReadFromUDP(buffer)
+	} else {
+		var netAddr net.Addr
+		n, netAddr, err = proxyConn.goProxyConn.ReadFrom(buffer)
+		if err == nil {
+			clientAddr, err = net.ResolveUDPAddr("udp", netAddr.String())
+		}
+	}
+	return n, clientAddr, err
+}
+
+func (proxyConn *udpProxyConn) writeBackToOriginator(buffer []byte, n int) error {
+	var err error
+	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+		_, err = proxyConn.udpProxy.conn.WriteToUDP(buffer[:n], proxyConn.clientAddr)
+	} else {
+		_, err = proxyConn.udpProxy.goConn.WriteTo(buffer[:n], proxyConn.clientAddr)
+	}
+	return err
+}
+
+func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.WaitGroup, proxyConn *udpProxyConn) error {
+	var err error
+
+	if proxy.ruleType == ProxyTypeEgress {
+		newConn, err := proxy.userspaceNet.DialUDP(nil, &net.UDPAddr{Port: proxy.destPort, IP: net.ParseIP(proxy.destHost)})
+		if err != nil {
+			return fmt.Errorf("Error dialing UDP proxy destination: %w", err)
+		}
+		proxyConn.goProxyConn = newConn
+	} else {
+		udpDest := net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort))
+		addr, err := net.ResolveUDPAddr("udp", udpDest)
+		if err != nil {
+			return fmt.Errorf("Failed to resolve UDP address: %w", err)
+		}
+		proxyConn.proxyConn, err = net.DialUDP("udp", nil, addr)
+		if err != nil {
+			return fmt.Errorf("Failed to Dial UDP destination %s: %w", udpDest, err)
+		}
+	}
+
+	// Start a goroutine to handle proxying data from the destination back to the client.
 	util.GoWithWaitGroup(proxyWg, func() {
 		buf := make([]byte, udpMaxPayloadSize)
 		var n int
@@ -316,12 +441,12 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 				}
 				break loop
 			default:
-				if err = proxyConn.proxyConn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
+				if err = proxyConn.setReadDeadline(); err != nil {
 					proxy.logger.Warn("Error setting UDP read deadline:", err)
 					break loop
 				}
 				var clientAddr2 net.Addr
-				n, clientAddr2, err = proxyConn.proxyConn.ReadFrom(buf)
+				n, clientAddr2, err = proxyConn.readFromUDP(buf)
 				if err != nil {
 					var timeoutError net.Error
 					if errors.As(err, &timeoutError); timeoutError.Timeout() {
@@ -333,13 +458,13 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 				if proxy.debugTraffic {
 					proxy.logger.Debug("Read from UDP client:", clientAddr2, n, buf[:n])
 				}
-				_, err = proxyConn.conn.WriteToUDP(buf[:n], proxyConn.clientAddr)
+				err = proxyConn.writeBackToOriginator(buf, n)
 				if err != nil {
 					proxy.logger.Warn("Error writing back to original UDP source:", err)
 					break loop
 				}
 				if proxy.debugTraffic {
-					proxy.logger.Debug("Wrote to UDP proxy destination:", proxyConn.proxyConn.RemoteAddr(), n, buf[:n])
+					proxy.logger.Debug("Wrote to UDP proxy destination:", proxyConn.goProxyConn.RemoteAddr(), n, buf[:n])
 				}
 				if !timer.Stop() {
 					<-timer.C
@@ -351,17 +476,6 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 	})
 
 	return nil
-}
-
-func (proxy *UsProxy) runUDPIngress(ctx context.Context, proxyWg *sync.WaitGroup) error {
-	// goConn, err = proxy.userspaceNet.ListenUDP(&net.UDPAddr{Port: proxy.listenPort})
-	// if err != nil {
-	// 	return fmt.Errorf("Failed to listen on UDP port: %w", err)
-	// }
-	// defer goConn.Close()
-
-	// TODO
-	return fmt.Errorf("Ingress UDP proxy not implemented yet")
 }
 
 func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error {
@@ -392,7 +506,7 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 				break
 			}
 			util.GoWithWaitGroup(proxyWg, func() {
-				err = proxy.handleConnection(ctx, proxyWg, conn)
+				err = proxy.handleTCPConnection(ctx, proxyWg, conn)
 				proxy.logger.Debugf("Connection from %s closed: %v", conn.RemoteAddr().String(), err)
 			})
 		}
@@ -421,7 +535,7 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 	return err
 }
 
-func (proxy *UsProxy) handleConnection(ctx context.Context, proxyWg *sync.WaitGroup, inConn net.Conn) error {
+func (proxy *UsProxy) handleTCPConnection(ctx context.Context, proxyWg *sync.WaitGroup, inConn net.Conn) error {
 	defer inConn.Close()
 
 	proxyDest := net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort))
