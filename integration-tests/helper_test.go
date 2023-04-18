@@ -336,6 +336,7 @@ func (helper *Helper) nexdStatus(ctx context.Context, ctr testcontainers.Contain
 	defer cancel()
 	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
 		statOut, _ := helper.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})
+		helper.Logf("nexd status: %s", statOut)
 		return strings.Contains(statOut, "Running"), nil
 	})
 	if running {
