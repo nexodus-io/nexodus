@@ -32,3 +32,11 @@ Deployment of Nexodus on OperateFirst is managed by ArgoCD.
 
 ArgoCD will watch this repository for changes and ensure that our deployment is up-to-date.
 It will prevent our application from deviating from the desired state.
+
+## Links
+
+These resources are only accessible to those with access to the cluster hosting our deployments.
+
+- [Cluster login](https://console-openshift-console.apps.open-svc-sts.k1wl.p1.openshiftapps.com/)
+- [prod deployment ArgoCD](https://openshift-gitops-server-openshift-gitops.apps.open-svc-sts.k1wl.p1.openshiftapps.com/applications/openshift-gitops/nexodus?view=tree&resource=)
+- [qa deployment ArgoCD](https://openshift-gitops-server-openshift-gitops.apps.open-svc-sts.k1wl.p1.openshiftapps.com/applications/openshift-gitops/nexodus-qa?view=tree&resource=)
