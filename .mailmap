@@ -1,0 +1,21 @@
+#
+# Name <email> <email2>
+#   Use "Name" and "<email>" for any commit with the address "<email2>".  This is useful
+#   when a person has used more than one email address.
+#
+# Name <email>
+#   Use "Name" for any instance of "<email>". This is useful if a person has used more than
+#   one spelling of their name.
+#
+
+Anil Vishnoi <avishnoi@redhat.com>
+Anil Vishnoi <avishnoi@redhat.com> <vishnoianil@gmail.com>
+Anil Vishnoi <avishnoi@redhat.com> <vishnoianil@users.noreply.github.com>
+Brent Salisbury <bsalisbu@redhat.com> <nerdalert@users.noreply.github.com>
+Dave Tucker <dave@dtucker.co.uk> <dave-tucker@users.noreply.github.com>
+Hiram Chirino <hiram@hiramchirino.com> <hchirino@redhat.com>
+Hiram Chirino <hiram@hiramchirino.com> <chirino@users.noreply.github.com>
+Russell Bryant <russell.bryant@gmail.com> <rbryant@redhat.com>
+Russell Bryant <russell.bryant@gmail.com> <russell@russellbryant.net>
+Russell Bryant <russell.bryant@gmail.com> <russellb@users.noreply.github.com>
+Sanjeev Rampal <srampal@redhat.com> <sr.2357@gmail.com>
