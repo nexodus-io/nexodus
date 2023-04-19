@@ -44,7 +44,7 @@ func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
 
 	pubDecoded, err := base64.StdEncoding.DecodeString(wgPeerConfig.PublicKey)
 	if err != nil {
-		ax.logger.Errorf("Failed to decode wireguard private key: %w", err)
+		ax.logger.Errorf("Failed to decode wireguard public key: %w", err)
 		return err
 	}
 
@@ -182,7 +182,7 @@ func (ax *Nexodus) deletePeerUS(publicKey string) error {
 
 	pubDecoded, err := base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
-		ax.logger.Errorf("Failed to decode wireguard private key: %w", err)
+		ax.logger.Errorf("Failed to decode wireguard public key: %w", err)
 		return err
 	}
 	config := fmt.Sprintf("public_key=%s\nremove=true\n", hex.EncodeToString(pubDecoded))
