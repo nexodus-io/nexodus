@@ -19,7 +19,7 @@
 ### VPC Blue Relay Node Deployment ###
 - name: Launching Relay Router in VPC Blue
   amazon.aws.ec2_instance:
-    name: "hub-router-zone-blue"
+    name: "nexodus-relay-blue-{{ aws_nodetype_tag }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -43,12 +43,12 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "relayNode"
-    line: "[relayNode]\n{{ relayIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ relayIp['instances'][0]['private_ip_address']}} hostname=relay"
+    line: "[relayNode]\n{{ relayIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ relayIp['instances'][0]['private_ip_address']}} hostname=nexodus-relay-blue-{{ aws_nodetype_tag }}"
 
 #### VPC Blue Agent Node Deployment ###
 - name: Launching EC2 Agent Node Instances in VPC Blue
   amazon.aws.ec2_instance:
-    name: "nexodus-demo-blue-node-{{ item+1 }}"
+    name: "nexodus-blue-{{ aws_nodetype_tag }}-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -88,7 +88,7 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-blue-node-{{ item.1 + 1 }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-blue-{{ aws_nodetype_tag }}-{{ item.1 + 1 }}"
   loop: "{{ ec2_jobs_with_index }}"
 
 ### VPC Green Security Group  ###
@@ -111,7 +111,7 @@
 ### VPC Green Agent Node Deployment ###
 - name: Launching EC2 Agent Node Instances in VPC Green
   amazon.aws.ec2_instance:
-    name: "nexodus-demo-green-node-{{ item+1 }}"
+    name: "nexodus-green-{{ aws_nodetype_tag }}-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -151,7 +151,7 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-green-node-{{ item.1 + 1 }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-green-{{ aws_nodetype_tag }}-{{ item.1 + 1 }}"
   loop: "{{ ec2_jobs_with_index }}"
 
 ### VPC Red Security Group  ###
@@ -174,7 +174,7 @@
 ### VPC Red Agent Node Deployment ###
 - name: Launching EC2 Instances in VPC Red
   amazon.aws.ec2_instance:
-    name: "nexodus-demo-red-node-{{ item+1 }}"
+    name: "nexodus-red-{{ aws_nodetype_tag }}-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -214,13 +214,13 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-node-{{ item.1 + 1 }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-red-{{ aws_nodetype_tag }}-{{ item.1 + 1 }}"
   loop: "{{ ec2_jobs_with_index }}"
 
 ### VPC Red  Relay only agents (--relay-only) ###
 - name: Launching Relay Only EC2 Instances in VPC Red
   amazon.aws.ec2_instance:
-    name: "nexodus-demo-red-relay-node-{{ item+1 }}"
+    name: "nexodus-red-relay-only-{{ aws_nodetype_tag }}-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
     key_name: "{{ aws_key_name }}"
     instance_type: "{{ aws_instance_type }}"
@@ -260,7 +260,7 @@
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusRelayNodes"
-    line: "[nexodusRelayNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-relay-node-{{ item.1 + 1 }}"
+    line: "[nexodusRelayNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-red-relay-only-{{ aws_nodetype_tag }}-{{ item.1 + 1 }}"
   loop: "{{ ec2_jobs_with_index }}"
 
 - name: Refresh inventory to ensure new instances exist in inventory
