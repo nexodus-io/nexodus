@@ -5,11 +5,7 @@
     name: boto
     state: present
 
-#- name: Generate a UUID for the ec2 host (Use this for naming if you want overlapping demos at once)
-#  shell: uuidgen | head -c 4
-#  register: uuid
-
-### VPC Blue Deployment ###
+### VPC Blue Security Group ###
 - name: Creating Security Group for VPC Blue
   amazon.aws.ec2_group:
     name: "{{ secgroup_name_blue }}"
@@ -20,8 +16,8 @@
       - proto: all
         cidr_ip: "0.0.0.0/0"
 
-### Relay Node Server Setup (--relay-node) ###
-- name: Launching Hub Router in VPC Blue
+### VPC Blue Relay Node Deployment ###
+- name: Launching Relay Router in VPC Blue
   amazon.aws.ec2_instance:
     name: "hub-router-zone-blue"
     aws_region: "{{ aws_region }}"
@@ -49,7 +45,8 @@
     regexp: "relayNode"
     line: "[relayNode]\n{{ relayIp['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh private_address={{ relayIp['instances'][0]['private_ip_address']}} hostname=relay"
 
-- name: Launching EC2 Instances in VPC Blue
+#### VPC Blue Agent Node Deployment ###
+- name: Launching EC2 Agent Node Instances in VPC Blue
   amazon.aws.ec2_instance:
     name: "nexodus-demo-blue-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
@@ -72,15 +69,29 @@
     wait: true
   register: nodeIP
   loop: "{{ range(0, node_count_blue | int) }}"
+  async: 7200
+  poll: 0
+
+- name: Wait for all Blue VPC instances to finish initializing
+  async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: ec2_jobs
+  loop: "{{ nodeIP['results'] }}"
+  until: ec2_jobs.finished
+  retries: 300
+
+- name: Combine ec2_jobs and index
+  set_fact:
+    ec2_jobs_with_index: "{{ ec2_jobs.results | zip(range(0, node_count_blue | int)) | list }}"
 
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-blue-node-{{ item+1 }}"
-  loop: "{{ range(0, node_count_blue | int) }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-blue-node-{{ item.1 + 1 }}"
+  loop: "{{ ec2_jobs_with_index }}"
 
-### VPC Green Deployment ###
+### VPC Green Security Group  ###
 - name: Creating Security Group for VPC Green
   amazon.aws.ec2_group:
     name: "{{ secgroup_name_green }}"
@@ -97,7 +108,8 @@
           - 22
         cidr_ip: 0.0.0.0/0
 
-- name: Launching EC2 Instances in VPC Green
+### VPC Green Agent Node Deployment ###
+- name: Launching EC2 Agent Node Instances in VPC Green
   amazon.aws.ec2_instance:
     name: "nexodus-demo-green-node-{{ item+1 }}"
     aws_region: "{{ aws_region }}"
@@ -120,15 +132,29 @@
     wait: true
   register: nodeIP
   loop: "{{ range(0, node_count_green | int) }}"
+  async: 7200
+  poll: 0
+
+- name: Wait for all green VPC instances to finish initializing
+  async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: ec2_jobs
+  loop: "{{ nodeIP['results'] }}"
+  until: ec2_jobs.finished
+  retries: 300
+
+- name: Combine ec2_jobs and index
+  set_fact:
+    ec2_jobs_with_index: "{{ ec2_jobs.results | zip(range(0, node_count_green | int)) | list }}"
 
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-green-node-{{ item+1 }}"
-  loop: "{{ range(0, node_count_green | int) }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-green-node-{{ item.1 + 1 }}"
+  loop: "{{ ec2_jobs_with_index }}"
 
-### VPC Red Deployment ###
+### VPC Red Security Group  ###
 - name: Creating Security Group for VPC Red
   amazon.aws.ec2_group:
     name: "{{ secgroup_name_red }}"
@@ -145,6 +171,7 @@
           - 22
         cidr_ip: 0.0.0.0/0
 
+### VPC Red Agent Node Deployment ###
 - name: Launching EC2 Instances in VPC Red
   amazon.aws.ec2_instance:
     name: "nexodus-demo-red-node-{{ item+1 }}"
@@ -168,15 +195,29 @@
     wait: true
   register: nodeIP
   loop: "{{ range(0, node_count_red | int) }}"
+  async: 7200
+  poll: 0
 
-### Relay only agents (--relay-only) ###
+- name: Wait for all red VPC instances to finish initializing
+  async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: ec2_jobs
+  loop: "{{ nodeIP['results'] }}"
+  until: ec2_jobs.finished
+  retries: 300
+
+- name: Combine ec2_jobs and index
+  set_fact:
+    ec2_jobs_with_index: "{{ ec2_jobs.results | zip(range(0, node_count_red | int)) | list }}"
+
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusNodes"
-    line: "[nexodusNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-node-{{ item+1 }}"
-  loop: "{{ range(0, node_count_red | int) }}"
+    line: "[nexodusNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-node-{{ item.1 + 1 }}"
+  loop: "{{ ec2_jobs_with_index }}"
 
+### VPC Red  Relay only agents (--relay-only) ###
 - name: Launching Relay Only EC2 Instances in VPC Red
   amazon.aws.ec2_instance:
     name: "nexodus-demo-red-relay-node-{{ item+1 }}"
@@ -200,13 +241,27 @@
     wait: true
   register: nodeIP
   loop: "{{ range(0, relay_node_count_red | int) }}"
+  async: 7200
+  poll: 0
+
+- name: Wait for all relay only red VPC instances to finish initializing
+  async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: ec2_jobs
+  loop: "{{ nodeIP['results'] }}"
+  until: ec2_jobs.finished
+  retries: 300
+
+- name: Combine ec2_jobs and index
+  set_fact:
+    ec2_jobs_with_index: "{{ ec2_jobs.results | zip(range(0, relay_node_count_red | int)) | list }}"
 
 - name: Updating the node's public ip in inventory
   lineinfile:
     path: "{{ inventory_location }}"
     regexp: "nexodusRelayNodes"
-    line: "[nexodusRelayNodes]\n{{ nodeIP['results'][item]['instances'][0]['public_ip_address']}} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-relay-node-{{ item+1 }}"
-  loop: "{{ range(0, relay_node_count_red | int) }}"
+    line: "[nexodusRelayNodes]\n{{ item.0['instances'][0]['public_ip_address'] }} ansible_user={{ ansible_user }} ansible_connection=ssh node_name=nexodus-demo-red-relay-node-{{ item.1 + 1 }}"
+  loop: "{{ ec2_jobs_with_index }}"
 
 - name: Refresh inventory to ensure new instances exist in inventory
   meta: refresh_inventory
