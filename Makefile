@@ -504,8 +504,10 @@ else ifeq ($(OVERLAY),cockroach)
 			GRANT ALL ON DATABASE keycloak TO keycloak;\
 			"
 endif
+	$(CMD_PREFIX) kubectl rollout restart deploy/auth -n nexodus
 	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
 	$(CMD_PREFIX) kubectl rollout restart deploy/ipam -n nexodus
+	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/auth --timeout=5m
 	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
 	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/ipam --timeout=5m
 
