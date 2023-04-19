@@ -394,3 +394,10 @@ jobs:
           name: nexodus
           path: |
             ${{ steps.build-rpm.outputs.artifact-name }}
+
+  build-workflow-complete:
+    needs: ["build-binaries", "build-rpm", "go-unit", "e2e", "k8s-lint", "opa-lint", "ui-lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Complete
+        run: echo "Build Complete"
