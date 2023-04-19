@@ -1,0 +1,78 @@
+---
+# tasks file for qa-deploy-mesh
+- name: Update repo cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Install dependencies
+  become: yes
+  apt:
+    name:
+      - wireguard
+      - fping
+      - iperf3
+      - nftables
+    state: latest
+
+# Binary URL is https://nexodus-io.s3.amazonaws.com/ec2-e2e/qa/nexd-linux-amd64
+- name: Download the Nexodus Agent Binary
+  shell: |
+    sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
+    sudo chmod +x /usr/local/sbin/nexd
+
+- name: Running The following nexd command
+  debug:
+    msg: "nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} {{ nexodus_url }}"
+  when: "'nexodusNodes' in group_names"
+
+- name: Attach the Node Agent to the Controller
+  become: yes
+  shell: |
+    echo "Running command: nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} {{ nexodus_url }}" > nexodus-logs.txt
+    nexd \
+    --username '{{ nexodus_auth_uid }}' \
+    --password '{{ nexodus_auth_password }}' \
+    {{ nexodus_url }} >> nexodus-logs.txt 2>&1 &
+  when: "'nexodusNodes' in group_names"
+
+- name: Running The following nexd command
+  debug:
+    msg: "nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} --relay-only {{ nexodus_url }}"
+  when: "'nexodusRelayNodes' in group_names"
+
+- name: Attach the Relay Only Client to the Controller
+  become: yes
+  shell: |
+    echo "Running command: nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} --relay-only {{ nexodus_url }}" > nexodus-logs.txt
+    nexd \
+    --username '{{ nexodus_auth_uid }}' \
+    --password '{{ nexodus_auth_password }}' \
+    --relay-only \
+    {{ nexodus_url }} >> nexodus-logs.txt 2>&1 &
+  when: "'nexodusRelayNodes' in group_names"
+
+- name: Pause for 10 seconds for the onboard to complete to scrape the logs
+  pause:
+    seconds: 10
+
+- name: Display the nexd logs to stdout
+  become: yes
+  shell: |
+    cat /home/{{ ansible_user }}/nexodus-logs.txt
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'nexodusNodes' in group_names"
+
+- name: Copy file from remote host to localhost when the node is --relay-only (symmetric NAT)
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-relay-only-symmetric-nat-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'nexodusRelayNodes' in group_names"

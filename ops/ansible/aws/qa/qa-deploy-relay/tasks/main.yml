@@ -1,0 +1,53 @@
+---
+# tasks file for qa-deploy-relay
+- name: Update repo cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Install dependencies
+  become: yes
+  apt:
+    name:
+      - wireguard
+      - fping
+      - iperf3
+      - nftables
+    state: latest
+
+# Binary URL is https://nexodus-io.s3.amazonaws.com/ec2-e2e/qa/nexd-linux-amd64
+- name: Download the Nexodus Agent Binary
+  shell: |
+    sudo curl {{ nexodus_binary }} --output /usr/local/sbin/nexd
+    sudo chmod +x /usr/local/sbin/nexd
+
+- name: Running The following nexd command
+  debug:
+    msg: "nexd --stun --username '{{ nexodus_auth_uid }}' --password '{{ nexodus_auth_password }}' relay {{ nexodus_url }}"
+
+- name: Attach the Relay Node to the Controller
+  become: yes
+  shell: |
+    echo "Running command: nexd --stun --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} relay {{ nexodus_url }}" > nexodus-logs.txt
+    NEXD_LOGLEVEL=debug nexd \
+    --stun \
+    --username '{{ nexodus_auth_uid }}' \
+    --password '{{ nexodus_auth_password }}' \
+    relay \
+    {{ nexodus_url }} >> nexodus-logs.txt 2>&1 &
+
+- name: Pause for 10 seconds for the onboard to complete to scrape the logs
+  pause:
+    seconds: 10
+
+- name: Display the nexd logs to stdout
+  become: yes
+  shell: |
+    cat /home/{{ ansible_user }}/nexodus-logs.txt
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-relay-node-nexodus-logs.txt
+    flat: yes
+  ignore_errors: yes

@@ -1,0 +1,36 @@
+# QA roles get branched from here
+
+# Deploy the VMs
+- hosts: localhost
+  vars_files:
+    - vars.yml
+  roles:
+    - role: setup-ec2
+
+# Deploy and start the agent
+- hosts: nexodusNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: qa/qa-deploy-mesh
+
+# Deploy and start the relay server (relay)
+- hosts: relayNode
+  vars_files:
+    - vars.yml
+  roles:
+    - role: qa/qa-deploy-relay
+
+# Deploy and start the relay only agents (--relay-only)
+- hosts: nexodusRelayNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: qa/qa-deploy-mesh
+
+# Validate nodes by running a connectivity test from a spoke node to all peers
+- hosts:  "{{ groups['nexodusNodes'][0] }}"
+  vars_files:
+    - vars.yml
+  roles:
+    - role: validate-connectivity

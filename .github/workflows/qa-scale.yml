@@ -1,0 +1,163 @@
+# This workflow is for scale testing against the Nexodus qa deployment
+name: qa-scale
+
+concurrency:
+  group: qa-scale
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_size:
+        description: 'deployment size: small | medium | large | xlarge'
+        required: true
+        default: 'small'
+        type: string
+
+      pr_or_branch:
+        description: 'pull request number or branch name'
+        required: true
+        default: 'main'
+
+jobs:
+  deploy-qa:
+    name: deploy-qa-ec2
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+    env:
+      AWS_REGION: "us-east-1"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ANSIBLE_VAULT_PASSWORD_FILE: "vault-secret.txt"
+      ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
+      ANSIBLE_HOST_KEY_CHECKING: "false"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Determine if pr_or_branch is a PR number
+        id: check_pr
+        run: |
+          if [[ "${{ github.event.inputs.pr_or_branch }}" =~ ^[0-9]+$ ]]; then
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_pr=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch and checkout PR
+        if: steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          git fetch origin pull/${{ github.event.inputs.pr_or_branch }}/head:pr-${{ github.event.inputs.pr_or_branch }}
+          git checkout pr-${{ github.event.inputs.pr_or_branch }}
+
+      - name: Checkout branch
+        if: steps.check_pr.outputs.is_pr == 'false'
+        run: git checkout ${{ github.event.inputs.pr_or_branch }}
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+
+      - name: Build
+        run: |
+          make dist/nexd-linux-amd64
+
+      - name:  Copy Agent Binary to S3
+        run: |
+          aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/qa/
+
+      - name:  Build Keycloak Tool
+        run: |
+          go build -o ./ ./hack/e2e-scripts/kctool/
+
+      - name: Create a Keycloak User
+        id: kc-user
+        run: |
+          output=$(./kctool --create-user \
+            -ku "${{ secrets.KC_QA_USERNAME }}" \
+            -kp "${{ secrets.KC_QA_PASSWORD }}" \
+            -u qa \
+            -p "${{ secrets.QA_USER_PASSWORD }}" \
+            https://auth.qa.nexodus.io)
+          echo "USER=$output" >> $GITHUB_OUTPUT
+
+      - name: User results from Keycloak
+        run: echo "User is ${{ steps.kc-user.outputs.USER }}"
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Ansible and Dependencies
+        run: pip3.10 install boto boto3 ansible-vault ansible-core==2.13.3
+
+      - name: Install amazon.aws Ansible library
+        run: ansible-galaxy collection install amazon.aws
+
+      - name: Set Deployment Size to Small
+        if: github.event.inputs.deployment_size == 'small'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_SMALL_QA }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Medium
+        if: github.event.inputs.deployment_size == 'medium'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_MEDIUM_QA }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to Large
+        if: github.event.inputs.deployment_size == 'large'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_LARGE_QA }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Set Deployment Size to XLarge
+        if: github.event.inputs.deployment_size == 'xlarge'
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_XLARGE_QA }}" > ./ops/ansible/aws/vars.yml
+
+      - name: Create Ansible Secrets
+        run: |
+          echo "${{ secrets.ANSIBLE_SSH_KEY }}" > nexodus.pem
+          chmod 0400 nexodus.pem
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault-secret.txt
+          chmod 0400 vault-secret.txt
+
+      - name: Deploy EC2 Agent Nodes
+        run: |
+          ansible-playbook -vv ./ops/ansible/aws/deploy-ec2-qa.yml \
+          -i ./ops/ansible/aws/inventory.txt \
+          --private-key nexodus.pem \
+          --vault-password-file vault-secret.txt \
+          --extra-vars "nexodus_auth_uid=${{ steps.kc-user.outputs.USER }}" \
+          --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}"
+
+      - name: Mesh Connectivity Results
+        run: |
+          set -e
+          cat ./ops/ansible/aws/connectivity-results.txt
+          if grep -q '0 unreachable' ./ops/ansible/aws/connectivity-results.txt; then
+            echo "Connectivity results contain '0 unreachable' nodes"
+          else
+            echo "Connectivity results do not contain '0 unreachable' nodes, check the connectivity results for details, failing this job"
+            exit 1
+          fi
+
+      - name: Gather api-server Server Logs
+        if: always()
+        run: |
+          ansible-playbook -vv \
+          ./hack/e2e-scripts/aws-e2e-pr-gather.yml \
+          --private-key nexodus.pem \
+          -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} ansible_user=ubuntu"
+
+      - name: Terminate EC2 Instances
+        if: always()
+        run: |
+          ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml
+
+      - name: Upload nexd and api-server Logs to Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dev-ec2-artifacts
+          path: ./ops/ansible/aws/nexd-logs/
+          retention-days: 10
