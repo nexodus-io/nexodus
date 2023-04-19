@@ -40,9 +40,9 @@ jobs:
         id: check_pr
         run: |
           if [[ "${{ github.event.inputs.pr_or_branch }}" =~ ^[0-9]+$ ]]; then
-            echo "::set-output name=is_pr::true"
+            echo "is_pr=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=is_pr::false"
+            echo "is_pr=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch and checkout PR
