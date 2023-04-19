@@ -300,7 +300,7 @@ func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token
 	}, nil
 }
 
-var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9\.\[\] ]+`)
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9\.\[\]: ]+`)
 
 func clearString(str string) string {
 	return nonAlphanumericRegex.ReplaceAllString(str, "")

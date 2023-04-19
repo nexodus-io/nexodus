@@ -169,10 +169,12 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
+	node1IPv6, err := getTunnelIP(ctx, helper, inetV6, node1)
+	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")),
-		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IP, "8080")))
+		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IPv6, "8080")))
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
@@ -190,25 +192,35 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	util.GoWithWaitGroup(&wg, func() {
 		_, err := helper.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "8080"})
+		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "-b", "::", "8080"})
 	})
 
 	// run curl on node2 (to the local proxy) to reach the server on node1
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
-			return false, nil
+		type target struct {
+			IP   string
+			Port string
 		}
-		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1:81"})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
-			return false, nil
+		targets := []target{
+			// v4 client, v4 server
+			{IP: "127.0.0.1", Port: "80"},
+			// v4 client, v6 server
+			{IP: "127.0.0.1", Port: "81"},
+			// v6 client, v4 server
+			{IP: "::1", Port: "80"},
+			// v6 client, v6 server
+			{IP: "::1", Port: "81"},
 		}
-		require.True(strings.Contains(output, "bananas"))
-		require.True(strings.Contains(output2, "bananas"))
+		for _, target := range targets {
+			output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(target.IP, target.Port))})
+			if err != nil {
+				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "bananas"))
+		}
 		return true, nil
 	})
 	require.NoError(err)
@@ -304,11 +316,13 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")),
-		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("127.0.0.1", "8080")))
+		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("::1", "8080")))
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
 	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
+	node2IPv6, err := getTunnelIP(ctx, helper, inetV6, node2)
 	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
@@ -322,24 +336,35 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 	util.GoWithWaitGroup(&wg, func() {
 		_, err := helper.containerExec(ctx, node2, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node2, []string{"python3", "-m", "http.server", "8080"})
+		_, _ = helper.containerExec(ctx, node2, []string{"python3", "-m", "http.server", "-b", "::", "8080"})
 	})
 
 	// run curl on node1 to the server on node2 (running the proxy)
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
-			return false, nil
+		type target struct {
+			IP   string
+			Port string
 		}
-		output2, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8081"))})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
-			return false, nil
+		targets := []target{
+			// v4 client, v4 server
+			{IP: node2IP, Port: "8080"},
+			// v4 client, v6 server
+			{IP: node2IP, Port: "8081"},
+			// v6 client, v4 server
+			{IP: node2IPv6, Port: "8080"},
+			// v6 client, v6 server
+			{IP: node2IPv6, Port: "8081"},
 		}
-		require.True(strings.Contains(output, "bananas"))
+		for _, target := range targets {
+			output, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(target.IP, target.Port))})
+			if err != nil {
+				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "bananas"))
+		}
 		return true, nil
 	})
 	require.NoError(err)
