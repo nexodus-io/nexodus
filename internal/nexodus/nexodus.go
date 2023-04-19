@@ -86,7 +86,6 @@ type Nexodus struct {
 	childPrefix              []string
 	stun                     bool
 	relay                    bool
-	discoveryNode            bool
 	relayWgIP                string
 	wgConfig                 wgConfig
 	client                   *client.APIClient
@@ -142,7 +141,6 @@ func NewNexodus(
 	childPrefix []string,
 	stun bool,
 	relay bool,
-	discoveryNode bool,
 	relayOnly bool,
 	insecureSkipTlsVerify bool,
 	version string,
@@ -189,7 +187,6 @@ func NewNexodus(
 		childPrefix:         childPrefix,
 		stun:                stun,
 		relay:               relay,
-		discoveryNode:       discoveryNode,
 		deviceCache:         make(map[string]public.ModelsDevice),
 		controllerURL:       controllerURL,
 		hostname:            hostname,
@@ -205,7 +202,7 @@ func NewNexodus(
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
 
-	if ax.relay || ax.discoveryNode {
+	if ax.relay {
 		ax.listenPort = WgDefaultPort
 	}
 
@@ -306,30 +303,18 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		localEndpointPort = ax.listenPort
 	}
 
-	if ax.relay || ax.discoveryNode {
+	if ax.relay {
 		peerListing, _, err := ax.informer.Execute()
 		if err != nil {
 			return err
 		}
 
-		if ax.relay {
-			existingRelay, err := ax.orgRelayCheck(peerListing)
-			if err != nil {
-				return err
-			}
-			if existingRelay != "" {
-				return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
-			}
+		existingRelay, err := ax.orgRelayCheck(peerListing)
+		if err != nil {
+			return err
 		}
-
-		if ax.discoveryNode {
-			existingDiscoveryNode, err := ax.orgDiscoveryCheck(peerListing)
-			if err != nil {
-				return err
-			}
-			if existingDiscoveryNode != "" {
-				return fmt.Errorf("the organization already contains a discovery node, device %s needs to be deleted before adding a new discovery node", existingDiscoveryNode)
-			}
+		if existingRelay != "" {
+			return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
 		}
 	}
 
@@ -415,18 +400,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	if err := ax.Reconcile(true); err != nil {
 		return fmt.Errorf("initial reconcile failed: %w", err)
-	}
-
-	// gather wireguard state from the relay node periodically
-	if ax.discoveryNode {
-		util.GoWithWaitGroup(wg, func() {
-			util.RunPeriodically(ctx, time.Second*30, func() {
-				ax.logger.Debugf("Reconciling peers from relay state")
-				if err := ax.discoveryStateReconcile(); err != nil {
-					ax.logger.Error(err)
-				}
-			})
-		})
 	}
 
 	util.GoWithWaitGroup(wg, func() {
@@ -597,63 +570,6 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 	return nil
 }
 
-// discoveryStateReconcile collect state from the discovery node and rejoin nodes with the dynamic state
-func (ax *Nexodus) discoveryStateReconcile() error {
-	ax.logger.Debugf("Reconciling peers from relay state")
-	peerListing, _, err := ax.informer.Execute()
-	if err != nil {
-		return err
-	}
-	// get wireguard state from the discovery node to learn the dynamic reflexive ip:port socket
-	discoInfo, err := DumpPeers(ax.tunnelIface)
-	if err != nil {
-		ax.logger.Errorf("eror dumping wg peers")
-	}
-	discoData := make(map[string]WgSessions)
-	for _, peer := range discoInfo {
-		_, ok := discoData[peer.PublicKey]
-		if !ok {
-			discoData[peer.PublicKey] = peer
-		}
-	}
-	// re-join peers with updated state from the discovery node
-	for _, peer := range peerListing {
-		// if the peer is behind a symmetric NAT, skip to the next peer
-		if peer.SymmetricNat {
-			ax.logger.Debugf("skipping symmetric NAT node %s", peer.Hostname)
-			continue
-		}
-		_, ok := discoData[peer.PublicKey]
-		if ok {
-			if discoData[peer.PublicKey].Endpoint != "" {
-				// test the reflexive address is valid and not still in a (none) state
-				_, _, err := net.SplitHostPort(discoData[peer.PublicKey].Endpoint)
-				if err != nil {
-					// if the discovery state was not yet established or the peer is offline the endpoint can be (none)
-					ax.logger.Debugf("failed to split host:port endpoint pair: %v", err)
-					continue
-				}
-				endpointReflexiveAddress := discoData[peer.PublicKey].Endpoint
-				// update the peer endpoint to the new reflexive address learned from the wg session
-				for i := range peer.Endpoints {
-					if peer.Endpoints[i].Source == "local" {
-						peer.Endpoints[i].Address = endpointReflexiveAddress
-						_, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), peer.Id).Update(public.ModelsUpdateDevice{
-							Endpoints: peer.Endpoints,
-						}).Execute()
-						break
-					}
-				}
-
-				if err != nil {
-					ax.logger.Errorf("failed updating peer: %+v", err)
-				}
-			}
-		}
-	}
-	return nil
-}
-
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
 func (ax *Nexodus) checkUnsupportedConfigs() error {
 
@@ -695,16 +611,6 @@ func (ax *Nexodus) symmetricNatDisco() error {
 func (ax *Nexodus) orgRelayCheck(peerListing []public.ModelsDevice) (string, error) {
 	for _, p := range peerListing {
 		if p.Relay && ax.wireguardPubKey != p.PublicKey {
-			return p.Id, nil
-		}
-	}
-	return "", nil
-}
-
-// orgDiscoveryCheck checks if there is an existing Discovery node in the organization that does not match this device's pub key
-func (ax *Nexodus) orgDiscoveryCheck(peerListing []public.ModelsDevice) (string, error) {
-	for _, p := range peerListing {
-		if p.Discovery && ax.wireguardPubKey != p.PublicKey {
 			return p.Id, nil
 		}
 	}
