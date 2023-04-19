@@ -79,15 +79,7 @@ NAT mapping can change for various reasons such as NAT device restart, or mappin
 
 *So how are we solving this problem?*
 
-Currently, we use a Discovery node to solve this problem. Discovery nodes can be any node that is reachable through a public ip address (or at the least, reachable on 51820 by all nodes looking to peer). Introducing the Discovery node adds an additional step in the provisioning flow. Given that each node runs the keepalive to all its peers, Discovery nodes will always have an updated reflexive address of its peer.
-
-> **Note**
-> Discovery nodes run the same Nexodus agent, but it runs with Discovery node configuration. To run Nexodus agent as a Discovery Node, you need to provide `--stun relay --enable-discovery` option during onboarding of the node. Please refer to the [Deploying Nexodus Relay](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) section for details about deploying a relay node.
-
-The Discovery Node periodically fetches the wireguard peer configuration and sends the updated state (peer's endpoint-ip) to the Nexodus ApiServer. When the node's Nexodus agent fetches the new state from ApiServer, they update their peer configuration with the new endpoint ip to reconcile the broken connections between the peers. In order to maintain consitent peering and connectivity in a mobile and edge driven world, constant reconciliation is required to adjust to networks with middlebox and network state churn.
-
-> **ThinkingHatOn**
-> Assuming a Discovery node is in AWS cloud, I assume we have a similar risk of NAT mapping change? If yes, Elastic IP is probably a better option for Discovery nodes.
+Nexodus agent, sends the stun request using the port that is used by wireguard to tunnel the packets. If the stun request respond with different port in reflexive address from what is present in the current wireguard config, it updates the port information and send updated device information to API Server and get it distributed with other peers in the organization. In order to maintain consistent peering and connectivity in a mobile and edge driven world, constant state reconciliation is required to adjust to networks with middlebox and network state churn.
 
 #### Challenge 2 - Multiple nodes behind same NAT
 
