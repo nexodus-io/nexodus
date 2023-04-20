@@ -197,7 +197,7 @@ dist/.ui-fmt: $(wildcard ui/*) $(wildcard ui/src/**) | dist
 .PHONY: generate
 generate: dist/.generate ## Run all code generators and formatters
 
-dist/.generate: $(SWAGGER_YAML) ui-fmt | dist
+dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
