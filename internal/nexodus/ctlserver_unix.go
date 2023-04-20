@@ -18,30 +18,10 @@ import (
 )
 
 func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
-	ax.CtlServerUnixStart(ctx, wg)
-	return nil
+	return ax.CtlServerUnixStart(ctx, wg)
 }
 
-func (ax *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) {
-	util.GoWithWaitGroup(wg, func() {
-		for {
-			// Use a different waitgroup here, because we want to make sure
-			// all of the subroutines have exited before we attempt to restart
-			// the control server.
-			ctlWg := &sync.WaitGroup{}
-			err := ax.CtlServerUnixRun(ctx, ctlWg)
-			ctlWg.Wait()
-			if err == nil {
-				// No error means it shut down cleanly because it got a message to stop
-				break
-			}
-			ax.logger.Error("Ctl interface error, restarting: ", err)
-			time.Sleep(time.Second)
-		}
-	})
-}
-
-func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
+func (ax *Nexodus) createListener() (*net.UnixListener, error) {
 	socketPath := api.UnixSocketPath
 	if ax.userspaceMode {
 		socketPath = filepath.Base(socketPath)
@@ -50,13 +30,50 @@ func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup) 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
 	if err != nil {
 		ax.logger.Error("Error creating unix socket: ", err)
+		return nil, err
+	}
+	return l, nil
+}
+
+func (ax *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) error {
+	l, err := ax.createListener()
+	if err != nil {
 		return err
 	}
-	defer l.Close()
 
+	util.GoWithWaitGroup(wg, func() {
+		for {
+			if ctx.Err() != nil {
+				break
+			}
+			l, err = ax.createListener()
+			if err != nil {
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			// Use a different waitgroup here, because we want to make sure
+			// all of the subroutines have exited before we attempt to restart
+			// the control server.
+			ctlWg := &sync.WaitGroup{}
+			err := ax.CtlServerUnixRun(ctx, ctlWg, l)
+			l.Close()
+			ctlWg.Wait()
+			if err == nil {
+				// No error means it shut down cleanly because it got a message to stop
+				break
+			}
+			ax.logger.Error("Ctl interface error, restarting: ", err)
+			time.Sleep(time.Second * 5)
+		}
+	})
+
+	return nil
+}
+
+func (ax *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup, l *net.UnixListener) error {
 	ac := new(NexdCtl)
 	ac.ax = ax
-	err = rpc.Register(ac)
+	err := rpc.Register(ac)
 	if err != nil {
 		ax.logger.Error("Error on rpc.Register(): ", err)
 		return err
