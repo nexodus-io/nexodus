@@ -329,7 +329,7 @@ func TestProxyIngressUDP(t *testing.T) {
 
 	helper.Logf("Starting nexd on node1")
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay", "--enable-discovery")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
