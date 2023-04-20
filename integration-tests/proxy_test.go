@@ -437,3 +437,108 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	_, _ = helper.containerExec(ctx, node2, []string{"killall", "python3"})
 	wg.Wait()
 }
+
+// Test invalid proxy configuration
+func TestProxyInvalidConfig(t *testing.T) {
+	//t.Parallel()
+	var err error
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	baseArgs := []string{"--username", username, "--password", password, "proxy"}
+
+	// duplicate tcp ingress port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "tcp:8080:127.0.0.1:80",
+		"--ingress", "tcp:8080:127.0.0.2:81"))
+	require.Error(err)
+
+	// duplicate tcp egress port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:8080:100.100.0.1:80",
+		"--egress", "tcp:8080:100.100.0.2:81"))
+	require.Error(err)
+
+	// duplicate udp ingress port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "udp:4242:127.0.0.1:4242",
+		"--ingress", "udp:4242:127.0.0.2:4243"))
+	require.Error(err)
+
+	// duplicate udp egress port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "udp:4242:100.100.0.1:4242",
+		"--egress", "udp:4242:100.100.0.2:4243"))
+	require.Error(err)
+
+	// Invalid ingress tcp listen port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "tcp:90000:127.0.0.1:8080"))
+	require.Error(err)
+
+	// Invalid egress tcp listen port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:90000:100.100.0.1:8080"))
+	require.Error(err)
+
+	// Invalid ingress udp listen port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "udp:90000:127.0.0.1:4242"))
+	require.Error(err)
+
+	// Invalid egress udp listen port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "udp:0:100.100.0.1:4242"))
+	require.Error(err)
+
+	// Invalid ingress tcp connect port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "tcp:8080:127.0.0.1:90000"))
+	require.Error(err)
+
+	// Invalid egress tcp connect port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:8080:100.100.0.1:0"))
+	require.Error(err)
+
+	// Invalid ingress udp connect port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "udp:4242:127.0.0.1:90000"))
+	require.Error(err)
+
+	// Invalid egress udp connect port
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "udp:4242:100.100.0.1:0"))
+	require.Error(err)
+
+	// Invalid ingress protocol
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "tcpa:8080:127.0.0.1:80"))
+	require.Error(err)
+
+	// Invalid egress protocol
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcpa:8080:100.100.0.1:80"))
+	require.Error(err)
+
+	// Incomplete ingress rule
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--ingress", "tcp:8080"))
+	require.Error(err)
+
+	// Incomplete egress rule
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:8080"))
+	require.Error(err)
+
+	// Note: no validation is done on the destination address, because it can be a hostname or an IP address
+}
