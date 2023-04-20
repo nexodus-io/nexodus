@@ -5,11 +5,14 @@ on:
     branches: ["main"]
     paths:
       - '**/*.md'
+      - '**/*.gitignore'
       - '.vscode/**'
   pull_request:
     branches: ["main"]
+    # Must stay in sync with the paths in .github/workflows/build.yml and .github/mergify.yml
     paths:
       - '**/*.md'
+      - '**/*.gitignore'
       - '.vscode/**'
 
 concurrency:
