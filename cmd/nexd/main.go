@@ -96,13 +96,13 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	for _, egressRule := range cCtx.StringSlice("egress") {
 		err := nex.UserspaceProxyAdd(ctx, wg, egressRule, nexodus.ProxyTypeEgress)
 		if err != nil {
-			logger.Sugar().Errorf("Failed to add egress proxy rule (%s): %v", egressRule, err)
+			logger.Fatal(fmt.Sprintf("Failed to add egress proxy rule (%s): %v", egressRule, err))
 		}
 	}
 	for _, ingressRule := range cCtx.StringSlice("ingress") {
 		err := nex.UserspaceProxyAdd(ctx, wg, ingressRule, nexodus.ProxyTypeIngress)
 		if err != nil {
-			logger.Sugar().Errorf("Failed to add ingress proxy rule (%s): %v", ingressRule, err)
+			logger.Fatal(fmt.Sprintf("Failed to add ingress proxy rule (%s): %v", ingressRule, err))
 		}
 	}
 	if err := nex.Start(ctx, wg); err != nil {

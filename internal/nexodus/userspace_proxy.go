@@ -100,6 +100,23 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	if err != nil {
 		return err
 	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("Invalid port (%d)", port)
+	}
+
+	if ruleType == ProxyTypeEgress {
+		for _, proxy := range ax.egressProxies {
+			if proxy.protocol == protocol && proxy.listenPort == port {
+				return fmt.Errorf("%s port %d is already in use by another egress proxy", protocol, port)
+			}
+		}
+	} else {
+		for _, proxy := range ax.ingressProxies {
+			if proxy.protocol == protocol && proxy.listenPort == port {
+				return fmt.Errorf("%s port %d is already in use by another ingress proxy", protocol, port)
+			}
+		}
+	}
 
 	// Reassemble the string so that we parse IPv6 addresses correctly
 	destHostPort := strings.Join(parts[2:], ":")
@@ -110,6 +127,9 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	destPort, err := parsePort(destPortStr)
 	if err != nil {
 		return err
+	}
+	if destPort < 1 || destPort > 65535 {
+		return fmt.Errorf("Invalid port (%d)", destPort)
 	}
 
 	debugTraffic, _ := strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
@@ -126,7 +146,7 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	if ruleType == ProxyTypeEgress {
 		ax.egressProxies = append(ax.egressProxies, proxy)
 	} else {
-		ax.ingresProxies = append(ax.ingresProxies, proxy)
+		ax.ingressProxies = append(ax.ingressProxies, proxy)
 	}
 
 	return nil
