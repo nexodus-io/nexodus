@@ -414,8 +414,8 @@ setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't in
 deploy-nexodus-agent: image-nexd
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
-	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_CONTROLLER_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
-	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_CONTROLLER_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_SERVICE_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_SERVICE_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
 	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)

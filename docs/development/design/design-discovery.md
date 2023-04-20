@@ -47,7 +47,7 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
 ### Nodes without a firewall and/or NAT device between them (currently supported)
 
 - Nexodus will peer end nodes directly that share the same reflexive address discovered via a STUN (Session Traversal Utilities for NAT) server.
-- This means that when both nodes share the same public or "reflexive address" (as defined in the above figure), Nexodus assumes that other peers are likely to have direct access to one another. Each peer has their stun/reflexive address in the peer listing received from the controller.
+- This means that when both nodes share the same public or "reflexive address" (as defined in the above figure), Nexodus assumes that other peers are likely to have direct access to one another. Each peer has their stun/reflexive address in the peer listing received from the service.
 - Next, the Nexodus agent will look up the "Local Address" (see Figure 1) of a peer candidate in the peer listing and attempt to probe for connectivity. If this probing succeeds, we consider it a likely candidate match, and both peers set up the connection to one another with a /32 host route and wireguard tunnel.
 
 ### Nodes with a firewall and/or NAT device between them (currently supported)
@@ -78,7 +78,7 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
 - Discovery of valid sockets is performed via ICE techniques but not an actual protocol implementation. The ICE methodologies originated from IP telephony challenges over a decade ago to solve telephony communication by discovering all possible IP addresses and ports that can be used to establish a connection between the two devices. This enables devices to establish direct, peer-to-peer connections when possible or fallback to using relay servers when direct connections are not possible.
 - Endpoint state is distributed to all peer nodes (except for symmetric NAT nodes that will use a relay hub and spoke mode to reach all other nodes). In order to discover details about a device's address location and relevance to its peers, STUN servers are used. The STUN process looks as follows:
 
-  1. A node sends a message to a STUN server once authentication to the API-server/controller has completed. This message contains the device's IP address and the port number of the datapath driver interface listening port (currently the Wireguard listening port).
+  1. A node sends a message to a STUN server once authentication to the service has been completed. This message contains the device's IP address and the port number of the datapath driver interface listening port (currently the Wireguard listening port).
   2. The STUN server responds to each device with a message that includes the device's public IP address and port binding on the NAT device (if there is a middlebox present).
   3. The node agents then add that information to their join request to the API-server.
   4. If the NAT/middleboxes are configured to allow outgoing traffic from the same port that incoming traffic is sent to, the devices can establish a direct connection using the public IP addresses and port numbers they received from the STUN server as distributed through the API-server.
@@ -105,4 +105,4 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
 
 ### Who determines peer candidates?
 
-- Whether the controller determines peering matches or provides enough information about peers to the agent to determine proper candidacy is still tbd. Ideally, the controller is not in the process outside of peer listing updates allowing the agents to negotiate peering on the fly.
+- Whether the service determines peering matches or provides enough information about peers to the agent to determine proper candidacy is still tbd. Ideally, the service is not in the process outside of peer listing updates allowing the agents to negotiate peering on the fly.

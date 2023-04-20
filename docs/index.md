@@ -13,7 +13,7 @@ Some of the features and use cases that this project aims to support are:
 
 - **Edge networking** - connectivity to any node, anywhere
 - **Hybrid data center connectivity** - circumvents NAT challenges
-- **IP mobility** - /32 host routing allows addresses to be advertised anywhere with convergence times only limited by a round-trip time to a controller.
+- **IP mobility** - /32 host routing allows addresses to be advertised anywhere with convergence times only limited by a round-trip time to the Nexodus Service.
 - **L4 Proxy** - TCP and UDP proxy mode to allow for connectivity to and from services running in non-privileged application environments (containers, for example).
 - **Compliance** - Provide isolated connectivity among a set of nodes, even if they are running across multiple network administrative domains.
 - **Configurable Authentication** - Nexodus uses OpenID Connect (OIDC) for authentication, allowing you to choose from a broad ecosystem of OIDC providers. OIDC gateways are available to provide interoperability with other authentication schemes (i.e., LDAP).

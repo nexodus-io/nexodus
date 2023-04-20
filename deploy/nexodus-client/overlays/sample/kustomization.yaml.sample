@@ -6,7 +6,7 @@ bases:
 secretGenerator:
   - name: nexodus-client-secret
     literals:
-      - cert=<NEXODUS_CONTROLLER_CERT>
+      - cert=<NEXODUS_SERVICE_CERT>
       - url=<NEXODUS_URL>
       - auth_url=<NEXODUS_AUTH_URL>
       - username=<NEXODUS_USERNAME>
@@ -22,6 +22,6 @@ patchesJson6902:
     patch: |-
       - op: replace
         path: /spec/template/spec/hostAliases/0/ip
-        value: <NEXODUS_CONTROLLER_IP>
+        value: <NEXODUS_SERVICE_IP>
 patchesStrategicMerge:
   - node_selector.yaml

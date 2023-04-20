@@ -14,12 +14,12 @@ You need to set up the following minimum deployment topology.
 
 Note: Please see the troubleshooting section for some additional information around possible issues and their workarounds (specifically around MicroShift deployment)
 
-## Deploying Nexodus Controller
+## Deploying Nexodus Service
 
-Please follow the instructions provided in the [README](../../deployment/nexodus-service.md#deploying-the-nexodus-controller) to set up the Nexodus Controller. Make sure you setup the
-controller on the machine that is reachable from your Kubernetes and MicroShift clusters.
+Please follow the instructions provided in the [README](../../deployment/nexodus-service.md#deploying-the-nexodus-service) to set up the Nexodus Service. Make sure you set up the
+service on a machine that is reachable from your Kubernetes and MicroShift clusters.
 
-Once your Nexodus controller is set up, please get the CA certification from Nexodus's secret and keep it handy. You will need this CA cert for deploying the Nexodus agent and to access the Nexodus Controller UI.
+Once your Nexodus Service is set up, please get the CA certification from Nexodus's secret and keep it handy. You will need this CA cert for deploying the Nexodus agent and to access the Nexodus Service UI.
 
 ```sh
 kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"'
@@ -62,8 +62,8 @@ graph
         m2 <-.-> w4
     end
         
-    subgraph nexodus["Nexodus Controller (AWS) <br><br><br> 54.3.124.53/32"]
-        ax[Nexodus Controller]
+    subgraph nexodus["Nexodus Service (AWS) <br><br><br> 54.3.124.53/32"]
+        ax[Nexodus Service]
     end
     subgraph mShift["Edge Device - 192.168.0.10/32"]
         ms[MicroShift]
