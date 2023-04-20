@@ -15,10 +15,13 @@ import {
   faLinux,
 } from "@fortawesome/free-brands-svg-icons";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { useTheme } from "react-admin";
 
 import CardImage from "../wordmark.png";
+import CardImageDark from "../wordmark_dark.png";
 
 const Dashboard = () => {
+  const [theme, setTheme] = useTheme();
   return (
     <div>
       <Card
@@ -31,7 +34,7 @@ const Dashboard = () => {
         <CardMedia
           component="img"
           height="200"
-          image={CardImage}
+          image={theme.palette?.mode == "dark" ? CardImageDark : CardImage}
           alt="nexodus banner"
           sx={{ padding: "1em 1em 0 1em", objectFit: "contain" }}
         />
