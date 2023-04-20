@@ -7,3 +7,14 @@ pull_request_rules:
     actions:
       merge:
         method: merge
+  - name: automatic merge for main with > 1 approved reviews, all requested reviews have given feedback, not held, and the build workflow is successful
+    conditions:
+      - "#approved-reviews-by>=1"
+      - "#review-requested=0"
+      - "#changes-requested-reviews-by=0"
+      - base=main
+      - label!=hold
+      - check-success=build-workflow-complete
+    actions:
+      merge:
+        method: merge
