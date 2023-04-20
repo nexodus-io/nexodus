@@ -54,7 +54,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 
 	userspaceMode := false
 	relayNode := false
-	discoveryNode := false
 	var childPrefix []string
 	switch mode {
 	case nexdModeAgent:
@@ -64,7 +63,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		logger.Info("Starting node agent with wireguard driver and router function")
 	case nexdModeRelay:
 		relayNode = true
-		discoveryNode = cCtx.Bool("enable-discovery")
 		logger.Info("Starting relay agent with wireguard driver")
 	case nexdModeProxy:
 		userspaceMode = true
@@ -84,7 +82,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		childPrefix,
 		cCtx.Bool("stun"),
 		relayNode,
-		discoveryNode,
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version,
@@ -206,21 +203,6 @@ func main() {
 					}
 
 					return nexdRun(cCtx, logger, nexdModeRelay)
-				},
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:     "enable-discovery",
-						Usage:    "Set if this node is to be the discovery node for NAT traversal in an organization",
-						Value:    false,
-						EnvVars:  []string{"NEXD_ENABLE_DISCOVERY"},
-						Required: false,
-						Action: func(ctx *cli.Context, discoNode bool) error {
-							if discoNode && runtime.GOOS != nexodus.Linux.String() {
-								return fmt.Errorf("Discovery node is only supported for Linux Operating System")
-							}
-							return nil
-						},
-					},
 				},
 			},
 		},
