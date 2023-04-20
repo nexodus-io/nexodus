@@ -18,8 +18,6 @@ sudo systemctl enable nexodus
 
 Edit `/etc/sysconfig/nexodus` if you plan to use a Nexodus service other than <https://try.nexodus.io>.
 
-```sh
-
 Query the status of `nexd` and follow the instructions to register your device.
 
 ```sh

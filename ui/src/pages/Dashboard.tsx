@@ -45,8 +45,8 @@ const Dashboard = () => {
         <CardContent>
           <Typography variant="body1">
             See the{" "}
-            <a href="https://docs.nexodus.io/quickstart/">quick start</a>
-            guide for instructions on how to get started.
+            <a href="https://docs.nexodus.io/quickstart/">quick start</a> guide
+            for instructions on how to get started.
           </Typography>
         </CardContent>
       </Card>
