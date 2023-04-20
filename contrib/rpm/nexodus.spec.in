@@ -34,14 +34,14 @@ URL:            %{gourl}
 Source:         nexodus-##NEXODUS_COMMIT##.tar.gz
 #Source:         %%{gosource}
 
-%description %{common_description}
-
 BuildRequires: systemd-rpm-macros
 BuildRequires: systemd-units
 Requires: wireguard-tools
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units
+
+%description %{common_description}
 
 %gopkg
 
