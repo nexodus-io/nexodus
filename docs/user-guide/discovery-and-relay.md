@@ -1,6 +1,6 @@
 # Deploying the Nexodus Relay Nodes
 
-- Relay Node - Nexodus Controller makes the best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish direct peering. To establish connectivity in those scenarios, Nexodus Controller uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network. This **must** be the first device to join the Nexodus network to enable the traffic relay.
+- Relay Node - Nexodus Service makes the best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish direct peering. To establish connectivity in those scenarios, Nexodus Service uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network. This **must** be the first device to join the Nexodus network to enable the traffic relay.
 
 Relay node needs to be reachable on a predictable Wireguard port such as 51820 and ideally at the top of your NAT cone such as running in a Cloud where all endpoints can reach relay service for peering. There is only a need for one relay node in an organization, after node joins you simply run the basic onboarding [Installing the agent](agent.md#installing-the-agent) .
 

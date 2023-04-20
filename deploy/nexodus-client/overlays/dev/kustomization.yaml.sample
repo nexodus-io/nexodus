@@ -6,7 +6,7 @@ bases:
 secretGenerator:
   - name: nexodus-client-secret
     literals:
-      - cert=<NEXODUS_CONTROLLER_CERT>
+      - cert=<NEXODUS_SERVICE_CERT>
       - url=https://try.nexodus.127.0.0.1.nip.io
       - auth_url=https://auth.try.nexodus.127.0.0.1.nip.io/token
       - username=kitteh1
@@ -22,6 +22,6 @@ patchesJson6902:
     patch: |-
       - op: replace
         path: /spec/template/spec/hostAliases/0/ip
-        value: <NEXODUS_CONTROLLER_IP>
+        value: <NEXODUS_SERVICE_IP>
 patchesStrategicMerge:
   - node_selector.yaml

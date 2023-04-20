@@ -7,7 +7,7 @@ This document discusses how to run the control plane for Nexodus.
 ### Deploy using KIND
 
 > **Note**
-> This section is only if you want to build the controller stack. If you want to attach to a running controller, see [Deploying the Nexodus Agent](../user-guide/user-guide.md#deploying-the-nexodus-agent).
+> This section is only if you want to build the service stack. If you want to attach to a running service, see [Deploying the Nexodus Agent](../user-guide/user-guide.md#deploying-the-nexodus-agent).
 
 You should first ensure that you have `kind`, `kubectl` and [`mkcert`](https://github.com/FiloSottile/mkcert) installed.
 
@@ -38,9 +38,9 @@ The Makefile will install the https certs. You can view the cert in the Nexodus 
 cat .certs/rootCA.pem
 ```
 
-In order to join a self-signed Nexodus controller from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the controller is self-signed with a domain like we are using with the try.nexodus.127.0.0.1.nip.io domain for development.
+In order to join a self-signed Nexodus Service from a remote node or view the Nexodus UI in your dev environment, you will need to install the cert on the remote machine. This is only necessary when the service is self-signed with a domain like we are using with the try.nexodus.127.0.0.1.nip.io domain for development.
 
-Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the controller running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following.
+Install [`mkcert`](https://github.com/FiloSottile/mkcert) on the agent node, copy the cert from the service running kind (`.certs/rootCA.pem`) to the remote node you will be joining (or viewing the web UI) and run the following.
 
 ```console
 CAROOT=$(pwd)/.certs mkcert -install

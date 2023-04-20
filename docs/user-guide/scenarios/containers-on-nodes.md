@@ -15,7 +15,7 @@ For simplicity, we are just using the default, built-in zone `default`.
 Join node1 to the `default` zone network
 
 ```shell
-sudo nexd router --child-prefix=172.24.0.0/24 <CONTROLLER_URL>
+sudo nexd router --child-prefix=172.24.0.0/24 <SERVICE_URL>
 ```
 
 Create the container network:
@@ -41,7 +41,7 @@ docker run -it --rm --network=net1 busybox bash
 Join node2 to the `default` zone network
 
 ```shell
-sudo nexd router --child-prefix=172.28.0.0/24 <CONTROLLER_URL>
+sudo nexd router --child-prefix=172.28.0.0/24 <SERVICE_URL>
 ```
 
 Setup a docker network and start a node on it:
@@ -87,7 +87,7 @@ Ping between nodes to the loopbacks, both IPs should be reachable now because th
 To go one step further, a user could then run nexd on any machine, join the mesh and ping, or connect to a service, on both of the containers that were started. This could be a home developer's laptop, edge device, sensor or any other device with an IP address in the wild. That spoke connection does not require any ports to be opened to initiate the connection into the mesh.
 
 ```shell
-sudo nexd <CONTROLLER_URL>
+sudo nexd <SERVICE_URL>
 ```
 
 Ping to prefixes on both the other nodes should be successful now.

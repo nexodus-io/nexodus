@@ -33,7 +33,7 @@ brew install nexodus
 
 #### Install Script
 
-The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Controller and manages local wireguard configuration.
+The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Service and manages local wireguard configuration.
 
 The `contrib/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
 
@@ -92,7 +92,7 @@ sudo systemctl enable nexodus
 
 ### Interactive Enrollment
 
-If the agent is able to successfully reach the controller API, it will provide a one-time code to provide to the controller web UI to complete enrollment of this node into a Nexodus Zone. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent is able to successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus Zone. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -195,13 +195,13 @@ Instructions mentioned in [Deploying on a Node](#deploying-on-a-node) can be use
 
 Agent deployment in Kubernetes requires a few initial configuration details to successfully deploy the agent and onboard the node. This configuration is provided through `kustomization.yaml`. Make a copy of the sample [`kustomization.yaml.sample`](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus-client/overlays/dev/kustomization.yaml.sample) and rename it to `kustomization.yaml`.
 
-Fetch the CA cert from the Kubernetes cluster that is running the Nexodus controller, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
+Fetch the CA cert from the Kubernetes cluster that is running the Nexodus Service, and set the return cert string to `cert` literal of `secretGenerator` in `kustomization.yaml`.
 
 ```sh
 kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"'
 ```
 
-Update the `<nexodus_CONTROLLER_IP>` with the IP address where the Nexodus controller is reachable. If you are running the Nexodus stack in Kind cluster on your local machine, set it to the public IP of the machine.
+Update the `<nexodus_SERVICE_IP>` with the IP address where the Nexodus Service is reachable. If you are running the Nexodus stack in Kind cluster on your local machine, set it to the public IP of the machine.
 
 **Note**
 Current username and password are default configuration for the development environment, which is very likely to change in near future.
@@ -218,7 +218,7 @@ If you're using the kind-based development environment, you can deploy the agent
 make deploy-nexodus-agent
 ```
 
-Then you may skip down to the [Verify the deployment](#verify-the-deployment) section.
+Then you may skip down to the [Verify the Deployment](#verify-the-deployment) section.
 
 Otherwise, if you are working with another cluster, continue to the next section.
 
