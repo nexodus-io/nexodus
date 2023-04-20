@@ -16,7 +16,7 @@ import (
 
 // TestProxyEgress tests that nexd proxy can be used with a single egress rule
 func TestProxyEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -81,7 +81,7 @@ func TestProxyEgress(t *testing.T) {
 
 // TestProxyEgressUDP tests that nexd proxy can be used with a single UDP egress rule
 func TestProxyEgressUDP(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -165,7 +165,7 @@ func TestProxyEgressUDP(t *testing.T) {
 
 // TestProxyEgress tests that nexd proxy can be used with multiple egress rules
 func TestProxyEgressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -249,7 +249,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 // TestProxyIngress tests that nexd proxy with a single ingress rule
 func TestProxyIngress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -311,7 +311,7 @@ func TestProxyIngress(t *testing.T) {
 
 // TestProxyIngressUDP tests that nexd proxy can be used with a single UDP ingress rule
 func TestProxyIngressUDP(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -392,7 +392,7 @@ func TestProxyIngressUDP(t *testing.T) {
 
 // TestProxyIngress tests that nexd proxy with multiple ingress rules
 func TestProxyIngressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -473,7 +473,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 // TestProxyIngressAndEgress tests that a proxy can be used to both ingress and egress traffic
 func TestProxyIngressAndEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
