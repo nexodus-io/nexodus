@@ -1,10 +1,14 @@
 FROM docker.io/library/golang:1.20-alpine as build
 
 ARG BUILD_PROFILE=dev
+
 WORKDIR /src
-COPY . .
+
+COPY go.mod go.sum ./
 RUN go mod download
 RUN apk add make git
+
+COPY . .
 
 RUN CGO_ENABLED=0 NOISY_BUILD=y \
     NEXODUS_LDFLAGS=-extldflags=-static \
