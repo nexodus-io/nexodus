@@ -14,9 +14,10 @@ func IsIPv4Address(addr string) bool {
 // IsIPv6Address checks if the given IP address is an IPv6 address.
 func IsIPv6Address(addr string) bool {
 	ip := net.ParseIP(addr)
-	return ip.To4() == nil
+	return ip != nil && ip.To4() == nil
 }
 
+// IsIPv4Prefix checks if the given IP address is an IPv4 prefix.
 func IsIPv4Prefix(prefix string) bool {
 	_, ipv4Net, err := net.ParseCIDR(prefix)
 	if err != nil {
@@ -25,6 +26,7 @@ func IsIPv4Prefix(prefix string) bool {
 	return ipv4Net.IP.To4() != nil
 }
 
+// IsIPv6Prefix checks if the given IP address is an IPv6 prefix.
 func IsIPv6Prefix(prefix string) bool {
 	_, ipv6Net, err := net.ParseCIDR(prefix)
 	if err != nil {
