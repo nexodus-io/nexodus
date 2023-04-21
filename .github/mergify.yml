@@ -7,14 +7,30 @@ pull_request_rules:
     actions:
       merge:
         method: merge
-  - name: automatic merge for main with > 1 approved reviews, all requested reviews have given feedback, not held, and the build workflow is successful
+
+  - name: automatic merge for main with > 1 approved reviews, all requested reviews have given feedback, not held, and CI is successful
     conditions:
       - "#approved-reviews-by>=1"
       - "#review-requested=0"
       - "#changes-requested-reviews-by=0"
       - base=main
       - label!=hold
-      - check-success=build-workflow-complete
+      - check-success=DCO
+      - or:
+        # PRs that include doc changes should also pass the markdown-lint check
+        - and:
+          - check-success=build-workflow-complete
+          - files~=\.md$
+          - check-success=markdown-lint
+        # PRs that do not include doc changes only need to pass the build workflow
+        - and:
+          - check-success=build-workflow-complete
+          - -files~=\.md$
+        # PRs that do not run the build workflow (e.g. docs-only changes) must have a successful markdown-lint check
+        - and:
+          - check-success=markdown-lint
+          # Must stay in sync with the paths in .github/workflows/docs.yml and .github/workflows/build.yml
+          - -files~=^(?!.*\.md$)(?!.*\.gitignore$)(?!\.vscode\/).*$
     actions:
       merge:
         method: merge
