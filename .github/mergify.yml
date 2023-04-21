@@ -17,6 +17,12 @@ pull_request_rules:
       - label!=hold
       - check-success=DCO
       - or:
+        - label=has-design
+        - label=no-design-required
+      - or:
+        - label=has-docs
+        - label=no-docs-required
+      - or:
         # PRs that include doc changes should also pass the markdown-lint check
         - and:
           - check-success=build-workflow-complete
