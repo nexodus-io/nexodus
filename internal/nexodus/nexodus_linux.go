@@ -22,8 +22,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	}
 
 	if ax.TunnelIP == "" || ax.TunnelIpV6 == "" {
-		logger.Infof("Have not received full local node configuration from the service, skipping interface setup")
-		return nil
+		return fmt.Errorf("Have not received local node address configuration from the service, returning for a retry")
 	}
 
 	// create the wireguard ip link interface
