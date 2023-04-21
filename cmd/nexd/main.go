@@ -45,6 +45,10 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		serviceURL = DefaultServiceURL
 	}
 
+	if cCtx.Args().Len() > 1 {
+		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
+	}
+
 	_, err := nexodus.CtlStatus(cCtx)
 	if err == nil {
 		return fmt.Errorf("existing nexd service already running")
