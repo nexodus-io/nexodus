@@ -563,7 +563,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 
 // Test invalid proxy configuration
 func TestProxyInvalidConfig(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	var err error
 	helper := NewHelper(t)
 	require := helper.require
@@ -664,4 +664,81 @@ func TestProxyInvalidConfig(t *testing.T) {
 	require.Error(err)
 
 	// Note: no validation is done on the destination address, because it can be a hostname or an IP address
+}
+
+func TestProxyNexctl(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "proxy")
+
+	// validate nexd has started
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	// No rules yet
+	out, err := helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
+	require.NoError(err)
+	require.Equal(out, "")
+
+	// Connecting to port 80 should fail, nothing is listening
+	_, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})
+	require.Error(err)
+
+	// Start a listener on port 8080 that we'll hit with a loopback through the proxy
+	wg := sync.WaitGroup{}
+	util.GoWithWaitGroup(&wg, func() {
+		_, err := helper.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('index.html', 'w').write('waffles')"})
+		require.NoError(err)
+		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "8080"})
+	})
+
+	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
+	require.NoError(err)
+
+	// Dynamically add a set of loopback proxy rules
+	_, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "add",
+		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s:4242", node1IP)})
+	require.NoError(err)
+
+	// Rules are present now
+	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
+	require.NoError(err)
+	require.True(strings.Contains(out, "--ingress tcp:4242:127.0.0.1:8080"))
+	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s:4242", node1IP)))
+
+	// Check connectivity through the proxy loopback
+	// curl -> localhost port 80 -> nexd proxy egress rule listening on port 80 -> nexd proxy ingress rule listening on port 4242 -> python http server on port 8080
+	out, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})
+	require.NoError(err)
+	require.True(strings.Contains(out, "waffles"))
+
+	// Remove the rules
+	_, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "remove",
+		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s:4242", node1IP)})
+	require.NoError(err)
+
+	// Back to no rules
+	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
+	require.NoError(err)
+	require.Equal(out, "")
+
+	// Connectivity should now fail again
+	_, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})
+	require.Error(err)
+
+	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
+	wg.Wait()
 }

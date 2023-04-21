@@ -41,12 +41,35 @@ type UsProxy struct {
 	logger       *zap.SugaredLogger
 	userspaceNet *netstack.Net
 	debugTraffic bool
+	proxyCtx     context.Context
+	proxyCancel  context.CancelFunc
+	exitChan     chan bool
 }
 
 const (
 	udpMaxPayloadSize = 65507
 	udpTimeout        = time.Minute
 )
+
+func (proxy *UsProxy) String() string {
+	var str string
+	if proxy.ruleType == ProxyTypeEgress {
+		str = "--egress "
+	} else {
+		str = "--ingress "
+	}
+	str += fmt.Sprintf("%s:%d:%s", proxy.protocol, proxy.listenPort,
+		net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort)))
+	return str
+}
+
+func (proxy *UsProxy) Equal(cmp *UsProxy) bool {
+	return proxy.ruleType == cmp.ruleType &&
+		proxy.protocol == cmp.protocol &&
+		proxy.listenPort == cmp.listenPort &&
+		proxy.destHost == cmp.destHost &&
+		proxy.destPort == cmp.destPort
+}
 
 func proxyTypeStr(ruleType ProxyType) (string, error) {
 	switch ruleType {
@@ -78,89 +101,144 @@ func parsePort(portStr string) (int, error) {
 	return port, nil
 }
 
-func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType) error {
-	typeStr, err := proxyTypeStr(ruleType)
-	if err != nil {
-		return err
-	}
-
+func proxyFromRule(rule string, ruleType ProxyType) (*UsProxy, error) {
 	// protocol:port:destination_ip:destination_port
-	ax.logger.Debugf("Adding userspace %s proxy rule: %s", typeStr, proxyRule)
-	parts := strings.Split(proxyRule, ":")
+	parts := strings.Split(rule, ":")
 	if len(parts) < 4 {
-		return fmt.Errorf("Invalid proxy rule format, must specify 4 colon-separated values (%s)", proxyRule)
+		return nil, fmt.Errorf("Invalid proxy rule format, must specify 4 colon-separated values (%s)", rule)
 	}
 
 	protocol, err := proxyProtocol(parts[0])
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	port, err := parsePort(parts[1])
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if port < 1 || port > 65535 {
-		return fmt.Errorf("Invalid port (%d)", port)
-	}
-
-	if ruleType == ProxyTypeEgress {
-		for _, proxy := range ax.egressProxies {
-			if proxy.protocol == protocol && proxy.listenPort == port {
-				return fmt.Errorf("%s port %d is already in use by another egress proxy", protocol, port)
-			}
-		}
-	} else {
-		for _, proxy := range ax.ingressProxies {
-			if proxy.protocol == protocol && proxy.listenPort == port {
-				return fmt.Errorf("%s port %d is already in use by another ingress proxy", protocol, port)
-			}
-		}
+		return nil, fmt.Errorf("Invalid port (%d)", port)
 	}
 
 	// Reassemble the string so that we parse IPv6 addresses correctly
 	destHostPort := strings.Join(parts[2:], ":")
 	destHost, destPortStr, err := net.SplitHostPort(destHostPort)
 	if err != nil {
-		return fmt.Errorf("Failed to parse destination host and port: %s", destHostPort)
+		return nil, fmt.Errorf("Invalid destination host:port (%s): %w", destHostPort, err)
 	}
+
 	destPort, err := parsePort(destPortStr)
+	if err != nil {
+		return nil, err
+	}
+	if destPort < 1 || destPort > 65535 {
+		return nil, fmt.Errorf("Invalid destination port (%d)", destPort)
+	}
+
+	return &UsProxy{
+		ruleType:   ruleType,
+		protocol:   protocol,
+		listenPort: port,
+		destHost:   destHost,
+		destPort:   destPort,
+	}, nil
+}
+
+func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType, start bool) error {
+	typeStr, err := proxyTypeStr(ruleType)
 	if err != nil {
 		return err
 	}
-	if destPort < 1 || destPort > 65535 {
-		return fmt.Errorf("Invalid port (%d)", destPort)
+
+	ax.logger.Debugf("Adding userspace %s proxy rule: %s", typeStr, proxyRule)
+
+	newProxy, err := proxyFromRule(proxyRule, ruleType)
+	if err != nil {
+		return err
 	}
 
-	debugTraffic, _ := strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
-	proxy := &UsProxy{
-		ruleType:     ruleType,
-		protocol:     protocol,
-		listenPort:   port,
-		destHost:     destHost,
-		destPort:     destPort,
-		logger:       ax.logger.With("proxy", typeStr, "proxyRule", proxyRule),
-		debugTraffic: debugTraffic,
+	newProxy.debugTraffic, _ = strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
+	newProxy.logger = ax.logger.With("proxy", typeStr, "proxyRule", proxyRule)
+
+	ax.proxyLock.Lock()
+	defer ax.proxyLock.Unlock()
+
+	if ruleType == ProxyTypeEgress {
+		for _, proxy := range ax.egressProxies {
+			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
+				return fmt.Errorf("%s port %d is already in use by another egress proxy", newProxy.protocol, newProxy.listenPort)
+			}
+		}
+	} else {
+		for _, proxy := range ax.ingressProxies {
+			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
+				return fmt.Errorf("%s port %d is already in use by another ingress proxy", newProxy.protocol, newProxy.listenPort)
+			}
+		}
 	}
 
 	if ruleType == ProxyTypeEgress {
-		ax.egressProxies = append(ax.egressProxies, proxy)
+		ax.egressProxies = append(ax.egressProxies, newProxy)
 	} else {
-		ax.ingressProxies = append(ax.ingressProxies, proxy)
+		ax.ingressProxies = append(ax.ingressProxies, newProxy)
+	}
+
+	if start {
+		newProxy.Start(ctx, wg, ax.userspaceNet)
 	}
 
 	return nil
 }
 
+func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) error {
+	typeStr, err := proxyTypeStr(ruleType)
+	if err != nil {
+		return err
+	}
+
+	ax.logger.Debugf("Removing userspace %s proxy rule: %s", typeStr, proxyRule)
+
+	cmpProxy, err := proxyFromRule(proxyRule, ruleType)
+	if err != nil {
+		return err
+	}
+
+	ax.proxyLock.Lock()
+	defer ax.proxyLock.Unlock()
+
+	if ruleType == ProxyTypeEgress {
+		for i, proxy := range ax.egressProxies {
+			if proxy.Equal(cmpProxy) {
+				proxy.Stop()
+				ax.egressProxies = append(ax.egressProxies[:i], ax.egressProxies[i+1:]...)
+				return nil
+			}
+		}
+	} else {
+		for i, proxy := range ax.ingressProxies {
+			if proxy.Equal(cmpProxy) {
+				proxy.Stop()
+				ax.ingressProxies = append(ax.ingressProxies[:i], ax.ingressProxies[i+1:]...)
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("No matching %s proxy rule found: %s", typeStr, proxyRule)
+}
+
 func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netstack.Net) {
 	proxy.userspaceNet = net
+	proxy.proxyCtx, proxy.proxyCancel = context.WithCancel(ctx)
+	proxy.exitChan = make(chan bool)
 	util.GoWithWaitGroup(wg, func() {
 		for {
 			// Use a different waitgroup here, because we want to make sure
 			// all of the subroutines have exited before we attempt to restart
 			// the proxy listener.
 			proxyWg := &sync.WaitGroup{}
-			err := proxy.run(ctx, proxyWg)
+			err := proxy.run(proxy.proxyCtx, proxyWg)
 			proxyWg.Wait()
 			if err == nil {
 				// No error means it shut down cleanly because it got a message to stop
@@ -169,7 +247,13 @@ func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netsta
 			proxy.logger.Debug("Proxy error, restarting: ", err)
 			time.Sleep(time.Second)
 		}
+		proxy.exitChan <- true
 	})
+}
+
+func (proxy *UsProxy) Stop() {
+	proxy.proxyCancel()
+	<-proxy.exitChan
 }
 
 func (proxy *UsProxy) run(ctx context.Context, proxyWg *sync.WaitGroup) error {

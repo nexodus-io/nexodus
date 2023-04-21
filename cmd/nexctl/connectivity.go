@@ -72,7 +72,7 @@ func cmdConnStatus(cCtx *cli.Context) error {
 func callNexdKeepalives() (map[string]nexodus.KeepaliveStatus, error) {
 	var result map[string]nexodus.KeepaliveStatus
 
-	keepaliveJson, err := callNexd("Connectivity")
+	keepaliveJson, err := callNexd("Connectivity", "")
 	if err != nil {
 		return result, fmt.Errorf("Failed to get nexd connectivity status: %w\n", err)
 	}

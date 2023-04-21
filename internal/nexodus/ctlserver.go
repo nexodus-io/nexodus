@@ -42,3 +42,52 @@ func (ac *NexdCtl) GetTunnelIPv6(_ string, result *string) error {
 	*result = ac.ax.TunnelIpV6
 	return nil
 }
+
+func (ac *NexdCtl) ProxyList(_ string, result *string) error {
+	*result = ""
+	ac.ax.proxyLock.RLock()
+	defer ac.ax.proxyLock.RUnlock()
+	for _, proxy := range ac.ax.ingressProxies {
+		*result += fmt.Sprintf("%s\n", proxy)
+	}
+	for _, proxy := range ac.ax.egressProxies {
+		*result += fmt.Sprintf("%s\n", proxy)
+	}
+	return nil
+}
+
+func (ac *NexdCtl) ProxyAddIngress(rule string, result *string) error {
+	err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeIngress, true)
+	if err != nil {
+		return err
+	}
+	*result = fmt.Sprintf("Added ingress proxy rule: %s\n", rule)
+	return nil
+}
+
+func (ac *NexdCtl) ProxyAddEgress(rule string, result *string) error {
+	err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeEgress, true)
+	if err != nil {
+		return err
+	}
+	*result = fmt.Sprintf("Added egress proxy rule: %s\n", rule)
+	return nil
+}
+
+func (ac *NexdCtl) ProxyRemoveIngress(rule string, result *string) error {
+	err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeIngress)
+	if err != nil {
+		return err
+	}
+	*result = fmt.Sprintf("Removed ingress proxy rule: %s\n", rule)
+	return nil
+}
+
+func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
+	err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeEgress)
+	if err != nil {
+		return err
+	}
+	*result = fmt.Sprintf("Removed egress proxy rule: %s\n", rule)
+	return nil
+}
