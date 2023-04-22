@@ -24,6 +24,9 @@
   shell: |
     printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
     fping -s -g  {{ ip_prefix }}.1 {{ ip_prefix }}.{{ spoke_range_end }} >> connectivity-results.txt 2>&1
+    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
+    wg show wg0 dump >> connectivity-results.txt 2>&1
+    cat connectivity-results.txt
   ignore_errors: yes
 
 - name: Copy connectivity results back to the runner

@@ -55,6 +55,13 @@ const (
 	stunServer2 = "stun2.l.google.com:19302"
 )
 
+const (
+	// retry interval for api server retries
+	retryInterval = 15 * time.Second
+	// max retries for api server retries
+	maxRetries = 3
+)
+
 var (
 	invalidTokenGrant = errors.New("invalid_grant")
 )
@@ -258,11 +265,18 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}))
 	}
 
-	ax.client, err = client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
-		ax.SetStatus(NexdStatusAuth, msg)
-	}, options...)
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		ax.client, err = client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+			ax.SetStatus(NexdStatusAuth, msg)
+		}, options...)
+		if err != nil {
+			ax.logger.Warnf("client api error - retrying: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("client api error: %w", err)
 	}
 
 	ax.SetStatus(NexdStatusRunning, "")
@@ -271,12 +285,28 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
 
-	user, _, err := ax.client.UsersApi.GetUser(ctx, "me").Execute()
+	var user *public.ModelsUser
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		user, _, err = ax.client.UsersApi.GetUser(ctx, "me").Execute()
+		if err != nil {
+			ax.logger.Warnf("get user error - retrying: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("get user error: %w", err)
 	}
 
-	organizations, _, err := ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+	var organizations []public.ModelsOrganization
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		organizations, _, err = ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+		if err != nil {
+			ax.logger.Warnf("get organizations error - retrying: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("get organizations error: %w", err)
 	}
@@ -353,43 +383,22 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			Distance: 0,
 		},
 	}
-	device, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		UserId:                  user.Id,
-		OrganizationId:          ax.organization,
-		PublicKey:               ax.wireguardPubKey,
-		TunnelIp:                ax.requestedIP,
-		ChildPrefix:             ax.childPrefix,
-		EndpointLocalAddressIp4: ax.endpointLocalAddress,
-		SymmetricNat:            ax.symmetricNat,
-		Hostname:                ax.hostname,
-		Relay:                   ax.relay,
-		Os:                      ax.os,
-		Endpoints:               endpoints,
-	}).Execute()
-	if err != nil {
-		var apiError *public.GenericOpenAPIError
-		if errors.As(err, &apiError) {
-			switch model := apiError.Model().(type) {
-			case public.ModelsConflictsError:
-				device, _, err = ax.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					ChildPrefix:             ax.childPrefix,
-					EndpointLocalAddressIp4: ax.endpointLocalAddress,
-					SymmetricNat:            ax.symmetricNat,
-					Hostname:                ax.hostname,
-					Endpoints:               endpoints,
-				}).Execute()
-				if err != nil {
-					return fmt.Errorf("error updating device: %w", err)
-				}
-			default:
-				return fmt.Errorf("error creating device: %w", err)
-			}
-		} else {
-			return fmt.Errorf("error creating device: %w", err)
+
+	var modelsDevice public.ModelsDevice
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		modelsDevice, err = ax.createOrUpdateDeviceOperation(user.Id, endpoints)
+		if err != nil {
+			ax.logger.Warnf("device join error - retrying: %v", err)
+			return err
 		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("join error %w", err)
 	}
-	ax.logger.Debug(fmt.Sprintf("Device: %+v", device))
-	ax.logger.Infof("Successfully registered device with UUID: %+v", device.Id)
+
+	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
+	ax.logger.Infof("Successfully registered device with UUID: %+v", modelsDevice.Id)
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
@@ -398,8 +407,17 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
-	if err := ax.Reconcile(true); err != nil {
-		return fmt.Errorf("initial reconcile failed: %w", err)
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		if err := ax.Reconcile(true); err != nil {
+			if err != nil {
+				ax.logger.Warnf("initial reconciliation failed - retrying: %v", err)
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("initial reconciliation failed: %w", err)
 	}
 
 	util.GoWithWaitGroup(wg, func() {
@@ -412,7 +430,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-ctx.Done():
 				return
 			case <-stunTicker.C:
-				if err := ax.reconcileStun(device.Id); err != nil {
+				if err := ax.reconcileStun(modelsDevice.Id); err != nil {
 					ax.logger.Debug(err)
 				}
 			case <-ax.informer.Changed():
@@ -505,7 +523,7 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 			}
 		}
 	}
-	ax.logger.Debugf("relfexive binding is %s", reflexiveIP)
+	ax.logger.Debugf("reflexive binding is %s", reflexiveIP)
 
 	return nil
 }
