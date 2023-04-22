@@ -57,10 +57,9 @@ When you use the `watch=true` query parameter the HTTP response body (served as 
 
 If a client **watch** operation is disconnected then that client can start a new **watch** from
 the last returned `revision`;
-
 2. Starting from revision 10245, use the following request to receive notifications of any API operations that affect devices.
 
-   ```
+   ```console
    GET /api/organizations/{organization_id}/devices?watch=true&revision=10245
    ---
    200 OK
@@ -89,13 +88,14 @@ the last returned `revision`;
    }      
    ...
    ```
+
 In the above example, the client gets a bookmark event imediately indicating no changes had occured since revision 10245 but then a little while later a delete event is delivered.
 
 ### Client Library Access
 
 The traditional non-watch API for listing devices in an organization is:
 
-```go    
+```go
 devices, _, err := client.DevicesApi.
    ListDevicesInOrganization(context.Background(), orgID).
    Execute()
@@ -103,7 +103,7 @@ devices, _, err := client.DevicesApi.
 
 To use the `watch=true` version of the API, use:
 
-```go    
+```go
 watch, _, err := client.DevicesApi.
    ListDevicesInOrganization(context.Background(), orgID).
    Watch()
@@ -123,7 +123,7 @@ A Informer in essence is a local cached copy of the resources that clients are i
 
 To use the Informer API
 
-```go    
+```go
 informer := client.DevicesApi.
    ListDevicesInOrganization(context.Background(), orgID).
    Informer()
@@ -133,7 +133,7 @@ devices, _, err := informer.Execute()
 
 Notice that result of `informer.Execute()` is the same as the traditional list style api.  Additionally an informer provides a chanel via `informer.Changed()` that you can use to wait for when you can call `informer.Execute()` to get a changed device list.
 
-```go    
+```go
 informer := client.DevicesApi.
    ListDevicesInOrganization(ctx, orgID).
    Informer()
@@ -168,14 +168,14 @@ All API operations that change the desired device state singal the **SignalBus**
 
 A **SignalBus** is a really simple interface that you can use to notify other go routines that a named thing has been signaled.
 
-```go=
+```go
 type SignalBus interface {
-	// Notify will notify all the subscriptions created for the given named signal.
-	Notify(name string)
-	// NotifyAll will notify all the subscriptions
-	NotifyAll()
-	// Subscribe creates a subscription the named signal
-	Subscribe(name string) *Subscription
+    // Notify will notify all the subscriptions created for the given named signal.
+    Notify(name string)
+    // NotifyAll will notify all the subscriptions
+    NotifyAll()
+    // Subscribe creates a subscription the named signal
+    Subscribe(name string) *Subscription
 }
 
 type Subscription interface { 
