@@ -1,4 +1,4 @@
-# This workflow is for scale testing against the Nexodus qa deployment
+# qa-scale workflow is for scale testing against the Nexodus qa deployment
 name: qa-scale
 
 concurrency:
@@ -18,11 +18,16 @@ on:
         required: true
         default: 'main'
 
+      debug_pause:
+        description: 'time in minutes to pause before tearing down the infra for debugging'
+        required: false
+        default: '0'
+
 jobs:
   deploy-qa:
     name: deploy-qa-ec2
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
     env:
@@ -128,7 +133,8 @@ jobs:
           --private-key nexodus.pem \
           --vault-password-file vault-secret.txt \
           --extra-vars "nexodus_auth_uid=${{ steps.kc-user.outputs.USER }}" \
-          --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}"
+          --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}" \
+          --extra-vars "debug_pause=${{ github.event.inputs.debug_pause }}"
 
       - name: Mesh Connectivity Results
         run: |
@@ -140,14 +146,6 @@ jobs:
             echo "Connectivity results do not contain '0 unreachable' nodes, check the connectivity results for details, failing this job"
             exit 1
           fi
-
-      - name: Gather api-server Server Logs
-        if: always()
-        run: |
-          ansible-playbook -vv \
-          ./hack/e2e-scripts/aws-e2e-pr-gather.yml \
-          --private-key nexodus.pem \
-          -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} ansible_user=ubuntu"
 
       - name: Terminate EC2 Instances
         if: always()

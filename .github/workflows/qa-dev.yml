@@ -1,5 +1,5 @@
-# This workflow is for attaching to an arbitrary api-server specified in the vars secrets
-name: dev-ec2
+# qa-dev workflow is for attaching to an arbitrary api-server specified in the vars secrets
+name: qa-dev
 
 concurrency:
   group: dev-ec2
@@ -18,11 +18,16 @@ on:
         required: true
         default: 'main'
 
+      debug_pause:
+        description: 'time in minutes to pause before tearing down the infra for debugging'
+        required: false
+        default: '0'
+
 jobs:
   deploy-ec2:
     name: deploy-ec2-e2e
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
     env:
@@ -111,7 +116,10 @@ jobs:
           mkdir -p ./ops/ansible/aws/nexd-logs/api-server
           ansible-playbook -vv ./hack/e2e-scripts/aws-e2e-pr-build.yml \
           --private-key nexodus.pem \
-          -e "target_host=${{ vars.EC2_API_SERVER_ADDR }} pr_or_branch=${{ github.event.inputs.pr_or_branch }} ansible_user=ubuntu"
+          --extra-vars "target_host=${{ vars.EC2_API_SERVER_ADDR }}" \
+          --extra-vars "pr_or_branch=${{ github.event.inputs.pr_or_branch }}" \
+          --extra-vars "ansible_user=ubuntu" \
+          --extra-vars "debug_pause=${{ github.event.inputs.debug_pause }}"
 
       - name: Deploy EC2 Agent Nodes
         run: |

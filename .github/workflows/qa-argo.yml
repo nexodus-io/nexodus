@@ -1,5 +1,5 @@
-# This workflow is for attaching ec2 nodes to the nexodus qa environment and is triggered via an argocd webhook
-name: qa-ec2-e2e
+# qa-argo workflow is for attaching ec2 nodes to the nexodus qa environment and is triggered via an argocd webhook
+name: qa-argo
 
 on:
   repository_dispatch:
