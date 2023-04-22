@@ -4,5 +4,9 @@ metadata:
   name: apiproxy
 spec:
   ports:
-    - port: 8080
+    - name: admin
+      port: 9000
+      targetPort: 9000
+    - name: web
+      port: 8080
       targetPort: 8080
