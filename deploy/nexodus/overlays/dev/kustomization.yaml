@@ -87,7 +87,7 @@ patchesJson6902:
 #    patch: |-
 #      - op: replace
 #        path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
-#        value: jaeger-collector.observability.svc.cluster.local:4317
+#        value: jaeger-collector:4317
 #      - op: replace
 #        path: /data/NEXAPI_TRACE_INSECURE
 #        value: "1"
