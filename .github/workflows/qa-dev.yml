@@ -66,10 +66,12 @@ jobs:
       - name: Build
         run: |
           make dist/nexd-linux-amd64
+          make dist/nexctl-linux-amd64
 
-      - name:  Copy Agent Binary to S3
+      - name:  Copy Binaries to S3
         run: |
           aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/
+          aws s3 cp ./dist/nexctl-linux-amd64 s3://nexodus-io/ec2-e2e/
           aws s3 cp ./hack/e2e-scripts/init-pr-e2e.sh s3://nexodus-io/ec2-e2e/
 
       - uses: actions/setup-python@v4
@@ -133,11 +135,11 @@ jobs:
         run: |
           set -e
           cat ./ops/ansible/aws/connectivity-results.txt
-          if grep -q '0 unreachable' ./ops/ansible/aws/connectivity-results.txt; then
-            echo "Connectivity results contain '0 unreachable' nodes"
-          else
-            echo "Connectivity results do not contain '0 unreachable' nodes, check the connectivity results for details, failing this job"
+          if grep -iq 'Unreachable' ./ops/ansible/aws/connectivity-results.txt; then
+            echo "Connectivity results contain 'Unreachable' nodes, check the connectivity results for details. Failing the job"
             exit 1
+          else
+            echo "Connectivity results do not contain any 'Unreachable' nodes"
           fi
 
       - name: Gather api-server Server Logs

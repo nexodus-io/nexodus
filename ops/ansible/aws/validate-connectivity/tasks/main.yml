@@ -15,15 +15,22 @@
 - set_fact:
     ip_prefix={{ ip_prefix.stdout }}
 
+- name: Download the Nexodus Agent Binary
+  shell: |
+    sudo curl {{ nexctl_binary }} --output /usr/local/bin/nexctl
+    sudo chmod +x /usr/local/bin/nexctl
+
 - name: Debug
   debug:
     msg: "Running connectivity test on spoke node: {{ inventory_hostname }}"
 
+# Run connections twice, once to stdout and one piped to a file. Partially to verify any false positives as the timers are currently very short on the probes
 - name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
     printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
-    fping -s -g  {{ ip_prefix }}.1 {{ ip_prefix }}.{{ spoke_range_end }} >> connectivity-results.txt 2>&1
+    nexctl connections
+    nexctl connections >> connectivity-results.txt 2>&1
     printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
     wg show wg0 dump >> connectivity-results.txt 2>&1
     cat connectivity-results.txt
