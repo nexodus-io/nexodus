@@ -3,3 +3,6 @@ extends: default
 rules:
   line-length: disable
   document-start: disable
+ignore:
+  # these files are generate:
+  - deploy/observability-operators/grafana-operator/**
