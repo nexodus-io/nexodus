@@ -298,8 +298,6 @@ static_resources:
                         - name: default
                           match:
                             prefix: "/api/"
-#                          decorator:
-#                            operation: api
                           request_headers_to_add:
                             header:
                               key: "x-jwt-claim-sub"
