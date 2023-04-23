@@ -11,3 +11,4 @@ ignores:
  - "pkg"
  - "**/node_modules/*"
  - "**/node_modules/**"
+ - "deploy/observability-operators/grafana-operator/**"

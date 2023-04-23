@@ -1,14 +1,25 @@
-apiVersion: integreatly.org/v1alpha1
+apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
   name: nexodus-grafana
   namespace: observability
+  labels:
+    dashboards: "nexodus"
 spec:
   ingress:
-    enabled: true
-    hostname: "grafana.127.0.0.1.nip.io"
-    path: /
-    pathType: Prefix
+    spec:
+      rules:
+        - host: grafana.127.0.0.1.nip.io
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: nexodus-grafana-service
+                    port:
+                      number: 3000
+                path: /
+                pathType: Prefix
+
   config:
     log:
       mode: "console"
@@ -17,10 +28,7 @@ spec:
       admin_user: "admin"
       admin_password: "floofykittens"
     auth:
-      disable_login_form: false
-      disable_signout_menu: true
+      disable_login_form: "false"
+      disable_signout_menu: "true"
     auth.anonymous:
-      enabled: true
-  dashboardLabelSelector:
-    - matchExpressions:
-        - {key: app, operator: In, values: [grafana]}
+      enabled: "true"
