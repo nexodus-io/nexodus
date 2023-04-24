@@ -121,6 +121,39 @@ dist/.yaml-lint: $(wildcard */**/*.yaml) | gen-docs dist
 	$(CMD_PREFIX) yamllint -c .yamllint.yaml deploy --strict
 	$(CMD_PREFIX) touch $@
 
+
+.PHONY: k8s-lint
+k8s-lint: dist/.k8s-lint ## Lint the kubernetes deployment files
+
+dist/.k8s-lint: $(shell find deploy -type f ) | dist
+	$(CMD_PREFIX) if ! which kubeconform >/dev/null 2>&1; then \
+		echo "Please install kubeconform." ; \
+		echo "With: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0" ; \
+		exit 1 ; \
+	fi
+
+	$(CMD_PREFIX) mkdir -p ./dist/kubeconfigs
+	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/dev > ./dist/kubeconfigs/dev.yaml
+	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/prod > ./dist/kubeconfigs/prod.yaml
+	$(CMD_PREFIX) kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' ./dist/kubeconfigs/
+
+dist/crd-extractor.zip: dist
+	$(CMD_PREFIX) if [ ! -f $@  ] ; then \
+	   curl -L -s https://github.com/datreeio/CRDs-catalog/releases/latest/download/crd-extractor.zip --output dist/crd-extractor.zip; \
+	fi
+
+dist/crd-extractor.sh: dist/crd-extractor.zip
+	$(CMD_PREFIX) cd dist && unzip -o crd-extractor.zip
+	$(CMD_PREFIX) chmod a+x dist/crd-extractor.sh
+	$(CMD_PREFIX) touch $@
+
+.PHONY: k8s-crd-extract
+k8s-crd-extract: dist/crd-extractor.sh ## Extract the kubernetes CRDs used iin k8s-lint
+	$(CMD_PREFIX) rm -rf $(HOME)/.datree/crdSchemas
+	$(CMD_PREFIX) dist/crd-extractor.sh
+	$(CMD_PREFIX) cp $(HOME)/.datree/crdSchemas/*/* deploy/.crdSchemas
+
+
 .PHONY: md-lint
 md-lint: dist/.md-lint ## Lint markdown files
 
