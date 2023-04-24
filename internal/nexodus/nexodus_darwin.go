@@ -4,6 +4,7 @@ package nexodus
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -20,7 +21,13 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		deleteDarwinIface(logger, dev)
 	}
 
-	_, err := RunCommand("wireguard-go", dev)
+	// prefer nexd-wireguard-go over wireguard-go since it supports port reuse.
+	wgBinary := wgGoBinary
+	if path, err := exec.LookPath(nexdWgGoBinary); err == nil {
+		wgBinary = path
+	}
+
+	_, err := RunCommand(wgBinary, dev)
 	if err != nil {
 		logger.Errorf("failed to create the %s interface: %v\n", dev, err)
 		return fmt.Errorf("%w", interfaceErr)
