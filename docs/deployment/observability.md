@@ -15,7 +15,7 @@ To install all of the following components:
 
 ```console
 kubectl create -k ./deploy/observability-operators/base
-kubectl wait --for=condition=Ready pods --all -n observability --timeout=300s
+kubectl wait --for=condition=Ready pods --all -n nexodus-monitoring --timeout=300s
 ```
 
 Uncomment the commented lines in `./deploy/nexodus/overlays/dev/kustomization.yaml` then run:

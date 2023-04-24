@@ -2,7 +2,7 @@ apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
   name: simple-dashboard
-  namespace: observability
+  namespace: nexodus-monitoring
   labels:
     app: grafana
 spec:

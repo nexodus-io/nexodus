@@ -2,7 +2,7 @@ apiVersion: jaegertracing.io/v1
 kind: Jaeger
 metadata:
   name: jaeger
-  namespace: observability
+  namespace: nexodus-monitoring
 spec:
   ingress:
     enabled: true
