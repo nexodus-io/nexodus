@@ -131,11 +131,11 @@ dist/.k8s-lint: $(shell find deploy -type f ) | dist
 		echo "With: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0" ; \
 		exit 1 ; \
 	fi
-
 	$(CMD_PREFIX) mkdir -p ./dist/kubeconfigs
 	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/dev > ./dist/kubeconfigs/dev.yaml
 	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/prod > ./dist/kubeconfigs/prod.yaml
 	$(CMD_PREFIX) kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' ./dist/kubeconfigs/
+	$(CMD_PREFIX) touch $@
 
 dist/crd-extractor.zip: dist
 	$(CMD_PREFIX) if [ ! -f $@  ] ; then \
