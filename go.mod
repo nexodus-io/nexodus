@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Nerzal/gocloak/v13 v13.3.0
 	github.com/briandowns/spinner v1.23.0
-	github.com/bufbuild/connect-go v1.6.0
+	github.com/bufbuild/connect-go v1.7.0
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
 	github.com/coreos/go-oidc/v3 v3.5.0
 	github.com/cucumber/godog v0.12.6
