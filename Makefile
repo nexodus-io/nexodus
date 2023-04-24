@@ -98,14 +98,14 @@ dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
 	$(CMD_PREFIX) cp -r docs/user-guide $(basename $@)/user-guide
 	$(CMD_PREFIX) cp LICENSE $(basename $@)
 	$(CMD_PREFIX) cp README.md $(basename $@)
-	$(CMD_PREFIX) cp dist/nexd-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexd
-	$(CMD_PREFIX) cp dist/nexctl-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexctl
+	$(CMD_PREFIX) cp dist/nexd-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexd$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) cp dist/nexctl-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexctl$(if $(findstring windows,$@),.exe)
 	$(CMD_PREFIX)  if [ "$(word 1,$(subst -, ,$(shell basename $@)))" == "windows" ] ; then \
-		printf "  %-12s $@\n" "[ZIP]" ;\
+		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[ZIP]" ;\
 		cd $(basename $@) ;\
 		zip -q9r ../nexodus-$(@F) . ;\
 	else \
-		printf "  %-12s $@\n" "[TAR]" ;\
+		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[TAR]" ;\
 		cd $(basename $@) ;\
 		tar -cf ../nexodus-$(@F) .  ;\
 	fi
