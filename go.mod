@@ -29,7 +29,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
-	github.com/swaggo/swag v1.8.12
+	github.com/swaggo/swag v1.16.1
 	github.com/testcontainers/testcontainers-go v0.19.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.1.21
 	github.com/urfave/cli/v2 v2.25.1
