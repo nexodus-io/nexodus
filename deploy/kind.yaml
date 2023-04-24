@@ -3,7 +3,7 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: nexodus-dev
 nodes:
   - role: control-plane
-    image: kindest/node:v1.27.0@sha256:c6b22e613523b1af67d4bc8a0c38a4c3ea3a2b8fbc5b367ae36345c9cb844518
+    image: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
     kubeadmConfigPatches:
       - |
         kind: InitConfiguration
@@ -18,6 +18,6 @@ nodes:
         hostPort: 443
         protocol: TCP
   - role: worker
-    image: kindest/node:v1.27.0@sha256:c6b22e613523b1af67d4bc8a0c38a4c3ea3a2b8fbc5b367ae36345c9cb844518
+    image: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
   - role: worker
-    image: kindest/node:v1.27.0@sha256:c6b22e613523b1af67d4bc8a0c38a4c3ea3a2b8fbc5b367ae36345c9cb844518
+    image: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
