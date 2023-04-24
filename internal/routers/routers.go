@@ -3,6 +3,7 @@ package routers
 import (
 	"context"
 	"crypto/tls"
+	"go.opentelemetry.io/otel/propagation"
 	"net/http"
 	"strings"
 	"time"
@@ -43,7 +44,10 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	r := gin.New()
 
 	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
-	r.Use(otelgin.Middleware(name))
+
+	r.Use(otelgin.Middleware(name, otelgin.WithPropagators(
+		propagation.TraceContext{},
+	)))
 	r.Use(ginzap.RecoveryWithZap(o.Logger.Desugar(), true))
 
 	newPrometheus().Use(r)
