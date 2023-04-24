@@ -9,23 +9,23 @@ components:
   - ../../components/monitoring
   - ../../components/limitador
 patchesJson6902:
-  - target:
-      name: apiserver
-      kind: ConfigMap
-      namespace: nexodus
-    patch: |-
+  - patch: |-
       - op: replace
         path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
         value: jaeger-collector:4317
       - op: replace
         path: /data/NEXAPI_TRACE_INSECURE
         value: "1"
+    target:
+      kind: ConfigMap
+      name: apiserver
+      namespace: nexodus
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 1295e676cceb8acdf0196b013ea54142aafde13c
+    newTag: bc9701e1244be96e7b91112c462d5bd242e7e559
   - name: quay.io/nexodus/envsubst
-    newTag: 1295e676cceb8acdf0196b013ea54142aafde13c
+    newTag: bc9701e1244be96e7b91112c462d5bd242e7e559
   - name: quay.io/nexodus/frontend
-    newTag: 1295e676cceb8acdf0196b013ea54142aafde13c
+    newTag: bc9701e1244be96e7b91112c462d5bd242e7e559
   - name: quay.io/nexodus/go-ipam
-    newTag: 1295e676cceb8acdf0196b013ea54142aafde13c
+    newTag: bc9701e1244be96e7b91112c462d5bd242e7e559
