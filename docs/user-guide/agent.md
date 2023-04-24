@@ -31,15 +31,27 @@ brew tap nexodus-io/nexodus
 brew install nexodus
 ```
 
-#### Install Script
+#### Binary Downloads
 
-The Nexodus agent (`nexd`) is run on any node that will join a Nexodus Zone to communicate with other peers in that zone. This agent communicates with the Nexodus Service and manages local wireguard configuration.
+Download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
 
-The `contrib/nexodus_installer.sh` script will download the latest build of `nexd` and install it for you. It will also ensure that `wireguard-tools` has been installed. This installer supports MacOS and Linux. You may also install `wireguard-tools` yourself and build `nexd` from source.
+*Download `nexd`*
 
-```sh
-contrib/nexodus_installer.sh
-```
+- [Linux x86-64](https://nexodus-io.s3.amazonaws.com/linux-amd64/nexd)
+- [Linux arm64](https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd)
+- [Linux arm](https://nexodus-io.s3.amazonaws.com/linux-arm/nexd)
+- [Mac x86-64](https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexd)
+- [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexd)
+- [Windows x86-64](https://nexodus-io.s3.amazonaws.com/windows-amd64/nexd.exe)
+
+*Download `nexctl`*
+
+- [Linux x86-64](https://nexodus-io.s3.amazonaws.com/linux-amd64/nexctl)
+- [Linux arm64](https://nexodus-io.s3.amazonaws.com/linux-arm64/nexctl)
+- [Linux arm](https://nexodus-io.s3.amazonaws.com/linux-arm/nexctl)
+- [Mac x86-64](https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexctl)
+- [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexctl)
+- [Windows x86-64](https://nexodus-io.s3.amazonaws.com/windows-amd64/nexctl.exe)
 
 #### Custom RPM Build
 
