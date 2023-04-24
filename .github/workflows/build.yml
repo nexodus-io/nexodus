@@ -7,6 +7,7 @@ on:
       - '**/*.md'
       - '**/*.gitignore'
       - '.vscode/**'
+      - '.github/mergify.yml'
   pull_request:
     branches: ["main"]
     # Must stay in sync with the paths in .github/workflows/docs.yml and .github/mergify.yml
@@ -14,6 +15,7 @@ on:
       - '**/*.md'
       - '**/*.gitignore'
       - '.vscode/**'
+      - '.github/mergify.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
