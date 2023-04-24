@@ -16,3 +16,11 @@ if [ -z "$(which mkcert)" ] || [ "$1" = "--force" ]; then
   echo installing mkcert
   go install filippo.io/mkcert@v1.4.4
 fi
+if [ -z "$(which kubeconform)" ] || [ "$1" = "--force" ]; then
+  echo installing kubeconform
+  go install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0
+fi
+if [ -z "$(which kustomize)" ] || [ "$1" = "--force" ]; then
+  echo installing kustomize
+  go install sigs.k8s.io/kustomize/kustomize/v5@latest
+fi

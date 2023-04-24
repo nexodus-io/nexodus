@@ -90,37 +90,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: YAML Lint
-        run: |
-          yamllint -c .yamllint.yaml deploy --strict
-
-      - uses: actions/setup-go@v4
-        with:
-          go-version: "1.20"
-
-      - name: Set up Kustomize
-        run: |
-          mkdir -p $HOME/.local/bin
-          pushd $HOME/.local/bin
-          curl -s --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s 4.5.7
-          popd
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Kustomize Build
-        run: |
-          mkdir -p kubeconfigs
-          kustomize build ./deploy/nexodus/overlays/dev > kubeconfigs/dev.yaml
-          kustomize build ./deploy/nexodus/overlays/prod > kubeconfigs/prod.yaml
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - name: Login to GHCR
         run: echo "${{ github.token }}" | docker login https://ghcr.io -u ${GITHUB_ACTOR} --password-stdin
 
-      - name: Set Up Kubeconform
-        run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0
-
       - name: Check Kube Manifests
         run: |
-          kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' kubeconfigs/
+          make -j yaml-lint k8s-lint 
 
   opa-lint:
     runs-on: ubuntu-latest
