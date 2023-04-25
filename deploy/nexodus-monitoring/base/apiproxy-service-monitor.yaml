@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apiproxy
+  labels:
+    team: nexodus
+spec:
+  namespaceSelector:
+    matchNames:
+      - nexodus
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apiproxy
+  endpoints:
+    - port: admin

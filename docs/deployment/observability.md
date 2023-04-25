@@ -4,28 +4,37 @@ The Nexodus stack is designed to be observable.
 
 ## Monitoring Locally
 
+### Install Operators
+
+The monitoring stack requires several operators.
 To install all of the following components:
 
 - Prometheus Operator
 - Jaeger Operator
-- And the necessary configuration for apiserver metrics/traces to export to instances of Prometheus/Jaeger managed by the operator
 - Grafana Operator
-- Grafana datastore (pointed at Prometheus)
-- Grafana dashboards
 
 ```console
 kubectl create -k ./deploy/observability-operators/base
 kubectl wait --for=condition=Ready pods --all -n observability --timeout=300s
 ```
 
-Uncomment the commented lines in `./deploy/nexodus/overlays/dev/kustomization.yaml` then run:
+### Install Monitoring Stack
 
 ```console
-kubectl apply -k ./deploy/nexodus/overlays/dev
+kubectl create namespace nexodus-monitoring
+kubectl apply -k ./deploy/nexodus-monitoring/overlays/dev
 ```
+
+### Accessing The Monitoring Stack
 
 The dashboards for the services are available at:
 
 - <http://jaeger.127.0.0.1.nip.io>
 - <http://prometheus.127.0.0.1.nip.io>
 - <http://grafana.127.0.0.1.nip.io>
+
+## Monitoring in OpenShift
+
+### Install Operators
+
+The Prometheus Operator is not required since OpenShift Metrics provides the same functionality. Similarly, the Jaeger Operator is not required as the functionality is part of OpenShift Distributed Tracing.
