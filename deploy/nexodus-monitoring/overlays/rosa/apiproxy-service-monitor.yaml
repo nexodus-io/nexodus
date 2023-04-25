@@ -1,14 +1,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: apiproxy
-  namespace: observability
+  name: qa-apiproxy
   labels:
     team: nexodus
 spec:
   namespaceSelector:
     matchNames:
-      - nexodus
+      - nexodus-qa
   selector:
     matchLabels:
       app.kubernetes.io/name: apiproxy

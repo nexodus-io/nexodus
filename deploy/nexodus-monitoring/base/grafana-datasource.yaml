@@ -2,7 +2,6 @@ apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
   name: nexodus-grafanadatasource
-  namespace: observability
 spec:
   instanceSelector:
     matchLabels:

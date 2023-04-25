@@ -2,8 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: observability
 resources:
-  - https://github.com/jaegertracing/jaeger-operator/releases/download/v1.39.0/jaeger-operator.yaml
-  - https://github.com/prometheus-operator/prometheus-operator?ref=v0.61.1
-  # the ../grafana-operator directory was generated with:
-  # `flux pull artifact oci://ghcr.io/grafana-operator/kustomize/grafana-operator:v5.0.0-rc1 --output ./grafana-operator`
-  - ../grafana-operator/overlays/cluster_scoped
+  - https://github.com/grafana-operator/grafana-operator/deploy/kustomize/overlays/cluster_scoped?ref=v5.0.0-rc1
+  - https://github.com/jaegertracing/jaeger-operator/releases/download/v1.43.0/jaeger-operator.yaml
+  - https://github.com/prometheus-operator/prometheus-operator?ref=v0.64.0
+images:
+  - name: ghcr.io/grafana-operator/grafana-operator
+    newtag: v5.0.0-rc1

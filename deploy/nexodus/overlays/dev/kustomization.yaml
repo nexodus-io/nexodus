@@ -4,8 +4,6 @@ resources:
   - ../../base
   - issuer.yaml
 components:
-# Uncomment this and the patch at the bottom to enable monitoring
-#  - ../../components/monitoring
 # Uncomment this to enable rate limiting
 #  - ../../components/limitador
 namespace: nexodus
@@ -79,7 +77,6 @@ patchesJson6902:
       - op: add
         path: /spec/template/spec/volumes
         value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
-
 #  - target:
 #      name: apiserver
 #      kind: ConfigMap

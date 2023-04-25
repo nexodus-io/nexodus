@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: qa-apiserver
+  labels:
+    team: nexodus
+spec:
+  namespaceSelector:
+    matchNames:
+      - nexodus-qa
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apiserver
+  endpoints:
+    - port: web

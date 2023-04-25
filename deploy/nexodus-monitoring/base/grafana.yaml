@@ -2,7 +2,6 @@ apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
   name: nexodus-grafana
-  namespace: observability
   labels:
     dashboards: "nexodus"
 spec:
