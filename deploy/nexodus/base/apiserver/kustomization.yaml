@@ -8,7 +8,7 @@ configMapGenerator:
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - NEXAPI_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
       - NEXAPI_INSECURE_TLS=1
-      - NEXAPI_TRACE_ENDPOINT_OTLP=""
+      - NEXAPI_TRACE_ENDPOINT_OTLP="jaeger-collector.nexodus-monitoring.svc:4317"
       - NEXAPI_TRACE_INSECURE="1"
       - NEXAPI_FFLAG_MULTI_ORGANIZATION=false
       - NEXAPI_DB_SSLMODE=require

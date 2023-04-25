@@ -77,14 +77,3 @@ patchesJson6902:
       - op: add
         path: /spec/template/spec/volumes
         value: [{"name":"trust","secret":{"secretName":"nexodus-ca-key-pair","optional":false,"items":[{"key":"ca.crt","path":"tls-ca-bundle.pem"}]}}]
-#  - target:
-#      name: apiserver
-#      kind: ConfigMap
-#      namespace: nexodus
-#    patch: |-
-#      - op: replace
-#        path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
-#        value: jaeger-collector:4317
-#      - op: replace
-#        path: /data/NEXAPI_TRACE_INSECURE
-#        value: "1"
