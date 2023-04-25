@@ -181,7 +181,7 @@ jobs:
           go test -v ./...
 
   build-packages:
-#    needs: [ go-lint-linux, generate ]
+    needs: [ go-lint-linux, generate ]
 #    strategy:
 #      fail-fast: false
 #      max-parallel: 3
