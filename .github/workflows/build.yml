@@ -42,7 +42,7 @@ jobs:
             echo "Detected uncommitted changes after build.  See status below:"
             git diff
             echo "========================================================"
-            echo "  run `make generate` and commit the changes"
+            echo "  run 'make generate' and commit the changes"
             echo "========================================================"
             exit 1
           fi
@@ -94,7 +94,7 @@ jobs:
         uses: ./.github/actions/setup-go-env
 
       - name: Login to GHCR
-        run: echo "${{ github.token }}" | docker login https://ghcr.io -u ${GITHUB_ACTOR} --password-stdin
+        run: echo "${{ github.token }}" | docker login https://ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
 
       - name: Check Kube Manifests
         run: |
@@ -366,7 +366,7 @@ jobs:
         id: build-rpm
         run: |
           make rpm
-          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> $GITHUB_OUTPUT
+          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> "$GITHUB_OUTPUT"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3

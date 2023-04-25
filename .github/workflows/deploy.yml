@@ -85,34 +85,34 @@ jobs:
       - name: Calculate Short SHA
         id: gitsha
         run: |
-          echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kustomize
         run: |
-          mkdir -p $HOME/.local/bin
-          pushd $HOME/.local/bin
+          mkdir -p "$HOME/.local/bin"
+          pushd "$HOME/.local/bin"
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s 4.5.7
           popd
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Update QA Images
         run: |
           pushd ./deploy/nexodus/overlays/released
-          kustomize edit set image quay.io/nexodus/apiserver:${GITHUB_SHA}
-          kustomize edit set image quay.io/nexodus/frontend:${GITHUB_SHA}
-          kustomize edit set image quay.io/nexodus/go-ipam:${GITHUB_SHA}
-          kustomize edit set image quay.io/nexodus/envsubst:${GITHUB_SHA}
+          kustomize edit set image "quay.io/nexodus/apiserver:${GITHUB_SHA}"
+          kustomize edit set image "quay.io/nexodus/frontend:${GITHUB_SHA}"
+          kustomize edit set image "quay.io/nexodus/go-ipam:${GITHUB_SHA}"
+          kustomize edit set image "quay.io/nexodus/envsubst:${GITHUB_SHA}"
           yq -i kustomization.yaml
           popd
 
       - name: Check for changes
         run: |
-          git diff --quiet || echo "COMMIT_CHANGES=1" >> $GITHUB_ENV
+          git diff --quiet || echo "COMMIT_CHANGES=1" >> "$GITHUB_ENV"
 
       - name: Check for new commits in main
         run: |
           git fetch origin
-          if [ "$(git log HEAD..origin/main --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> $GITHUB_ENV
+          if [ "$(git log HEAD..origin/main --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> "$GITHUB_ENV"
 
       - name: Commit Changes
         id: commit
@@ -153,8 +153,8 @@ jobs:
       - id: go-cache-paths
         shell: bash
         run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
 
       - name: Go Build Cache
         uses: actions/cache@v3
@@ -178,5 +178,5 @@ jobs:
       - name: Submit srpm to copr
         run: |
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
-          docker run --name copr-cli -v $(pwd):/nexodus -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
-              copr-cli build nexodus -r ${{ matrix.mock_root }} --nowait /nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm
+          docker run --name copr-cli -v "$(pwd):/nexodus" -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
+              copr-cli build nexodus -r "${{ matrix.mock_root }}" --nowait "/nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm"
