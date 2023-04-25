@@ -57,3 +57,41 @@ pull_request_rules:
       label:
         remove:
           - needs-rebase
+
+  # Give a hint via label when no docs label has been applied
+  - name: Label when docs label is missing
+    conditions:
+      - -label=has-docs
+      - -label=no-docs-required
+    actions:
+      label:
+        add:
+          - missing-docs-label
+  - name: Remove label when docs label is present
+    conditions:
+      - or:
+        - label=has-docs
+        - label=no-docs-required
+    actions:
+      label:
+        remove:
+          - missing-docs-label
+
+  # Give a hint via label when no design doc label has been applied
+  - name: Label when design doc label is missing
+    conditions:
+      - -label=has-design
+      - -label=no-design-required
+    actions:
+      label:
+        add:
+          - missing-design-label
+  - name: Remove label when design doc label is present
+    conditions:
+      - or:
+        - label=has-design
+        - label=no-design-required
+    actions:
+      label:
+        remove:
+          - missing-design-label
