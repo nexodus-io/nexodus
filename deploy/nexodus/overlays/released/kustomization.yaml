@@ -6,20 +6,20 @@ kind: Kustomization
 resources:
   - ../../base
 components:
-  - ../../components/monitoring
+  # - ../../components/monitoring
   - ../../components/limitador
-patchesJson6902:
-  - patch: |-
-      - op: replace
-        path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
-        value: jaeger-collector:4317
-      - op: replace
-        path: /data/NEXAPI_TRACE_INSECURE
-        value: "1"
-    target:
-      kind: ConfigMap
-      name: apiserver
-      namespace: nexodus
+# patchesJson6902:
+#   - patch: |-
+#       - op: replace
+#         path: /data/NEXAPI_TRACE_ENDPOINT_OTLP
+#         value: jaeger-collector:4317
+#       - op: replace
+#         path: /data/NEXAPI_TRACE_INSECURE
+#         value: "1"
+#     target:
+#       kind: ConfigMap
+#       name: apiserver
+#       namespace: nexodus
 images:
   - name: quay.io/nexodus/apiserver
     newTag: 0a9aadc1d4144cfd78a8d6b93412796087f4cc6c
