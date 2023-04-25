@@ -139,7 +139,6 @@ jobs:
           outputs: type=docker,dest=/tmp/${{ matrix.name }}.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          target: ${{ matrix.target }}
 
       - name: Upload ${{ matrix.name }} artifact
         uses: actions/upload-artifact@v3
