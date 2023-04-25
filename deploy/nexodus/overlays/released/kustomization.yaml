@@ -5,8 +5,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+# - ../../components/monitoring
 components:
-  # - ../../components/monitoring
   - ../../components/limitador
 # patchesJson6902:
 #   - patch: |-
@@ -22,10 +22,10 @@ components:
 #       namespace: nexodus
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 0a9aadc1d4144cfd78a8d6b93412796087f4cc6c
+    newTag: 8b9222d079f0ff24a445ec4a49f92031f64a52f7
   - name: quay.io/nexodus/envsubst
-    newTag: 0a9aadc1d4144cfd78a8d6b93412796087f4cc6c
+    newTag: 8b9222d079f0ff24a445ec4a49f92031f64a52f7
   - name: quay.io/nexodus/frontend
-    newTag: 0a9aadc1d4144cfd78a8d6b93412796087f4cc6c
+    newTag: 8b9222d079f0ff24a445ec4a49f92031f64a52f7
   - name: quay.io/nexodus/go-ipam
-    newTag: 0a9aadc1d4144cfd78a8d6b93412796087f4cc6c
+    newTag: 8b9222d079f0ff24a445ec4a49f92031f64a52f7
