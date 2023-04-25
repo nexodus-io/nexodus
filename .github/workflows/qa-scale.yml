@@ -45,9 +45,9 @@ jobs:
         id: check_pr
         run: |
           if [[ "${{ github.event.inputs.pr_or_branch }}" =~ ^[0-9]+$ ]]; then
-            echo "is_pr=true" >> $GITHUB_OUTPUT
+            echo "is_pr=true" >> "$GITHUB_OUTPUT"
           else
-            echo "is_pr=false" >> $GITHUB_OUTPUT
+            echo "is_pr=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Fetch and checkout PR
@@ -86,7 +86,7 @@ jobs:
             -u qa \
             -p "${{ secrets.QA_USER_PASSWORD }}" \
             https://auth.qa.nexodus.io)
-          echo "USER=$output" >> $GITHUB_OUTPUT
+          echo "USER=$output" >> "$GITHUB_OUTPUT"
 
       - name: User results from Keycloak
         run: echo "User is ${{ steps.kc-user.outputs.USER }}"

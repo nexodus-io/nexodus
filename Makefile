@@ -45,7 +45,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint nexd nexctl ## Run linters and build nexd
+all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint action-lint nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
@@ -178,6 +178,23 @@ dist/.opa-lint: $(policies) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest fmt --fail $(policies) $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:latest test -v $(policies) $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) touch $@
+
+.PHONY: action-lint
+action-lint: dist/.action-lint ## Lint GitHub Action workflows
+dist/.action-lint: $(find -type f .github) | dist
+	$(ECHO_PREFIX) printf "  %-12s .github/...\n" "[ACTION LINT]"
+	$(CMD_PREFIX) if ! which actionlint $(PIPE_DEV_NULL) ; then \
+		echo "Please install actionlint." ; \
+		echo "go install github.com/rhysd/actionlint/cmd/actionlint@latest" ; \
+		exit 1 ; \
+	fi
+	$(CMD_PREFIX) if ! which shellcheck $(PIPE_DEV_NULL) ; then \
+		echo "Please install shellcheck." ; \
+		echo "https://github.com/koalaman/shellcheck#user-content-installing" ; \
+		exit 1 ; \
+	fi
+	$(CMD_PREFIX) actionlint -color
 	$(CMD_PREFIX) touch $@
 
 .PHONY: gen-docs
