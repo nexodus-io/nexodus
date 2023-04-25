@@ -22,7 +22,7 @@ kubectl wait --for=condition=Ready pods --all -n observability --timeout=300s
 
 ```console
 kubectl create namespace nexodus-monitoring
-kubectl apply -k ./deploy/nexodus-monitoring/base
+kubectl apply -k ./deploy/nexodus-monitoring/overlays/dev
 ```
 
 ### Accessing The Monitoring Stack
