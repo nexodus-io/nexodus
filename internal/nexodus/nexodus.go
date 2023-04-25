@@ -31,6 +31,7 @@ const (
 	pollInterval       = 5 * time.Second
 	wgBinary           = "wg"
 	wgGoBinary         = "wireguard-go"
+	nexdWgGoBinary     = "nexd-wireguard-go"
 	wgWinBinary        = "wireguard.exe"
 	WgLinuxConfPath    = "/etc/wireguard/"
 	WgDarwinConfPath   = "/usr/local/etc/wireguard/"

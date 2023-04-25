@@ -75,10 +75,10 @@ func defaultTunnelDevOS() string {
 // binaryChecks validate the required binaries are available
 func binaryChecks() error {
 	// Darwin wireguard-go userspace binary
-	if !IsCommandAvailable(wgGoBinary) {
-		return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
+	if IsCommandAvailable(nexdWgGoBinary) || IsCommandAvailable(wgGoBinary) {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
 }
 
 // prepOS perform OS specific OS changes
