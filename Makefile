@@ -94,19 +94,19 @@ dist/packages: \
 	dist/packages/windows-amd64.zip
 
 dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
-	$(CMD_PREFIX) mkdir -p $(basename $@)
-	$(CMD_PREFIX) cp -r docs/user-guide $(basename $@)/user-guide
-	$(CMD_PREFIX) cp LICENSE $(basename $@)
-	$(CMD_PREFIX) cp README.md $(basename $@)
-	$(CMD_PREFIX) cp dist/nexd-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexd$(if $(findstring windows,$@),.exe)
-	$(CMD_PREFIX) cp dist/nexctl-$(basename $(@F))$(if $(findstring windows,$@),.exe) $(basename $@)/nexctl$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) mkdir -p $(basename $(basename $@))
+	$(CMD_PREFIX) cp -r docs/user-guide $(basename $(basename $@))/user-guide
+	$(CMD_PREFIX) cp LICENSE $(basename $(basename $@))
+	$(CMD_PREFIX) cp README.md $(basename $(basename $@))
+	$(CMD_PREFIX) cp dist/nexd-$(basename $(basename $(@F)))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexd$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) cp dist/nexctl-$(basename $(basename $(@F)))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexctl$(if $(findstring windows,$@),.exe)
 	$(CMD_PREFIX) if test "$(word 1,$(subst -, ,$(shell basename $@)))" = "windows" ; then \
 		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[ZIP]" ;\
-		cd $(basename $@) ;\
+		cd $(basename $(basename $@)) ;\
 		zip -q9r ../nexodus-$(@F) . ;\
 	else \
 		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[TAR]" ;\
-		cd $(basename $@) ;\
+		cd $(basename $(basename $@)) ;\
 		tar -cf ../nexodus-$(@F) .  ;\
 	fi
 
