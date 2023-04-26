@@ -15,7 +15,7 @@ commonLabels:
   app.kubernetes.io/component: nexodus-client
   app.kubernetes.io/instance: nexodus-client
   app.kubernetes.io/name: nexodus-client
-patchesJson6902:
+patches:
   - target:
       kind: DaemonSet
       name: nexodus

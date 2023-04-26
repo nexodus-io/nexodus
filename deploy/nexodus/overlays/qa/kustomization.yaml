@@ -30,7 +30,7 @@ configMapGenerator:
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
     name: apiserver
-patchesJson6902:
+patches:
   - patch: |-
       - op: replace
         path: /spec/rules/0/host

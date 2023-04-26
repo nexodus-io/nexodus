@@ -12,7 +12,7 @@ configMapGenerator:
     literals:
       - NEXAPI_FFLAG_MULTI_ORGANIZATION=true
     name: apiserver
-patchesJson6902:
+patches:
   - target:
       kind: Ingress
       name: apiproxy

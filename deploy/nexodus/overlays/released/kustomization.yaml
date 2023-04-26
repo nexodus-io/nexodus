@@ -8,7 +8,7 @@ resources:
 # - ../../components/monitoring
 components:
   - ../../components/limitador
-# patchesJson6902:
+# patches:
 #   - patch: |-
 #       - op: replace
 #         path: /data/NEXAPI_TRACE_ENDPOINT_OTLP

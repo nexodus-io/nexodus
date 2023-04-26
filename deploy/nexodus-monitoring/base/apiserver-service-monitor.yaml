@@ -4,6 +4,7 @@ metadata:
   name: apiserver
   labels:
     team: nexodus
+  namespace: nexodus-monitoring
 spec:
   namespaceSelector:
     matchNames:

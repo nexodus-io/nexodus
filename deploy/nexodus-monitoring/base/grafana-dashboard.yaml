@@ -4,6 +4,7 @@ metadata:
   name: simple-dashboard
   labels:
     app: grafana
+  namespace: nexodus-monitoring
 spec:
   resyncPeriod: 30s
   instanceSelector:
