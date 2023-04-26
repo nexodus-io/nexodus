@@ -94,7 +94,7 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
 
 ### Nodes that still cannot find a match (currently supported)
 
-- For all nodes that are unable to find a suitable candidate peering (symmetric NAT nodes), we fall back to forwarding traffic through the relay node that needs to be open (UDP 51820) to all endpoints in the zone.
+- For all nodes that are unable to find a suitable candidate peering (symmetric NAT nodes), we fall back to forwarding traffic through the relay node that needs to be open (UDP 51820) to all endpoints in the organization.
 - (Future work) Eliminating the need to terminate wireguard sessions to the relay node would reduce the attack surface and better adhere to zero trust networking principles. [Issue 169](https://github.com/nexodus-io/nexodus/issues/169)
 
 ### Health checking and proper probing (future work)

@@ -42,7 +42,7 @@ Only a subset of the flags used in `agent` mode apply to `proxy` mode. The follo
    --child-prefix value [ --child-prefix value ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_CHILD_PREFIX]
    --relay-node                                   Set if this node is to be the relay node for a hub and spoke scenarios (default: false) [$NEXD_RELAY_NODE]
    --discovery-node                               Set if this node is to be the discovery node for NAT traversal in an organization (default: false) [$NEXD_DISCOVERY_NODE]
-   --relay-only                                   Set if this node is unable to NAT hole punch in a hub zone (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]
+   --relay-only                                   Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]
 ```
 
 ### Proxy Configuration

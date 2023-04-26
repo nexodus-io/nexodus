@@ -2,17 +2,15 @@
 
 Imagine a user wants to not only communicate between the node address each member of the mesh but also want to advertise
 some additional IP prefixes for additional services running on a node. This can be accomplished with the `--child-prefix` flag
-of `router` subcommand. Prefixes have to be unique within a zone but can overlap on separate zones.
+of `router` subcommand. Prefixes have to be unique within an organization but can overlap between separate organizations.
 
 The following example allows a user to connect Docker container directly to one another without exposing a port on the node.
 These nodes could be in different data centers or CSPs. This example uses the `router --child-prefix` option to advertise the private
 container networks to the mesh and enable connectivity.
 
-For simplicity, we are just using the default, built-in zone `default`.
-
 **Node1 setup:**
 
-Join node1 to the `default` zone network
+Join node1 to the user's default assigned organization
 
 ```shell
 sudo nexd router --child-prefix=172.24.0.0/24 <SERVICE_URL>
@@ -38,7 +36,7 @@ docker run -it --rm --network=net1 busybox bash
 
 **Node2 setup**
 
-Join node2 to the `default` zone network
+Join node2 to the user's default assigned organization
 
 ```shell
 sudo nexd router --child-prefix=172.28.0.0/24 <SERVICE_URL>
@@ -102,5 +100,4 @@ ping 172.24.0.x
 - once you allocate a prefix, it is fixed in IPAM. We do not currently support removing the prefix.
 
 - Containers need to have unique private addresses on the docker network as exemplified above. Overlapping addresses
-within a zone is not supported because that is a nightmare to troubleshoot, creates major fragility in SDN deployments and is
-all around insanity. TLDR; IP address management in v4 networks is important when deploying infrastructure ¯\_(ツ)_/¯
+within an organization is not supported. However, IPAM is namespaced to support overlapping addresses between organizations similar to for example, VPCs on EC2.

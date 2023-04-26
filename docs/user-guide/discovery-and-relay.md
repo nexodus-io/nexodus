@@ -15,10 +15,9 @@ sudo nexd --stun relay https://try.nexodus.127.0.0.1.nip.io
 You can list the available organizations using the following command
 
 ```sh
-./nexctl  --username=kitteh1 --password=floofykittens organization list
-
-ORGANIZATION ID                          NAME          CIDR              DESCRIPTION                RELAY/HUB ENABLED
-dcab6a84-f522-4e9b-a221-8752d505fc18     default       100.100.1.0/20     Default Zone               false
+nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username kitteh1 --password floofykittens organization list
+Organization ID                          NAME      IPV4 CIDR          IPV6 CIDR     DESCRIPTION
+faa76939-3226-4d09-b695-e981585ab156     kitteh1   100.100.0.0/16     200::/64      kitteh1's organization
 ```
 
 ### Interactive OnBoarding
@@ -37,7 +36,7 @@ Please open the following URL in your browser to sign in:
 https://auth.try.nexodus.127.0.0.1.nip.io/device?user_code=GTLN-RGKP
 ```
 
-Open the URL in your browser and provide the username and password that you used to create the zone, and follow the GUI's instructions. Once you are done granting access to the device in the GUI, the relay node will be OnBoarded to the Relay Zone.
+Open the URL in your browser and provide the username and password that you used to join the node, and follow the GUI's instructions. Once you are done granting access to the device in the GUI, the relay node will be onboarded into that organization.
 
 ### Silent OnBoarding
 

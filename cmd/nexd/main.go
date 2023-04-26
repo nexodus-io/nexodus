@@ -280,7 +280,7 @@ func main() {
 			},
 			&cli.BoolFlag{
 				Name:     "relay-only",
-				Usage:    "Set if this node is unable to NAT hole punch in a hub zone (Nexodus will set this automatically if symmetric NAT is detected)",
+				Usage:    "Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected)",
 				Value:    false,
 				EnvVars:  []string{"NEXD_RELAY_ONLY"},
 				Required: false,

@@ -10,14 +10,14 @@ To configure this scenario, the `nexd` agent on `Host X` must be run with the `r
 sudo nexd router --child-prefix 192.168.100.0/24 [...]
 ```
 
-The subnet exposed to the Nexodus Zone may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
+The subnet exposed to the Nexodus organization may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
 
 > **Note**
-> Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Nexodus Zone A via `Host X` must be handled via local configuration that is appropriate for your network.
+> Subnet Routers do not perform NAT. Routes for hosts in `192.168.100.0/24` to reach Nexodus Organization A via `Host X` must be handled via local configuration that is appropriate for your network.
 
 ```mermaid
 graph
-    subgraph "Nexodus Zone - 10.0.0.10/24"
+    subgraph "Nexodus Organization - 10.0.0.10/24"
         x[Host X]<---> y
         y[Host Y]<---> z[Host Z]
         x<--->z
