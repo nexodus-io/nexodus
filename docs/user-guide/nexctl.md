@@ -23,4 +23,4 @@ make dist/nexctl
 
 ## Using the Nexctl Utility
 
-`nexctl` is a CLI utility that is used to interact with the Nexodus Service. It provides command line options to get the existing configuration of the resources like Zone, Peer, User and Devices from the Nexodus Service. It also allows limited options to configure certain aspects of these resources. Please use `nexctl -h` to learn more about the available options.
+`nexctl` is a CLI utility that is used to interact with the Nexodus Service. It provides command line options to get the existing configuration of the resources like Organization, Peer, User and Devices from the Nexodus Service. It also allows limited options to configure certain aspects of these resources. Please use `nexctl -h` to learn more about the available options.

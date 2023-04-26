@@ -80,7 +80,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 
 		private.Use(validateJWT)
 		private.Use(api.CreateUserIfNotExists())
-		// Zones
+		// Organizations
 		private.GET("/organizations", api.ListOrganizations)
 		private.POST("/organizations", api.CreateOrganization)
 		private.GET("/organizations/:organization", api.GetOrganizations)

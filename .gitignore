@@ -10,6 +10,12 @@
 
 # Built binaries
 /dist/*
+cmd/nexd/*
+!cmd/nexd/*.go
+cmd/nexctl/*
+!cmd/nexctl/*.go
+cmd/apiserver/*
+!cmd/apiserver/*.go
 
 # Ops files
 *.pem

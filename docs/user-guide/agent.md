@@ -104,7 +104,7 @@ sudo systemctl enable nexodus
 
 ### Interactive Enrollment
 
-If the agent is able to successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus Zone. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent is able to successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -158,7 +158,7 @@ $ ip address show wg0
 
 ### Verifying Organization Connectivity
 
-Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this zone. The new node's address in the Nexodus organization is `100.100.0.2` and `200::2`. On Linux, we can check the routing table and see:
+Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this organization. The new node's address in the Nexodus organization is `100.100.0.2` and `200::2`. On Linux, we can check the routing table and see:
 
 ```sh
 $ ip route
