@@ -5,4 +5,10 @@ resources:
   - ../../base
   - apiproxy-service-monitor.yaml
   - apiserver-service-monitor.yaml
-# TODO: Add patches to override the URLs in ROSA
+patchesJson6902:
+  - target:
+      kind: Jaeger
+      name: jaeger
+    patch: |-
+      - op: remove
+        path: /spec/ingress/hosts
