@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"os"
@@ -287,10 +288,11 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	var user *public.ModelsUser
+	var resp *http.Response
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		user, _, err = ax.client.UsersApi.GetUser(ctx, "me").Execute()
+		user, resp, err = ax.client.UsersApi.GetUser(ctx, "me").Execute()
 		if err != nil {
-			ax.logger.Warnf("get user error - retrying: %v", err)
+			ax.logger.Warnf("get user error - retrying error: %v header: %v ", err, resp.Header)
 			return err
 		}
 		return nil
@@ -301,9 +303,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	var organizations []public.ModelsOrganization
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		organizations, _, err = ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+		organizations, resp, err = ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
 		if err != nil {
-			ax.logger.Warnf("get organizations error - retrying: %v", err)
+			ax.logger.Warnf("get organizations error - retrying error: %v header: %v ", err, resp.Header)
 			return err
 		}
 		return nil
@@ -530,9 +532,9 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 }
 
 func (ax *Nexodus) Reconcile(firstTime bool) error {
-	peerListing, _, err := ax.informer.Execute()
+	peerListing, resp, err := ax.informer.Execute()
 	if err != nil {
-		return err
+		return fmt.Errorf("error: %w header: %v", err, resp.Header)
 	}
 	var newPeers []public.ModelsDevice
 	if firstTime {
