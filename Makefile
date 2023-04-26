@@ -85,12 +85,12 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 dist/packages: \
-	dist/packages/linux-amd64.tgz \
-	dist/packages/linux-amd64.tgz \
-	dist/packages/linux-arm.tgz \
-	dist/packages/linux-arm64.tgz \
-	dist/packages/darwin-amd64.tgz \
-	dist/packages/darwin-arm64.tgz \
+	dist/packages/linux-amd64.tar.gz \
+	dist/packages/linux-amd64.tar.gz \
+	dist/packages/linux-arm.tar.gz \
+	dist/packages/linux-arm64.tar.gz \
+	dist/packages/darwin-amd64.tar.gz \
+	dist/packages/darwin-arm64.tar.gz \
 	dist/packages/windows-amd64.zip
 
 dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
