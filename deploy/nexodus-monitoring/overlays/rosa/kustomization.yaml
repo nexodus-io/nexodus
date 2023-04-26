@@ -5,7 +5,7 @@ resources:
   - apiproxy-service-monitor.yaml
   - apiserver-service-monitor.yaml
   - prometheus-rbac.yaml
-patchesJson6902:
+patches:
   - target:
       kind: Jaeger
       name: jaeger

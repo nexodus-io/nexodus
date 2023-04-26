@@ -4,9 +4,9 @@ metadata:
   name: prometheus-nexodus
   namespace: nexodus
 subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: nexodus-monitoring
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: nexodus-monitoring
 roleRef:
   kind: ClusterRole
   name: prometheus-monitoring
@@ -18,9 +18,9 @@ metadata:
   name: prometheus-nexodus-qa
   namespace: nexodus-qa
 subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: nexodus-monitoring
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: nexodus-monitoring
 roleRef:
   kind: ClusterRole
   name: prometheus-monitoring
