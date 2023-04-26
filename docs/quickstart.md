@@ -6,6 +6,10 @@ This guide will walk you through getting your first devices connected via Nexodu
 
 ### Fedora
 
+!!! note "Minimum Release Version"
+
+    Fedora 38 is the minimum release version supported by this copr repository.
+
 ```sh
 # Enable the COPR repository and install the nexodus package
 sudo dnf copr enable russellb/nexodus

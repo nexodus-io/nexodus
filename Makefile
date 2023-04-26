@@ -601,7 +601,9 @@ cacerts: ## Install the Self-Signed CA Certificate
 dist/rpm:
 	$(CMD_PREFIX) mkdir -p dist/rpm
 
-MOCK_ROOTS:=fedora-37-x86_64 fedora-38-x86_64
+#Uncomment once f39 is on copr
+#MOCK_ROOTS:=fedora-38-x86_64 fedora-39-x86_64
+MOCK_ROOTS:=fedora-38-x86_64
 MOCK_DEPS:=golang systemd-rpm-macros systemd-units
 
 .PHONY: image-mock
@@ -621,8 +623,8 @@ image-mock: ## Build and publish updated mock images to quay.io used for buildin
 		docker push quay.io/nexodus/mock:$$MOCK_ROOT ; \
 	done
 
-MOCK_ROOT?=fedora-37-x86_64
-SRPM_DISTRO?=fc37
+MOCK_ROOT?=fedora-38-x86_64
+SRPM_DISTRO?=fc38
 
 .PHONY: srpm
 srpm: dist/rpm manpages ## Build a source RPM

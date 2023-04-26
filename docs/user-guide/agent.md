@@ -8,6 +8,10 @@ The following sections contain general instructions to deploy the Nexodus agent 
 
 #### Fedora - RPM
 
+!!! note "Minimum Release Version"
+
+    Fedora 38 is the minimum release version supported by this copr repository.
+
 A Fedora [Copr repository](https://copr.fedorainfracloud.org/coprs/russellb/nexodus/) is updated with new rpms after each new commit to the `main` branch that passes CI. The rpm will include `nexctl`, `nexd`, and integration with systemd.
 
 You can add this repository to your Fedora host with the following command:
