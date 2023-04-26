@@ -137,8 +137,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - mock_root: fedora-37-x86_64
-            srpm_distro: fc37
           - mock_root: fedora-38-x86_64
             srpm_distro: fc38
     steps:
