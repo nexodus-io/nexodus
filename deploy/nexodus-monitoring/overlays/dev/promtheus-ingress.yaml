@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: prometheus
+  namespace: nexodus-monitoring
 spec:
   rules:
     - host: "prometheus.127.0.0.1.nip.io"

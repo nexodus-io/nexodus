@@ -2,6 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: qa-apiproxy
+  namespace: nexodus-monitoring
   labels:
     team: nexodus
 spec:
