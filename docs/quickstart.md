@@ -50,6 +50,14 @@ Download the latest release package for your OS and architecture. Each release i
 - [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/qa/nexodus-darwin-arm64.tar.gz)
 - [Windows x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-windows-amd64.zip)
 
+Extract and install the binaries. For example, on Linux x86-64:
+
+```sh
+tar -xzf nexodus-linux-amd64.tar.gz
+cd nexodus-linux-amd64
+sudo install -m 755 nexd nexctl /usr/local/bin
+```
+
 Start `nexd` with `sudo` and follow the instructions to register your device.
 
 ```sh
