@@ -17,6 +17,21 @@ pull_request_rules:
       - label!=hold
       - check-success=DCO
       - or:
+        - check-success=Header rules - nexodus-docs
+        - check-neutral=Header rules - nexodus-docs
+      - or:
+        - check-success=Mixed content - nexodus-docs
+        - check-neutral=Mixed content - nexodus-docs
+      - or:
+        - check-success=Pages changed - nexodus-docs
+        - check-neutral=Pages changed - nexodus-docs
+      - or:
+        - check-success=Redirect rules - nexodus-docs
+        - check-neutral=Redirect rules - nexodus-docs
+      - or:
+        - check-success=netlify/nexodus-docs/deploy-preview
+        - check-neutral=netlify/nexodus-docs/deploy-preview
+      - or:
         - label=has-design
         - label=no-design-required
       - or:
