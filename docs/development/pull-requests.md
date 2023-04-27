@@ -24,6 +24,7 @@ Use the GitHub reviewers field to request reviews from a specific individual. Be
 * The `hold` label must not be present on the PR. Ensure that whoever added the `hold` is OK with removing the label before the PR is merged. There is no timeout on the `hold` label for when someone else should remove it unless the reviewer who placed the hold is unavailable for a significant period.
 * PRs must have either the `has-design` or `no-design-requied` label applied. This is to confirm that a design document has been produced if appropriate.
 * PRs must have either the `has-docs` or `no-docs-required` label applied. This is to confirm that user-facing documentation has been produced if appropriate.
+* PRs must have either the `has-tests` or `no-tests-required` label applied. This is to confirm that tests have been produced if appropriate.
 
 We use [Mergify](https://mergify.io/) to automatically merge PRs that meet the above criteria. See the [Mergify configuration](https://github.com/nexodus-io/nexodus/blob/main/.github/mergify.yml) for more details.
 
