@@ -85,29 +85,27 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 dist/packages: \
-	dist/packages/linux-amd64.tar.gz \
-	dist/packages/linux-amd64.tar.gz \
-	dist/packages/linux-arm.tar.gz \
-	dist/packages/linux-arm64.tar.gz \
-	dist/packages/darwin-amd64.tar.gz \
-	dist/packages/darwin-arm64.tar.gz \
-	dist/packages/windows-amd64.zip
+	dist/packages/nexodus-linux-amd64.tar.gz \
+	dist/packages/nexodus-linux-amd64.tar.gz \
+	dist/packages/nexodus-linux-arm.tar.gz \
+	dist/packages/nexodus-linux-arm64.tar.gz \
+	dist/packages/nexodus-darwin-amd64.tar.gz \
+	dist/packages/nexodus-darwin-arm64.tar.gz \
+	dist/packages/nexodus-windows-amd64.zip
 
 dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
 	$(CMD_PREFIX) mkdir -p $(basename $(basename $@))
 	$(CMD_PREFIX) cp -r docs/user-guide $(basename $(basename $@))/user-guide
 	$(CMD_PREFIX) cp LICENSE $(basename $(basename $@))
 	$(CMD_PREFIX) cp README.md $(basename $(basename $@))
-	$(CMD_PREFIX) cp dist/nexd-$(basename $(basename $(@F)))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexd$(if $(findstring windows,$@),.exe)
-	$(CMD_PREFIX) cp dist/nexctl-$(basename $(basename $(@F)))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexctl$(if $(findstring windows,$@),.exe)
-	$(CMD_PREFIX) if test "$(word 1,$(subst -, ,$(shell basename $@)))" = "windows" ; then \
-		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[ZIP]" ;\
-		cd $(basename $(basename $@)) ;\
-		zip -q9r ../nexodus-$(@F) . ;\
+	$(CMD_PREFIX) cp dist/nexd-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexd$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) cp dist/nexctl-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexctl$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) if test "$(word 2,$(subst -, ,$(shell basename $@)))" = "windows" ; then \
+		printf "  %-12s dist/packages/$(@F)\n" "[ZIP]" ;\
+		cd dist/packages && zip -q9r $(@F) $(basename $(basename $(@F))) ;\
 	else \
-		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[TAR]" ;\
-		cd $(basename $(basename $@)) ;\
-		tar -czf ../nexodus-$(@F) .  ;\
+		printf "  %-12s dist/packages/$(@F)\n" "[TAR]" ;\
+		cd dist/packages && tar -czf $(@F) $(basename $(basename $(@F)))  ;\
 	fi
 
 .PHONY: clean
