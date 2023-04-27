@@ -39,7 +39,7 @@ nexd proxy --ingress tcp:443:10.10.100.152:8443
 flowchart TD
  linkStyle default interpolate basis
  device1[Remote device running nexd<br/><br/>IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:443]-->|tunnel|network{Nexodus Network<br/><br/>100.100.0.0/16}
- network-->|tunnel|container[Container running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.2<br/>Local Network IP: 10.10.100.151<br/><br/>Accepts connections on 100.100.0.2:80 and forwards to 10.10.100.152:8443]
+ network-->|tunnel|container[Container running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.2<br/>Local Network IP: 10.10.100.151<br/><br/>Accepts connections on 100.100.0.2:443 and forwards to 10.10.100.152:8443]
 
  subgraph Local Network - 10.10.100.0/24
  container-->|tcp|dest(Destination listening on port 8443<br/><br/>Local Network IP: 10.10.100.152)
