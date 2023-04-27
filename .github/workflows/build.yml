@@ -182,20 +182,7 @@ jobs:
 
   build-packages:
     needs: [ go-lint-linux, generate ]
-#    strategy:
-#      fail-fast: false
-#      max-parallel: 3
-#      matrix:
-#        package:
-#          - linux-amd64.tgz
-#          - linux-arm.tgz
-#          - linux-arm64.tgz
-#          - darwin-amd64.tgz
-#          - darwin-arm64.tgz
-#          - windows-amd64.zip
     runs-on: ubuntu-latest
-#    env:
-#      JOB_NAME: "${{ matrix.package }}"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Go
@@ -222,20 +209,6 @@ jobs:
           if-no-files-found: error
           path: |
             dist/packages/*.tar.gz
-
-#      - name: Build nexodus-${{ matrix.package }}
-#        id: build
-#        shell: bash
-#        run: |
-#          NEXODUS_BUILD_PROFILE=prod make dist/packages/${{ matrix.package }}
-#
-#      - name: Upload nexodus-${{ matrix.package }}
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: nexodus-packages
-#          if-no-files-found: error
-#          path: |
-#            dist/packages/nexodus-${{ matrix.package }}
 
   upload-s3-packages:
     needs: ["build-packages", "build-rpm", "go-unit", "e2e"]
