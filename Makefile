@@ -107,7 +107,7 @@ dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
 	else \
 		printf "  %-12s dist/packages/nexodus-$(@F)\n" "[TAR]" ;\
 		cd $(basename $(basename $@)) ;\
-		tar -cf ../nexodus-$(@F) .  ;\
+		tar -czf ../nexodus-$(@F) .  ;\
 	fi
 
 .PHONY: clean
