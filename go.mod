@@ -22,7 +22,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/itchyny/gojq v0.12.12
-	github.com/libp2p/go-reuseport v0.2.0
+	github.com/libp2p/go-reuseport v0.3.0
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.4.0
