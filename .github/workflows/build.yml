@@ -180,51 +180,65 @@ jobs:
         run: |
           go test -v ./...
 
-  build-binaries:
+  build-packages:
     needs: [ go-lint-linux, generate ]
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        binary: ["nexd", "nexctl"]
-        os: ["linux", "darwin"]
-        arch: ["amd64", "arm64", "arm"]
-        exclude:
-          - os: darwin
-            arch: arm
-        include:
-          - binary: nexd
-            os: windows
-            arch: amd64
-            suffix: ".exe"
-          - binary: nexctl
-            os: windows
-            arch: amd64
-            suffix: ".exe"
     runs-on: ubuntu-latest
-    env:
-      GOARCH: ${{ matrix.arch }}
-      JOB_NAME: "${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
 
-      - name: Build ${{ matrix.binary }}
+      - name: Build nexodus packages
         id: build
         shell: bash
         run: |
-          CGO_ENABLED=0 NEXODUS_BUILD_PROFILE=prod make dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
-          mkdir ${{ matrix.os }}-${{ matrix.arch }}
-          cp dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{ matrix.suffix }}
+          NEXODUS_BUILD_PROFILE=prod make -j dist/packages
 
-      - name: Upload ${{ matrix.binary }}
+      - name: Upload nexodus zip packages
         uses: actions/upload-artifact@v3
         with:
-          name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
+          name: nexodus-packages
           if-no-files-found: error
           path: |
-            ${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.binary }}${{matrix.suffix}}
+            dist/packages/*.zip
+
+      - name: Upload nexodus tar.gz packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: nexodus-packages
+          if-no-files-found: error
+          path: |
+            dist/packages/*.tar.gz
+
+  upload-s3-packages:
+    needs: ["build-packages", "build-rpm", "go-unit", "e2e"]
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    environment: image-repositories
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: download binary artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: nexodus-packages
+          path: dist/packages
+
+      - name: Display structure of downloaded files
+        run: ls -lah -R
+        working-directory: dist/packages
+        
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          role-session-name: nexodus-ci-deploy
+          aws-region: us-east-1
+      - name: copy binaries to s3
+        run: |
+          aws s3 sync dist/packages s3://nexodus-io/qa
 
   e2e:
     needs: [build-images]
@@ -311,47 +325,6 @@ jobs:
           name: e2e-${{ matrix.overlay }}-logs
           path: logs.txt
 
-  upload-s3-binaries:
-    needs: ["build-binaries", "build-rpm", "go-unit", "e2e"]
-    permissions:
-      id-token: write
-      contents: read
-    runs-on: ubuntu-latest
-    environment: image-repositories
-    if: github.ref == 'refs/heads/main'
-
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        os: ["linux", "darwin"]
-        arch: ["amd64", "arm64", "arm"]
-        exclude:
-          - os: darwin
-            arch: arm
-        include:
-          - os: windows
-            arch: amd64
-          - os: windows
-            arch: amd64
-
-    steps:
-      - name: download binary artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: nexodus-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ matrix.os }}-${{ matrix.arch }}
-
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE }}
-          role-session-name: nexodus-ci-deploy
-          aws-region: us-east-1
-      - name: copy binaries to s3
-        run: |
-          aws s3 sync . s3://nexodus-io/
-
   build-rpm:
     needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
@@ -376,7 +349,7 @@ jobs:
             ${{ steps.build-rpm.outputs.artifact-name }}
 
   build-workflow-complete:
-    needs: ["build-binaries", "build-rpm", "go-unit", "e2e", "k8s-lint", "opa-lint", "ui-lint"]
+    needs: ["build-packages", "build-rpm", "go-unit", "e2e", "k8s-lint", "opa-lint", "ui-lint"]
     runs-on: ubuntu-latest
     steps:
       - name: Build Complete

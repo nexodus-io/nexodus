@@ -47,23 +47,20 @@ sudo nexd https://try.nexodus.io
 
 Download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
 
-*Download `nexd`*
+- [Linux x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-linux-amd64.tar.gz)
+- [Linux arm64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-linux-arm64.tar.gz)
+- [Linux arm](https://nexodus-io.s3.amazonaws.com/qa/nexodus-linux-arm.tar.gz)
+- [Mac x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-darwin-amd64.tar.gz)
+- [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/qa/nexodus-darwin-arm64.tar.gz)
+- [Windows x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-windows-amd64.zip)
 
-- [Linux x86-64](https://nexodus-io.s3.amazonaws.com/linux-amd64/nexd)
-- [Linux arm64](https://nexodus-io.s3.amazonaws.com/linux-arm64/nexd)
-- [Linux arm](https://nexodus-io.s3.amazonaws.com/linux-arm/nexd)
-- [Mac x86-64](https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexd)
-- [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexd)
-- [Windows x86-64](https://nexodus-io.s3.amazonaws.com/windows-amd64/nexd.exe)
+Extract and install the binaries. For example, on Linux x86-64:
 
-*Download `nexctl`*
-
-- [Linux x86-64](https://nexodus-io.s3.amazonaws.com/linux-amd64/nexctl)
-- [Linux arm64](https://nexodus-io.s3.amazonaws.com/linux-arm64/nexctl)
-- [Linux arm](https://nexodus-io.s3.amazonaws.com/linux-arm/nexctl)
-- [Mac x86-64](https://nexodus-io.s3.amazonaws.com/darwin-amd64/nexctl)
-- [Mac arm64 (M1, M2)](https://nexodus-io.s3.amazonaws.com/darwin-arm64/nexctl)
-- [Windows x86-64](https://nexodus-io.s3.amazonaws.com/windows-amd64/nexctl.exe)
+```sh
+tar -xzf nexodus-linux-amd64.tar.gz
+cd nexodus-linux-amd64
+sudo install -m 755 nexd nexctl /usr/local/bin
+```
 
 Start `nexd` with `sudo` and follow the instructions to register your device.
 

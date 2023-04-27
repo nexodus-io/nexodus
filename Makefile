@@ -50,10 +50,10 @@ all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint acti
 ##@ Binaries
 
 .PHONY: nexd
-nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
+nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-arm64 dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
 
 .PHONY: nexctl
-nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
+nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-arm64 dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
 
 # Use go list to find all the go files that make up a binary.
 NEXD_DEPS:=     $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexd)
@@ -83,6 +83,30 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
+
+dist/packages: \
+	dist/packages/nexodus-linux-amd64.tar.gz \
+	dist/packages/nexodus-linux-amd64.tar.gz \
+	dist/packages/nexodus-linux-arm.tar.gz \
+	dist/packages/nexodus-linux-arm64.tar.gz \
+	dist/packages/nexodus-darwin-amd64.tar.gz \
+	dist/packages/nexodus-darwin-arm64.tar.gz \
+	dist/packages/nexodus-windows-amd64.zip
+
+dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
+	$(CMD_PREFIX) mkdir -p $(basename $(basename $@))
+	$(CMD_PREFIX) cp -r docs/user-guide $(basename $(basename $@))/user-guide
+	$(CMD_PREFIX) cp LICENSE $(basename $(basename $@))
+	$(CMD_PREFIX) cp README.md $(basename $(basename $@))
+	$(CMD_PREFIX) cp dist/nexd-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexd$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) cp dist/nexctl-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexctl$(if $(findstring windows,$@),.exe)
+	$(CMD_PREFIX) if test "$(word 2,$(subst -, ,$(shell basename $@)))" = "windows" ; then \
+		printf "  %-12s dist/packages/$(@F)\n" "[ZIP]" ;\
+		cd dist/packages && zip -q9r $(@F) $(basename $(basename $(@F))) ;\
+	else \
+		printf "  %-12s dist/packages/$(@F)\n" "[TAR]" ;\
+		cd dist/packages && tar -czf $(@F) $(basename $(basename $(@F)))  ;\
+	fi
 
 .PHONY: clean
 clean: ## clean built binaries
