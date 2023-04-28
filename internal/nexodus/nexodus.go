@@ -457,7 +457,14 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	if err = ax.Reconcile(false); err == nil {
 		return
 	}
-	// TODO: Add smarter reconciliation logic
+
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) && dnsErr.Temporary() {
+		// Temporary dns resolution failure is normal, just debug log it
+		ax.logger.Debugf("%v", err)
+		return
+	}
+
 	ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
 
 	// if the token grant becomes invalid expires refresh or exit depending on the onboard method
