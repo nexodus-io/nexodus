@@ -453,40 +453,47 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 }
 
 func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
-	if err := ax.Reconcile(false); err != nil {
-		// TODO: Add smarter reconciliation logic
-		ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
-		// if the token grant becomes invalid expires refresh or exit depending on the onboard method
-		if strings.Contains(err.Error(), invalidTokenGrant.Error()) {
-			if ax.username != "" {
-				// do we need to stop the informer?
-				if ax.informerStop != nil {
-					ax.informerStop()
-					ax.informerStop = nil
-				}
-
-				c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
-					ax.SetStatus(NexdStatusAuth, msg)
-				}, options...)
-				if err != nil {
-					ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
-					return
-				}
-
-				ax.client = c
-				informerCtx, informerCancel := context.WithCancel(ctx)
-				ax.informerStop = informerCancel
-				ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
-
-				ax.SetStatus(NexdStatusRunning, "")
-				ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
-
-			} else {
-				ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
-					"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
-			}
-		}
+	var err error
+	if err = ax.Reconcile(false); err == nil {
+		return
 	}
+	// TODO: Add smarter reconciliation logic
+	ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
+
+	// if the token grant becomes invalid expires refresh or exit depending on the onboard method
+	if !strings.Contains(err.Error(), invalidTokenGrant.Error()) {
+		return
+	}
+
+	// token grant has become invalid, if we are using a one-time auth token, exit
+	if ax.username == "" {
+		ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
+			"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
+		return
+	}
+
+	// do we need to stop the informer?
+	if ax.informerStop != nil {
+		ax.informerStop()
+		ax.informerStop = nil
+	}
+
+	// refresh the token grant by reconnecting to the API server
+	c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+		ax.SetStatus(NexdStatusAuth, msg)
+	}, options...)
+	if err != nil {
+		ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
+		return
+	}
+
+	ax.client = c
+	informerCtx, informerCancel := context.WithCancel(ctx)
+	ax.informerStop = informerCancel
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
+
+	ax.SetStatus(NexdStatusRunning, "")
+	ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
 }
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
