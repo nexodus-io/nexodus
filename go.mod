@@ -1,6 +1,6 @@
 module github.com/nexodus-io/nexodus
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.3.0
@@ -47,12 +47,12 @@ require (
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/sys v0.7.0
 	golang.org/x/term v0.7.0
-	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c
-	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20221104135756-97bc4ad4a1cb
+	golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b
+	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.24.7-0.20230306060331-85eaf9eeda11
-	gvisor.dev/gvisor v0.0.0-20220817001344-846276b3dbc5
+	gvisor.dev/gvisor v0.0.0-20221203005347-703fd9b7fbc0
 )
 
 require (
@@ -126,10 +126,9 @@ require (
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
+	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 )
 
 require (
@@ -202,3 +201,5 @@ require (
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20221013203545-33ab36d6b304+incompatible // 22.06 branch
 
 replace github.com/metal-stack/go-ipam => github.com/dave-tucker/go-ipam v0.0.0-20230220173413-c25c56b2408b
+
+replace golang.zx2c4.com/wireguard => github.com/nexodus-io/wireguard-go v0.0.0-20230407202523-3eab17a590b0 // 0.0.20230420 tag
