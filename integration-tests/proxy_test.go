@@ -16,7 +16,7 @@ import (
 
 // TestProxyEgress tests that nexd proxy can be used with a single egress rule
 func TestProxyEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -81,7 +81,7 @@ func TestProxyEgress(t *testing.T) {
 
 // TestProxyEgressUDP tests that nexd proxy can be used with a single UDP egress rule
 func TestProxyEgressUDP(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -105,9 +105,13 @@ func TestProxyEgressUDP(t *testing.T) {
 
 	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
+	node1IPv6, err := getTunnelIP(ctx, helper, inetV6, node1)
+	require.NoError(err)
 
 	helper.Logf("Starting nexd on node2")
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4242")))
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
+		"--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4242")),
+		"--egress", fmt.Sprintf("udp:4243:%s", net.JoinHostPort(node1IPv6, "4242")))
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
@@ -130,12 +134,27 @@ func TestProxyEgressUDP(t *testing.T) {
 	ctxTimeout, clientCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer clientCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"udping", "127.0.0.1", "4242"})
-		if err != nil {
-			helper.Logf("Retrying udp client for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
-			return false, nil
+		targets := []struct {
+			IP   string
+			Port string
+		}{
+			// v4 client, v4 server
+			{IP: "127.0.0.1", Port: "4242"},
+			// v4 client, v6 server
+			{IP: "127.0.0.1", Port: "4243"},
+			// v6 client, v4 server
+			{IP: "::1", Port: "4242"},
+			// v6 client, v6 server
+			{IP: "::1", Port: "4243"},
 		}
-		require.True(strings.Contains(output, "pong"))
+		for _, t := range targets {
+			output, err := helper.containerExec(ctx, node2, []string{"udping", t.IP, t.Port})
+			if err != nil {
+				helper.Logf("Retrying udp client for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "pong"))
+		}
 		return true, nil
 	})
 	require.NoError(err)
@@ -146,7 +165,7 @@ func TestProxyEgressUDP(t *testing.T) {
 
 // TestProxyEgress tests that nexd proxy can be used with multiple egress rules
 func TestProxyEgressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -169,10 +188,12 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
+	node1IPv6, err := getTunnelIP(ctx, helper, inetV6, node1)
+	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")),
-		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IP, "8080")))
+		"--egress", fmt.Sprintf("tcp:81:%s", net.JoinHostPort(node1IPv6, "8080")))
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
@@ -190,25 +211,34 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 	util.GoWithWaitGroup(&wg, func() {
 		_, err := helper.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "8080"})
+		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "-b", "::", "8080"})
 	})
 
 	// run curl on node2 (to the local proxy) to reach the server on node1
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1"})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
-			return false, nil
+		targets := []struct {
+			IP   string
+			Port string
+		}{
+			// v4 client, v4 server
+			{IP: "127.0.0.1", Port: "80"},
+			// v4 client, v6 server
+			{IP: "127.0.0.1", Port: "81"},
+			// v6 client, v4 server
+			{IP: "::1", Port: "80"},
+			// v6 client, v6 server
+			{IP: "::1", Port: "81"},
 		}
-		output2, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1:81"})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
-			return false, nil
+		for _, target := range targets {
+			output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(target.IP, target.Port))})
+			if err != nil {
+				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "bananas"))
 		}
-		require.True(strings.Contains(output, "bananas"))
-		require.True(strings.Contains(output2, "bananas"))
 		return true, nil
 	})
 	require.NoError(err)
@@ -219,7 +249,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 // TestProxyIngress tests that nexd proxy with a single ingress rule
 func TestProxyIngress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -240,7 +270,7 @@ func TestProxyIngress(t *testing.T) {
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")))
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy", "--ingress", "tcp:8080:127.0.0.1:8080")
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
@@ -279,9 +309,90 @@ func TestProxyIngress(t *testing.T) {
 	wg.Wait()
 }
 
+// TestProxyIngressUDP tests that nexd proxy can be used with a single UDP ingress rule
+func TestProxyIngressUDP(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	helper.Logf("Starting nexd on node1")
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.Logf("Starting nexd on node2")
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
+		"--ingress", "udp:4242:127.0.0.1:4242",
+		"--ingress", "udp:4243:[::1]:4242")
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
+	node2IPv6, err := getTunnelIP(ctx, helper, inetV6, node2)
+	require.NoError(err)
+
+	// ping node2 from node1 to verify basic connectivity over wireguard
+	// before moving on to exercising the proxy functionality.
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	// run an UDP server on node2
+	wg := sync.WaitGroup{}
+	util.GoWithWaitGroup(&wg, func() {
+		_, _ = helper.containerExec(ctx, node2, []string{"udpong", "4242"})
+	})
+
+	// run a UDP client on node1 to reach the remote udp proxy on node1
+	ctxTimeout, clientCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer clientCancel()
+	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
+		targets := []struct {
+			IP   string
+			Port string
+		}{
+			// v4 client, v4 server
+			{IP: node2IP, Port: "4242"},
+			// v6 client, v4 server
+			{IP: node2IPv6, Port: "4242"},
+			// v4 client, v6 server
+			{IP: node2IP, Port: "4243"},
+			// v6 client, v6 server
+			{IP: node2IPv6, Port: "4243"},
+		}
+		for _, t := range targets {
+			output, err := helper.containerExec(ctx, node1, []string{"udping", t.IP, t.Port})
+			if err != nil {
+				helper.Logf("Retrying udp client for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "pong"))
+		}
+		return true, nil
+	})
+	require.NoError(err)
+	require.True(success)
+	_, _ = helper.containerExec(ctx, node2, []string{"killall", "udpong"})
+	wg.Wait()
+}
+
 // TestProxyIngress tests that nexd proxy with multiple ingress rules
 func TestProxyIngressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -304,11 +415,13 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
 		"--ingress", fmt.Sprintf("tcp:8080:%s", net.JoinHostPort("127.0.0.1", "8080")),
-		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("127.0.0.1", "8080")))
+		"--ingress", fmt.Sprintf("tcp:8081:%s", net.JoinHostPort("::1", "8080")))
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
 	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
+	node2IPv6, err := getTunnelIP(ctx, helper, inetV6, node2)
 	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
@@ -322,24 +435,34 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 	util.GoWithWaitGroup(&wg, func() {
 		_, err := helper.containerExec(ctx, node2, []string{"python3", "-c", "import os; open('index.html', 'w').write('bananas')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node2, []string{"python3", "-m", "http.server", "8080"})
+		_, _ = helper.containerExec(ctx, node2, []string{"python3", "-m", "http.server", "-b", "::", "8080"})
 	})
 
 	// run curl on node1 to the server on node2 (running the proxy)
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
-		output, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8080"))})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output)
-			return false, nil
+		targets := []struct {
+			IP   string
+			Port string
+		}{
+			// v4 client, v4 server
+			{IP: node2IP, Port: "8080"},
+			// v4 client, v6 server
+			{IP: node2IP, Port: "8081"},
+			// v6 client, v4 server
+			{IP: node2IPv6, Port: "8080"},
+			// v6 client, v6 server
+			{IP: node2IPv6, Port: "8081"},
 		}
-		output2, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(node2IP, "8081"))})
-		if err != nil {
-			helper.Logf("Retrying curl for up to 10 seconds while waiting for peering to finish: %v -- %s", err, output2)
-			return false, nil
+		for _, target := range targets {
+			output, err := helper.containerExec(ctx, node1, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(target.IP, target.Port))})
+			if err != nil {
+				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
+				return false, nil
+			}
+			require.True(strings.Contains(output, "bananas"))
 		}
-		require.True(strings.Contains(output, "bananas"))
 		return true, nil
 	})
 	require.NoError(err)
@@ -350,7 +473,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 // TestProxyIngressAndEgress tests that a proxy can be used to both ingress and egress traffic
 func TestProxyIngressAndEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
