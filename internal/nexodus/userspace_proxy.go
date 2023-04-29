@@ -155,6 +155,8 @@ func proxyToRule(p *UsProxy) string {
 	return fmt.Sprintf("%s:%d:%s:%d", p.protocol, p.listenPort, p.destHost, p.destPort)
 }
 
+var ProxyExistsError = errors.New("port already in use by another proxy rule")
+
 func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType, start bool) (*UsProxy, error) {
 	typeStr, err := proxyTypeStr(ruleType)
 	if err != nil {
@@ -177,13 +179,13 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	if ruleType == ProxyTypeEgress {
 		for _, proxy := range ax.egressProxies {
 			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return nil, fmt.Errorf("%s port %d is already in use by another egress proxy", newProxy.protocol, newProxy.listenPort)
+				return proxy, ProxyExistsError
 			}
 		}
 	} else {
 		for _, proxy := range ax.ingressProxies {
 			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return nil, fmt.Errorf("%s port %d is already in use by another ingress proxy", newProxy.protocol, newProxy.listenPort)
+				return proxy, ProxyExistsError
 			}
 		}
 	}
@@ -254,6 +256,9 @@ func (ax *Nexodus) LoadProxyRules() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = file.Close()
+	}()
 
 	rules := ProxyRulesConfig{}
 	err = json.NewDecoder(file).Decode(&rules)
@@ -264,14 +269,18 @@ func (ax *Nexodus) LoadProxyRules() error {
 	for _, r := range rules.Ingress {
 		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeIngress, false)
 		if err != nil {
-			return err
+			if !errors.Is(err, ProxyExistsError) {
+				return err
+			}
 		}
 		proxy.stored = true
 	}
 	for _, r := range rules.Egress {
 		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeEgress, false)
 		if err != nil {
-			return err
+			if !errors.Is(err, ProxyExistsError) {
+				return err
+			}
 		}
 		proxy.stored = true
 	}
