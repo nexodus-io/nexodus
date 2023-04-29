@@ -713,7 +713,33 @@ func TestProxyNexctl(t *testing.T) {
 		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s:4242", node1IP)})
 	require.NoError(err)
 
+	// Rules are stored
+	out, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/proxy-rules.json"})
+	require.NoError(err)
+	require.JSONEq(`
+		{
+		  "egress": [
+			"tcp:80:100.100.0.1:4242"
+		  ],
+		  "ingress": [
+			"tcp:4242:127.0.0.1:8080"
+		  ]
+		}`, out[8:])
+
 	// Rules are present now
+	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
+	require.NoError(err)
+	require.True(strings.Contains(out, "--ingress tcp:4242:127.0.0.1:8080"))
+	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s:4242", node1IP)))
+
+	// Restarting the proxy...
+	_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
+	require.NoError(err)
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "proxy")
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	// Rules are still present
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
 	require.NoError(err)
 	require.True(strings.Contains(out, "--ingress tcp:4242:127.0.0.1:8080"))
@@ -734,6 +760,15 @@ func TestProxyNexctl(t *testing.T) {
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
 	require.NoError(err)
 	require.Equal(out, "")
+
+	// Rules are not stored.
+	out, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/proxy-rules.json"})
+	require.NoError(err)
+	require.JSONEq(`
+		{
+		  "egress": null,
+		  "ingress": null
+		}`, out[8:])
 
 	// Connectivity should now fail again
 	_, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})

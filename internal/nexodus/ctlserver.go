@@ -57,7 +57,12 @@ func (ac *NexdCtl) ProxyList(_ string, result *string) error {
 }
 
 func (ac *NexdCtl) ProxyAddIngress(rule string, result *string) error {
-	err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeIngress, true)
+	proxy, err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeIngress, true)
+	if err != nil {
+		return err
+	}
+	proxy.stored = true
+	err = ac.ax.StoreProxyRules()
 	if err != nil {
 		return err
 	}
@@ -66,7 +71,12 @@ func (ac *NexdCtl) ProxyAddIngress(rule string, result *string) error {
 }
 
 func (ac *NexdCtl) ProxyAddEgress(rule string, result *string) error {
-	err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeEgress, true)
+	proxy, err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeEgress, true)
+	if err != nil {
+		return err
+	}
+	proxy.stored = true
+	err = ac.ax.StoreProxyRules()
 	if err != nil {
 		return err
 	}
@@ -75,18 +85,30 @@ func (ac *NexdCtl) ProxyAddEgress(rule string, result *string) error {
 }
 
 func (ac *NexdCtl) ProxyRemoveIngress(rule string, result *string) error {
-	err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeIngress)
+	proxy, err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeIngress)
 	if err != nil {
 		return err
+	}
+	if proxy.stored {
+		err = ac.ax.StoreProxyRules()
+		if err != nil {
+			return err
+		}
 	}
 	*result = fmt.Sprintf("Removed ingress proxy rule: %s\n", rule)
 	return nil
 }
 
 func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
-	err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeEgress)
+	proxy, err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeEgress)
 	if err != nil {
 		return err
+	}
+	if proxy.stored {
+		err = ac.ax.StoreProxyRules()
+		if err != nil {
+			return err
+		}
 	}
 	*result = fmt.Sprintf("Removed egress proxy rule: %s\n", rule)
 	return nil

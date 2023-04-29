@@ -1,12 +1,16 @@
 package nexodus
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/natefinch/atomic"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +48,7 @@ type UsProxy struct {
 	proxyCtx     context.Context
 	proxyCancel  context.CancelFunc
 	exitChan     chan bool
+	stored       bool
 }
 
 const (
@@ -145,17 +150,22 @@ func proxyFromRule(rule string, ruleType ProxyType) (*UsProxy, error) {
 	}, nil
 }
 
-func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType, start bool) error {
+func proxyToRule(p *UsProxy) string {
+	// protocol:port:destination_ip:destination_port
+	return fmt.Sprintf("%s:%d:%s:%d", p.protocol, p.listenPort, p.destHost, p.destPort)
+}
+
+func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType, start bool) (*UsProxy, error) {
 	typeStr, err := proxyTypeStr(ruleType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ax.logger.Debugf("Adding userspace %s proxy rule: %s", typeStr, proxyRule)
 
 	newProxy, err := proxyFromRule(proxyRule, ruleType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	newProxy.debugTraffic, _ = strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
@@ -167,13 +177,13 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	if ruleType == ProxyTypeEgress {
 		for _, proxy := range ax.egressProxies {
 			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return fmt.Errorf("%s port %d is already in use by another egress proxy", newProxy.protocol, newProxy.listenPort)
+				return nil, fmt.Errorf("%s port %d is already in use by another egress proxy", newProxy.protocol, newProxy.listenPort)
 			}
 		}
 	} else {
 		for _, proxy := range ax.ingressProxies {
 			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return fmt.Errorf("%s port %d is already in use by another ingress proxy", newProxy.protocol, newProxy.listenPort)
+				return nil, fmt.Errorf("%s port %d is already in use by another ingress proxy", newProxy.protocol, newProxy.listenPort)
 			}
 		}
 	}
@@ -187,21 +197,20 @@ func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, pr
 	if start {
 		newProxy.Start(ctx, wg, ax.userspaceNet)
 	}
-
-	return nil
+	return newProxy, nil
 }
 
-func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) error {
+func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) (*UsProxy, error) {
 	typeStr, err := proxyTypeStr(ruleType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ax.logger.Debugf("Removing userspace %s proxy rule: %s", typeStr, proxyRule)
 
 	cmpProxy, err := proxyFromRule(proxyRule, ruleType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ax.proxyLock.Lock()
@@ -212,7 +221,7 @@ func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) er
 			if proxy.Equal(cmpProxy) {
 				proxy.Stop()
 				ax.egressProxies = append(ax.egressProxies[:i], ax.egressProxies[i+1:]...)
-				return nil
+				return proxy, nil
 			}
 		}
 	} else {
@@ -220,12 +229,83 @@ func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) er
 			if proxy.Equal(cmpProxy) {
 				proxy.Stop()
 				ax.ingressProxies = append(ax.ingressProxies[:i], ax.ingressProxies[i+1:]...)
-				return nil
+				return proxy, nil
 			}
 		}
 	}
 
-	return fmt.Errorf("No matching %s proxy rule found: %s", typeStr, proxyRule)
+	return nil, fmt.Errorf("No matching %s proxy rule found: %s", typeStr, proxyRule)
+}
+
+type ProxyRulesConfig struct {
+	Egress  []string `json:"egress"`
+	Ingress []string `json:"ingress"`
+}
+
+func (ax *Nexodus) LoadProxyRules() error {
+
+	fileName := filepath.Join(ax.stateDir, "proxy-rules.json")
+	// don't load if file does not exist...
+	if _, err := os.Stat(fileName); err != nil {
+		return nil
+	}
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+
+	rules := ProxyRulesConfig{}
+	err = json.NewDecoder(file).Decode(&rules)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	for _, r := range rules.Ingress {
+		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeIngress, false)
+		if err != nil {
+			return err
+		}
+		proxy.stored = true
+	}
+	for _, r := range rules.Egress {
+		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeEgress, false)
+		if err != nil {
+			return err
+		}
+		proxy.stored = true
+	}
+	return nil
+}
+
+func (ax *Nexodus) StoreProxyRules() error {
+	ax.proxyLock.Lock()
+	defer ax.proxyLock.Unlock()
+
+	rules := ProxyRulesConfig{}
+	for _, proxy := range ax.egressProxies {
+		if proxy.stored {
+			rules.Egress = append(rules.Egress, proxyToRule(proxy))
+		}
+	}
+	for _, proxy := range ax.ingressProxies {
+		if proxy.stored {
+			rules.Ingress = append(rules.Ingress, proxyToRule(proxy))
+		}
+	}
+
+	buf := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(buf)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(rules)
+	if err != nil {
+		return err
+	}
+	err = atomic.WriteFile(filepath.Join(ax.stateDir, "proxy-rules.json"), buf)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netstack.Net) {
