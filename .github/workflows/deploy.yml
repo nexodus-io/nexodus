@@ -143,10 +143,8 @@ jobs:
       - uses: actions/checkout@v3
 
       # Needed for building binaries to generate manpages
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.19"
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
 
       - id: go-cache-paths
         shell: bash
