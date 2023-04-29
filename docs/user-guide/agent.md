@@ -54,6 +54,19 @@ Start the agent with the following command:
 sudo nexd https://try.nexodus.io
 ```
 
+It is also possible to run `nexd` as a daemon using `launchd`. To do so, download `io.nexodus.nexd.plist` and place it in the `/Library/LaunchDaemons/` directory. Edit the file if you need to customize the arguments passed to `nexd`.
+
+```sh
+curl https://raw.githubusercontent.com/nexodus-io/nexodus/main/contrib/mac/io.nexodus.nexd.plist -o io.nexodus.nexd.plist
+sudo mv io.nexodus.nexd.plist /Library/LaunchDaemons/
+```
+
+Then, start the agent with the following command:
+
+```sh
+sudo launchctl load /Library/LaunchDaemons/io.nexodus.nexd.plist
+```
+
 ### Binary Downloads
 
 You can download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
@@ -81,7 +94,7 @@ sudo nexd https://try.nexodus.io
 
 ### Interactive Enrollment
 
-If the agent is able to successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent can successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -90,7 +103,7 @@ Please open the following URL in your browser to sign in:
 https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
-If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
+If the agent was started using systemd on Linux or launchd on Mac, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
 
 ```sh
 $ sudo nexctl nexd status
