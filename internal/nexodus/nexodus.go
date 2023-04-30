@@ -76,6 +76,7 @@ type userspaceWG struct {
 	userspaceDev  *device.Device
 	// the last address configured on the userspace wireguard interface
 	userspaceLastAddress string
+	proxyLock            sync.RWMutex
 	ingressProxies       []*UsProxy
 	egressProxies        []*UsProxy
 }
@@ -118,6 +119,8 @@ type Nexodus struct {
 	userspaceWG
 	informer     *public.ApiListDevicesInOrganizationInformer
 	informerStop context.CancelFunc
+	nexCtx       context.Context
+	nexWg        *sync.WaitGroup
 }
 
 type wgConfig struct {
@@ -239,6 +242,14 @@ func (ax *Nexodus) SetStatus(status int, msg string) {
 }
 
 func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
+	ax.nexCtx = ctx
+	ax.nexWg = wg
+
+	// Block additional proxy configuration coming in via the ctl server until after
+	// initial startup is complete.
+	ax.proxyLock.Lock()
+	defer ax.proxyLock.Unlock()
+
 	var err error
 	if err := ax.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
@@ -452,6 +463,16 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	return nil
+}
+
+func (ax *Nexodus) Stop() {
+	ax.logger.Info("Stopping nexd")
+	for _, proxy := range ax.ingressProxies {
+		proxy.Stop()
+	}
+	for _, proxy := range ax.egressProxies {
+		proxy.Stop()
+	}
 }
 
 func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {

@@ -76,13 +76,13 @@ sudo nexodus proxy --egress tcp:5432:100.100.0.2:5432
 The `--ingress` and `--engress` flags will be the first configuration methods implemented. A future enhancement would be to allow configuration at runtime using `nexctl`. For example, to remove a ingress proxy rule:
 
 ```sh
-sudo nexctl nexd proxy remove ingress tcp:443:127.0.0.1:8080
+sudo nexctl nexd proxy remove --ingress tcp:443:127.0.0.1:8080
 ```
 
 or to add a new egress proxy rule:
 
 ```sh
-sudo nexctl nexd proxy add egress tcp:5432:100.100.0.2:5432
+sudo nexctl nexd proxy add --egress tcp:5432:100.100.0.2:5432
 ```
 
 ## Alternatives Considered

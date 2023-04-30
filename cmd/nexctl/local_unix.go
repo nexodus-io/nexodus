@@ -71,9 +71,9 @@ func init() {
 								return err
 							}
 							if cCtx.Bool("ipv6") {
-								result, err = callNexd("GetTunnelIPv6")
+								result, err = callNexd("GetTunnelIPv6", "")
 							} else {
-								result, err = callNexd("GetTunnelIPv4")
+								result, err = callNexd("GetTunnelIPv4", "")
 							}
 							if err != nil {
 								fmt.Printf("%s\n", err)
@@ -85,11 +85,71 @@ func init() {
 					},
 				},
 			},
+			{
+				Name:  "proxy",
+				Usage: "Commands for interacting nexd's proxy configuration",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "List the nexd proxy rules",
+						Action: func(cCtx *cli.Context) error {
+							if err := checkVersion(); err != nil {
+								return err
+							}
+							result, err := callNexd("ProxyList", "")
+							if err != nil {
+								fmt.Printf("%s\n", err)
+								return err
+							}
+							fmt.Printf("%s", result)
+							return nil
+						},
+					},
+					{
+						Name:  "add",
+						Usage: "Add one or more proxy rules to nexd",
+						Flags: []cli.Flag{
+							&cli.StringSliceFlag{
+								Name:     "ingress",
+								Usage:    "Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+								Required: false,
+							},
+							&cli.StringSliceFlag{
+								Name:     "egress",
+								Usage:    "Forward connections from a locally accessible network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via the Nexodus network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+								Required: false,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							return proxyAddRemove(cCtx, true)
+						},
+					},
+					{
+						Name:  "remove",
+						Usage: "remove one or more proxy rules to nexd",
+						Flags: []cli.Flag{
+							&cli.StringSliceFlag{
+								Name:     "ingress",
+								Usage:    "Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+								Required: false,
+							},
+							&cli.StringSliceFlag{
+								Name:     "egress",
+								Usage:    "Forward connections from a locally accessible network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via the Nexodus network using a `value` in the form: protocol:port:destination_ip:destination_port. All fields are required.",
+								Required: false,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							return proxyAddRemove(cCtx, false)
+						},
+					},
+				},
+			},
 		},
 	})
 }
 
-func callNexd(method string) (string, error) {
+func callNexd(method string, arg string) (string, error) {
 	conn, err := net.Dial("unix", api.UnixSocketPath)
 	if err != nil {
 		conn, err = net.Dial("unix", filepath.Base(api.UnixSocketPath))
@@ -102,7 +162,7 @@ func callNexd(method string) (string, error) {
 	client := jsonrpc.NewClient(conn)
 
 	var result string
-	err = client.Call("NexdCtl."+method, nil, &result)
+	err = client.Call("NexdCtl."+method, arg, &result)
 	if err != nil {
 		return "", fmt.Errorf("Failed to execute method (%s): %w\n", method, err)
 	}
@@ -111,7 +171,7 @@ func callNexd(method string) (string, error) {
 }
 
 func checkVersion() error {
-	result, err := callNexd("Version")
+	result, err := callNexd("Version", "")
 	if err != nil {
 		return fmt.Errorf("Failed to get nexd version: %w\n", err)
 	}
@@ -127,7 +187,7 @@ func checkVersion() error {
 func cmdLocalVersion(cCtx *cli.Context) error {
 	fmt.Printf("nexctl version: %s\n", Version)
 
-	result, err := callNexd("Version")
+	result, err := callNexd("Version", "")
 	if err == nil {
 		fmt.Printf("nexd version: %s\n", result)
 	}
@@ -140,10 +200,52 @@ func cmdLocalStatus(cCtx *cli.Context) (string, error) {
 		return "", err
 	}
 
-	result, err := callNexd("Status")
+	result, err := callNexd("Status", "")
 	if err != nil {
 		return "", err
 	}
 
 	return result, err
+}
+
+func proxyAddRemove(cCtx *cli.Context, add bool) error {
+	if err := checkVersion(); err != nil {
+		return err
+	}
+	ingress := cCtx.StringSlice("ingress")
+	egress := cCtx.StringSlice("egress")
+	if len(ingress) == 0 && len(egress) == 0 {
+		return fmt.Errorf("No rules provided")
+	}
+
+	var method string
+	addStr := "adding"
+	if add {
+		method = "ProxyAddIngress"
+	} else {
+		method = "ProxyRemoveIngress"
+		addStr = "removing"
+	}
+	for _, rule := range ingress {
+		result, err := callNexd(method, rule)
+		if err != nil {
+			fmt.Printf("Error %s ingress rule (%s): %s\n", addStr, rule, err)
+			continue
+		}
+		fmt.Printf("%s", result)
+	}
+	if add {
+		method = "ProxyAddEgress"
+	} else {
+		method = "ProxyRemoveEgress"
+	}
+	for _, rule := range egress {
+		result, err := callNexd(method, rule)
+		if err != nil {
+			fmt.Printf("Error %s egress rule (%s): %s\n", addStr, rule, err)
+			continue
+		}
+		fmt.Printf("%s", result)
+	}
+	return nil
 }

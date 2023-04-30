@@ -24,6 +24,7 @@ require (
 	github.com/itchyny/gojq v0.12.12
 	github.com/libp2p/go-reuseport v0.3.0
 	github.com/metal-stack/go-ipam v1.11.6
+	github.com/natefinch/atomic v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.4.0
 	github.com/sirupsen/logrus v1.9.0
