@@ -80,6 +80,28 @@ flowchart TD
 
 Since UDP is a connectionless protocol, `nexd proxy` must maintain its own state for each UDP flow to ensure that return traffic is forwarded appropriately. These flows time out after 60 seconds of inactivity.
 
+### Managing Rules with Nexctl
+
+In addition to configuring rules as command line flags, `nexctl` can be used to dynamically add or remove proxy rules. Rules that are added dynamically are persisted across `nexd proxy` restarts.
+
+To add a rule:
+
+```console
+nexctl nexd proxy add --ingress tcp:443:10.0.10.34:8443
+```
+
+To remove a rule:
+
+```console
+nexctl nexd proxy remove --ingress tcp:$43:10.0.10.34:8443
+```
+
+To list currently active rules:
+
+```console
+nexctl nexd proxy list
+```
+
 ## Demo Using Containers
 
 This section provides instructions on running an end-to-end demonstration of using `nexd proxy` on both ends of a connection. We will run two containers: one running an http server, and another that would like to reach that http server. `nexd` in each container will negotiate an encrypted tunnel directly between each other. The connection will go over this tunnel.
