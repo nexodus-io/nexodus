@@ -3,8 +3,9 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
 	"net"
+
+	"go.uber.org/zap"
 )
 
 const batchSize = 10
@@ -25,12 +26,6 @@ func (ac *NexdCtl) Connectivity(_ string, keepaliveResults *string) error {
 }
 
 func (ax *Nexodus) connectivityProbe() map[string]KeepaliveStatus {
-	if ax.userspaceMode {
-		// TODO: to be addressed in #703 'nexd proxy: Add support for nexd keepalives'
-		ax.logger.Warn("nexctl connection checks are currently unsupported for nexd user space proxy")
-		return make(map[string]KeepaliveStatus)
-	}
-
 	peerStatusMap := make(map[string]KeepaliveStatus)
 
 	if !ax.relay {
@@ -53,13 +48,13 @@ func (ax *Nexodus) connectivityProbe() map[string]KeepaliveStatus {
 			}
 		}
 	}
-	connResults := probeConnectivity(peerStatusMap, ax.logger)
+	connResults := ax.probeConnectivity(peerStatusMap, ax.logger)
 
 	return connResults
 }
 
 // probeConnectivity check connectivity in batches to limit excessive traffic in the case of a large number of peers
-func probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
+func (ax *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
 	peerConnResultsMap := make(map[string]KeepaliveStatus)
 
 	peerKeys := make([]string, 0, len(peers))
@@ -81,7 +76,7 @@ func probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogg
 		})
 
 		for _, pubKey := range batch {
-			go runProbe(peers[pubKey], c)
+			go ax.runProbe(peers[pubKey], c)
 		}
 
 		for range batch {
