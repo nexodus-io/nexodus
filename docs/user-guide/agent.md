@@ -48,23 +48,16 @@ brew tap nexodus-io/nexodus
 brew install nexodus
 ```
 
-Start the agent with the following command:
+To start the `nexd` agent and also have it start automatically on boot, run:
 
 ```sh
-sudo nexd https://try.nexodus.io
+sudo brew services start nexodus
 ```
 
-It is also possible to run `nexd` as a daemon using `launchd`. To do so, download `io.nexodus.nexd.plist` and place it in the `/Library/LaunchDaemons/` directory. Edit the file if you need to customize the arguments passed to `nexd`.
+To stop the `nexd` agent, run:
 
 ```sh
-curl https://raw.githubusercontent.com/nexodus-io/nexodus/main/contrib/mac/io.nexodus.nexd.plist -o io.nexodus.nexd.plist
-sudo mv io.nexodus.nexd.plist /Library/LaunchDaemons/
-```
-
-Then, start the agent with the following command:
-
-```sh
-sudo launchctl load /Library/LaunchDaemons/io.nexodus.nexd.plist
+sudo brew services stop nexodus
 ```
 
 ### Binary Downloads
