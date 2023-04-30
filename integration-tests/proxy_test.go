@@ -764,7 +764,7 @@ func TestProxyNexctlConnections(t *testing.T) {
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
-	out, err := helper.containerExec(ctx, node1, []string{"nexctl", "connections"})
+	out, err := helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "connections"})
 	require.NoError(err)
 	require.False(strings.Contains(out, "Unreachable"))
 	require.True(strings.Contains(out, "Reachable"))

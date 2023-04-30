@@ -77,11 +77,6 @@ func main() {
 				},
 			},
 			{
-				Name:   "connections",
-				Usage:  "Run a test of the nexd peer connectivity (host firewalls may block the ICMP probes)",
-				Action: cmdConnStatus,
-			},
-			{
 				Name:  "organization",
 				Usage: "Commands relating to organizations",
 				Subcommands: []*cli.Command{
