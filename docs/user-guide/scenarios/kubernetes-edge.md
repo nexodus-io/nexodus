@@ -132,7 +132,7 @@ Request ID: 5648b07d658223aa8f488d9833cac06d
     ```sh
     sudo dnf install https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
     sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-    sudo dnf install kmod-wireguard wireguard-tools -y
+    sudo dnf install kmod-wireguard -y
     ```
 
 * MicroShift doesn't allow you to deploy a simple pod (e.g curl pod) in the default namespace.

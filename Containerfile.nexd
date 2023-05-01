@@ -39,7 +39,6 @@ RUN dnf update -qy && \
     iproute \
     psmisc \
     procps-ng \
-    wireguard-tools \
     nftables \
     hostname \
     netcat \

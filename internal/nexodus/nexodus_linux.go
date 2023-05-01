@@ -4,7 +4,9 @@ package nexodus
 
 import (
 	"fmt"
-	"strconv"
+	"github.com/nexodus-io/nexodus/internal/util"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // setupLinuxInterface TODO replace with netlink calls
@@ -31,21 +33,33 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		logger.Errorf("failed to create the ip link interface: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
 	}
+
+	listenPort := ax.listenPort
 	// start the wireguard listener on a well-known port if it is a discovery or relay node as all
 	// nodes need to be able to reach those services for state distribution, hole punching and relay.
 	if ax.relay {
-		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(WgDefaultPort), "private-key", linuxPrivateKeyFile)
-		if err != nil {
-			logger.Errorf("failed to start the wireguard listener: %v\n", err)
-			return fmt.Errorf("%w", interfaceErr)
-		}
-	} else {
-		// start the wireguard listener
-		_, err = RunCommand("wg", "set", ax.tunnelIface, "listen-port", strconv.Itoa(ax.listenPort), "private-key", linuxPrivateKeyFile)
-		if err != nil {
-			logger.Errorf("failed to start the wireguard listener: %v\n", err)
-			return fmt.Errorf("%w", interfaceErr)
-		}
+		listenPort = WgDefaultPort
+	}
+	privateKey, err := wgtypes.ParseKey(ax.wireguardPvtKey)
+	if err != nil {
+		logger.Errorf("invalid wiregaurd private key: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
+	}
+	c, err := wgctrl.New()
+	if err != nil {
+		logger.Errorf("could not connect to wireguard: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
+	}
+	defer util.IgnoreError(c.Close)
+	err = c.ConfigureDevice(ax.tunnelIface, wgtypes.Config{
+		PrivateKey:   &privateKey,
+		ListenPort:   &listenPort,
+		ReplacePeers: true,
+		Peers:        nil,
+	})
+	if err != nil {
+		logger.Errorf("failed to start the wireguard listener: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
 	}
 
 	// assign the wg interface a v6 address

@@ -36,7 +36,6 @@ Source:         nexodus-##NEXODUS_COMMIT##.tar.gz
 
 BuildRequires: systemd-rpm-macros
 BuildRequires: systemd-units
-Requires: wireguard-tools
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units

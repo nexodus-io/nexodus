@@ -16,7 +16,6 @@ RUN CGO_ENABLED=0 go build \
 FROM alpine:3.16 as alpine
 RUN apk add --no-cache \
     iputils \
-    wireguard-tools \
     nftables \
     psmisc \
     ca-certificates
@@ -33,7 +32,6 @@ RUN dnf update -qy && \
     iproute \
     psmisc \
     procps-ng \
-    wireguard-tools \
     nftables \
     hostname \
     && \
@@ -50,7 +48,6 @@ RUN apt-get update -qy && \
     ca-certificates \
     iputils-ping \
     iproute2 \
-    wireguard-tools \
     nftables \
     net-tools \
     traceroute \

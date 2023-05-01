@@ -190,10 +190,6 @@ func defaultTunnelDevOS() string {
 
 // binaryChecks validate the required binaries are available
 func binaryChecks() error {
-	// all OSs require the wg binary
-	if !IsCommandAvailable(wgBinary) {
-		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
-	}
 	return nil
 }
 
