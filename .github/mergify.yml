@@ -88,6 +88,7 @@ pull_request_rules:
     conditions:
       - -label=has-docs
       - -label=no-docs-required
+      - -author=dependabot[bot]
     actions:
       label:
         add:
@@ -97,6 +98,7 @@ pull_request_rules:
       - or:
         - label=has-docs
         - label=no-docs-required
+        - author=dependabot[bot]
     actions:
       label:
         remove:
@@ -107,6 +109,7 @@ pull_request_rules:
     conditions:
       - -label=has-design
       - -label=no-design-required
+      - -author=dependabot[bot]
     actions:
       label:
         add:
@@ -116,6 +119,7 @@ pull_request_rules:
       - or:
         - label=has-design
         - label=no-design-required
+        - author=dependabot[bot]
     actions:
       label:
         remove:
@@ -126,6 +130,7 @@ pull_request_rules:
     conditions:
       - -label=has-tests
       - -label=no-tests-required
+      - -author=dependabot[bot]
     actions:
       label:
         add:
@@ -135,6 +140,7 @@ pull_request_rules:
       - or:
         - label=has-tests
         - label=no-tests-required
+        - author=dependabot[bot]
     actions:
       label:
         remove:
