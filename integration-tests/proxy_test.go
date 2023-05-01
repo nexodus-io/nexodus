@@ -736,3 +736,36 @@ func TestProxyNexctl(t *testing.T) {
 	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
 	wg.Wait()
 }
+
+// TestProxyNexctlConnections ensures that `nexctl connections` works for `nexd proxy`
+func TestProxyNexctlConnections(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "proxy")
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy")
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	out, err := helper.containerExec(ctx, node1, []string{"nexctl", "connections"})
+	require.NoError(err)
+	require.False(strings.Contains(out, "Unreachable"))
+	require.True(strings.Contains(out, "Reachable"))
+}
