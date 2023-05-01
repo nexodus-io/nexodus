@@ -22,10 +22,10 @@ components:
 #       namespace: nexodus
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 450cc6c2a80479277635cc532bf055d596923f39
+    newTag: ac5c4e70a46c13275045b5723dc01bfbada887f1
   - name: quay.io/nexodus/envsubst
-    newTag: 450cc6c2a80479277635cc532bf055d596923f39
+    newTag: ac5c4e70a46c13275045b5723dc01bfbada887f1
   - name: quay.io/nexodus/frontend
-    newTag: 450cc6c2a80479277635cc532bf055d596923f39
+    newTag: ac5c4e70a46c13275045b5723dc01bfbada887f1
   - name: quay.io/nexodus/go-ipam
-    newTag: 450cc6c2a80479277635cc532bf055d596923f39
+    newTag: ac5c4e70a46c13275045b5723dc01bfbada887f1
