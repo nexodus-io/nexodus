@@ -16,7 +16,7 @@ import (
 
 // TestProxyEgress tests that nexd proxy can be used with a single egress rule
 func TestProxyEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -81,7 +81,7 @@ func TestProxyEgress(t *testing.T) {
 
 // TestProxyEgressUDP tests that nexd proxy can be used with a single UDP egress rule
 func TestProxyEgressUDP(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -165,7 +165,7 @@ func TestProxyEgressUDP(t *testing.T) {
 
 // TestProxyEgress tests that nexd proxy can be used with multiple egress rules
 func TestProxyEgressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -249,7 +249,7 @@ func TestProxyEgressMultipleRules(t *testing.T) {
 
 // TestProxyIngress tests that nexd proxy with a single ingress rule
 func TestProxyIngress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -311,7 +311,7 @@ func TestProxyIngress(t *testing.T) {
 
 // TestProxyIngressUDP tests that nexd proxy can be used with a single UDP ingress rule
 func TestProxyIngressUDP(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -392,7 +392,7 @@ func TestProxyIngressUDP(t *testing.T) {
 
 // TestProxyIngress tests that nexd proxy with multiple ingress rules
 func TestProxyIngressMultipleRules(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -473,7 +473,7 @@ func TestProxyIngressMultipleRules(t *testing.T) {
 
 // TestProxyIngressAndEgress tests that a proxy can be used to both ingress and egress traffic
 func TestProxyIngressAndEgress(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -563,7 +563,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 
 // Test invalid proxy configuration
 func TestProxyInvalidConfig(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	var err error
 	helper := NewHelper(t)
 	require := helper.require
@@ -663,11 +663,16 @@ func TestProxyInvalidConfig(t *testing.T) {
 		"--egress", "tcp:8080"))
 	require.Error(err)
 
+	// destination host can not be blank
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:8080::80"))
+	require.Error(err)
+
 	// Note: no validation is done on the destination address, because it can be a hostname or an IP address
 }
 
 func TestProxyNexctl(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)

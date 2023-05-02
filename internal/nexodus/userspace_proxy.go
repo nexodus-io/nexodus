@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/natefinch/atomic"
 	"io"
 	"net"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/natefinch/atomic"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
@@ -131,6 +132,10 @@ func proxyFromRule(rule string, ruleType ProxyType) (*UsProxy, error) {
 	destHost, destPortStr, err := net.SplitHostPort(destHostPort)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid destination host:port (%s): %w", destHostPort, err)
+	}
+
+	if destHost == "" {
+		return nil, fmt.Errorf("Invalid destination host:port (%s): host cannot be empty", destHostPort)
 	}
 
 	destPort, err := parsePort(destPortStr)
