@@ -663,6 +663,11 @@ func TestProxyInvalidConfig(t *testing.T) {
 		"--egress", "tcp:8080"))
 	require.Error(err)
 
+	// destination host can not be blank
+	_, err = helper.containerExec(ctx, node1, append(baseArgs,
+		"--egress", "tcp:8080::80"))
+	require.Error(err)
+
 	// Note: no validation is done on the destination address, because it can be a hostname or an IP address
 }
 
