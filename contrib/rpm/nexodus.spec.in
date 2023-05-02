@@ -14,8 +14,12 @@
 # building more go packages for i686. If your package is not a leaf package,
 # you'll need to coordinate the removal of the package's dependents first.
 # ---
-# REMOVE BEFORE SUBMITTING THIS FOR REVIEWmock
+# REMOVE BEFORE SUBMITTING THIS FOR REVIEW
+%if 0%{?fedora}
 %gometa -f
+%else
+%gometa
+%endif
 
 %global common_description %{expand:
 A prototype of connectivity as a service.}
@@ -25,7 +29,11 @@ A prototype of connectivity as a service.}
 
 Name:           nexodus
 Version:        0
+%if 0%{?fedora}
 Release:        %autorelease -p
+%else
+Release:        ##NEXODUS_AUTORELEASE##
+%endif
 Summary:        A prototype of connectivity as a service
 
 License:        Apache-2.0
@@ -53,7 +61,14 @@ Requires(postun): systemd-units
 #%go_generate_buildrequires
 
 %build
-find .
+%if 0%{?fedora}
+# has Go 1.20 already
+%else
+  curl -L https://go.dev/dl/go1.20.4.linux-amd64.tar.gz -o go1.20.4.linux-amd64.tar.gz
+  tar -C .. -xzf go1.20.4.linux-amd64.tar.gz
+  export PATH=/$(pwd)/../go/bin:$PATH
+%endif
+
 for cmd in cmd/nexd cmd/nexctl ; do
   %gobuild -o %{gobuilddir}/bin/$(basename $cmd) %{goipath}/$cmd
 done
@@ -111,4 +126,6 @@ done
 %endif
 
 %changelog
+%if 0%{?fedora}
 %autochangelog
+%endif

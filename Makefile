@@ -628,7 +628,7 @@ dist/rpm:
 
 #Uncomment once f39 is on copr
 #MOCK_ROOTS:=fedora-38-x86_64 fedora-39-x86_64
-MOCK_ROOTS:=fedora-38-x86_64
+MOCK_ROOTS:=fedora-38-x86_64 centos-stream-9-x86_64
 MOCK_DEPS:=golang systemd-rpm-macros systemd-units
 
 .PHONY: image-mock
@@ -650,6 +650,7 @@ image-mock: ## Build and publish updated mock images to quay.io used for buildin
 
 MOCK_ROOT?=fedora-38-x86_64
 SRPM_DISTRO?=fc38
+NEXODUS_AUTORELEASE=0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO)
 
 .PHONY: srpm
 srpm: dist/rpm manpages ## Build a source RPM
@@ -664,6 +665,7 @@ srpm: dist/rpm manpages ## Build a source RPM
 	cd dist/rpm && tar czf nexodus-${NEXODUS_RELEASE}.tar.gz nexodus-${NEXODUS_RELEASE} && rm -rf nexodus-${NEXODUS_RELEASE}
 	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
+	sed -i -e "s/##NEXODUS_AUTORELEASE##/$(NEXODUS_AUTORELEASE)/" contrib/rpm/nexodus.spec
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:${MOCK_ROOT} \
 		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
 		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_ROOT}
@@ -672,7 +674,8 @@ srpm: dist/rpm manpages ## Build a source RPM
 .PHONY: rpm
 rpm: srpm ## Build an RPM
 	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:${MOCK_ROOT} \
-		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
+		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} \
+		--no-clean --no-cleanup-after --enable-network \
 		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
 .PHONY: version
