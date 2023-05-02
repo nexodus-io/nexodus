@@ -675,6 +675,10 @@ rpm: srpm ## Build an RPM
 		mock --rebuild --without check --resultdir=/nexodus/dist/rpm/mock --root ${MOCK_ROOT} --no-clean --no-cleanup-after \
 		/nexodus/$(wildcard dist/rpm/mock/nexodus-0-0.1.$(shell date --utc +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO).src.rpm)
 
+.PHONY: version
+version: ## Print the version string
+	$(CMD_PREFIX) echo "${NEXODUS_VERSION}-${NEXODUS_RELEASE}"
+
 ##@ Documentation
 
 contrib/man:
