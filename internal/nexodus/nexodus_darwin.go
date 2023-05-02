@@ -4,10 +4,11 @@ package nexodus
 
 import (
 	"fmt"
-	"os/exec"
-	"strconv"
-
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"os/exec"
 )
 
 func (ax *Nexodus) setupInterfaceOS() error {
@@ -53,7 +54,25 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 
-	_, err = RunCommand("wg", "set", dev, "listen-port", strconv.Itoa(ax.listenPort), "private-key", darwinPrivateKeyFile)
+	privateKey, err := wgtypes.ParseKey(ax.wireguardPvtKey)
+	if err != nil {
+		logger.Errorf("invalid wiregaurd private key: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
+	}
+
+	c, err := wgctrl.New()
+	if err != nil {
+		logger.Errorf("could not connect to wireguard: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
+	}
+	defer util.IgnoreError(c.Close)
+
+	err = c.ConfigureDevice(dev, wgtypes.Config{
+		PrivateKey:   &privateKey,
+		ListenPort:   &ax.listenPort,
+		ReplacePeers: true,
+		Peers:        nil,
+	})
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)

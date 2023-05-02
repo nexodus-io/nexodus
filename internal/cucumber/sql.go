@@ -63,7 +63,7 @@ func (s *TestScenario) iRunSQLGivesResults(sql string, expected *godog.Table) er
 	if err != nil {
 		return err
 	}
-	defer util.IgnoreError(rows.Close())
+	defer util.IgnoreError(rows.Close)
 
 	var actualTable [][]string
 	cols, err := rows.Columns()
