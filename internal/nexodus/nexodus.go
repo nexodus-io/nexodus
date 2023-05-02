@@ -569,7 +569,11 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 func (ax *Nexodus) Reconcile(firstTime bool) error {
 	peerListing, resp, err := ax.informer.Execute()
 	if err != nil {
-		return fmt.Errorf("error: %w header: %v", err, resp.Header)
+		if resp != nil {
+			return fmt.Errorf("error: %w header: %v", err, resp.Header)
+		} else {
+			return fmt.Errorf("error: %w", err)
+		}
 	}
 	var newPeers []public.ModelsDevice
 	if firstTime {
