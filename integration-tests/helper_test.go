@@ -332,18 +332,46 @@ func (helper *Helper) runCommand(cmd ...string) (string, error) {
 
 // nexdStatus checks for a Running status of the nexd process via nexctl
 func (helper *Helper) nexdStatus(ctx context.Context, ctr testcontainers.Container) error {
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*1000)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
 	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
 		statOut, _ := helper.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})
 		helper.Logf("nexd status: %s", statOut)
 		return strings.Contains(statOut, "Running"), nil
 	})
-	if running {
-		return nil
+	if !running {
+		nodeName, _ := ctr.Name(ctx)
+		return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s", nodeName)
 	}
-	nodeName, _ := ctr.Name(ctx)
-	return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s", nodeName)
+
+	// This really should not be necessary. If we had a better state machine for nexd, we could
+	// know that nexd is running and the data plane is up. Right now, READY just means nexd has
+	// successfully connected with the control plane. Attempts to get data plane info may happen
+	// too soon. This is a hack to make sure nexd has had enough time to get its own local config.
+	// Related: https://github.com/nexodus-io/nexodus/pull/886
+	timeoutCtx2, cancel2 := context.WithTimeout(ctx, time.Second*60)
+	defer cancel2()
+	gotIps, _ := util.CheckPeriodically(timeoutCtx2, time.Second, func() (bool, error) {
+		tunIPv4, _ := getTunnelIP(ctx, helper, inetV4, ctr)
+		helper.Logf("nexd tunnelIP: %s", tunIPv4)
+		if tunIPv4 == "" {
+			return false, nil
+		}
+
+		tunIPv6, _ := getTunnelIP(ctx, helper, inetV6, ctr)
+		helper.Logf("nexd tunnelIP v6: %s", tunIPv6)
+		if tunIPv6 == "" {
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if !gotIps {
+		nodeName, _ := ctr.Name(ctx)
+		return fmt.Errorf("failed to get tunnel IPs from the nexd process in node: %s", nodeName)
+	}
+
+	return nil
 }
 
 func (helper *Helper) createNewUser(ctx context.Context, password string) (string, func()) {
