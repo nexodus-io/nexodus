@@ -580,8 +580,7 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 			if !ok {
 				ax.deviceCache[p.Id] = p
 				newPeers = append(newPeers, p)
-			}
-			if !reflect.DeepEqual(existing, p) {
+			} else if !reflect.DeepEqual(existing, p) {
 				ax.deviceCache[p.Id] = p
 				newPeers = append(newPeers, p)
 			}
