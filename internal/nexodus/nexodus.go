@@ -40,6 +40,7 @@ const (
 	wgIface            = "wg0"
 	WgWindowsConfPath  = "C:/nexd/"
 	wgOrgIPv6PrefixLen = "64"
+	apiToken           = "apitoken.json"
 )
 
 const (
@@ -65,6 +66,7 @@ const (
 
 var (
 	invalidTokenGrant = errors.New("invalid_grant")
+	invalidToken      = errors.New("invalid_token")
 )
 
 // embedded in Nexodus struct
@@ -255,7 +257,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 	var options []client.Option
 	if ax.stateDir != "" {
-		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, "apitoken.json")))
+		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, apiToken)))
 	}
 	if ax.username == "" {
 		options = append(options, client.WithDeviceFlow())
@@ -302,8 +304,16 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		user, resp, err = ax.client.UsersApi.GetUser(ctx, "me").Execute()
 		if err != nil {
-			ax.logger.Warnf("get user error - retrying error: %v header: %v ", err, resp.Header)
-			return err
+			if resp != nil {
+				ax.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
+				return err
+			} else if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) {
+				ax.logger.Errorf("The nexodus token stored in %s/%s is not valid for the api-server, you can remove the file and try again: %v", ax.stateDir, apiToken, err)
+				return err
+			} else {
+				ax.logger.Warnf("get user error - retrying error: %v", err)
+				return err
+			}
 		}
 		return nil
 	})
@@ -315,9 +325,16 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		organizations, resp, err = ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
 		if err != nil {
-			ax.logger.Warnf("get organizations error - retrying error: %v header: %v ", err, resp.Header)
-			return err
+			if resp != nil {
+				ax.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
+				return err
+			}
+			if err != nil {
+				ax.logger.Warnf("get organizations error - retrying error: %v", err)
+				return err
+			}
 		}
+
 		return nil
 	})
 	if err != nil {
