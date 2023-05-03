@@ -38,7 +38,7 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 		Transport: &http.Transport{
 			DialContext:           dialer.DialContext,
 			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 10 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
 			ExpectContinueTimeout: 5 * time.Second,
 			TLSClientConfig:       opts.tlsConfig,
 		},
