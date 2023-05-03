@@ -576,7 +576,7 @@ func TestProxyInvalidConfig(t *testing.T) {
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
 
-	baseArgs := []string{"--username", username, "--password", password, "proxy"}
+	baseArgs := []string{"nexd", "--username", username, "--password", password, "proxy"}
 	proxyArgs := [][]string{
 		// duplicate tcp ingress port
 		{"--ingress", "tcp:8080:127.0.0.1:80", "--ingress", "tcp:8080:127.0.0.2:81"},
@@ -616,7 +616,11 @@ func TestProxyInvalidConfig(t *testing.T) {
 
 	for _, args := range proxyArgs {
 		out, err := helper.containerExec(ctx, node1, append(baseArgs, args...))
-		helper.Logf("nexd output: %s", out)
+		if err == nil {
+			// This test will fail. Print the output just in case there's a hint in there
+			// about what went wrong.
+			helper.Logf("nexd output: %s", out)
+		}
 		require.Error(err)
 	}
 }
