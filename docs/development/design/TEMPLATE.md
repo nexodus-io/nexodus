@@ -1,4 +1,4 @@
-# Enhancement Title
+# TEMPLATE - Enhancement Title
 
 > [Issue #NNN](https://github.com/nexodus-io/nexodus/issues/NNN)
 

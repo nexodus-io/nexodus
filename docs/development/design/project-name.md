@@ -1,4 +1,4 @@
-# Enhancement Title
+# Project Name
 
 > [Issue #428](https://github.com/nexodus-io/nexodus/issues/428)
 
