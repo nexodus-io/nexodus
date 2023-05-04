@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.3.0
+	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/briandowns/spinner v1.23.0
 	github.com/bufbuild/connect-go v1.7.0
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
@@ -61,6 +62,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6 // indirect

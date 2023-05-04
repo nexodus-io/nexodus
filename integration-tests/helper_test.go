@@ -3,6 +3,7 @@ package integration_tests
 import (
 	"context"
 	"fmt"
+	"github.com/ahmetb/dlog"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -178,14 +179,16 @@ func (helper *Helper) containerExec(ctx context.Context, container testcontainer
 	if cmd[0] != "wg" && cmd[0] != "cat" {
 		helper.logf("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
-	code, outputRaw, err := container.Exec(
+	code, reader, err := container.Exec(
 		ctx,
 		cmd,
 	)
 	if err != nil {
 		return "", err
 	}
-	output, err := io.ReadAll(outputRaw)
+
+	reader = dlog.NewReader(reader)
+	output, err := io.ReadAll(reader)
 	if err != nil {
 		return "", err
 	}
