@@ -53,11 +53,6 @@ const (
 )
 
 const (
-	stunServer1 = "stun1.l.google.com:19302"
-	stunServer2 = "stun2.l.google.com:19302"
-)
-
-const (
 	// retry interval for api server retries
 	retryInterval = 15 * time.Second
 	// max retries for api server retries
