@@ -49,6 +49,36 @@ patches:
         value: nexodus-issuer
   - target:
       kind: Deployment
+      name: apiproxy
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+  - target:
+      kind: Deployment
+      name: apiserver
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+  - target:
+      kind: Deployment
+      name: ipam
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+  - target:
+      kind: PostgresCluster
+      name: database
+    patch: |-
+      - op: remove
+        path: /spec/instances/0/resources/limits
+  - target:
+      kind: Deployment
       name: backend-cli
     patch: |-
       - op: add
