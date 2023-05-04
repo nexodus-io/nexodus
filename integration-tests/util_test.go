@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -166,7 +165,7 @@ func getTunnelIP(ctx context.Context, helper *Helper, family ipFamily, ctr testc
 		args = append(args, "--ipv6")
 	}
 	tunnelIP, err := helper.containerExec(ctx, ctr, args)
-	return clearString(tunnelIP), err
+	return strings.TrimSpace(tunnelIP), err
 }
 
 func ping(ctx context.Context, ctr testcontainers.Container, family ipFamily, address string) error {
@@ -298,10 +297,4 @@ func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token
 		RefreshToken: jwt.RefreshToken,
 		Expiry:       time.Now().Add(time.Duration(jwt.ExpiresIn) * time.Second),
 	}, nil
-}
-
-var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9\.\[\]: ]+`)
-
-func clearString(str string) string {
-	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }

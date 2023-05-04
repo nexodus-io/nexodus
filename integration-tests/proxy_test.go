@@ -683,7 +683,7 @@ func TestProxyNexctl(t *testing.T) {
 		  "ingress": [
 			"tcp:4242:127.0.0.1:8080"
 		  ]
-		}`, out[8:])
+		}`, out)
 
 	// Rules are present now
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
@@ -727,7 +727,7 @@ func TestProxyNexctl(t *testing.T) {
 		{
 		  "egress": null,
 		  "ingress": null
-		}`, out[8:])
+		}`, out)
 
 	// Connectivity should now fail again
 	_, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})
