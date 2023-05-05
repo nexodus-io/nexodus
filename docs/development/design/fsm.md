@@ -28,7 +28,6 @@ stateDiagram-v2
     REGISTERED --> UNAUTHENTICATED: "logout"
     UNREGISTERED --> REGISTERING: "register_device"
     UNREGISTERED --> UNAUTHENTICATED: "logout"
-    REGISTERED --> UNAUTHENTICATED: "logout"
     REGISTERED --> PEERING: "fetch_peers"
     PEERING --> REGISTERED: "down"
     PEERING --> DOWN: "peering_error"
@@ -48,11 +47,12 @@ nexd may be in one of these states:
 
 1. UNAUTHENTICATED: No configuration has been provided
 1. AUTHENTICATING: Performing authentication, either interactively or via token
-1. AUTHENTICATED: User is succesfully authenticated
+1. AUTHENTICATED: User is successfully authenticated
 1. UNREGISTERED: Authenticated but device has not been registered with the control plane
 1. REGISTERED: Device is registered with the control plane, but data plane is not established
 1. PEERING: Device is connected to control plane and fetching peer listings
 1. UP: Data plane is established
+1. DOWN: Data plane is not established, either due to an error or it has been placed down administratively using nexctl
 
 To provide information to the user about the current state, a `nexctl nexd status` command will be updated to include the new states. This can inform the user of the current state and what to do next.
 
