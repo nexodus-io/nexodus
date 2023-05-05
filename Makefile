@@ -221,6 +221,21 @@ dist/.action-lint: $(find -type f .github) | dist
 	$(CMD_PREFIX) actionlint -color
 	$(CMD_PREFIX) touch $@
 
+# https://github.com/google/go-licenses
+# For license IDs: https://github.com/google/licenseclassifier/blob/main/license_type.go
+DISALLOWED_LICENSE_TYPES:=forbidden,restricted,unknown
+.PHONY: go-licenses
+go-licenses: dist/.go-licenses ## Validate licenses of Go dependencies
+dist/.go-licenses: $(NEX_ALL_GO) | dist
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO LICENSES]"
+	$(CMD_PREFIX) if ! which go-licenses $(PIPE_DEV_NULL) ; then \
+		echo "Please install go-licenses." ; \
+		echo "go install github.com/google/go-licenses@latest" ; \
+		exit 1 ; \
+	fi
+	$(CMD_PREFIX) go-licenses check --include_tests --disallowed_types=$(DISALLOWED_LICENSE_TYPES) ./...
+	$(CMD_PREFIX) touch $@
+
 .PHONY: gen-docs
 gen-docs: $(SWAGGER_YAML) ## Generate API docs
 .PHONY: openapi-lint
