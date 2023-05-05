@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -72,6 +73,11 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 
+	sg, err := api.createDefaultSecurityGroup(ctx, uuid.Nil.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+	}
+
 	var org models.Organization
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var user models.User
@@ -80,13 +86,14 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		org = models.Organization{
-			Name:        request.Name,
-			OwnerID:     userId,
-			Description: request.Description,
-			IpCidr:      request.IpCidr,
-			IpCidrV6:    request.IpCidrV6,
-			HubZone:     request.HubZone,
-			Users:       []*models.User{&user},
+			Name:             request.Name,
+			OwnerID:          userId,
+			Description:      request.Description,
+			IpCidr:           request.IpCidr,
+			IpCidrV6:         request.IpCidrV6,
+			HubZone:          request.HubZone,
+			Users:            []*models.User{&user},
+			SecurityGroupIds: sg.ID,
 		}
 		if res := tx.Create(&org); res.Error != nil {
 			return res.Error
@@ -117,6 +124,15 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 		return
 	}
+
+	if sg.OrganizationId != org.ID {
+		// Update the default security group with the new organization id
+		if err := api.updateDefaultSecurityGroupOrgId(ctx, sg.ID.String(), org.ID); err != nil {
+			errMsg := fmt.Sprintf("failed to update the default security group: %v", err)
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
+		}
+	}
+
 	c.JSON(http.StatusCreated, org)
 }
 

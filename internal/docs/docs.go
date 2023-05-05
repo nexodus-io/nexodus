@@ -992,6 +992,302 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/organizations/{organization_id}/security_groups": {
+            "get": {
+                "description": "Lists all Security Groups",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "List Security Groups",
+                "operationId": "ListSecurityGroups",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SecurityGroup"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adds a new Security Group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Add SecurityGroup",
+                "operationId": "CreateSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Add SecurityGroup",
+                        "name": "SecurityGroup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddSecurityGroup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/{organization_id}/security_groups/{id}": {
+            "get": {
+                "description": "Gets a security group in an organization by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Get SecurityGroup",
+                "operationId": "GetSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/{organization_id}/security_groups/{security_group_id}": {
+            "delete": {
+                "description": "Deletes an existing SecurityGroup",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Delete SecurityGroup",
+                "operationId": "DeleteSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "security_group_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a Security Group by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Update Security Group",
+                "operationId": "UpdateSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "security_group_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Security Group Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSecurityGroup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -1395,6 +1691,9 @@ const docTemplate = `{
                 "relay": {
                     "type": "boolean"
                 },
+                "security_group_ids": {
+                    "type": "string"
+                },
                 "symmetric_nat": {
                     "type": "boolean"
                 },
@@ -1449,6 +1748,31 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "zone-red"
+                },
+                "security_group_ids": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AddSecurityGroup": {
+            "type": "object",
+            "properties": {
+                "group_description": {
+                    "type": "string",
+                    "example": "group_description"
+                },
+                "group_name": {
+                    "type": "string",
+                    "example": "group_name"
+                },
+                "inbound_rules": {
+                    "type": "string"
+                },
+                "org_id": {
+                    "type": "string"
+                },
+                "outbound_rules": {
+                    "type": "string"
                 }
             }
         },
@@ -1528,6 +1852,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "security_group_ids": {
+                    "type": "string"
                 },
                 "symmetric_nat": {
                     "type": "boolean"
@@ -1660,6 +1987,33 @@ const docTemplate = `{
                 },
                 "owner_id": {
                     "type": "string"
+                },
+                "security_group_ids": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SecurityGroup": {
+            "type": "object",
+            "properties": {
+                "group_description": {
+                    "type": "string"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "inbound_rules": {
+                    "type": "string"
+                },
+                "org_id": {
+                    "type": "string"
+                },
+                "outbound_rules": {
+                    "type": "string"
                 }
             }
         },
@@ -1701,6 +2055,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UpdateSecurityGroup": {
+            "type": "object",
+            "properties": {
+                "group_description": {
+                    "type": "string"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "inbound_rules": {
+                    "type": "string"
+                },
+                "outbound_rules": {
+                    "type": "string"
+                }
+            }
+        },
         "models.User": {
             "type": "object",
             "properties": {
@@ -1711,6 +2082,9 @@ const docTemplate = `{
                     "description": "Since the ID comes from the IDP, we have no control over the format...",
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "security_group_ids": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"

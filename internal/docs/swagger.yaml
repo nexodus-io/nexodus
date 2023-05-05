@@ -29,6 +29,8 @@ definitions:
         type: string
       relay:
         type: boolean
+      security_group_ids:
+        type: string
       symmetric_nat:
         type: boolean
       tunnel_ip:
@@ -67,6 +69,23 @@ definitions:
         type: boolean
       name:
         example: zone-red
+        type: string
+      security_group_ids:
+        type: string
+    type: object
+  models.AddSecurityGroup:
+    properties:
+      group_description:
+        example: group_description
+        type: string
+      group_name:
+        example: group_name
+        type: string
+      inbound_rules:
+        type: string
+      org_id:
+        type: string
+      outbound_rules:
         type: string
     type: object
   models.BaseError:
@@ -121,6 +140,8 @@ definitions:
         type: boolean
       revision:
         type: integer
+      security_group_ids:
+        type: string
       symmetric_nat:
         type: boolean
       tunnel_ip:
@@ -211,6 +232,24 @@ definitions:
         type: string
       owner_id:
         type: string
+      security_group_ids:
+        type: string
+    type: object
+  models.SecurityGroup:
+    properties:
+      group_description:
+        type: string
+      group_name:
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      inbound_rules:
+        type: string
+      org_id:
+        type: string
+      outbound_rules:
+        type: string
     type: object
   models.UpdateDevice:
     properties:
@@ -238,6 +277,17 @@ definitions:
       symmetric_nat:
         type: boolean
     type: object
+  models.UpdateSecurityGroup:
+    properties:
+      group_description:
+        type: string
+      group_name:
+        type: string
+      inbound_rules:
+        type: string
+      outbound_rules:
+        type: string
+    type: object
   models.User:
     properties:
       createdAt:
@@ -246,6 +296,8 @@ definitions:
         description: Since the ID comes from the IDP, we have no control over the
           format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      security_group_ids:
         type: string
       updatedAt:
         type: string
@@ -926,6 +978,205 @@ paths:
       summary: Get Device
       tags:
       - Devices
+  /api/organizations/{organization_id}/security_groups:
+    get:
+      description: Lists all Security Groups
+      operationId: ListSecurityGroups
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SecurityGroup'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: List Security Groups
+      tags:
+      - SecurityGroup
+    post:
+      description: Adds a new Security Group
+      operationId: CreateSecurityGroup
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      - description: Add SecurityGroup
+        in: body
+        name: SecurityGroup
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddSecurityGroup'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SecurityGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ConflictsError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Add SecurityGroup
+      tags:
+      - SecurityGroup
+  /api/organizations/{organization_id}/security_groups/{id}:
+    get:
+      description: Gets a security group in an organization by ID
+      operationId: GetSecurityGroup
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      - description: Security Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SecurityGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Get SecurityGroup
+      tags:
+      - SecurityGroup
+  /api/organizations/{organization_id}/security_groups/{security_group_id}:
+    delete:
+      description: Deletes an existing SecurityGroup
+      operationId: DeleteSecurityGroup
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      - description: Security Group ID
+        in: path
+        name: security_group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.SecurityGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Delete SecurityGroup
+      tags:
+      - SecurityGroup
+    patch:
+      description: Updates a Security Group by ID
+      operationId: UpdateSecurityGroup
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      - description: Security Group ID
+        in: path
+        name: security_group_id
+        required: true
+        type: string
+      - description: Security Group Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSecurityGroup'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SecurityGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Update Security Group
+      tags:
+      - SecurityGroup
   /api/users:
     get:
       consumes:

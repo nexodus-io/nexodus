@@ -12,9 +12,10 @@ package public
 
 // ModelsAddOrganization struct for ModelsAddOrganization
 type ModelsAddOrganization struct {
-	Cidr        string `json:"cidr,omitempty"`
-	CidrV6      string `json:"cidr_v6,omitempty"`
-	Description string `json:"description,omitempty"`
-	HubZone     bool   `json:"hub_zone,omitempty"`
-	Name        string `json:"name,omitempty"`
+	Cidr             string `json:"cidr,omitempty"`
+	CidrV6           string `json:"cidr_v6,omitempty"`
+	Description      string `json:"description,omitempty"`
+	HubZone          bool   `json:"hub_zone,omitempty"`
+	Name             string `json:"name,omitempty"`
+	SecurityGroupIds string `json:"security_group_ids,omitempty"`
 }

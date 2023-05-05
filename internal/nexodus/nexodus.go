@@ -109,6 +109,7 @@ type Nexodus struct {
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
 	hostname                 string
+	securityGroup            *public.ModelsSecurityGroup
 	symmetricNat             bool
 	ipv6Supported            bool
 	os                       string
@@ -352,6 +353,19 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err != nil {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
+
+	ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
+	if err != nil {
+		if resp != nil {
+			ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
+			return err
+		}
+		if err != nil {
+			ax.logger.Warnf("get security group error - retrying error: %v", err)
+			return err
+		}
+	}
+	ax.logger.Debugf("organization security group: %v", ax.securityGroup)
 
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	ax.informerStop = informerCancel
@@ -649,6 +663,9 @@ func (ax *Nexodus) Reconcile() error {
 	if changed {
 		ax.buildPeersConfig()
 		if len(updatePeers) > 0 {
+			if strings.Contains(err.Error(), securityGroupErr.Error()) {
+				ax.logger.Fatal(err)
+			}
 			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
 				// If the wireguard configuration fails, we should wipe out our peer list
 				// so it is rebuilt and reconfigured from scratch the next time around.

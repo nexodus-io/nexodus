@@ -22,6 +22,9 @@ Feature: Device API
     Then the response code should be 200
     Given I store the ${response[0].id} as ${organization_id}
 
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].security_group_ids} as ${security_group_ids}
 
     # Bob gets an empty list of devices..
     When I GET path "/api/devices"
@@ -92,7 +95,8 @@ Feature: Device API
         "symmetric_nat": true,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}"
+        "user_id": "${user_id}",
+        "security_group_ids": "${response.security_group_ids}"
       }
       """
 
@@ -135,7 +139,8 @@ Feature: Device API
         "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}"
+        "user_id": "${user_id}",
+        "security_group_ids": "${response.security_group_ids}"
       }
       """
 
@@ -172,6 +177,7 @@ Feature: Device API
           "relay": false,
           "revision": ${response[0].revision},
           "symmetric_nat": false,
+          "security_group_ids": "${response[0].security_group_ids}",
           "tunnel_ip": "${response[0].tunnel_ip}",
           "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
           "user_id": "${user_id}"
@@ -250,6 +256,7 @@ Feature: Device API
         "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}"
+        "user_id": "${user_id}",
+        "security_group_ids": "${response.security_group_ids}"
       }
       """

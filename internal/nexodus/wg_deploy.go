@@ -1,11 +1,18 @@
 package nexodus
 
 import (
+	"errors"
+	"runtime"
+
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 const (
 	persistentKeepalive = "20"
+)
+
+var (
+	securityGroupErr = errors.New("nftables setup error")
 )
 
 func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
@@ -16,6 +23,13 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 
 	if ax.TunnelIP != ax.getIPv4Iface(ax.tunnelIface).String() {
 		if err := ax.setupInterface(); err != nil {
+			return err
+		}
+	}
+
+	if ax.securityGroup.Id != "" && runtime.GOOS == Linux.String() {
+		ax.logger.Debugf("Security group: %+v", ax.securityGroup)
+		if err := ax.processSecurityGroupRules(); err != nil {
 			return err
 		}
 	}

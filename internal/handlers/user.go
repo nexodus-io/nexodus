@@ -107,6 +107,11 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 		return noUUID, res.Error
 	}
 
+	sg, err := api.createDefaultSecurityGroup(ctx, uuid.Nil.String())
+	if err != nil {
+		return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+	}
+
 	org = models.Organization{
 		Name:        userName,
 		OwnerID:     userId,
@@ -117,6 +122,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 		Users: []*models.User{&models.User{
 			ID: userId,
 		}},
+		SecurityGroupIds: sg.ID,
 	}
 	if res = api.db.Create(&org); res.Error == nil {
 
@@ -128,6 +134,13 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 		}
 		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
 			return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+		}
+
+		if sg.OrganizationId != org.SecurityGroupIds {
+			// Update the default security group with the new organization id
+			if err := api.updateDefaultSecurityGroupOrgId(ctx, sg.ID.String(), org.ID); err != nil {
+				return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+			}
 		}
 
 		return org.ID, nil
