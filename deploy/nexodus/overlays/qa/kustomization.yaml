@@ -5,6 +5,9 @@ resources:
   - issuer.yaml
   - sealed-secret.yaml
   - serviceaccount.yaml
+components:
+  - ../../components/promtail
+  - ../../components/limitador
 namespace: nexodus-qa
 configMapGenerator:
   - behavior: replace
@@ -29,6 +32,7 @@ configMapGenerator:
       - NEXAPI_DOMAIN=api.qa.nexodus.io
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
+      - NEXAPI_ENVIRONMENT=qa
     name: apiserver
 patches:
   - patch: |-
@@ -92,3 +96,10 @@ patches:
     target:
       kind: Ingress
       name: frontend
+  - target:
+      kind: Deployment
+      name: promtail
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 7

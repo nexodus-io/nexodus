@@ -7,44 +7,42 @@ resources:
 namespace: nexodus
 
 secretGenerator:
-  - name: database-pguser-ipam
-    literals:
+  - literals:
       - dbname=ipam
       - host=cockroachdb-public
       - password=password
       - port=26257
       - user=ipam
-
-  - name: database-pguser-apiserver
-    literals:
+    name: database-pguser-ipam
+  - literals:
       - dbname=apiserver
       - host=cockroachdb-public
       - password=password
       - port=26257
       - user=apiserver
-
-  - name: database-pguser-keycloak
-    literals:
+    name: database-pguser-apiserver
+  - literals:
       - host=postgres
       - port=5432
       - user=keycloak
       - password=password
       - dbname=keycloak
+    name: database-pguser-keycloak
 
 configMapGenerator:
-  - name: ipam
-    behavior: merge
+  - behavior: merge
     literals:
       - GOIPAM_PG_SSLMODE=disable
-  - name: apiserver
-    behavior: merge
+    name: ipam
+  - behavior: merge
     literals:
       - NEXAPI_DB_SSLMODE=disable
+    name: apiserver
 
-patchesStrategicMerge:
-  - |-
-    $patch: delete
-    apiVersion: postgres-operator.crunchydata.com/v1beta1
-    kind: PostgresCluster
-    metadata:
-      name: database
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: postgres-operator.crunchydata.com/v1beta1
+      kind: PostgresCluster
+      metadata:
+        name: database

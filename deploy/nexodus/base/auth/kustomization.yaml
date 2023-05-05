@@ -6,21 +6,23 @@ resources:
   - ingress.yaml
   - service.yaml
 configMapGenerator:
-  - name: auth-config
-    literals:
+  - literals:
       - hostname=auth.try.nexodus.127.0.0.1.nip.io
       - frontend-url=https://try.nexodus.127.0.0.1.nip.io
-  - name: realm
-    files:
+    name: auth-config
+  - files:
       - files/nexodus.json
+    name: realm
 secretGenerator:
-  - name: auth-secrets
-    literals:
+  - literals:
       - keycloak-admin-password=floofykittens
       - web-client-id=nexodus-web
       - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
       - cli-client-id=nexodus-cli
-commonLabels:
-  app.kubernetes.io/component: auth
-  app.kubernetes.io/instance: auth
-  app.kubernetes.io/name: auth
+    name: auth-secrets
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: auth
+      app.kubernetes.io/instance: auth
+      app.kubernetes.io/name: auth

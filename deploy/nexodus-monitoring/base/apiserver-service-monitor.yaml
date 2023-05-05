@@ -2,9 +2,9 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: apiserver
+  namespace: nexodus-monitoring
   labels:
     team: nexodus
-  namespace: nexodus-monitoring
 spec:
   namespaceSelector:
     matchNames:

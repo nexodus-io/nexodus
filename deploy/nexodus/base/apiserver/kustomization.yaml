@@ -8,7 +8,7 @@ configMapGenerator:
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - NEXAPI_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
       - NEXAPI_INSECURE_TLS=1
-      - NEXAPI_TRACE_ENDPOINT_OTLP="jaeger-collector.nexodus-monitoring.svc:4317"
+      - NEXAPI_TRACE_ENDPOINT_OTLP="tempo.nexodus-monitoring.svc:4317"
       - NEXAPI_TRACE_INSECURE="1"
       - NEXAPI_FFLAG_MULTI_ORGANIZATION=false
       - NEXAPI_DB_SSLMODE=require
@@ -18,10 +18,13 @@ configMapGenerator:
       - NEXAPI_SCOPES=read:organizations,write:organizations,read:users,write:users,read:devices,write:devices
       - NEXAPI_REDIS_SERVER=redis:6379
       - NEXAPI_REDIS_DB=1
+      - NEXAPI_ENVIRONMENT=development
 resources:
   - service.yaml
   - deployment.yaml
-commonLabels:
-  app.kubernetes.io/component: apiserver
-  app.kubernetes.io/instance: apiserver
-  app.kubernetes.io/name: apiserver
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: apiserver
+      app.kubernetes.io/instance: apiserver
+      app.kubernetes.io/name: apiserver

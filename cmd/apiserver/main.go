@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/nexodus-io/nexodus/internal/signalbus"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +9,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/signalbus"
+	"github.com/nexodus-io/nexodus/internal/util"
 
 	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 
@@ -28,8 +29,10 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/urfave/cli/v2"
@@ -342,7 +345,9 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 	var err error
 	// set the log level
 	if cCtx.Bool("debug") {
-		logger, err = zap.NewDevelopment()
+		logConfig := zap.NewProductionConfig()
+		logConfig.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+		logger, err = logConfig.Build()
 	} else {
 		logger, err = zap.NewProduction()
 	}
@@ -414,8 +419,18 @@ func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func
 		return nil
 	}
 
+	deployEnvironment := os.Getenv("NEXAPI_ENVIRONMENT")
+	if deployEnvironment == "" {
+		deployEnvironment = "development"
+	}
+
 	otel.SetTracerProvider(
 		sdktrace.NewTracerProvider(
+			sdktrace.WithResource(resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceName("apiserver"),
+				semconv.DeploymentEnvironment(deployEnvironment),
+			)),
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
 			sdktrace.WithBatcher(exporter),
 			sdktrace.WithResource(resources),

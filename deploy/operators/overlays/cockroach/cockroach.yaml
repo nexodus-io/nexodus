@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: my-cockroachdb
+  namespace: operators
+spec:
+  channel: stable-v6.x
+  name: cockroachdb
+  source: operatorhubio-catalog
+  sourceNamespace: olm

@@ -4,6 +4,6 @@ resources:
   - limitador-deployment.yaml
   - limitador-service.yaml
 configMapGenerator:
-  - name: limitador-config
-    files:
+  - files:
       - files/limits.yaml
+    name: limitador-config

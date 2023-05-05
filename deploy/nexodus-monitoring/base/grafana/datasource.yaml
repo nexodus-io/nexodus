@@ -1,0 +1,34 @@
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDataSource
+metadata:
+  name: nexodus-grafanadatasource
+spec:
+  name: middleware.yaml
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus-operated:9090
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        tlsSkipVerify: true
+        timeInterval: "5s"
+    - name: Tempo
+      type: tempo
+      access: proxy
+      url: http://tempo:3200
+      isDefault: false
+      version: 1
+      editable: false
+      jsonData:
+        tracesToLogs:
+          datasourceUid: 'Loki'
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki:3100/
+      isDefault: false
+      version: 1
+      editable: false

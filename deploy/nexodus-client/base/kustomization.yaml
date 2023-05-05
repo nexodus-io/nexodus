@@ -4,7 +4,9 @@ resources:
   - namespace.yaml
   - serviceaccount.yaml
   - daemonset.yaml
-commonLabels:
-  app.kubernetes.io/component: nexodus-client
-  app.kubernetes.io/instance: nexodus-client
-  app.kubernetes.io/name: nexodus-client
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: nexodus-client
+      app.kubernetes.io/instance: nexodus-client
+      app.kubernetes.io/name: nexodus-client

@@ -13,6 +13,8 @@ You should first ensure that you have `kind`, `kubectl` and [`mkcert`](https://g
 
 If not, you can follow the instructions in the [KIND Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
+Once you have `kind` installed, you should also follow the instructions [here](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files) to prevent errors due to "too many open files".
+
 ```console
 make run-on-kind
 ```

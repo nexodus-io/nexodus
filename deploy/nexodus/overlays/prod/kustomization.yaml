@@ -5,31 +5,35 @@ resources:
   - issuer.yaml
   - sealed-secret.yaml
   - serviceaccount.yaml
+components:
+  - ../../components/promtail
+  - ../../components/limitador
 namespace: nexodus
 configMapGenerator:
   - behavior: replace
-    name: auth-config
     literals:
       - hostname=auth.try.nexodus.io
       - frontend-url=https://try.nexodus.io
+    name: auth-config
   - behavior: replace
-    name: realm
     files:
       - files/nexodus.json
+    name: realm
   - behavior: merge
-    name: apiproxy
     literals:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
       - APIPROXY_API_DOMAIN=api.try.nexodus.io
       - APIPROXY_WEB_DOMAIN=try.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://try.nexodus.io
+    name: apiproxy
   - behavior: merge
-    name: apiserver
     literals:
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.try.nexodus.io
       - NEXAPI_REDIRECT_URL=https://try.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://try.nexodus.io
+      - NEXAPI_ENVIRONMENT=production
+    name: apiserver
 
 patches:
   - patch: |-
@@ -93,3 +97,10 @@ patches:
     target:
       kind: Ingress
       name: frontend
+  - target:
+      kind: Deployment
+      name: promtail
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 7
