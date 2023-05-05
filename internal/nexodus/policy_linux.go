@@ -3,11 +3,11 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"os/exec"
 	"strings"
 
-	"github.com/nexodus-io/nexodus/internal/models"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -42,14 +42,8 @@ var (
 func (ax *Nexodus) processSecurityGroupRules() error {
 	ruleInterface = fmt.Sprintf("iifname %s", wgIface)
 
-	var inboundRules, outboundRules []models.SecurityRuleJson
-	if err := json.Unmarshal([]byte(ax.securityGroup.InboundRules), &inboundRules); err != nil {
-		return fmt.Errorf("nftables setup error, failed to unmarshal inbound rules: %w", err)
-	}
-
-	if err := json.Unmarshal([]byte(ax.securityGroup.OutboundRules), &outboundRules); err != nil {
-		return fmt.Errorf("nftables setup error, failed to unmarshal outbound rules: %w", err)
-	}
+	inboundRules := ax.securityGroup.InboundRules
+	outboundRules := ax.securityGroup.OutboundRules
 
 	// Enable rule debugging to print rules via debug logging as they are processed
 	if ax.logger.Level().Enabled(zapcore.DebugLevel) {
@@ -145,14 +139,14 @@ func (ax *Nexodus) processSecurityGroupRules() error {
 	}
 
 	// append a default drop that appears implicit to the user only if there are any rules in the egress chain
-	if ax.securityGroup.InboundRules != "null" && ax.securityGroup.InboundRules != "[]" {
+	if ax.securityGroup.InboundRules != nil && len(ax.securityGroup.InboundRules) != 0 {
 		if err := ax.nfIngressRuleDrop(); err != nil {
 			return fmt.Errorf("nftables setup error, failed to add ingress drop rule: %w", err)
 		}
 	}
 
 	// append a drop that appears implicit to the user only if there are any user defined rules in the egress chain
-	if ax.securityGroup.OutboundRules != "null" && ax.securityGroup.OutboundRules != "[]" {
+	if ax.securityGroup.OutboundRules != nil && len(ax.securityGroup.OutboundRules) != 0 {
 		if err := ax.nfEgressRuleDrop(); err != nil {
 			return fmt.Errorf("nftables setup error, failed to add egress drop rule: %w", err)
 		}
@@ -165,7 +159,7 @@ func (ax *Nexodus) processSecurityGroupRules() error {
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 ip protocol icmp ip saddr 100.100.0.0/20 counter accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 100.100.0.1-100.100.0.100 iifname wg0 accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 8.8.8.8 udp dport 53 iifname "wg0" accept
-func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule models.SecurityRuleJson) error {
+func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
@@ -254,7 +248,7 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule models.SecurityRul
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889  iifname "wg0" accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889 udp dport 53 iifname "wg0" accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 ip6 nexthdr ipv6-icmp ip6 saddr 200::/64 counter accept
-func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule models.SecurityRuleJson) error {
+func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
@@ -341,7 +335,7 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule models.SecurityRul
 // nfPermitProtoPort creates a nftables rule that permits the specified rule. Example Rules handled by this method:
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 iifname "wg0" tcp dport 1-80 counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 iifname "wg0" tcp dport 1-80 counter accept
-func (ax *Nexodus) nfPermitProtoPort(chain string, rule models.SecurityRuleJson) error {
+func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption string
 	var nft []string
 	dportOption = ax.nftPortOption(rule)
@@ -393,7 +387,7 @@ func (ax *Nexodus) nfPermitProtoPort(chain string, rule models.SecurityRuleJson)
 // nft insert rule inet nexodus nexodus-outbound meta nfproto ipv6  iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 tcp dport 0-65535 iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 tcp dport 0-65535  iifname "wg0" counter accept
-func (ax *Nexodus) nfPermitProtoAny(chain string, rule models.SecurityRuleJson) error {
+func (ax *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule) error {
 	var nft []string
 	switch rule.IpProtocol {
 	case protoIPv4, protoIPv6:
@@ -448,7 +442,7 @@ func (ax *Nexodus) nfPermitProtoAny(chain string, rule models.SecurityRuleJson) 
 }
 
 // nftPortOption returns the nftables port option for the specified rule.
-func (ax *Nexodus) nftPortOption(rule models.SecurityRuleJson) string {
+func (ax *Nexodus) nftPortOption(rule public.ModelsSecurityRule) string {
 	var portOption string
 	var portRange string
 
@@ -618,7 +612,7 @@ func runNftCmd(logger *zap.SugaredLogger, cmd []string) (string, error) {
 	return string(output), nil
 }
 
-func debugSecurityGroupRules(logger *zap.SugaredLogger, inboundRules, outboundRules []models.SecurityRuleJson) error {
+func debugSecurityGroupRules(logger *zap.SugaredLogger, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 	inJson, err := json.MarshalIndent(inboundRules, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to print debug json inbound rules: %w", err)

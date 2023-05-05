@@ -9,24 +9,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/nexodus-io/nexodus/internal/models"
 )
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(c *client.APIClient, encodeOut, name, description, organizationID string, inboundRules, outboundRules []models.SecurityRuleJson) error {
+func createSecurityGroup(c *client.APIClient, encodeOut, name, description, organizationID string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 	orgID, err := uuid.Parse(organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
-
-	inboundRulesJSON, err := json.Marshal(inboundRules)
-	if err != nil {
-		return fmt.Errorf("failed to marshal inbound rules: %w", err)
-	}
-
-	outboundRulesJSON, err := json.Marshal(outboundRules)
-	if err != nil {
-		return fmt.Errorf("failed to marshal outbound rules: %w", err)
 	}
 
 	err = checkICMPRules(inboundRules, outboundRules)
@@ -38,8 +27,8 @@ func createSecurityGroup(c *client.APIClient, encodeOut, name, description, orga
 		GroupName:        name,
 		GroupDescription: description,
 		OrgId:            orgID.String(),
-		InboundRules:     string(inboundRulesJSON),
-		OutboundRules:    string(outboundRulesJSON),
+		InboundRules:     inboundRules,
+		OutboundRules:    outboundRules,
 	}).Execute()
 	if err != nil {
 		return fmt.Errorf("create security group failed: %w", err)
@@ -59,20 +48,10 @@ func createSecurityGroup(c *client.APIClient, encodeOut, name, description, orga
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizationID, name, description string, inboundRules, outboundRules []models.SecurityRuleJson) error {
+func updateSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizationID, name, description string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 	orgID, err := uuid.Parse(organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
-
-	inboundRulesJSON, err := json.Marshal(inboundRules)
-	if err != nil {
-		return fmt.Errorf("failed to marshal inbound rules: %w", err)
-	}
-
-	outboundRulesJSON, err := json.Marshal(outboundRules)
-	if err != nil {
-		return fmt.Errorf("failed to marshal outbound rules: %w", err)
 	}
 
 	err = checkICMPRules(inboundRules, outboundRules)
@@ -83,8 +62,8 @@ func updateSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 	res, _, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), orgID.String(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
 		GroupName:        name,
 		GroupDescription: description,
-		InboundRules:     string(inboundRulesJSON),
-		OutboundRules:    string(outboundRulesJSON),
+		InboundRules:     inboundRules,
+		OutboundRules:    outboundRules,
 	}).Execute()
 	if err != nil {
 		return fmt.Errorf("update security group failed: %w", err)
@@ -122,14 +101,8 @@ func listSecurityGroups(c *client.APIClient, encodeOut string, organizationID st
 		}
 
 		for _, sg := range securityGroups {
-			inboundRules, err := unmarshalSecurityRules(sg.InboundRules)
-			if err != nil {
-				return fmt.Errorf("failed to parse security group rules: %w", err)
-			}
-			outboundRules, err := unmarshalSecurityRules(sg.OutboundRules)
-			if err != nil {
-				return fmt.Errorf("failed to parse security group rules: %w", err)
-			}
+			inboundRules := sg.InboundRules
+			outboundRules := sg.OutboundRules
 			fmt.Fprintf(w, fs, sg.Id, sg.GroupName, sg.GroupDescription, sg.OrgId, inboundRules, outboundRules)
 		}
 
@@ -170,17 +143,8 @@ func deleteSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 	return nil
 }
 
-func unmarshalSecurityRules(jsonStr string) ([]models.SecurityRuleJson, error) {
-	var rules []models.SecurityRuleJson
-	err := json.Unmarshal([]byte(jsonStr), &rules)
-	if err != nil {
-		return nil, err
-	}
-	return rules, nil
-}
-
-func jsonStringToSecurityRules(jsonString string) ([]models.SecurityRuleJson, error) {
-	var rules []models.SecurityRuleJson
+func jsonStringToSecurityRules(jsonString string) ([]public.ModelsSecurityRule, error) {
+	var rules []public.ModelsSecurityRule
 	err := json.Unmarshal([]byte(jsonString), &rules)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal security rules: %w", err)
@@ -189,7 +153,7 @@ func jsonStringToSecurityRules(jsonString string) ([]models.SecurityRuleJson, er
 }
 
 // checkICMPRules prevents the user from defining ICMP rules with ports set to anything but 0.
-func checkICMPRules(inboundRules []models.SecurityRuleJson, outboundRules []models.SecurityRuleJson) error {
+func checkICMPRules(inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule) error {
 	for _, rule := range inboundRules {
 		err := checkICMPRule(rule)
 		if err != nil {
@@ -206,7 +170,7 @@ func checkICMPRules(inboundRules []models.SecurityRuleJson, outboundRules []mode
 }
 
 // checkICMPRule checks an ICMP rules with ports set to anything but 0.
-func checkICMPRule(rule models.SecurityRuleJson) error {
+func checkICMPRule(rule public.ModelsSecurityRule) error {
 	if rule.IpProtocol == "icmp" && (rule.FromPort != 0 || rule.ToPort != 0) {
 		return fmt.Errorf("error: ICMP rule should have FromPort and ToPort set to 0 or left undefined")
 	}

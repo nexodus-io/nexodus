@@ -50,15 +50,15 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 			GroupName:        "security-group-a",
 			GroupDescription: "Description for group A",
 			OrganizationId:   orgId,
-			InboundRules:     `[{"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["10.0.0.0/8"], "prefix": ["2001:db8::/32"]}]`,
-			OutboundRules:    `[{"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["0.0.0.0/0"], "prefix": ["::/0"]}]`,
+			InboundRules:     toSecurityRules(`[{"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["10.0.0.0/8"], "prefix": ["2001:db8::/32"]}]`),
+			OutboundRules:    toSecurityRules(`[{"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["0.0.0.0/0"], "prefix": ["::/0"]}]`),
 		},
 		{
 			GroupName:        "security-group-b",
 			GroupDescription: "Description for group B",
 			OrganizationId:   orgId,
-			InboundRules:     `[{"ip_protocol": "tcp", "from_port": 443, "to_port": 443, "ip_ranges": ["10.0.0.0/8"], "prefix": ["2001:db8::/32"]}]`,
-			OutboundRules:    `[{"ip_protocol": "tcp", "from_port": 443, "to_port": 443, "ip_ranges": ["0.0.0.0/0"], "prefix": ["::/0"]}]`,
+			InboundRules:     toSecurityRules(`[{"ip_protocol": "tcp", "from_port": 443, "to_port": 443, "ip_ranges": ["10.0.0.0/8"], "prefix": ["2001:db8::/32"]}]`),
+			OutboundRules:    toSecurityRules(`[{"ip_protocol": "tcp", "from_port": 443, "to_port": 443, "ip_ranges": ["0.0.0.0/0"], "prefix": ["::/0"]}]`),
 		},
 	}
 
@@ -120,4 +120,13 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 		assert.NoError(err)
 		assert.Len(actual, 16)
 	}
+}
+
+func toSecurityRules(jsonText string) []models.SecurityRule {
+	rules := []models.SecurityRule{}
+	err := json.Unmarshal([]byte(jsonText), &rules)
+	if err != nil {
+		panic(err)
+	}
+	return rules
 }

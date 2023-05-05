@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -248,11 +247,11 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 			securityGroup.GroupDescription = request.GroupDescription
 		}
 
-		if request.InboundRules != "" {
+		if request.InboundRules != nil {
 			securityGroup.InboundRules = request.InboundRules
 		}
 
-		if request.OutboundRules != "" {
+		if request.OutboundRules != nil {
 			securityGroup.OutboundRules = request.OutboundRules
 		}
 
@@ -286,26 +285,16 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string) (m
 		return models.SecurityGroup{}, err
 	}
 
-	var inboundRules []models.SecurityRuleJson
-	var outboundRules []models.SecurityRuleJson
-
-	inboundRulesJSON, err := json.Marshal(inboundRules)
-	if err != nil {
-		return models.SecurityGroup{}, fmt.Errorf("error marshalling inbound rules: %w", err)
-	}
-
-	outboundRulesJSON, err := json.Marshal(outboundRules)
-	if err != nil {
-		return models.SecurityGroup{}, fmt.Errorf("error marshalling outbound rules: %w", err)
-	}
+	var inboundRules []models.SecurityRule
+	var outboundRules []models.SecurityRule
 
 	// Create the default security group
 	sg := models.SecurityGroup{
 		GroupName:        "default",
 		OrganizationId:   orgIdUUID,
 		GroupDescription: "default organization security group",
-		InboundRules:     string(inboundRulesJSON),
-		OutboundRules:    string(outboundRulesJSON),
+		InboundRules:     inboundRules,
+		OutboundRules:    outboundRules,
 	}
 	res := api.db.WithContext(ctx).Create(&sg)
 	if res.Error != nil {

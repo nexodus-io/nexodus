@@ -82,11 +82,15 @@ definitions:
         example: group_name
         type: string
       inbound_rules:
-        type: string
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
       org_id:
         type: string
       outbound_rules:
-        type: string
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
     type: object
   models.BaseError:
     properties:
@@ -245,11 +249,28 @@ definitions:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
       inbound_rules:
-        type: string
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
       org_id:
         type: string
       outbound_rules:
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
+    type: object
+  models.SecurityRule:
+    properties:
+      from_port:
+        type: integer
+      ip_protocol:
         type: string
+      ip_ranges:
+        items:
+          type: string
+        type: array
+      to_port:
+        type: integer
     type: object
   models.UpdateDevice:
     properties:
@@ -284,9 +305,13 @@ definitions:
       group_name:
         type: string
       inbound_rules:
-        type: string
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
       outbound_rules:
-        type: string
+        items:
+          $ref: '#/definitions/models.SecurityRule'
+        type: array
     type: object
   models.User:
     properties:

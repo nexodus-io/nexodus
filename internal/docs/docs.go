@@ -1766,13 +1766,19 @@ const docTemplate = `{
                     "example": "group_name"
                 },
                 "inbound_rules": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
                 },
                 "org_id": {
                     "type": "string"
                 },
                 "outbound_rules": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
                 }
             }
         },
@@ -2007,13 +2013,39 @@ const docTemplate = `{
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
                 "inbound_rules": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
                 },
                 "org_id": {
                     "type": "string"
                 },
                 "outbound_rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
+                }
+            }
+        },
+        "models.SecurityRule": {
+            "type": "object",
+            "properties": {
+                "from_port": {
+                    "type": "integer"
+                },
+                "ip_protocol": {
                     "type": "string"
+                },
+                "ip_ranges": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "to_port": {
+                    "type": "integer"
                 }
             }
         },
@@ -2065,10 +2097,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "inbound_rules": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
                 },
                 "outbound_rules": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SecurityRule"
+                    }
                 }
             }
         },

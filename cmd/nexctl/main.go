@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 	"os"
 	"sort"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/urfave/cli/v2"
 )
 
@@ -315,13 +315,13 @@ func main() {
 							inboundRulesStr := cCtx.String("inbound-rules")
 							outboundRulesStr := cCtx.String("outbound-rules")
 
-							var inboundRules, outboundRules []models.SecurityRuleJson
+							var inboundRules, outboundRules []public.ModelsSecurityRule
 							if inboundRulesStr != "" {
 								rules, err := jsonStringToSecurityRules(inboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 								}
-								inboundRules = make([]models.SecurityRuleJson, len(rules))
+								inboundRules = make([]public.ModelsSecurityRule, len(rules))
 								copy(inboundRules, rules)
 							}
 
@@ -330,7 +330,7 @@ func main() {
 								if err != nil {
 									return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 								}
-								outboundRules = make([]models.SecurityRuleJson, len(rules))
+								outboundRules = make([]public.ModelsSecurityRule, len(rules))
 								copy(outboundRules, rules)
 							}
 
@@ -376,13 +376,13 @@ func main() {
 							inboundRulesStr := cCtx.String("inbound-rules")
 							outboundRulesStr := cCtx.String("outbound-rules")
 
-							var inboundRules, outboundRules []models.SecurityRuleJson
+							var inboundRules, outboundRules []public.ModelsSecurityRule
 							if inboundRulesStr != "" {
 								rules, err := jsonStringToSecurityRules(inboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 								}
-								inboundRules = make([]models.SecurityRuleJson, len(rules))
+								inboundRules = make([]public.ModelsSecurityRule, len(rules))
 								copy(inboundRules, rules) // Use copy() instead of the loop
 							}
 
@@ -391,7 +391,7 @@ func main() {
 								if err != nil {
 									return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 								}
-								outboundRules = make([]models.SecurityRuleJson, len(rules))
+								outboundRules = make([]public.ModelsSecurityRule, len(rules))
 								copy(outboundRules, rules) // Use copy() instead of the loop
 							}
 
