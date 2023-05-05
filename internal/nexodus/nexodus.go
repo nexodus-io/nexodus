@@ -53,11 +53,6 @@ const (
 )
 
 const (
-	stunServer1 = "stun1.l.google.com:19302"
-	stunServer2 = "stun2.l.google.com:19302"
-)
-
-const (
 	// retry interval for api server retries
 	retryInterval = 15 * time.Second
 	// max retries for api server retries
@@ -379,6 +374,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
+	stunServer1 := NextStunServer()
 	if !ax.symmetricNat && ax.stun && localIP == "" {
 		ipPort, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
@@ -544,6 +540,7 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
 	ax.logger.Debug("sending stun request")
+	stunServer1 := NextStunServer()
 	reflexiveIP, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return fmt.Errorf("stun request error: %w", err)
@@ -659,6 +656,8 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 func (ax *Nexodus) symmetricNatDisco() error {
 
 	// discover the server reflexive address per ICE RFC8445
+	stunServer1 := NextStunServer()
+	stunServer2 := NextStunServer()
 	stunAddr, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return err
