@@ -24,3 +24,7 @@ if [ -z "$(which kustomize)" ] || [ "$1" = "--force" ]; then
   echo installing kustomize
   go install sigs.k8s.io/kustomize/kustomize/v5@latest
 fi
+if [ -z "$(which go-licenses)" ] || [ "$1" = "--force" ]; then
+  echo installing go-licenses
+  go install github.com/google/go-licenses@latest
+fi
