@@ -662,6 +662,8 @@ srpm: dist/rpm manpages ## Build a source RPM
 	mv vendor dist/rpm/nexodus-${NEXODUS_RELEASE}/.
 	mkdir -p dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man
 	cp -r contrib/man/* dist/rpm/nexodus-${NEXODUS_RELEASE}/contrib/man/.
+	NEXODUS_BUILD_PROFILE=prod $(MAKE) ldflags.txt
+	mv ldflags.txt dist/rpm/nexodus-${NEXODUS_RELEASE}/.
 	cd dist/rpm && tar czf nexodus-${NEXODUS_RELEASE}.tar.gz nexodus-${NEXODUS_RELEASE} && rm -rf nexodus-${NEXODUS_RELEASE}
 	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
@@ -681,6 +683,9 @@ rpm: srpm ## Build an RPM
 .PHONY: version
 version: ## Print the version string
 	$(CMD_PREFIX) echo "${NEXODUS_VERSION}-${NEXODUS_RELEASE}"
+
+ldflags.txt:
+	@echo "$(NEXODUS_LDFLAGS) " > ldflags.txt
 
 ##@ Documentation
 

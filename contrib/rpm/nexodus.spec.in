@@ -44,6 +44,7 @@ Source:         nexodus-##NEXODUS_COMMIT##.tar.gz
 
 BuildRequires: systemd-rpm-macros
 BuildRequires: systemd-units
+BuildRequires: make
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units
@@ -70,7 +71,7 @@ Requires(postun): systemd-units
 %endif
 
 for cmd in cmd/nexd cmd/nexctl ; do
-  %gobuild -o %{gobuilddir}/bin/$(basename $cmd) %{goipath}/$cmd
+  LDFLAGS="$(cat ldflags.txt)" %gobuild -o %{gobuilddir}/bin/$(basename $cmd) %{goipath}/$cmd
 done
 
 %install
