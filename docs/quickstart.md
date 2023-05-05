@@ -4,11 +4,12 @@ This guide will walk you through getting your first devices connected via Nexodu
 
 ## Install and Start the Nexodus Agent
 
-### Fedora
+### Fedora, CentOS Stream
 
-!!! note "Minimum Release Version"
+Supported versions:
 
-    Fedora 38 is the minimum release version supported by this copr repository.
+- Fedora 38
+- CentOS Stream 9
 
 ```sh
 # Enable the COPR repository and install the nexodus package

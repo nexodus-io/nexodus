@@ -139,6 +139,8 @@ jobs:
         include:
           - mock_root: fedora-38-x86_64
             srpm_distro: fc38
+          - mock_root: centos-stream-9-x86_64
+            srpm_distro: el9
     steps:
       - uses: actions/checkout@v3
 
