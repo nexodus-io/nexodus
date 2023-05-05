@@ -106,6 +106,7 @@ func stunMsgParse(logger *zap.SugaredLogger, msg stun.Message) stunResponse {
 	res.mappedAddr = &stun.MappedAddress{}
 	res.xorAddr = &stun.XORMappedAddress{}
 	res.otherAddr = &stun.OtherAddress{}
+	res.software = &stun.Software{}
 
 	if res.xorAddr.GetFrom(&msg) != nil {
 		res.xorAddr = nil
