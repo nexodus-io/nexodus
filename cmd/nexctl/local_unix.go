@@ -50,6 +50,11 @@ func init() {
 				},
 			},
 			{
+				Name:   "connections",
+				Usage:  "Run a test of the nexd peer connectivity (host firewalls may block the ICMP probes)",
+				Action: cmdConnStatus,
+			},
+			{
 				Name:  "get",
 				Usage: "Get a value from the local nexd instance",
 				Subcommands: []*cli.Command{
