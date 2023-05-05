@@ -154,7 +154,7 @@ jobs:
 
       - name: Build srpm
         run: |
-          MOCK_ROOT="${{ matrix.mock_root }}" make srpm
+          MOCK_ROOT="${{ matrix.mock_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make srpm
           find dist
 
       - name: Submit srpm to copr
