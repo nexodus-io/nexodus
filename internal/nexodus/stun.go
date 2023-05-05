@@ -22,7 +22,9 @@ func init() {
 		stunServers[i] = strings.TrimSpace(stunServers[i])
 	}
 	// #nosec G404
-	currentStunServer = rand.Intn(len(stunServers))
+	rand.Shuffle(len(stunServers), func(i, j int) {
+		stunServers[i], stunServers[j] = stunServers[j], stunServers[i]
+	})
 }
 
 func NextStunServer() string {
