@@ -25,10 +25,6 @@ Once your Nexodus Service is set up, please get the CA certification from Nexodu
 kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"'
 ```
 
-## Deploying the Nexodus Relay Node
-
-Please follow the instructions provided in the [README Nexodus Relay Section](../../deployment/nexodus-service.md#deploying-the-nexodus-relay) to setup a relay node, create a relay enabled zone, move the user to newly created zone and OnBoarding the Relay Node. Once the Relay node is OnBoarded successfully, its time to OnBoard all the nodes that want to be part of the Nexodus Network.
-
 ## Deploying Nexodus Agent on Clusters Nodes
 
 Please follow the [README Section](../../deployment/nexodus-service.md#deploying-on-kubernetes-managed-node) to deploy the Nexodus agent. It mainly requires two steps
