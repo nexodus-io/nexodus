@@ -63,8 +63,8 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	return nil
 }
 
-// relayPrep prepare a node to be a relay, enable ip forwarding if not already done so and nftable rules for v4/v6
-func (ax *Nexodus) relayPrep() error {
+// enableForwardingIP prepare a node to be a relay, enable ip forwarding if not already done so and nftable rules for v4/v6
+func (ax *Nexodus) enableForwardingIP() error {
 	ipv4FwdEnabled, err := isIPForwardingEnabled(fwdFilePathV4)
 	if err != nil {
 		return err
@@ -89,10 +89,6 @@ func (ax *Nexodus) relayPrep() error {
 
 	if !IsCommandAvailable(nftablesBinary) {
 		return fmt.Errorf("required relay command %s not found, verify %s is installed", nftablesBinary, nftablesBinary)
-	}
-
-	if err := setupNftables(wgIface); err != nil {
-		return err
 	}
 
 	return nil
@@ -133,8 +129,8 @@ func isIPForwardingEnabled(ipForwardFilePath string) (bool, error) {
 	return false, nil
 }
 
-// setupNftables adds v4/v6 nftables rules for the relay node
-func setupNftables(dev string) error {
+// nfRelayTablesSetup adds v4/v6 nftables rules for the relay node
+func nfRelayTablesSetup(dev string) error {
 	nftV4 := []string{
 		"add table ip filter",
 		"add chain ip filter FORWARD { type filter hook forward priority 0; }",

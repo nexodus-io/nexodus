@@ -14,7 +14,7 @@ import (
 
 const (
 	// Nftables keywords
-	tableName    = "nexodus"
+	sgTableName  = "nexodus"
 	tableFamily  = "inet"
 	ingressChain = "nexodus-inbound"
 	egressChain  = "nexodus-outbound"
@@ -32,6 +32,16 @@ const (
 	protoICMPv6 = "icmpv6"
 	protoTCP    = "tcp"
 	protoUDP    = "udp"
+	// Network router keywords
+	rtrTableName     = "nexodus-net-router"
+	chainPrerouting  = "prerouting"
+	chainPostrouting = "postrouting"
+	chainForward     = "forward"
+	chainTypeNAT     = "nat"
+	chainTypeFilter  = "filter"
+	priorityDstNAT   = "dstnat"
+	prioritySrcNAT   = "srcnat"
+	priorityFilter   = "filter"
 )
 
 var (
@@ -44,7 +54,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	// Delete the table if the security group is empty and attempt to drop a table if one exists
 	if nx.securityGroup == nil {
 		// Drop the existing table and return nil if a group was not found to drop
-		_ = nx.nfTableDrop()
+		_ = nx.nfTableDrop(sgTableName)
 		return nil
 	}
 
@@ -62,12 +72,12 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	}
 
 	// Drop the existing table
-	if err := nx.nfTableDrop(); err != nil {
+	if err := nx.nfTableDrop(sgTableName); err != nil {
 		return fmt.Errorf("nftables setup error, failed to flush nftables: %w", err)
 	}
 
 	// Create the nftables table
-	if err := nx.nfCreateTable(); err != nil {
+	if err := nx.nfCreateTable(sgTableName); err != nil {
 		return fmt.Errorf("nftables setup error, failed to create nftables inet table: %w", err)
 	}
 
@@ -141,7 +151,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	// connections. The state keyword is used to match traffic based on its connection state, in this case as
 	// established. The established state refers to traffic that is part of an existing connection that has
 	// already been established, and where both endpoints have exchanged packets.
-	nft := []string{"insert", "rule", tableFamily, tableName, ingressChain, "ct", "state", "established,related", ruleInterface, "counter", "accept"}
+	nft := []string{"insert", "rule", tableFamily, sgTableName, ingressChain, "ct", "state", "established,related", ruleInterface, "counter", "accept"}
 	if _, err := runNftCmd(nx.logger, nft); err != nil {
 		return err
 	}
@@ -167,11 +177,11 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 ip protocol icmp ip saddr 100.100.0.0/20 counter accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 100.100.0.1-100.100.0.100 iifname wg0 accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 8.8.8.8 udp dport 53 iifname "wg0" accept
-func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
-	dportOption = ax.nftPortOption(rule)
+	dportOption = nx.nftPortOption(rule)
 
 	if chain == ingressChain {
 		srcOrDst = srcAddr
@@ -186,8 +196,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
 				// v4 permits for L3 src or dst
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, ruleInterface, counter, actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, ruleInterface, counter, actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -197,8 +207,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		if rule.FromPort == 0 && rule.ToPort == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -207,8 +217,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		if rule.FromPort != 0 && rule.ToPort != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, dportOption, ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, dportOption, ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -218,8 +228,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		if rule.FromPort == 0 && rule.ToPort == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -228,8 +238,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		if rule.FromPort != 0 && rule.ToPort != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -238,13 +248,13 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		// icmpv4 permits to L3 src or dst
 		for _, ipRange := range rule.IpRanges {
 			srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-			nft = []string{"insert", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, "ip", "protocol", protoICMP, srcOrDstOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, "ip", "protocol", protoICMP, srcOrDstOption, ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 	default:
-		ax.logger.Debugf("no match for permit proto dport rule: %v", rule)
+		nx.logger.Debugf("no match for permit proto dport rule: %v", rule)
 		return nil
 	}
 
@@ -256,11 +266,11 @@ func (ax *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889  iifname "wg0" accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889 udp dport 53 iifname "wg0" accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 ip6 nexthdr ipv6-icmp ip6 saddr 200::/64 counter accept
-func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
-	dportOption = ax.nftPortOption(rule)
+	dportOption = nx.nftPortOption(rule)
 
 	if chain == ingressChain {
 		srcOrDst = srcAddr
@@ -275,8 +285,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		if rule.FromPort == 0 && rule.ToPort == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, ruleInterface, counter, actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, ruleInterface, counter, actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -286,8 +296,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		if rule.FromPort == 0 && rule.ToPort == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -296,8 +306,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		if rule.FromPort != 0 && rule.ToPort != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -307,8 +317,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		if rule.FromPort == 0 && rule.ToPort == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -317,8 +327,8 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		if rule.FromPort != 0 && rule.ToPort != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, protoUDP, dportOption, ruleInterface, "counter", actionAccept}
-				if _, err := runNftCmd(ax.logger, nft); err != nil {
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, protoUDP, dportOption, ruleInterface, "counter", actionAccept}
+				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
 				}
 			}
@@ -327,13 +337,13 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		// icmpv4 permits to L3 src or dst
 		for _, ipRange := range rule.IpRanges {
 			srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-			nft = []string{"insert", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, "ip6", "nexthdr", "ipv6-icmp", srcOrDstIpAddrOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, "ip6", "nexthdr", "ipv6-icmp", srcOrDstIpAddrOption, ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 	default:
-		ax.logger.Debugf("no match for permit proto dport rule: %v", rule)
+		nx.logger.Debugf("no match for permit proto dport rule: %v", rule)
 		return nil
 	}
 
@@ -343,10 +353,10 @@ func (ax *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 // nfPermitProtoPort creates a nftables rule that permits the specified rule. Example Rules handled by this method:
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 iifname "wg0" tcp dport 1-80 counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 iifname "wg0" tcp dport 1-80 counter accept
-func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRule) error {
 	var dportOption string
 	var nft []string
-	dportOption = ax.nftPortOption(rule)
+	dportOption = nx.nftPortOption(rule)
 	switch rule.IpProtocol {
 	case protoIPv4, protoIPv6:
 		// if the specified proto is ipv4 or ipv6, add rules for both tcp and udp to the chain with the specified dport
@@ -354,21 +364,21 @@ func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 			return nil
 		}
 		// tcp permits for ports to the specified dport for v4/v6
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoTCP, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, protoTCP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
 		// udp permits for ports to the specified dport for v4/v6
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoUDP, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, protoUDP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 
 		}
@@ -377,16 +387,16 @@ func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 		if dportOption == "" {
 			return nil
 		}
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
 	default:
-		ax.logger.Debugf("no match for permit proto dport rule: %v", rule)
+		nx.logger.Debugf("no match for permit proto dport rule: %v", rule)
 		return nil
 	}
 
@@ -398,21 +408,21 @@ func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 // nft insert rule inet nexodus nexodus-outbound meta nfproto ipv6  iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 tcp dport 0-65535 iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 tcp dport 0-65535  iifname "wg0" counter accept
-func (ax *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule) error {
 	var nft []string
 	switch rule.IpProtocol {
 	case protoIPv4, protoIPv6:
 		// permit ipv6 any
 		if rule.IpProtocol == protoIPv4 {
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 		// permit ipv4 any
 		if rule.IpProtocol == protoIPv6 {
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
@@ -420,32 +430,32 @@ func (ax *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 	case "icmp", protoICMPv4, protoICMPv6:
 		// permit icmpv4 any
 		if rule.IpProtocol == protoICMPv4 || rule.IpProtocol == "icmp" {
-			nft = []string{"insert", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, "ip", "protocol", protoICMP, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, "ip", "protocol", protoICMP, ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 		// permit icmpv6 any
 		if rule.IpProtocol == protoICMPv6 {
 			// ip6 nexthdr is used instead of ip6 protocol for IPv6, because the protocol field is not directly in the IPv6 header.
-			nft = []string{"insert", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, "ip6", "nexthdr", "ipv6-icmp", ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
+			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, "ip6", "nexthdr", "ipv6-icmp", ruleInterface, counter, actionAccept}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 	case protoTCP, protoUDP:
 		// permit ip/ip6 tcp or udp any to all ports
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
 		// permit ipv6 tcp or udp any
-		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
-		if _, err := runNftCmd(ax.logger, nft); err != nil {
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
 	default:
-		ax.logger.Debugf("no match for permit proto any dport rule: %v", rule)
+		nx.logger.Debugf("no match for permit proto any dport rule: %v", rule)
 		return nil
 	}
 
@@ -453,7 +463,7 @@ func (ax *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 }
 
 // nftPortOption returns the nftables port option for the specified rule.
-func (ax *Nexodus) nftPortOption(rule public.ModelsSecurityRule) string {
+func (nx *Nexodus) nftPortOption(rule public.ModelsSecurityRule) string {
 	var portOption string
 	var portRange string
 
@@ -470,9 +480,9 @@ func (ax *Nexodus) nftPortOption(rule public.ModelsSecurityRule) string {
 }
 
 // nfIngressRuleDrop is used to append a drop rule to the ingress chain. Example rule handled by this method:
-func (ax *Nexodus) nfIngressRuleDrop() error {
-	nft := []string{"add", "rule", tableFamily, tableName, ingressChain, ruleInterface, "counter", actionDrop}
-	if _, err := runNftCmd(ax.logger, nft); err != nil {
+func (nx *Nexodus) nfIngressRuleDrop() error {
+	nft := []string{"add", "rule", tableFamily, sgTableName, ingressChain, ruleInterface, "counter", actionDrop}
+	if _, err := runNftCmd(nx.logger, nft); err != nil {
 		return err
 	}
 
@@ -480,9 +490,9 @@ func (ax *Nexodus) nfIngressRuleDrop() error {
 }
 
 // nfEgressRuleDrop is used to append a drop rule to the egress chain
-func (ax *Nexodus) nfEgressRuleDrop() error {
-	nft := []string{"add", "rule", tableFamily, tableName, egressChain, ruleInterface, "counter", actionDrop}
-	if _, err := runNftCmd(ax.logger, nft); err != nil {
+func (nx *Nexodus) nfEgressRuleDrop() error {
+	nft := []string{"add", "rule", tableFamily, sgTableName, egressChain, ruleInterface, "counter", actionDrop}
+	if _, err := runNftCmd(nx.logger, nft); err != nil {
 		return err
 	}
 
@@ -490,9 +500,9 @@ func (ax *Nexodus) nfEgressRuleDrop() error {
 }
 
 // nfTableDrop is used to delete the nftables table if it exists
-func (ax *Nexodus) nfTableDrop() error {
+func (nx *Nexodus) nfTableDrop(table string) error {
 	// First, check if the table exists
-	exists, err := ax.nfTableExists()
+	exists, err := nx.nfTableExists(table)
 	if err != nil {
 		return err
 	}
@@ -502,28 +512,38 @@ func (ax *Nexodus) nfTableDrop() error {
 	}
 
 	// If the table exists, proceed with deletion
-	nft := []string{"delete", "table", tableFamily, tableName}
-	if _, err := runNftCmd(ax.logger, nft); err != nil {
+	nft := []string{"delete", "table", tableFamily, table}
+	if _, err := runNftCmd(nx.logger, nft); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (ax *Nexodus) nfTableExists() (bool, error) {
+func (nx *Nexodus) nfTableExists(table string) (bool, error) {
 	args := []string{"list", "tables"}
-	output, err := runNftCmd(ax.logger, args)
+	output, err := runNftCmd(nx.logger, args)
 	if err != nil {
 		return false, err
 	}
 
-	tableFullName := fmt.Sprintf("%s %s", tableFamily, tableName)
-	return strings.Contains(output, tableFullName), nil
+	tableFullName := fmt.Sprintf("table %s %s", tableFamily, table)
+
+	// Split the output into lines
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		// Trim spaces and check for an exact match
+		if strings.TrimSpace(line) == tableFullName {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // nfCreateTable is used to create the nftables table
-func (ax *Nexodus) nfCreateTable() error {
-	if _, err := runNftCmd(ax.logger, []string{"add", "table", tableFamily, tableName}); err != nil {
+func (nx *Nexodus) nfCreateTable(table string) error {
+	if _, err := runNftCmd(nx.logger, []string{"add", "table", tableFamily, table}); err != nil {
 		return err
 	}
 
@@ -531,8 +551,8 @@ func (ax *Nexodus) nfCreateTable() error {
 }
 
 // nfCreateChain is used to create the nftables chain in the nf table
-func (ax *Nexodus) nfCreateChain(chainName string) error {
-	if _, err := runNftCmd(ax.logger, []string{"add", "chain", tableFamily, tableName, chainName, "{", "type", "filter", "hook", "input", "priority", "0", ";", "policy", "accept", ";", "}"}); err != nil {
+func (nx *Nexodus) nfCreateChain(chainName string) error {
+	if _, err := runNftCmd(nx.logger, []string{"add", "chain", tableFamily, sgTableName, chainName, "{", "type", "filter", "hook", "input", "priority", "0", ";", "policy", "accept", ";", "}"}); err != nil {
 		return err
 	}
 
@@ -616,9 +636,9 @@ func runNftCmd(logger *zap.SugaredLogger, cmd []string) (string, error) {
 
 	output, err := nft.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("nft command: %q failed: %w\n", strings.Join(cmd, " "), err)
+		return "", fmt.Errorf("nft command: nft %q failed: %w\n", strings.Join(cmd, " "), err)
 	}
-	logger.Debugf("nft command: %s", strings.Join(cmd, " "))
+	logger.Debugf("nft command: nft %s", strings.Join(cmd, " "))
 
 	return string(output), nil
 }
@@ -635,6 +655,65 @@ func debugSecurityGroupRules(logger *zap.SugaredLogger, inboundRules, outboundRu
 		return fmt.Errorf("failed to print debug json inbound rules: %w", err)
 	}
 	logger.Debugf("\nOutboundRules:\n %s\n", outJson)
+
+	return nil
+}
+
+// nfNetworkRouterSetup set up the v4/v6 nftables rules for a network router node
+func (nx *Nexodus) nfNetworkRouterSetup() error {
+
+	// Drop the existing table if one exists from previous runs
+	if err := nx.nfTableDrop(rtrTableName); err != nil {
+		return fmt.Errorf("nftables router setup error, failed to flush nftables: %w", err)
+	}
+
+	// Create the net router table
+	if err := nx.nfCreateTable(rtrTableName); err != nil {
+		return fmt.Errorf("nftables setup error, failed to create nftables inet table: %w", err)
+	}
+
+	// Create the prerouting nftables chain
+	if err := nx.rtrCreateChain(chainPrerouting, chainTypeNAT, priorityDstNAT); err != nil {
+		return fmt.Errorf("nftables setup error, failed to create network router nftables chain %s: %w", chainPrerouting, err)
+	}
+
+	// Create the postrouting nftables chain
+	if err := nx.rtrCreateChain(chainPostrouting, chainTypeNAT, prioritySrcNAT); err != nil {
+		return fmt.Errorf("nftables setup error, failed to create network router nftables chain %s: %w", chainTypeNAT, err)
+	}
+
+	// Create the forward nftables chain
+	if err := nx.rtrCreateChain(chainForward, chainTypeFilter, priorityFilter); err != nil {
+		return fmt.Errorf("nftables setup error, failed to create network router nftables chain %s: %w", chainTypeFilter, err)
+	}
+
+	// Create the forwarding rule with a prefix and oifname interface for each destination prefix
+	for prefix, iface := range nx.netRouterInterfaceMap {
+		nx.logger.Debugf("Adding nftables forwarding rule for prefix: %s on interface: %s", prefix, iface.Name)
+		nft := []string{"add", "rule", tableFamily, rtrTableName, chainForward, "oifname", iface.Name, "ip", destAddr, prefix, counter, "accept"}
+		if _, err := runNftCmd(nx.logger, nft); err != nil {
+			return err
+		}
+	}
+
+	// If --disable-snat was not passed, add a masquerade rule to the postrouting chain,
+	if !nx.networkRouterDisableNAT {
+		for _, iface := range nx.netRouterInterfaceMap {
+			nft := []string{"add", "rule", tableFamily, rtrTableName, chainPostrouting, "oifname", iface.Name, counter, "masquerade"}
+			if _, err := runNftCmd(nx.logger, nft); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// rtrCreateChain is used to create the nftables net-router chain in the nf table
+func (nx *Nexodus) rtrCreateChain(chainName, chainType, chainPriority string) error {
+	if _, err := runNftCmd(nx.logger, []string{"add", "chain", tableFamily, rtrTableName, chainName, "{", "type", chainType, "hook", chainName, "priority", chainPriority, ";", "}"}); err != nil {
+		return err
+	}
 
 	return nil
 }

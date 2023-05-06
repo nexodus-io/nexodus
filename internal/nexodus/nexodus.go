@@ -126,6 +126,9 @@ type Nexodus struct {
 	childPrefix              []string
 	stun                     bool
 	relay                    bool
+	networkRouter            bool
+	networkRouterDisableNAT  bool
+	netRouterInterfaceMap    map[string]*net.Interface
 	relayWgIP                string
 	wgConfig                 wgConfig
 	client                   *client.APIClient
@@ -188,6 +191,8 @@ func NewNexodus(
 	stun bool,
 	relay bool,
 	relayOnly bool,
+	networkRouterNode bool,
+	networkRouterDisableNAT bool,
 	insecureSkipTlsVerify bool,
 	version string,
 	userspaceMode bool,
@@ -213,27 +218,29 @@ func NewNexodus(
 	}
 
 	ax := &Nexodus{
-		wireguardPubKey:     wireguardPubKey,
-		wireguardPvtKey:     wireguardPvtKey,
-		listenPort:          wgListenPort,
-		requestedIP:         requestedIP,
-		userProvidedLocalIP: userProvidedLocalIP,
-		childPrefix:         childPrefix,
-		stun:                stun,
-		relay:               relay,
-		deviceCache:         make(map[string]deviceCacheEntry),
-		apiURL:              apiURL,
-		hostname:            hostname,
-		symmetricNat:        relayOnly,
-		logger:              logger,
-		logLevel:            logLevel,
-		status:              NexdStatusStarting,
-		version:             version,
-		username:            username,
-		password:            password,
-		skipTlsVerify:       insecureSkipTlsVerify,
-		stateDir:            stateDir,
-		orgId:               orgId,
+		wireguardPubKey:         wireguardPubKey,
+		wireguardPvtKey:         wireguardPvtKey,
+		listenPort:              wgListenPort,
+		requestedIP:             requestedIP,
+		userProvidedLocalIP:     userProvidedLocalIP,
+		childPrefix:             childPrefix,
+		stun:                    stun,
+		relay:                   relay,
+		networkRouter:           networkRouterNode,
+		networkRouterDisableNAT: networkRouterDisableNAT,
+		deviceCache:             make(map[string]deviceCacheEntry),
+		apiURL:                  apiURL,
+		hostname:                hostname,
+		symmetricNat:            relayOnly,
+		logger:                  logger,
+		logLevel:                logLevel,
+		status:                  NexdStatusStarting,
+		version:                 version,
+		username:                username,
+		password:                password,
+		skipTlsVerify:           insecureSkipTlsVerify,
+		stateDir:                stateDir,
+		orgId:                   orgId,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
@@ -430,6 +437,15 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.os = runtime.GOOS
 
 	ax.endpointLocalAddress = localIP
+
+	// if this device is a network router node, enable ip forwarding and set up the network router netfilter policy
+	if ax.networkRouter {
+		err := ax.setupNetworkRouterNode()
+		if err != nil {
+			return fmt.Errorf("failed to setup this device as a network router node: %w", err)
+		}
+	}
+
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	endpoints := []public.ModelsEndpoint{
 		{
@@ -463,7 +479,10 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
-		if err := ax.relayPrep(); err != nil {
+		if err := ax.enableForwardingIP(); err != nil {
+			return err
+		}
+		if err := nfRelayTablesSetup(wgIface); err != nil {
 			return err
 		}
 	}

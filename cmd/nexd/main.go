@@ -11,9 +11,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/nexodus-io/nexodus/internal/stun"
-
 	"github.com/nexodus-io/nexodus/internal/nexodus"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -134,6 +133,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.Bool("stun"),
 		relayNode,
 		cCtx.Bool("relay-only"),
+		cCtx.Bool("network-router"),
+		cCtx.Bool("disable-nat"),
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version,
 		userspaceMode,
@@ -262,6 +263,20 @@ func main() {
 							}
 							return nil
 						},
+					},
+					&cli.BoolFlag{
+						Name:     "network-router",
+						Usage:    "Make the node a network router node that will forward traffic specified by --child-prefix through the physical interface that contains the default gateway",
+						Value:    false,
+						EnvVars:  []string{"NEXD_NET_ROUTER_NODE"},
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:     "disable-nat",
+						Usage:    "disable NAT for the network router mode. This will require devices on the network to be configured with an ip route",
+						Value:    false,
+						EnvVars:  []string{"NEXD_DISABLE_NAT"},
+						Required: false,
 					},
 				},
 			},
@@ -405,6 +420,17 @@ func main() {
 				Required: false,
 				Category: nexServiceOptions,
 			},
+		},
+		Before: func(c *cli.Context) error {
+			if c.Bool("network-router") {
+				if runtime.GOOS != nexodus.Linux.String() {
+					return fmt.Errorf("network-router mode is only supported for Linux operating systems")
+				}
+				if len(c.StringSlice("child-prefix")) == 0 {
+					return fmt.Errorf("--child-prefix is required for a device to be a network-router")
+				}
+			}
+			return nil
 		},
 		Action: func(cCtx *cli.Context) error {
 			return nexdRun(cCtx, logger, logLevel, nexdModeAgent)

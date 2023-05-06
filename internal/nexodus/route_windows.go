@@ -3,6 +3,9 @@
 package nexodus
 
 import (
+	"fmt"
+	"net"
+
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 )
@@ -34,4 +37,33 @@ func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.Model
 			ax.logger.Debug(err)
 		}
 	}
+}
+
+func findInterfaceForIPRoute(ipRoute string) (*net.Interface, error) {
+	ip, _, err := net.ParseCIDR(ipRoute)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP address or CIDR")
+	}
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				if v.IP.IsGlobalUnicast() && v.Contains(ip) {
+					return &i, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no matching interface found")
 }
