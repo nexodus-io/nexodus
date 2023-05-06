@@ -125,7 +125,7 @@ func deleteSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 	if err != nil {
 		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
 	}
-	res, _, err := c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), secGroupID, orgID.String()).Execute()
+	res, _, err := c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), orgID.String(), secGroupID).Execute()
 	if err != nil {
 		return fmt.Errorf("security group delete failed: %w", err)
 	}

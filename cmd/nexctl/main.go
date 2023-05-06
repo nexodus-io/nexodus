@@ -4,13 +4,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 	"os"
 	"sort"
 	"text/tabwriter"
 
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
 )
