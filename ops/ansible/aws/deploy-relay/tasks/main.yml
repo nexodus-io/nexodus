@@ -90,9 +90,21 @@
     relay \
     {{ nexodus_url }} >> nexodus-logs.txt 2>&1 &
 
-- name: Pause for 10 seconds for the onboard to complete to scrape the logs
+- name: Pause for 30 seconds for the onboard to complete to scrape the logs
   pause:
-    seconds: 10
+    seconds: 30
+
+- name: Get IPv4 address of wg0
+  shell: "ip -4 addr show wg0 | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}'"
+  register: ipv4_address_result
+  ignore_errors: yes
+
+- name: wg dump to logs
+  become: yes
+  shell: |
+    printf "\n\n====== WG Dump from Node: {{ inventory_hostname }} wg0 Addr: {{ ipv4_address_result }} ======\n" >> /home/{{ ansible_user }}/nexodus-logs.txt
+    wg show wg0 dump >> /home/{{ ansible_user }}/nexodus-logs.txt
+  ignore_errors: yes
 
 - name: Display the nexd logs to stdout
   become: yes
