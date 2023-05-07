@@ -171,20 +171,23 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		}
 
 		if request.ChildPrefix != nil {
-			prefixAllocated := make(map[string]struct{})
-			for _, prefix := range device.ChildPrefix {
-				prefixAllocated[prefix] = struct{}{}
-			}
-			for _, prefix := range request.ChildPrefix {
-				// lookup miss of prefix means we need to release it
-				if _, ok := prefixAllocated[prefix]; ok {
-					if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
-						return err
-					}
-				} else {
-					// otherwise we need to allocate it
-					if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
-						return err
+			// check if the updated device child prefix matches the existing device prefix
+			if !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
+				prefixAllocated := make(map[string]struct{})
+				for _, prefix := range device.ChildPrefix {
+					prefixAllocated[prefix] = struct{}{}
+				}
+				for _, prefix := range request.ChildPrefix {
+					// lookup miss of prefix means we need to release it
+					if _, ok := prefixAllocated[prefix]; ok {
+						if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
+							return err
+						}
+					} else {
+						// otherwise we need to allocate it
+						if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -447,4 +450,21 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, device)
+}
+
+func childPrefixEquals(existingPrefix, newPrefix []string) bool {
+	if len(existingPrefix) != len(newPrefix) {
+		return false
+	}
+	countMap := make(map[string]int)
+	for _, value := range existingPrefix {
+		countMap[value]++
+	}
+	for _, value := range newPrefix {
+		countMap[value]--
+		if countMap[value] < 0 {
+			return false
+		}
+	}
+	return true
 }
