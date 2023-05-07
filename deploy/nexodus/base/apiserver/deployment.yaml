@@ -145,5 +145,9 @@ spec:
             limits:
               cpu: 100m
               memory: 200Mi
-
+          ports:
+            - containerPort: 8080
+              name: web
+            - containerPort: 5080
+              name: ext-authz
       restartPolicy: Always

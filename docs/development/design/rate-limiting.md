@@ -21,9 +21,8 @@ Using an Envoy proxy has the following benefits:
 * Some K8s platforms are moving to envoy as the Ingress gateway so in the future we may be able to move this functionality into the ingress gateway (avoiding a proxy hop).
 * Aligned with service mesh deployment models.
 
-The login handlers for the frontend will need to set the `AccessToken` http only Cookie.  
-API requests from devices will pass the AccessToken as a bearer token in the `Authentication` header.  
-This will allow the Envoy proxy to have easy access to the AccessToken for requests being sent to the apiserver.  
+Web based UI interactions will store the user OAuth token in a Redis backed session.  Envoy use the [External Authorization Filter](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/security/ext_authz_filter#arch-overview-ext-authz) to set `Authentication` header to `AccessToken` obtained form the OAuth login.   This will allow the Envoy proxy to have easy access to the AccessToken for all API requests being sent to the apiserver.  
+
 The JWT AccessToken will then be validated in Envoy and it's claims passed to limitador to enforce per-user rate limits.  
 Envoy can then send 429 responses for any requests that have been rate limited.  
 Since a valid AccessToken is needed, we will be able to identify the tenant generating the source of the traffic even if client trying to create multiple sessions or changing source IPs.

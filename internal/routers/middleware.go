@@ -3,9 +3,6 @@ package routers
 import (
 	"context"
 	_ "embed"
-	"github.com/go-session/redis/v3"
-	"github.com/go-session/session/v3"
-	"github.com/nexodus-io/nexodus/pkg/ginsession"
 	"io"
 	"net/http"
 	"strings"
@@ -55,18 +52,8 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			return
 		}
 
-		authz := c.Request.Header.Get("Authorization")
-		if authz == "" {
-
-			accessToken, err := c.Cookie("AccessToken")
-			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
-			authz = "Bearer " + accessToken
-		}
-
-		parts := strings.Split(authz, " ")
+		authHeader := c.Request.Header.Get("Authorization")
+		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -188,13 +175,4 @@ func getURLAsText(ctx context.Context, jwksURL string) (string, error) {
 
 	keySet := string(body)
 	return keySet, nil
-}
-
-func RedisSessionMiddleware(o APIRouterOptions) gin.HandlerFunc {
-	return ginsession.New(
-		session.SetCookieName("sid"),
-		session.SetStore(redis.NewRedisStore(&redis.Options{
-			Addr: o.RedisServer,
-			DB:   o.RedisDB,
-		})))
 }

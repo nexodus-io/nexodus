@@ -3,11 +3,12 @@ package routers
 import (
 	"context"
 	"crypto/tls"
+	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/pkg/ginsession"
+	"go.opentelemetry.io/otel/propagation"
 	"net/http"
 	"strings"
 	"time"
-
-	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
@@ -36,8 +37,7 @@ type APIRouterOptions struct {
 	BrowserFlow     *agent.OidcAgent
 	DeviceFlow      *agent.OidcAgent
 	Store           storage.Store
-	RedisServer     string
-	RedisDB         int
+	SessionStore    session.ManagerStore
 }
 
 func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) {
@@ -60,11 +60,9 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	web := r.Group("/web", loggerMiddleware)
 	{
 		web.Use(o.BrowserFlow.OriginVerifier())
-		if o.RedisServer == "" {
-			web.Use(o.BrowserFlow.CookieSessionMiddleware())
-		} else {
-			web.Use(RedisSessionMiddleware(o))
-		}
+		web.Use(ginsession.New(
+			session.SetCookieName(handlers.SESSION_ID_COOKIE_NAME),
+			session.SetStore(o.SessionStore)))
 		web.POST("/login/start", o.BrowserFlow.LoginStart)
 		web.POST("/login/end", o.BrowserFlow.LoginEnd)
 		web.GET("/user_info", o.BrowserFlow.UserInfo)

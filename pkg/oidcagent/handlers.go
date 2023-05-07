@@ -213,13 +213,6 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 		logger.With("session_id", session.SessionID()).Debug("user is logged in")
-
-		expiresIn := 0
-		if !oauth2Token.Expiry.IsZero() {
-			expiresIn = int(time.Until(oauth2Token.Expiry).Seconds())
-		}
-		c.SetCookie("AccessToken", oauth2Token.AccessToken, expiresIn, "/", "", true, true)
-
 		loggedIn = true
 	} else {
 		logger.Debug("checking if user is logged in")
@@ -252,7 +245,7 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, err := jsonStringToToken(tokenRaw.(string))
+	token, err := JsonStringToToken(tokenRaw.(string))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -340,7 +333,7 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, err := jsonStringToToken(tokenRaw.(string))
+	token, err := JsonStringToToken(tokenRaw.(string))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -362,13 +355,6 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	expiresIn := 0
-	if !token.Expiry.IsZero() {
-		expiresIn = int(time.Until(token.Expiry).Seconds())
-	}
-	c.SetCookie("AccessToken", token.AccessToken, expiresIn, "/", "", true, true)
-
 	c.Status(http.StatusNoContent)
 }
 
@@ -415,7 +401,7 @@ func (o *OidcAgent) CodeFlowProxy(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	token, err := jsonStringToToken(tokenRaw.(string))
+	token, err := JsonStringToToken(tokenRaw.(string))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -482,7 +468,7 @@ func tokenToJSONString(t *oauth2.Token) (string, error) {
 	return string(b), nil
 }
 
-func jsonStringToToken(s string) (*oauth2.Token, error) {
+func JsonStringToToken(s string) (*oauth2.Token, error) {
 	var t oauth2.Token
 	if err := json.Unmarshal([]byte(s), &t); err != nil {
 		return nil, err

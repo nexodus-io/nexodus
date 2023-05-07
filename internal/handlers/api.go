@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/redis/go-redis/v9"
 
@@ -26,19 +27,31 @@ func init() {
 }
 
 type API struct {
-	logger        *zap.SugaredLogger
-	db            *gorm.DB
-	ipam          ipam.IPAM
-	defaultZoneID uuid.UUID
-	fflags        *fflags.FFlags
-	transaction   database.TransactionFunc
-	dialect       database.Dialect
-	store         storage.Store
-	signalBus     signalbus.SignalBus
-	redis         *redis.Client
+	logger         *zap.SugaredLogger
+	db             *gorm.DB
+	ipam           ipam.IPAM
+	defaultZoneID  uuid.UUID
+	fflags         *fflags.FFlags
+	transaction    database.TransactionFunc
+	dialect        database.Dialect
+	store          storage.Store
+	signalBus      signalbus.SignalBus
+	redis          *redis.Client
+	sessionManager *session.Manager
 }
 
-func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags, store storage.Store, signalBus signalbus.SignalBus, redis *redis.Client) (*API, error) {
+func NewAPI(
+	parent context.Context,
+	logger *zap.SugaredLogger,
+	db *gorm.DB,
+	ipam ipam.IPAM,
+	fflags *fflags.FFlags,
+	store storage.Store,
+	signalBus signalbus.SignalBus,
+	redis *redis.Client,
+	sessionManager *session.Manager,
+) (*API, error) {
+
 	ctx, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 
@@ -48,16 +61,17 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 	}
 
 	api := &API{
-		logger:        logger,
-		db:            db,
-		ipam:          ipam,
-		defaultZoneID: uuid.Nil,
-		fflags:        fflags,
-		transaction:   transactionFunc,
-		dialect:       dialect,
-		store:         store,
-		signalBus:     signalBus,
-		redis:         redis,
+		logger:         logger,
+		db:             db,
+		ipam:           ipam,
+		defaultZoneID:  uuid.Nil,
+		fflags:         fflags,
+		transaction:    transactionFunc,
+		dialect:        dialect,
+		store:          store,
+		signalBus:      signalBus,
+		redis:          redis,
+		sessionManager: sessionManager,
 	}
 
 	if err := api.populateStore(ctx); err != nil {

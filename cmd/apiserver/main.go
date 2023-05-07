@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	redisStore "github.com/go-session/redis/v3"
+	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/internal/signalbus"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/nexodus-io/nexodus/internal/signalbus"
-	"github.com/nexodus-io/nexodus/internal/util"
 
 	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 
@@ -77,9 +81,17 @@ func main() {
 			&cli.StringFlag{
 				Name:    "listen",
 				Value:   "0.0.0.0:8080",
-				Usage:   "The address and port to listen for requests on",
+				Usage:   "The address and port to listen for HTTP requests on",
 				EnvVars: []string{"NEXAPI_LISTEN"},
 			},
+
+			&cli.StringFlag{
+				Name:    "listen-grpc",
+				Value:   "0.0.0.0:5080",
+				Usage:   "The address and port to listen for GRPC requests on",
+				EnvVars: []string{"NEXAPI_LISTEN_GRPC"},
+			},
+
 			&cli.StringFlag{
 				Name:    "oidc-url",
 				Value:   "https://auth.try.nexodus.127.0.0.1.nip.io",
@@ -242,7 +254,17 @@ func main() {
 					DB:   cCtx.Int("redis-db"),
 				})
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, redisClient)
+				sessionStore := redisStore.NewRedisStore(&redisStore.Options{
+					Addr: cCtx.String("redis-server"),
+					DB:   cCtx.Int("redis-db"),
+				})
+
+				sessionManager := session.NewManager(
+					session.SetCookieName(handlers.SESSION_ID_COOKIE_NAME),
+					session.SetStore(sessionStore),
+				)
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, redisClient, sessionManager)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -298,32 +320,86 @@ func main() {
 					BrowserFlow:     webAuth,
 					DeviceFlow:      cliAuth,
 					Store:           store,
-					RedisServer:     cCtx.String("redis-server"),
-					RedisDB:         cCtx.Int("redis-db"),
+					SessionStore:    sessionStore,
 				})
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				server := &http.Server{
+				httpServer := &http.Server{
 					Addr:              cCtx.String("listen"),
 					Handler:           router,
 					ReadTimeout:       5 * time.Second,
 					ReadHeaderTimeout: 5 * time.Second,
 					WriteTimeout:      10 * time.Second,
 				}
+				defer util.IgnoreError(httpServer.Close)
 
-				go func() {
-					if err = server.ListenAndServe(); err != nil {
-						log.Fatal(err)
+				serveErrors := make(chan error, 2)
+				util.GoWithWaitGroup(wg, func() {
+					if err = httpServer.ListenAndServe(); err != nil {
+						serveErrors <- err
 					}
+				})
+
+				grpcListener, err := net.Listen("tcp", cCtx.String("listen-grpc"))
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer util.IgnoreError(grpcListener.Close)
+
+				grpcServer := grpc.NewServer()
+				defer grpcServer.Stop()
+				auth.RegisterAuthorizationServer(grpcServer, api)
+				util.GoWithWaitGroup(wg, func() {
+					if err = grpcServer.Serve(grpcListener); err != nil {
+						serveErrors <- err
+					}
+				})
+
+				// Wait for a shutdown signal or a server has an error
+				beginShutdown := &sync.WaitGroup{}
+				util.GoWithWaitGroup(beginShutdown, func() {
+					select {
+					case err := <-serveErrors:
+						serveErrors <- err // put it back
+					case <-ctx.Done():
+					}
+				})
+				beginShutdown.Wait()
+
+				// Try to do a graceful shutdown of the servers for 5 seconds...
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				go func() {
+					grpcServer.GracefulStop()
+				}()
+				go func() {
+					_ = httpServer.Shutdown(shutdownCtx)
 				}()
 
-				util.GoWithWaitGroup(wg, func() {
-					<-ctx.Done()
-				})
-				wg.Wait() // context is canceled via signal.
-				server.Close()
+				serversDone := make(chan struct{})
+				go func() {
+					wg.Wait()
+					close(serversDone)
+				}()
+
+				// Wait for both servers to gracefully shutdown or timeout...
+				err = nil
+			forLoop:
+				for {
+					select {
+					case err = <-serveErrors: // save any errors
+					case <-shutdownCtx.Done():
+						break forLoop
+					case <-serversDone:
+						break forLoop
+					}
+				}
+
+				if err != nil {
+					log.Fatal(err)
+				}
 			})
 			return nil
 		},

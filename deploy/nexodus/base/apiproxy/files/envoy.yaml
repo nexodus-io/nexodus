@@ -79,6 +79,26 @@ static_resources:
                       address: frontend
                       port_value: 3000
 
+    - name: ext-authz
+      type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      connect_timeout: 1s
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: ext-authz
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: apiserver
+                      port_value: 5080
+
     # upstream server: ratelimiter
     # used to access the rate limiting service.
     - name: ratelimiter
@@ -198,6 +218,18 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
 
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: ext-authz
+                        timeout: 2s
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      status_on_error:
+                        code: 503
+
                   # For JWT verification
                   - name: envoy.filters.http.jwt_authn
                     typed_config:
@@ -255,6 +287,10 @@ static_resources:
                         - name: default
                           match:
                             prefix: /
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
                           route:
                             timeout: 10s
                             cluster: frontend
