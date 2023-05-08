@@ -44,7 +44,6 @@ Source:         nexodus-##NEXODUS_COMMIT##.tar.gz
 
 BuildRequires: systemd-rpm-macros
 BuildRequires: systemd-units
-BuildRequires: make
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units
@@ -100,31 +99,13 @@ done
 %gopkgfiles
 
 %post
-%if 0%{?systemd_post:1}
-    %systemd_post nexodus.service
-%else
-    if [ $1 -eq 1 ]; then
-        /bin/systemctl daemon-reload >/dev/null || :
-    fi
-%endif
+%systemd_post nexodus.service
 
 %preun
-%if 0%{?systemd_preun:1}
-  %systemd_preun nexodus.service
-%else
-  if [ $1 -eq 0 ] ; then
-    # Package removal, not upgrade
-    /bin/systemctl --no-reload disable nexodus.service >/dev/null 2>&1 || :
-    /bin/systemctl stop nexodus.service >/dev/null 2>&1 || :
-  fi
-%endif
+%systemd_preun nexodus.service
 
 %postun
-%if 0%{?systemd_postun:1}
-  %systemd_postun nexodus.service
-%else
-  /bin/systemctl daemon-reload >/dev/null 2>&1 || :
-%endif
+%systemd_postun_with_restart nexodus.service
 
 %changelog
 %if 0%{?fedora}
