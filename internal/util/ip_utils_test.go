@@ -2,6 +2,8 @@ package util
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestIsIPv4Address tests the IsIPv4Address function.
@@ -118,6 +120,46 @@ func TestAppendPrefixMask(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("AppendPrefixMask() got = %v, want = %v", result, tt.expected)
 			}
+		})
+	}
+}
+
+// TestIsIPv4DefaultRoute tests the IsIPv4DefaultRoute function.
+func TestIsDefaultIPv4Route(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected bool
+	}{
+		{"0.0.0.0", true},
+		{"0.0.0.0/0", true},
+		{"192.168.1.1", false},
+		{"192.168.1.1/24", false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.input, func(t *testing.T) {
+			result := IsDefaultIPv4Route(tt.input)
+			assert.Equal(t, tt.expected, result, "isDefaultIPv4Route(%q) should be %t", tt.input, tt.expected)
+		})
+	}
+}
+
+// TestIsIPv6DefaultRoute tests the IsIPv6DefaultRoute function.
+func TestIsDefaultIPv6Route(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected bool
+	}{
+		{"::", true},
+		{"::/0", true},
+		{"2001::1", false},
+		{"2001::1/64", false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.input, func(t *testing.T) {
+			result := IsDefaultIPv6Route(tt.input)
+			assert.Equal(t, tt.expected, result, "isDefaultIPv6Route(%q) should be %t", tt.input, tt.expected)
 		})
 	}
 }

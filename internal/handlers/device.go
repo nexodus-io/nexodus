@@ -178,15 +178,19 @@ func (api *API) UpdateDevice(c *gin.Context) {
 					prefixAllocated[prefix] = struct{}{}
 				}
 				for _, prefix := range request.ChildPrefix {
-					// lookup miss of prefix means we need to release it
-					if _, ok := prefixAllocated[prefix]; ok {
-						if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
-							return err
-						}
-					} else {
-						// otherwise we need to allocate it
-						if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
-							return err
+					isDefaultRoute := util.IsDefaultIPv4Route(prefix) || util.IsDefaultIPv6Route(prefix)
+					// If the prefix is not a default route, process IPAM allocation/release
+					if !isDefaultRoute {
+						// lookup miss of prefix means we need to release it
+						if _, ok := prefixAllocated[prefix]; ok {
+							if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
+								return err
+							}
+						} else {
+							// otherwise we need to allocate it
+							if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
+								return err
+							}
 						}
 					}
 				}
@@ -301,8 +305,11 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 		// allocate a child prefix if requested
 		for _, prefix := range request.ChildPrefix {
-			if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
-				return fmt.Errorf("failed to assign child prefix: %w", err)
+			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
+			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
+				if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
+					return fmt.Errorf("failed to assign child prefix: %w", err)
+				}
 			}
 		}
 
