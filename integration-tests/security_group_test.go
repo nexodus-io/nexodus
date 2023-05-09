@@ -140,7 +140,7 @@ func TestSecurityGroups(t *testing.T) {
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
-		helper.createSecurityRule("tcp", "18", "25", []string{"100.100.0.0/16"}),
+		helper.createSecurityRule("tcp", "18", "25", []string{"100.64.0.0/10"}),
 		helper.createSecurityRule("tcp", "18", "25", []string{"200::/64"}),
 	}
 	outboundRules := []public.ModelsSecurityRule{
@@ -231,7 +231,7 @@ func TestSecurityGroups(t *testing.T) {
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
-		helper.createSecurityRule("icmpv4", "0", "0", []string{"100.100.0.1-100.100.0.50"}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{"100.64.0.1-100.64.0.50"}),
 		helper.createSecurityRule("icmpv6", "0", "0", []string{""}),
 	}
 	outboundRules = []public.ModelsSecurityRule{
@@ -338,7 +338,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "5000", "6000",
-			[]string{"100.100.0.0/24",
+			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.100",
 				"192.168.168.100",
 			}),
@@ -409,7 +409,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// Update the security group with the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "5000", "6000",
-			[]string{"100.100.0.0/24",
+			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.101",
 				"192.168.168.100",
 			}),

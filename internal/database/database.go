@@ -3,6 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230409_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230411_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230412_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230413_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230509_0000"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -14,10 +19,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230328_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230401_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230403_0000"
-	"github.com/nexodus-io/nexodus/internal/database/migration_20230409_0000"
-	"github.com/nexodus-io/nexodus/internal/database/migration_20230411_0000"
-	"github.com/nexodus-io/nexodus/internal/database/migration_20230412_0000"
-	"github.com/nexodus-io/nexodus/internal/database/migration_20230413_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230428_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
@@ -114,6 +115,7 @@ func Migrations() *migrations.Migrations {
 			migration_20230412_0000.Migrate(),
 			migration_20230413_0000.Migrate(),
 			migration_20230428_0000.Migrate(),
+			migration_20230509_0000.Migrate(),
 		},
 	}
 }

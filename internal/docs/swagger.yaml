@@ -70,6 +70,8 @@ definitions:
       name:
         example: zone-red
         type: string
+      private_cidr:
+        type: boolean
       security_group_id:
         type: string
     type: object
@@ -236,6 +238,8 @@ definitions:
         type: string
       owner_id:
         type: string
+      private_cidr:
+        type: boolean
       security_group_id:
         type: string
     type: object

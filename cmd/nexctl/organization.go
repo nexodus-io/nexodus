@@ -47,6 +47,7 @@ func createOrganization(c *client.APIClient, encodeOut, name, description, cidr 
 		Cidr:        cidr,
 		CidrV6:      cidrV6,
 		HubZone:     hub,
+		PrivateCidr: !(cidr == "" && cidrV6 == ""),
 	}).Execute()
 	if err != nil {
 		log.Fatal(err)

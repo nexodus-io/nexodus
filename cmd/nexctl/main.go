@@ -104,11 +104,11 @@ func main() {
 							},
 							&cli.StringFlag{
 								Name:     "cidr",
-								Required: true,
+								Required: false,
 							},
 							&cli.StringFlag{
 								Name:     "cidr-v6",
-								Required: true,
+								Required: false,
 							},
 							&cli.BoolFlag{
 								Name:  "hub-organization",

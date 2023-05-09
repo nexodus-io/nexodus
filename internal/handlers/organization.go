@@ -17,9 +17,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var defaultIPAMNamespace = uuid.UUID{}
+
 const (
-	defaultOrganizationPrefixIPv4 = "100.100.0.0/16"
-	defaultOrganizationPrefixIPv6 = "200::/64"
+	defaultIPAMv4Cidr = "100.64.0.0/10"
+	defaultIPAMv6Cidr = "200::/64"
 )
 
 type errDuplicateOrganization struct {
@@ -67,6 +69,10 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
+	if !request.PrivateCidr {
+		request.IpCidr = defaultIPAMv4Cidr
+		request.IpCidr = defaultIPAMv6Cidr
+	}
 	if request.IpCidr == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr"))
 		return
@@ -91,6 +97,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			Name:        request.Name,
 			OwnerID:     userId,
 			Description: request.Description,
+			PrivateCidr: request.PrivateCidr,
 			IpCidr:      request.IpCidr,
 			IpCidrV6:    request.IpCidrV6,
 			HubZone:     request.HubZone,
@@ -104,16 +111,19 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			return res.Error
 		}
 
-		// Create the organization in IPAM
-		if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
+		ipamNamespace := defaultIPAMNamespace
+		if org.PrivateCidr {
+			ipamNamespace = org.ID
+			if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
+				return err
+			}
+		}
+
+		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidr); err != nil {
 			return err
 		}
 
-		if err := api.ipam.AssignPrefix(ctx, org.ID, request.IpCidr); err != nil {
-			return err
-		}
-
-		if err := api.ipam.AssignPrefix(ctx, org.ID, request.IpCidrV6); err != nil {
+		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidrV6); err != nil {
 			return err
 		}
 
@@ -584,6 +594,11 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		return
 	}
 
+	ipamNamespace := defaultIPAMNamespace
+	if org.PrivateCidr {
+		ipamNamespace = org.ID
+	}
+
 	type userOrgMapping struct {
 		UserID         string
 		OrganizationID uuid.UUID
@@ -602,7 +617,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	orgCIDR := org.IpCidr
 
 	if orgCIDR != "" {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), org.ID, orgCIDR); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, orgCIDR); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release ipam organization prefix: %w", err)))
 			return
 		}

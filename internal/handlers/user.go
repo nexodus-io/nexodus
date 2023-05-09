@@ -127,13 +127,16 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		Name:        userName,
 		OwnerID:     userId,
 		Description: fmt.Sprintf("%s's organization", userName),
-		IpCidr:      defaultOrganizationPrefixIPv4,
-		IpCidrV6:    defaultOrganizationPrefixIPv6,
+		PrivateCidr: false,
+		IpCidr:      defaultIPAMv4Cidr,
+		IpCidrV6:    defaultIPAMv6Cidr,
 		HubZone:     true,
 		Users: []*models.User{&models.User{
 			ID: userId,
 		}},
 	}
+
+
 
 	// Create the organization
 	if res := tx.Create(&org); res.Error != nil {
@@ -149,14 +152,16 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
 	}
 
+	ipamNamespace := defaultIPAMNamespace
+
 	// Create namespaces and prefixes
-	if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
+	if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
 		return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
 	}
-	if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
+	if err := api.ipam.AssignPrefix(ctx, ipamNamespace, defaultIPAMv4Cidr); err != nil {
 		return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
 	}
-	if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
+	if err := api.ipam.AssignPrefix(ctx, ipamNamespace, defaultIPAMv6Cidr); err != nil {
 		return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 	}
 	// Create a default security group for the organization

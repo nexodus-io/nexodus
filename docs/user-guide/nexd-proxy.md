@@ -38,7 +38,7 @@ nexd proxy --ingress tcp:443:10.10.100.152:8443
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- device1[Remote device running nexd<br/><br/>IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:443]-->|tunnel|network{Nexodus Network<br/><br/>100.100.0.0/16}
+ device1[Remote device running nexd<br/><br/>IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:443]-->|tunnel|network{Nexodus Network<br/><br/>100.64.0.0/10}
  network-->|tunnel|container[Container running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.2<br/>Local Network IP: 10.10.100.151<br/><br/>Accepts connections on 100.100.0.2:443 and forwards to 10.10.100.152:8443]
 
  subgraph Local Network - 10.10.100.0/24
@@ -68,7 +68,7 @@ nexd proxy --egress tcp:443:100.100.0.1:8443
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- network{Nexodus Network<br/><br/>100.100.0.0/16}-->|tunnel|device1[Remote device running nexd <br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Running a service that listens on TCP port 8443]
+ network{Nexodus Network<br/><br/>100.64.0.0/10}-->|tunnel|device1[Remote device running nexd <br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Running a service that listens on TCP port 8443]
  container[Container running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.2<br/>Local Network IP: 10.10.100.151<br/><br/>Accepts connections on 10.10.100.151:443 and forwards to 100.100.0.1:8443]-->|tunnel|network
 
  subgraph Local Network - 10.10.100.0/24
@@ -113,7 +113,7 @@ This section provides instructions on running an end-to-end demonstration of usi
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- device1[Container running nexd proxy and curl<br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:80]-->|tunnel|network{Nexodus Network<br/><br/>100.100.0.0/16}
+ device1[Container running nexd proxy and curl<br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:80]-->|tunnel|network{Nexodus Network<br/><br/>100.64.0.0/10}
  network-->|tunnel|container[Container running nexd proxy and an http server.<br/><br/>Nexodus IP: 100.100.0.2<br/><br/>Accepts connections on 100.100.0.2:80 and forwards to 127.0.0.1:8080]
 ```
 
