@@ -19,7 +19,7 @@ In this demo, we will provide a Kubernetes manifest that demonstrates how to run
 In this example, the Pod running `nexd proxy` is using a single ingress proxy rule like this:
 
 ```sh
-nexd proxy --ingress tcp:443:182.30.10.50:8443
+nexd proxy --ingress tcp:443:172.30.10.50:8443
 ```
 
 The proxy rule could also refer to the Service by name instead of its IP address.
