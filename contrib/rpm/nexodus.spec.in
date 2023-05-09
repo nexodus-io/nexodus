@@ -84,11 +84,6 @@ for cmd in nexd nexctl ; do
   install -p -D -m 0644 contrib/man/${cmd}.8.gz %{buildroot}%{_mandir}/man8/${cmd}.8.gz
 done
 
-%if %{with check}
-%check
-%gocheck
-%endif
-
 %files
 %license LICENSE
 %doc docs DCO CONTRIBUTING.md README.md
