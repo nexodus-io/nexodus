@@ -5,9 +5,7 @@ import (
 )
 
 const (
-	// wg keepalives are disabled and managed by the agent
-	persistentKeepalive    = "0"
-	persistentHubKeepalive = "0"
+	persistentKeepalive = "20"
 )
 
 func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice, firstTime bool) error {
