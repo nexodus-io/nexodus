@@ -38,7 +38,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.3
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/zsais/go-gin-prometheus v0.1.0
-	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.40.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.41.1
 	go.opentelemetry.io/otel v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.15.1
