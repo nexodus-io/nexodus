@@ -139,7 +139,7 @@ jobs:
         include:
           - mock_root: fedora-38-x86_64
             srpm_distro: fc38
-          - mock_root: centos-stream-9-x86_64
+          - mock_root: centos-stream+epel-9-x86_64
             srpm_distro: el9
     steps:
       - uses: actions/checkout@v3
@@ -161,4 +161,5 @@ jobs:
         run: |
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
           docker run --name copr-cli -v "$(pwd):/nexodus" -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
-              copr-cli build nexodus -r "${{ matrix.mock_root }}" --nowait "/nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm"
+              copr-cli build nexodus -r "$(echo ${{ matrix.mock_root }} | cut -f2 -d'+')" --nowait \
+              "/nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm"
