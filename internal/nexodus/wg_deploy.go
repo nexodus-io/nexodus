@@ -42,6 +42,6 @@ func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice, firstTi
 		}
 	}
 
-	ax.logger.Infof("Peer setup complete")
+	ax.logger.Debug("Peer setup complete")
 	return nil
 }
