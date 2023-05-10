@@ -58,7 +58,7 @@ func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 	if err != nil {
 		return netip.AddrPort{}, fmt.Errorf("failed to parse a valid address:port binding from the stun response: %w", err)
 	}
-	logger.Debugf("STUN: your public facing ip:port binding is: %s", xorBinding.String())
+	logger.Debugf("reflexive binding is: %s", xorBinding.String())
 
 	return xorBinding, nil
 }

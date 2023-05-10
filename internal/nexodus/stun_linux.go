@@ -163,12 +163,11 @@ func stunListen(logger *zap.SugaredLogger, conn *ipv4.PacketConn) (messages chan
 	go func() {
 		for {
 			buf := make([]byte, 1500)
-			n, _, addr, err := conn.ReadFrom(buf)
+			n, _, _, err := conn.ReadFrom(buf)
 			if err != nil {
 				close(messages)
 				return
 			}
-			logger.Debugf("response from %v: (%v bytes)", addr, n)
 			// cut UDP header, cut postfix
 			buf = buf[8:n]
 
