@@ -342,7 +342,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if len(organizations) != 1 {
 		return fmt.Errorf("user being in > 1 organization is not yet supported")
 	}
-	ax.logger.Infof("Device belongs in organization: %s (%s)", organizations[0].Name, organizations[0].Id)
 	ax.organization = organizations[0].Id
 
 	informerCtx, informerCancel := context.WithCancel(ctx)
@@ -424,7 +423,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
-	ax.logger.Infof("Successfully registered device with UUID: %+v", modelsDevice.Id)
+	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
+		modelsDevice.Id, organizations[0].Name, organizations[0].Id)
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
