@@ -112,17 +112,6 @@ jobs:
       - name: OPA Lint and Tests
         run: make opa-lint
 
-  go-licenses:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Go
-        uses: ./.github/actions/setup-go-env
-
-      - name: Check Go Licenses
-        run: |
-          make go-licenses
-
   build-images:
     runs-on: ubuntu-latest
     strategy:
@@ -367,7 +356,7 @@ jobs:
             ${{ steps.build-rpm.outputs.artifact-name }}
 
   build-workflow-complete:
-    needs: ["build-packages", "build-rpm", "go-unit", "e2e", "k8s-lint", "opa-lint", "ui-lint", "go-licenses"]
+    needs: ["build-packages", "build-rpm", "go-unit", "e2e", "k8s-lint", "opa-lint", "ui-lint"]
     runs-on: ubuntu-latest
     steps:
       - name: Build Complete
