@@ -574,7 +574,6 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 			}
 		}
 	}
-	ax.logger.Debugf("reflexive binding is %s", reflexiveIP)
 
 	return nil
 }
@@ -658,11 +657,11 @@ func (ax *Nexodus) symmetricNatDisco() error {
 	// discover the server reflexive address per ICE RFC8445
 	stunServer1 := NextStunServer()
 	stunServer2 := NextStunServer()
-	stunAddr, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
+	stunAddr1, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return err
 	} else {
-		ax.nodeReflexiveAddressIPv4 = stunAddr
+		ax.nodeReflexiveAddressIPv4 = stunAddr1
 	}
 
 	isSymmetric := false
@@ -670,7 +669,19 @@ func (ax *Nexodus) symmetricNatDisco() error {
 	if err != nil {
 		return err
 	} else {
-		isSymmetric = stunAddr.String() != stunAddr2.String()
+		isSymmetric = stunAddr1.String() != stunAddr2.String()
+	}
+
+	if stunAddr1.Addr().String() != "" {
+		ax.logger.Debugf("first NAT discovery STUN request returned: %s", stunAddr1.String())
+	} else {
+		ax.logger.Debugf("first NAT discovery STUN request returned an empty value")
+	}
+
+	if stunAddr2.Addr().String() != "" {
+		ax.logger.Debugf("second NAT discovery STUN request returned: %s", stunAddr2.String())
+	} else {
+		ax.logger.Debugf("second NAT discovery STUN request returned an empty value")
 	}
 
 	if isSymmetric {
