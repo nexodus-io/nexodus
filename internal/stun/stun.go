@@ -17,9 +17,12 @@ var (
 )
 
 func init() {
-	servers := strings.Split(stunServersTxtFile, "\n")
-	for i := range servers {
-		servers[i] = strings.TrimSpace(servers[i])
+	var servers []string
+	for _, server := range strings.Split(stunServersTxtFile, "\n") {
+		server = strings.TrimSpace(server)
+		if server != "" {
+			servers = append(servers, strings.TrimSpace(server))
+		}
 	}
 	SetServers(servers)
 }
