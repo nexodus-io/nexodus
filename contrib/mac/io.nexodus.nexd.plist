@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>io.nexodus.nexd</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/local/bin/nexd</string>
+      <string>https://try.nexodus.io</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>UserName</key>
+    <string>root</string>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/nexd-stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/nexd-stderr.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+  </dict>
+</plist>
+

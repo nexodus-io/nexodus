@@ -38,10 +38,16 @@ brew tap nexodus-io/nexodus
 brew install nexodus
 ```
 
-Start `nexd` with `sudo` and follow the instructions to register your device.
+To start the `nexd` agent and also have it start automatically on boot, run:
 
 ```sh
-sudo nexd https://try.nexodus.io
+sudo brew services start nexodus
+```
+
+Query the status of `nexd` and follow the instructions to register your device.
+
+```sh
+sudo nexctl nexd status
 ```
 
 ### Other

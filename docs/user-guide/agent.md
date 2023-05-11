@@ -27,7 +27,19 @@ Then you should be able to install Nexodus with:
 sudo dnf install nexodus
 ```
 
-#### Mac - Brew
+You can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service or add any additional command line arguments to `nexd`. Then, start the agent with the following command:
+
+```sh
+sudo systemctl start nexodus
+```
+
+If you would like `nexd` to run automatically on boot, run this command as well:
+
+```sh
+sudo systemctl enable nexodus
+```
+
+### Mac - Brew
 
 For Mac, you can install the Nexodus Agent via [Homebrew](https://brew.sh/).
 
@@ -36,9 +48,21 @@ brew tap nexodus-io/nexodus
 brew install nexodus
 ```
 
-#### Binary Downloads
+To start the `nexd` agent and also have it start automatically on boot, run:
 
-Download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
+```sh
+sudo brew services start nexodus
+```
+
+To stop the `nexd` agent, run:
+
+```sh
+sudo brew services stop nexodus
+```
+
+### Binary Downloads
+
+You can download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
 
 - [Linux x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-linux-amd64.tar.gz)
 - [Linux arm64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-linux-arm64.tar.gz)
@@ -55,58 +79,15 @@ cd nexodus-linux-amd64
 sudo install -m 755 nexd nexctl /usr/local/bin
 ```
 
-#### Custom RPM Build
-
-You can also build a custom rpm from the git repository. You must have `mock` installed to build the package.
+Proceed by starting `nexd` manually:
 
 ```sh
-make rpm
-```
-
-After running this command, the resulting rpm can be found in `./dist/rpm/mock/`.
-
-To install the rpm, you may use `dnf`.
-
-```sh
-sudo dnf install ./dist/rpm/mock/nexodus-0-0.1.20230216git068fedd.fc37.src.rpm
-```
-
-#### Systemd
-
-If you did not install `nexd` via the rpm, you can still use the systemd integration if you would like. The following commands will put the files in the right place.
-
-```sh
-sudo cp contrib/rpm/nexodus.service /usr/lib/systemd/service/nexodus.service
-sudo cp contrib/rpm/nexodus.sysconfig /etc/sysconfig/nexodus
-sudo systemctl daemon-reload
-```
-
-#### Starting the Agent
-
-> **Note**
-> In a self-signed dev environment, each agent machine needs to have the [imported cert](../deployment/nexodus-service.md#https) and the [host entry](../deployment/nexodus-service.md#add-required-dns-entries) detailed above.
-
-You may start `nexd` directly. You must include the URL to the Nexodus service as an argument.
-
-```sh
-sudo nexd https://try.nexodus.127.0.0.1.nip.io
-```
-
-Alternatively, you can start `nexd` as a systemd service. First, edit `/etc/sysconfig/nexodus` to reflect the URL of the Nexodus service. Then, start the agent with the following command:
-
-```sh
-sudo systemctl start nexodus
-```
-
-If you would like `nexd` to run automatically on boot, run this command as well:
-
-```sh
-sudo systemctl enable nexodus
+sudo nexd https://try.nexodus.io
 ```
 
 ### Interactive Enrollment
 
-If the agent is able to successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent can successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -115,7 +96,7 @@ Please open the following URL in your browser to sign in:
 https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus/device?user_code=LTCV-OFFS
 ```
 
-If the agent was started using systemd, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
+If the agent was started using systemd on Linux or launchd on Mac, you will find the same thing in the service logs. You can also retrieve this status information using `nexctl`.
 
 ```sh
 $ sudo nexctl nexd status
