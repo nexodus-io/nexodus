@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"net"
 	"net/http"
 	"net/netip"
@@ -373,9 +374,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
-	stunServer1 := NextStunServer()
+	stunServer1 := stun.NextServer()
 	if !ax.symmetricNat && ax.stun && localIP == "" {
-		ipPort, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
+		ipPort, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
 			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		} else {
@@ -540,8 +541,8 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
 	ax.logger.Debug("sending stun request")
-	stunServer1 := NextStunServer()
-	reflexiveIP, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
+	stunServer1 := stun.NextServer()
+	reflexiveIP, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return fmt.Errorf("stun request error: %w", err)
 	}
@@ -655,9 +656,9 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 func (ax *Nexodus) symmetricNatDisco() error {
 
 	// discover the server reflexive address per ICE RFC8445
-	stunServer1 := NextStunServer()
-	stunServer2 := NextStunServer()
-	stunAddr1, err := stunRequest(ax.logger, stunServer1, ax.listenPort)
+	stunServer1 := stun.NextServer()
+	stunServer2 := stun.NextServer()
+	stunAddr1, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return err
 	} else {
@@ -665,7 +666,7 @@ func (ax *Nexodus) symmetricNatDisco() error {
 	}
 
 	isSymmetric := false
-	stunAddr2, err := stunRequest(ax.logger, stunServer2, ax.listenPort)
+	stunAddr2, err := stun.Request(ax.logger, stunServer2, ax.listenPort)
 	if err != nil {
 		return err
 	} else {

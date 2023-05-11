@@ -1,12 +1,13 @@
 //go:build linux
 
-package nexodus
+package stun
 
 import (
 	"encoding/binary"
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"time"
 
 	"github.com/pion/stun"
@@ -43,12 +44,17 @@ type stunSession struct {
 	messageChan chan *stun.Message
 }
 
-func stunRequest(logger *zap.SugaredLogger, stunSvr string, srcPort int) (netip.AddrPort, error) {
+func Request(logger *zap.SugaredLogger, stunSvr string, srcPort int) (netip.AddrPort, error) {
 	LocalListenPort := uint16(srcPort)
 
+	// If we are not running privileged, this will fail...
 	conn, err := stunConnect(logger, LocalListenPort, stunSvr)
 	if err != nil {
-		return netip.AddrPort{}, fmt.Errorf("failed to stunConnect to the STUN server: %w", err)
+		if strings.Contains(err.Error(), "operation not permitted") {
+			// try again with an unprivileged version...
+			return RequestWithReusePort(logger, stunSvr, srcPort)
+		}
+		return netip.AddrPort{}, fmt.Errorf("failed to stunConnect to the STUN Server: %w", err)
 	}
 	defer conn.stunClose()
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"os"
 	"os/signal"
 	"runtime"
@@ -71,6 +72,14 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 	case nexdModeProxy:
 		userspaceMode = true
 		logger.Info("Starting in L4 proxy mode")
+	}
+
+	stunServers := cCtx.StringSlice("stun-server")
+	if stunServers != nil {
+		if len(stunServers) < 2 {
+			return fmt.Errorf("at least two stun servers are required")
+		}
+		stun.SetServers(stunServers)
 	}
 
 	nex, err := nexodus.NewNexodus(
@@ -323,6 +332,12 @@ func main() {
 				Usage:    fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
 				Value:    stateDirDefault,
 				EnvVars:  []string{"NEXD_STATE_DIR"},
+				Category: nexServiceOptions,
+			},
+			&cli.StringSliceFlag{
+				Name:     "stun-server",
+				Usage:    "stun server to use discover our endpoint address.  At least two are required.",
+				EnvVars:  []string{"NEXD_STUN_SERVER"},
 				Category: nexServiceOptions,
 			},
 		},

@@ -1,4 +1,4 @@
-package nexodus
+package stun
 
 import (
 	_ "embed"
@@ -17,17 +17,25 @@ var (
 )
 
 func init() {
-	stunServers = strings.Split(stunServersTxtFile, "\n")
-	for i := range stunServers {
-		stunServers[i] = strings.TrimSpace(stunServers[i])
+	servers := strings.Split(stunServersTxtFile, "\n")
+	for i := range servers {
+		servers[i] = strings.TrimSpace(servers[i])
 	}
+	SetServers(servers)
+}
+
+func SetServers(servers []string) {
+	stunServerMu.Lock()
+	defer stunServerMu.Unlock()
+	stunServers = servers
 	// #nosec G404
 	rand.Shuffle(len(stunServers), func(i, j int) {
 		stunServers[i], stunServers[j] = stunServers[j], stunServers[i]
 	})
+	currentStunServer = 0
 }
 
-func NextStunServer() string {
+func NextServer() string {
 	stunServerMu.Lock()
 	defer stunServerMu.Unlock()
 	currentStunServer += 1
