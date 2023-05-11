@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"net"
 	"net/netip"
 	"os"
@@ -111,7 +112,7 @@ func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (b
 		}
 		hostIP = linuxIP.String()
 	}
-	ipAndPort, err := stunRequest(logger, NextStunServer(), 0)
+	ipAndPort, err := stun.Request(logger, stun.NextServer(), 0)
 	if err != nil {
 		return false, err
 	}

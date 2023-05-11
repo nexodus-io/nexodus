@@ -1,24 +1,19 @@
-//go:build darwin
-
-package nexodus
+package stun
 
 import (
-	"errors"
 	"fmt"
-
 	"github.com/libp2p/go-reuseport"
 	"github.com/pion/stun"
 	"go.uber.org/zap"
 	"net/netip"
 )
 
-func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (netip.AddrPort, error) {
-
-	logger.Debugf("dialing stun server %s", stunServer)
+func RequestWithReusePort(logger *zap.SugaredLogger, stunServer string, srcPort int) (netip.AddrPort, error) {
+	logger.Debugf("dialing stun Server %s", stunServer)
 	conn, err := reuseport.Dial("udp4", fmt.Sprintf(":%d", srcPort), stunServer)
 	if err != nil {
 		logger.Errorf("stun dialing timed out %v", err)
-		return netip.AddrPort{}, fmt.Errorf("failed to dial stun server %s: %w", stunServer, err)
+		return netip.AddrPort{}, fmt.Errorf("failed to dial stun Server %s: %w", stunServer, err)
 	}
 	defer func() {
 		_ = conn.Close()
@@ -35,11 +30,11 @@ func stunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net
 
 	// Building binding request with random transaction id.
 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	// Sending request to STUN server, waiting for response message.
+	// Sending request to STUN Server, waiting for response message.
 	var xorAddr stun.XORMappedAddress
 	if err := c.Do(message, func(res stun.Event) {
 		if res.Error != nil {
-			if res.Error.Error() == errors.New("transaction is timed out").Error() {
+			if res.Error.Error() == "transaction is timed out" {
 				logger.Debugf("STUN transaction timed out, if this continues check if a firewall is blocking UDP connections to %s", stunServer)
 			} else {
 				logger.Debug(res.Error)
