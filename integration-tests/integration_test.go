@@ -74,10 +74,10 @@ func TestBasicConnectivity(t *testing.T) {
 	require.NoError(err)
 
 	// delete only the public key on node1
-	_, err = helper.containerExec(ctx, node1, []string{"rm", "/etc/wireguard/public.key"})
+	_, err = helper.containerExec(ctx, node1, []string{"rm", "/var/lib/nexd/public.key"})
 	require.NoError(err)
-	// delete the entire wireguard directory on node2
-	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	// delete the entire nexd directory on node2
+	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/var/lib/nexd"})
 	require.NoError(err)
 
 	// start nexodus on the nodes
@@ -920,9 +920,9 @@ func TestNexctl(t *testing.T) {
 
 	// delete the keys on both nodes to force ensure the deleted device released it's
 	// IPAM address and will re-issue that address to a new device with a new keypair.
-	_, err = helper.containerExec(ctx, node1, []string{"rm", "-rf", "/etc/wireguard/"})
+	_, err = helper.containerExec(ctx, node1, []string{"rm", "-rf", "/var/lib/nexd/"})
 	require.NoError(err)
-	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/var/lib/nexd/"})
 	require.NoError(err)
 
 	time.Sleep(time.Second * 10)
@@ -1168,4 +1168,52 @@ func TestNetRouterConnectivity(t *testing.T) {
 	helper.Logf("Pinging site2 node1 non-nexd node %s from nexRouterSite1 %s", site2node1IP, nexRouterSite1IP)
 	err = ping(ctx, nexRouterSite1, inetV4, site2node1IP)
 	require.NoError(err)
+}
+
+// TestMigrateKeyFiles tests that nexd continues to work even if it's key
+// files are in the previous location instead of the state dir.
+func TestMigrateKeyFiles(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// Start and stop nexd to create the keys...
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+	_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
+	require.NoError(err)
+
+	expectedPubKey, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/public.key"})
+	require.NoError(err)
+	expectedPrivKey, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/private.key"})
+	require.NoError(err)
+
+	// move the keys to the legacy location..
+	_, err = helper.containerExec(ctx, node1, []string{"mv", "/var/lib/nexd/public.key", "/etc/wireguard/public.key"})
+	require.NoError(err)
+	_, err = helper.containerExec(ctx, node1, []string{"mv", "/var/lib/nexd/private.key", "/etc/wireguard/private.key"})
+	require.NoError(err)
+
+	// restart nexodus, it copy the keys from the legacy location.
+	helper.Log("Restarting nexodus")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	actualPubKey, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/public.key"})
+	require.NoError(err)
+	actualPrivKey, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/private.key"})
+	require.NoError(err)
+
+	require.Equal(expectedPubKey, actualPubKey)
+	require.Equal(expectedPrivKey, actualPrivKey)
 }
