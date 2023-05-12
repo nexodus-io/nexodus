@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/state"
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -118,6 +120,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stun.SetServers(stunServers)
 	}
 
+	stateStore := &state.FileStore{File: filepath.Join(cCtx.String("state-dir"), "state.json")}
+
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
 		logLevel,
@@ -138,7 +142,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version,
 		userspaceMode,
-		cCtx.String("state-dir"),
+		stateStore,
 		ctx,
 		cCtx.String("organization-id"),
 	)

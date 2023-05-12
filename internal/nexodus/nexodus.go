@@ -5,12 +5,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/state"
+	"golang.org/x/oauth2"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
 	"os"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -151,7 +152,7 @@ type Nexodus struct {
 	username      string
 	password      string
 	skipTlsVerify bool
-	stateDir      string
+	stateStore    state.Store
 	userspaceWG
 	informer     *public.ApiListDevicesInOrganizationInformer
 	informerStop context.CancelFunc
@@ -196,7 +197,7 @@ func NewNexodus(
 	insecureSkipTlsVerify bool,
 	version string,
 	userspaceMode bool,
-	stateDir string,
+	stateStore state.Store,
 	ctx context.Context,
 	orgId string,
 ) (*Nexodus, error) {
@@ -239,7 +240,7 @@ func NewNexodus(
 		username:                username,
 		password:                password,
 		skipTlsVerify:           insecureSkipTlsVerify,
-		stateDir:                stateDir,
+		stateStore:              stateStore,
 		orgId:                   orgId,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
@@ -275,6 +276,25 @@ func (ax *Nexodus) SetStatus(status int, msg string) {
 	ax.status = status
 }
 
+type StateTokenStore struct {
+	store state.Store
+}
+
+func (s StateTokenStore) Load() (*oauth2.Token, error) {
+	err := s.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	return s.store.State().AuthToken, nil
+}
+
+func (s StateTokenStore) Store(token *oauth2.Token) error {
+	s.store.State().AuthToken = token
+	return s.store.Store()
+}
+
+var _ client.TokenStore = StateTokenStore{}
+
 func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.nexCtx = ctx
 	ax.nexWg = wg
@@ -296,8 +316,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	var options []client.Option
-	if ax.stateDir != "" {
-		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, apiToken)))
+	if ax.stateStore != nil {
+		options = append(options, client.WithTokenStore(StateTokenStore{store: ax.stateStore}))
 	}
 	if ax.username == "" {
 		options = append(options, client.WithDeviceFlow())
@@ -348,7 +368,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				ax.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			} else if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) {
-				ax.logger.Errorf("The nexodus token stored in %s/%s is not valid for the api-server, you can remove the file and try again: %v", ax.stateDir, apiToken, err)
+				ax.logger.Errorf("The nexodus token stored in %s is not valid for the api-server, you can remove the file and try again: %v", ax.stateStore, err)
 				return err
 			} else {
 				ax.logger.Warnf("get user error - retrying error: %v", err)

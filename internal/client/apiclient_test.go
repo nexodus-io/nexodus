@@ -12,6 +12,7 @@ import (
 	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +20,19 @@ import (
 	"testing"
 	"time"
 )
+
+type testTokenStore struct {
+	token *oauth2.Token
+}
+
+func (s *testTokenStore) Load() (*oauth2.Token, error) {
+	return s.token, nil
+}
+
+func (s *testTokenStore) Store(token *oauth2.Token) error {
+	s.token = token
+	return nil
+}
 
 func TestWithTokenFileOption(t *testing.T) {
 
@@ -41,10 +55,11 @@ func TestWithTokenFileOption(t *testing.T) {
 	tokenFile := "./tmp/token.json"
 	_ = os.Remove(tokenFile)
 
+	store := &testTokenStore{}
 	assert.Equal(int64(0), accesTokensCreated)
 	_, err = client.NewAPIClient(context.Background(), mockServer.URL, nil,
 		client.WithPasswordGrant("fake", "password"),
-		client.WithTokenFile(tokenFile),
+		client.WithTokenStore(store),
 	)
 	require.NoError(err)
 	assert.Equal(int64(1), accesTokensCreated)
@@ -52,7 +67,7 @@ func TestWithTokenFileOption(t *testing.T) {
 	// create the client again... this time it should re-use the token stored in the file..
 	c, err := client.NewAPIClient(context.Background(), mockServer.URL, nil,
 		client.WithPasswordGrant("fake", "password"),
-		client.WithTokenFile(tokenFile),
+		client.WithTokenStore(store),
 	)
 	// token endpoint should not have been hit.
 	require.NoError(err)

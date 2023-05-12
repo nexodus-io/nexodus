@@ -4,7 +4,9 @@ package integration_tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/state"
 	"github.com/testcontainers/testcontainers-go"
 	"net"
 	"strings"
@@ -679,17 +681,15 @@ func TestProxyNexctl(t *testing.T) {
 	require.NoError(err)
 
 	// Rules are stored
-	out, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/proxy-rules.json"})
+	data, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/state.json"})
 	require.NoError(err)
-	require.JSONEq(fmt.Sprintf(`
-		{
-		  "egress": [
-			"tcp:80:%s:4242"
-		  ],
-		  "ingress": [
-			"tcp:4242:127.0.0.1:8080"
-		  ]
-		}`, node1IP), out)
+	s := state.State{}
+	err = json.Unmarshal([]byte(data), &s)
+	require.NoError(err)
+	require.Equal(state.ProxyRulesConfig{
+		Egress:  []string{fmt.Sprintf("tcp:80:%s:4242", node1IP)},
+		Ingress: []string{"tcp:4242:127.0.0.1:8080"},
+	}, s.ProxyRulesConfig)
 
 	// Rules are present now
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
@@ -727,13 +727,15 @@ func TestProxyNexctl(t *testing.T) {
 	require.Equal(out, "")
 
 	// Rules are not stored.
-	out, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/proxy-rules.json"})
+	data, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/state.json"})
 	require.NoError(err)
-	require.JSONEq(`
-		{
-		  "egress": null,
-		  "ingress": null
-		}`, out)
+	s = state.State{}
+	err = json.Unmarshal([]byte(data), &s)
+	require.NoError(err)
+	require.Equal(state.ProxyRulesConfig{
+		Egress:  nil,
+		Ingress: nil,
+	}, s.ProxyRulesConfig)
 
 	// Connectivity should now fail again
 	_, err = helper.containerExec(ctx, node1, []string{"curl", "http://127.0.0.1"})

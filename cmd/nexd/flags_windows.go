@@ -2,6 +2,4 @@
 
 package main
 
-const (
-	stateDirDefault = "C:/nexodus"
-)
+var stateDirDefault = "C:/nexodus"

@@ -2,13 +2,10 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -75,9 +72,9 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 
 	var token *oauth2.Token
 	var rawIdToken interface{}
-	if opts.tokenFile != "" {
-		// attempt to load the token file..
-		token, _ = loadTokenFromFile(opts.tokenFile)
+	if opts.tokenStore != nil {
+		// attempt to load the token...
+		token, _ = opts.tokenStore.Load()
 	}
 	if token == nil {
 		if opts.deviceFlow {
@@ -101,8 +98,8 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 			return nil, err
 		}
 
-		if opts.tokenFile != "" {
-			err = saveTokenToFile(opts.tokenFile, token)
+		if opts.tokenStore != nil {
+			err = opts.tokenStore.Store(token)
 			if err != nil {
 				return nil, err
 			}
@@ -110,10 +107,10 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 	}
 
 	var source = config.TokenSource(ctx, token)
-	if opts.tokenFile != "" {
+	if opts.tokenStore != nil {
 		source = oauth2.ReuseTokenSource(token, &storeOnChangeSource{
-			file:   opts.tokenFile,
-			source: source,
+			tokenStore: opts.tokenStore,
+			source:     source,
 		})
 	}
 
@@ -122,9 +119,9 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 }
 
 type storeOnChangeSource struct {
-	file      string
-	source    oauth2.TokenSource
-	lastToken *oauth2.Token
+	tokenStore TokenStore
+	source     oauth2.TokenSource
+	lastToken  *oauth2.Token
 }
 
 var _ oauth2.TokenSource = &storeOnChangeSource{}
@@ -136,39 +133,10 @@ func (s *storeOnChangeSource) Token() (*oauth2.Token, error) {
 	}
 	if next != s.lastToken {
 		s.lastToken = next
-		err = saveTokenToFile(s.file, next)
+		err = s.tokenStore.Store(next)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return next, nil
-}
-
-func loadTokenFromFile(file string) (*oauth2.Token, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	tok := &oauth2.Token{}
-	err = json.NewDecoder(f).Decode(tok)
-	return tok, err
-}
-
-// Saves a token to a file path.
-func saveTokenToFile(path string, token *oauth2.Token) error {
-	// Create the path to the file if it doesn't exist.
-	dir := filepath.Dir(path)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0600); err != nil {
-			return err
-		}
-	}
-	// Save the token to a file at the given path.
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return json.NewEncoder(f).Encode(token)
 }

@@ -2,68 +2,99 @@ package nexodus
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-
-	"go.uber.org/zap"
+	"os"
+	"runtime"
 )
 
-// default key pair file locations (windows needs work)
-const (
-	workdirPublicKeyFile  = "public.key"
-	workdirPrivateKeyFile = "private.key"
-	linuxPublicKeyFile    = "/etc/wireguard/public.key"
-	linuxPrivateKeyFile   = "/etc/wireguard/private.key"
-	darwinPublicKeyFile   = "/usr/local/etc/wireguard/public.key"
-	darwinPrivateKeyFile  = "/usr/local/etc/wireguard/private.key"
-	windowsPublicKeyFile  = "C:/nexd/public.key"
-	windowsPrivateKeyFile = "C:/nexd/private.key"
-	publicKeyPermissions  = 0644
-	privateKeyPermissions = 0600
-)
+// handleKeys will look for an existing key pair, if a pair is not found this method
+// will generate a new pair and write them to location on the disk depending on the OS
+func (ax *Nexodus) handleKeys() error {
 
-// generateKeyPair a key pair and write them to disk
-func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
-
-	privateKey, err := wgtypes.GeneratePrivateKey()
+	err := ax.stateStore.Load()
 	if err != nil {
-		return fmt.Errorf("failed to generate private key: %w", err)
+		return err
+	}
+	state := ax.stateStore.State()
+
+	if state.PublicKey == "" || state.PrivateKey == "" {
+		// We used to store the keys in a different location
+		// migrate them to the state store
+		state.PrivateKey, state.PublicKey, err = ax.loadLegacyKeys()
+		if err != nil {
+			return err
+		}
+		err = ax.stateStore.Store()
+		if err != nil {
+			return err
+		}
 	}
 
-	ax.wireguardPubKey = privateKey.PublicKey().String()
-	ax.wireguardPvtKey = privateKey.String()
+	if state.PublicKey != "" && state.PrivateKey != "" {
+		ax.logger.Infof("Existing key pair found in [ %s ]", ax.stateStore)
+	} else {
+		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
+		wgKey, err := wgtypes.GeneratePrivateKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate private key: %w", err)
+		}
+		state.PublicKey = wgKey.PublicKey().String()
+		state.PrivateKey = wgKey.String()
 
-	// TODO remove this debug statement at some point
-	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
-	// write the new keys to disk
-	WriteToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
-	WriteToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+		err = ax.stateStore.Store()
+		if err != nil {
+			return fmt.Errorf("failed store the keys: %w", err)
+		}
+		ax.logger.Debugf("New keys were written to [ %s ]", ax.stateStore)
+	}
 
+	ax.wireguardPubKey = state.PublicKey
+	ax.wireguardPvtKey = state.PrivateKey
 	return nil
+
 }
 
-// readKeyFile reads the contents of a key file
-func readKeyFile(logger *zap.SugaredLogger, keyFile string) string {
-	if !FileExists(keyFile) {
-		return ""
-	}
-	key, err := readKeyFileToString(keyFile)
-	if err != nil {
-		logger.Debugf("unable to read key file: %v", err)
-		return ""
+// loadLegacyKeys should not be needed after everyone has upgraded to the latest nexd.
+func (ax *Nexodus) loadLegacyKeys() (string, string, error) {
+
+	oldPubKeyFile := "public.key"
+	oldPrivKeyFile := "private.key"
+	if !ax.userspaceMode {
+		switch runtime.GOOS {
+		case "darwin":
+			oldPubKeyFile = "/usr/local/etc/wireguard/public.key"
+			oldPrivKeyFile = "/usr/local/etc/wireguard/private.key"
+		case "windows":
+			oldPubKeyFile = "C:/nexd/public.key"
+			oldPrivKeyFile = "C:/nexd/private.key"
+		case "linux":
+			oldPubKeyFile = "/etc/wireguard/public.key"
+			oldPrivKeyFile = "/etc/wireguard/private.key"
+		}
 	}
 
-	return key
+	// skip if the old key files don't exist
+	if !(canReadFile(oldPubKeyFile) && canReadFile(oldPrivKeyFile)) {
+		return "", "", nil
+	}
+
+	publicKey, err := os.ReadFile(oldPubKeyFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	privateKey, err := os.ReadFile(oldPrivKeyFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	return string(privateKey), string(publicKey), nil
 }
 
-// readKeyFileToString reads the key file and strips any newline chars that create wireguard issues
-func readKeyFileToString(s string) (string, error) {
-	buf, err := os.ReadFile(s)
-	if err != nil {
-		return "", fmt.Errorf("unable to read file: %w", err)
+func canReadFile(name string) bool {
+	info, err := os.Stat(name)
+	if err != nil || info.IsDir() {
+		return false
 	}
-	rawStr := string(buf)
-	return strings.Replace(rawStr, "\n", "", -1), nil
+	return true
 }
