@@ -84,3 +84,13 @@ func IsDefaultIPv6Route(ip string) bool {
 	ipv6Default := net.ParseIP("::")
 	return ipAddr.Equal(ipv6Default) || (ipNet != nil && ipNet.IP.Equal(ipv6Default) && ipNet.Mask.String() == "<nil>")
 }
+
+// IsDefaultIPRoute wrapper for IsDefaultIPv4Route and IsDefaultIPv6Route
+func IsDefaultIPRoute(ip string) bool {
+	return IsDefaultIPv4Route(ip) || IsDefaultIPv6Route(ip)
+}
+
+// IsValidPrefix checks if the given cidr is valid
+func IsValidPrefix(prefix string) bool {
+	return IsIPv4Prefix(prefix) || IsIPv6Prefix(prefix)
+}

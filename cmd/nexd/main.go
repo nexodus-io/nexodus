@@ -205,10 +205,6 @@ func main() {
 								if err := nexodus.ValidateCIDR(prefix); err != nil {
 									return fmt.Errorf("Child prefix CIDRs passed in --child-prefix %s is not valid: %w", prefix, err)
 								}
-								if util.IsIPv6Prefix(prefix) {
-									return fmt.Errorf("currently --child-prefix only supports IPv4 prefixes")
-								}
-
 							}
 							return nil
 						},

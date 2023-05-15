@@ -170,32 +170,35 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.SymmetricNat = *request.SymmetricNat
 		}
 
-		if request.ChildPrefix != nil {
-			// check if the updated device child prefix matches the existing device prefix
-			if !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
-				prefixAllocated := make(map[string]struct{})
-				for _, prefix := range device.ChildPrefix {
-					prefixAllocated[prefix] = struct{}{}
+		// check if the updated device child prefix matches the existing device prefix
+		if request.ChildPrefix != nil && !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
+			prefixAllocated := make(map[string]struct{})
+			for _, prefix := range device.ChildPrefix {
+				if !util.IsValidPrefix(prefix) {
+					return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
 				}
-				for _, prefix := range request.ChildPrefix {
-					isDefaultRoute := util.IsDefaultIPv4Route(prefix) || util.IsDefaultIPv6Route(prefix)
-					// If the prefix is not a default route, process IPAM allocation/release
-					if !isDefaultRoute {
-						// lookup miss of prefix means we need to release it
-						if _, ok := prefixAllocated[prefix]; ok {
-							if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
-								return err
-							}
-						} else {
-							// otherwise we need to allocate it
-							if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
-								return err
-							}
-						}
+				prefixAllocated[prefix] = struct{}{}
+			}
+			for _, prefix := range request.ChildPrefix {
+				isDefaultRoute := util.IsDefaultIPRoute(prefix)
+				// If the prefix is not a default route, process IPAM allocation/release
+				if isDefaultRoute {
+					continue
+				}
+				// lookup miss of prefix means we need to release it
+				if _, ok := prefixAllocated[prefix]; ok {
+					if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
+						return err
+					}
+				} else {
+					// otherwise we need to allocate it
+					if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
+						return err
 					}
 				}
 			}
 			device.ChildPrefix = request.ChildPrefix
+
 		}
 
 		if res := tx.
@@ -305,6 +308,9 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 		// allocate a child prefix if requested
 		for _, prefix := range request.ChildPrefix {
+			if !util.IsValidPrefix(prefix) {
+				return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+			}
 			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
 			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
 				if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {

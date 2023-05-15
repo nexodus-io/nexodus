@@ -134,6 +134,7 @@ func TestIsDefaultIPv4Route(t *testing.T) {
 		{"0.0.0.0/0", true},
 		{"192.168.1.1", false},
 		{"192.168.1.1/24", false},
+		{"invalid-default-route", false},
 	}
 
 	for _, tt := range testCases {
@@ -154,6 +155,7 @@ func TestIsDefaultIPv6Route(t *testing.T) {
 		{"::/0", true},
 		{"2001::1", false},
 		{"2001::1/64", false},
+		{"invalid-default-route", false},
 	}
 
 	for _, tt := range testCases {
