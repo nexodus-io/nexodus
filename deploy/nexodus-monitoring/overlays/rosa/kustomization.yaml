@@ -5,6 +5,7 @@ resources:
   - apiproxy-service-monitor.yaml
   - apiserver-service-monitor.yaml
   - prometheus-rbac.yaml
+  - monitoringstack.yaml
 patches:
   - target:
       group: monitoring.coreos.com
