@@ -95,9 +95,9 @@ static_resources:
                       address: limitador
                       port_value: 8081
 
-    # upstream server: jaeger-collector
+    # upstream server: tempo
     # used collect request traces
-    - name: jaeger-collector
+    - name: tempo
       type: STRICT_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
@@ -107,13 +107,13 @@ static_resources:
           explicit_http_config:
             http2_protocol_options: {}
       load_assignment:
-        cluster_name: jaeger-collector
+        cluster_name: tempo
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: jaeger-collector.nexodus-monitoring.svc
+                      address: tempo.nexodus-monitoring.svc
                       port_value: 4317
 
 
@@ -181,7 +181,7 @@ static_resources:
                       "@type": type.googleapis.com/envoy.config.trace.v3.OpenTelemetryConfig
                       grpc_service:
                         envoy_grpc:
-                          cluster_name: jaeger-collector
+                          cluster_name: tempo
                         timeout: 0.250s
                       service_name: apiproxy
 

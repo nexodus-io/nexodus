@@ -3,12 +3,14 @@ kind: Kustomization
 resources:
   - service.yaml
   - deployment.yaml
-commonLabels:
-  app.kubernetes.io/component: ipam
-  app.kubernetes.io/instance: ipam
-  app.kubernetes.io/name: ipam
 
 configMapGenerator:
-  - name: ipam
-    literals:
+  - literals:
       - GOIPAM_PG_SSLMODE=require
+    name: ipam
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: ipam
+      app.kubernetes.io/instance: ipam
+      app.kubernetes.io/name: ipam

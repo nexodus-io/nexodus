@@ -488,7 +488,7 @@ images: image-frontend image-apiserver image-ipam image-envsubst ## Create conta
 ##@ Kubernetes - kind dev environment
 
 .PHONY: run-on-kind
-run-on-kind: setup-kind deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy nexodus on it
+run-on-kind: setup-kind install-olm deploy-operators images load-images deploy cacerts ## Setup a kind cluster and deploy nexodus on it
 
 .PHONY: teardown
 teardown: ## Teardown the kind cluster
@@ -509,30 +509,16 @@ deploy-nexodus-agent: image-nexd
 	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
+.PHONY: install-olm
+install-olm: ## Install OLM on the cluster
+	$(CMD_PREFIX) curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.24.0/install.sh | bash -s v0.24.0
 
 .PHONY: deploy-operators
-deploy-operators: deploy-certmanager deploy-pgo  ## Deploy all operators and wait for readiness
-
-.PHONY: deploy-certmanager
-deploy-certmanager: # Deploy cert-manager
-	$(CMD_PREFIX) kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
-
-CRUNCHY_REVISION?=f1766db0b50ad2ae8ff35a599a16e11eefbd9f9c
-.PHONY: deploy-pgo
-deploy-pgo: # Deploy crunchy-data postgres operator
-	$(CMD_PREFIX) kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace?ref=$(CRUNCHY_REVISION)
-	$(CMD_PREFIX) kubectl apply --server-side -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/default?ref=$(CRUNCHY_REVISION)
-
-.PHONY: deploy-cockroach-operator
-deploy-cockroach-operator: ## Deploy cockroach operator
-	$(CMD_PREFIX) kubectl apply -k https://github.com/CrunchyData/postgres-operator-examples/kustomize/install/namespace
-	$(CMD_PREFIX) kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/crds.yaml
-	$(CMD_PREFIX) kubectl apply -f https://raw.githubusercontent.com/cockroachdb/cockroach-operator/v2.10.0/install/operator.yaml
-	$(CMD_PREFIX) kubectl wait --for=condition=Available --timeout=5m -n cockroach-operator-system deploy/cockroach-operator-manager
-	$(CMD_PREFIX) ./hack/wait-for-cockroach-operator-ready.sh
+deploy-operators: ## Deploy all operators and wait for readiness
+	$(CMD_PREFIX) kubectl apply -k ./deploy/operators/overlays/$(OVERLAY)
 
 .PHONY: use-cockroach
-use-cockroach: deploy-cockroach-operator ## Recreate the database with a Cockroach based server
+use-cockroach: ## Recreate the database with a Cockroach based server
 	$(CMD_PREFIX) OVERLAY=cockroach make recreate-db
 
 .PHONY: use-crunchy
@@ -544,12 +530,13 @@ use-postgres: ## Recreate the database with a simple Postgres server
 	$(CMD_PREFIX) OVERLAY=arm64 make recreate-db
 
 .PHONY: wait-for-readiness
-wait-for-readiness: # Wait for operators to be installed
-	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager --timeout=5m
-	$(CMD_PREFIX) kubectl rollout status -n cert-manager deploy/cert-manager-webhook --timeout=5m
-	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n cert-manager --timeout=5m
-	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n postgres-operator --timeout=5m
-	$(CMD_PREFIX) ./hack/wait-for-resoruce-exists.sh secrets -n ingress-nginx ingress-nginx-admission
+wait-for-readiness: # Wait for operators to be ready
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n operators -l operators.coreos.com/cert-manager.operators
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n operators -l operators.coreos.com/prometheus.operators
+	$(CMD_PREFIX) kubectl wait -n operators --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n nexodus-monitoring -l operators.coreos.com/grafana-operator.nexodus-monitoring
+	$(CMD_PREFIX) kubectl wait -n nexodus-monitoring --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-resource-exists.sh secrets -n ingress-nginx ingress-nginx-admission
 	$(CMD_PREFIX) kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
 	$(CMD_PREFIX) kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
 
@@ -563,6 +550,11 @@ deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernet
 .PHONY: undeploy
 undeploy: ## Remove the nexodus stack from a kubernetes cluster
 	$(CMD_PREFIX) kubectl delete namespace nexodus
+
+.PHONY: deploy-monitoring-stack ## Deploy the monitoring stack in the kind cluster
+deploy-monitoring-stack:
+	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-monitoring/overlays/dev
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus-monitoring --timeout=15m
 
 .PHONY: load-images
 load-images: ## Load images onto kind
@@ -614,7 +606,6 @@ endif
 
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new nexodus database
-
 	$(CMD_PREFIX) kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
 	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus postgrescluster/database
 	$(CMD_PREFIX) kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true

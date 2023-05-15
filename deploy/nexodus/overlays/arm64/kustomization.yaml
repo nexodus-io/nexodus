@@ -8,50 +8,46 @@ resources:
 namespace: nexodus
 
 configMapGenerator:
-  - name: ipam
-    behavior: merge
+  - behavior: merge
     literals:
       - GOIPAM_PG_SSLMODE=disable
-
-  - name: apiserver
-    behavior: merge
+    name: ipam
+  - behavior: merge
     literals:
       - NEXAPI_DB_SSLMODE=disable
+    name: apiserver
 
 secretGenerator:
-  - name: postgres
-    literals:
+  - literals:
       - POSTGRES_PASSWORD=password
       - PGDATA=/data/pgdata
-
-  - name: database-pguser-apiserver
-    literals:
+    name: postgres
+  - literals:
       - host=postgres
       - port=5432
       - user=apiserver
       - password=password
       - dbname=apiserver
-
-  - name: database-pguser-ipam
-    literals:
+    name: database-pguser-apiserver
+  - literals:
       - host=postgres
       - port=5432
       - user=ipam
       - password=password
       - dbname=ipam
-
-  - name: database-pguser-keycloak
-    literals:
+    name: database-pguser-ipam
+  - literals:
       - host=postgres
       - port=5432
       - user=keycloak
       - password=password
       - dbname=keycloak
+    name: database-pguser-keycloak
 
-patchesStrategicMerge:
-  - |-
-    $patch: delete
-    apiVersion: postgres-operator.crunchydata.com/v1beta1
-    kind: PostgresCluster
-    metadata:
-      name: database
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: postgres-operator.crunchydata.com/v1beta1
+      kind: PostgresCluster
+      metadata:
+        name: database

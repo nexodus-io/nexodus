@@ -3,7 +3,9 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-commonLabels:
-  app.kubernetes.io/component: frontend
-  app.kubernetes.io/instance: frontend
-  app.kubernetes.io/name: frontend
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/instance: frontend
+      app.kubernetes.io/name: frontend

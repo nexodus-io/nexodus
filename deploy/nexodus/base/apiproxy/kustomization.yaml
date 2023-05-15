@@ -2,23 +2,24 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 configMapGenerator:
-  - name: apiproxy
-    literals:
+  - literals:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - APIPROXY_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
       - APIPROXY_API_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_DOMAIN=try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
-
-  - name: apiproxy-envoy-config
-    files:
+    name: apiproxy
+  - files:
       - files/envoy.yaml
+    name: apiproxy-envoy-config
 resources:
   - deployment.yaml
   - ingress.yaml
   - ingress-frontend.yaml
   - service.yaml
-commonLabels:
-  app.kubernetes.io/component: apiproxy
-  app.kubernetes.io/instance: apiproxy
-  app.kubernetes.io/name: apiproxy
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: apiproxy
+      app.kubernetes.io/instance: apiproxy
+      app.kubernetes.io/name: apiproxy

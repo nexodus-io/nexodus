@@ -133,6 +133,11 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: NEXAPI_REDIS_DB
+            - name: NEXAPI_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_ENVIRONMENT
           resources:
             requests:
               cpu: 100m

@@ -303,7 +303,7 @@ jobs:
 
       - name: Setup KIND
         run: |
-          OVERLAY=${{ matrix.overlay }} make setup-kind deploy-operators load-images deploy cacerts
+          OVERLAY=${{ matrix.overlay }} make setup-kind install-olm deploy-operators load-images deploy cacerts
 
       - name: Build dist
         run: |

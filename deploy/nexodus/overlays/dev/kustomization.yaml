@@ -4,8 +4,9 @@ resources:
   - ../../base
   - issuer.yaml
 components:
+  - ../../components/promtail
 # Uncomment this to enable rate limiting
-#  - ../../components/limitador
+#  - ../../components/promtail
 namespace: nexodus
 configMapGenerator:
   - behavior: merge

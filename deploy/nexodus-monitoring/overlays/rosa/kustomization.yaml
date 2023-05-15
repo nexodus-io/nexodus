@@ -7,8 +7,9 @@ resources:
   - prometheus-rbac.yaml
 patches:
   - target:
-      kind: Jaeger
-      name: jaeger
+      group: monitoring.coreos.com
+      version: v1
     patch: |-
-      - op: remove
-        path: /spec/ingress/hosts
+      - op: replace
+        path: /apiVersion
+        value: monitoring.rhobs/v1
