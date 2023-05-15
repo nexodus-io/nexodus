@@ -1,0 +1,10 @@
+apiVersion: monitoring.rhobs/v1alpha1
+kind: MonitoringStack
+metadata:
+  name: nexodus-monitoring-stack
+spec:
+  logLevel: info
+  retention: 2d
+  resourceSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: nexodus
