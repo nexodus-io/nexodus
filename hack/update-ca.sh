@@ -14,12 +14,28 @@ if [ -f /.certs/rootCA.pem ]; then
   fi
 fi
 
-if [ -z "$1" ]; then
-  echo "To connect this container to the nexodus network, try running:"
-  echo
-  echo "   /bin/nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io"
-  echo
-  exec /bin/bash
-else
+if [ -n "$1" ]; then
   exec "$@"
 fi
+
+cat << EOF > ~/.bash_history
+nexd https://try.nexodus.io
+nexd https://qa.nexodus.io
+nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io
+EOF
+
+cat << EOF > ~/.motd
+
+To connect this container to the nexodus network, try running:
+
+    nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io
+
+Commands for using a dev service, qa.nexodus.io, or try.nexodus.io are in bash history.
+
+Try pressing the up arrow.
+
+EOF
+
+tmux new-session -s nexd-session -d
+tmux send-keys "cat ~/.motd" "C-m"
+exec tmux attach-session -t nexd-session
