@@ -466,7 +466,7 @@ image-apiserver:
 
 .PHONY: image-nexd ## Build the nexodus agent image
 image-nexd: dist/.image-nexd
-dist/.image-nexd: $(NEXD_DEPS) $(NEXCTL_DEPS) Containerfile.nexd | dist
+dist/.image-nexd: $(NEXD_DEPS) $(NEXCTL_DEPS) Containerfile.nexd hack/update-ca.sh | dist
 	$(CMD_PREFIX) docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
 	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) touch $@
