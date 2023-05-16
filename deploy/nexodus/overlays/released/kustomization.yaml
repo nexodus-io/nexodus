@@ -7,10 +7,10 @@ resources:
   - ../../base
 images:
   - name: quay.io/nexodus/apiserver
-    newTag: 2cfbfbee893bda7cb7bbc3bae969d10c242722a8
+    newTag: 667b14afe65ff8283fdc6bb61e7589b3981b1a7b
   - name: quay.io/nexodus/envsubst
-    newTag: 2cfbfbee893bda7cb7bbc3bae969d10c242722a8
+    newTag: 667b14afe65ff8283fdc6bb61e7589b3981b1a7b
   - name: quay.io/nexodus/frontend
-    newTag: 2cfbfbee893bda7cb7bbc3bae969d10c242722a8
+    newTag: 667b14afe65ff8283fdc6bb61e7589b3981b1a7b
   - name: quay.io/nexodus/go-ipam
-    newTag: 2cfbfbee893bda7cb7bbc3bae969d10c242722a8
+    newTag: 667b14afe65ff8283fdc6bb61e7589b3981b1a7b
