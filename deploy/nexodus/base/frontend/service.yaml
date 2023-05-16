@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: frontend
 spec:
+  clusterIP: None
   selector:
     app.kubernetes.io/component: frontend
     app.kubernetes.io/instance: frontend

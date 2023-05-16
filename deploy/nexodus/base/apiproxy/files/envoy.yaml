@@ -49,6 +49,7 @@ static_resources:
     - name: apiserver
       connect_timeout: 5s
       type: STRICT_DNS
+      dns_refresh_rate: 1s
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
@@ -65,6 +66,7 @@ static_resources:
     - name: frontend
       connect_timeout: 5s
       type: STRICT_DNS
+      dns_refresh_rate: 1s
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
