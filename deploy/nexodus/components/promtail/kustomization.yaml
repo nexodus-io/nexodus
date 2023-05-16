@@ -8,4 +8,4 @@ resources:
   - promtail-serviceaccount.yaml
   - promtail-role.yaml
   - promtail-rolebinding.yaml
-  - promtail-deployment.yaml
+  - promtail-daemonset.yaml

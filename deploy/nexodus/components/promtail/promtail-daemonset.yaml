@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: promtail
   labels:
@@ -7,9 +7,6 @@ metadata:
     app.kubernetes.io/instance: promtail
     app.kubernetes.io/name: promtail
 spec:
-  replicas: 2
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/component: promtail
@@ -23,15 +20,6 @@ spec:
         app.kubernetes.io/name: promtail
     spec:
       serviceAccountName: promtail-serviceaccount
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: promtail
-              app.kubernetes.io/instance: promtail
-              app.kubernetes.io/name: promtail
       containers:
         - name: promtail-container
           image: docker.io/grafana/promtail:2.8.2

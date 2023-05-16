@@ -1,0 +1,12 @@
+apiVersion: authorization.openshift.io/v1
+kind: RoleBinding
+metadata:
+  namespace: nexodus-monitoring
+  name: grafana-proxy
+roleRef:
+  kind: Role
+  name: grafana-proxy
+subjects:
+  - kind: ServiceAccount
+    name: grafana-serviceaccount
+    namespace: grafana

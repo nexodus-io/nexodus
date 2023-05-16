@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+  - ./grafana
   - apiproxy-service-monitor.yaml
   - apiserver-service-monitor.yaml
   - prometheus-rbac.yaml
@@ -18,10 +19,18 @@ patches:
       group: integreatly.org
       version: v1alpha1
       kind: Grafana
+    path: grafana-patch.yaml
+  - target:
+      group: integreatly.org
+      version: v1alpha1
+      kind: Grafana
     patch: |-
-      - op: replace
-        path: /spec/ingress/hostname
-        value: nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com
-      - op: replace
-        path: /spec/config/server/root_url
-        value: https://nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com
+      - op: remove
+        path: /spec/config/security
+  - target:
+      group: integreatly.org
+      version: v1alpha1
+      kind: Grafana
+    patch: |-
+      - op: remove
+        path: /spec/ingress

@@ -97,9 +97,11 @@ patches:
       kind: Ingress
       name: frontend
   - target:
-      kind: Deployment
-      name: promtail
+      group: rbac.authorization.k8s.io
+      version: v1
+      kind: Role
+      name: promtail-role
     patch: |-
-      - op: replace
-        path: /spec/replicas
-        value: 7
+      - op: add
+        path: /rules/1
+        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["hostmount-anyuid"],"verbs":["use"]}

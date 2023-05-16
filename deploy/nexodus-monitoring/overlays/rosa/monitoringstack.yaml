@@ -7,4 +7,4 @@ spec:
   retention: 2d
   resourceSelector:
     matchLabels:
-      app.kubernetes.io/part-of: nexodus
+      team: nexodus

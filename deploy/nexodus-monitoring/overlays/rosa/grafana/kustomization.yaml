@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ocp-injected-certs.yaml
+  - role.yaml
+  - rolebinding.yaml
+  - route.yaml
+  - serviceaccount.yaml
+  - secret.yaml
