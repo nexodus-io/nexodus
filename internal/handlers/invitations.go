@@ -19,7 +19,7 @@ import (
 // @Description  Create an invitation to an organization
 // @Id           CreateInvitation
 // @Tags         Invitation
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        Invitation  body     models.AddInvitation  true  "Add Invitation"
 // @Success      201  {object}  models.Invitation
@@ -103,7 +103,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 // @Description  Lists all invitations
 // @Id           ListInvitations
 // @Tags         Invitation
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.Invitation
 // @Failure		 401  {object}  models.BaseError
@@ -129,7 +129,7 @@ func (api *API) ListInvitations(c *gin.Context) {
 // @Description  Gets an Invitation by Invitation ID
 // @Id 			 GetInvitation
 // @Tags         Invitation
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 id   path      string true "Invitation ID"
 // @Success      200  {object}  models.Organization
@@ -193,7 +193,7 @@ func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context) func(db *go
 // @Description  Accept an invitation to an organization
 // @Id           AcceptInvitation
 // @Tags         Invitation
-// @Accepts		 json
+// @Accept		 json
 // @Produce      json
 // @Param        invitation   path      string  true "Invitation ID"
 // @Success      204
@@ -267,7 +267,7 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 // @Description  Deletes an existing invitation
 // @Id 			 DeleteInvitation
 // @Tags         Invitation
-// @Accepts		 json
+// @Accept		 json
 // @Produce      json
 // @Param        invitation   path      string  true "Invitation ID"
 // @Success      204  {object}  models.Organization

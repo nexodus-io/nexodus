@@ -25,6 +25,9 @@ const docTemplate = `{
         "/api/devices": {
             "get": {
                 "description": "Lists all devices",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -59,6 +62,9 @@ const docTemplate = `{
             },
             "post": {
                 "description": "Adds a new device",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -121,6 +127,9 @@ const docTemplate = `{
         "/api/devices/{id}": {
             "get": {
                 "description": "Gets a device by ID",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -173,6 +182,9 @@ const docTemplate = `{
             },
             "delete": {
                 "description": "Deletes an existing device and associated IPAM lease",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -219,6 +231,9 @@ const docTemplate = `{
             },
             "patch": {
                 "description": "Updates a device by ID",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -282,6 +297,9 @@ const docTemplate = `{
         "/api/fflags": {
             "get": {
                 "description": "Lists all feature flags",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -312,6 +330,9 @@ const docTemplate = `{
         "/api/fflags/{name}": {
             "get": {
                 "description": "Gets a Feature Flag by name",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -363,6 +384,9 @@ const docTemplate = `{
         "/api/invitations": {
             "get": {
                 "description": "Lists all invitations",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -397,6 +421,9 @@ const docTemplate = `{
             },
             "post": {
                 "description": "Create an invitation to an organization",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -447,6 +474,9 @@ const docTemplate = `{
         "/api/invitations/:invitation/accept": {
             "post": {
                 "description": "Accept an invitation to an organization",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -492,6 +522,9 @@ const docTemplate = `{
         "/api/invitations/{invitation}": {
             "delete": {
                 "description": "Deletes an existing invitation",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -546,6 +579,9 @@ const docTemplate = `{
         "/api/organizations": {
             "get": {
                 "description": "Lists all Organizations",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -651,6 +687,9 @@ const docTemplate = `{
         "/api/organizations/{id}": {
             "get": {
                 "description": "Gets a Organization by Organization ID",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -703,6 +742,9 @@ const docTemplate = `{
             },
             "delete": {
                 "description": "Deletes an existing organization and associated IPAM prefix",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -757,6 +799,9 @@ const docTemplate = `{
         "/api/organizations/{id}/devices": {
             "get": {
                 "description": "Lists all users for this Organization",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -814,6 +859,9 @@ const docTemplate = `{
         "/api/organizations/{organization_id}/devices": {
             "get": {
                 "description": "Lists all devices for this Organization",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -877,6 +925,9 @@ const docTemplate = `{
         "/api/organizations/{organization_id}/devices/{device_id}": {
             "get": {
                 "description": "Gets a device in a organization by ID",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -944,6 +995,9 @@ const docTemplate = `{
         "/api/users": {
             "get": {
                 "description": "Lists all users",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -980,6 +1034,9 @@ const docTemplate = `{
         "/api/users/{id}": {
             "get": {
                 "description": "Gets a user",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1038,6 +1095,9 @@ const docTemplate = `{
             },
             "delete": {
                 "description": "Delete a user",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1086,6 +1146,9 @@ const docTemplate = `{
         "/api/users/{id}/organizations/{organization}": {
             "delete": {
                 "description": "Deletes an existing organization associated to a user",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],

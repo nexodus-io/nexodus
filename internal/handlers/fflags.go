@@ -12,7 +12,7 @@ import (
 // @Description  Lists all feature flags
 // @Id           ListFeatureFlags
 // @Tags         FFlag
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Success      200  {object} map[string]bool
 // @Failure		 429  {object}  models.BaseError
@@ -26,7 +26,7 @@ func (api *API) ListFeatureFlags(c *gin.Context) {
 // @Description  Gets a Feature Flag by name
 // @Id           GetFeatureFlag
 // @Tags         FFlag
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 name path      string true  "feature flag name"
 // @Success      200  {object} map[string]bool

@@ -280,6 +280,8 @@ info:
 paths:
   /api/devices:
     get:
+      consumes:
+      - application/json
       description: Lists all devices
       operationId: ListDevices
       produces:
@@ -303,6 +305,8 @@ paths:
       tags:
       - Devices
     post:
+      consumes:
+      - application/json
       description: Adds a new device
       operationId: CreateDevice
       parameters:
@@ -344,6 +348,8 @@ paths:
       - Devices
   /api/devices/{id}:
     delete:
+      consumes:
+      - application/json
       description: Deletes an existing device and associated IPAM lease
       operationId: DeleteDevice
       parameters:
@@ -375,6 +381,8 @@ paths:
       tags:
       - Devices
     get:
+      consumes:
+      - application/json
       description: Gets a device by ID
       operationId: GetDevice
       parameters:
@@ -410,6 +418,8 @@ paths:
       tags:
       - Devices
     patch:
+      consumes:
+      - application/json
       description: Updates a device by ID
       operationId: UpdateDevice
       parameters:
@@ -452,6 +462,8 @@ paths:
       - Devices
   /api/fflags:
     get:
+      consumes:
+      - application/json
       description: Lists all feature flags
       operationId: ListFeatureFlags
       produces:
@@ -472,6 +484,8 @@ paths:
       - FFlag
   /api/fflags/{name}:
     get:
+      consumes:
+      - application/json
       description: Gets a Feature Flag by name
       operationId: GetFeatureFlag
       parameters:
@@ -506,6 +520,8 @@ paths:
       - FFlag
   /api/invitations:
     get:
+      consumes:
+      - application/json
       description: Lists all invitations
       operationId: ListInvitations
       produces:
@@ -529,6 +545,8 @@ paths:
       tags:
       - Invitation
     post:
+      consumes:
+      - application/json
       description: Create an invitation to an organization
       operationId: CreateInvitation
       parameters:
@@ -562,6 +580,8 @@ paths:
       - Invitation
   /api/invitations/:invitation/accept:
     post:
+      consumes:
+      - application/json
       description: Accept an invitation to an organization
       operationId: AcceptInvitation
       parameters:
@@ -592,6 +612,8 @@ paths:
       - Invitation
   /api/invitations/{invitation}:
     delete:
+      consumes:
+      - application/json
       description: Deletes an existing invitation
       operationId: DeleteInvitation
       parameters:
@@ -628,6 +650,8 @@ paths:
       - Invitation
   /api/organizations:
     get:
+      consumes:
+      - application/json
       description: Lists all Organizations
       operationId: ListOrganizations
       produces:
@@ -698,6 +722,8 @@ paths:
       - Organizations
   /api/organizations/{id}:
     delete:
+      consumes:
+      - application/json
       description: Deletes an existing organization and associated IPAM prefix
       operationId: DeleteOrganization
       parameters:
@@ -733,6 +759,8 @@ paths:
       tags:
       - Organizations
     get:
+      consumes:
+      - application/json
       description: Gets a Organization by Organization ID
       operationId: GetOrganizations
       parameters:
@@ -769,6 +797,8 @@ paths:
       - Organizations
   /api/organizations/{id}/devices:
     get:
+      consumes:
+      - application/json
       description: Lists all users for this Organization
       operationId: ListUsersInOrganization
       parameters:
@@ -807,6 +837,8 @@ paths:
       - Users
   /api/organizations/{organization_id}/devices:
     get:
+      consumes:
+      - application/json
       description: Lists all devices for this Organization
       operationId: ListDevicesInOrganization
       parameters:
@@ -849,6 +881,8 @@ paths:
       - Devices
   /api/organizations/{organization_id}/devices/{device_id}:
     get:
+      consumes:
+      - application/json
       description: Gets a device in a organization by ID
       operationId: GetDeviceInOrganization
       parameters:
@@ -894,6 +928,8 @@ paths:
       - Devices
   /api/users:
     get:
+      consumes:
+      - application/json
       description: Lists all users
       operationId: ListUsers
       produces:
@@ -918,6 +954,8 @@ paths:
       - Users
   /api/users/{id}:
     delete:
+      consumes:
+      - application/json
       description: Delete a user
       operationId: DeleteUser
       parameters:
@@ -949,6 +987,8 @@ paths:
       tags:
       - Users
     get:
+      consumes:
+      - application/json
       description: Gets a user
       operationId: GetUser
       parameters:
@@ -989,6 +1029,8 @@ paths:
       - Users
   /api/users/{id}/organizations/{organization}:
     delete:
+      consumes:
+      - application/json
       description: Deletes an existing organization associated to a user
       operationId: DeleteUserFromOrganization
       parameters:

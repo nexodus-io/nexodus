@@ -145,7 +145,7 @@ func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.D
 // @Description  Lists all Organizations
 // @Id 			 ListOrganizations
 // @Tags         Organizations
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.Organization
 // @Failure		 401  {object}  models.BaseError
@@ -178,7 +178,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // @Description  Gets a Organization by Organization ID
 // @Id 			 GetOrganizations
 // @Tags         Organizations
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 id   path      string true "Organization ID"
 // @Success      200  {object}  models.Organization
@@ -220,7 +220,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // @Description  Lists all devices for this Organization
 // @Id           ListDevicesInOrganization
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 gt_revision     query  uint64 false "greater than revision"
 // @Param		 organization_id path   string true "Organization ID"
@@ -384,7 +384,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 // @Description  Gets a device in a organization by ID
 // @Id 			 GetDeviceInOrganization
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 organization_id path   string true "Organization ID"
 // @Param		 device_id path   string true "Device ID"
@@ -447,7 +447,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 // @Description  Lists all users for this Organization
 // @Id           ListUsersInOrganization
 // @Tags         Users
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param		 id   path       string true "Organization ID"
 // @Success      200  {object}  []models.User
@@ -501,7 +501,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 // @Description  Deletes an existing organization and associated IPAM prefix
 // @Id 			 DeleteOrganization
 // @Tags         Organizations
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id   path      string  true "Organization ID"
 // @Success      204  {object}  models.Organization
