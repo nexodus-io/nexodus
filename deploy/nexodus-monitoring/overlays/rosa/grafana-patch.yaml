@@ -4,9 +4,13 @@ metadata:
   name: nexodus-grafana
 spec:
   config:
+    users:
+      allow_sign_up: false
+      auto_assign_org: true
+      auto_assign_org_role: Admin
     log:
-      mode: "console"
-      level: "warn"
+      mode: console
+      level: warn
     auth.anonymous:
       enabled: true
     auth:
@@ -17,6 +21,7 @@ spec:
     auth.proxy:
       enabled: true
       enable_login_token: true
+      auto_sign_up: true
       header_property: username
       header_name: X-Forwarded-User
     server:
