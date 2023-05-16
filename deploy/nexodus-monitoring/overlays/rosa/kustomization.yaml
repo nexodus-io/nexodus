@@ -14,3 +14,14 @@ patches:
       - op: replace
         path: /apiVersion
         value: monitoring.rhobs/v1
+  - target:
+      group: integreatly.org
+      version: v1alpha1
+      kind: Grafana
+    patch: |-
+      - op: replace
+        path: /spec/ingress/hostname
+        value: nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com
+      - op: replace
+        path: /spec/config/server/root_url
+        value: https://nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com
