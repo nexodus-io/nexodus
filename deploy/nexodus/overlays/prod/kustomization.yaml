@@ -105,4 +105,4 @@ patches:
     patch: |-
       - op: add
         path: /rules/1
-        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["hostmount-anyuid"],"verbs":["use"]}
+        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}

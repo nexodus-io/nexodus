@@ -23,3 +23,14 @@ dist
 *.test
 integration-tests/tmp/
 internal/client/tmp/
+
+# manifests
+deploy/
+
+# docs
+docs/
+
+# dotfiles and ci workflows
+.github/
+.vscode/
+.devcontainer/
