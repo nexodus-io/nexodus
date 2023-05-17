@@ -146,10 +146,6 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 		if helper.T.Failed() {
 			helper.Log(helper.gatherFail(ctr))
 		}
-		err = ctr.Terminate(context.Background())
-		if err != nil {
-			helper.logf("%s: container terminate failed: %v", name, err)
-		}
 	}
 
 	// wait for the CA cert to get imported.
@@ -176,7 +172,7 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 // containerExec exec container commands
 func (helper *Helper) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
 	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "wg" && cmd[0] != "cat" {
+	if cmd[0] != "cat" {
 		helper.logf("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	code, reader, err := container.Exec(
@@ -248,16 +244,6 @@ func (helper *Helper) runNexd(ctx context.Context, node testcontainers.Container
 	helper.require.NoError(err)
 }
 
-// wgDump dump wg sessions for failed test debugging
-func (helper *Helper) wgDump(ctx context.Context, container testcontainers.Container) string {
-	wgDump, err := helper.containerExec(ctx, container, []string{"wg", "show", "wg0", "dump"})
-	if err != nil {
-		return ""
-	}
-
-	return wgDump
-}
-
 // routesDumpV4 dump v4 routes for failed test debugging
 func (helper *Helper) routesDumpV4(ctx context.Context, container testcontainers.Container) string {
 	routesDump, err := helper.containerExec(ctx, container, []string{"ip", "route"})
@@ -315,7 +301,6 @@ func (helper *Helper) gatherFail(c testcontainers.Container) string {
 		helper.log(err)
 	}
 	res = append(res, fmt.Sprintf("%s eth0 IPv6: %s", nodeName, ip))
-	res = append(res, fmt.Sprintf("%s wg-dump:\n %s, ", nodeName, helper.wgDump(ctx, c)))
 	res = append(res, fmt.Sprintf("%s routes IPv4:\n%s, ", nodeName, helper.routesDumpV4(ctx, c)))
 	res = append(res, fmt.Sprintf("%s routes IPv6:\n%s, ", nodeName, helper.routesDumpV6(ctx, c)))
 	res = append(res, fmt.Sprintf("%s nexd logs:\n%s\n, ", nodeName, helper.logsDump(ctx, c)))
