@@ -4,7 +4,6 @@ namespace: nexodus-monitoring
 resources:
   - apiproxy-service-monitor.yaml
   - apiserver-service-monitor.yaml
-  - prometheus-service.yaml
   - tempo
   - minio
   - grafana
