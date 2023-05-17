@@ -133,7 +133,6 @@ jobs:
       - name: Build and export ${{ matrix.name }}
         uses: docker/build-push-action@v4
         with:
-          context: .
           file: ./Containerfile.${{ matrix.name }}
           tags: ${{ matrix.tags }}
           outputs: type=docker,dest=/tmp/${{ matrix.name }}.tar
