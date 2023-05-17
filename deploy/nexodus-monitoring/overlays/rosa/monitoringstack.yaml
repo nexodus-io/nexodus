@@ -5,6 +5,11 @@ metadata:
 spec:
   logLevel: info
   retention: 2d
+  namespaceSelector:
+    matchNames:
+      - nexodus-monitoring
+      - nexodus-qa
+      - nexodus
   resourceSelector:
     matchLabels:
       team: nexodus
