@@ -109,10 +109,3 @@ patches:
       - op: add
         path: /rules/1
         value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["hostmount-anyuid"],"verbs":["use"]}
-  - target:
-      kind: DaemonSet
-      name: promtail
-    patch: |-
-      - op: add
-        path: /spec/template/spec/securityContext
-        value: {"privileged": true}
