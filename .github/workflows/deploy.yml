@@ -63,7 +63,6 @@ jobs:
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v4
         with:
-          context: .
           platforms: linux/amd64,linux/arm64
           push: true
           file: ./Containerfile.${{ matrix.name }}
