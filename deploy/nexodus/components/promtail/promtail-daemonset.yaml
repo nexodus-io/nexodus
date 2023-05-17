@@ -30,6 +30,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: "spec.nodeName"
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: promtail-config
               mountPath: /etc/promtail
