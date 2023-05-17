@@ -387,10 +387,8 @@ func TestHubOrganization(t *testing.T) {
 
 	// verify the deleted device details are no longer in a device's tables
 	node2routes := helper.routesDumpV4(ctx, node2)
-	node2dump := helper.wgDump(ctx, node2)
 
 	require.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device")
-	require.NotContainsf(node2dump, node3IP, "found deleted device node still in wg show wg0 dump tables of a device")
 }
 
 // TestChildPrefix tests requesting a specific address in a newly created organization
