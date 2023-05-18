@@ -466,8 +466,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		for _, proxy := range ax.egressProxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
-
 		stunTicker := time.NewTicker(time.Second * 20)
+		secGroupTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
 		pollTicker := time.NewTicker(pollInterval)
 		defer pollTicker.Stop()
@@ -486,6 +486,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				// be processed when they come in on the informer. This periodic check is needed to
 				// re-establish our connection to the API if it is lost.
 				ax.reconcileDevices(ctx, options)
+			case <-secGroupTicker.C:
+				ax.reconcileSecurityGroups(ctx)
 			}
 		}
 	})
@@ -500,6 +502,37 @@ func (ax *Nexodus) Stop() {
 	}
 	for _, proxy := range ax.egressProxies {
 		proxy.Stop()
+	}
+}
+
+// reconcileSecurityGroups will check the security group and update it if necessary.
+func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
+	if runtime.GOOS != Linux.String() {
+		return
+	}
+
+	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.organization, ax.securityGroup.Id).Execute()
+	if err != nil {
+		ax.logger.Debugf("Error retrieving the security group: %v", err)
+	}
+
+	if responseSecGroup == nil {
+		ax.logger.Debug("Security group is not set.")
+		return
+	}
+
+	if !reflect.DeepEqual(responseSecGroup, ax.securityGroup) {
+		ax.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+		if responseSecGroup.Id != ax.securityGroup.Id ||
+			!reflect.DeepEqual(responseSecGroup.InboundRules, ax.securityGroup.InboundRules) ||
+			!reflect.DeepEqual(responseSecGroup.OutboundRules, ax.securityGroup.OutboundRules) {
+			ax.securityGroup = responseSecGroup
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
+		} else {
+			ax.securityGroup = responseSecGroup
+		}
 	}
 }
 

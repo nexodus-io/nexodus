@@ -32,6 +32,7 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		if err := ax.processSecurityGroupRules(); err != nil {
 			return err
 		}
+
 	}
 
 	// add routes and tunnels for the new peers only according to the cache diff
