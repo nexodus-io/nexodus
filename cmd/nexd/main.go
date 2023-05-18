@@ -100,6 +100,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		Version,
 		userspaceMode,
 		cCtx.String("state-dir"),
+		ctx,
 	)
 	if err != nil {
 		logger.Fatal(err.Error())

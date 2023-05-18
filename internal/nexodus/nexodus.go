@@ -156,6 +156,7 @@ func NewNexodus(
 	version string,
 	userspaceMode bool,
 	stateDir string,
+	ctx context.Context,
 ) (*Nexodus, error) {
 
 	if err := binaryChecks(); err != nil {
@@ -227,7 +228,7 @@ func NewNexodus(
 	// remove orphaned wg interfaces from previous node joins
 	ax.removeExistingInterface()
 
-	if err := ax.symmetricNatDisco(); err != nil {
+	if err := ax.symmetricNatDisco(ctx); err != nil {
 		ax.logger.Warn(err)
 	}
 
@@ -628,41 +629,48 @@ func (ax *Nexodus) checkUnsupportedConfigs() error {
 }
 
 // symmetricNatDisco determine if the joining node is within a symmetric NAT cone
-func (ax *Nexodus) symmetricNatDisco() error {
+func (ax *Nexodus) symmetricNatDisco(ctx context.Context) error {
 
-	// discover the server reflexive address per ICE RFC8445
-	stunServer1 := stun.NextServer()
-	stunServer2 := stun.NextServer()
-	stunAddr1, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
+	stunRetryTimer := time.Second * 1
+	err := util.RetryOperation(ctx, stunRetryTimer, maxRetries, func() error {
+		stunServer1 := stun.NextServer()
+		stunServer2 := stun.NextServer()
+		stunAddr1, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
+		if err != nil {
+			return err
+		} else {
+			ax.nodeReflexiveAddressIPv4 = stunAddr1
+		}
+
+		isSymmetric := false
+		stunAddr2, err := stun.Request(ax.logger, stunServer2, ax.listenPort)
+		if err != nil {
+			return err
+		} else {
+			isSymmetric = stunAddr1.String() != stunAddr2.String()
+		}
+
+		if stunAddr1.Addr().String() != "" {
+			ax.logger.Debugf("first NAT discovery STUN request returned: %s", stunAddr1.String())
+		} else {
+			ax.logger.Debugf("first NAT discovery STUN request returned an empty value")
+		}
+
+		if stunAddr2.Addr().String() != "" {
+			ax.logger.Debugf("second NAT discovery STUN request returned: %s", stunAddr2.String())
+		} else {
+			ax.logger.Debugf("second NAT discovery STUN request returned an empty value")
+		}
+
+		if isSymmetric {
+			ax.symmetricNat = true
+			ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
+		}
+
+		return nil
+	})
 	if err != nil {
-		return err
-	} else {
-		ax.nodeReflexiveAddressIPv4 = stunAddr1
-	}
-
-	isSymmetric := false
-	stunAddr2, err := stun.Request(ax.logger, stunServer2, ax.listenPort)
-	if err != nil {
-		return err
-	} else {
-		isSymmetric = stunAddr1.String() != stunAddr2.String()
-	}
-
-	if stunAddr1.Addr().String() != "" {
-		ax.logger.Debugf("first NAT discovery STUN request returned: %s", stunAddr1.String())
-	} else {
-		ax.logger.Debugf("first NAT discovery STUN request returned an empty value")
-	}
-
-	if stunAddr2.Addr().String() != "" {
-		ax.logger.Debugf("second NAT discovery STUN request returned: %s", stunAddr2.String())
-	} else {
-		ax.logger.Debugf("second NAT discovery STUN request returned an empty value")
-	}
-
-	if isSymmetric {
-		ax.symmetricNat = true
-		ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
+		return fmt.Errorf("STUN discovery error: %w", err)
 	}
 
 	return nil
