@@ -36,7 +36,7 @@ func (e errDuplicateDevice) Error() string {
 // @Description  Lists all devices
 // @Id  		 ListDevices
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.Device
 // @Failure		 401  {object}  models.BaseError
@@ -79,7 +79,7 @@ func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *go
 // @Description  Gets a device by ID
 // @Id  		 GetDevice
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
 // @Success      200  {object}  models.Device
@@ -114,7 +114,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Description  Updates a device by ID
 // @Id  		 UpdateDevice
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
 // @Param		 update body models.UpdateDevice true "Device Update"
@@ -218,7 +218,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 // @Id  		 CreateDevice
 // @Tags         Devices
 // @Description  Adds a new device
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        Device  body   models.AddDevice  true "Add Device"
 // @Success      201  {object}  models.Device
@@ -378,7 +378,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Description  Deletes an existing device and associated IPAM lease
 // @Id 			 DeleteDevice
 // @Tags         Devices
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id   path      string  true "Device ID"
 // @Success      204  {object}  models.Device

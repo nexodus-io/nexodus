@@ -151,7 +151,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 // @Description  Gets a user
 // @Id           GetUser
 // @Tags         Users
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
@@ -192,7 +192,7 @@ func (api *API) GetUser(c *gin.Context) {
 // @Description  Lists all users
 // @Id           ListUsers
 // @Tags         Users
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.User
 // @Failure		 401  {object}  models.BaseError
@@ -219,7 +219,7 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Description  Delete a user
 // @Id           DeleteUser
 // @Tags         Users
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
@@ -272,7 +272,7 @@ type UserOrganization struct {
 // @Description  Deletes an existing organization associated to a user
 // @Id			 DeleteUserFromOrganization
 // @Tags         Users
-// @Accepts		 json
+// @Accept       json
 // @Produce      json
 // @Param        id             path      string  true "User ID"
 // @Param        organization   path      string  true "Organization ID"

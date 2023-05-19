@@ -203,7 +203,7 @@ func (a *InvitationApiService) CreateInvitationExecute(r ApiCreateInvitationRequ
 	}
 
 	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
+	localVarHTTPContentTypes := []string{"application/json"}
 
 	// set Content-Type header
 	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
