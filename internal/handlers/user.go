@@ -311,7 +311,7 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 			Where("user_id = ?", userID).
 			Where("organization_id = ?", orgID).
 			Delete(&UserOrganization{}); res.Error != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("WTF failed to remove the association from the user_organizations table: %w", res.Error)))
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error)))
 		}
 		return nil
 	})

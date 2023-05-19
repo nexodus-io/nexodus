@@ -391,7 +391,9 @@ func TestHubOrganization(t *testing.T) {
 	require.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device")
 }
 
-// TestChildPrefix tests requesting a specific address in a newly created organization
+// TestChildPrefix tests requesting a specific address in a newly created organization for v4 and v6. This will start nexd three
+// different times. The first makes sure the prefix is created and routes are added. The second is started and then killed.
+// The third start of nexd is to validate the child-prefix was not deleted from the ipam database. TODO: test changing the child-prefix
 func TestChildPrefix(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
@@ -402,10 +404,12 @@ func TestChildPrefix(t *testing.T) {
 	password := "floofykittens"
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
-	node3LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNet := "172.16.20.102/32"
-	node3ChildPrefix := "172.16.10.0/24"
-	node2ChildPrefix := "172.16.20.0/24"
+	node3LoopbackNet := "172.16.10.101/32"
+	node2LoopbackNetV6 := "200:2::1/64"
+	node3LoopbackNetV6 := "200:3::1/64"
+	node2ChildPrefix := "172.16.20.0/24,200:2::/64"
+	node3ChildPrefix := "172.16.10.0/24,200:3::/64"
 
 	// create the nodes
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
@@ -435,17 +439,31 @@ func TestChildPrefix(t *testing.T) {
 		"router", fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
 	)
 
-	// add loopbacks to the containers that are contained in the node's child prefix
+	// add v4 loopbacks to the containers that are contained in the node's child prefix
 	_, err = helper.containerExec(ctx, node3, []string{"ip", "addr", "add", node3LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 	_, err = helper.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
+	require.NoError(err)
+	// add v6 loopbacks to the containers that are contained in the node's child prefix
+	_, err = helper.containerExec(ctx, node3, []string{"ip", "-6", "addr", "add", node3LoopbackNetV6, "dev", "lo"})
+	require.NoError(err)
+	_, err = helper.containerExec(ctx, node2, []string{"ip", "-6", "addr", "add", node2LoopbackNetV6, "dev", "lo"})
 	require.NoError(err)
 
 	// parse the loopback ip from the loopback prefix
 	node3LoopbackIP, _, _ := net.ParseCIDR(node3LoopbackNet)
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2LoopbackNet)
+	// parse the loopback ipv6 from the loopback prefix
+	node3LoopbackIPv6, _, _ := net.ParseCIDR(node3LoopbackNetV6)
+	node2LoopbackIPv6, _, _ := net.ParseCIDR(node2LoopbackNetV6)
 
-	// address will be the same, this is just a readiness check for gather data
+	// readiness check
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node3)
+	require.NoError(err)
+
+	// gather the wg0 v4 addresses
 	node3IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node3)
 	require.NoError(err)
 	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
@@ -465,6 +483,85 @@ func TestChildPrefix(t *testing.T) {
 
 	helper.Logf("Pinging %s from node2", node3LoopbackIP)
 	err = ping(ctx, node2, inetV4, node3LoopbackIP.String())
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node3", node2LoopbackIPv6)
+	err = ping(ctx, node3, inetV6, node2LoopbackIPv6.String())
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node3LoopbackIPv6)
+	err = ping(ctx, node2, inetV6, node3LoopbackIPv6.String())
+	require.NoError(err)
+
+	// kill the nexodus process on all nodes
+	_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
+	require.NoError(err)
+	_, err = helper.containerExec(ctx, node2, []string{"killall", "nexd"})
+	require.NoError(err)
+	_, err = helper.containerExec(ctx, node3, []string{"killall", "nexd"})
+	require.NoError(err)
+
+	// start nexd two more times, only validate connectivity on the second.
+	for i := 0; i < 2; i++ {
+		// start nexodus on the nodes
+		helper.runNexd(ctx, node1,
+			"--username", username, "--password", password,
+			"relay",
+		)
+
+		// validate nexd has started on the relay node
+		err := helper.nexdStatus(ctx, node1)
+		require.NoError(err)
+
+		helper.runNexd(ctx, node2,
+			"--username", username, "--password", password,
+			"router", fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
+		)
+
+		helper.runNexd(ctx, node3,
+			"--username", username, "--password", password,
+			"router", fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
+		)
+
+		// readiness check
+		err = helper.nexdStatus(ctx, node2)
+		require.NoError(err)
+		err = helper.nexdStatus(ctx, node3)
+		require.NoError(err)
+		// kill nexd only on the 1st run in the loop
+		if i == 0 {
+			//kill the nexodus process on all three nodes
+			_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
+			require.NoError(err)
+			_, err = helper.containerExec(ctx, node2, []string{"killall", "nexd"})
+			require.NoError(err)
+			_, err = helper.containerExec(ctx, node3, []string{"killall", "nexd"})
+			require.NoError(err)
+		}
+	}
+
+	helper.Logf("Pinging %s from node3", node2IP)
+	err = ping(ctx, node3, inetV4, node2IP)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node3", node2LoopbackIP)
+	err = ping(ctx, node3, inetV4, node2LoopbackIP.String())
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node3LoopbackIP)
+	err = ping(ctx, node2, inetV4, node3LoopbackIP.String())
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node3", node2LoopbackIPv6)
+	err = ping(ctx, node3, inetV6, node2LoopbackIPv6.String())
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node3LoopbackIPv6)
+	err = ping(ctx, node2, inetV6, node3LoopbackIPv6.String())
 	require.NoError(err)
 }
 

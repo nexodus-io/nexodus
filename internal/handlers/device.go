@@ -170,12 +170,21 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.SymmetricNat = *request.SymmetricNat
 		}
 
-		if request.ChildPrefix != nil {
+		// check if the updated device child prefix matches the existing device prefix
+		if request.ChildPrefix != nil && !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
 			prefixAllocated := make(map[string]struct{})
 			for _, prefix := range device.ChildPrefix {
+				if !util.IsValidPrefix(prefix) {
+					return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+				}
 				prefixAllocated[prefix] = struct{}{}
 			}
 			for _, prefix := range request.ChildPrefix {
+				isDefaultRoute := util.IsDefaultIPRoute(prefix)
+				// If the prefix is not a default route, process IPAM allocation/release
+				if isDefaultRoute {
+					continue
+				}
 				// lookup miss of prefix means we need to release it
 				if _, ok := prefixAllocated[prefix]; ok {
 					if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
@@ -189,6 +198,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 				}
 			}
 			device.ChildPrefix = request.ChildPrefix
+
 		}
 
 		if res := tx.
@@ -298,8 +308,14 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 		// allocate a child prefix if requested
 		for _, prefix := range request.ChildPrefix {
-			if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
-				return fmt.Errorf("failed to assign child prefix: %w", err)
+			if !util.IsValidPrefix(prefix) {
+				return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+			}
+			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
+			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
+				if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
+					return fmt.Errorf("failed to assign child prefix: %w", err)
+				}
 			}
 		}
 
@@ -447,4 +463,21 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, device)
+}
+
+func childPrefixEquals(existingPrefix, newPrefix []string) bool {
+	if len(existingPrefix) != len(newPrefix) {
+		return false
+	}
+	countMap := make(map[string]int)
+	for _, value := range existingPrefix {
+		countMap[value]++
+	}
+	for _, value := range newPrefix {
+		countMap[value]--
+		if countMap[value] < 0 {
+			return false
+		}
+	}
+	return true
 }
