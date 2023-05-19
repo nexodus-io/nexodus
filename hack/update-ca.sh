@@ -14,17 +14,34 @@ if [ -f /.certs/rootCA.pem ]; then
   fi
 fi
 
-if [ -n "$1" ]; then
+if [ -n "$1" ] && [ "$1" != "prod" ]; then
   exec "$@"
 fi
 
-cat << EOF > ~/.bash_history
+if [ "$1" = "prod" ]; then
+  cat << EOF > ~/.bash_history
+nexd https://qa.nexodus.io
+nexd https://try.nexodus.io
+EOF
+
+  cat << EOF > ~/.motd
+
+To connect this container to the nexodus network, try running:
+
+    nexd https://try.nexodus.io
+
+Press the up arrow to get this command from bash history.
+
+EOF
+
+else
+  cat << EOF > ~/.bash_history
 nexd https://try.nexodus.io
 nexd https://qa.nexodus.io
 nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io
 EOF
 
-cat << EOF > ~/.motd
+  cat << EOF > ~/.motd
 
 To connect this container to the nexodus network, try running:
 
@@ -32,9 +49,10 @@ To connect this container to the nexodus network, try running:
 
 Commands for using a dev service, qa.nexodus.io, or try.nexodus.io are in bash history.
 
-Try pressing the up arrow.
+Press the up arrow to find these commands.
 
 EOF
+fi
 
 tmux new-session -s nexd-session -d
 tmux send-keys "cat ~/.motd" "C-m"
