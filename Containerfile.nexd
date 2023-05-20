@@ -53,3 +53,5 @@ COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
 COPY --chmod=755 --from=build /src/udping /bin/udping
 COPY --chmod=755 --from=build /src/udpong /bin/udpong
+
+CMD /update-ca.sh prod

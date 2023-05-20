@@ -50,6 +50,21 @@ Query the status of `nexd` and follow the instructions to register your device.
 sudo nexctl nexd status
 ```
 
+### Docker or Podman
+
+For testing purposes, you can run the Nexodus Agent in a container. The following command will start a container and launch a shell inside it.
+
+```sh
+docker run --rm -it --cap-add SYS_MODULE --cap-add NET_ADMIN --cap-add NET_RAW \
+    --sysctl net.ipv6.conf.all.disable_ipv6=0 quay.io/nexodus/nexd
+```
+
+Once the container is running, start `nexd` and follow the instructions to register your device.
+
+```sh
+nexd https://try.nexodus.io
+```
+
 ### Other
 
 Download the latest release package for your OS and architecture. Each release includes a `nexd` binary and a `nexctl` binary.
