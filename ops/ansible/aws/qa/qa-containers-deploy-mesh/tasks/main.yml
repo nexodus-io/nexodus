@@ -1,0 +1,151 @@
+---
+# tasks file for qa-containers-deploy-mesh
+- name: Install dependencies
+  become: yes
+  apt:
+    name:
+      - fping
+      - iperf3
+      - nftables
+      - ca-certificates
+      - curl
+      - lsb-release
+      - gnupg
+    update_cache: yes
+    state: present
+
+- name: Add repo GPG key
+  become: yes
+  block:
+    - name: Create /etc/apt/keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: 0755
+
+    - name: Download and add Docker's GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    - name: Set permission for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        mode: a+r
+
+- name: Set up Docker repository
+  become: yes
+  shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+- name: Install docker engine and containerd
+  become: yes
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    update_cache: yes
+    state: present
+
+- name: Pause for 20 seconds for container runtime to initialize
+  pause:
+    seconds: 20
+
+- name: Start Nexodus QA Containers
+  become: yes
+  shell: |
+    for i in $(seq 1 {{ num_containers }}); do
+        docker run -d --network bridge \
+            --cap-add SYS_MODULE \
+            --cap-add NET_ADMIN \
+            --cap-add NET_RAW \
+            --sysctl net.ipv4.ip_forward=1 \
+            --sysctl net.ipv6.conf.all.disable_ipv6=0 \
+            --sysctl net.ipv6.conf.all.forwarding=1 \
+            --platform=linux/amd64 \
+            quay.io/networkstatic/nexd-qa:latest sleep 100000
+    done
+
+- name: Running the following nexd command
+  debug:
+    msg: "nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} {{ nexodus_url }}"
+  when: "'nexodusNodes' in group_names"
+
+- name: Write command to file
+  become: yes
+  copy:
+    dest: "/home/{{ ansible_user }}/nexd.sh"
+    content: |
+      #!/bin/sh
+      echo "Running command: nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} --relay-only {{ nexodus_url }}" > nexodus-logs.txt
+      NEXD_LOGLEVEL=debug nexd \
+      --username '{{ nexodus_auth_uid }}' \
+      --password '{{ nexodus_auth_password }}' \
+      --relay-only \
+      {{ nexodus_url }} >> nexodus-logs.txt 2>&1
+  when: "'nexodusRelayNodes' in group_names"
+
+- name: Write command to file
+  become: yes
+  copy:
+    dest: "/home/{{ ansible_user }}/nexd.sh"
+    content: |
+      #!/bin/sh
+      echo "Running command: nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} {{ nexodus_url }}" > nexodus-logs.txt
+      NEXD_LOGLEVEL=debug nexd \
+      --username '{{ nexodus_auth_uid }}' \
+      --password '{{ nexodus_auth_password }}' \
+      {{ nexodus_url }} >> nexodus-logs.txt 2>&1
+  when: "'nexodusNodes' in group_names"
+
+- name: Get list of all running containers
+  become: yes
+  command: docker ps -q
+  register: container_ids
+
+- name: Upload nexd.sh to all running Docker containers
+  become: yes
+  shell: |
+    docker cp /home/{{ ansible_user }}/nexd.sh {{ item }}:/
+    docker exec {{ item }} chmod +x /nexd.sh
+  loop: "{{ container_ids.stdout_lines }}"
+
+- name: Run nexd.sh on all running Docker containers
+  become: yes
+  shell: docker exec {{ item }} sh -c "nohup sh ./nexd.sh > /dev/null 2>&1 &"
+  loop: "{{ container_ids.stdout_lines }}"
+
+- name: Pause for 30 seconds for the onboard to complete to scrape the logs
+  pause:
+    seconds: 30
+
+- name: Copy nexodus-logs.txt from each container and store them on the host
+  become: yes
+  shell: |
+    docker cp {{ item }}:/nexodus-logs.txt /home/{{ ansible_user }}/{{ item }}-nexodus-logs-{{ ansible_hostname }}.txt
+  ignore_errors: yes
+  with_items: "{{ container_ids.stdout_lines }}"
+  when: "'nexodusNodes' in group_names"
+
+- name: Copy nexodus-logs.txt from each container and store on host when the node is --relay-only (symmetric NAT)
+  become: yes
+  shell: |
+    docker cp {{ item }}:/nexodus-logs.txt /home/{{ ansible_user }}/{{ item }}-nexodus-relay-only-symmetric-nat-logs-{{ ansible_hostname }}.txt
+  ignore_errors: yes
+  with_items: "{{ container_ids.stdout_lines }}"
+  when: "'nexodusRelayNodes' in group_names"
+
+- name: Register all log files
+  find:
+    paths: "/home/{{ ansible_user }}"
+    patterns: "*.txt"
+  register: files_to_copy
+  ignore_errors: yes
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: "{{ item.path }}"
+    dest: "./nexd-logs/"
+    flat: yes
+  with_items: "{{ files_to_copy.files }}"
+  ignore_errors: yes
