@@ -29,8 +29,8 @@
   become: yes
   shell: |
     printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
-    nexctl nexd connections
-    nexctl nexd connections >> connectivity-results.txt 2>&1
+    nexctl nexd peers ping
+    nexctl nexd peers ping >> connectivity-results.txt 2>&1
     printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
     wg show wg0 dump >> connectivity-results.txt 2>&1
     cat connectivity-results.txt

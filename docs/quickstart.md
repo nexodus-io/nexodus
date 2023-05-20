@@ -89,3 +89,9 @@ Try `ping` or whatever other connectivity test you prefer.
 ```sh
 ping 100.100.0.1
 ```
+
+Alternatively, you can verify connectivity to the device's peers with the following.
+
+```shell
+sudo nexctl nexd peers ping
+```

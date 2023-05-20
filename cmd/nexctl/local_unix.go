@@ -50,11 +50,6 @@ func init() {
 				},
 			},
 			{
-				Name:   "connections",
-				Usage:  "Run a test of the nexd peer connectivity (host firewalls may block the ICMP probes)",
-				Action: cmdConnStatus,
-			},
-			{
 				Name:  "get",
 				Usage: "Get a value from the local nexd instance",
 				Subcommands: []*cli.Command{
@@ -147,6 +142,25 @@ func init() {
 						Action: func(cCtx *cli.Context) error {
 							return proxyAddRemove(cCtx, false)
 						},
+					},
+				},
+			},
+			{
+				Name:  "peers",
+				Usage: "Commands for interacting nexd exit node configuration",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "list the nexd peers for this device",
+						Action: func(cCtx *cli.Context) error {
+							encodeOut := cCtx.String("output")
+							return cmdListPeers(cCtx, encodeOut)
+						},
+					},
+					{
+						Name:   "ping",
+						Usage:  "run a test to check the nexd peer connectivity (host firewalls may block the ICMP probes)",
+						Action: cmdConnStatus,
 					},
 				},
 			},
