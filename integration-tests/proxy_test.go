@@ -617,9 +617,14 @@ func TestProxyInvalidConfig(t *testing.T) {
 	for _, args := range proxyArgs {
 		out, err := helper.containerExec(ctx, node1, append(baseArgs, args...))
 		if err == nil {
-			// This test will fail. Print the output just in case there's a hint in there
-			// about what went wrong.
-			helper.Logf("nexd output: %s", out)
+			if strings.Contains(out, "level\":\"fatal") {
+				// containerExec() should have returned non-zero, but sometimes it doesn't ...
+				err = fmt.Errorf("fatal error in nexd output: %s", out)
+			} else {
+				// This test will fail. Print the output just in case there's a hint in there
+				// about what went wrong.
+				helper.Logf("nexd output: %s", out)
+			}
 		}
 		require.Error(err)
 	}
