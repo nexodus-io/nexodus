@@ -38,6 +38,7 @@ jobs:
   deploy-qa:
     name: deploy-qa-ec2
     runs-on: ubuntu-latest
+    environment: image-repositories
     timeout-minutes: 90
     env:
       AWS_REGION: "us-east-1"
