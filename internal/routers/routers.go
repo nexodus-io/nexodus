@@ -112,6 +112,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.DELETE("/organizations/:organization/security_groups/:id", api.DeleteSecurityGroup)
 		private.GET("/organizations/:organization/security_groups/:id", api.GetSecurityGroup)
 		private.PATCH("/organizations/:organization/security_groups/:id", api.UpdateSecurityGroup)
+		private.PATCH("/organizations/:organization/devices/:device/security_groups/:security_group", api.PatchSecurityGroupDevice)
 		// Feature Flags
 		private.GET("fflags", api.ListFeatureFlags)
 		private.GET("fflags/:name", api.GetFeatureFlag)

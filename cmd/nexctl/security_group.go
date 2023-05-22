@@ -143,6 +143,30 @@ func deleteSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 	return nil
 }
 
+// applySecurityGroupToDevice patch a security group to a device
+func applySecurityGroupToDevice(c *client.APIClient, encodeOut, secGroupID, organizationID, deviceID string) error {
+	orgID, err := uuid.Parse(organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
+	}
+	res, _, err := c.SecurityGroupApi.PatchSecurityGroupDevice(context.Background(), orgID.String(), deviceID, secGroupID).Execute()
+	if err != nil {
+		return fmt.Errorf("security group patch failed: %w", err)
+	}
+
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		fmt.Printf("successfully deleted user %s\n", res.Id)
+		return nil
+	}
+
+	err = FormatOutput(encodeOut, res)
+	if err != nil {
+		return fmt.Errorf("failed to print output: %w", err)
+	}
+
+	return nil
+}
+
 func jsonStringToSecurityRules(jsonString string) ([]public.ModelsSecurityRule, error) {
 	var rules []public.ModelsSecurityRule
 	err := json.Unmarshal([]byte(jsonString), &rules)

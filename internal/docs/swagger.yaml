@@ -1003,6 +1003,52 @@ paths:
       summary: Get Device
       tags:
       - Devices
+  /api/organizations/{organization_id}/devices/{device_id}/security_groups/{security_group_id}:
+    patch:
+      description: Updates a Device's Security Group by ID
+      operationId: PatchSecurityGroupDevice
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      - description: Security Group ID
+        in: path
+        name: security_group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Update Device Security Group
+      tags:
+      - SecurityGroup
   /api/organizations/{organization_id}/security_groups:
     get:
       description: Lists all Security Groups

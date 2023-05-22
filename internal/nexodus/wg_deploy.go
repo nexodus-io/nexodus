@@ -12,7 +12,8 @@ const (
 )
 
 var (
-	securityGroupErr = errors.New("nftables setup error")
+	securityGroupErr      = errors.New("nftables setup error")
+	securityGroupNotFound = errors.New("404 Not Found")
 )
 
 func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
@@ -27,12 +28,11 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		}
 	}
 
-	if ax.securityGroup.Id != "" && runtime.GOOS == Linux.String() {
+	if runtime.GOOS == Linux.String() {
 		ax.logger.Debugf("Security group: %+v", ax.securityGroup)
 		if err := ax.processSecurityGroupRules(); err != nil {
 			return err
 		}
-
 	}
 
 	// add routes and tunnels for the new peers only according to the cache diff

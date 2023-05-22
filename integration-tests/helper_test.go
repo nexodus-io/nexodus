@@ -2,11 +2,13 @@ package integration_tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -14,16 +16,21 @@ import (
 	"unicode"
 
 	"github.com/ahmetb/dlog"
-
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap/zaptest"
+)
+
+const (
+	protoTCP = "tcp"
+	protoUDP = "udp"
 )
 
 type Helper struct {
@@ -173,7 +180,7 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 // containerExec exec container commands
 func (helper *Helper) containerExec(ctx context.Context, container testcontainers.Container, cmd []string) (string, error) {
 	nodeName, _ := container.Name(ctx)
-	if cmd[0] != "cat" {
+	if cmd[0] != "cat" && cmd[0] != "nft" {
 		helper.logf("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	}
 	code, reader, err := container.Exec(
@@ -405,4 +412,161 @@ func (helper *Helper) getNodeHostname(ctx context.Context, ctr testcontainers.Co
 	}, backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx))
 
 	return hostname, err
+}
+
+// createSecurityRule creates a rule to append to security group rules
+func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr string, ipRanges []string) public.ModelsSecurityRule {
+	fromPort := int32(0)
+	toPort := int32(0)
+
+	// Check and convert fromPort from string to int32 if not empty
+	if fromPortStr != "" {
+		tmpFromPort, _ := strconv.ParseInt(fromPortStr, 10, 32) // Ignore error, defaults to 0
+		fromPort = int32(tmpFromPort)
+	}
+
+	// Check and convert toPort from string to int32 if not empty
+	if toPortStr != "" {
+		tmpToPort, _ := strconv.ParseInt(toPortStr, 10, 32) // Ignore error, defaults to 0
+		toPort = int32(tmpToPort)
+	}
+
+	// If ipRanges is nil, initialize it as an empty slice
+	if ipRanges == nil {
+		ipRanges = []string{}
+	}
+
+	// Create the rule
+	rule := public.ModelsSecurityRule{
+		IpProtocol: protocol,
+		FromPort:   fromPort,
+		ToPort:     toPort,
+		IpRanges:   ipRanges,
+	}
+
+	return rule
+}
+
+// retryCmdOnAllNodes is a wrapper for retryCmdUntilNotEqual that takes the nftables from before a
+// security group is updated and diffs them for all the nodes passed until it detects a change or times out.
+func (helper *Helper) retryCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+	helper.Logf("waiting for the security group change to converge")
+	for _, node := range nodes {
+		success, err := helper.retryCmdUntilNotEqual(ctx, node, command, cmdOutputBefore)
+		if err != nil {
+			return false, err
+		}
+		if !success {
+			return false, fmt.Errorf("output did not change for one of the nodes after max attempts")
+		}
+	}
+	return true, nil
+}
+
+// retryCmdUntilNotEqual is used to watch and wait for the new policy to be applied to the device
+func (helper *Helper) retryCmdUntilNotEqual(ctx context.Context, ctr testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+	const maxRetries = 30             // as the polling timer gets lowered, so can this value
+	const retryInterval = time.Second // Retry every second
+
+	for i := 0; i < maxRetries; i++ {
+		cmdOutputAfter, err := helper.containerExec(ctx, ctr, command)
+		if err != nil {
+			return false, err
+		}
+
+		// Filter out state tracking line that is always present and strip counters
+		linesBefore := strings.Split(cmdOutputBefore, "\n")
+		linesAfter := strings.Split(cmdOutputAfter, "\n")
+		filteredBefore := filterAndTrimLines(linesBefore, "established", "counter")
+		filteredAfter := filterAndTrimLines(linesAfter, "established", "counter")
+
+		if filteredBefore != filteredAfter {
+			// They are not equal, meaning the nftable has changed
+			return true, nil
+		}
+
+		// They are equal, meaning the nftable has not changed
+		time.Sleep(retryInterval)
+	}
+
+	// They are still equal after maxRetries attempts
+	return false, fmt.Errorf("output did not change after %d attempts", maxRetries)
+}
+
+// startPortListener using netcat, start a listener that will respond with the device's
+// hostname when anything connects to the listening port
+func (helper *Helper) startPortListener(ctx context.Context, ctr testcontainers.Container, ipAddr, proto, port string) error {
+	nodeHostname, err := helper.getNodeHostname(ctx, ctr)
+	if err != nil {
+		return fmt.Errorf("failed to get the device's hostname for device")
+	}
+	var protoOpt string
+	if proto == protoTCP {
+		protoOpt = "-t"
+	} else {
+		protoOpt = "-u"
+	}
+	cmd := []string{
+		"bash",
+		"-c",
+		fmt.Sprintf("while true; do echo %s | nc -l %s %s %s; done &", nodeHostname, ipAddr, port, protoOpt),
+	}
+
+	_, err = helper.containerExec(ctx, ctr, cmd)
+
+	return err
+}
+
+// connectToPort using netcat, connect to a listener and return the output from the connection
+func (helper *Helper) connectToPort(ctx context.Context, ctr testcontainers.Container, ipv4, proto, port string) (string, error) {
+	var protoOpt string
+	if proto == protoTCP {
+		protoOpt = "-t"
+	} else {
+		protoOpt = "-u"
+	}
+	command := []string{"bash",
+		"-c",
+		fmt.Sprintf("echo -e '\\n' | nc -w 2 %s %s %s", ipv4, port, protoOpt),
+	}
+
+	netcatOut, err := helper.containerExec(ctx, ctr, command)
+
+	return strings.TrimSuffix(netcatOut, "\n"), err
+}
+
+// securityGroupRulesUpdate update security group rule
+func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string, orgID string) error {
+	// Marshal rules to JSON
+	inboundJSON, err := json.Marshal(inboundRules)
+	if err != nil {
+		return err
+	}
+
+	outboundJSON, err := json.Marshal(outboundRules)
+	if err != nil {
+		return err
+	}
+
+	command := []string{
+		nexctl,
+		"--username", username,
+		"--password", password,
+		"security-group", "update",
+		"--name=default",
+		"--description=security group e2e",
+		"--inbound-rules", string(inboundJSON),
+		"--outbound-rules", string(outboundJSON),
+		"--security-group-id", secGroupID,
+		"--organization-id", orgID,
+	}
+
+	out, err := helper.runCommand(command...)
+	if err != nil {
+		return err
+	}
+
+	helper.Logf("nexctl security-group update output: %s", out)
+
+	return nil
 }

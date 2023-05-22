@@ -18,10 +18,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/stun"
-
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/term"
@@ -354,19 +354,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
 
-	ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
-	if err != nil {
-		if resp != nil {
-			ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
-			return err
-		}
-		if err != nil {
-			ax.logger.Warnf("get security group error - retrying error: %v", err)
-			return err
-		}
-	}
-	ax.logger.Debugf("organization security group: %v", ax.securityGroup)
-
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	ax.informerStop = informerCancel
 	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.org.Id).Informer()
@@ -449,6 +436,23 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
 		modelsDevice.Id, ax.org.Name, ax.org.Id)
 
+	if modelsDevice.SecurityGroupIds != uuid.Nil.String() {
+		ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
+		if err != nil {
+			if resp != nil {
+				ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
+				return err
+			}
+			if err != nil {
+				ax.logger.Warnf("get security group error - retrying error: %v", err)
+				return err
+			}
+		}
+		ax.logger.Debugf("organization security group: %v", ax.securityGroup)
+	} else {
+		ax.logger.Debug("organization security group is empty")
+	}
+
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
 		if err := ax.relayPrep(); err != nil {
@@ -511,9 +515,27 @@ func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
+	// lookup this device in the device cache and check if the security-group ID is nil
+	existing, ok := ax.deviceCache[ax.wireguardPubKey]
+	if ok {
+		if existing.device.SecurityGroupIds == uuid.Nil.String() {
+			ax.securityGroup = nil
+			return
+		}
+	}
+	// if the security group ID is not nil, lookup the ID and check for any changes
 	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.organization, ax.securityGroup.Id).Execute()
 	if err != nil {
-		ax.logger.Debugf("Error retrieving the security group: %v", err)
+		// if the group ID returns a 404, clear the current rules
+		if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
+			ax.securityGroup = nil
+			return
+		} else {
+			ax.logger.Debugf("Error retrieving the security group: %v", err)
+		}
 	}
 
 	if responseSecGroup == nil {
@@ -696,10 +718,10 @@ func (ax *Nexodus) Reconcile() error {
 	if changed {
 		ax.buildPeersConfig()
 		if len(updatePeers) > 0 {
-			if strings.Contains(err.Error(), securityGroupErr.Error()) {
-				ax.logger.Fatal(err)
-			}
 			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
+				if strings.Contains(err.Error(), securityGroupErr.Error()) {
+					ax.logger.Fatal(err)
+				}
 				// If the wireguard configuration fails, we should wipe out our peer list
 				// so it is rebuilt and reconfigured from scratch the next time around.
 				ax.wgConfig.Peers = nil

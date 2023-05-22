@@ -274,7 +274,6 @@ func main() {
 								Required: true,
 							},
 						},
-
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							sgID := cCtx.String("security-group-id")
@@ -397,6 +396,32 @@ func main() {
 
 							fmt.Println("Warning: currently under development and not fully functional. Use at your own risk. This feature is not fully implemented.")
 							return updateSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID, name, description, inboundRules, outboundRules)
+						},
+					},
+					{
+						Name:  "apply-group-to-device",
+						Usage: "Apply a security-group to a device",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "security-group-id",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "organization-id",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "device-id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							encodeOut := cCtx.String("output")
+							sgID := cCtx.String("security-group-id")
+							orgID := cCtx.String("organization-id")
+							devID := cCtx.String("device-id")
+							// TODO: resolve the error "security group patch failed: update is required and must be specified"
+							return applySecurityGroupToDevice(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID, devID)
 						},
 					},
 				},

@@ -3,11 +3,11 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"net"
 	"os/exec"
 	"strings"
 
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -40,6 +40,16 @@ var (
 
 // processSecurityGroupRules processes a security group for a Linux node
 func (ax *Nexodus) processSecurityGroupRules() error {
+
+	// Delete the table if the security group is empty and attempt to drop a table if one exists
+	if ax.securityGroup == nil {
+		// Drop the existing table and return nil if a group was not found to drop
+		if err := ax.nfTableDrop(); err != nil {
+			return nil
+		}
+		return nil
+	}
+
 	ruleInterface = fmt.Sprintf("iifname %s", wgIface)
 
 	inboundRules := ax.securityGroup.InboundRules
