@@ -10,8 +10,8 @@ This enables Nexodus to be easily adapted for different deployment scenarios.
 The base Nexodus manifests live in `./deploy/nexodus/base`, and we offer a number of overlays:
 
 - Local Development - `./deploy/nexodus/overlays/dev`
-- Operate First (QA) - `./deploy/nexodus/overlays/qa`
-- Operate First (Production) - `./deploy/nexodus/overlays/prod`
+- ROSA (QA) - `./deploy/nexodus/overlays/qa`
+- ROSA (Production) - `./deploy/nexodus/overlays/prod`
 
 ## Build Pipeline
 
@@ -40,3 +40,5 @@ These resources are only accessible to those with access to the cluster hosting 
 - [Cluster login](https://console-openshift-console.apps.open-svc-sts.k1wl.p1.openshiftapps.com/)
 - [prod deployment ArgoCD](https://openshift-gitops-server-openshift-gitops.apps.open-svc-sts.k1wl.p1.openshiftapps.com/applications/openshift-gitops/nexodus?view=tree&resource=)
 - [qa deployment ArgoCD](https://openshift-gitops-server-openshift-gitops.apps.open-svc-sts.k1wl.p1.openshiftapps.com/applications/openshift-gitops/nexodus-qa?view=tree&resource=)
+- [monitoring stack ArgoCD](https://openshift-gitops-server-openshift-gitops.apps.open-svc-sts.k1wl.p1.openshiftapps.com/applications/openshift-gitops/nexodus-monitoring?view=tree&resource=)
+- [grafana](https://nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com/)
