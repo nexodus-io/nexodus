@@ -20,6 +20,8 @@ fi
 
 if [ "$1" = "prod" ]; then
   cat << EOF > ~/.bash_history
+NEXD_LOGLEVEL=debug nexd https://qa.nexodus.io
+NEXD_LOGLEVEL=debug nexd https://try.nexodus.io
 nexd https://qa.nexodus.io
 nexd https://try.nexodus.io
 EOF
@@ -36,6 +38,9 @@ EOF
 
 else
   cat << EOF > ~/.bash_history
+NEXD_LOGLEVEL=debug nexd https://try.nexodus.io
+NEXD_LOGLEVEL=debug nexd https://qa.nexodus.io
+NEXD_LOGLEVEL=debug nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io
 nexd https://try.nexodus.io
 nexd https://qa.nexodus.io
 nexd --username admin --password floofykittens https://try.nexodus.127.0.0.1.nip.io
