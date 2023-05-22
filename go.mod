@@ -8,7 +8,7 @@ require (
 	github.com/briandowns/spinner v1.23.0
 	github.com/bufbuild/connect-go v1.7.0
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
-	github.com/coreos/go-oidc/v3 v3.5.0
+	github.com/coreos/go-oidc/v3 v3.6.0
 	github.com/cucumber/godog v0.12.6
 	github.com/docker/docker v23.0.5+incompatible
 	github.com/fatih/color v1.15.0
