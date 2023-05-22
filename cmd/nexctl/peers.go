@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -72,12 +73,21 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	return nil
 }
 
-// ParseTime attempts to parse a time string in two possible formats to handle UTC and local time differences between Darwin and Linux
+// ParseTime attempts to parse a time string in three possible formats to handle UTC and local time differences between Darwin and Linux and the proxy mode
 func ParseTime(timeStr string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339Nano, timeStr)
-	if err != nil {
-		// Custom format
-		t, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", timeStr)
+	var t time.Time
+	var ut int64
+	var err error
+	if t, err = time.Parse(time.RFC3339Nano, timeStr); err == nil {
+		return t.UTC(), nil
+	}
+	if t, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", timeStr); err == nil {
+		return t.UTC(), nil
+	}
+	if ut, err = strconv.ParseInt(timeStr, 10, 64); err == nil {
+		if ut != 0 {
+			t = time.Unix(ut, 0)
+		}
 	}
 	return t.UTC(), err
 }
