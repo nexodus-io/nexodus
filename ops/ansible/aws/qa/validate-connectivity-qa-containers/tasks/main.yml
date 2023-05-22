@@ -1,0 +1,34 @@
+---
+# tasks file for validate-connectivity-qa-containers
+- name: Pause for 60 for convergence
+  pause:
+    seconds: 60
+
+- name: Debug
+  debug:
+    msg: "Running connectivity test on spoke node: {{ inventory_hostname }}"
+
+- name: Verify Connectivity from a spoke node to all spokes
+  become: yes
+  shell: |
+    docker exec $(docker ps -l -q) sh -c '
+      printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > /tmp/connectivity-results.txt;
+      nexctl nexd connections;
+      nexctl nexd connections >> /tmp/connectivity-results.txt 2>&1;
+      cat /tmp/connectivity-results.txt'
+  register: result
+  ignore_errors: true
+
+- name: Print connectivity results
+  debug:
+    msg: "{{ result.stdout }}"
+
+- name: Copy connectivity results back to the runner
+  become: yes
+  shell: "docker cp $(docker ps -l -q):/tmp/connectivity-results.txt /home/{{ ansible_user }}/connectivity-results.txt"
+
+- name: Fetch connectivity results to Ansible control node
+  fetch:
+    src: "/home/{{ ansible_user }}/connectivity-results.txt"
+    dest: "./"
+    flat: true

@@ -49,7 +49,6 @@
   become: yes
   shell: |
     printf "\n\n====== WG Dump from Node: {{ inventory_hostname }} wg0 Addr: {{ ipv4_address_result }} ======\n" >> /home/{{ ansible_user }}/nexodus-logs.txt
-    wg show wg0 dump >> /home/{{ ansible_user }}/nexodus-logs.txt
   ignore_errors: yes
 
 - name: Copy file from remote host to localhost
