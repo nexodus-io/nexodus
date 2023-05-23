@@ -1,6 +1,8 @@
 package nexodus
 
 import (
+	"strings"
+
 	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -16,8 +18,74 @@ type WgSessions struct {
 	Rx              int64
 }
 
+func (nx *Nexodus) DumpPeers(iface string) ([]WgSessions, error) {
+	if nx.userspaceMode {
+		return nx.DumpPeersUS(iface)
+	}
+	return DumpPeersOS(iface)
+}
+
+func (nx *Nexodus) DumpPeersUS(iface string) ([]WgSessions, error) {
+	fullConfig, err := nx.userspaceDev.IpcGet()
+	if err != nil {
+		nx.logger.Errorf("Failed to read back full wireguard config: %w", err)
+		return nil, err
+	}
+
+	// Every new peer starts with public_key
+	//
+	// public_key=73e7b02320b07e3566b1064443a65f76191a89430cf479cb9d17d8926087d04a
+	// preshared_key=0000000000000000000000000000000000000000000000000000000000000000
+	// protocol_version=1
+	// endpoint=172.17.0.2:51815
+	// last_handshake_time_sec=0
+	// last_handshake_time_nsec=0
+	// tx_bytes=148
+	// rx_bytes=0
+	// persistent_keepalive_interval=20
+	// allowed_ip=100.100.0.2/32
+	// allowed_ip=200::2/128
+
+	// Parse fullConfig string by line of key=value pairs
+	// and build a list of WgSessions
+	peers := make([]WgSessions, 0)
+	peer := WgSessions{}
+	for _, line := range strings.Split(fullConfig, "\n") {
+		kv := util.SplitKeyValue(line)
+		if kv == nil || len(kv) != 2 {
+			continue
+		}
+		switch kv[0] {
+		case "public_key":
+			if peer.PublicKey != "" {
+				// Append previous peer
+				peers = append(peers, peer)
+				peer = WgSessions{}
+			}
+			peer.PublicKey = kv[1]
+		case "preshared_key":
+			peer.PreSharedKey = kv[1]
+		case "endpoint":
+			peer.Endpoint = kv[1]
+		case "last_handshake_time_sec":
+			peer.LatestHandshake = kv[1]
+		case "tx_bytes":
+			peer.Tx = util.StringToInt64(kv[1])
+		case "rx_bytes":
+			peer.Rx = util.StringToInt64(kv[1])
+		case "allowed_ip":
+			peer.AllowedIPs = append(peer.AllowedIPs, kv[1])
+		}
+	}
+	// Append last peer
+	if peer.PublicKey != "" {
+		peers = append(peers, peer)
+	}
+	return peers, nil
+}
+
 // DumpPeers dump wireguard peers
-func DumpPeers(iface string) ([]WgSessions, error) {
+func DumpPeersOS(iface string) ([]WgSessions, error) {
 	c, err := wgctrl.New()
 	if err != nil {
 		return nil, err
