@@ -41,18 +41,15 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 	ax.buildLocalConfig()
 
 	for _, device := range ax.deviceCache {
-		localIP, reflexiveIP4 := ax.extractLocalAndReflexiveIP(device)
-		peerPort := ax.extractPeerPort(localIP)
+		// skip ourselves
 		if device.PublicKey == ax.wireguardPubKey {
 			continue
 		}
 
-		if !ax.relay && device.Relay {
-			peerRelay := ax.buildRelayPeer(device, relayAllowedIP, localIP, reflexiveIP4)
-			peers = append(peers, peerRelay)
-			continue
-		}
+		localIP, reflexiveIP4 := ax.extractLocalAndReflexiveIP(device)
+		peerPort := ax.extractPeerPort(localIP)
 
+		// We are a relay node. This block will get hit for every peer.
 		if ax.relay {
 			peer := ax.buildPeerForRelayNode(device, localIP, reflexiveIP4)
 			peers = append(peers, peer)
@@ -60,12 +57,28 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 			continue
 		}
 
-		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) && !device.Relay {
+		// The peer is a relay node
+		if device.Relay {
+			peerRelay := ax.buildRelayPeer(device, relayAllowedIP, localIP, reflexiveIP4)
+			peers = append(peers, peerRelay)
+			continue
+		}
+
+		// We are behind the same reflexive address as the peer, try local peering first
+		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
 			peer := ax.buildDirectLocalPeer(device, localIP, peerPort)
 			peers = append(peers, peer)
 			ax.logPeerInfo(device, localIP)
+			continue
+		}
 
-		} else if !ax.symmetricNat && !device.SymmetricNat && !device.Relay {
+		// If we are behind symmetric NAT, we have no further options
+		if ax.symmetricNat {
+			continue
+		}
+
+		// If the peer is not behind symmetric NAT, we can try peering with its reflexive address
+		if !device.SymmetricNat {
 			peer := ax.buildDefaultPeer(device, reflexiveIP4)
 			peers = append(peers, peer)
 			ax.logPeerInfo(device, reflexiveIP4)

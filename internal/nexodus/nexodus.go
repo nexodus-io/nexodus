@@ -578,7 +578,7 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 }
 
 func (ax *Nexodus) Reconcile() error {
-	peerListing, resp, err := ax.informer.Execute()
+	peerMap, resp, err := ax.informer.Execute()
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("error: %w header: %v", err, resp.Header)
@@ -589,7 +589,7 @@ func (ax *Nexodus) Reconcile() error {
 	var updatePeers []public.ModelsDevice
 	var allPeers []public.ModelsDevice
 	var changed bool
-	for _, p := range peerListing {
+	for _, p := range peerMap {
 		allPeers = append(allPeers, p)
 		existing, ok := ax.deviceCache[p.Id]
 		if !ok {
