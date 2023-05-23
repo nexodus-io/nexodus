@@ -1,7 +1,6 @@
 package nexodus
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -16,8 +15,6 @@ const (
 	fwdFilePathV6  = "/proc/sys/net/ipv6/conf/all/forwarding"
 	nftablesBinary = "nft"
 )
-
-var interfaceErr = errors.New("interface setup error")
 
 // ifaceExists returns true if the input matches a net interface
 func ifaceExists(logger *zap.SugaredLogger, iface string) bool {

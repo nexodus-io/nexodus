@@ -8,7 +8,7 @@ const (
 	persistentKeepalive = "20"
 )
 
-func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice, firstTime bool) error {
+func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice) error {
 	cfg := &wgConfig{
 		Interface: ax.wgConfig.Interface,
 		Peers:     ax.wgConfig.Peers,
@@ -20,24 +20,16 @@ func (ax *Nexodus) DeployWireguardConfig(newPeers []public.ModelsDevice, firstTi
 		}
 	}
 
-	// add routes and tunnels for all peer candidates without checking cache since it has not been built yet
-	if firstTime {
-		for _, peer := range cfg.Peers {
-			ax.handlePeerRoute(peer)
-			ax.handlePeerTunnel(peer)
-		}
-		return nil
-	}
-
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, newPeer := range newPeers {
-		if newPeer.Id != "" {
-			// add routes for each peer candidate (unless the key matches the local nodes key)
-			for _, peer := range cfg.Peers {
-				if peer.PublicKey == newPeer.PublicKey && newPeer.PublicKey != ax.wireguardPubKey {
-					ax.handlePeerRoute(peer)
-					ax.handlePeerTunnel(peer)
-				}
+		if newPeer.Id == "" {
+			continue
+		}
+		// add routes for each peer candidate (unless the key matches the local nodes key)
+		for _, peer := range cfg.Peers {
+			if peer.PublicKey == newPeer.PublicKey && newPeer.PublicKey != ax.wireguardPubKey {
+				ax.handlePeerRoute(peer)
+				ax.handlePeerTunnel(peer)
 			}
 		}
 	}

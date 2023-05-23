@@ -435,20 +435,17 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
-	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		if err := ax.Reconcile(true); err != nil {
-			if err != nil {
-				ax.logger.Warnf("initial reconciliation failed - retrying: %v", err)
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("initial reconciliation failed: %w", err)
-	}
-
 	util.GoWithWaitGroup(wg, func() {
+		// kick it off with an immediate reconcile
+		ax.reconcileDevices(ctx, options)
+
+		for _, proxy := range ax.ingressProxies {
+			proxy.Start(ctx, wg, ax.userspaceNet)
+		}
+		for _, proxy := range ax.egressProxies {
+			proxy.Start(ctx, wg, ax.userspaceNet)
+		}
+
 		stunTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
 		pollTicker := time.NewTicker(pollInterval)
@@ -469,13 +466,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	})
 
-	for _, proxy := range ax.ingressProxies {
-		proxy.Start(ctx, wg, ax.userspaceNet)
-	}
-	for _, proxy := range ax.egressProxies {
-		proxy.Start(ctx, wg, ax.userspaceNet)
-	}
-
 	return nil
 }
 
@@ -491,7 +481,7 @@ func (ax *Nexodus) Stop() {
 
 func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
 	var err error
-	if err = ax.Reconcile(false); err == nil {
+	if err = ax.Reconcile(); err == nil {
 		return
 	}
 
@@ -575,7 +565,7 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 			ax.logger.Debugf("update device response %+v", res)
 			ax.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
-			if err = ax.Reconcile(true); err != nil {
+			if err = ax.Reconcile(); err != nil {
 				ax.logger.Debugf("reconcile failed %v", res)
 			}
 		}
@@ -584,7 +574,7 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 	return nil
 }
 
-func (ax *Nexodus) Reconcile(firstTime bool) error {
+func (ax *Nexodus) Reconcile() error {
 	peerListing, resp, err := ax.informer.Execute()
 	if err != nil {
 		if resp != nil {
@@ -594,28 +584,6 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 		}
 	}
 	var newPeers []public.ModelsDevice
-	if firstTime {
-		// Initial peer list processing branches from here
-		ax.logger.Debugf("Initializing peers for the first time")
-		for _, p := range peerListing {
-			existing, ok := ax.deviceCache[p.Id]
-			if !ok {
-				ax.deviceCache[p.Id] = p
-				newPeers = append(newPeers, p)
-			} else if !reflect.DeepEqual(existing, p) {
-				ax.deviceCache[p.Id] = p
-				newPeers = append(newPeers, p)
-			}
-		}
-		ax.buildPeersConfig()
-		if err := ax.DeployWireguardConfig(newPeers, firstTime); err != nil {
-			if errors.Is(err, interfaceErr) {
-				ax.logger.Fatal(err)
-			}
-			return err
-		}
-	}
-	// all subsequent peer listings updates get branched from here
 	changed := false
 	for _, p := range peerListing {
 		existing, ok := ax.deviceCache[p.Id]
@@ -623,8 +591,7 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 			changed = true
 			ax.deviceCache[p.Id] = p
 			newPeers = append(newPeers, p)
-		}
-		if !reflect.DeepEqual(existing, p) {
+		} else if !reflect.DeepEqual(existing, p) {
 			changed = true
 			ax.deviceCache[p.Id] = p
 			newPeers = append(newPeers, p)
@@ -634,7 +601,10 @@ func (ax *Nexodus) Reconcile(firstTime bool) error {
 	if changed {
 		ax.logger.Debugf("Peers listing has changed, recalculating configuration")
 		ax.buildPeersConfig()
-		if err := ax.DeployWireguardConfig(newPeers, false); err != nil {
+		if err := ax.DeployWireguardConfig(newPeers); err != nil {
+			// If the wireguard configuration fails, we should wipe out our peer list
+			// so it is rebuilt and reconfigured from scratch the next time around.
+			ax.wgConfig.Peers = nil
 			return err
 		}
 	}
