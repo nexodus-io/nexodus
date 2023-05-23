@@ -24,12 +24,12 @@ func (ax *Nexodus) buildPeersConfig() {
 func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 	var peers []wgPeerConfig
 
-	for _, device := range ax.deviceCache {
-		if device.PublicKey == ax.wireguardPubKey {
+	for _, d := range ax.deviceCache {
+		if d.device.PublicKey == ax.wireguardPubKey {
 			ax.wireguardPubKeyInConfig = true
 		}
-		if device.Relay {
-			ax.relayWgIP = device.AllowedIps[0]
+		if d.device.Relay {
+			ax.relayWgIP = d.device.AllowedIps[0]
 		}
 	}
 
@@ -40,35 +40,35 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 
 	ax.buildLocalConfig()
 
-	for _, device := range ax.deviceCache {
+	for _, d := range ax.deviceCache {
 		// skip ourselves
-		if device.PublicKey == ax.wireguardPubKey {
+		if d.device.PublicKey == ax.wireguardPubKey {
 			continue
 		}
 
-		localIP, reflexiveIP4 := ax.extractLocalAndReflexiveIP(device)
+		localIP, reflexiveIP4 := ax.extractLocalAndReflexiveIP(d.device)
 		peerPort := ax.extractPeerPort(localIP)
 
 		// We are a relay node. This block will get hit for every peer.
 		if ax.relay {
-			peer := ax.buildPeerForRelayNode(device, localIP, reflexiveIP4)
+			peer := ax.buildPeerForRelayNode(d.device, localIP, reflexiveIP4)
 			peers = append(peers, peer)
-			ax.logPeerInfo(device, reflexiveIP4)
+			ax.logPeerInfo(d.device, reflexiveIP4)
 			continue
 		}
 
 		// The peer is a relay node
-		if device.Relay {
-			peerRelay := ax.buildRelayPeer(device, relayAllowedIP, localIP, reflexiveIP4)
+		if d.device.Relay {
+			peerRelay := ax.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
 			peers = append(peers, peerRelay)
 			continue
 		}
 
 		// We are behind the same reflexive address as the peer, try local peering first
 		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
-			peer := ax.buildDirectLocalPeer(device, localIP, peerPort)
+			peer := ax.buildDirectLocalPeer(d.device, localIP, peerPort)
 			peers = append(peers, peer)
-			ax.logPeerInfo(device, localIP)
+			ax.logPeerInfo(d.device, localIP)
 			continue
 		}
 
@@ -78,10 +78,10 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		}
 
 		// If the peer is not behind symmetric NAT, we can try peering with its reflexive address
-		if !device.SymmetricNat {
-			peer := ax.buildDefaultPeer(device, reflexiveIP4)
+		if !d.device.SymmetricNat {
+			peer := ax.buildDefaultPeer(d.device, reflexiveIP4)
 			peers = append(peers, peer)
-			ax.logPeerInfo(device, reflexiveIP4)
+			ax.logPeerInfo(d.device, reflexiveIP4)
 		}
 	}
 
@@ -187,20 +187,20 @@ func (ax *Nexodus) logPeerInfo(device public.ModelsDevice, endpointIP string) {
 func (ax *Nexodus) buildLocalConfig() {
 	var localInterface wgLocalConfig
 
-	for _, value := range ax.deviceCache {
+	for _, d := range ax.deviceCache {
 		// build the local interface configuration if this node is an Organization router
-		if value.PublicKey == ax.wireguardPubKey {
+		if d.device.PublicKey == ax.wireguardPubKey {
 			// if the local node address changed replace it on wg0
-			if ax.TunnelIP != value.TunnelIp {
-				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", value.TunnelIp, value.TunnelIpV6)
+			if ax.TunnelIP != d.device.TunnelIp {
+				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
 				if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
 					if err := delLink(ax.tunnelIface); err != nil {
 						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 					}
 				}
 			}
-			ax.TunnelIP = value.TunnelIp
-			ax.TunnelIpV6 = value.TunnelIpV6
+			ax.TunnelIP = d.device.TunnelIp
+			ax.TunnelIpV6 = d.device.TunnelIpV6
 			localInterface = wgLocalConfig{
 				ax.wireguardPvtKey,
 				ax.listenPort,

@@ -31,16 +31,16 @@ func (ax *Nexodus) connectivityProbe() map[string]KeepaliveStatus {
 	if !ax.relay {
 		for _, value := range ax.deviceCache {
 			// skip the node sourcing the probe
-			if ax.wireguardPubKey == value.PublicKey {
+			if ax.wireguardPubKey == value.device.PublicKey {
 				continue
 			}
-			pubKey := value.PublicKey
-			nodeAddr := value.TunnelIp
-			if net.ParseIP(value.TunnelIp) == nil {
-				ax.logger.Debugf("failed parsing an ip from the prefix %s", value.TunnelIp)
+			pubKey := value.device.PublicKey
+			nodeAddr := value.device.TunnelIp
+			if net.ParseIP(value.device.TunnelIp) == nil {
+				ax.logger.Debugf("failed parsing an ip from the prefix %s", value.device.TunnelIp)
 				continue
 			}
-			hostname := value.Hostname
+			hostname := value.device.Hostname
 			peerStatusMap[pubKey] = KeepaliveStatus{
 				WgIP:        nodeAddr,
 				IsReachable: false,

@@ -79,6 +79,12 @@ type userspaceWG struct {
 	egressProxies        []*UsProxy
 }
 
+type deviceCacheEntry struct {
+	device public.ModelsDevice
+	// the last time this device was updated
+	lastUpdated time.Time
+}
+
 type Nexodus struct {
 	wireguardPubKey          string
 	wireguardPvtKey          string
@@ -98,7 +104,7 @@ type Nexodus struct {
 	wgConfig                 wgConfig
 	client                   *client.APIClient
 	controllerURL            *url.URL
-	deviceCache              map[string]public.ModelsDevice
+	deviceCache              map[string]deviceCacheEntry
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
 	hostname                 string
@@ -197,7 +203,7 @@ func NewNexodus(
 		childPrefix:         childPrefix,
 		stun:                stun,
 		relay:               relay,
-		deviceCache:         make(map[string]public.ModelsDevice),
+		deviceCache:         make(map[string]deviceCacheEntry),
 		controllerURL:       controllerURL,
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
@@ -577,6 +583,13 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 	return nil
 }
 
+func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
+	nx.deviceCache[p.PublicKey] = deviceCacheEntry{
+		device:      p,
+		lastUpdated: time.Now(),
+	}
+}
+
 func (ax *Nexodus) Reconcile() error {
 	peerMap, resp, err := ax.informer.Execute()
 	if err != nil {
@@ -591,13 +604,13 @@ func (ax *Nexodus) Reconcile() error {
 	var changed bool
 	for _, p := range peerMap {
 		allPeers = append(allPeers, p)
-		existing, ok := ax.deviceCache[p.Id]
+		existing, ok := ax.deviceCache[p.PublicKey]
 		if !ok {
-			ax.deviceCache[p.Id] = p
+			ax.addToDeviceCache(p)
 			updatePeers = append(updatePeers, p)
 			changed = true
-		} else if !reflect.DeepEqual(existing, p) {
-			ax.deviceCache[p.Id] = p
+		} else if !reflect.DeepEqual(existing.device, p) {
+			ax.addToDeviceCache(p)
 			updatePeers = append(updatePeers, p)
 			changed = true
 		}

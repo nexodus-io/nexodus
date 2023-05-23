@@ -150,19 +150,17 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 func (ax *Nexodus) handlePeerDelete(peerListing []public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range ax.deviceCache {
-		if inPeerListing(peerListing, p) {
+		if inPeerListing(peerListing, p.device) {
 			continue
 		}
-		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.Id])
-		if err := ax.deletePeer(ax.deviceCache[p.Id].PublicKey, ax.tunnelIface); err != nil {
+		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.device.PublicKey])
+		if err := ax.deletePeer(p.device.PublicKey, ax.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
 		}
 		// delete the peer route(s)
-		ax.handlePeerRouteDelete(ax.tunnelIface, p)
+		ax.handlePeerRouteDelete(ax.tunnelIface, p.device)
 		// remove peer from local peer and key cache
-		delete(ax.deviceCache, p.Id)
-		delete(ax.deviceCache, p.Id)
-
+		delete(ax.deviceCache, p.device.PublicKey)
 	}
 
 	return nil
