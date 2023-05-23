@@ -461,6 +461,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-ax.informer.Changed():
 				ax.reconcileDevices(ctx, options)
 			case <-pollTicker.C:
+				// This does not actually poll the API for changes. Peer configuration changes will only
+				// be processed when they come in on the informer. This periodic check is needed to
+				// re-establish our connection to the API if it is lost.
 				ax.reconcileDevices(ctx, options)
 			}
 		}
