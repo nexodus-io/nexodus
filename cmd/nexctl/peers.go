@@ -23,7 +23,7 @@ type WgListPeers struct {
 
 func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	var err error
-	var peers []WgListPeers
+	var peers map[string]WgListPeers
 	if err = checkVersion(); err != nil {
 		return err
 	}

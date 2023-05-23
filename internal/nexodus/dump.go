@@ -18,14 +18,14 @@ type WgSessions struct {
 	Rx              int64
 }
 
-func (nx *Nexodus) DumpPeers(iface string) ([]WgSessions, error) {
+func (nx *Nexodus) DumpPeers(iface string) (map[string]WgSessions, error) {
 	if nx.userspaceMode {
 		return nx.DumpPeersUS(iface)
 	}
 	return DumpPeersOS(iface)
 }
 
-func (nx *Nexodus) DumpPeersUS(iface string) ([]WgSessions, error) {
+func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
 	fullConfig, err := nx.userspaceDev.IpcGet()
 	if err != nil {
 		nx.logger.Errorf("Failed to read back full wireguard config: %w", err)
@@ -48,7 +48,7 @@ func (nx *Nexodus) DumpPeersUS(iface string) ([]WgSessions, error) {
 
 	// Parse fullConfig string by line of key=value pairs
 	// and build a list of WgSessions
-	peers := make([]WgSessions, 0)
+	peers := make(map[string]WgSessions)
 	peer := WgSessions{}
 	for _, line := range strings.Split(fullConfig, "\n") {
 		kv := util.SplitKeyValue(line)
@@ -58,8 +58,8 @@ func (nx *Nexodus) DumpPeersUS(iface string) ([]WgSessions, error) {
 		switch kv[0] {
 		case "public_key":
 			if peer.PublicKey != "" {
-				// Append previous peer
-				peers = append(peers, peer)
+				// Add previous peer
+				peers[peer.PublicKey] = peer
 				peer = WgSessions{}
 			}
 			peer.PublicKey = kv[1]
@@ -77,15 +77,15 @@ func (nx *Nexodus) DumpPeersUS(iface string) ([]WgSessions, error) {
 			peer.AllowedIPs = append(peer.AllowedIPs, kv[1])
 		}
 	}
-	// Append last peer
+	// Add last peer
 	if peer.PublicKey != "" {
-		peers = append(peers, peer)
+		peers[peer.PublicKey] = peer
 	}
 	return peers, nil
 }
 
 // DumpPeers dump wireguard peers
-func DumpPeersOS(iface string) ([]WgSessions, error) {
+func DumpPeersOS(iface string) (map[string]WgSessions, error) {
 	c, err := wgctrl.New()
 	if err != nil {
 		return nil, err
@@ -94,17 +94,18 @@ func DumpPeersOS(iface string) ([]WgSessions, error) {
 	if err != nil {
 		return nil, err
 	}
-	peers := make([]WgSessions, 0)
+	peers := make(map[string]WgSessions)
 	for _, peer := range device.Peers {
-		peers = append(peers, WgSessions{
-			PublicKey:       peer.PublicKey.String(),
+		pubKey := peer.PublicKey.String()
+		peers[pubKey] = WgSessions{
+			PublicKey:       pubKey,
 			PreSharedKey:    peer.PresharedKey.String(),
 			Endpoint:        peer.Endpoint.String(),
 			AllowedIPs:      util.IPNetSliceToStringSlice(peer.AllowedIPs),
 			LatestHandshake: peer.LastHandshakeTime.String(),
 			Tx:              peer.TransmitBytes,
 			Rx:              peer.ReceiveBytes,
-		})
+		}
 	}
 	return peers, nil
 }
