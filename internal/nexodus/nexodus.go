@@ -360,12 +360,12 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if ax.relay {
-		peerListing, _, err := ax.informer.Execute()
+		peerMap, _, err := ax.informer.Execute()
 		if err != nil {
 			return err
 		}
 
-		existingRelay, err := ax.orgRelayCheck(peerListing)
+		existingRelay, err := ax.orgRelayCheck(peerMap)
 		if err != nil {
 			return err
 		}
@@ -586,34 +586,37 @@ func (ax *Nexodus) Reconcile() error {
 			return fmt.Errorf("error: %w", err)
 		}
 	}
-	var newPeers []public.ModelsDevice
-	changed := false
+	var updatePeers []public.ModelsDevice
+	var allPeers []public.ModelsDevice
+	var changed bool
 	for _, p := range peerListing {
+		allPeers = append(allPeers, p)
 		existing, ok := ax.deviceCache[p.Id]
 		if !ok {
-			changed = true
 			ax.deviceCache[p.Id] = p
-			newPeers = append(newPeers, p)
+			updatePeers = append(updatePeers, p)
+			changed = true
 		} else if !reflect.DeepEqual(existing, p) {
-			changed = true
 			ax.deviceCache[p.Id] = p
-			newPeers = append(newPeers, p)
+			updatePeers = append(updatePeers, p)
+			changed = true
 		}
 	}
 
 	if changed {
-		ax.logger.Debugf("Peers listing has changed, recalculating configuration")
 		ax.buildPeersConfig()
-		if err := ax.DeployWireguardConfig(newPeers); err != nil {
-			// If the wireguard configuration fails, we should wipe out our peer list
-			// so it is rebuilt and reconfigured from scratch the next time around.
-			ax.wgConfig.Peers = nil
-			return err
+		if len(updatePeers) > 0 {
+			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
+				// If the wireguard configuration fails, we should wipe out our peer list
+				// so it is rebuilt and reconfigured from scratch the next time around.
+				ax.wgConfig.Peers = nil
+				return err
+			}
 		}
 	}
 
 	// check for any peer deletions
-	if err := ax.handlePeerDelete(peerListing); err != nil {
+	if err := ax.handlePeerDelete(allPeers); err != nil {
 		ax.logger.Error(err)
 	}
 
@@ -672,8 +675,8 @@ func (ax *Nexodus) symmetricNatDisco() error {
 }
 
 // orgRelayCheck checks if there is an existing Relay node in the organization that does not match this device's pub key
-func (ax *Nexodus) orgRelayCheck(peerListing []public.ModelsDevice) (string, error) {
-	for _, p := range peerListing {
+func (ax *Nexodus) orgRelayCheck(peerMap map[string]public.ModelsDevice) (string, error) {
+	for _, p := range peerMap {
 		if p.Relay && ax.wireguardPubKey != p.PublicKey {
 			return p.Id, nil
 		}
