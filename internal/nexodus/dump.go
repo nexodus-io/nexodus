@@ -2,6 +2,7 @@ package nexodus
 
 import (
 	"strings"
+	"time"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -9,20 +10,21 @@ import (
 
 // WgSessions wireguard peer session information
 type WgSessions struct {
-	PublicKey       string
-	PreSharedKey    string
-	Endpoint        string
-	AllowedIPs      []string
-	LatestHandshake string
-	Tx              int64
-	Rx              int64
+	PublicKey         string
+	PreSharedKey      string
+	Endpoint          string
+	AllowedIPs        []string
+	LatestHandshake   string
+	LastHandshakeTime time.Time `json:"-"`
+	Tx                int64
+	Rx                int64
 }
 
 func (nx *Nexodus) DumpPeers(iface string) (map[string]WgSessions, error) {
 	if nx.userspaceMode {
 		return nx.DumpPeersUS(iface)
 	}
-	return DumpPeersOS(iface)
+	return nx.DumpPeersOS(iface)
 }
 
 func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
@@ -69,6 +71,10 @@ func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
 			peer.Endpoint = kv[1]
 		case "last_handshake_time_sec":
 			peer.LatestHandshake = kv[1]
+			peer.LastHandshakeTime, err = util.ParseTime(kv[1])
+			if err != nil {
+				nx.logger.Errorf("Failed to parse last handshake time: %w", err)
+			}
 		case "tx_bytes":
 			peer.Tx = util.StringToInt64(kv[1])
 		case "rx_bytes":
@@ -85,7 +91,7 @@ func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
 }
 
 // DumpPeers dump wireguard peers
-func DumpPeersOS(iface string) (map[string]WgSessions, error) {
+func (nx *Nexodus) DumpPeersOS(iface string) (map[string]WgSessions, error) {
 	c, err := wgctrl.New()
 	if err != nil {
 		return nil, err
@@ -97,7 +103,7 @@ func DumpPeersOS(iface string) (map[string]WgSessions, error) {
 	peers := make(map[string]WgSessions)
 	for _, peer := range device.Peers {
 		pubKey := peer.PublicKey.String()
-		peers[pubKey] = WgSessions{
+		s := WgSessions{
 			PublicKey:       pubKey,
 			PreSharedKey:    peer.PresharedKey.String(),
 			Endpoint:        peer.Endpoint.String(),
@@ -106,6 +112,11 @@ func DumpPeersOS(iface string) (map[string]WgSessions, error) {
 			Tx:              peer.TransmitBytes,
 			Rx:              peer.ReceiveBytes,
 		}
+		s.LastHandshakeTime, err = util.ParseTime(s.LatestHandshake)
+		if err != nil {
+			nx.logger.Errorf("Failed to parse last handshake time: %w", err)
+		}
+		peers[pubKey] = s
 	}
 	return peers, nil
 }
