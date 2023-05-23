@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/stun"
 	"net"
 	"net/http"
 	"net/netip"
@@ -18,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/stun"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
@@ -540,6 +541,10 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 }
 
 func (ax *Nexodus) reconcileStun(deviceID string) error {
+	if ax.symmetricNat {
+		return nil
+	}
+
 	ax.logger.Debug("sending stun request")
 	stunServer1 := stun.NextServer()
 	reflexiveIP, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
