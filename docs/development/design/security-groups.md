@@ -9,8 +9,8 @@ The goal of this design document is to outline the implementation of security gr
 ### Phase I - Default Security Group for Organization
 
 - The default security group for an organization will be applied to all devices on startup.
-- A device can only have one policy group applied at any given time in phase I. This means each organization will have a security group. Users in the organization can CRUD the security group. AAlternatively we can scope it to only the organization owner that can modify the group.
-- When a new set of rules are applied, clear the appropriate chain and re-apply the rules. This can be more elegantly managed but introduces a great deal of complexity when rules are overlapping and may not be installed in the tables because another rule superceded it. See the section [Rule Deconfliction](#rule-deconfliction).
+- A device can only have one policy group applied at any given time in phase I. This means each organization will have a security group. Users in the organization can CRUD the security group. Alternatively, we can scope it to only the organization owner that can modify the group.
+- When a new set of rules are applied, clear the appropriate chain and re-apply the rules. This can be more elegantly managed but introduces a great deal of complexity when rules are overlapping and may not be installed in the tables because another rule superseded it. See the section [Rule Deconfliction](#rule-deconfliction).
 
 ### Phase II - User-owned Security Groups
 
@@ -20,27 +20,27 @@ The goal of this design document is to outline the implementation of security gr
 ### Phase III - Robust Admin Organization Policies
 
 - Overarching admin policies can be overlaid on top or in lieu of individual user policies. Further exploration needs to happen here.
-- A device can potentially have multiple policy groups applied at the same time, this could be via a seperate chain or inserts on the rule ordering.
+- A device can potentially have multiple policy groups applied at the same time, this could be via a separate chain or inserts on the rule ordering.
 
 ## Default Security Group and Rules
 
 Inbound rules:
-Ultimately, the default security group rules for inbound traffic by default drops all inbound traffic unless there is a match of traffic in an established state. This match is referring to traffic that is part of an existing connection initiated by the device. In Phase I all inbound traffic will be allowed until a user-friendly mechanism to install rules in the UI are complete.
+Ultimately, the default security group rules for inbound traffic by default drop all inbound traffic unless there is a match of traffic in an established state. This match is referring to traffic that is part of an existing connection initiated by the device. In Phase I all inbound traffic will be allowed until a user-friendly mechanism to install rules in the UI is complete.
 
 Outbound rules:
 The agent will add a deny rule at the end of the egress chain only when an explicit allow rule is provisioned by the user.
 
-- The default for Phase I security group is permit any traffic in both directions. There will be one nftables named `nexodus` containing two chains `nexodus-inbound` and `nexodus-outbound`. While these chains could be completely empty by default, I would propose the inbound chain have some basic permit any rules accompanied by a drop all rule. This is primarily to give some burn in time on any potential issues along with getting accustomed to defining a default policy since the explicit allow will eventually become an implicit deny by default on inbound traffic only if we follow the ec2 style model. The egress table will allows all traffic by default an implicit allow all, meaning an accept chain with no rules. If the user defines a policy blocking some protocol, destination address or destination ports those allows would be added, followed by a drop rules.
-- Ordering will be done by the order the user installs the rules. This is possible since there are no denies. As a reference, you can compare EC2 rules to Azure rules for not allowing deny statements vs allowing deny statements. Order begins to matter when denies are in place. This adds complexity which for our use case does not add any clear value.
+- The default for Phase I of security groups is to permit any traffic in both directions. There will be one nftables named `nexodus` containing two chains `nexodus-inbound` and `nexodus-outbound`. While these chains could be completely empty by default, I would propose the inbound chain have some basic permit-any rules accompanied by a drop-all rule. This is primarily to give some burn in time on any potential issues along with getting accustomed to defining a default policy since the explicit allow will eventually become an implicit deny-by-default rule on inbound traffic only if we follow the ec2 style model. The egress table will allow all traffic by default with an implicit allow-all, meaning an accept chain with no rules. If the user defines a policy blocking some protocol, destination address or destination ports those allow rules would be added, followed by a drop rule.
+- Ordering will be done by the order the user installs the rules. This is possible since there are no denies. As a reference, you can compare EC2 rules to Azure rules for not allowing deny statements vs allowing deny statements. The order begins to matter when deny rules are in place. This adds complexity which for our use case does not add any clear value.
 - Users can add ranges of a given field. For example both, IpRanges with a value of `100.100.0.100-100.100.0.120` is valid and a prefix such as `100.100.0.128/25` is also valid. Along with that, a single address such as `100.100.0.10`.
 - The same applies to source port and destination ports, `PortFrom:8080` coupled with `PortTo:9000` would equate to a rule of `8080-9000` being permitted. `PortFrom:0 PortTo:0` will be read as `ip permit <protocol> any`. `PortFrom:443 PortTo:443` would be equivalent to `ip permit <protocol> 4434`.
 - L3 `IpRanges` are applied based on the direction field they are located in SecurityGroups. `InboundRules` have the IP prefix applied to the `saddr` field in nftables in the input chain, while `OutboundRules` are applied to the `daddr` field in the outbound chain.
-- The layer 3 address is either source address for inbound or destination address for outbound rules.
-- In regard to L4 ports, destination ports are what will be supported. For example, an ingress rule of `input tcp dport 22 counter accept` would apply port 22 to the L4 dport value in the nexodus-inbound chain meaning any host can connect to the node on port 22.
+- The layer 3 address is either the source address for inbound or the destination address for outbound rules.
+- In regard to L4 ports, destination ports are what will be supported. For example, an ingress rule of `input tcp dport 22 counter accept` would apply port 22 to the L4 dport value in the `nexodus-inbound` chain meaning any host can connect to the node on port 22.
 - The layer 4 port will always apply to the destination port regardless of whether it is in the inbound or outbound chain.
-- There are some scenarios where data will need to be normalized. It also makes sense to pre-process rules for type checking and valid inputs before they arrive at the API server in locations such as nexctl and the UI, but there will likely need to be some rule validation in the security group handler. Here are some examples:
-  - A user could specify protocol ip to ports 100-200. We would infer that would be tcp and udp permit dport 100-200, performed in two rules.
-  - Also, we may want to force ipv4 or ipv6 rather than allowing a generic ip value in Protocol. Alternatively, we can make an assumption that ip should imply both protocol families, v4 and v6. The same applies to icmp, icmpv4 and icmpv6. Once we narrow in on the user experience via the web UI the appropriate path will likely be obvious.
+- There are some scenarios where data will need to be normalized. It also makes sense to pre-process rules for type checking and valid inputs before they arrive at the API server in locations such as `nexctl` and the UI, but there will likely need to be some rule validation in the security group handler. Here are some examples:
+  - A user could specify protocol ip to ports 100-200. We would infer that would be TCP and UDP permit dport 100-200, performed in two rules.
+  - Also, we may want to force ipv4 or ipv6 rather than allowing a generic ip value in Protocol. Alternatively, we can make an assumption that IP should imply both protocol families, v4 and v6. The same applies to ICMP, icmpv4 and icmpv6. Once we narrow in on the user experience via the web UI the appropriate path will likely be obvious.
 
 Here is a functioning code example of the proposed default security rules with comments inline:
 
@@ -116,12 +116,12 @@ table inet nexodus { // nftables table name
 
 ## Security Group User Interface
 
-- The user can add rules via web UI, the nexctl tool or the http API. There would not be support for adding or manipulating rules via the agent. Until we have device-specific tokens that have limited access controls, users can modify the security-group in their organization. Once that issue is resolved, a compromise of a single device can't be used to make changes in the Nexodus API.
+- The user can add rules via web UI, the `nexctl` tool, or the HTTP API. There would not be support for adding or manipulating rules via the agent. Until we have device-specific tokens that have limited access controls, users can modify the SecurityGroup in their organization. Once that issue is resolved, a compromise of a single device can't be used to make changes in the Nexodus API.
 - Users can modify the rules installed by Nexodus on the device if they have administrative access to nftables.
 
 ## Rule Deconfliction
 
-- The deconfliction of user provided rules is managed by nft. Let's look at the following example where a user defines a permit `icmp6 any` and an `icmp6 2001:0db8:1337:cafe::/64`. The JSON would look as follows:
+- The deconfliction of user-provided rules is managed by nft. Let's look at the following example where a user defines a permit `icmp6 any` and an `icmp6 2001:0db8:1337:cafe::/64`. The JSON would look as follows:
 
 ```json
   {
@@ -153,7 +153,7 @@ table inet nexodus {
     }
 ```
 
-The same LPM rule optimizations also applies to IPv4 and IPv6.
+The same LPM rule optimizations also apply to IPv4 and IPv6.
 
 ## New Tables
 
@@ -171,7 +171,7 @@ A new table will be defined for SecurityGroups
 
 ### SecurityRules
 
-Security rules will not be a new database but rules either inbound or outbound stored in SecurityGroup field as JSON.
+Security rules will not be a new database but rules either inbound or outbound stored in the SecurityGroup field as JSON.
 
 - ID
 - SecurityGroupID
@@ -356,5 +356,5 @@ type ModelsUser struct {
 
 ## Alternatives Considered
 
-- A primary alternative is how much control to the user is exposed. Specifically, do you allow the user to have access to deny rules. The benefits are not obvious and as referenced in [Default Security Group and Rules](#default-security-group-and-rules).
-- Iptables user-space application for managing netfilter is the predominant acl implementations today, but is roadmapped for deprecation across the all major Linux distributions.
+- A primary alternative is how much control to expose to the user. Specifically, do you allow the user to have access to deny rules? The benefits are not obvious and as referenced in [Default Security Group and Rules](#default-security-group-and-rules).
+- Iptables user-space application for managing netfilter is the predominant acl implementation today but is planned for deprecation across all major Linux distributions.
