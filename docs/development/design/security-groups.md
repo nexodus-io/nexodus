@@ -8,30 +8,54 @@ The goal of this design document is to outline the implementation of security gr
 
 ### Phase I - Default Security Group for Organization
 
+This phase intends to work out the end-to-end implementation of policy from the API down to each device. To avoid making it harder than necessary, the first phase will only allow a single security group per organization that is managed by the organization owner.
+
 - The default security group for an organization will be applied to all devices on startup.
-- A device can only have one policy group applied at any given time in phase I. This means each organization will have a security group. Users in the organization can CRUD the security group. Alternatively, we can scope it to only the organization owner that can modify the group.
+- A device can only have one policy group applied at any given time in phase I. This means each organization will have a security group. Only the organization owner can CRUD the security group for a given organization. All users in the organization will have read access to this security group.
 - When a new set of rules are applied, clear the appropriate chain and re-apply the rules. This can be more elegantly managed but introduces a great deal of complexity when rules are overlapping and may not be installed in the tables because another rule superseded it. See the section [Rule Deconfliction](#rule-deconfliction).
 
 ### Phase II - User-owned Security Groups
 
-- Users can create their own security groups for more granular policies per device. The user owns the security group. It seems reasonable that other members of an org should be able to use that security group. This would be similar to how an ec2 security group gets applied to a node would be the same here with a patch.
-- A device can only have one policy group applied at any given time.
+This phase adds user-defined security groups. When a user has applied a security group to a device
 
-### Phase III - Robust Admin Organization Policies
+- Users can create security groups for more granular policies per device. The user owns the security group. This would be similar to how an ec2 security group gets applied to a node would be the same here with a patch.
+- A device can only have one policy group applied at any given time. This means that a device will either have a user-defined policy OR the default security group for the organization applied.
+- Only the user that owns the policy should have CRUD access to it.
+- All members of an organization should have read access to all policies applied to any device in the organization.
+
+### Phase III - Support for Multiple Security Groups
+
+Prior phases only allowed a single security group policy per device. This phase would extend it to allow multiple policies.
+
+- A device has the default policy for the organization applied by default.
+- Instead of a device having a single policy, it is now a list. Once one or more user-defined policies are applied, that list is instead of the default security group, not in addition to it.
+- Additional user-defined policies can be applied to a device. Their access should be the same as in phase II.
+- The resulting behavior is that the allowed traffic is the sum of all policies as if they were combined into one, so combining rules into the same chains as before should be sufficient.
+
+### Future Enhancement Ideas
+
+This section includes ideas for future enhancements that need further exploration to define and determine if and how we would like to add them.
+
+#### Robust Admin Organization Policies
 
 - Overarching admin policies can be overlaid on top or in lieu of individual user policies. Further exploration needs to happen here.
-- A device can potentially have multiple policy groups applied at the same time, this could be via a separate chain or inserts on the rule ordering.
+- Admin policy should be able to override user policies, meaning an organization admin may want to be able to restrict which type of traffic can be opened by a user. This is very different than the policy features from the previous phases.
+- Once more detail is available on the types of policy we would like to allow here, it can be further defined.
+
+#### Symbolic Names
+
+It would be convenient to be able to refer to devices with symbolic names instead of only IP ranges. This could potentially based on labels or tags applied to devices, for example.
 
 ## Default Security Group and Rules
 
 Inbound rules:
-Ultimately, the default security group rules for inbound traffic by default drop all inbound traffic unless there is a match of traffic in an established state. This match is referring to traffic that is part of an existing connection initiated by the device. In Phase I all inbound traffic will be allowed until a user-friendly mechanism to install rules in the UI is complete.
+Ultimately, the default security group rules for inbound traffic by default drop all inbound traffic unless there is a match of traffic in an established state. This match is referring to traffic that is part of an existing connection initiated by the device. In Phase I all inbound traffic will be allowed until a user-friendly mechanism to install rules in the UI or CLI is complete.
 
 Outbound rules:
 The agent will add a deny rule at the end of the egress chain only when an explicit allow rule is provisioned by the user.
 
-- The default for Phase I of security groups is to permit any traffic in both directions. There will be one nftables named `nexodus` containing two chains `nexodus-inbound` and `nexodus-outbound`. While these chains could be completely empty by default, I would propose the inbound chain have some basic permit-any rules accompanied by a drop-all rule. This is primarily to give some burn in time on any potential issues along with getting accustomed to defining a default policy since the explicit allow will eventually become an implicit deny-by-default rule on inbound traffic only if we follow the ec2 style model. The egress table will allow all traffic by default with an implicit allow-all, meaning an accept chain with no rules. If the user defines a policy blocking some protocol, destination address or destination ports those allow rules would be added, followed by a drop rule.
-- Ordering will be done by the order the user installs the rules. This is possible since there are no denies. As a reference, you can compare EC2 rules to Azure rules for not allowing deny statements vs allowing deny statements. The order begins to matter when deny rules are in place. This adds complexity which for our use case does not add any clear value.
+- The default for Phase I of security groups is to permit any traffic in both directions. There will be one nftables table named `nexodus` containing two chains `nexodus-inbound` and `nexodus-outbound`. While these chains could be completely empty by default, I would propose the inbound chain have some basic permit-any rules accompanied by a drop-all rule. This is primarily to give some burn in time on any potential issues along with getting accustomed to defining a default policy since the explicit allow will eventually become an implicit deny-by-default rule on inbound traffic only if we follow the ec2 style model. The egress table will allow all traffic by default with an implicit allow-all, meaning an accept chain with no rules. If the user defines a policy blocking some protocol, destination address or destination ports those allow rules would be added, followed by a drop rule.
+- At this time, our security group rules have no order associated with them. This is possible since there are no denies. As a reference, you can compare EC2 rules to Azure rules for not allowing deny statements vs allowing deny statements. The order begins to matter when deny rules are in place. This adds complexity which for our use case does not add any clear value.
 - Users can add ranges of a given field. For example both, IpRanges with a value of `100.100.0.100-100.100.0.120` is valid and a prefix such as `100.100.0.128/25` is also valid. Along with that, a single address such as `100.100.0.10`.
 - The same applies to source port and destination ports, `PortFrom:8080` coupled with `PortTo:9000` would equate to a rule of `8080-9000` being permitted. `PortFrom:0 PortTo:0` will be read as `ip permit <protocol> any`. `PortFrom:443 PortTo:443` would be equivalent to `ip permit <protocol> 4434`.
 - L3 `IpRanges` are applied based on the direction field they are located in SecurityGroups. `InboundRules` have the IP prefix applied to the `saddr` field in nftables in the input chain, while `OutboundRules` are applied to the `daddr` field in the outbound chain.
@@ -116,8 +140,8 @@ table inet nexodus { // nftables table name
 
 ## Security Group User Interface
 
-- The user can add rules via web UI, the `nexctl` tool, or the HTTP API. There would not be support for adding or manipulating rules via the agent. Until we have device-specific tokens that have limited access controls, users can modify the SecurityGroup in their organization. Once that issue is resolved, a compromise of a single device can't be used to make changes in the Nexodus API.
-- Users can modify the rules installed by Nexodus on the device if they have administrative access to nftables.
+- The user can add rules via the web UI, the `nexctl` tool, or the HTTP API. Ideally, the credentials used by the agent would not have write access to these policies. However, until we have device-specific auth tokens available, there is no way to prevent it. That is a security feature tracked in [issue #647](https://github.com/nexodus-io/nexodus/issues/647).
+- Users can modify the rules installed by Nexodus on the device if they have administrative access to nftables. The Nexodus Agent must reconcile what is currently applied to nftables with what is intended. This means that manual changes to the `nexodus` table are subject to being overwritten by the Nexodus Agent.
 
 ## Rule Deconfliction
 
