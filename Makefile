@@ -483,7 +483,7 @@ image-envsubst:
 	docker tag quay.io/nexodus/envsubst:$(TAG) quay.io/nexodus/envsubst:latest
 
 .PHONY: images
-images: image-frontend image-apiserver image-ipam image-envsubst ## Create container images
+images: image-nexd image-frontend image-apiserver image-ipam image-envsubst ## Create container images
 
 ##@ Kubernetes - kind dev environment
 
@@ -562,6 +562,7 @@ load-images: ## Load images onto kind
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/envsubst:latest
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
