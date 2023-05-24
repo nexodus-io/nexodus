@@ -1,6 +1,8 @@
 package nexodus
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"strings"
 	"time"
 
@@ -25,6 +27,14 @@ func (nx *Nexodus) DumpPeers(iface string) (map[string]WgSessions, error) {
 		return nx.DumpPeersUS(iface)
 	}
 	return nx.DumpPeersOS(iface)
+}
+
+func pubKeyHexToBase64(s string) string {
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(decoded)
 }
 
 func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
@@ -64,7 +74,7 @@ func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
 				peers[peer.PublicKey] = peer
 				peer = WgSessions{}
 			}
-			peer.PublicKey = kv[1]
+			peer.PublicKey = pubKeyHexToBase64(kv[1])
 		case "preshared_key":
 			peer.PreSharedKey = kv[1]
 		case "endpoint":
