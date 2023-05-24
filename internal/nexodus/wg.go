@@ -147,12 +147,13 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
-func (ax *Nexodus) handlePeerDelete(peerListing []public.ModelsDevice) error {
+func (ax *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range ax.deviceCache {
-		if inPeerListing(peerListing, p.device) {
+		if _, ok := peerMap[p.device.PublicKey]; ok {
 			continue
 		}
+
 		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.device.PublicKey])
 		if err := ax.deletePeer(p.device.PublicKey, ax.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
@@ -230,15 +231,6 @@ func (ax *Nexodus) deletePeerOS(publicKey, dev string) error {
 
 	ax.logger.Infof("Removed peer with key %s", key)
 	return nil
-}
-
-func inPeerListing(peers []public.ModelsDevice, p public.ModelsDevice) bool {
-	for _, peer := range peers {
-		if peer.Id == p.Id {
-			return true
-		}
-	}
-	return false
 }
 
 func getWgListenPort() (int, error) {

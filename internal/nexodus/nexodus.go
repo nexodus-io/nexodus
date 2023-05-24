@@ -600,10 +600,8 @@ func (ax *Nexodus) Reconcile() error {
 		}
 	}
 	var updatePeers []public.ModelsDevice
-	var allPeers []public.ModelsDevice
 	var changed bool
 	for _, p := range peerMap {
-		allPeers = append(allPeers, p)
 		existing, ok := ax.deviceCache[p.PublicKey]
 		if !ok {
 			ax.addToDeviceCache(p)
@@ -629,7 +627,7 @@ func (ax *Nexodus) Reconcile() error {
 	}
 
 	// check for any peer deletions
-	if err := ax.handlePeerDelete(allPeers); err != nil {
+	if err := ax.handlePeerDelete(peerMap); err != nil {
 		ax.logger.Error(err)
 	}
 
