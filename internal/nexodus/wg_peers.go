@@ -186,28 +186,29 @@ func (ax *Nexodus) logPeerInfo(device public.ModelsDevice, endpointIP string) {
 // buildLocalConfig builds the configuration for the local interface
 func (ax *Nexodus) buildLocalConfig() {
 	var localInterface wgLocalConfig
+	var d deviceCacheEntry
+	var ok bool
 
-	for _, d := range ax.deviceCache {
-		// build the local interface configuration if this node is an Organization router
-		if d.device.PublicKey == ax.wireguardPubKey {
-			// if the local node address changed replace it on wg0
-			if ax.TunnelIP != d.device.TunnelIp {
-				ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
-				if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
-					if err := delLink(ax.tunnelIface); err != nil {
-						ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
-					}
-				}
+	if d, ok = ax.deviceCache[ax.wireguardPubKey]; !ok {
+		return
+	}
+
+	// if the local node address changed replace it on wg0
+	if ax.TunnelIP != d.device.TunnelIp {
+		ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
+		if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
+			if err := delLink(ax.tunnelIface); err != nil {
+				ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
 			}
-			ax.TunnelIP = d.device.TunnelIp
-			ax.TunnelIpV6 = d.device.TunnelIpV6
-			localInterface = wgLocalConfig{
-				ax.wireguardPvtKey,
-				ax.listenPort,
-			}
-			ax.logger.Debugf("Local Node Configuration - Wireguard IPv4 [ %s ] IPv6 [ %s ]", ax.TunnelIP, ax.TunnelIpV6)
-			// set the node unique local interface configuration
-			ax.wgConfig.Interface = localInterface
 		}
 	}
+	ax.TunnelIP = d.device.TunnelIp
+	ax.TunnelIpV6 = d.device.TunnelIpV6
+	localInterface = wgLocalConfig{
+		ax.wireguardPvtKey,
+		ax.listenPort,
+	}
+	ax.logger.Debugf("Local Node Configuration - Wireguard IPv4 [ %s ] IPv6 [ %s ]", ax.TunnelIP, ax.TunnelIpV6)
+	// set the node unique local interface configuration
+	ax.wgConfig.Interface = localInterface
 }
