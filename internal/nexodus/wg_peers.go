@@ -60,6 +60,7 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		if d.device.Relay {
 			peerRelay := ax.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
 			peers = append(peers, peerRelay)
+			ax.logPeerInfo(d.device, peerRelay.Endpoint)
 			continue
 		}
 
