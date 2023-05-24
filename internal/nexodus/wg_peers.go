@@ -24,12 +24,11 @@ func (ax *Nexodus) buildPeersConfig() {
 func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 	var peers []wgPeerConfig
 
+	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
 	for _, d := range ax.deviceCache {
-		if d.device.PublicKey == ax.wireguardPubKey {
-			ax.wireguardPubKeyInConfig = true
-		}
 		if d.device.Relay {
 			ax.relayWgIP = d.device.AllowedIps[0]
+			break
 		}
 	}
 
