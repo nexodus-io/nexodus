@@ -26,12 +26,12 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 			continue
 		}
 		// add routes for each peer candidate (unless the key matches the local nodes key)
-		for _, peer := range cfg.Peers {
-			if peer.PublicKey == updatedPeer.PublicKey && updatedPeer.PublicKey != ax.wireguardPubKey {
-				ax.handlePeerRoute(peer)
-				ax.handlePeerTunnel(peer)
-			}
+		peer, ok := cfg.Peers[updatedPeer.PublicKey]
+		if !ok || peer.PublicKey == ax.wireguardPubKey {
+			continue
 		}
+		ax.handlePeerRoute(peer)
+		ax.handlePeerTunnel(peer)
 	}
 
 	ax.logger.Debug("Peer setup complete")
