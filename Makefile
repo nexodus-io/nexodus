@@ -608,7 +608,7 @@ endif
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new nexodus database
 	$(CMD_PREFIX) kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus postgrescluster/database
+	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus postgrescluster/database || true
 	$(CMD_PREFIX) kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
 	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
 	$(CMD_PREFIX) kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
