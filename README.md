@@ -1,7 +1,7 @@
 ![Nexodus](docs/assets/wordmark.png#gh-light-mode-only)
 ![Nexodus](docs/assets/wordmark_dark.png#gh-dark-mode-only)
 
-> **Warning**: This project is currently experimental.
+> **Warning**: This project is currently in beta.
 
 [![build](https://github.com/nexodus-io/nexodus/actions/workflows/build.yml/badge.svg)](https://github.com/nexodus-io/nexodus/actions/workflows/build.yml)
 
@@ -10,5 +10,7 @@ This project demonstrates an approach for building a network connectivity-as-a-s
 More information can be found by visiting the [project homepage](https://nexodus.io) or the [project documentation](https://docs.nexodus.io).
 
 To try it out, see the [quick start guide](https://docs.nexodus.io/quickstart).
+
+To spin up your own Nexodus service, see [deploying the nexodus service](https://docs.nexodus.io/deployment/nexodus-service/).
 
 To join the discussion, review the [Code of Conduct](CODE_OF_CONDUCT.md) and join the [Nexodus Discord server](https://discord.gg/4RyhDSkWmK).
