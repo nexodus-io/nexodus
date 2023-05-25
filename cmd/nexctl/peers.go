@@ -8,6 +8,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/urfave/cli/v2"
 )
 
@@ -23,7 +24,7 @@ type WgListPeers struct {
 
 func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	var err error
-	var peers []WgListPeers
+	var peers map[string]WgListPeers
 	if err = checkVersion(); err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 		for _, peer := range peers {
 			tx := strconv.FormatInt(peer.Tx, 10)
 			rx := strconv.FormatInt(peer.Rx, 10)
-			handshakeTime, err := ParseTime(peer.LatestHandshake)
+			handshakeTime, err := util.ParseTime(peer.LatestHandshake)
 			if err != nil {
 				log.Printf("Unable to parse LatestHandshake to time: %v", err)
 			}
@@ -71,23 +72,4 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	}
 
 	return nil
-}
-
-// ParseTime attempts to parse a time string in three possible formats to handle UTC and local time differences between Darwin and Linux and the proxy mode
-func ParseTime(timeStr string) (time.Time, error) {
-	var t time.Time
-	var ut int64
-	var err error
-	if t, err = time.Parse(time.RFC3339Nano, timeStr); err == nil {
-		return t.UTC(), nil
-	}
-	if t, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", timeStr); err == nil {
-		return t.UTC(), nil
-	}
-	if ut, err = strconv.ParseInt(timeStr, 10, 64); err == nil {
-		if ut != 0 {
-			t = time.Unix(ut, 0)
-		}
-	}
-	return t.UTC(), err
 }

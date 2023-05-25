@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
 )
@@ -171,7 +170,7 @@ type ApiListDevicesInOrganizationInformer struct {
 	inSync         chan struct{}
 	modifiedSignal chan struct{}
 	mu             sync.RWMutex
-	data           []ModelsDevice
+	data           map[string]ModelsDevice
 	response       *http.Response
 	err            error
 	lastRevision   int32
@@ -183,7 +182,7 @@ func (s *ApiListDevicesInOrganizationInformer) Changed() <-chan struct{} {
 	return s.modifiedSignal
 }
 
-func (s *ApiListDevicesInOrganizationInformer) Execute() ([]ModelsDevice, *http.Response, error) {
+func (s *ApiListDevicesInOrganizationInformer) Execute() (map[string]ModelsDevice, *http.Response, error) {
 
 	var err error
 	s.mu.Lock()
@@ -248,18 +247,18 @@ func (s *ApiListDevicesInOrganizationInformer) readStream(lastRevision int32) {
 			lastRevision = item.Revision
 			items[item.Id] = item
 			if isInSync {
-				s.setResult(dataByIdToArray(items), lastRevision, nil)
+				s.setResult(dataByIdToByKey(items), lastRevision, nil)
 			}
 		case "delete":
 			lastRevision = item.Revision
 			delete(items, item.Id)
 			if isInSync {
-				s.setResult(dataByIdToArray(items), lastRevision, nil)
+				s.setResult(dataByIdToByKey(items), lastRevision, nil)
 			}
 		case "bookmark":
 			if !isInSync {
 				isInSync = true
-				s.setResult(dataByIdToArray(items), lastRevision, nil)
+				s.setResult(dataByIdToByKey(items), lastRevision, nil)
 				close(s.inSync)
 			}
 		case "close":
@@ -273,19 +272,16 @@ func (s *ApiListDevicesInOrganizationInformer) readStream(lastRevision int32) {
 	}
 }
 
-func dataByIdToArray(dataById map[string]ModelsDevice) []ModelsDevice {
-	// Convert to a sorted list...
-	data := []ModelsDevice{}
+func dataByIdToByKey(dataById map[string]ModelsDevice) map[string]ModelsDevice {
+	// Convert to a map of public keys to devices
+	data := map[string]ModelsDevice{}
 	for _, i := range dataById {
-		data = append(data, i)
+		data[i.PublicKey] = i
 	}
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Id < data[j].Id
-	})
 	return data
 }
 
-func (s *ApiListDevicesInOrganizationInformer) setResult(data []ModelsDevice, lastRevision int32, err error) {
+func (s *ApiListDevicesInOrganizationInformer) setResult(data map[string]ModelsDevice, lastRevision int32, err error) {
 	s.mu.Lock()
 	s.data = data
 	s.err = err
