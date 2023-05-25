@@ -115,40 +115,32 @@ func (ax *Nexodus) extractPeerPort(localIP string) string {
 // This is the only peer a symmetric NAT node will get unless it also has a direct peering
 func (ax *Nexodus) buildRelayPeer(device public.ModelsDevice, relayAllowedIP []string, localIP, reflexiveIP4 string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
-	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
-		return wgPeerConfig{
-			PublicKey:           device.PublicKey,
-			Endpoint:            localIP,
-			AllowedIPs:          relayAllowedIP,
-			PersistentKeepAlive: persistentKeepalive,
-		}
-	}
-	return wgPeerConfig{
+	config := wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
 		AllowedIPs:          relayAllowedIP,
 		PersistentKeepAlive: persistentKeepalive,
 	}
+	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
+		config.Endpoint = localIP
+	}
+	return config
 }
 
 // buildPeerForRelayNode build a config for all peers if this node is the organization's relay node. Also check for direct peering.
 // The peer for a relay node is currently left blank and assumed to be exposed to all peers, we still build its peer config for flexibility.
 func (ax *Nexodus) buildPeerForRelayNode(device public.ModelsDevice, localIP, reflexiveIP4 string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
-	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
-		return wgPeerConfig{
-			PublicKey:           device.PublicKey,
-			Endpoint:            localIP,
-			AllowedIPs:          device.AllowedIps,
-			PersistentKeepAlive: persistentKeepalive,
-		}
-	}
-	return wgPeerConfig{
+	config := wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
 		AllowedIPs:          device.AllowedIps,
 		PersistentKeepAlive: persistentKeepalive,
 	}
+	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
+		config.Endpoint = localIP
+	}
+	return config
 }
 
 // buildDirectLocalPeer If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
