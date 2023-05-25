@@ -129,7 +129,7 @@ type Nexodus struct {
 
 type wgConfig struct {
 	Interface wgLocalConfig
-	Peers     []wgPeerConfig
+	Peers     map[string]wgPeerConfig
 }
 
 type wgPeerConfig struct {
@@ -600,17 +600,17 @@ func (ax *Nexodus) Reconcile() error {
 			return fmt.Errorf("error: %w", err)
 		}
 	}
-	var updatePeers []public.ModelsDevice
-	var changed bool
+	updatePeers := map[string]public.ModelsDevice{}
+	changed := false
 	for _, p := range peerMap {
 		existing, ok := ax.deviceCache[p.PublicKey]
 		if !ok {
 			ax.addToDeviceCache(p)
-			updatePeers = append(updatePeers, p)
+			updatePeers[p.PublicKey] = p
 			changed = true
 		} else if !reflect.DeepEqual(existing.device, p) {
 			ax.addToDeviceCache(p)
-			updatePeers = append(updatePeers, p)
+			updatePeers[p.PublicKey] = p
 			changed = true
 		}
 	}

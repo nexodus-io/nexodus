@@ -21,8 +21,8 @@ func (ax *Nexodus) buildPeersConfig() {
 
 // buildPeersAndRelay constructs the peer configuration returning it as []wgPeerConfig.
 // This also call the method for building the local interface configuration wgLocalConfig.
-func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
-	var peers []wgPeerConfig
+func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
+	peers := map[string]wgPeerConfig{}
 
 	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
 	for _, d := range ax.deviceCache {
@@ -51,7 +51,7 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		// We are a relay node. This block will get hit for every peer.
 		if ax.relay {
 			peer := ax.buildPeerForRelayNode(d.device, localIP, reflexiveIP4)
-			peers = append(peers, peer)
+			peers[d.device.PublicKey] = peer
 			ax.logPeerInfo(d.device, reflexiveIP4)
 			continue
 		}
@@ -59,7 +59,7 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		// The peer is a relay node
 		if d.device.Relay {
 			peerRelay := ax.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
-			peers = append(peers, peerRelay)
+			peers[d.device.PublicKey] = peerRelay
 			ax.logPeerInfo(d.device, peerRelay.Endpoint)
 			continue
 		}
@@ -67,7 +67,7 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		// We are behind the same reflexive address as the peer, try local peering first
 		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
 			peer := ax.buildDirectLocalPeer(d.device, localIP, peerPort)
-			peers = append(peers, peer)
+			peers[d.device.PublicKey] = peer
 			ax.logPeerInfo(d.device, localIP)
 			continue
 		}
@@ -80,7 +80,7 @@ func (ax *Nexodus) buildPeersAndRelay() []wgPeerConfig {
 		// If the peer is not behind symmetric NAT, we can try peering with its reflexive address
 		if !d.device.SymmetricNat {
 			peer := ax.buildDefaultPeer(d.device, reflexiveIP4)
-			peers = append(peers, peer)
+			peers[d.device.PublicKey] = peer
 			ax.logPeerInfo(d.device, reflexiveIP4)
 		}
 	}
