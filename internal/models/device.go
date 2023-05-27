@@ -50,7 +50,7 @@ type UpdateDevice struct {
 	OrganizationID           uuid.UUID  `json:"organization_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	ChildPrefix              []string   `json:"child_prefix" example:"172.16.42.0/24"`
 	EndpointLocalAddressIPv4 string     `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
-	SymmetricNat             *bool      `json:"symmetric_nat"`
+	SymmetricNat             bool       `json:"symmetric_nat"`
 	Hostname                 string     `json:"hostname" example:"myhost"`
 	Endpoints                []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Revision                 *uint64    `json:"revision"`

@@ -166,9 +166,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.OrganizationID = request.OrganizationID
 		}
 
-		if request.SymmetricNat != nil {
-			device.SymmetricNat = *request.SymmetricNat
-		}
+		device.SymmetricNat = request.SymmetricNat
 
 		// check if the updated device child prefix matches the existing device prefix
 		if request.ChildPrefix != nil && !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
