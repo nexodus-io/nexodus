@@ -11,7 +11,7 @@ import (
 func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, error) {
 	d, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
 		UserId:                  userID,
-		OrganizationId:          ax.organization,
+		OrganizationId:          ax.org.Id,
 		PublicKey:               ax.wireguardPubKey,
 		TunnelIp:                ax.requestedIP,
 		ChildPrefix:             ax.childPrefix,
