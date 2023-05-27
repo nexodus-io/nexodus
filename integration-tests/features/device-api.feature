@@ -132,7 +132,7 @@ Feature: Device API
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
-        "symmetric_nat": true,
+        "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
         "user_id": "${user_id}"
@@ -171,7 +171,7 @@ Feature: Device API
           "public_key": "${public_key}",
           "relay": false,
           "revision": ${response[0].revision},
-          "symmetric_nat": true,
+          "symmetric_nat": false,
           "tunnel_ip": "${response[0].tunnel_ip}",
           "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
           "user_id": "${user_id}"
@@ -247,7 +247,7 @@ Feature: Device API
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
-        "symmetric_nat": true,
+        "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
         "user_id": "${user_id}"
