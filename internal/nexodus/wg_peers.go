@@ -8,11 +8,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-const (
-	defaultOrganizationPrefixIPv4 = "100.100.0.0/16"
-	defaultOrganizationPrefixIPv6 = "0200::/64"
-)
-
 // buildPeersConfig builds the peer configuration based off peer cache and peer listings from the controller
 func (ax *Nexodus) buildPeersConfig() {
 	peers := ax.buildPeersAndRelay()
@@ -33,8 +28,8 @@ func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
 	}
 
 	relayAllowedIP := []string{
-		defaultOrganizationPrefixIPv4,
-		defaultOrganizationPrefixIPv6,
+		ax.org.Cidr,
+		ax.org.CidrV6,
 	}
 
 	ax.buildLocalConfig()
