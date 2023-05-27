@@ -3,17 +3,15 @@ import {
   Datagrid,
   List,
   TextField,
-  ReferenceArrayField,
   Show,
   SimpleShowLayout,
-  SingleFieldList,
   ReferenceField,
-  useRecordContext,
-  useGetOne,
-  Loading,
   BulkExportButton,
   BulkDeleteButton,
   ReferenceManyField,
+  Create,
+  SimpleForm,
+  TextInput,
 } from "react-admin";
 
 const OrganizationListBulkActions = () => (
@@ -64,4 +62,15 @@ export const OrganizationShow = () => (
       </ReferenceManyField>
     </SimpleShowLayout>
   </Show>
+);
+
+export const OrganizationCreate = () => (
+  <Create>
+    <SimpleForm>
+      <TextInput label="Name" source="name" />
+      <TextInput label="Description" source="description" />
+      <TextInput label="CIDR" source="cidr" />
+      <TextInput label="CIDR v6" source="cidr_v6" />
+    </SimpleForm>
+  </Create>
 );
