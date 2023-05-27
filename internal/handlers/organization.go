@@ -3,10 +3,11 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/database"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/database"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -46,7 +47,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 	allowForTests := c.GetString("nexodus.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
+	if (!multiOrganizationEnabled && allowForTests != "true") || allowForTests == "false" {
 		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
 		return
 	}

@@ -42,10 +42,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			func(c *gin.Context) {
-				c.Set("nexodus.testCreateOrganization", "true")
-				suite.api.CreateOrganization(c)
-			},
+			suite.api.CreateOrganization,
 			bytes.NewBuffer(reqBody),
 		)
 		require.NoError(err)
@@ -64,7 +61,12 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateOrganization, bytes.NewBuffer(resBody),
+			func(c *gin.Context) {
+				c.Set("nexodus.testCreateOrganization", "false")
+				suite.api.CreateOrganization(c)
+			},
+
+			bytes.NewBuffer(resBody),
 		)
 		assert.NoError(err)
 		assert.Equal(http.StatusMethodNotAllowed, res.Code)

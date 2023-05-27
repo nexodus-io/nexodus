@@ -8,11 +8,6 @@ components:
 # Uncomment this to enable rate limiting
 #  - ../../components/promtail
 namespace: nexodus
-configMapGenerator:
-  - behavior: merge
-    literals:
-      - NEXAPI_FFLAG_MULTI_ORGANIZATION=true
-    name: apiserver
 patches:
   - target:
       kind: Ingress
