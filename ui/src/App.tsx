@@ -11,7 +11,11 @@ import InvitationIcon from "@mui/icons-material/Rsvp";
 // pages
 import { UserShow, UserList } from "./pages/Users";
 import { DeviceList, DeviceShow } from "./pages/Devices";
-import { OrganizationList, OrganizationShow } from "./pages/Organizations";
+import {
+  OrganizationList,
+  OrganizationShow,
+  OrganizationCreate,
+} from "./pages/Organizations";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
@@ -66,6 +70,7 @@ const App = () => {
         list={OrganizationList}
         show={OrganizationShow}
         icon={OrganizationIcon}
+        create={OrganizationCreate}
         recordRepresentation={(record) => `${record.name}`}
       />
       <Resource

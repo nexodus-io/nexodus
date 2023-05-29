@@ -224,6 +224,77 @@ func TestRequestIPOrganization(t *testing.T) {
 	require.NoError(err)
 }
 
+// TestChooseOrganization tests choosing an organization when creating a new node
+func TestChooseOrganization(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// Create an org with a non-default CIDR
+	orgOut, err := helper.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "create",
+		"--name", fmt.Sprintf("%s-%s", "TestChooseOrganization", time.Now().Format("2006-01-02-15-04-05")),
+		"--description", "Test Org",
+		"--cidr", "192.168.42.0/24",
+		"--cidr-v6", "222::/64",
+	)
+	require.NoError(err)
+	helper.Logf("Output from creating org: %s", orgOut)
+	var org models.OrganizationJSON
+	err = json.Unmarshal([]byte(orgOut), &org)
+	require.NoErrorf(err, "nexctl organization Unmarshal error: %v\n", err)
+	orgID := org.ID.String()
+
+	defer func() {
+		_, _ = helper.runCommand(nexctl,
+			nexctl,
+			"--username", username, "--password", password,
+			"organization", "delete", "--organization-id", orgID)
+	}()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1,
+		"--username", username, "--password", password,
+		"--org-id", orgID)
+
+	// validate nexd has started on the first node
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	// request a specific IP to make sure it's using our org with a non-default CIDR
+	node2IP := "192.168.42.22"
+	helper.runNexd(ctx, node2,
+		"--username", username, "--password", password,
+		"--org-id", orgID,
+		fmt.Sprintf("--request-ip=%s", node2IP),
+	)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+
+	// ping the requested IP address (--request-ip)
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
+	require.NoError(err)
+}
+
 // TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
 func TestHubOrganization(t *testing.T) {
 	t.Parallel()

@@ -92,7 +92,8 @@ type Nexodus struct {
 	tunnelIface              string
 	controllerIP             string
 	listenPort               int
-	organization             string
+	orgId                    string
+	org                      *public.ModelsOrganization
 	requestedIP              string
 	userProvidedLocalIP      string
 	TunnelIP                 string
@@ -163,6 +164,7 @@ func NewNexodus(
 	userspaceMode bool,
 	stateDir string,
 	ctx context.Context,
+	orgId string,
 ) (*Nexodus, error) {
 
 	if err := binaryChecks(); err != nil {
@@ -215,6 +217,7 @@ func NewNexodus(
 		password:            password,
 		skipTlsVerify:       insecureSkipTlsVerify,
 		stateDir:            stateDir,
+		orgId:               orgId,
 	}
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
@@ -345,17 +348,14 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("get organizations error: %w", err)
 	}
 
-	if len(organizations) == 0 {
-		return fmt.Errorf("user does not belong to any organizations")
+	ax.org, err = ax.chooseOrganization(organizations)
+	if err != nil {
+		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
-	if len(organizations) != 1 {
-		return fmt.Errorf("user being in > 1 organization is not yet supported")
-	}
-	ax.organization = organizations[0].Id
 
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	ax.informerStop = informerCancel
-	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.org.Id).Informer()
 
 	var localIP string
 	var localEndpointPort int
@@ -433,7 +433,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
 	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
-		modelsDevice.Id, organizations[0].Name, organizations[0].Id)
+		modelsDevice.Id, ax.org.Name, ax.org.Id)
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
@@ -534,7 +534,7 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	ax.client = c
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	ax.informerStop = informerCancel
-	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.organization).Informer()
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.org.Id).Informer()
 
 	ax.SetStatus(NexdStatusRunning, "")
 	ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
@@ -582,6 +582,27 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 	}
 
 	return nil
+}
+
+func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization) (*public.ModelsOrganization, error) {
+	if len(organizations) == 0 {
+		return nil, fmt.Errorf("user does not belong to any organizations")
+	}
+	if nx.orgId == "" {
+		if len(organizations) > 1 {
+			for _, org := range organizations {
+				nx.logger.Infof("organization name: '%s'  Id: %s", org.Name, org.Id)
+			}
+			return nil, fmt.Errorf("user belongs to multiple organizations, please specify one with --org-id")
+		}
+		return &organizations[0], nil
+	}
+	for i, org := range organizations {
+		if org.Id == nx.orgId {
+			return &organizations[i], nil
+		}
+	}
+	return nil, fmt.Errorf("user does not belong to organization %s", nx.orgId)
 }
 
 func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {

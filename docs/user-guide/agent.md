@@ -125,6 +125,16 @@ sudo nexd --username user --password pw https://try.nexodus.io
 
 For [try.nexodus.io](https://try.nexodus.io), you may set a password for your account by visiting the [Keycloak user management UI](https://auth.try.nexodus.io/realms/nexodus/account/#/security/signingin).
 
+### Multiple Organizations
+
+When `nexd` starts, it will check to see which organizations it has access to. If there is only one, it will connect to that one by default.
+
+If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--org-id` flag to `nexd`. For example:
+
+```sh
+sudo nexd --org-id 12345678-1234-1234-1234-123456789012 https://try.nexodus.io
+```
+
 ### Verifying Agent Setup
 
 Once the Agent has been started successfully, you should see a wireguard interface with an IPv4 and IPv6 address assigned. For example, on Linux:

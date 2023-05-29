@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/stun"
 	"os"
 	"os/signal"
 	"runtime"
 	"sort"
 	"sync"
 	"syscall"
+
+	"github.com/nexodus-io/nexodus/internal/stun"
 
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -101,6 +102,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 		userspaceMode,
 		cCtx.String("state-dir"),
 		ctx,
+		cCtx.String("org-id"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -335,6 +337,13 @@ func main() {
 				Name:     "stun-server",
 				Usage:    "stun server to use discover our endpoint address.  At least two are required.",
 				EnvVars:  []string{"NEXD_STUN_SERVER"},
+				Category: nexServiceOptions,
+			},
+			&cli.StringFlag{
+				Name:     "org-id",
+				Usage:    "Organization ID to use when registering with the nexodus service",
+				EnvVars:  []string{"NEXD_ORG_ID"},
+				Required: false,
 				Category: nexServiceOptions,
 			},
 		},
