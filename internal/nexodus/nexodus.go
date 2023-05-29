@@ -348,7 +348,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("get organizations error: %w", err)
 	}
 
-	ax.org, err = ax.chooseOrganization(organizations)
+	ax.org, err = ax.chooseOrganization(organizations, *user)
 	if err != nil {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
@@ -584,12 +584,19 @@ func (ax *Nexodus) reconcileStun(deviceID string) error {
 	return nil
 }
 
-func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization) (*public.ModelsOrganization, error) {
+func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization, user public.ModelsUser) (*public.ModelsOrganization, error) {
 	if len(organizations) == 0 {
 		return nil, fmt.Errorf("user does not belong to any organizations")
 	}
 	if nx.orgId == "" {
 		if len(organizations) > 1 {
+			// default to the org that matches the user name, the one created for a new user by default
+			for i, org := range organizations {
+				if org.Name == user.UserName {
+					return &organizations[i], nil
+				}
+			}
+			// Log all org names + Ids for convenience before returning the error
 			for _, org := range organizations {
 				nx.logger.Infof("organization name: '%s'  Id: %s", org.Name, org.Id)
 			}
