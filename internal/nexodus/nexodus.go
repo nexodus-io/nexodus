@@ -634,6 +634,9 @@ func (ax *Nexodus) Reconcile() error {
 			updatePeers[p.PublicKey] = p
 			changed = true
 		}
+		if p.Relay {
+			ax.relayWgIP = p.AllowedIps[0]
+		}
 	}
 
 	if changed {
