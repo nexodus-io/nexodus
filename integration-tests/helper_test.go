@@ -421,13 +421,19 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 
 	// Check and convert fromPort from string to int32 if not empty
 	if fromPortStr != "" {
-		tmpFromPort, _ := strconv.ParseInt(fromPortStr, 10, 32) // Ignore error, defaults to 0
+		tmpFromPort, err := strconv.ParseInt(fromPortStr, 10, 32)
+		if err != nil {
+			helper.Errorf("failed to parse a valid security rule port from %s: %v", fromPortStr, err)
+		}
 		fromPort = int32(tmpFromPort)
 	}
 
 	// Check and convert toPort from string to int32 if not empty
 	if toPortStr != "" {
-		tmpToPort, _ := strconv.ParseInt(toPortStr, 10, 32) // Ignore error, defaults to 0
+		tmpToPort, err := strconv.ParseInt(toPortStr, 10, 32)
+		if err != nil {
+			helper.Errorf("failed to parse a valid security rule port from %s: %v", fromPortStr, err)
+		}
 		toPort = int32(tmpToPort)
 	}
 
@@ -447,12 +453,12 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 	return rule
 }
 
-// retryCmdOnAllNodes is a wrapper for retryCmdUntilNotEqual that takes the nftables from before a
+// retryNftCmdOnAllNodes is a wrapper for retryNftCmdUntilNotEqual that takes the nftables from before a
 // security group is updated and diffs them for all the nodes passed until it detects a change or times out.
-func (helper *Helper) retryCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+func (helper *Helper) retryNftCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
 	helper.Logf("waiting for the security group change to converge")
 	for _, node := range nodes {
-		success, err := helper.retryCmdUntilNotEqual(ctx, node, command, cmdOutputBefore)
+		success, err := helper.retryNftCmdUntilNotEqual(ctx, node, command, cmdOutputBefore)
 		if err != nil {
 			return false, err
 		}
@@ -463,8 +469,8 @@ func (helper *Helper) retryCmdOnAllNodes(ctx context.Context, nodes []testcontai
 	return true, nil
 }
 
-// retryCmdUntilNotEqual is used to watch and wait for the new policy to be applied to the device
-func (helper *Helper) retryCmdUntilNotEqual(ctx context.Context, ctr testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+// retryNftCmdUntilNotEqual is used to watch and wait for the new policy to be applied to the device
+func (helper *Helper) retryNftCmdUntilNotEqual(ctx context.Context, ctr testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
 	const maxRetries = 30             // as the polling timer gets lowered, so can this value
 	const retryInterval = time.Second // Retry every second
 

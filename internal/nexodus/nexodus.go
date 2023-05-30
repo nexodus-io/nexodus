@@ -263,6 +263,11 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := ax.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
+
+	if runtime.GOOS != Linux.String() {
+		ax.logger.Debug("Security Groups are currently only supported on Linux")
+	}
+
 	var options []client.Option
 	if ax.stateDir != "" {
 		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, apiToken)))
@@ -436,34 +441,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
 		modelsDevice.Id, ax.org.Name, ax.org.Id)
 
-	if modelsDevice.SecurityGroupIds != uuid.Nil.String() {
-		err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-			ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
-			if err != nil {
-				if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
-					ax.logger.Debugf("security group returned a 404")
-					return nil
-				} else {
-					if resp != nil {
-						ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
-						return err
-					}
-					if err != nil {
-						ax.logger.Warnf("get security group error - retrying error: %v", err)
-						return err
-					}
-				}
-			}
-			ax.logger.Debugf("organization security group: %s", ax.securityGroup.Id)
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("join error %w", err)
-		}
-	} else {
-		ax.logger.Debug("organization security group is empty")
-	}
-
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
 		if err := ax.relayPrep(); err != nil {
@@ -471,10 +448,19 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
+	// apply the default security group rules
+	ax.securityGroup = &public.ModelsSecurityGroup{}
+	ax.securityGroup.Id = modelsDevice.SecurityGroupId
+	if runtime.GOOS == Linux.String() {
+		if err := ax.processSecurityGroupRules(); err != nil {
+			return err
+		}
+	}
+
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
-
+		ax.reconcileSecurityGroups(ctx)
 		for _, proxy := range ax.ingressProxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
@@ -529,7 +515,7 @@ func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	// lookup this device in the device cache and check if the security-group ID is nil
 	existing, ok := ax.deviceCache[ax.wireguardPubKey]
 	if ok {
-		if existing.device.SecurityGroupIds == uuid.Nil.String() {
+		if existing.device.SecurityGroupId == uuid.Nil.String() {
 			ax.securityGroup = nil
 			if err := ax.processSecurityGroupRules(); err != nil {
 				ax.logger.Error(err)
@@ -546,22 +532,17 @@ func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	}
 
 	// if the security group ID is not nil, lookup the ID and check for any changes
-	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.orgId, ax.securityGroup.Id).Execute()
+	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.org.Id, ax.securityGroup.Id).Execute()
 	if err != nil {
 		// if the group ID returns a 404, clear the current rules
 		if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
+			ax.securityGroup = nil
 			if err := ax.processSecurityGroupRules(); err != nil {
 				ax.logger.Error(err)
 			}
-			ax.securityGroup = nil
 			return
-		} else {
-			ax.logger.Debugf("Error retrieving the security group: %v", err)
 		}
-	}
-
-	if responseSecGroup == nil {
-		ax.logger.Debug("Security group is not set.")
+		ax.logger.Debugf("Error retrieving the security group: %v", err)
 		return
 	}
 
@@ -742,7 +723,7 @@ func (ax *Nexodus) Reconcile() error {
 		if len(updatePeers) > 0 {
 			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
 				if strings.Contains(err.Error(), securityGroupErr.Error()) {
-					ax.logger.Fatal(err)
+					return err
 				}
 				// If the wireguard configuration fails, we should wipe out our peer list
 				// so it is rebuilt and reconfigured from scratch the next time around.

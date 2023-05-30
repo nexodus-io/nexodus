@@ -319,22 +319,24 @@ func getOauth2Token(ctx context.Context, userid, password string) (*oauth2.Token
 	}, nil
 }
 
-// filterAndTrimLines filter out counters and the established rule from nftable output
+// filterAndTrimLines filter out keyworks and trim output
 func filterAndTrimLines(lines []string, excludeWord, trimAfter string) string {
 	filteredLines := make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		// Check if the line contains the excludeWord. If not, process it
-		if !strings.Contains(line, excludeWord) {
-			// Check if the line contains the trimAfter word
-			if idx := strings.Index(line, trimAfter); idx != -1 {
-				// If it does, trim the line to remove everything after trimAfter
-				line = strings.TrimSpace(line[:idx])
-			}
-			// Append the (potentially trimmed) line to the filteredLines slice
-			filteredLines = append(filteredLines, line)
+		if strings.Contains(line, excludeWord) {
+			continue
 		}
+		// Check if the line contains the trimAfter word
+		if idx := strings.Index(line, trimAfter); idx != -1 {
+			// If it does, trim the line to remove everything after trimAfter
+			line = strings.TrimSpace(line[:idx])
+		}
+		// Append the (potentially trimmed) line to the filteredLines slice
+		filteredLines = append(filteredLines, line)
 	}
+
 	// Join the filtered lines into a single string, with lines separated by newline characters
 	return strings.Join(filteredLines, "\n")
 }

@@ -30,7 +30,7 @@ Feature: Organization API
 
     When I GET path "/api/organizations"
     Then the response code should be 200
-    Given I store the ${response[0].security_group_ids} as ${oscar_security_group_ids}
+    Given I store the ${response[0].security_group_id} as ${oscar_security_group_id}
     #
     # Oscar should only be able to see the orgs that he is a part of.
     When I GET path "/api/organizations"
@@ -46,7 +46,7 @@ Feature: Organization API
           "id": "${oscar_organization_id}",
           "name": "${oscar_username}",
           "owner_id": "${oscar_user_id}",
-          "security_group_ids": "${oscar_security_group_ids}"
+          "security_group_id": "${oscar_security_group_id}"
         }
       ]
       """

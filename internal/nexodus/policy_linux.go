@@ -39,47 +39,45 @@ var (
 )
 
 // processSecurityGroupRules processes a security group for a Linux node
-func (ax *Nexodus) processSecurityGroupRules() error {
+func (nx *Nexodus) processSecurityGroupRules() error {
 
 	// Delete the table if the security group is empty and attempt to drop a table if one exists
-	if ax.securityGroup == nil {
+	if nx.securityGroup == nil {
 		// Drop the existing table and return nil if a group was not found to drop
-		if err := ax.nfTableDrop(); err != nil {
-			return nil
-		}
+		_ = nx.nfTableDrop()
 		return nil
 	}
 
 	ruleInterface = fmt.Sprintf("iifname %s", wgIface)
 
-	inboundRules := ax.securityGroup.InboundRules
-	outboundRules := ax.securityGroup.OutboundRules
+	inboundRules := nx.securityGroup.InboundRules
+	outboundRules := nx.securityGroup.OutboundRules
 
 	// Enable rule debugging to print rules via debug logging as they are processed
-	if ax.logger.Level().Enabled(zapcore.DebugLevel) {
-		err := debugSecurityGroupRules(ax.logger, inboundRules, outboundRules)
+	if nx.logger.Level().Enabled(zapcore.DebugLevel) {
+		err := debugSecurityGroupRules(nx.logger, inboundRules, outboundRules)
 		if err != nil {
-			ax.logger.Debug(err)
+			nx.logger.Debug(err)
 		}
 	}
 
 	// Drop the existing table
-	if err := ax.nfTableDrop(); err != nil {
+	if err := nx.nfTableDrop(); err != nil {
 		return fmt.Errorf("nftables setup error, failed to flush nftables: %w", err)
 	}
 
 	// Create the nftables table
-	if err := ax.nfCreateTable(); err != nil {
+	if err := nx.nfCreateTable(); err != nil {
 		return fmt.Errorf("nftables setup error, failed to create nftables inet table: %w", err)
 	}
 
 	// Create the ingress nftables chains
-	if err := ax.nfCreateChain(ingressChain); err != nil {
+	if err := nx.nfCreateChain(ingressChain); err != nil {
 		return fmt.Errorf("nftables setup error, failed to create nftables chain %s: %w", ingressChain, err)
 	}
 
 	// Create the egress nftables chains
-	if err := ax.nfCreateChain(egressChain); err != nil {
+	if err := nx.nfCreateChain(egressChain); err != nil {
 		return fmt.Errorf("nftables setup error, failed to create nftables chain %s: %w", egressChain, err)
 	}
 
@@ -90,22 +88,22 @@ func (ax *Nexodus) processSecurityGroupRules() error {
 		}
 		if containsIPv4Range(rule.IpRanges) {
 			// if the rule is a L3 addresses in v4 family, with or without L4 port(s)
-			if err := ax.nfPermitProtoPortAddrV4(ingressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPortAddrV4(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound v4 rule: %w", err)
 			}
 		} else if containsIPv6Range(rule.IpRanges) {
 			// if the rule is a L3 addresses in v6 family, with or without L4 port(s)
-			if err := ax.nfPermitProtoPortAddrV6(ingressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPortAddrV6(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound v6 rule: %w", err)
 			}
 		} else if rule.FromPort != 0 && rule.ToPort != 0 {
 			// if the rule is L4 port(s) range with no l3 addresses
-			if err := ax.nfPermitProtoPort(ingressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPort(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
 			}
 		} else {
 			// if the rule is only protocol to permit (no L4 ports or L3 addresses)
-			if err := ax.nfPermitProtoAny(ingressChain, rule); err != nil {
+			if err := nx.nfPermitProtoAny(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
 			}
 		}
@@ -118,22 +116,22 @@ func (ax *Nexodus) processSecurityGroupRules() error {
 		}
 		if containsIPv4Range(rule.IpRanges) {
 			// if the rule is a L3 addresses in v4 family, with or without L4 port(s)
-			if err := ax.nfPermitProtoPortAddrV4(egressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPortAddrV4(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process outbound v4 rule: %w", err)
 			}
 		} else if containsIPv6Range(rule.IpRanges) {
 			// if the rule is a L3 addresses in v6 family, with or without L4 port(s)
-			if err := ax.nfPermitProtoPortAddrV6(egressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPortAddrV6(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process outbound v6 rule: %w", err)
 			}
 		} else if rule.FromPort != 0 && rule.ToPort != 0 {
 			// if the rule is L4 port(s) range with no l3 addresses
-			if err := ax.nfPermitProtoPort(egressChain, rule); err != nil {
+			if err := nx.nfPermitProtoPort(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
 			}
 		} else {
 			// if the rule is only protocol to permit (no L4 ports or L3 addresses)
-			if err := ax.nfPermitProtoAny(egressChain, rule); err != nil {
+			if err := nx.nfPermitProtoAny(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
 			}
 		}
@@ -144,20 +142,20 @@ func (ax *Nexodus) processSecurityGroupRules() error {
 	// established. The established state refers to traffic that is part of an existing connection that has
 	// already been established, and where both endpoints have exchanged packets.
 	nft := []string{"insert", "rule", tableFamily, tableName, ingressChain, "ct", "state", "established,related", ruleInterface, "counter", "accept"}
-	if _, err := runNftCmd(ax.logger, nft); err != nil {
+	if _, err := runNftCmd(nx.logger, nft); err != nil {
 		return err
 	}
 
 	// append a default drop that appears implicit to the user only if there are any rules in the egress chain
-	if ax.securityGroup.InboundRules != nil && len(ax.securityGroup.InboundRules) != 0 {
-		if err := ax.nfIngressRuleDrop(); err != nil {
+	if nx.securityGroup.InboundRules != nil && len(nx.securityGroup.InboundRules) != 0 {
+		if err := nx.nfIngressRuleDrop(); err != nil {
 			return fmt.Errorf("nftables setup error, failed to add ingress drop rule: %w", err)
 		}
 	}
 
 	// append a drop that appears implicit to the user only if there are any user defined rules in the egress chain
-	if ax.securityGroup.OutboundRules != nil && len(ax.securityGroup.OutboundRules) != 0 {
-		if err := ax.nfEgressRuleDrop(); err != nil {
+	if nx.securityGroup.OutboundRules != nil && len(nx.securityGroup.OutboundRules) != 0 {
+		if err := nx.nfEgressRuleDrop(); err != nil {
 			return fmt.Errorf("nftables setup error, failed to add egress drop rule: %w", err)
 		}
 	}
@@ -352,37 +350,40 @@ func (ax *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 	switch rule.IpProtocol {
 	case protoIPv4, protoIPv6:
 		// if the specified proto is ipv4 or ipv6, add rules for both tcp and udp to the chain with the specified dport
-		if dportOption != "" {
-			// tcp permits for ports to the specified dport for v4/v6
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoTCP, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
-			// udp permits for ports to the specified dport for v4/v6
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoUDP, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
+		if dportOption == "" {
+			return nil
+		}
+		// tcp permits for ports to the specified dport for v4/v6
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoTCP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
+		}
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
+		}
+		// udp permits for ports to the specified dport for v4/v6
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
+		}
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, protoUDP, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
+
 		}
 	case protoUDP, protoTCP:
 		// if the specified proto is tcp or udp, add rules for both ipv4 and ipv6 to the chain with the specified dport
-		if dportOption != "" {
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
-			nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
-			if _, err := runNftCmd(ax.logger, nft); err != nil {
-				return err
-			}
+		if dportOption == "" {
+			return nil
+		}
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
+		}
+		nft = []string{"add", "rule", tableFamily, tableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		if _, err := runNftCmd(ax.logger, nft); err != nil {
+			return err
 		}
 	default:
 		ax.logger.Debugf("no match for permit proto dport rule: %v", rule)

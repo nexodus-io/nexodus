@@ -29,7 +29,7 @@ definitions:
         type: string
       relay:
         type: boolean
-      security_group_ids:
+      security_group_id:
         type: string
       symmetric_nat:
         type: boolean
@@ -70,7 +70,7 @@ definitions:
       name:
         example: zone-red
         type: string
-      security_group_ids:
+      security_group_id:
         type: string
     type: object
   models.AddSecurityGroup:
@@ -144,7 +144,7 @@ definitions:
         type: boolean
       revision:
         type: integer
-      security_group_ids:
+      security_group_id:
         type: string
       symmetric_nat:
         type: boolean
@@ -236,7 +236,7 @@ definitions:
         type: string
       owner_id:
         type: string
-      security_group_ids:
+      security_group_id:
         type: string
     type: object
   models.SecurityGroup:
@@ -322,7 +322,7 @@ definitions:
           format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      security_group_ids:
+      security_group_id:
         type: string
       updatedAt:
         type: string
@@ -1003,24 +1003,19 @@ paths:
       summary: Get Device
       tags:
       - Devices
-  /api/organizations/{organization_id}/devices/{device_id}/security_groups/{security_group_id}:
-    patch:
-      description: Updates a Device's Security Group by ID
-      operationId: PatchSecurityGroupDevice
+  /api/organizations/{organization_id}/security_group/{id}:
+    get:
+      description: Gets a security group in an organization by ID
+      operationId: GetSecurityGroup
       parameters:
       - description: Organization ID
         in: path
         name: organization_id
         required: true
         type: string
-      - description: Device ID
-        in: path
-        name: device_id
-        required: true
-        type: string
       - description: Security Group ID
         in: path
-        name: security_group_id
+        name: id
         required: true
         type: string
       produces:
@@ -1029,7 +1024,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Device'
+            $ref: '#/definitions/models.SecurityGroup'
         "400":
           description: Bad Request
           schema:
@@ -1046,7 +1041,7 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
-      summary: Update Device Security Group
+      summary: Get SecurityGroup
       tags:
       - SecurityGroup
   /api/organizations/{organization_id}/security_groups:
@@ -1122,47 +1117,6 @@ paths:
           schema:
             $ref: '#/definitions/models.BaseError'
       summary: Add SecurityGroup
-      tags:
-      - SecurityGroup
-  /api/organizations/{organization_id}/security_groups/{id}:
-    get:
-      description: Gets a security group in an organization by ID
-      operationId: GetSecurityGroup
-      parameters:
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
-      - description: Security Group ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.SecurityGroup'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-      summary: Get SecurityGroup
       tags:
       - SecurityGroup
   /api/organizations/{organization_id}/security_groups/{security_group_id}:

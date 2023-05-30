@@ -71,7 +71,7 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 
 			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, localIp, dev.PublicKey, dev.OrganizationId,
 				localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupIds, fmt.Sprintf("%t", dev.Relay))
+				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 

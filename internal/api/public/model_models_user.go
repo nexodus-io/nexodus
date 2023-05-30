@@ -14,8 +14,8 @@ package public
 type ModelsUser struct {
 	CreatedAt string `json:"createdAt,omitempty"`
 	// Since the ID comes from the IDP, we have no control over the format...
-	Id               string `json:"id,omitempty"`
-	SecurityGroupIds string `json:"security_group_ids,omitempty"`
-	UpdatedAt        string `json:"updatedAt,omitempty"`
-	UserName         string `json:"userName,omitempty"`
+	Id              string `json:"id,omitempty"`
+	SecurityGroupId string `json:"security_group_id,omitempty"`
+	UpdatedAt       string `json:"updatedAt,omitempty"`
+	UserName        string `json:"userName,omitempty"`
 }

@@ -24,7 +24,7 @@ func listOrganizations(c *client.APIClient, encodeOut string) error {
 		}
 
 		for _, org := range orgs {
-			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description, org.SecurityGroupIds)
+			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description, org.SecurityGroupId)
 		}
 
 		w.Flush()

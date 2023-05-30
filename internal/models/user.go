@@ -11,15 +11,15 @@ import (
 // User is the a person who uses Nexodus
 type User struct {
 	// Since the ID comes from the IDP, we have no control over the format...
-	ID               string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        gorm.DeletedAt  `gorm:"index" json:"-"`
-	Devices          []*Device       `json:"-"`
-	Organizations    []*Organization `gorm:"many2many:user_organizations" json:"-"`
-	UserName         string
-	Invitations      []*Invitation `json:"-"`
-	SecurityGroupIds uuid.UUID     `json:"security_group_ids"`
+	ID              string `gorm:"primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       gorm.DeletedAt  `gorm:"index" json:"-"`
+	Devices         []*Device       `json:"-"`
+	Organizations   []*Organization `gorm:"many2many:user_organizations" json:"-"`
+	UserName        string
+	Invitations     []*Invitation `json:"-"`
+	SecurityGroupId uuid.UUID     `json:"security_group_id"`
 }
 
 type UserJSON struct {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
@@ -20,7 +19,7 @@ func createSecurityGroup(c *client.APIClient, encodeOut, name, description, orga
 
 	err = checkICMPRules(inboundRules, outboundRules)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("create security group failed: %w", err)
 	}
 
 	res, _, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background(), orgID.String()).SecurityGroup(public.ModelsAddSecurityGroup{
@@ -56,7 +55,7 @@ func updateSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 
 	err = checkICMPRules(inboundRules, outboundRules)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("create security group failed: %w", err)
 	}
 
 	res, _, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), orgID.String(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
@@ -132,30 +131,6 @@ func deleteSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("successfully deleted security group %s\n", res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		return fmt.Errorf("failed to print output: %w", err)
-	}
-
-	return nil
-}
-
-// applySecurityGroupToDevice patch a security group to a device
-func applySecurityGroupToDevice(c *client.APIClient, encodeOut, secGroupID, organizationID, deviceID string) error {
-	orgID, err := uuid.Parse(organizationID)
-	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
-	res, _, err := c.SecurityGroupApi.PatchSecurityGroupDevice(context.Background(), orgID.String(), deviceID, secGroupID).Execute()
-	if err != nil {
-		return fmt.Errorf("security group patch failed: %w", err)
-	}
-
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully patched device with security group %s\n", res.Id)
 		return nil
 	}
 

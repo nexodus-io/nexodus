@@ -7,19 +7,16 @@ The following provides details for interacting with security groups using the co
 > **Note:**
 > The default security group will permit all inbound and outbound traffic. Once you add a permit rule, no traffic other than that explicit permit will be allowed. There are no deny statements. This is a similar policy model that you may be used to when using security groups in AWS.
 > The security rules are only applied to the nexodus interface, this will not affect the other interfaces on your device.
+> The security group feature will not be supported for organizations created in beta, prior to Jun 7, 2023.
 
-The default nftables rule permitting all inbound and outbound traffic is as follows.
+Currently, only one security group per organization is supported. Support for multiple security groups per organization, which enables per-device policies, will be available soon.
+
+The default security group rules are empty, as can be seen in the default security group listing of an organization.
 
 ```shell
-table inet nexodus {
-    chain nexodus-inbound {
-        type filter hook input priority filter; policy accept;
-        ct state established,related iifname "wg0" counter packets 0 bytes 0 accept
-    }
-    chain nexodus-outbound {
-        type filter hook input priority filter; policy accept;
-    }
-}
+nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group list --organization-id="${ORGANIZATION_ID}"
+SECURITY GROUP ID                        SECURITY GROUP NAME     SECURITY GROUP DESCRIPTION              ORGANIZATION ID                          SECURITY GROUP RULES INBOUND     SECURITY GROUP RULES INBOUND
+cb2e0192-5eb9-41ee-a732-7484602ac883     default                 default organization security group     7e552731-2f5f-421d-9266-10fa46dfe3ee     []                               []
 ```
 
 ## Prerequisites
@@ -166,7 +163,7 @@ nexctl \
    --organization-id="${ORGANIZATION_ID}"
 ```
 
-- Or just specifying the fields you want to update and leaving the rest out will acheive the same effect of opening all traffic.
+- Or just specifying the fields you want to update and leaving the rest out will achieve the same effect of opening all traffic.
 
 ```shell
 nexctl \
@@ -206,8 +203,32 @@ nexctl \
 nexctl \
     --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
-    --inbound-rules='[{"ip_protocol": "udp","ip_ranges": ["10.130.0.1-10.130.0.5"],"from_port": 80,"to_port": 90}, {"ip_protocol": "tcp", "from_port": 456, "to_port": 789, "ip_ranges": ["192.168.64.1"]}, {"ip_protocol": "udp", "from_port": 123, "to_port": 124, "ip_ranges": ["172.16.5.1/24"]}, {"ip_protocol":"tcp","from_port":11000,"to_port":40000,"ip_ranges":["F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff"]}, {"ip_protocol":"tcp","from_port":443,"to_port":443,"ip_ranges":[""]}, {"ip_protocol":"tcp","from_port":443,"to_port":678,"ip_ranges":[""]}, {"ip_protocol":"tcp","from_port":443,"to_port":500}, {"ip_protocol": "udp","ip_ranges": ["fd00:face:b00c:cafe::/64"],"from_port": 80,"to_port": 90}]' \
-    --outbound-rules='[{"ip_protocol": "udp","ip_ranges": ["10.130.0.1-10.130.0.5"],"from_port": 80,"to_port": 90}, {"ip_protocol": "tcp", "from_port": 20, "to_port": 70, "ip_ranges": ["192.168.64.1"]}, {"ip_protocol": "udp", "from_port": 727, "to_port": 767, "ip_ranges": ["192.168.2.1/24"]}, {"ip_protocol":"tcp","from_port":30000,"to_port":31000,"ip_ranges":["2002:0db8::/32"]}, {"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["192.168.1.1/24"]}, {"ip_protocol": "udp", "from_port": 3333, "to_port": 4444, "ip_ranges": ["192.168.2.1/24"]}, {"ip_protocol": "udp", "from_port": 1, "to_port": 59, "ip_ranges": ["192.168.2.1/24"]}, {"ip_protocol":"tcp","from_port":22,"to_port":29,"ip_ranges":["2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"]}, {"ip_protocol": "udp","ip_ranges": ["fd00:face:b00c:cafe::1"],"from_port": 80,"to_port": 90}, {"ip_protocol": "tcp","ip_ranges": ["fd00:face:b00c:cafe::4"]}, {"ip_protocol": "icmp","ip_ranges": ["2001:0db8:1337:cafe::/64"]}, {"ip_protocol": "udp", "from_port": 777, "to_port": 788}]' \
+    --inbound-rules='[
+        {"ip_protocol": "udp","ip_ranges": ["10.130.0.1-10.130.0.5"],"from_port": 80,"to_port": 90}, 
+        {"ip_protocol": "tcp", "from_port": 456, "to_port": 789, "ip_ranges": ["192.168.64.1"]}, 
+        {"ip_protocol": "udp", "from_port": 123, "to_port": 124, "ip_ranges": ["172.16.5.1/24"]}, 
+        {"ip_protocol":"tcp","from_port":11000,"to_port":40000,"ip_ranges":["F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff"]}, 
+        {"ip_protocol":"tcp","from_port":443,"to_port":443,"ip_ranges":[""]}, 
+        {"ip_protocol":"tcp","from_port":650,"to_port":678}, 
+        {"ip_protocol":"tcp","from_port":443,"to_port":500}, 
+        {"ip_protocol": "icmpv4","ip_ranges": ["100.100.0.0/16"]},
+        {"ip_protocol": "icmpv6"},
+        {"ip_protocol": "udp","ip_ranges": ["fd00:face:b00c:cafe::/64","200::1-200::5"],"from_port": 80,"to_port": 90}
+    ]' \
+    --outbound-rules='[
+        {"ip_protocol": "udp","ip_ranges": ["10.130.0.1-10.130.0.5"],"from_port": 80,"to_port": 90}, 
+        {"ip_protocol": "tcp", "from_port": 20, "to_port": 70, "ip_ranges": ["192.168.64.1","192.168.64.10-192.168.64.50","100.100.0.128/25"]}, 
+        {"ip_protocol": "udp", "from_port": 727, "to_port": 767, "ip_ranges": ["192.168.2.1/24"]}, 
+        {"ip_protocol":"tcp","from_port":30000,"to_port":31000,"ip_ranges":["2002:0db8::/64"]}, 
+        {"ip_protocol": "tcp", "from_port": 80, "to_port": 80, "ip_ranges": ["192.168.1.1/24"]}, 
+        {"ip_protocol": "udp", "from_port": 3333, "to_port": 4444, "ip_ranges": ["192.168.2.1/24"]}, 
+        {"ip_protocol": "udp", "from_port": 1, "to_port": 59, "ip_ranges": ["192.168.2.1/24"]}, 
+        {"ip_protocol":"tcp","from_port":22,"to_port":29,"ip_ranges":["2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"]}, 
+        {"ip_protocol": "udp","ip_ranges": ["fd00:face:b00c:cafe::1"],"from_port": 80,"to_port": 90}, 
+        {"ip_protocol": "tcp","ip_ranges": ["fd00:face:b00c:cafe::4"]}, 
+        {"ip_protocol": "icmpv6","ip_ranges": ["2001:0db8:1337:cafe::/64"]}, 
+        {"ip_protocol": "udp", "from_port": 777, "to_port": 788}
+    ]' \
     --security-group-id="${SECURITY_GROUP_ID}" \
     --organization-id="${ORGANIZATION_ID}"
 ```

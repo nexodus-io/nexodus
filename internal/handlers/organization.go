@@ -71,11 +71,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	sg, err := api.createDefaultSecurityGroup(ctx, uuid.Nil.String())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
-	}
-
 	var org models.Organization
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var user models.User
@@ -84,14 +79,13 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		org = models.Organization{
-			Name:             request.Name,
-			OwnerID:          userId,
-			Description:      request.Description,
-			IpCidr:           request.IpCidr,
-			IpCidrV6:         request.IpCidrV6,
-			HubZone:          request.HubZone,
-			Users:            []*models.User{&user},
-			SecurityGroupIds: sg.ID,
+			Name:        request.Name,
+			OwnerID:     userId,
+			Description: request.Description,
+			IpCidr:      request.IpCidr,
+			IpCidrV6:    request.IpCidrV6,
+			HubZone:     request.HubZone,
+			Users:       []*models.User{&user},
 		}
 		if res := tx.Create(&org); res.Error != nil {
 			return res.Error
@@ -123,12 +117,23 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	if sg.OrganizationId != org.ID {
-		// Update the default security group with the new organization id
-		if err := api.updateDefaultSecurityGroupOrgId(ctx, sg.ID.String(), org.ID); err != nil {
-			errMsg := fmt.Sprintf("failed to update the default security group: %v", err)
+	// Create a default security group for the organization
+	sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		return
+	}
+
+	// Update the org with the new security group id, delete the security group if it fails
+	if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID); err != nil {
+		if res := api.db.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
+			errMsg := fmt.Sprintf("failed to update and delete the default security group with an org id: %v", err)
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
+			return
 		}
+		errMsg := fmt.Sprintf("failed to update the default security group with an org id: %v", err)
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
+		return
 	}
 
 	c.JSON(http.StatusCreated, org)

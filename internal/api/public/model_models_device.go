@@ -26,7 +26,7 @@ type ModelsDevice struct {
 	PublicKey               string           `json:"public_key,omitempty"`
 	Relay                   bool             `json:"relay,omitempty"`
 	Revision                int32            `json:"revision,omitempty"`
-	SecurityGroupIds        string           `json:"security_group_ids,omitempty"`
+	SecurityGroupId         string           `json:"security_group_id,omitempty"`
 	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
 	TunnelIp                string           `json:"tunnel_ip,omitempty"`
 	TunnelIpV6              string           `json:"tunnel_ip_v6,omitempty"`

@@ -315,25 +315,22 @@ func main() {
 							outboundRulesStr := cCtx.String("outbound-rules")
 
 							var inboundRules, outboundRules []public.ModelsSecurityRule
+							var err error
+
 							if inboundRulesStr != "" {
-								rules, err := jsonStringToSecurityRules(inboundRulesStr)
+								inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 								}
-								inboundRules = make([]public.ModelsSecurityRule, len(rules))
-								copy(inboundRules, rules)
 							}
 
 							if outboundRulesStr != "" {
-								rules, err := jsonStringToSecurityRules(outboundRulesStr)
+								outboundRules, err = jsonStringToSecurityRules(outboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 								}
-								outboundRules = make([]public.ModelsSecurityRule, len(rules))
-								copy(outboundRules, rules)
 							}
 
-							fmt.Println("Warning: currently under development and not fully functional. Use at your own risk. This feature is not fully implemented.")
 							return createSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, name, description, orgID, inboundRules, outboundRules)
 						},
 					},
@@ -376,52 +373,23 @@ func main() {
 							outboundRulesStr := cCtx.String("outbound-rules")
 
 							var inboundRules, outboundRules []public.ModelsSecurityRule
+							var err error
+
 							if inboundRulesStr != "" {
-								rules, err := jsonStringToSecurityRules(inboundRulesStr)
+								inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 								}
-								inboundRules = make([]public.ModelsSecurityRule, len(rules))
-								copy(inboundRules, rules) // Use copy() instead of the loop
 							}
 
 							if outboundRulesStr != "" {
-								rules, err := jsonStringToSecurityRules(outboundRulesStr)
+								outboundRules, err = jsonStringToSecurityRules(outboundRulesStr)
 								if err != nil {
 									return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 								}
-								outboundRules = make([]public.ModelsSecurityRule, len(rules))
-								copy(outboundRules, rules) // Use copy() instead of the loop
 							}
 
-							fmt.Println("Warning: currently under development and not fully functional. Use at your own risk. This feature is not fully implemented.")
 							return updateSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID, name, description, inboundRules, outboundRules)
-						},
-					},
-					{
-						Name:  "apply-group-to-device",
-						Usage: "Apply a security-group to a device",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "security-group-id",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "organization-id",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "device-id",
-								Required: true,
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							sgID := cCtx.String("security-group-id")
-							orgID := cCtx.String("organization-id")
-							devID := cCtx.String("device-id")
-							// TODO: resolve the error "security group patch failed: update is required and must be specified"
-							return applySecurityGroupToDevice(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID, devID)
 						},
 					},
 				},

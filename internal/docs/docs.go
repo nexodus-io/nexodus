@@ -992,17 +992,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/organizations/{organization_id}/devices/{device_id}/security_groups/{security_group_id}": {
-            "patch": {
-                "description": "Updates a Device's Security Group by ID",
+        "/api/organizations/{organization_id}/security_group/{id}": {
+            "get": {
+                "description": "Gets a security group in an organization by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "SecurityGroup"
                 ],
-                "summary": "Update Device Security Group",
-                "operationId": "PatchSecurityGroupDevice",
+                "summary": "Get SecurityGroup",
+                "operationId": "GetSecurityGroup",
                 "parameters": [
                     {
                         "type": "string",
@@ -1013,15 +1013,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Device ID",
-                        "name": "device_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Security Group ID",
-                        "name": "security_group_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1030,7 +1023,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Device"
+                            "$ref": "#/definitions/models.SecurityGroup"
                         }
                     },
                     "400": {
@@ -1165,67 +1158,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/security_groups/{id}": {
-            "get": {
-                "description": "Gets a security group in an organization by ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "Get SecurityGroup",
-                "operationId": "GetSecurityGroup",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Security Group ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.SecurityGroup"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
@@ -1759,7 +1691,7 @@ const docTemplate = `{
                 "relay": {
                     "type": "boolean"
                 },
-                "security_group_ids": {
+                "security_group_id": {
                     "type": "string"
                 },
                 "symmetric_nat": {
@@ -1817,7 +1749,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "zone-red"
                 },
-                "security_group_ids": {
+                "security_group_id": {
                     "type": "string"
                 }
             }
@@ -1927,7 +1859,7 @@ const docTemplate = `{
                 "revision": {
                     "type": "integer"
                 },
-                "security_group_ids": {
+                "security_group_id": {
                     "type": "string"
                 },
                 "symmetric_nat": {
@@ -2062,7 +1994,7 @@ const docTemplate = `{
                 "owner_id": {
                     "type": "string"
                 },
-                "security_group_ids": {
+                "security_group_id": {
                     "type": "string"
                 }
             }
@@ -2189,7 +2121,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
-                "security_group_ids": {
+                "security_group_id": {
                     "type": "string"
                 },
                 "updatedAt": {

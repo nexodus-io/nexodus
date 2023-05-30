@@ -402,7 +402,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			SymmetricNat:             request.SymmetricNat,
 			Hostname:                 request.Hostname,
 			Os:                       request.Os,
-			SecurityGroupIds:         org.SecurityGroupIds,
+			SecurityGroupId:          org.SecurityGroupId,
 		}
 
 		if res := tx.

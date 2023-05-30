@@ -2,8 +2,6 @@ package nexodus
 
 import (
 	"errors"
-	"runtime"
-
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
@@ -24,13 +22,6 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 
 	if ax.TunnelIP != ax.getIPv4Iface(ax.tunnelIface).String() {
 		if err := ax.setupInterface(); err != nil {
-			return err
-		}
-	}
-
-	if runtime.GOOS == Linux.String() {
-		ax.logger.Debugf("Security group: %+v", ax.securityGroup)
-		if err := ax.processSecurityGroupRules(); err != nil {
 			return err
 		}
 	}
