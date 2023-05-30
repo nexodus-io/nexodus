@@ -74,11 +74,6 @@ const StyledForm = styled(Form, {
   },
 }));
 
-const LoginPage = () => (
-  <Login
-    backgroundImage="https://source.unsplash.com/9wg5jCEPBsw"
-    children={<LoginForm />}
-  />
-);
+const LoginPage = () => <Login children={<LoginForm />} />;
 
 export default LoginPage;
