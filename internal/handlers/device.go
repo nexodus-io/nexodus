@@ -3,8 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"gorm.io/gorm/clause"
 	"net/http"
+
+	"gorm.io/gorm/clause"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -162,7 +163,39 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.Endpoints = request.Endpoints
 		}
 
-		if request.OrganizationID != uuid.Nil {
+		if request.OrganizationID != uuid.Nil && request.OrganizationID != device.OrganizationID {
+			userId := c.GetString(gin.AuthUserKey)
+
+			var org models.Organization
+			if res := tx.Model(&org).
+				Joins("inner join user_organizations on user_organizations.organization_id=organizations.id").
+				Where("user_organizations.user_id=? AND organizations.id=?", userId, request.OrganizationID).
+				First(&org); res.Error != nil {
+				return errUserOrOrgNotFound
+			}
+
+			if err := api.ipam.ReleaseToPool(c.Request.Context(), device.OrganizationID, device.TunnelIP, device.OrganizationPrefix); err != nil {
+				c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
+				return err
+			}
+
+			if err := api.ipam.ReleaseToPool(c.Request.Context(), device.OrganizationID, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
+				c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
+				return err
+			}
+
+			device.TunnelIP, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidr)
+			if err != nil {
+				return fmt.Errorf("failed to request ipam address: %w", err)
+			}
+			device.OrganizationPrefix = org.IpCidr
+
+			device.TunnelIpV6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
+			if err != nil {
+				return fmt.Errorf("failed to request ipam v6 address: %w", err)
+			}
+			device.OrganizationPrefixV6 = org.IpCidrV6
+
 			device.OrganizationID = request.OrganizationID
 		}
 
