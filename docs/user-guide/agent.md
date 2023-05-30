@@ -127,7 +127,7 @@ For [try.nexodus.io](https://try.nexodus.io), you may set a password for your ac
 
 ### Multiple Organizations
 
-When `nexd` starts, it will check to see which organizations it has access to. If there is only one, it will connect to that one by default.
+When `nexd` starts, it will check to see which organizations it has access to. If no organization is specified, it will connect to the user's default organization. The default is the organization that has the same name as the user.
 
 If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--org-id` flag to `nexd`. For example:
 

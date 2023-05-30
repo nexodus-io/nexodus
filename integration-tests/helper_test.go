@@ -3,7 +3,6 @@ package integration_tests
 import (
 	"context"
 	"fmt"
-	"github.com/ahmetb/dlog"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"testing"
 	"time"
 	"unicode"
+
+	"github.com/ahmetb/dlog"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/container"
@@ -318,6 +319,23 @@ func (helper *Helper) runCommand(cmd ...string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+// nexdStopped checks to see if nexd is stopped. It assumes if we get an error trying to talk to it with nexctl
+// that it must be stopped.
+func (helper *Helper) nexdStopped(ctx context.Context, ctr testcontainers.Container) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+	stopped, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
+		statOut, err := helper.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "status"})
+		helper.Logf("nexd status: %s", statOut)
+		return err != nil, nil
+	})
+	if !stopped {
+		nodeName, _ := ctr.Name(ctx)
+		return fmt.Errorf("failed to validate the nexd process has stopped in node: %s", nodeName)
+	}
+	return nil
 }
 
 // nexdStatus checks for a Running status of the nexd process via nexctl
