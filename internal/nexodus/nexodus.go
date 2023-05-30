@@ -437,18 +437,29 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		modelsDevice.Id, ax.org.Name, ax.org.Id)
 
 	if modelsDevice.SecurityGroupIds != uuid.Nil.String() {
-		ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
-		if err != nil {
-			if resp != nil {
-				ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
-				return err
-			}
+		err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+			ax.securityGroup, resp, err = ax.client.SecurityGroupApi.GetSecurityGroup(ctx, organizations[0].Id, organizations[0].SecurityGroupIds).Execute()
 			if err != nil {
-				ax.logger.Warnf("get security group error - retrying error: %v", err)
-				return err
+				if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
+					ax.logger.Debugf("security group returned a 404")
+					return nil
+				} else {
+					if resp != nil {
+						ax.logger.Warnf("get security group error - retrying error: %v header: %+v", err, resp.Header)
+						return err
+					}
+					if err != nil {
+						ax.logger.Warnf("get security group error - retrying error: %v", err)
+						return err
+					}
+				}
 			}
+			ax.logger.Debugf("organization security group: %s", ax.securityGroup.Id)
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("join error %w", err)
 		}
-		ax.logger.Debugf("organization security group: %v", ax.securityGroup)
 	} else {
 		ax.logger.Debug("organization security group is empty")
 	}
@@ -520,11 +531,22 @@ func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	if ok {
 		if existing.device.SecurityGroupIds == uuid.Nil.String() {
 			ax.securityGroup = nil
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
 			return
 		}
 	}
+
+	// TODO: This needs some scrutiny, ax.securityGroup could be nil, empty with a uuid.nil 0000000-000.. or a valid UUID.
+	// are there any scenarios where a group has been created/updated/patched that the device is not
+	// updated about via reconcile while still maintaining nil checks?
+	if ax.securityGroup == nil {
+		return
+	}
+
 	// if the security group ID is not nil, lookup the ID and check for any changes
-	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.organization, ax.securityGroup.Id).Execute()
+	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.orgId, ax.securityGroup.Id).Execute()
 	if err != nil {
 		// if the group ID returns a 404, clear the current rules
 		if strings.Contains(err.Error(), securityGroupNotFound.Error()) {

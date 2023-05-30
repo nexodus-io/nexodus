@@ -131,7 +131,7 @@ func deleteSecurityGroup(c *client.APIClient, encodeOut, secGroupID, organizatio
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted user %s\n", res.Id)
+		fmt.Printf("successfully deleted security group %s\n", res.Id)
 		return nil
 	}
 
@@ -155,7 +155,7 @@ func applySecurityGroupToDevice(c *client.APIClient, encodeOut, secGroupID, orga
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted user %s\n", res.Id)
+		fmt.Printf("successfully patched device with security group %s\n", res.Id)
 		return nil
 	}
 

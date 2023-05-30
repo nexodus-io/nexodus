@@ -1103,7 +1103,9 @@ Tests performed are as follows:
 3. The second set will add a policy and verify the explicitly allowed ports are reachable.
 5. The next section will perform negative tests that will add a new policy and a netcat
 listener will be put in place on a port that is not in the policy allow and verify that
-// connection is not permitted.
+connection is not permitted.
+6. Test scopes by creating a new user and performing negative tests.
+7. Validate security group creation and deletion.
 */
 func TestSecurityGroups(t *testing.T) {
 	t.Parallel()
@@ -1628,4 +1630,89 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	helper.Logf("Pinging %s from node1", node2IPv6)
 	err = pingWithoutRetry(ctx, node1, inetV6, node2IPv6)
 	require.Error(err)
+
+	// The next section tests scopes, start by creating a new user and running negative tests
+	username2, cleanup2 := helper.createNewUser(ctx, password)
+	defer cleanup2()
+
+	_, err = helper.runCommand(nexctl,
+		"--username", username2,
+		"--password", password,
+		"security-group", "list",
+		"--organization-id", orgID,
+	)
+	require.Error(err)
+	require.ErrorContains(err, "404")
+
+	_, err = helper.runCommand(nexctl,
+		"--username", username2,
+		"--password", password,
+		"security-group", "delete",
+		"--organization-id", orgID,
+		"--security-group-id", secGroupID,
+	)
+	require.Error(err)
+
+	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
+	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+
+	// delete the security group and ensure the device updates it's netfilter rules to fall back to a default where no group is defined
+	sgDel, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"security-group", "delete",
+		"--organization-id", orgID,
+		"--security-group-id", secGroupID,
+	)
+	require.NoError(err)
+	require.Contains(sgDel, secGroupID)
+
+	allSucceeded, err = helper.retryCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	require.NoError(err)
+	require.True(allSucceeded)
+
+	// v4 UDP 9000 should succeed now that the security group has been deleted, the netfilter table should be cleared as a result
+	err = helper.startPortListener(ctx, node1, node1IPv4, protoUDP, "9000")
+	require.NoError(err)
+	connectResults, _ = helper.connectToPort(ctx, node2, node1IPv4, protoUDP, "9000")
+	require.Equal(node1Hostname, connectResults)
+
+	// create the new inbound and outbound rules
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("tcp", "0", "0", []string{}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
+	}
+	outboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("tcp", "0", "0", []string{}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
+	}
+	// Marshal rules to JSON
+	inboundJSON, err := json.Marshal(inboundRules)
+	require.NoError(err)
+	outboundJSON, err := json.Marshal(outboundRules)
+	require.NoError(err)
+	_, err = helper.runCommand(nexctl,
+		"--username", username2,
+		"--password", password,
+		"security-group", "create",
+		"--name", "test-create-group",
+		"--description", "test create group sg_e2e_extended",
+		"--organization-id", orgID,
+		"--inbound-rules", string(inboundJSON),
+		"--outbound-rules", string(outboundJSON),
+	)
+	require.Error(err)
+
+	_, err = helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"security-group", "create",
+		"--name", "test-create-group",
+		"--description", "test create group sg_e2e_extended",
+		"--organization-id", orgID,
+		"--inbound-rules", string(inboundJSON),
+		"--outbound-rules", string(outboundJSON),
+	)
+	require.NoError(err)
 }

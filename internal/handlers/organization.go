@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/database"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
