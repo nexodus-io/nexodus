@@ -91,6 +91,20 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, securityGroup)
 }
 
+func (api *API) secGroupsEnabled(c *gin.Context) bool {
+	secGroupsEnabled, err := api.fflags.GetFlag("security-groups")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		return false
+	}
+	allowForTests := c.GetString("nexodus.secGroupsEnabled")
+	if (!secGroupsEnabled && allowForTests != "true") || allowForTests == "false" {
+		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("security-groups support is disabled"))
+		return false
+	}
+	return true
+}
+
 // CreateSecurityGroup handles adding a new SecurityGroup
 // @Summary      Add SecurityGroup
 // @Id  		 CreateSecurityGroup
@@ -110,6 +124,10 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 func (api *API) CreateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup")
 	defer span.End()
+
+	if !api.secGroupsEnabled(c) {
+		return
+	}
 
 	var request models.AddSecurityGroup
 	// Call BindJSON to bind the received JSON
@@ -189,6 +207,11 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteSecurityGroup")
 	defer span.End()
+
+	if !api.secGroupsEnabled(c) {
+		return
+	}
+
 	secGroupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -273,6 +296,11 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
+
+	if !api.secGroupsEnabled(c) {
+		return
+	}
+
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -365,6 +393,11 @@ func (api *API) PatchSecurityGroupDevice(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
+
+	if !api.secGroupsEnabled(c) {
+		return
+	}
+
 	deviceId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))

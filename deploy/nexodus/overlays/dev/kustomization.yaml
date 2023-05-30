@@ -15,6 +15,11 @@ secretGenerator:
       - web-client-id=nexodus-web
       - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
       - cli-client-id=nexodus-cli
+configMapGenerator:
+  - behavior: merge
+    literals:
+      - NEXAPI_FFLAG_SECURITY_GROUPS=true
+    name: apiserver
 patches:
   - target:
       kind: Ingress

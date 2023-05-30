@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"gorm.io/gorm/clause"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"

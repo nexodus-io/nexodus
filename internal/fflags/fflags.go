@@ -24,6 +24,7 @@ type FFlag struct {
 
 var hardCodedFlags = map[string]FFlag{
 	"multi-organization": {"NEXAPI_FFLAG_MULTI_ORGANIZATION", true},
+	"security-groups":    {"NEXAPI_FFLAG_SECURITY_GROUPS", false},
 }
 
 func NewFFlags(logger *zap.SugaredLogger) *FFlags {

@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
@@ -63,7 +65,11 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
-			suite.api.CreateSecurityGroup, bytes.NewBuffer(resBody),
+			func(c *gin.Context) {
+				c.Set("nexodus.secGroupsEnabled", "true")
+				suite.api.CreateSecurityGroup(c)
+			},
+			bytes.NewBuffer(resBody),
 		)
 		require.NoError(err)
 
@@ -117,7 +123,11 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
 		"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
-		suite.api.CreateSecurityGroup, bytes.NewBuffer(resBody),
+		func(c *gin.Context) {
+			c.Set("nexodus.secGroupsEnabled", "true")
+			suite.api.CreateSecurityGroup(c)
+		},
+		bytes.NewBuffer(resBody),
 	)
 	require.NoError(err)
 
@@ -134,7 +144,11 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 	_, res, err = suite.ServeRequest(
 		http.MethodDelete,
 		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actual.ID),
-		suite.api.DeleteSecurityGroup, nil,
+		func(c *gin.Context) {
+			c.Set("nexodus.secGroupsEnabled", "true")
+			suite.api.DeleteSecurityGroup(c)
+		},
+		nil,
 	)
 
 	require.NoError(err)
@@ -179,7 +193,11 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
-			suite.api.CreateSecurityGroup, bytes.NewBuffer(resBody),
+			func(c *gin.Context) {
+				c.Set("nexodus.secGroupsEnabled", "true")
+				suite.api.CreateSecurityGroup(c)
+			},
+			bytes.NewBuffer(resBody),
 		)
 		require.NoError(err)
 		require.Equal(http.StatusCreated, res.Code)
@@ -225,7 +243,11 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
 		"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
-		suite.api.CreateSecurityGroup, bytes.NewBuffer(resBody),
+		func(c *gin.Context) {
+			c.Set("nexodus.secGroupsEnabled", "true")
+			suite.api.CreateSecurityGroup(c)
+		},
+		bytes.NewBuffer(resBody),
 	)
 	require.NoError(err)
 	require.Equal(http.StatusCreated, res.Code)
@@ -251,7 +273,11 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
 		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
-		suite.api.UpdateSecurityGroup, bytes.NewBuffer(updateBody),
+		func(c *gin.Context) {
+			c.Set("nexodus.secGroupsEnabled", "true")
+			suite.api.UpdateSecurityGroup(c)
+		},
+		bytes.NewBuffer(updateBody),
 	)
 	require.NoError(err)
 	require.Equal(http.StatusOK, res.Code)
