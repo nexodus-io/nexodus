@@ -347,30 +347,26 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		var ipamIP string
 		var ipamIPv6 string
+		var err error
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.TunnelIP != "" {
-			var err error
 			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, org.IpCidr, request.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
-			// Currently only support v4 requesting of specific addresses
-			ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
-			if err != nil {
-				return fmt.Errorf("failed to request ipam v6 address: %w", err)
-			}
 		} else {
-			var err error
 			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidr)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
-			ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
-			if err != nil {
-				return fmt.Errorf("failed to request ipam v6 address: %w", err)
-			}
 		}
+		// Currently only support v4 requesting of specific addresses
+		ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
+		if err != nil {
+			return fmt.Errorf("failed to request ipam v6 address: %w", err)
+		}
+
 		// allocate a child prefix if requested
 		for _, prefix := range request.ChildPrefix {
 			if !util.IsValidPrefix(prefix) {
