@@ -27,27 +27,14 @@ func init() {
 		},
 		Subcommands: []*cli.Command{
 			{
-				Name:  "version",
-				Usage: "Display the nexd version",
-				Action: func(cCtx *cli.Context) error {
-					err := cmdLocalVersion(cCtx)
-					if err != nil {
-						fmt.Printf("%s\n", err)
-					}
-					return nil
-				},
+				Name:   "version",
+				Usage:  "Display the nexd version",
+				Action: cmdLocalVersion,
 			},
 			{
-				Name:  "status",
-				Usage: "Display the nexd status",
-				Action: func(cCtx *cli.Context) error {
-					c, err := cmdLocalStatus(cCtx)
-					fmt.Printf("%s", c)
-					if err != nil {
-						fmt.Printf("%s\n", err)
-					}
-					return nil
-				},
+				Name:   "status",
+				Usage:  "Display the nexd status",
+				Action: cmdLocalStatus,
 			},
 			{
 				Name:  "get",
@@ -214,17 +201,19 @@ func cmdLocalVersion(cCtx *cli.Context) error {
 	return err
 }
 
-func cmdLocalStatus(cCtx *cli.Context) (string, error) {
+func cmdLocalStatus(cCtx *cli.Context) error {
 	if err := checkVersion(); err != nil {
-		return "", err
+		return err
 	}
 
 	result, err := callNexd("Status", "")
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return result, err
+	fmt.Printf("%s", result)
+
+	return nil
 }
 
 func proxyAddRemove(cCtx *cli.Context, add bool) error {
