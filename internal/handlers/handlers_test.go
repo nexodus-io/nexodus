@@ -3,13 +3,14 @@ package handlers
 import (
 	"context"
 	"errors"
-	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/nexodus-io/nexodus/internal/signalbus"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ import (
 const (
 	TestUserID     = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
 	TestUser2ID    = "3381dcaf-f61e-4671-8787-3e53490894ae"
-	ipamClientAddr = "http://localhost:9090"
+	ipamClientAddr = "http://localhost:49090"
 )
 
 type HandlerTestSuite struct {
@@ -49,7 +50,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	suite.wg = &sync.WaitGroup{}
 	suite.wg.Add(1)
 
-	listener, err := net.Listen("tcp", "[::1]:9090")
+	listener, err := net.Listen("tcp", "[::1]:49090")
 	suite.Require().NoError(err)
 
 	go func() {
