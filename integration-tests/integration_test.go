@@ -235,64 +235,128 @@ func TestChooseOrganization(t *testing.T) {
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
 
-	// Create an org with a non-default CIDR
-	orgOut, err := helper.runCommand(nexctl,
-		"--username", username, "--password", password,
-		"--output", "json",
-		"organization", "create",
-		"--name", fmt.Sprintf("%s-%s", "TestChooseOrganization", time.Now().Format("2006-01-02-15-04-05")),
-		"--description", "Test Org",
-		"--cidr", "192.168.42.0/24",
-		"--cidr-v6", "222::/64",
-	)
-	require.NoError(err)
-	helper.Logf("Output from creating org: %s", orgOut)
-	var org models.OrganizationJSON
-	err = json.Unmarshal([]byte(orgOut), &org)
-	require.NoErrorf(err, "nexctl organization Unmarshal error: %v\n", err)
-	orgID := org.ID.String()
+	orgs := []struct {
+		id     string
+		cidr   string
+		cidrV6 string
+	}{
+		{
+			cidr:   "100.110.0.0/16",
+			cidrV6: "210::/64",
+		},
+		{
+			cidr:   "100.111.0.0/16",
+			cidrV6: "211::/64",
+		},
+	}
 
-	defer func() {
-		_, _ = helper.runCommand(nexctl,
-			nexctl,
+	for i, org := range orgs {
+		orgOut, err := helper.runCommand(nexctl,
 			"--username", username, "--password", password,
-			"organization", "delete", "--organization-id", orgID)
-	}()
+			"--output", "json",
+			"organization", "create",
+			"--name", fmt.Sprintf("%s-%s-org%d", "TestChooseOrganization", time.Now().Format("2006-01-02-15-04-05"), i),
+			"--description", "Test Org",
+			"--cidr", org.cidr,
+			"--cidr-v6", org.cidrV6,
+		)
+		require.NoError(err)
+		helper.Logf("Output from creating org: %s", orgOut)
+		var org models.OrganizationJSON
+		err = json.Unmarshal([]byte(orgOut), &org)
+		require.NoErrorf(err, "nexctl organization Unmarshal error: %v\n", err)
+		orgs[i].id = org.ID.String()
 
-	// create the nodes
+		defer func(orgID string) {
+			_, _ = helper.runCommand(nexctl,
+				nexctl,
+				"--username", username, "--password", password,
+				"organization", "delete", "--organization-id", orgID)
+		}(orgs[i].id)
+	}
+
+	useOrgs := []string{
+		"",         // default org
+		orgs[0].id, // change to a custom org
+		orgs[1].id, // change to another customer org
+		orgs[0].id, // change back to a previous org
+	}
+
+	// Re-use the same 2 nodes for each test case. We want to keep the
+	// same keys so we're moving the same device around between orgs.
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
-	// start nexodus on the nodes
-	helper.runNexd(ctx, node1,
-		"--username", username, "--password", password,
-		"--org-id", orgID)
+	lastIPs := map[string]string{
+		"node1IP":   "",
+		"node2IP":   "",
+		"node1IPv6": "",
+		"node2IPv6": "",
+	}
+	for _, orgID := range useOrgs {
+		args := []string{"--username", username, "--password", password}
+		if orgID != "" {
+			args = append(args, "--org-id", orgID)
+		}
 
-	// validate nexd has started on the first node
-	err = helper.nexdStatus(ctx, node1)
-	require.NoError(err)
+		// start nexd on node1
+		helper.runNexd(ctx, node1, args...)
+		err := helper.nexdStatus(ctx, node1)
+		require.NoError(err)
 
-	// request a specific IP to make sure it's using our org with a non-default CIDR
-	node2IP := "192.168.42.22"
-	helper.runNexd(ctx, node2,
-		"--username", username, "--password", password,
-		"--org-id", orgID,
-		fmt.Sprintf("--request-ip=%s", node2IP),
-	)
+		// start nexd on node2
+		helper.runNexd(ctx, node2, args...)
+		err = helper.nexdStatus(ctx, node2)
+		require.NoError(err)
 
-	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
-	require.NoError(err)
+		// get tunnel IPs for node1, validate that they changed from the last org used
+		node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
+		require.NoError(err)
+		require.NotEqual(lastIPs["node1IP"], node1IP)
+		lastIPs["node1IP"] = node1IP
+		node1IPv6, err := getTunnelIP(ctx, helper, inetV6, node1)
+		require.NoError(err)
+		require.NotEqual(lastIPs["node1IPv6"], node1IPv6)
+		lastIPs["node1IPv6"] = node1IPv6
 
-	// ping the requested IP address (--request-ip)
-	helper.Logf("Pinging %s from node1", node2IP)
-	err = ping(ctx, node1, inetV4, node2IP)
-	require.NoError(err)
+		// get tunnel IPs for node2, validate that they changed from the last org used
+		node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+		require.NoError(err)
+		require.NotEqual(lastIPs["node2IP"], node2IP)
+		lastIPs["node2IP"] = node2IP
+		node2IPv6, err := getTunnelIP(ctx, helper, inetV6, node2)
+		require.NoError(err)
+		require.NotEqual(lastIPs["node2IPv6"], node2IPv6)
+		lastIPs["node2IPv6"] = node2IPv6
 
-	helper.Logf("Pinging %s from node2", node1IP)
-	err = ping(ctx, node2, inetV4, node1IP)
-	require.NoError(err)
+		// ping node2 from node1
+		helper.Logf("Pinging %s from node1", node2IP)
+		err = ping(ctx, node1, inetV4, node2IP)
+		require.NoError(err)
+		helper.Logf("Pinging %s from node1", node2IPv6)
+		err = ping(ctx, node1, inetV6, node2IPv6)
+		require.NoError(err)
+
+		// ping node1 from node2
+		helper.Logf("Pinging %s from node2", node1IP)
+		err = ping(ctx, node2, inetV4, node1IP)
+		require.NoError(err)
+		helper.Logf("Pinging %s from node2", node1IPv6)
+		err = ping(ctx, node2, inetV6, node1IPv6)
+		require.NoError(err)
+
+		// kill nexd on both nodes
+		_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
+		require.NoError(err)
+		_, err = helper.containerExec(ctx, node2, []string{"killall", "nexd"})
+		require.NoError(err)
+		err = helper.nexdStopped(ctx, node1)
+		require.NoError(err)
+		err = helper.nexdStopped(ctx, node2)
+		require.NoError(err)
+	}
 }
 
 // TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
