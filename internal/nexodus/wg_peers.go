@@ -20,12 +20,6 @@ func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
 	peers := map[string]wgPeerConfig{}
 
 	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
-	for _, d := range ax.deviceCache {
-		if d.device.Relay {
-			ax.relayWgIP = d.device.AllowedIps[0]
-			break
-		}
-	}
 
 	relayAllowedIP := []string{
 		ax.org.Cidr,
