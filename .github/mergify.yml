@@ -151,3 +151,19 @@ pull_request_rules:
       label:
         remove:
           - missing-tests-label
+
+  # Give a hint via label when a reviewer has requested changes
+  - name: Label when changes are requested
+    conditions:
+      - "#changes-requested-reviews-by>0"
+    actions:
+      label:
+        add:
+          - changes-requested
+  - name: Remove label when no changes are requested
+    conditions:
+      - "#changes-requested-reviews-by=0"
+    actions:
+      label:
+        remove:
+          - changes-requested
