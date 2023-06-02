@@ -13,13 +13,6 @@ configMapGenerator:
   - files:
       - files/nexodus.json
     name: realm
-secretGenerator:
-  - literals:
-      - keycloak-admin-password=floofykittens
-      - web-client-id=nexodus-web
-      - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
-      - cli-client-id=nexodus-cli
-    name: auth-secrets
 labels:
   - includeSelectors: true
     pairs:
