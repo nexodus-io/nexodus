@@ -8,6 +8,13 @@ components:
 # Uncomment this to enable rate limiting
 #  - ../../components/promtail
 namespace: nexodus
+secretGenerator:
+  - name: auth-secrets
+    literals:
+      - keycloak-admin-password=floofykittens
+      - web-client-id=nexodus-web
+      - web-client-secret=dhEN2dsqyUg5qmaDAdqi4CmH
+      - cli-client-id=nexodus-cli
 patches:
   - target:
       kind: Ingress
