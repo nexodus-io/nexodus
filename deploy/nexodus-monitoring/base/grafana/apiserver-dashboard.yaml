@@ -23,7 +23,7 @@ spec:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 2,
-      "iteration": 1684282009751,
+      "iteration": 1685719043972,
       "links": [],
       "panels": [
         {
@@ -32,16 +32,17 @@ spec:
           "dashLength": 10,
           "dashes": false,
           "datasource": null,
-          "description": "",
           "fieldConfig": {
-            "defaults": {},
+            "defaults": {
+              "unit": "short"
+            },
             "overrides": []
           },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
-            "w": 24,
+            "w": 12,
             "x": 0,
             "y": 0
           },
@@ -58,7 +59,7 @@ spec:
           },
           "lines": true,
           "linewidth": 1,
-          "nullPointMode": "null",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -74,16 +75,123 @@ spec:
           "targets": [
             {
               "exemplar": true,
-              "expr": "rate(apiserver_requests_total{namespace=\"${namespace}\"}[5m])",
-              "format": "time_series",
+              "expr": "sum by (envoy_cluster_name) (envoy_cluster_upstream_rq_active)",
+              "instant": false,
               "interval": "",
-              "legendFormat": "{{method}} {{url}}",
+              "legendFormat": "",
               "refId": "A"
             }
           ],
           "thresholds": [],
+          "timeFrom": null,
           "timeRegions": [],
-          "title": "API Requests",
+          "timeShift": null,
+          "title": "Envoy Active Requests",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {
+            "{envoy_response_code=\"201\"}": "dark-green",
+            "{envoy_response_code=\"206\"}": "semi-dark-green",
+            "{envoy_response_code=\"304\"}": "super-light-green",
+            "{envoy_response_code=\"400\"}": "semi-dark-orange",
+            "{envoy_response_code=\"401\"}": "semi-dark-orange",
+            "{envoy_response_code=\"405\"}": "semi-dark-orange",
+            "{envoy_response_code=\"409\"}": "semi-dark-orange",
+            "{envoy_response_code=\"500\"}": "dark-red"
+          },
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "hiddenSeries": false,
+          "id": 10,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.5.17",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": false,
+              "expr": "sum by (envoy_response_code) (rate(envoy_cluster_upstream_rq[5m]))",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Envoy Response Codes",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -136,100 +244,6 @@ spec:
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 8
-          },
-          "hiddenSeries": false,
-          "id": 6,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "7.5.17",
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "rate(apiserver_request_size_bytes_count{namespace=\"${namespace}\"}[5m])",
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Request Size",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": "bytes",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": "",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": null,
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
             "y": 8
           },
           "hiddenSeries": false,
@@ -309,10 +323,141 @@ spec:
           }
         },
         {
-          "datasource": "Loki",
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
           "fieldConfig": {
             "defaults": {},
             "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "hiddenSeries": false,
+          "id": 6,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.5.17",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "rate(apiserver_request_size_bytes_count{namespace=\"${namespace}\"}[5m])",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Request Size",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:126",
+              "format": "short",
+              "label": "bytes",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "$$hashKey": "object:127",
+              "format": "short",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "line {app_kubernetes_io_component=\"apiserver\", app_kubernetes_io_instance=\"apiserver\", app_kubernetes_io_name=\"apiserver\", app_kubernetes_io_part_of=\"nexodus\", container=\"apiserver\", filename=\"/var/log/pods/nexodus_apiserver-544475d854-zvtvs_1e528c74-a703-46cf-8298-1bc19d107163/apiserver/0.log\", job=\"nexodus/apiserver-544475d854-zvtvs\", namespace=\"nexodus\", pod=\"apiserver-544475d854-zvtvs\", pod_template_hash=\"544475d854\", stream=\"stderr\"}"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 783
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 9,
@@ -322,11 +467,8 @@ spec:
           },
           "id": 2,
           "options": {
-            "dedupStrategy": "none",
-            "showLabels": false,
-            "showTime": false,
-            "sortOrder": "Descending",
-            "wrapLogMessage": false
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "7.5.17",
           "targets": [
@@ -336,9 +478,10 @@ spec:
             }
           ],
           "title": "Logs",
-          "type": "logs"
+          "type": "table"
         }
       ],
+      "refresh": false,
       "schemaVersion": 27,
       "style": "dark",
       "tags": [],
@@ -347,9 +490,9 @@ spec:
           {
             "allValue": null,
             "current": {
-              "selected": true,
-              "text": "nexodus",
-              "value": "nexodus"
+              "selected": false,
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -360,7 +503,7 @@ spec:
             "name": "namespace",
             "options": [
               {
-                "selected": true,
+                "selected": false,
                 "text": "nexodus",
                 "value": "nexodus"
               },
@@ -385,5 +528,5 @@ spec:
       "timezone": "",
       "title": "Apiserver",
       "uid": "MO4l2n8Vk",
-      "version": 350
+      "version": 256783
     }
