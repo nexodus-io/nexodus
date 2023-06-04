@@ -696,40 +696,34 @@ func (ax *Nexodus) Reconcile() error {
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("error: %w header: %v", err, resp.Header)
-		} else {
-			return fmt.Errorf("error: %w", err)
 		}
+		return fmt.Errorf("error: %w", err)
 	}
-	updatePeers := map[string]public.ModelsDevice{}
-	changed := false
+
+	newLocalConfig := false
 	for _, p := range peerMap {
 		existing, ok := ax.deviceCache[p.PublicKey]
-		if !ok {
+		if !ok || !reflect.DeepEqual(existing.device, p) {
+			if p.PublicKey == ax.wireguardPubKey {
+				newLocalConfig = true
+			}
 			ax.addToDeviceCache(p)
-			updatePeers[p.PublicKey] = p
-			changed = true
-		} else if !reflect.DeepEqual(existing.device, p) {
-			ax.addToDeviceCache(p)
-			updatePeers[p.PublicKey] = p
-			changed = true
 		}
 		if p.Relay {
 			ax.relayWgIP = p.AllowedIps[0]
 		}
 	}
 
-	if changed {
-		ax.buildPeersConfig()
-		if len(updatePeers) > 0 {
-			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
-				if strings.Contains(err.Error(), securityGroupErr.Error()) {
-					return err
-				}
-				// If the wireguard configuration fails, we should wipe out our peer list
-				// so it is rebuilt and reconfigured from scratch the next time around.
-				ax.wgConfig.Peers = nil
+	updatePeers := ax.buildPeersConfig()
+	if newLocalConfig || len(updatePeers) > 0 {
+		if err := ax.DeployWireguardConfig(updatePeers); err != nil {
+			if strings.Contains(err.Error(), securityGroupErr.Error()) {
 				return err
 			}
+			// If the wireguard configuration fails, we should wipe out our peer list
+			// so it is rebuilt and reconfigured from scratch the next time around.
+			ax.wgConfig.Peers = nil
+			return err
 		}
 	}
 

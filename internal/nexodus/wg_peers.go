@@ -2,22 +2,37 @@ package nexodus
 
 import (
 	"net"
+	"reflect"
 	"runtime"
 	"strings"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-// buildPeersConfig builds the peer configuration based off peer cache and peer listings from the controller
-func (ax *Nexodus) buildPeersConfig() {
-	peers := ax.buildPeersAndRelay()
-	ax.wgConfig.Peers = peers
+func (nx *Nexodus) peerUpdated(device public.ModelsDevice, peer wgPeerConfig) bool {
+	if _, ok := nx.wgConfig.Peers[device.PublicKey]; !ok {
+		return true
+	}
+
+	if nx.wgConfig.Peers[device.PublicKey].Endpoint != peer.Endpoint {
+		return true
+	}
+
+	if !reflect.DeepEqual(nx.wgConfig.Peers[device.PublicKey].AllowedIPs, peer.AllowedIPs) {
+		return true
+	}
+
+	return false
 }
 
-// buildPeersAndRelay constructs the peer configuration returning it as []wgPeerConfig.
-// This also call the method for building the local interface configuration wgLocalConfig.
-func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
-	peers := map[string]wgPeerConfig{}
+// buildPeersConfig builds the peer configuration based off peer cache
+// and peer listings from the controller
+func (ax *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
+	if ax.wgConfig.Peers == nil {
+		ax.wgConfig.Peers = map[string]wgPeerConfig{}
+	}
+
+	updatedPeers := map[string]public.ModelsDevice{}
 
 	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
 
@@ -40,24 +55,33 @@ func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
 		// We are a relay node. This block will get hit for every peer.
 		if ax.relay {
 			peer := ax.buildPeerForRelayNode(d.device, localIP, reflexiveIP4)
-			peers[d.device.PublicKey] = peer
-			ax.logPeerInfo(d.device, reflexiveIP4)
+			if ax.peerUpdated(d.device, peer) {
+				updatedPeers[d.device.PublicKey] = d.device
+				ax.wgConfig.Peers[d.device.PublicKey] = peer
+				ax.logPeerInfo(d.device, reflexiveIP4)
+			}
 			continue
 		}
 
 		// The peer is a relay node
 		if d.device.Relay {
 			peerRelay := ax.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
-			peers[d.device.PublicKey] = peerRelay
-			ax.logPeerInfo(d.device, peerRelay.Endpoint)
+			if ax.peerUpdated(d.device, peerRelay) {
+				updatedPeers[d.device.PublicKey] = d.device
+				ax.wgConfig.Peers[d.device.PublicKey] = peerRelay
+				ax.logPeerInfo(d.device, peerRelay.Endpoint)
+			}
 			continue
 		}
 
 		// We are behind the same reflexive address as the peer, try local peering first
 		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
 			peer := ax.buildDirectLocalPeer(d.device, localIP, peerPort)
-			peers[d.device.PublicKey] = peer
-			ax.logPeerInfo(d.device, localIP)
+			if ax.peerUpdated(d.device, peer) {
+				updatedPeers[d.device.PublicKey] = d.device
+				ax.wgConfig.Peers[d.device.PublicKey] = peer
+				ax.logPeerInfo(d.device, localIP)
+			}
 			continue
 		}
 
@@ -69,12 +93,15 @@ func (ax *Nexodus) buildPeersAndRelay() map[string]wgPeerConfig {
 		// If the peer is not behind symmetric NAT, we can try peering with its reflexive address
 		if !d.device.SymmetricNat {
 			peer := ax.buildDefaultPeer(d.device, reflexiveIP4)
-			peers[d.device.PublicKey] = peer
-			ax.logPeerInfo(d.device, reflexiveIP4)
+			if ax.peerUpdated(d.device, peer) {
+				updatedPeers[d.device.PublicKey] = d.device
+				ax.wgConfig.Peers[d.device.PublicKey] = peer
+				ax.logPeerInfo(d.device, reflexiveIP4)
+			}
 		}
 	}
 
-	return peers
+	return updatedPeers
 }
 
 // extractLocalAndReflexiveIP retrieve the local and reflexive endpoint addresses
@@ -189,7 +216,6 @@ func (ax *Nexodus) buildLocalConfig() {
 		ax.wireguardPvtKey,
 		ax.listenPort,
 	}
-	ax.logger.Debugf("Local Node Configuration - Wireguard IPv4 [ %s ] IPv6 [ %s ]", ax.TunnelIP, ax.TunnelIpV6)
 	// set the node unique local interface configuration
 	ax.wgConfig.Interface = localInterface
 }
