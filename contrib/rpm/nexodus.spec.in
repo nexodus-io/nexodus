@@ -47,6 +47,7 @@ BuildRequires: systemd-units
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units
+Requires: bash-completion
 
 %description %{common_description}
 
@@ -81,6 +82,7 @@ install -p -D -m 0644 contrib/rpm/nexodus.service %{buildroot}/usr/lib/systemd/s
 install -p -D -m 0644 contrib/rpm/nexodus.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/nexodus
 for cmd in nexd nexctl ; do
   install -p -D -m 0644 contrib/man/${cmd}.8.gz %{buildroot}%{_mandir}/man8/${cmd}.8.gz
+  install -p -D -m 0644 contrib/bash_autocomplete %{buildroot}%{_sysconfdir}/bash_completion.d/${cmd}
 done
 
 %files
@@ -90,6 +92,7 @@ done
 /usr/lib/systemd/system/nexodus.service
 %{_sysconfdir}/sysconfig/nexodus
 %{_mandir}/man8/*
+%{_sysconfdir}/bash_completion.d/*
 
 %gopkgfiles
 
