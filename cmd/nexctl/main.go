@@ -33,7 +33,8 @@ func main() {
 	// Override usage to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	app := &cli.App{
-		Name: "nexctl",
+		Name:                 "nexctl",
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
