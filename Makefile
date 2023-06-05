@@ -98,6 +98,7 @@ dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
 	$(CMD_PREFIX) cp -r docs/user-guide $(basename $(basename $@))/user-guide
 	$(CMD_PREFIX) cp LICENSE $(basename $(basename $@))
 	$(CMD_PREFIX) cp README.md $(basename $(basename $@))
+	$(CMD_PREFIX) cp contrib/bash_autocomplete $(basename $(basename $@))
 	$(CMD_PREFIX) cp dist/nexd-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexd$(if $(findstring windows,$@),.exe)
 	$(CMD_PREFIX) cp dist/nexctl-$(subst nexodus-,,$(basename $(basename $(@F))))$(if $(findstring windows,$@),.exe) $(basename $(basename $@))/nexctl$(if $(findstring windows,$@),.exe)
 	$(CMD_PREFIX) if test "$(word 2,$(subst -, ,$(shell basename $@)))" = "windows" ; then \

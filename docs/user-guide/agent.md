@@ -77,6 +77,8 @@ Extract and install the binaries. For example, on Linux x86-64:
 tar -xzf nexodus-linux-amd64.tar.gz
 cd nexodus-linux-amd64
 sudo install -m 755 nexd nexctl /usr/local/bin
+sudo install -m 644 bash_autocomplete /etc/bash_completion.d/nexd
+sudo install -m 644 bash_autocomplete /etc/bash_completion.d/nexctl
 ```
 
 Proceed by starting `nexd` manually:
