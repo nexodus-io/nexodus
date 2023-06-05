@@ -136,6 +136,7 @@ func TestSecurityGroups(t *testing.T) {
 	// gather the nftables before the new rules are applied to check against the new rules created next
 	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
@@ -183,6 +184,7 @@ func TestSecurityGroups(t *testing.T) {
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
 	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -225,6 +227,7 @@ func TestSecurityGroups(t *testing.T) {
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
 	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -330,6 +333,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// gather the nftables before the new rules are applied to check against the new rules created next
 	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
@@ -400,6 +404,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// gather the nftables before the new rules are applied to check against the new rules created next
 	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -432,6 +437,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
 	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
+	require.Empty(nfOutBefore)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
