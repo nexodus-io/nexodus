@@ -10,7 +10,8 @@ Feature: Feature Flags API
     And the response should match json:
       """
       {
-        "multi-organization": true
+        "multi-organization": true,
+        "security-groups": true
       }
       """
 

@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut string) error {
@@ -50,13 +50,13 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
 			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS",
 				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
 				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
 				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
-				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "RELAY")
+				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "SECURITY GROUP ID", "RELAY")
 		}
 		for _, dev := range devices {
 			localIp := ""
@@ -71,7 +71,7 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 
 			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, localIp, dev.PublicKey, dev.OrganizationId,
 				localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, fmt.Sprintf("%t", dev.Relay))
+				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
 		}
 		w.Flush()
 

@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/database"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -117,6 +116,26 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 		return
 	}
+
+	// Create a default security group for the organization
+	sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		return
+	}
+
+	// Update the org with the new security group id, delete the security group if it fails
+	if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID); err != nil {
+		if res := api.db.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
+			errMsg := fmt.Sprintf("failed to update and delete the default security group with an org id: %v", err)
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
+			return
+		}
+		errMsg := fmt.Sprintf("failed to update the default security group with an org id: %v", err)
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
+		return
+	}
+
 	c.JSON(http.StatusCreated, org)
 }
 

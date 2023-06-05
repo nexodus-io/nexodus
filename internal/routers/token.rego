@@ -80,6 +80,20 @@ allow if {
 }
 
 allow if {
+	"security_groups" = input.path[1]
+	action_is_read
+	valid_token
+	contains(token_payload.scope, "read:organizations")
+}
+
+allow if {
+	"security_groups" = input.path[1]
+	action_is_write
+	valid_token
+	contains(token_payload.scope, "write:organizations")
+}
+
+allow if {
 	"fflags" = input.path[1]
 	valid_token
 }

@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 )
 
@@ -18,13 +18,13 @@ func listOrganizations(c *client.APIClient, encodeOut string) error {
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "Organization ID", "NAME", "IPV4 CIDR", "IPV6 CIDR", "DESCRIPTION")
+			fmt.Fprintf(w, fs, "Organization ID", "NAME", "IPV4 CIDR", "IPV6 CIDR", "DESCRIPTION", "SECURITY GROUP ID")
 		}
 
 		for _, org := range orgs {
-			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description)
+			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description, org.SecurityGroupId)
 		}
 
 		w.Flush()

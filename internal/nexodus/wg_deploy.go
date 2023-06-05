@@ -1,11 +1,17 @@
 package nexodus
 
 import (
+	"errors"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 const (
 	persistentKeepalive = "20"
+)
+
+var (
+	securityGroupErr      = errors.New("nftables setup error")
+	securityGroupNotFound = errors.New("404 Not Found")
 )
 
 func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {

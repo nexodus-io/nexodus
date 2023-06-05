@@ -130,6 +130,17 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 			return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 		}
 
+		// Create a default security group for the organization
+		sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String())
+		if err != nil {
+			return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+		}
+
+		// Update the default org with the new security group id
+		if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID); err != nil {
+			return noUUID, fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
+		}
+
 		return org.ID, nil
 	}
 

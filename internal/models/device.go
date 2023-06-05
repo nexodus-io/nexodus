@@ -26,6 +26,7 @@ type Device struct {
 	Os                       string         `json:"os"`
 	Endpoints                []Endpoint     `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Revision                 uint64         `json:"revision" gorm:"type:bigserial;index:"`
+	SecurityGroupId          uuid.UUID      `json:"security_group_id"`
 }
 
 // AddDevice is the information needed to add a new Device.
@@ -43,6 +44,7 @@ type AddDevice struct {
 	Hostname                 string     `json:"hostname" example:"myhost"`
 	Endpoints                []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Os                       string     `json:"os"`
+	SecurityGroupId          uuid.UUID  `json:"security_group_id"`
 }
 
 // UpdateDevice is the information needed to update a Device.

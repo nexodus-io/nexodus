@@ -18,10 +18,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/stun"
-
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/nexodus-io/nexodus/internal/stun"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/term"
@@ -109,6 +109,7 @@ type Nexodus struct {
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
 	hostname                 string
+	securityGroup            *public.ModelsSecurityGroup
 	symmetricNat             bool
 	ipv6Supported            bool
 	os                       string
@@ -262,6 +263,11 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := ax.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
+
+	if runtime.GOOS != Linux.String() {
+		ax.logger.Debug("Security Groups are currently only supported on Linux")
+	}
+
 	var options []client.Option
 	if ax.stateDir != "" {
 		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, apiToken)))
@@ -442,18 +448,27 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
+	// apply the default security group rules
+	ax.securityGroup = &public.ModelsSecurityGroup{}
+	ax.securityGroup.Id = modelsDevice.SecurityGroupId
+	if runtime.GOOS == Linux.String() {
+		if err := ax.processSecurityGroupRules(); err != nil {
+			return err
+		}
+	}
+
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
-
+		ax.reconcileSecurityGroups(ctx)
 		for _, proxy := range ax.ingressProxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
 		for _, proxy := range ax.egressProxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
-
 		stunTicker := time.NewTicker(time.Second * 20)
+		secGroupTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
 		pollTicker := time.NewTicker(pollInterval)
 		defer pollTicker.Stop()
@@ -472,6 +487,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				// be processed when they come in on the informer. This periodic check is needed to
 				// re-establish our connection to the API if it is lost.
 				ax.reconcileDevices(ctx, options)
+			case <-secGroupTicker.C:
+				ax.reconcileSecurityGroups(ctx)
 			}
 		}
 	})
@@ -486,6 +503,61 @@ func (ax *Nexodus) Stop() {
 	}
 	for _, proxy := range ax.egressProxies {
 		proxy.Stop()
+	}
+}
+
+// reconcileSecurityGroups will check the security group and update it if necessary.
+func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
+	if runtime.GOOS != Linux.String() {
+		return
+	}
+
+	// lookup this device in the device cache and check if the security-group ID is nil
+	existing, ok := ax.deviceCache[ax.wireguardPubKey]
+	if ok {
+		if existing.device.SecurityGroupId == uuid.Nil.String() {
+			ax.securityGroup = nil
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
+			return
+		}
+	}
+
+	// TODO: This needs some scrutiny, ax.securityGroup could be nil, empty with a uuid.nil 0000000-000.. or a valid UUID.
+	// are there any scenarios where a group has been created/updated/patched that the device is not
+	// updated about via reconcile while still maintaining nil checks?
+	if ax.securityGroup == nil {
+		return
+	}
+
+	// if the security group ID is not nil, lookup the ID and check for any changes
+	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.org.Id, ax.securityGroup.Id).Execute()
+	if err != nil {
+		// if the group ID returns a 404, clear the current rules
+		if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
+			ax.securityGroup = nil
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
+			return
+		}
+		ax.logger.Debugf("Error retrieving the security group: %v", err)
+		return
+	}
+
+	if !reflect.DeepEqual(responseSecGroup, ax.securityGroup) {
+		ax.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+		if responseSecGroup.Id != ax.securityGroup.Id ||
+			!reflect.DeepEqual(responseSecGroup.InboundRules, ax.securityGroup.InboundRules) ||
+			!reflect.DeepEqual(responseSecGroup.OutboundRules, ax.securityGroup.OutboundRules) {
+			ax.securityGroup = responseSecGroup
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
+			}
+		} else {
+			ax.securityGroup = responseSecGroup
+		}
 	}
 }
 
@@ -650,6 +722,9 @@ func (ax *Nexodus) Reconcile() error {
 		ax.buildPeersConfig()
 		if len(updatePeers) > 0 {
 			if err := ax.DeployWireguardConfig(updatePeers); err != nil {
+				if strings.Contains(err.Error(), securityGroupErr.Error()) {
+					return err
+				}
 				// If the wireguard configuration fails, we should wipe out our peer list
 				// so it is rebuilt and reconfigured from scratch the next time around.
 				ax.wgConfig.Peers = nil

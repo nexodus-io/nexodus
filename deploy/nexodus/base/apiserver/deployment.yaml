@@ -98,6 +98,11 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: NEXAPI_TRACE_INSECURE
+            - name: NEXAPI_FFLAG_SECURITY_GROUPS
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_FFLAG_SECURITY_GROUPS
             - name: NEXAPI_REDIRECT_URL
               valueFrom:
                 configMapKeyRef:
