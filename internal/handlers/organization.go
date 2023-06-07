@@ -22,6 +22,14 @@ const (
 	defaultOrganizationPrefixIPv6 = "200::/64"
 )
 
+type errDuplicateOrganization struct {
+	ID string
+}
+
+func (e errDuplicateOrganization) Error() string {
+	return "organization already exists"
+}
+
 // CreateOrganization creates a new Organization
 // @Summary      Create an Organization
 // @Description  Creates a named organization with the given CIDR
@@ -34,6 +42,7 @@ const (
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 405  {object}  models.BaseError
+// @Failure      409  {object}  models.ConflictsError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /api/organizations [post]
@@ -87,7 +96,11 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			HubZone:     request.HubZone,
 			Users:       []*models.User{&user},
 		}
+
 		if res := tx.Create(&org); res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrDuplicatedKey) {
+				return errDuplicateOrganization{ID: org.ID.String()}
+			}
 			return res.Error
 		}
 
@@ -108,9 +121,13 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		api.logger.Infof("New organization request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", org.Name, org.IpCidr, org.IpCidrV6)
 		return nil
 	})
+
 	if err != nil {
+		var duplicate errDuplicateOrganization
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewApiInternalError(err))
+		} else if errors.As(err, &duplicate) {
+			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		}
