@@ -448,15 +448,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
-	// apply the default security group rules
-	ax.securityGroup = &public.ModelsSecurityGroup{}
-	ax.securityGroup.Id = modelsDevice.SecurityGroupId
-	if runtime.GOOS == Linux.String() {
-		if err := ax.processSecurityGroupRules(); err != nil {
-			return err
-		}
-	}
-
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
@@ -512,52 +503,60 @@ func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	// lookup this device in the device cache and check if the security-group ID is nil
 	existing, ok := ax.deviceCache[ax.wireguardPubKey]
-	if ok {
-		if existing.device.SecurityGroupId == uuid.Nil.String() {
-			ax.securityGroup = nil
-			if err := ax.processSecurityGroupRules(); err != nil {
-				ax.logger.Error(err)
-			}
-			return
-		}
+	if !ok {
+		// local device not in the cache, so we don't have our config yet.
+		return
 	}
 
-	// TODO: This needs some scrutiny, ax.securityGroup could be nil, empty with a uuid.nil 0000000-000.. or a valid UUID.
-	// are there any scenarios where a group has been created/updated/patched that the device is not
-	// updated about via reconcile while still maintaining nil checks?
-	if ax.securityGroup == nil {
+	if existing.device.SecurityGroupId == uuid.Nil.String() {
+		// local device has no security group
+		if ax.securityGroup == nil {
+			// already set up that way, nothing to do
+			return
+		}
+		// drop local security group configuration
+		ax.securityGroup = nil
+		if err := ax.processSecurityGroupRules(); err != nil {
+			ax.logger.Error(err)
+		}
 		return
 	}
 
 	// if the security group ID is not nil, lookup the ID and check for any changes
-	responseSecGroup, _, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.org.Id, ax.securityGroup.Id).Execute()
+	responseSecGroup, httpResp, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.org.Id, existing.device.SecurityGroupId).Execute()
 	if err != nil {
 		// if the group ID returns a 404, clear the current rules
-		if strings.Contains(err.Error(), securityGroupNotFound.Error()) {
+		if httpResp != nil && httpResp.StatusCode == http.StatusNotFound {
 			ax.securityGroup = nil
 			if err := ax.processSecurityGroupRules(); err != nil {
 				ax.logger.Error(err)
 			}
 			return
 		}
-		ax.logger.Debugf("Error retrieving the security group: %v", err)
+		ax.logger.Errorf("Error retrieving the security group: %v", err)
 		return
 	}
 
-	if !reflect.DeepEqual(responseSecGroup, ax.securityGroup) {
-		ax.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
-		if responseSecGroup.Id != ax.securityGroup.Id ||
-			!reflect.DeepEqual(responseSecGroup.InboundRules, ax.securityGroup.InboundRules) ||
-			!reflect.DeepEqual(responseSecGroup.OutboundRules, ax.securityGroup.OutboundRules) {
-			ax.securityGroup = responseSecGroup
-			if err := ax.processSecurityGroupRules(); err != nil {
-				ax.logger.Error(err)
-			}
-		} else {
-			ax.securityGroup = responseSecGroup
-		}
+	if ax.securityGroup != nil && reflect.DeepEqual(responseSecGroup, ax.securityGroup) {
+		// no changes to previously applied security group
+		return
+	}
+
+	ax.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+	oldSecGroup := ax.securityGroup
+	ax.securityGroup = responseSecGroup
+
+	if oldSecGroup != nil && responseSecGroup.Id == oldSecGroup.Id &&
+		reflect.DeepEqual(responseSecGroup.InboundRules, oldSecGroup.InboundRules) &&
+		reflect.DeepEqual(responseSecGroup.OutboundRules, oldSecGroup.OutboundRules) {
+		// the group changed, but not in a way that matters for applying the rules locally
+		return
+	}
+
+	// apply the new security group rules
+	if err := ax.processSecurityGroupRules(); err != nil {
+		ax.logger.Error(err)
 	}
 }
 
