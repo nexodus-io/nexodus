@@ -265,7 +265,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if runtime.GOOS != Linux.String() {
-		ax.logger.Debug("Security Groups are currently only supported on Linux")
+		ax.logger.Info("Security Groups are currently only supported on Linux")
 	}
 
 	var options []client.Option
