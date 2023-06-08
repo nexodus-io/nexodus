@@ -636,6 +636,7 @@ dist/rpm:
 
 MOCK_ROOTS?=fedora-38-x86_64 centos-stream+epel-9-x86_64
 MOCK_DEPS:=golang systemd-rpm-macros systemd-units
+MOCK_CONTAINER_DEPS?=
 
 .PHONY: image-mock
 image-mock: ## Build and publish updated mock images to quay.io used for building rpms
@@ -643,10 +644,14 @@ image-mock: ## Build and publish updated mock images to quay.io used for buildin
 	docker rm -f mock-base
 	for MOCK_ROOT in $(MOCK_ROOTS) ; do \
 		docker run --rm --name mock-base --privileged=true -d quay.io/nexodus/mock:base sleep 1800 ; \
-		echo "Building mock root for $$MOCK_ROOT" ; \
+		for MOCK_DEP in $(MOCK_CONTAINER_DEPS) ; do \
+			echo "===== Installing $$MOCK_DEP into mock-base" ; \
+			docker exec -it mock-base dnf install -y $$MOCK_DEP ; \
+		done ; \
+		echo "===== Building mock root for $$MOCK_ROOT" ; \
 		docker exec -it mock-base mock -r $$MOCK_ROOT --init ; \
 		for MOCK_DEP in $(MOCK_DEPS) ; do \
-			echo "Installing $$MOCK_DEP into $$MOCK_ROOT" ; \
+			echo "===== Installing $$MOCK_DEP into $$MOCK_ROOT" ; \
 			docker exec -it mock-base mock -r $$MOCK_ROOT --no-clean --no-cleanup-after --install $$MOCK_DEP ; \
 		done ; \
 		docker commit mock-base quay.io/nexodus/mock:$$(echo $$MOCK_ROOT | cut -f2 -d'+') ; \
@@ -658,9 +663,10 @@ MOCK_ROOTS_AARCH64:=fedora-38-aarch64 centos-stream+epel-9-aarch64
 
 .PHONY: image-mock-aarch64
 image-mock-aarch64: ## Build and publish updated mock images to quay.io used for building rpms
-	MOCK_ROOTS="$(MOCK_ROOTS_AARCH64)" $(MAKE) image-mock
+	MOCK_ROOTS="$(MOCK_ROOTS_AARCH64)" MOCK_CONTAINER_DEPS="qemu-user-static-aarch64" $(MAKE) image-mock
 
 MOCK_ROOT?=fedora-38-x86_64
+SRPM_MOCK_ROOT?=fedora-38-x86_64
 SRPM_DISTRO?=fc38
 NEXODUS_AUTORELEASE=0.1.$(shell date -u +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO)
 
@@ -680,9 +686,9 @@ srpm: dist/rpm manpages ## Build a source RPM
 	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_AUTORELEASE##/$(NEXODUS_AUTORELEASE)/" contrib/rpm/nexodus.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:$$(echo $(MOCK_ROOT) | cut -f2 -d'+') \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:$$(echo $(MOCK_SRPM_ROOT) | cut -f2 -d'+') \
 		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
-		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_ROOT}
+		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_SRPM_ROOT}
 	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm
