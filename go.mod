@@ -7,6 +7,7 @@ require (
 	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/briandowns/spinner v1.23.0
 	github.com/bufbuild/connect-go v1.8.0
+	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
 	github.com/coreos/go-oidc/v3 v3.6.0
 	github.com/cucumber/godog v0.12.6
@@ -65,7 +66,6 @@ require (
 	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/containerd/containerd v1.6.19 // indirect
