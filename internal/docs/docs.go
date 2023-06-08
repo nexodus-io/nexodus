@@ -669,6 +669,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.BaseError"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {

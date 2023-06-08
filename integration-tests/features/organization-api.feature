@@ -50,3 +50,60 @@ Feature: Organization API
         }
       ]
       """
+
+  Scenario: The user creates an organization with the same name twice to display the 409 error on second creation
+
+    Given I am logged in as "Oliver"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${oliver_user_id}
+
+    # Create an organization for the first time to simulate happy path
+    When I POST path "/api/organizations" with json body:
+      """
+      {
+        "cidr": "192.168.80.0/24",
+        "cidr_v6": "211::/64",
+        "description": "The Blue Zone",
+        "hub_zone": false,
+        "name": "zone-blue"
+      }
+      """
+
+    Given I store the ".id" selection from the response as ${organization_id}
+    Given I store the ".security_group_id" selection from the response as ${security_group_id}
+    Then the response code should be 201
+    And the response should match json:
+      """
+      {
+        "cidr": "192.168.80.0/24",
+        "cidr_v6": "211::/64",
+        "description": "The Blue Zone",
+        "hub_zone": false,
+        "id": "${organization_id}",
+        "name": "zone-blue",
+        "owner_id": "${oliver_user_id}",
+        "security_group_id": "${security_group_id}"
+      }
+      """
+
+    # Recreate the same organization to simulate unhappy path
+    When I POST path "/api/organizations" with json body:
+      """
+      {
+        "cidr": "192.168.80.0/24",
+        "cidr_v6": "211::/64",
+        "description": "The Blue Zone",
+        "hub_zone": false,
+        "name": "zone-blue"
+      }
+      """
+    Given I store the ".id" selection from the response as ${organization_id}
+    Then the response code should be 409
+    And the response should match json:
+      """
+      {
+        "id": "${organization_id}",
+        "error" :"resource already exists"
+      }
+      """
