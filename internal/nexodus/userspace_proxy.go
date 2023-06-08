@@ -93,6 +93,7 @@ func (ax *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 			proxy.rules = append(proxy.rules[:i], proxy.rules[i+1:]...)
 			if len(proxy.rules) == 0 {
 				proxy.Stop()
+				delete(ax.proxies, cmpProxy.ProxyKey)
 			}
 			return proxy, nil
 		}
