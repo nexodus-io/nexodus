@@ -778,9 +778,9 @@ func TestProxyNexctlConnections(t *testing.T) {
 
 type testProxyLoadBalancerOpts struct {
 	name           string
-	upstreamIP     func(node1IP string) string
 	workloadPlacer func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container)
-	dialIP         func(node2IP string) string
+	upstreamIP     func(node1IP, localhost string) string
+	dialIP         func(node2IP, localhost string) string
 	flag           string
 }
 
@@ -811,19 +811,30 @@ func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
 	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
 
+	node1IPv6, err := getTunnelIP(ctx, helper, inetV6, node1)
+	require.NoError(err)
+
 	serverNode, clientNode := opts.workloadPlacer(node1, node2)
 
-	upstreamIP := opts.upstreamIP(node1IP)
+	upstreamIP := opts.upstreamIP(node1IP, "127.0.0.1")
+	upstreamIPv6 := opts.upstreamIP(node1IPv6, "::1")
+
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
-		opts.flag, fmt.Sprintf("tcp:80:%s:8080", upstreamIP),
-		opts.flag, fmt.Sprintf("tcp:80:%s:8081", upstreamIP),
-		opts.flag, fmt.Sprintf("udp:42:%s:4240", upstreamIP),
-		opts.flag, fmt.Sprintf("udp:42:%s:4241", upstreamIP),
+		opts.flag, fmt.Sprintf("tcp:80:%s", net.JoinHostPort(upstreamIP, "8080")),
+		opts.flag, fmt.Sprintf("tcp:80:%s", net.JoinHostPort(upstreamIPv6, "8080")),
+		opts.flag, fmt.Sprintf("tcp:80:%s", net.JoinHostPort(upstreamIP, "8081")),
+		opts.flag, fmt.Sprintf("tcp:80:%s", net.JoinHostPort(upstreamIPv6, "8081")),
+		opts.flag, fmt.Sprintf("udp:42:%s", net.JoinHostPort(upstreamIP, "4240")),
+		opts.flag, fmt.Sprintf("udp:42:%s", net.JoinHostPort(upstreamIPv6, "4240")),
+		opts.flag, fmt.Sprintf("udp:42:%s", net.JoinHostPort(upstreamIP, "4241")),
+		opts.flag, fmt.Sprintf("udp:42:%s", net.JoinHostPort(upstreamIPv6, "4241")),
 	)
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
 	node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
+	require.NoError(err)
+	node2IPv6, err := getTunnelIP(ctx, helper, inetV6, node2)
 	require.NoError(err)
 
 	// ping node2 from node1 to verify basic connectivity over wireguard
@@ -856,19 +867,18 @@ func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
 		_, _ = helper.containerExec(ctx, serverNode, []string{"udpong", "4241", "potato"})
 	})
 
-	// run clients on clientNode to reach the server on serverNode
-	dialIP := opts.dialIP(node2IP)
-
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
-	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
+
+	dialIP := ""
+	sendRequests := func() (bool, error) {
 		bananas := 0
 		apples := 0
 		carrot := 0
 		potato := 0
 		for i := 0; i < 10; i++ {
 
-			output, err := helper.containerExec(ctx, clientNode, []string{"curl", "-s", fmt.Sprintf("http://%s:80", dialIP)})
+			output, err := helper.containerExec(ctx, clientNode, []string{"curl", "-s", fmt.Sprintf("http://%s", net.JoinHostPort(dialIP, "80"))})
 			if err != nil {
 				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
 				return false, nil
@@ -895,9 +905,20 @@ func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
 		require.Equal(5, carrot)
 		require.Equal(5, potato)
 		return true, nil
-	})
+	}
+
+	// Run the IPv4 workload
+	dialIP = opts.dialIP(node2IP, "127.0.0.1")
+	success, err := util.CheckPeriodically(ctxTimeout, time.Second, sendRequests)
 	require.NoError(err)
 	require.True(success)
+
+	// Run the IPv6 workload
+	dialIP = opts.dialIP(node2IPv6, "::1")
+	success, err = util.CheckPeriodically(ctxTimeout, time.Second, sendRequests)
+	require.NoError(err)
+	require.True(success)
+
 	_, _ = helper.containerExec(ctx, serverNode, []string{"killall", "python3"})
 	_, _ = helper.containerExec(ctx, serverNode, []string{"killall", "udpong"})
 	wg.Wait()
@@ -908,11 +929,11 @@ func TestProxyLoadBalancer(t *testing.T) {
 		{
 			name: "Egress",
 			flag: "--egress",
-			upstreamIP: func(node1IP string) string {
+			upstreamIP: func(node1IP, localhost string) string {
 				return node1IP
 			},
-			dialIP: func(node2IP string) string {
-				return "127.0.0.1"
+			dialIP: func(node2IP, localhost string) string {
+				return localhost
 			},
 			workloadPlacer: func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container) {
 				return node1, node2
@@ -921,10 +942,10 @@ func TestProxyLoadBalancer(t *testing.T) {
 		{
 			name: "Ingress",
 			flag: "--ingress",
-			upstreamIP: func(node1IP string) string {
-				return "127.0.0.1"
+			upstreamIP: func(node1IP, localhost string) string {
+				return localhost
 			},
-			dialIP: func(node2IP string) string {
+			dialIP: func(node2IP string, localhost string) string {
 				return node2IP
 			},
 			workloadPlacer: func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container) {

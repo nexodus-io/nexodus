@@ -13,9 +13,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/natefinch/atomic"
+	atomicFile "github.com/natefinch/atomic"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
@@ -182,7 +183,7 @@ func (ax *Nexodus) StoreProxyRules() error {
 	if err != nil {
 		return err
 	}
-	err = atomic.WriteFile(filepath.Join(ax.stateDir, "proxy-rules.json"), buf)
+	err = atomicFile.WriteFile(filepath.Join(ax.stateDir, "proxy-rules.json"), buf)
 	if err != nil {
 		return err
 	}
@@ -317,9 +318,9 @@ func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error
 		return err
 	}
 	if proxy.key.ruleType == ProxyTypeEgress {
-		defer udpProxy.conn.Close()
+		defer util.IgnoreError(udpProxy.conn.Close)
 	} else {
-		defer udpProxy.goConn.Close()
+		defer util.IgnoreError(udpProxy.goConn.Close)
 	}
 
 	buffer := make([]byte, udpMaxPayloadSize)
@@ -344,9 +345,9 @@ func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error
 				proxy.logger.Debug("Closing proxy connection for client:", clientAddrStr)
 			}
 			if proxy.key.ruleType == ProxyTypeEgress {
-				proxyConn.goProxyConn.Close()
+				_ = proxyConn.goProxyConn.Close()
 			} else {
-				proxyConn.proxyConn.Close()
+				_ = proxyConn.proxyConn.Close()
 			}
 			delete(proxyConns, clientAddrStr)
 		default:
@@ -449,9 +450,9 @@ func (proxy *UsProxy) NextDest() HostPort {
 	proxy.mu.RLock()
 	defer proxy.mu.RUnlock()
 
-	proxy.connectionCounter += 1
+	counter := atomic.AddUint64(&proxy.connectionCounter, 1)
 
-	index := proxy.connectionCounter % uint64(len(proxy.rules))
+	index := counter % uint64(len(proxy.rules))
 	return proxy.rules[index].dest
 }
 
@@ -553,7 +554,7 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 		proxy.logger.Error("Error creating listener: ", err)
 		return err
 	}
-	defer l.Close()
+	defer util.IgnoreError(l.Close)
 
 	// This routine will exit when the listener is closed intentionally,
 	// or some error occurs.
@@ -599,7 +600,7 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 }
 
 func (proxy *UsProxy) handleTCPConnection(ctx context.Context, proxyWg *sync.WaitGroup, inConn net.Conn) error {
-	defer inConn.Close()
+	defer util.IgnoreError(inConn.Close)
 
 	dest := proxy.NextDest()
 	logger := proxy.logger.With("dest", dest)
@@ -618,7 +619,7 @@ func (proxy *UsProxy) handleTCPConnection(ctx context.Context, proxyWg *sync.Wai
 	if err != nil {
 		return err
 	}
-	defer outConn.Close()
+	defer util.IgnoreError(outConn.Close)
 
 	util.GoWithWaitGroup(proxyWg, func() {
 		_, err := io.Copy(inConn, outConn)

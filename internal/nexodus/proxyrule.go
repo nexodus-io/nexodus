@@ -39,7 +39,7 @@ func parseProxyProtocol(protocol string) (ProxyProtocol, error) {
 	case "udp":
 		return proxyProtocolUDP, nil
 	default:
-		return "", fmt.Errorf("Invalid protocol (%s)", protocol)
+		return "", fmt.Errorf("invalid protocol (%s)", protocol)
 	}
 }
 
@@ -65,12 +65,13 @@ type HostPort struct {
 }
 
 func (hp HostPort) String() string {
-	return fmt.Sprintf("%s:%d", hp.host, hp.port)
+	// destination_ip:destination_port
+	return net.JoinHostPort(hp.host, fmt.Sprintf("%d", hp.port))
 }
 
 func (rule ProxyRule) String() string {
 	// protocol:port:destination_ip:destination_port
-	return fmt.Sprintf("%s:%d:%s:%d", rule.protocol, rule.listenPort, rule.dest.host, rule.dest.port)
+	return fmt.Sprintf("%s:%d:%s", rule.protocol, rule.listenPort, rule.dest)
 }
 
 func (rule ProxyRule) AsFlag() string {
@@ -80,7 +81,10 @@ func (rule ProxyRule) AsFlag() string {
 func parsePort(portStr string) (int, error) {
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		return 0, fmt.Errorf("Invalid port (%s): %w", portStr, err)
+		return 0, fmt.Errorf("invalid port (%s): %w", portStr, err)
+	}
+	if port < 1 || port > 65535 {
+		return 0, fmt.Errorf("invalid port (%d): out of range 0-65535", port)
 	}
 	return port, nil
 }
@@ -89,7 +93,7 @@ func ParseProxyRule(rule string, ruleType ProxyType) (emptyRule ProxyRule, err e
 	// protocol:port:destination_ip:destination_port
 	parts := strings.Split(rule, ":")
 	if len(parts) < 4 {
-		return emptyRule, fmt.Errorf("Invalid proxy rule format, must specify 4 colon-separated values (%s)", rule)
+		return emptyRule, fmt.Errorf("invalid proxy rule format, must specify 4 colon-separated values (%s)", rule)
 	}
 
 	protocol, err := parseProxyProtocol(parts[0])
@@ -101,27 +105,21 @@ func ParseProxyRule(rule string, ruleType ProxyType) (emptyRule ProxyRule, err e
 	if err != nil {
 		return emptyRule, err
 	}
-	if port < 1 || port > 65535 {
-		return emptyRule, fmt.Errorf("Invalid port (%d)", port)
-	}
 
 	// Reassemble the string so that we parse IPv6 addresses correctly
 	destHostPort := strings.Join(parts[2:], ":")
 	destHost, destPortStr, err := net.SplitHostPort(destHostPort)
 	if err != nil {
-		return emptyRule, fmt.Errorf("Invalid destination host:port (%s): %w", destHostPort, err)
+		return emptyRule, fmt.Errorf("invalid destination host:port (%s): %w", destHostPort, err)
 	}
 
 	if destHost == "" {
-		return emptyRule, fmt.Errorf("Invalid destination host:port (%s): host cannot be empty", destHostPort)
+		return emptyRule, fmt.Errorf("invalid destination host:port (%s): host cannot be empty", destHostPort)
 	}
 
 	destPort, err := parsePort(destPortStr)
 	if err != nil {
 		return emptyRule, err
-	}
-	if destPort < 1 || destPort > 65535 {
-		return emptyRule, fmt.Errorf("Invalid destination port (%d)", destPort)
 	}
 
 	return ProxyRule{
