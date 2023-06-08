@@ -5,6 +5,7 @@ package integration_tests
 import (
 	"context"
 	"fmt"
+	"github.com/testcontainers/testcontainers-go"
 	"net"
 	"strings"
 	"sync"
@@ -775,8 +776,17 @@ func TestProxyNexctlConnections(t *testing.T) {
 	require.True(strings.Contains(out, "Reachable"))
 }
 
+type testProxyLoadBalancerOpts struct {
+	name           string
+	upstreamIP     func(node1IP string) string
+	workloadPlacer func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container)
+	dialIP         func(node2IP string) string
+	flag           string
+}
+
 // TestProxyEgress tests that nexd proxy can load balance between multiple egress rules on the same listen port
-func TestProxyEgressLoadBalancer(t *testing.T) {
+func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
+
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
@@ -801,11 +811,14 @@ func TestProxyEgressLoadBalancer(t *testing.T) {
 	node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 	require.NoError(err)
 
+	serverNode, clientNode := opts.workloadPlacer(node1, node2)
+
+	upstreamIP := opts.upstreamIP(node1IP)
 	helper.runNexd(ctx, node2, "--username", username, "--password", password, "proxy",
-		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8080")),
-		"--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "8081")),
-		"--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4240")),
-		"--egress", fmt.Sprintf("udp:4242:%s", net.JoinHostPort(node1IP, "4241")),
+		opts.flag, fmt.Sprintf("tcp:80:%s:8080", upstreamIP),
+		opts.flag, fmt.Sprintf("tcp:80:%s:8081", upstreamIP),
+		opts.flag, fmt.Sprintf("udp:42:%s:4240", upstreamIP),
+		opts.flag, fmt.Sprintf("udp:42:%s:4241", upstreamIP),
 	)
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
@@ -819,31 +832,33 @@ func TestProxyEgressLoadBalancer(t *testing.T) {
 	err = ping(ctx, node1, inetV4, node2IP)
 	require.NoError(err)
 
-	// Start the servers on node1
+	// Start the servers on serverNode
 	wg := sync.WaitGroup{}
 	util.GoWithWaitGroup(&wg, func() {
-		_, err = helper.containerExec(ctx, node1, []string{"mkdir", "-p", "/tmp/apples"})
+		_, err = helper.containerExec(ctx, serverNode, []string{"mkdir", "-p", "/tmp/apples"})
 		require.NoError(err)
-		_, err := helper.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('/tmp/apples/index.html', 'w').write('apples')"})
+		_, err := helper.containerExec(ctx, serverNode, []string{"python3", "-c", "import os; open('/tmp/apples/index.html', 'w').write('apples')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "-b", "::", "-d", "/tmp/apples", "8080"})
+		_, _ = helper.containerExec(ctx, serverNode, []string{"python3", "-m", "http.server", "-b", "::", "-d", "/tmp/apples", "8080"})
 	})
 	util.GoWithWaitGroup(&wg, func() {
-		_, err = helper.containerExec(ctx, node1, []string{"mkdir", "-p", "/tmp/bananas"})
+		_, err = helper.containerExec(ctx, serverNode, []string{"mkdir", "-p", "/tmp/bananas"})
 		require.NoError(err)
-		_, err := helper.containerExec(ctx, node1, []string{"python3", "-c", "import os; open('/tmp/bananas/index.html', 'w').write('bananas')"})
+		_, err := helper.containerExec(ctx, serverNode, []string{"python3", "-c", "import os; open('/tmp/bananas/index.html', 'w').write('bananas')"})
 		require.NoError(err)
-		_, _ = helper.containerExec(ctx, node1, []string{"python3", "-m", "http.server", "-b", "::", "-d", "/tmp/bananas", "8081"})
+		_, _ = helper.containerExec(ctx, serverNode, []string{"python3", "-m", "http.server", "-b", "::", "-d", "/tmp/bananas", "8081"})
 	})
 	util.GoWithWaitGroup(&wg, func() {
-		output, _ := helper.containerExec(ctx, node1, []string{"udpong", "4240", "carrot"})
+		output, _ := helper.containerExec(ctx, serverNode, []string{"udpong", "4240", "carrot"})
 		helper.Logf("udpong output: %s", output)
 	})
 	util.GoWithWaitGroup(&wg, func() {
-		_, _ = helper.containerExec(ctx, node1, []string{"udpong", "4241", "potato"})
+		_, _ = helper.containerExec(ctx, serverNode, []string{"udpong", "4241", "potato"})
 	})
 
-	// run curl on node2 (to the local proxy) to reach the server on node1
+	// run clients on clientNode to reach the server on serverNode
+	dialIP := opts.dialIP(node2IP)
+
 	ctxTimeout, curlCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer curlCancel()
 	success, err := util.CheckPeriodically(ctxTimeout, time.Second, func() (bool, error) {
@@ -853,7 +868,7 @@ func TestProxyEgressLoadBalancer(t *testing.T) {
 		potato := 0
 		for i := 0; i < 10; i++ {
 
-			output, err := helper.containerExec(ctx, node2, []string{"curl", "-s", "http://127.0.0.1:80"})
+			output, err := helper.containerExec(ctx, clientNode, []string{"curl", "-s", fmt.Sprintf("http://%s:80", dialIP)})
 			if err != nil {
 				helper.Logf("Retrying curl for up to 10 seconds: %v -- %s", err, output)
 				return false, nil
@@ -864,7 +879,7 @@ func TestProxyEgressLoadBalancer(t *testing.T) {
 				apples += 1
 			}
 
-			output, err = helper.containerExec(ctx, node2, []string{"udping", "127.0.0.1", "4242"})
+			output, err = helper.containerExec(ctx, clientNode, []string{"udping", dialIP, "42"})
 			if err != nil {
 				helper.Logf("Retrying udp client for up to 10 seconds: %v -- %s", err, output)
 				return false, nil
@@ -883,7 +898,43 @@ func TestProxyEgressLoadBalancer(t *testing.T) {
 	})
 	require.NoError(err)
 	require.True(success)
-	_, _ = helper.containerExec(ctx, node1, []string{"killall", "python3"})
-	_, _ = helper.containerExec(ctx, node1, []string{"killall", "udpong"})
+	_, _ = helper.containerExec(ctx, serverNode, []string{"killall", "python3"})
+	_, _ = helper.containerExec(ctx, serverNode, []string{"killall", "udpong"})
 	wg.Wait()
+}
+
+func TestProxyLoadBalancer(t *testing.T) {
+	tests := []testProxyLoadBalancerOpts{
+		{
+			name: "Egress",
+			flag: "--egress",
+			upstreamIP: func(node1IP string) string {
+				return node1IP
+			},
+			dialIP: func(node2IP string) string {
+				return "127.0.0.1"
+			},
+			workloadPlacer: func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container) {
+				return node1, node2
+			},
+		},
+		{
+			name: "Ingress",
+			flag: "--ingress",
+			upstreamIP: func(node1IP string) string {
+				return "127.0.0.1"
+			},
+			dialIP: func(node2IP string) string {
+				return node2IP
+			},
+			workloadPlacer: func(node1, node2 testcontainers.Container) (serverNode testcontainers.Container, clientNode testcontainers.Container) {
+				return node2, node1
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testProxyLoadBalancer(t, test)
+		})
+	}
 }
