@@ -702,7 +702,7 @@ func (ax *Nexodus) Reconcile() error {
 	newLocalConfig := false
 	for _, p := range peerMap {
 		existing, ok := ax.deviceCache[p.PublicKey]
-		if !ok || !reflect.DeepEqual(existing.device, p) {
+		if !ok || !ax.isEqualIgnoreSecurityGroup(existing.device, p) {
 			if p.PublicKey == ax.wireguardPubKey {
 				newLocalConfig = true
 			}
@@ -732,6 +732,20 @@ func (ax *Nexodus) Reconcile() error {
 	}
 
 	return nil
+}
+
+func (ax *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
+	// create temporary copies of the instances
+	tmpDev1 := p1
+	tmpDev2 := p2
+	// set the SecurityGroupId to an empty value, so it will not affect the comparison
+	tmpDev1.SecurityGroupId = ""
+	tmpDev2.SecurityGroupId = ""
+	// set the Revision to 0, so it will not affect the comparison
+	tmpDev1.Revision = 0
+	tmpDev2.Revision = 0
+
+	return reflect.DeepEqual(tmpDev1, tmpDev2)
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
