@@ -82,7 +82,7 @@ Since UDP is a connectionless protocol, `nexd proxy` must maintain its own state
 
 ### Proxy Load Balancing
 
-If multiple rules for share the same protocol and listener port, then the proxy will use simple round-robin load balancing of connection across the destination hosts and ports.
+If multiple rules share the same protocol and listener port, then the proxy will use simple round-robin load balancing of connections across the destination hosts and ports.
 
 ### Managing Rules with Nexctl
 
