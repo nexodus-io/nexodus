@@ -331,8 +331,10 @@ jobs:
       matrix:
         include:
           - mock_root: fedora-38-x86_64
+            srpm_mock_root: fedora-38-x86_64
             srpm_distro: fc38
           - mock_root: centos-stream-9-x86_64
+            srpm_mock_root: centos-stream-9-x86_64
             srpm_distroy: el9
     steps:
       - uses: actions/checkout@v3
@@ -344,7 +346,7 @@ jobs:
       - name: Build rpm
         id: build-rpm
         run: |
-          MOCK_ROOT=${{ matrix.mock_root}} SRPM_DISTRO=${{ matrix.srpm_distro }} make rpm
+          MOCK_ROOT="${{ matrix.mock_root}}" SRPM_MOCK_ROOT="${{ matrix.srpm_mock_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make rpm
           echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> "$GITHUB_OUTPUT"
 
       - name: Upload Artifact

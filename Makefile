@@ -686,9 +686,9 @@ srpm: dist/rpm manpages ## Build a source RPM
 	cp contrib/rpm/nexodus.spec.in contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_COMMIT##/${NEXODUS_RELEASE}/" contrib/rpm/nexodus.spec
 	sed -i -e "s/##NEXODUS_AUTORELEASE##/$(NEXODUS_AUTORELEASE)/" contrib/rpm/nexodus.spec
-	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:$$(echo $(MOCK_SRPM_ROOT) | cut -f2 -d'+') \
+	docker run --name mock --rm --privileged=true -v $(CURDIR):/nexodus quay.io/nexodus/mock:$$(echo $(SRPM_MOCK_ROOT) | cut -f2 -d'+') \
 		mock --buildsrpm -D "_commit ${NEXODUS_RELEASE}" --resultdir=/nexodus/dist/rpm/mock --no-clean --no-cleanup-after \
-		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${MOCK_SRPM_ROOT}
+		--spec /nexodus/contrib/rpm/nexodus.spec --sources /nexodus/dist/rpm/ --root ${SRPM_MOCK_ROOT}
 	rm -f dist/rpm/nexodus-${NEXODUS_RELEASE}.tar.gz
 
 .PHONY: rpm

@@ -137,16 +137,16 @@ jobs:
       matrix:
         include:
           - mock_root: fedora-38-x86_64
-            mock_srpm_root: fedora-38-x86_64
+            srpm_mock_root: fedora-38-x86_64
             srpm_distro: fc38
           - mock_root: fedora-38-aarch64
-            mock_srpm_root: fedora-38-x86_64
+            srpm_mock_root: fedora-38-x86_64
             srpm_distro: fc38
           - mock_root: centos-stream+epel-9-x86_64
-            mock_srpm_root: centos-stream+epel-9-x86_64
+            srpm_mock_root: centos-stream+epel-9-x86_64
             srpm_distro: el9
           - mock_root: centos-stream+epel-9-aarch64
-            mock_srpm_root: centos-stream+epel-9-x86_64
+            srpm_mock_root: centos-stream+epel-9-x86_64
             srpm_distro: el9
     steps:
       - uses: actions/checkout@v3
@@ -161,7 +161,7 @@ jobs:
 
       - name: Build srpm
         run: |
-          MOCK_ROOT="${{ matrix.mock_root }}" MOCK_SRPM_ROOT="${{ matrix.mock_srpm_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make srpm
+          MOCK_ROOT="${{ matrix.mock_root }}" SRPM_MOCK_ROOT="${{ matrix.srpm_mock_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make srpm
           find dist
 
       - name: Submit srpm to copr
