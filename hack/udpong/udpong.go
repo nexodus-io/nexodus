@@ -8,12 +8,27 @@ import (
 )
 
 func main() {
-	// Parse command line arguments
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <port>\n", os.Args[0])
+
+	args := os.Args[1:] // drop the program name
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <port> [response]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Error: <port> missing\n")
 		os.Exit(1)
 	}
-	port := os.Args[1]
+	port := args[0]
+	args = args[1:]
+
+	responseData := "pong"
+	if len(args) != 0 {
+		responseData = args[0]
+		args = args[1:]
+	}
+
+	if len(args) != 0 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <port> [response]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Error: too many arguments\n")
+		os.Exit(1)
+	}
 
 	// Create UDP address for listening
 	addr, err := net.ResolveUDPAddr("udp", ":"+port)
@@ -45,7 +60,7 @@ func main() {
 		}
 
 		// Send a response packet with payload "pong" to the source address
-		_, err = conn.WriteToUDP([]byte("pong"), clientAddr)
+		_, err = conn.WriteToUDP([]byte(responseData), clientAddr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error sending UDP packet:", err)
 			continue

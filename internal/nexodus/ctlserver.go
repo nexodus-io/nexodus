@@ -2,6 +2,7 @@ package nexodus
 
 import (
 	"fmt"
+	"github.com/bytedance/gopkg/util/logger"
 )
 
 type NexdCtl struct {
@@ -47,69 +48,69 @@ func (ac *NexdCtl) ProxyList(_ string, result *string) error {
 	*result = ""
 	ac.ax.proxyLock.RLock()
 	defer ac.ax.proxyLock.RUnlock()
-	for _, proxy := range ac.ax.ingressProxies {
-		*result += fmt.Sprintf("%s\n", proxy)
+	for _, proxy := range ac.ax.proxies {
+		proxy.mu.RLock()
+		for _, rule := range proxy.rules {
+			*result += fmt.Sprintf("%s\n", rule.AsFlag())
+		}
+		proxy.mu.RUnlock()
 	}
-	for _, proxy := range ac.ax.egressProxies {
-		*result += fmt.Sprintf("%s\n", proxy)
+	return nil
+}
+
+func (ac *NexdCtl) proxyAdd(proxyType ProxyType, rule string, result *string) error {
+
+	proxyRule, err := ParseProxyRule(rule, proxyType)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("Failed to parse %s proxy rule (%s): %v", proxyType, rule, err))
 	}
+	proxyRule.stored = true
+
+	proxy, err := ac.ax.UserspaceProxyAdd(proxyRule)
+	if err != nil {
+		return err
+	}
+	proxy.Start(ac.ax.nexCtx, ac.ax.nexWg, ac.ax.userspaceNet)
+
+	err = ac.ax.StoreProxyRules()
+	if err != nil {
+		return err
+	}
+	*result = fmt.Sprintf("Added %s proxy rule: %s\n", proxyType, rule)
 	return nil
 }
 
 func (ac *NexdCtl) ProxyAddIngress(rule string, result *string) error {
-	proxy, err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeIngress, true)
-	if err != nil {
-		return err
-	}
-	proxy.stored = true
-	err = ac.ax.StoreProxyRules()
-	if err != nil {
-		return err
-	}
-	*result = fmt.Sprintf("Added ingress proxy rule: %s\n", rule)
-	return nil
+	return ac.proxyAdd(ProxyTypeIngress, rule, result)
 }
 
 func (ac *NexdCtl) ProxyAddEgress(rule string, result *string) error {
-	proxy, err := ac.ax.UserspaceProxyAdd(ac.ax.nexCtx, ac.ax.nexWg, rule, ProxyTypeEgress, true)
+	return ac.proxyAdd(ProxyTypeEgress, rule, result)
+}
+
+func (ac *NexdCtl) proxyRemove(proxyType ProxyType, rule string, result *string) error {
+	proxyRule, err := ParseProxyRule(rule, proxyType)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("Failed to parse %s proxy rule (%s): %v", proxyType, rule, err))
+	}
+	proxyRule.stored = true
+
+	_, err = ac.ax.UserspaceProxyRemove(proxyRule)
 	if err != nil {
 		return err
 	}
-	proxy.stored = true
 	err = ac.ax.StoreProxyRules()
 	if err != nil {
 		return err
 	}
-	*result = fmt.Sprintf("Added egress proxy rule: %s\n", rule)
-	return nil
-}
 
-func (ac *NexdCtl) ProxyRemoveIngress(rule string, result *string) error {
-	proxy, err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeIngress)
-	if err != nil {
-		return err
-	}
-	if proxy.stored {
-		err = ac.ax.StoreProxyRules()
-		if err != nil {
-			return err
-		}
-	}
 	*result = fmt.Sprintf("Removed ingress proxy rule: %s\n", rule)
 	return nil
 }
+func (ac *NexdCtl) ProxyRemoveIngress(rule string, result *string) error {
+	return ac.proxyRemove(ProxyTypeIngress, rule, result)
+}
 
 func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
-	proxy, err := ac.ax.UserspaceProxyRemove(rule, ProxyTypeEgress)
-	if err != nil {
-		return err
-	}
-	if proxy.stored {
-		err = ac.ax.StoreProxyRules()
-		if err != nil {
-			return err
-		}
-	}
-	*result = fmt.Sprintf("Removed egress proxy rule: %s\n", rule)
-	return nil
+	return ac.proxyRemove(ProxyTypeEgress, rule, result)
 }

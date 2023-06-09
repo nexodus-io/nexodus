@@ -75,8 +75,7 @@ type userspaceWG struct {
 	// the last address configured on the userspace wireguard interface
 	userspaceLastAddress string
 	proxyLock            sync.RWMutex
-	ingressProxies       []*UsProxy
-	egressProxies        []*UsProxy
+	proxies              map[ProxyKey]*UsProxy
 }
 
 type deviceCacheEntry struct {
@@ -219,6 +218,9 @@ func NewNexodus(
 		skipTlsVerify:       insecureSkipTlsVerify,
 		stateDir:            stateDir,
 		orgId:               orgId,
+		userspaceWG: userspaceWG{
+			proxies: map[ProxyKey]*UsProxy{},
+		},
 	}
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
@@ -452,10 +454,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
 		ax.reconcileSecurityGroups(ctx)
-		for _, proxy := range ax.ingressProxies {
-			proxy.Start(ctx, wg, ax.userspaceNet)
-		}
-		for _, proxy := range ax.egressProxies {
+		for _, proxy := range ax.proxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
 		stunTicker := time.NewTicker(time.Second * 20)
@@ -489,10 +488,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 func (ax *Nexodus) Stop() {
 	ax.logger.Info("Stopping nexd")
-	for _, proxy := range ax.ingressProxies {
-		proxy.Stop()
-	}
-	for _, proxy := range ax.egressProxies {
+	for _, proxy := range ax.proxies {
 		proxy.Stop()
 	}
 }

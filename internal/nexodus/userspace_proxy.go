@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bytedance/gopkg/util/logger"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/natefinch/atomic"
+	atomicFile "github.com/natefinch/atomic"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
@@ -23,33 +24,17 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 )
 
-type ProxyType int
-
-const (
-	ProxyTypeEgress ProxyType = iota
-	ProxyTypeIngress
-)
-
-type ProxyProtocol string
-
-const (
-	proxyProtocolTCP ProxyProtocol = "tcp"
-	proxyProtocolUDP ProxyProtocol = "udp"
-)
-
 type UsProxy struct {
-	ruleType     ProxyType
-	protocol     ProxyProtocol
-	listenPort   int
-	destHost     string
-	destPort     int
-	logger       *zap.SugaredLogger
-	userspaceNet *netstack.Net
-	debugTraffic bool
-	proxyCtx     context.Context
-	proxyCancel  context.CancelFunc
-	exitChan     chan bool
-	stored       bool
+	key               ProxyKey
+	logger            *zap.SugaredLogger
+	debugTraffic      bool
+	mu                sync.RWMutex
+	rules             []ProxyRule
+	connectionCounter uint64
+	userspaceNet      *netstack.Net
+	proxyCtx          context.Context
+	proxyCancel       context.CancelFunc
+	wg                sync.WaitGroup
 }
 
 const (
@@ -57,191 +42,64 @@ const (
 	udpTimeout        = time.Minute
 )
 
-func (proxy *UsProxy) String() string {
-	var str string
-	if proxy.ruleType == ProxyTypeEgress {
-		str = "--egress "
-	} else {
-		str = "--ingress "
-	}
-	str += fmt.Sprintf("%s:%d:%s", proxy.protocol, proxy.listenPort,
-		net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort)))
-	return str
-}
-
-func (proxy *UsProxy) Equal(cmp *UsProxy) bool {
-	return proxy.ruleType == cmp.ruleType &&
-		proxy.protocol == cmp.protocol &&
-		proxy.listenPort == cmp.listenPort &&
-		proxy.destHost == cmp.destHost &&
-		proxy.destPort == cmp.destPort
-}
-
-func proxyTypeStr(ruleType ProxyType) (string, error) {
-	switch ruleType {
-	case ProxyTypeEgress:
-		return "egress", nil
-	case ProxyTypeIngress:
-		return "ingress", nil
-	default:
-		return "", fmt.Errorf("Invalid proxy rule type: %d", ruleType)
-	}
-}
-
-func proxyProtocol(protocol string) (ProxyProtocol, error) {
-	switch strings.ToLower(protocol) {
-	case "tcp":
-		return proxyProtocolTCP, nil
-	case "udp":
-		return proxyProtocolUDP, nil
-	default:
-		return "", fmt.Errorf("Invalid protocol (%s)", protocol)
-	}
-}
-
-func parsePort(portStr string) (int, error) {
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return 0, fmt.Errorf("Invalid port (%s): %w", portStr, err)
-	}
-	return port, nil
-}
-
-func proxyFromRule(rule string, ruleType ProxyType) (*UsProxy, error) {
-	// protocol:port:destination_ip:destination_port
-	parts := strings.Split(rule, ":")
-	if len(parts) < 4 {
-		return nil, fmt.Errorf("Invalid proxy rule format, must specify 4 colon-separated values (%s)", rule)
-	}
-
-	protocol, err := proxyProtocol(parts[0])
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := parsePort(parts[1])
-	if err != nil {
-		return nil, err
-	}
-	if port < 1 || port > 65535 {
-		return nil, fmt.Errorf("Invalid port (%d)", port)
-	}
-
-	// Reassemble the string so that we parse IPv6 addresses correctly
-	destHostPort := strings.Join(parts[2:], ":")
-	destHost, destPortStr, err := net.SplitHostPort(destHostPort)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid destination host:port (%s): %w", destHostPort, err)
-	}
-
-	if destHost == "" {
-		return nil, fmt.Errorf("Invalid destination host:port (%s): host cannot be empty", destHostPort)
-	}
-
-	destPort, err := parsePort(destPortStr)
-	if err != nil {
-		return nil, err
-	}
-	if destPort < 1 || destPort > 65535 {
-		return nil, fmt.Errorf("Invalid destination port (%d)", destPort)
-	}
-
-	return &UsProxy{
-		ruleType:   ruleType,
-		protocol:   protocol,
-		listenPort: port,
-		destHost:   destHost,
-		destPort:   destPort,
-	}, nil
-}
-
-func proxyToRule(p *UsProxy) string {
-	// protocol:port:destination_ip:destination_port
-	return fmt.Sprintf("%s:%d:%s:%d", p.protocol, p.listenPort, p.destHost, p.destPort)
-}
-
 var ProxyExistsError = errors.New("port already in use by another proxy rule")
 
-func (ax *Nexodus) UserspaceProxyAdd(ctx context.Context, wg *sync.WaitGroup, proxyRule string, ruleType ProxyType, start bool) (*UsProxy, error) {
-	typeStr, err := proxyTypeStr(ruleType)
-	if err != nil {
-		return nil, err
-	}
+func (ax *Nexodus) UserspaceProxyAdd(newRule ProxyRule) (*UsProxy, error) {
 
-	ax.logger.Debugf("Adding userspace %s proxy rule: %s", typeStr, proxyRule)
-
-	newProxy, err := proxyFromRule(proxyRule, ruleType)
-	if err != nil {
-		return nil, err
-	}
-
-	newProxy.debugTraffic, _ = strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
-	newProxy.logger = ax.logger.With("proxy", typeStr, "proxyRule", proxyRule)
+	ax.logger.Debugf("Adding userspace %s proxy rule: %s", newRule.ruleType, newRule)
 
 	ax.proxyLock.Lock()
 	defer ax.proxyLock.Unlock()
 
-	if ruleType == ProxyTypeEgress {
-		for _, proxy := range ax.egressProxies {
-			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return proxy, ProxyExistsError
-			}
+	proxy, found := ax.proxies[newRule.ProxyKey]
+	if !found {
+		proxy = &UsProxy{
+			key:    newRule.ProxyKey,
+			logger: ax.logger.With("proxy", newRule.ruleType, "key", newRule.ProxyKey),
 		}
-	} else {
-		for _, proxy := range ax.ingressProxies {
-			if proxy.protocol == newProxy.protocol && proxy.listenPort == newProxy.listenPort {
-				return proxy, ProxyExistsError
-			}
+		proxy.debugTraffic, _ = strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
+		ax.proxies[newRule.ProxyKey] = proxy
+	}
+
+	for _, rule := range proxy.rules {
+		if rule == newRule {
+			return proxy, ProxyExistsError
 		}
 	}
 
-	if ruleType == ProxyTypeEgress {
-		ax.egressProxies = append(ax.egressProxies, newProxy)
-	} else {
-		ax.ingressProxies = append(ax.ingressProxies, newProxy)
-	}
+	proxy.mu.Lock()
+	defer proxy.mu.Unlock()
 
-	if start {
-		newProxy.Start(ctx, wg, ax.userspaceNet)
-	}
-	return newProxy, nil
+	proxy.rules = append(proxy.rules, newRule)
+	return proxy, nil
 }
 
-func (ax *Nexodus) UserspaceProxyRemove(proxyRule string, ruleType ProxyType) (*UsProxy, error) {
-	typeStr, err := proxyTypeStr(ruleType)
-	if err != nil {
-		return nil, err
-	}
+func (ax *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 
-	ax.logger.Debugf("Removing userspace %s proxy rule: %s", typeStr, proxyRule)
-
-	cmpProxy, err := proxyFromRule(proxyRule, ruleType)
-	if err != nil {
-		return nil, err
-	}
+	ax.logger.Debugf("Removing userspace %s proxy rule: %s", cmpProxy.ruleType, cmpProxy)
 
 	ax.proxyLock.Lock()
 	defer ax.proxyLock.Unlock()
 
-	if ruleType == ProxyTypeEgress {
-		for i, proxy := range ax.egressProxies {
-			if proxy.Equal(cmpProxy) {
-				proxy.Stop()
-				ax.egressProxies = append(ax.egressProxies[:i], ax.egressProxies[i+1:]...)
-				return proxy, nil
-			}
-		}
-	} else {
-		for i, proxy := range ax.ingressProxies {
-			if proxy.Equal(cmpProxy) {
-				proxy.Stop()
-				ax.ingressProxies = append(ax.ingressProxies[:i], ax.ingressProxies[i+1:]...)
-				return proxy, nil
-			}
-		}
+	proxy, found := ax.proxies[cmpProxy.ProxyKey]
+	if !found {
+		return nil, fmt.Errorf("no matching %s proxy rule found: %s", cmpProxy.ruleType, cmpProxy)
 	}
 
-	return nil, fmt.Errorf("No matching %s proxy rule found: %s", typeStr, proxyRule)
+	proxy.mu.Lock()
+	defer proxy.mu.Unlock()
+
+	for i, rule := range proxy.rules {
+		if rule == cmpProxy {
+			proxy.rules = append(proxy.rules[:i], proxy.rules[i+1:]...)
+			if len(proxy.rules) == 0 {
+				proxy.Stop()
+				delete(ax.proxies, cmpProxy.ProxyKey)
+			}
+			return proxy, nil
+		}
+	}
+	return nil, fmt.Errorf("no matching %s proxy rule found: %s", cmpProxy.ruleType, cmpProxy)
 }
 
 type ProxyRulesConfig struct {
@@ -270,24 +128,31 @@ func (ax *Nexodus) LoadProxyRules() error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	for _, r := range rules.Ingress {
-		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeIngress, false)
-		if err != nil {
-			if !errors.Is(err, ProxyExistsError) {
-				return err
+
+	parseAndAdd := func(rules []string, proxyType ProxyType) error {
+		for _, r := range rules {
+			rule, err := ParseProxyRule(r, proxyType)
+			if err != nil {
+				logger.Fatal(fmt.Sprintf("Failed to parse %s proxy rule (%s): %v", proxyType, r, err))
+			}
+			rule.stored = true
+
+			_, err = ax.UserspaceProxyAdd(rule)
+			if err != nil {
+				if !errors.Is(err, ProxyExistsError) {
+					return err
+				}
 			}
 		}
-		proxy.stored = true
+		return nil
 	}
-	for _, r := range rules.Egress {
-		proxy, err := ax.UserspaceProxyAdd(ctx, nil, r, ProxyTypeEgress, false)
-		if err != nil {
-			if !errors.Is(err, ProxyExistsError) {
-				return err
-			}
-		}
-		proxy.stored = true
+	err = parseAndAdd(rules.Ingress, ProxyTypeIngress)
+	if err != nil {
+		return nil
+	}
+	err = parseAndAdd(rules.Egress, ProxyTypeEgress)
+	if err != nil {
+		return nil
 	}
 	return nil
 }
@@ -297,15 +162,18 @@ func (ax *Nexodus) StoreProxyRules() error {
 	defer ax.proxyLock.Unlock()
 
 	rules := ProxyRulesConfig{}
-	for _, proxy := range ax.egressProxies {
-		if proxy.stored {
-			rules.Egress = append(rules.Egress, proxyToRule(proxy))
+	for _, proxy := range ax.proxies {
+		proxy.mu.Lock()
+		for _, rule := range proxy.rules {
+			if rule.stored {
+				if rule.ruleType == ProxyTypeEgress {
+					rules.Egress = append(rules.Egress, rule.String())
+				} else {
+					rules.Ingress = append(rules.Ingress, rule.String())
+				}
+			}
 		}
-	}
-	for _, proxy := range ax.ingressProxies {
-		if proxy.stored {
-			rules.Ingress = append(rules.Ingress, proxyToRule(proxy))
-		}
+		proxy.mu.Unlock()
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -315,7 +183,7 @@ func (ax *Nexodus) StoreProxyRules() error {
 	if err != nil {
 		return err
 	}
-	err = atomic.WriteFile(filepath.Join(ax.stateDir, "proxy-rules.json"), buf)
+	err = atomicFile.WriteFile(filepath.Join(ax.stateDir, "proxy-rules.json"), buf)
 	if err != nil {
 		return err
 	}
@@ -323,10 +191,16 @@ func (ax *Nexodus) StoreProxyRules() error {
 }
 
 func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netstack.Net) {
-	proxy.userspaceNet = net
+	proxy.mu.Lock()
+	defer proxy.mu.Unlock()
+	if proxy.proxyCtx != nil {
+		return
+	}
 	proxy.proxyCtx, proxy.proxyCancel = context.WithCancel(ctx)
-	proxy.exitChan = make(chan bool)
+	proxy.userspaceNet = net
+	proxy.wg.Add(1)
 	util.GoWithWaitGroup(wg, func() {
+		defer proxy.wg.Done()
 		for {
 			// Use a different waitgroup here, because we want to make sure
 			// all of the subroutines have exited before we attempt to restart
@@ -341,23 +215,23 @@ func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netsta
 			proxy.logger.Debug("Proxy error, restarting: ", err)
 			time.Sleep(time.Second)
 		}
-		proxy.exitChan <- true
 	})
+
 }
 
 func (proxy *UsProxy) Stop() {
 	proxy.proxyCancel()
-	<-proxy.exitChan
+	proxy.wg.Wait()
 }
 
 func (proxy *UsProxy) run(ctx context.Context, proxyWg *sync.WaitGroup) error {
-	switch proxy.protocol {
+	switch proxy.key.protocol {
 	case proxyProtocolTCP:
 		return proxy.runTCP(ctx, proxyWg)
 	case proxyProtocolUDP:
 		return proxy.runUDP(ctx, proxyWg)
 	default:
-		return fmt.Errorf("Unexpected proxy protocol: %v", proxy.protocol)
+		return fmt.Errorf("unexpected proxy protocol: %v", proxy.key.protocol)
 	}
 }
 
@@ -391,8 +265,8 @@ type udpProxyConn struct {
 
 func (udpProxy *udpProxy) setupListener() error {
 	var err error
-	if udpProxy.proxy.ruleType == ProxyTypeEgress {
-		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", udpProxy.proxy.listenPort))
+	if udpProxy.proxy.key.ruleType == ProxyTypeEgress {
+		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", udpProxy.proxy.key.listenPort))
 		if err != nil {
 			return fmt.Errorf("Failed to resolve UDP address: %w", err)
 		}
@@ -401,7 +275,7 @@ func (udpProxy *udpProxy) setupListener() error {
 			return fmt.Errorf("Failed to listen on UDP port: %w", err)
 		}
 	} else {
-		udpProxy.goConn, err = udpProxy.proxy.userspaceNet.ListenUDP(&net.UDPAddr{Port: udpProxy.proxy.listenPort})
+		udpProxy.goConn, err = udpProxy.proxy.userspaceNet.ListenUDP(&net.UDPAddr{Port: udpProxy.proxy.key.listenPort})
 		if err != nil {
 			return fmt.Errorf("Failed to listen on UDP port: %w", err)
 		}
@@ -412,7 +286,7 @@ func (udpProxy *udpProxy) setupListener() error {
 func (udpProxy *udpProxy) setReadDeadline() error {
 	var err error
 	// Don't block for more than a second
-	if udpProxy.proxy.ruleType == ProxyTypeEgress {
+	if udpProxy.proxy.key.ruleType == ProxyTypeEgress {
 		err = udpProxy.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	} else {
 		err = udpProxy.goConn.SetReadDeadline(time.Now().Add(1 * time.Second))
@@ -424,7 +298,7 @@ func (udpProxy *udpProxy) readFromUDP(buffer []byte) (int, *net.UDPAddr, error) 
 	var n int
 	var clientAddr *net.UDPAddr
 	var err error
-	if udpProxy.proxy.ruleType == ProxyTypeEgress {
+	if udpProxy.proxy.key.ruleType == ProxyTypeEgress {
 		n, clientAddr, err = udpProxy.conn.ReadFromUDP(buffer)
 	} else {
 		var netAddr net.Addr
@@ -443,10 +317,10 @@ func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error
 	if err = udpProxy.setupListener(); err != nil {
 		return err
 	}
-	if proxy.ruleType == ProxyTypeEgress {
-		defer udpProxy.conn.Close()
+	if proxy.key.ruleType == ProxyTypeEgress {
+		defer util.IgnoreError(udpProxy.conn.Close)
 	} else {
-		defer udpProxy.goConn.Close()
+		defer util.IgnoreError(udpProxy.goConn.Close)
 	}
 
 	buffer := make([]byte, udpMaxPayloadSize)
@@ -470,10 +344,10 @@ func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error
 			if proxy.debugTraffic {
 				proxy.logger.Debug("Closing proxy connection for client:", clientAddrStr)
 			}
-			if proxy.ruleType == ProxyTypeEgress {
-				proxyConn.goProxyConn.Close()
+			if proxy.key.ruleType == ProxyTypeEgress {
+				_ = proxyConn.goProxyConn.Close()
 			} else {
-				proxyConn.proxyConn.Close()
+				_ = proxyConn.proxyConn.Close()
 			}
 			delete(proxyConns, clientAddrStr)
 		default:
@@ -527,7 +401,7 @@ func (proxy *UsProxy) runUDP(ctx context.Context, proxyWg *sync.WaitGroup) error
 
 func (proxyConn *udpProxyConn) writeToDestination(buf []byte, n int) error {
 	var err error
-	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+	if proxyConn.udpProxy.proxy.key.ruleType == ProxyTypeEgress {
 		_, err = proxyConn.goProxyConn.Write(buf[:n])
 	} else {
 		_, err = proxyConn.proxyConn.Write(buf[:n])
@@ -538,7 +412,7 @@ func (proxyConn *udpProxyConn) writeToDestination(buf []byte, n int) error {
 func (proxyConn *udpProxyConn) setReadDeadline() error {
 	var err error
 	// Don't block for more than a second
-	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+	if proxyConn.udpProxy.proxy.key.ruleType == ProxyTypeEgress {
 		err = proxyConn.goProxyConn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	} else {
 		err = proxyConn.proxyConn.SetReadDeadline(time.Now().Add(1 * time.Second))
@@ -550,7 +424,7 @@ func (proxyConn *udpProxyConn) readFromUDP(buffer []byte) (int, *net.UDPAddr, er
 	var n int
 	var clientAddr *net.UDPAddr
 	var err error
-	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeIngress {
+	if proxyConn.udpProxy.proxy.key.ruleType == ProxyTypeIngress {
 		n, clientAddr, err = proxyConn.proxyConn.ReadFromUDP(buffer)
 	} else {
 		var netAddr net.Addr
@@ -564,7 +438,7 @@ func (proxyConn *udpProxyConn) readFromUDP(buffer []byte) (int, *net.UDPAddr, er
 
 func (proxyConn *udpProxyConn) writeBackToOriginator(buffer []byte, n int) error {
 	var err error
-	if proxyConn.udpProxy.proxy.ruleType == ProxyTypeEgress {
+	if proxyConn.udpProxy.proxy.key.ruleType == ProxyTypeEgress {
 		_, err = proxyConn.udpProxy.conn.WriteToUDP(buffer[:n], proxyConn.clientAddr)
 	} else {
 		_, err = proxyConn.udpProxy.goConn.WriteTo(buffer[:n], proxyConn.clientAddr)
@@ -572,17 +446,29 @@ func (proxyConn *udpProxyConn) writeBackToOriginator(buffer []byte, n int) error
 	return err
 }
 
+func (proxy *UsProxy) NextDest() HostPort {
+	proxy.mu.RLock()
+	defer proxy.mu.RUnlock()
+
+	counter := atomic.AddUint64(&proxy.connectionCounter, 1)
+
+	index := counter % uint64(len(proxy.rules))
+	return proxy.rules[index].dest
+}
+
 func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.WaitGroup, proxyConn *udpProxyConn) error {
 	var err error
+	dest := proxy.NextDest()
+	logger := proxy.logger.With("dest", dest)
 
-	if proxy.ruleType == ProxyTypeEgress {
-		newConn, err := proxy.userspaceNet.DialUDP(nil, &net.UDPAddr{Port: proxy.destPort, IP: net.ParseIP(proxy.destHost)})
+	if proxy.key.ruleType == ProxyTypeEgress {
+		newConn, err := proxy.userspaceNet.DialUDP(nil, &net.UDPAddr{Port: dest.port, IP: net.ParseIP(dest.host)})
 		if err != nil {
 			return fmt.Errorf("Error dialing UDP proxy destination: %w", err)
 		}
 		proxyConn.goProxyConn = newConn
 	} else {
-		udpDest := net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort))
+		udpDest := net.JoinHostPort(dest.host, fmt.Sprintf("%d", dest.port))
 		addr, err := net.ResolveUDPAddr("udp", udpDest)
 		if err != nil {
 			return fmt.Errorf("Failed to resolve UDP address: %w", err)
@@ -615,12 +501,12 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 					continue
 				}
 				if proxy.debugTraffic {
-					proxy.logger.Debug("UDP proxy connection timed out after", udpTimeout)
+					logger.Debug("UDP proxy connection timed out after", udpTimeout)
 				}
 				break loop
 			default:
 				if err = proxyConn.setReadDeadline(); err != nil {
-					proxy.logger.Warn("Error setting UDP read deadline:", err)
+					logger.Warn("Error setting UDP read deadline:", err)
 					break loop
 				}
 				var clientAddr2 net.Addr
@@ -630,19 +516,19 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 					if errors.As(err, &timeoutError); timeoutError.Timeout() {
 						continue
 					}
-					proxy.logger.Warn("Error reading from UDP client:", err)
+					logger.Warn("Error reading from UDP client:", err)
 					break loop
 				}
 				if proxy.debugTraffic {
-					proxy.logger.Debug("Read from UDP client:", clientAddr2, n, buf[:n])
+					logger.Debug("Read from UDP client:", clientAddr2, n, buf[:n])
 				}
 				err = proxyConn.writeBackToOriginator(buf, n)
 				if err != nil {
-					proxy.logger.Warn("Error writing back to original UDP source:", err)
+					logger.Warn("Error writing back to original UDP source:", err)
 					break loop
 				}
 				if proxy.debugTraffic {
-					proxy.logger.Debug("Wrote to UDP proxy destination:", proxyConn.goProxyConn.RemoteAddr(), n, buf[:n])
+					logger.Debug("Wrote to UDP proxy destination:", proxyConn.goProxyConn.RemoteAddr(), n, buf[:n])
 				}
 				if !timer.Stop() {
 					<-timer.C
@@ -659,16 +545,16 @@ func (proxy *UsProxy) createUDPProxyConn(ctx context.Context, proxyWg *sync.Wait
 func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error {
 	var l net.Listener
 	var err error
-	if proxy.ruleType == ProxyTypeEgress {
-		l, err = net.Listen(fmt.Sprintf("%v", proxy.protocol), fmt.Sprintf(":%d", proxy.listenPort))
+	if proxy.key.ruleType == ProxyTypeEgress {
+		l, err = net.Listen(fmt.Sprintf("%v", proxy.key.protocol), fmt.Sprintf(":%d", proxy.key.listenPort))
 	} else {
-		l, err = proxy.userspaceNet.ListenTCP(&net.TCPAddr{Port: proxy.listenPort})
+		l, err = proxy.userspaceNet.ListenTCP(&net.TCPAddr{Port: proxy.key.listenPort})
 	}
 	if err != nil {
 		proxy.logger.Error("Error creating listener: ", err)
 		return err
 	}
-	defer l.Close()
+	defer util.IgnoreError(l.Close)
 
 	// This routine will exit when the listener is closed intentionally,
 	// or some error occurs.
@@ -714,15 +600,18 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 }
 
 func (proxy *UsProxy) handleTCPConnection(ctx context.Context, proxyWg *sync.WaitGroup, inConn net.Conn) error {
-	defer inConn.Close()
+	defer util.IgnoreError(inConn.Close)
 
-	proxyDest := net.JoinHostPort(proxy.destHost, fmt.Sprintf("%d", proxy.destPort))
-	proxy.logger.Debugf("Handling connection from %s, proxying to %s", inConn.RemoteAddr().String(), proxyDest)
+	dest := proxy.NextDest()
+	logger := proxy.logger.With("dest", dest)
+
+	proxyDest := net.JoinHostPort(dest.host, fmt.Sprintf("%d", dest.port))
+	logger.Debugf("Handling connection from %s, proxying to %s", inConn.RemoteAddr().String(), proxyDest)
 
 	var outConn net.Conn
 	var err error
-	protocolStr := fmt.Sprintf("%v", proxy.protocol)
-	if proxy.ruleType == ProxyTypeEgress {
+	protocolStr := fmt.Sprintf("%v", proxy.key.protocol)
+	if proxy.key.ruleType == ProxyTypeEgress {
 		outConn, err = proxy.userspaceNet.DialContext(ctx, protocolStr, proxyDest)
 	} else {
 		outConn, err = net.Dial(protocolStr, proxyDest)
@@ -730,17 +619,17 @@ func (proxy *UsProxy) handleTCPConnection(ctx context.Context, proxyWg *sync.Wai
 	if err != nil {
 		return err
 	}
-	defer outConn.Close()
+	defer util.IgnoreError(outConn.Close)
 
 	util.GoWithWaitGroup(proxyWg, func() {
 		_, err := io.Copy(inConn, outConn)
 		if err != nil {
-			proxy.logger.Debugf("Error copying data from outConn to inConn: ", err)
+			logger.Debugf("Error copying data from outConn to inConn: ", err)
 		}
 	})
 	_, err = io.Copy(outConn, inConn)
 	if err != nil {
-		proxy.logger.Debugf("Error copying data from inConn to outConn: ", err)
+		logger.Debugf("Error copying data from inConn to outConn: ", err)
 	}
 
 	return nil
