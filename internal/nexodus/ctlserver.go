@@ -2,7 +2,10 @@ package nexodus
 
 import (
 	"fmt"
+
 	"github.com/bytedance/gopkg/util/logger"
+
+	"go.uber.org/zap"
 )
 
 type NexdCtl struct {
@@ -113,4 +116,16 @@ func (ac *NexdCtl) ProxyRemoveIngress(rule string, result *string) error {
 
 func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
 	return ac.proxyRemove(ProxyTypeEgress, rule, result)
+}
+
+func (ac *NexdCtl) SetDebugOn(_ string, result *string) error {
+	ac.ax.logLevel.SetLevel(zap.DebugLevel)
+	*result = "Debug logging enabled\n"
+	return nil
+}
+
+func (ac *NexdCtl) SetDebugOff(_ string, result *string) error {
+	ac.ax.logLevel.SetLevel(zap.InfoLevel)
+	*result = "Debug logging disabled\n"
+	return nil
 }

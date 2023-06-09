@@ -40,7 +40,7 @@ var Version = "dev"
 // Optionally set at build time using ldflags
 var DefaultServiceURL = "https://try.nexodus.io"
 
-func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
+func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
 	serviceURL := cCtx.Args().First()
 	if serviceURL == "" && DefaultServiceURL != "" {
 		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
@@ -85,6 +85,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, mode nexdMode) error {
 
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
+		logLevel,
 		serviceURL,
 		cCtx.String("username"),
 		cCtx.String("password"),
@@ -151,12 +152,16 @@ func main() {
 	// set the log level
 	debug := os.Getenv(nexodusLogEnv)
 	var logger *zap.Logger
+	var logLevel *zap.AtomicLevel
 	var err error
 	if debug != "" {
-		logger, err = zap.NewDevelopment()
+		logCfg := zap.NewDevelopmentConfig()
+		logLevel = &logCfg.Level
+		logger, err = logCfg.Build()
 		logger.Info("Debug logging enabled")
 	} else {
 		logCfg := zap.NewProductionConfig()
+		logLevel = &logCfg.Level
 		logCfg.DisableStacktrace = true
 		logger, err = logCfg.Build()
 	}
@@ -185,7 +190,7 @@ func main() {
 				Name:  "proxy",
 				Usage: "Run nexd as an L4 proxy instead of creating a network interface",
 				Action: func(cCtx *cli.Context) error {
-					return nexdRun(cCtx, logger, nexdModeProxy)
+					return nexdRun(cCtx, logger, logLevel, nexdModeProxy)
 				},
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
@@ -204,7 +209,7 @@ func main() {
 				Name:  "router",
 				Usage: "Enable child-prefix function of the node agent to enable prefix forwarding.",
 				Action: func(cCtx *cli.Context) error {
-					return nexdRun(cCtx, logger, nexdModeRouter)
+					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)
 				},
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
@@ -231,7 +236,7 @@ func main() {
 						return fmt.Errorf("Relay node is only supported for Linux Operating System")
 					}
 
-					return nexdRun(cCtx, logger, nexdModeRelay)
+					return nexdRun(cCtx, logger, logLevel, nexdModeRelay)
 				},
 			},
 		},
@@ -357,7 +362,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			return nexdRun(cCtx, logger, nexdModeAgent)
+			return nexdRun(cCtx, logger, logLevel, nexdModeAgent)
 		},
 	}
 

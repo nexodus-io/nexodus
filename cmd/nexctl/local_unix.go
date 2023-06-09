@@ -73,6 +73,50 @@ func init() {
 				},
 			},
 			{
+				Name:  "set",
+				Usage: "Set a value on the local nexd instance",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "debug",
+						Usage: "Set debug logging on or off",
+						Subcommands: []*cli.Command{
+							{
+								Name:  "on",
+								Usage: "Turn debug logging on",
+								Action: func(cCtx *cli.Context) error {
+									if err := checkVersion(); err != nil {
+										return err
+									}
+									result, err := callNexd("SetDebugOn", "")
+									if err != nil {
+										fmt.Printf("%s\n", err)
+										return err
+									}
+									fmt.Printf("%s\n", result)
+									return nil
+								},
+							},
+							{
+								Name:  "off",
+								Usage: "Turn debug logging off",
+								Action: func(cCtx *cli.Context) error {
+									if err := checkVersion(); err != nil {
+										return err
+									}
+									result, err := callNexd("SetDebugOff", "")
+									if err != nil {
+										fmt.Printf("%s\n", err)
+										return err
+									}
+									fmt.Printf("%s\n", result)
+									return nil
+								},
+							},
+						},
+					},
+				},
+			},
+			{
 				Name:  "proxy",
 				Usage: "Commands for interacting nexd's proxy configuration",
 				Subcommands: []*cli.Command{
