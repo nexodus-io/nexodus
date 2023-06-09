@@ -120,12 +120,21 @@ func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
 
 func (ac *NexdCtl) SetDebugOn(_ string, result *string) error {
 	ac.ax.logLevel.SetLevel(zap.DebugLevel)
-	*result = "Debug logging enabled\n"
+	*result = "Debug logging enabled"
 	return nil
 }
 
 func (ac *NexdCtl) SetDebugOff(_ string, result *string) error {
 	ac.ax.logLevel.SetLevel(zap.InfoLevel)
-	*result = "Debug logging disabled\n"
+	*result = "Debug logging disabled"
+	return nil
+}
+
+func (ac *NexdCtl) GetDebug(_ string, result *string) error {
+	if ac.ax.logLevel.Level() == zap.DebugLevel {
+		*result = "on"
+	} else {
+		*result = "off"
+	}
 	return nil
 }

@@ -70,6 +70,22 @@ func init() {
 							return nil
 						},
 					},
+					{
+						Name:  "debug",
+						Usage: "Get the debug logging status",
+						Action: func(cCtx *cli.Context) error {
+							if err := checkVersion(); err != nil {
+								return err
+							}
+							result, err := callNexd("GetDebug", "")
+							if err != nil {
+								fmt.Printf("%s\n", err)
+								return err
+							}
+							fmt.Printf("%s\n", result)
+							return nil
+						},
+					},
 				},
 			},
 			{
