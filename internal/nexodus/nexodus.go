@@ -113,6 +113,7 @@ type Nexodus struct {
 	ipv6Supported            bool
 	os                       string
 	logger                   *zap.SugaredLogger
+	logLevel                 *zap.AtomicLevel
 	// See the NexdStatus* constants
 	status        int
 	statusMsg     string
@@ -147,6 +148,7 @@ type wgLocalConfig struct {
 
 func NewNexodus(
 	logger *zap.SugaredLogger,
+	logLevel *zap.AtomicLevel,
 	controller string,
 	username string,
 	password string,
@@ -211,6 +213,7 @@ func NewNexodus(
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
 		logger:              logger,
+		logLevel:            logLevel,
 		status:              NexdStatusStarting,
 		version:             version,
 		username:            username,
