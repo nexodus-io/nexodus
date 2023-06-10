@@ -157,12 +157,14 @@ func main() {
 	if debug != "" {
 		logCfg := zap.NewDevelopmentConfig()
 		logLevel = &logCfg.Level
+		logCfg.EncoderConfig.TimeKey = ""
 		logger, err = logCfg.Build()
 		logger.Info("Debug logging enabled")
 	} else {
 		logCfg := zap.NewProductionConfig()
 		logLevel = &logCfg.Level
 		logCfg.DisableStacktrace = true
+		logCfg.EncoderConfig.TimeKey = ""
 		logger, err = logCfg.Build()
 	}
 	if err != nil {
