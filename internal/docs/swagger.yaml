@@ -157,6 +157,20 @@ definitions:
       user_id:
         type: string
     type: object
+  models.DeviceMetadata:
+    properties:
+      device_id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  models.DeviceMetadataValue:
+    properties:
+      value:
+        type: string
+    type: object
   models.DeviceStartResponse:
     properties:
       client_id:
@@ -539,6 +553,113 @@ paths:
           schema:
             $ref: '#/definitions/models.BaseError'
       summary: Update Devices
+      tags:
+      - Devices
+  /api/devices/{id}/metadata:
+    get:
+      consumes:
+      - application/json
+      description: Lists metadata for a device
+      operationId: GetDeviceMetadata
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeviceMetadata'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Get Device Metadata
+      tags:
+      - Devices
+    post:
+      consumes:
+      - application/json
+      description: Delete all metadata for a device
+      operationId: DeleteDeviceMetadata
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Metadata Key
+        in: path
+        name: key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Delete all Device metadata
+      tags:
+      - Devices
+  /api/devices/{id}/metadata/{key}:
+    get:
+      consumes:
+      - application/json
+      description: Get metadata for a device
+      operationId: GetDeviceMetadataKey
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Metadata Key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeviceMetadataValue'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Get Device Metadata
+      tags:
+      - Devices
+    post:
+      consumes:
+      - application/json
+      description: Delete a metadata key for a device
+      operationId: DeleteDeviceMetadataKey
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Metadata Key
+        in: path
+        name: key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Delete a Device metadata key
       tags:
       - Devices
   /api/fflags:
