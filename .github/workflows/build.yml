@@ -335,7 +335,7 @@ jobs:
             srpm_distro: fc38
           - mock_root: centos-stream-9-x86_64
             srpm_mock_root: centos-stream-9-x86_64
-            srpm_distroy: el9
+            srpm_distro: el9
     steps:
       - uses: actions/checkout@v3
 
@@ -352,7 +352,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: nexodus
+          name: nexodus-rpms
           path: |
             ${{ steps.build-rpm.outputs.artifact-name }}
 
