@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bytedance/gopkg/util/logger"
 	"io"
 	"net"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bytedance/gopkg/util/logger"
 
 	atomicFile "github.com/natefinch/atomic"
 
@@ -570,8 +571,12 @@ func (proxy *UsProxy) runTCP(ctx context.Context, proxyWg *sync.WaitGroup) error
 				break
 			}
 			util.GoWithWaitGroup(proxyWg, func() {
+				remoteAddr := "unknown"
+				if conn.RemoteAddr() != nil {
+					remoteAddr = conn.RemoteAddr().String()
+				}
 				err = proxy.handleTCPConnection(ctx, proxyWg, conn)
-				proxy.logger.Debugf("Connection from %s closed: %v", conn.RemoteAddr().String(), err)
+				proxy.logger.Debugf("Connection from %s closed: %v", remoteAddr, err)
 			})
 		}
 	})
