@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -129,4 +130,10 @@ func TestQueryFilter(t *testing.T) {
 	actual, err := q.GetFilter()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+func (suite *HandlerTestSuite) jsonMarshal(v any) []byte {
+	bytes, err := json.Marshal(v)
+	suite.Require().NoError(err)
+	return bytes
 }

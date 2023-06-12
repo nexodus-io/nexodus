@@ -69,10 +69,22 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
+
 	if !request.PrivateCidr {
-		request.IpCidr = defaultIPAMv4Cidr
-		request.IpCidrV6 = defaultIPAMv6Cidr
+		if request.IpCidr == "" {
+			request.IpCidr = defaultIPAMv4Cidr
+		} else if request.IpCidr != defaultIPAMv4Cidr {
+			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr", fmt.Sprintf("must be '%s' or not set when private_cidr is not enabled", defaultIPAMv4Cidr)))
+			return
+		}
+		if request.IpCidrV6 == "" {
+			request.IpCidrV6 = defaultIPAMv4Cidr
+		} else if request.IpCidrV6 != defaultIPAMv6Cidr {
+			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr_v6", fmt.Sprintf("must be '%s' or not set when private_cidr is not enabled", defaultIPAMv6Cidr)))
+			return
+		}
 	}
+
 	if request.IpCidr == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr"))
 		return

@@ -236,7 +236,7 @@ func TestSecurityGroups(t *testing.T) {
 	}
 	outboundRules = []public.ModelsSecurityRule{
 		helper.createSecurityRule("icmpv4", "0", "0", []string{""}),
-		helper.createSecurityRule("icmpv6", "0", "0", []string{"200::1-200:1::50"}),
+		helper.createSecurityRule("icmpv6", "0", "0", []string{"200::1-200::ffff:ffff:ffff:ffff"}),
 	}
 
 	// update the security group with the new inbound and outbound rules

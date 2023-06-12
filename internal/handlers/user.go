@@ -136,8 +136,6 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		}},
 	}
 
-
-
 	// Create the organization
 	if res := tx.Create(&org); res.Error != nil {
 		if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
