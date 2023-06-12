@@ -71,14 +71,14 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	}
 	if !request.PrivateCidr {
 		request.IpCidr = defaultIPAMv4Cidr
-		request.IpCidr = defaultIPAMv6Cidr
+		request.IpCidrV6 = defaultIPAMv6Cidr
 	}
 	if request.IpCidr == "" {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr"))
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr"))
 		return
 	}
 	if request.IpCidrV6 == "" {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ip_cidr_v6"))
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr_v6"))
 		return
 	}
 	if request.Name == "" {
