@@ -380,8 +380,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string, tx *gorm.DB) (models.SecurityGroup, error) {
-
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, orgId string) (models.SecurityGroup, error) {
 	orgIdUUID, err := uuid.Parse(orgId)
 	if err != nil {
 		return models.SecurityGroup{}, err
@@ -399,13 +398,7 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string, tx
 		OutboundRules:    outboundRules,
 	}
 
-	var db *gorm.DB
-
-	// Assigning either transaction connection or new connection based on whether tx is nil. This is to support
-	// updates that are made outside of a transaction.
-	if tx != nil {
-		db = tx
-	} else {
+	if db == nil {
 		db = api.db.WithContext(ctx)
 	}
 
@@ -418,22 +411,17 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string, tx
 }
 
 // updateOrganizationSecGroupId updates the security group ID in an org entry
-func (api *API) updateOrganizationSecGroupId(ctx context.Context, sgId, orgId uuid.UUID, tx *gorm.DB) error {
-	var org models.Organization
-	var db *gorm.DB
+func (api *API) updateOrganizationSecGroupId(ctx context.Context, db *gorm.DB, sgId, orgId uuid.UUID) error {
+	// var org models.Organization
 
-	// Assigning either transaction connection or new connection based on whether tx is nil. This is to support
-	// updates that are made outside of a transaction.
-	if tx != nil {
-		db = tx
-	} else {
+	if db == nil {
 		db = api.db.WithContext(ctx)
 	}
 
-	res := db.First(&org, "id = ?", orgId)
-	if res.Error != nil {
-		return res.Error
+	err := db.Model(&models.Organization{}).Where("id = ?", orgId).Update("SecurityGroupId", sgId).Error
+	if err != nil {
+		return err
 	}
 
-	return db.Model(&org).Update("SecurityGroupId", sgId).Error
+	return nil
 }

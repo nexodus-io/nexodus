@@ -18,6 +18,8 @@ import (
 // key for username in gin.Context
 const AuthUserName string = "_nexodus.UserName"
 
+var noUUID = uuid.UUID{}
+
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.GetString(gin.AuthUserKey)
@@ -40,8 +42,6 @@ func (api *API) UserIsCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-var noUUID = uuid.UUID{}
-
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
@@ -49,54 +49,107 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		attribute.String("user-id", id),
 		attribute.String("username", userName),
 	)
-	tx := api.db
 	var user models.User
-	res := tx.Unscoped().First(&user, "id = ?", id)
-	if res.Error == nil {
+	var uuid uuid.UUID
 
-		// Was the user was previously deleted... lets make him active again.
-		if user.DeletedAt.Valid {
-			user.DeletedAt = gorm.DeletedAt{}
-			res = tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
-			if res.Error != nil {
-				return noUUID, res.Error
+	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// First lets check if the user has ever existed in the database
+		res := tx.Unscoped().First(&user, "id = ?", id)
+
+		// If the user exists, then lets restore their status in the database
+		if res.Error == nil {
+			var err error
+			uuid, err = api.restoreDeletedUser(ctx, tx, &user, id, userName)
+			if err != nil {
+				return err
 			}
+
+			return nil
 		}
 
-		// Check if the UserName has changed since the last time we saw this user
-		if user.UserName != userName {
-			res = tx.Model(&user).Update("UserName", userName)
-			if res.Error != nil {
-				return noUUID, res.Error
-			}
+		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("can't find record for user id %s: %w", id, res.Error)
 		}
 
-		return api.createUserOrgIfNotExists(ctx, id, userName)
+		// If we got here then the user does not exist... lets create the user and the organization
+		user.ID = id
+		user.UserName = userName
+		res = tx.Create(&user)
+		if res.Error == nil {
+			var err error
+			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
+			return fmt.Errorf("can't create user record: %w", res.Error)
+		}
+
+		// is another concurrent request creating the user???
+		user = models.User{}
+		if tx.Unscoped().First(&user, "id = ?", id).Error == nil {
+			var err error
+			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return noUUID, fmt.Errorf("can't create user record: %w", err)
 	}
 
-	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return noUUID, fmt.Errorf("can't find record for user id %s", id)
-	}
-	user.ID = id
-	user.UserName = userName
-	res = tx.Create(&user)
-	if res.Error == nil {
-		return api.createUserOrgIfNotExists(ctx, id, userName)
-	}
-	if res.Error.Error() != "duplicated key not allowed" {
-		return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
+	if uuid != noUUID {
+		return uuid, nil
 	}
 
-	// is another concurrent request creating the user???
-	user = models.User{}
-	if tx.Unscoped().First(&user, "id = ?", id).Error == nil {
-		return api.createUserOrgIfNotExists(ctx, id, userName)
-	}
-
-	return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
+	// return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
+	// TODO: Fix this up
+	return noUUID, nil
 }
 
-func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, userName string) (uuid.UUID, error) {
+// restoreDeleteUser will restore a user if they have been deleted
+func (api *API) restoreDeletedUser(ctx context.Context, db *gorm.DB, user *models.User, id string, userName string) (uuid.UUID, error) {
+	if user == nil {
+		return noUUID, errors.New("user is nil or has no ID")
+	}
+
+	if db == nil {
+		db = api.db.WithContext(ctx)
+	}
+
+	// If the user was previously deleted, then lets make them active again
+	if user.DeletedAt.Valid {
+		user.DeletedAt = gorm.DeletedAt{}
+		res := db.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
+		if res.Error != nil {
+			return noUUID, res.Error
+		}
+	}
+
+	// Check if the UserName has changed since the last time we saw this user
+	if user.UserName != userName {
+		res := db.Model(&user).Update("UserName", userName)
+		if res.Error != nil {
+			return noUUID, res.Error
+		}
+	}
+
+	return api.createUserOrgIfNotExists(ctx, db, id, userName)
+}
+
+func (api *API) createUserOrgIfNotExists(ctx context.Context, db *gorm.DB, userId string, userName string) (uuid.UUID, error) {
+	// TODO: Check if we even need this? Seems like we could get rid of this and use the logic in the transaction
+	// for returning if Create fails but the organization exists
 
 	// Get the first org the use owns.
 	org := models.Organization{}
@@ -120,12 +173,17 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 		}},
 	}
 
-	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if db == nil {
+		db = api.db.WithContext(ctx)
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
 		// Create the organization
 		if res := tx.Create(&org); res.Error != nil {
-			if res.Error != gorm.ErrDuplicatedKey {
+			if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
 				return res.Error
 			}
+
 			// If we already have an existing organisation then lets just use that one
 			if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
 				return nil
@@ -145,13 +203,13 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 			return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 		}
 		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String(), tx)
+		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
 		if err != nil {
 			return fmt.Errorf("failed to create the default security group: %w", res.Error)
 		}
 
 		// Update the default org with the new security group id
-		if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID, tx); err != nil {
+		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
 			return fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
 		}
 
