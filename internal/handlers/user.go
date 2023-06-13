@@ -71,7 +71,6 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			return fmt.Errorf("can't find record for user id %s: %w", id, res.Error)
 		}
 
-		// If we got here then the user does not exist... lets create the user and the organization
 		user.ID = id
 		user.UserName = userName
 		res = tx.Create(&user)
@@ -112,9 +111,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		return uuid, nil
 	}
 
-	// return noUUID, fmt.Errorf("can't create user record: %w", res.Error)
-	// TODO: Fix this up
-	return noUUID, nil
+	return noUUID, fmt.Errorf("can't create user record")
 }
 
 // restoreDeleteUser will restore a user if they have been deleted

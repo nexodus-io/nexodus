@@ -412,16 +412,15 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, org
 
 // updateOrganizationSecGroupId updates the security group ID in an org entry
 func (api *API) updateOrganizationSecGroupId(ctx context.Context, db *gorm.DB, sgId, orgId uuid.UUID) error {
-	// var org models.Organization
-
+	var org models.Organization
 	if db == nil {
 		db = api.db.WithContext(ctx)
 	}
 
-	err := db.Model(&models.Organization{}).Where("id = ?", orgId).Update("SecurityGroupId", sgId).Error
-	if err != nil {
-		return err
+	res := db.WithContext(ctx).First(&org, "id = ?", orgId)
+	if res.Error != nil {
+		return res.Error
 	}
 
-	return nil
+	return db.WithContext(ctx).Model(&org).Update("SecurityGroupId", sgId).Error
 }
