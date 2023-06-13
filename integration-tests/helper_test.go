@@ -97,15 +97,9 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 		}
 	}
 
-	// Name containers <test>-<nameSuffix>, where <test> is the name of the calling function
-	name := nameSuffix
-	pc, _, _, ok := runtime.Caller(1)
-	if !ok {
-		helper.log("runtime.Caller: failed")
-	} else {
-		callerParts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
-		name = fmt.Sprintf("%s-%s", callerParts[len(callerParts)-1], nameSuffix)
-	}
+	// Name containers <test>-<nameSuffix>, where <test> is the name of the calling test
+	name := helper.T.Name() + "-" + nameSuffix
+	name = strings.ReplaceAll(name, "/", "-")
 
 	certsDir, err := findCertsDir()
 	require.NoError(helper.T, err)

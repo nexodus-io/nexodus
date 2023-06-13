@@ -34,6 +34,7 @@ FROM fedora:latest as fedora
 
 RUN dnf update -qy && \
     dnf install --setopt=install_weak_deps=False -qy \
+    bash-completion \
     ca-certificates \
     iputils \
     iproute \
@@ -53,5 +54,7 @@ COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
 COPY --chmod=755 --from=build /src/udping /bin/udping
 COPY --chmod=755 --from=build /src/udpong /bin/udpong
+COPY --chmod=644 --from=build /src/contrib/bash_autocomplete /etc/bash_completion.d/nexd
+COPY --chmod=644 --from=build /src/contrib/bash_autocomplete /etc/bash_completion.d/nexctl
 
 CMD /update-ca.sh prod

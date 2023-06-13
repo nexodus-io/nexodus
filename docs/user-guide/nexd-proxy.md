@@ -80,6 +80,10 @@ flowchart TD
 
 Since UDP is a connectionless protocol, `nexd proxy` must maintain its own state for each UDP flow to ensure that return traffic is forwarded appropriately. These flows time out after 60 seconds of inactivity.
 
+### Proxy Load Balancing
+
+If multiple rules share the same protocol and listener port, then the proxy will use simple round-robin load balancing of connections across the destination hosts and ports.
+
 ### Managing Rules with Nexctl
 
 In addition to configuring rules as command line flags, `nexctl` can be used to dynamically add or remove proxy rules. Rules that are added dynamically are persisted across `nexd proxy` restarts.

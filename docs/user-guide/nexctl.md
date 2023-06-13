@@ -28,7 +28,7 @@ make dist/nexctl
 ### Usage
 
 ```text
-nexctl(30 May 2023)                                                                                                             nexctl(30 May 2023)
+nexctl(09 June 2023)                                                                                                                           nexctl(09 June 2023)
 
 NAME:
        nexctl - A new cli application
@@ -46,6 +46,9 @@ COMMANDS:
 
        organization
               Commands relating to organizations
+
+       security-group
+              commands relating to security groups
 
        user   Commands relating to users
 
@@ -77,13 +80,13 @@ GLOBAL OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                                nexctl(30 May 2023)
+                                                                                                                                               nexctl(09 June 2023)
 ```
 
 #### nexctl device
 
 ```text
-nexctl-device(30 May 2023)                                                                                               nexctl-device(30 May 2023)
+nexctl-device(09 June 2023)                                                                                                             nexctl-device(09 June 2023)
 
 NAME:
        nexctl device - Commands relating to devices
@@ -103,13 +106,13 @@ OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                         nexctl-device(30 May 2023)
+                                                                                                                                        nexctl-device(09 June 2023)
 ```
 
 #### nexctl invitation
 
 ```text
-nexctl-invitation(30 May 2023)                                                                                       nexctl-invitation(30 May 2023)
+nexctl-invitation(09 June 2023)                                                                                                     nexctl-invitation(09 June 2023)
 
 NAME:
        nexctl invitation - commands relating to invitations
@@ -131,13 +134,13 @@ OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                     nexctl-invitation(30 May 2023)
+                                                                                                                                    nexctl-invitation(09 June 2023)
 ```
 
 #### nexctl nexd
 
 ```text
-nexctl-nexd(30 May 2023)                                                                                                   nexctl-nexd(30 May 2023)
+nexctl-nexd(09 June 2023)                                                                                                                 nexctl-nexd(09 June 2023)
 
 NAME:
        nexctl nexd - Commands for interacting with the local instance of nexd
@@ -153,6 +156,8 @@ COMMANDS:
 
        get    Get a value from the local nexd instance
 
+       set    Set a value on the local nexd instance
+
        proxy  Commands for interacting nexd's proxy configuration
 
        peers  Commands for interacting nexd exit node configuration
@@ -167,13 +172,13 @@ OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                           nexctl-nexd(30 May 2023)
+                                                                                                                                          nexctl-nexd(09 June 2023)
 ```
 
 #### nexctl organization
 
 ```text
-nexctl-organization(30 May 2023)                                                                                   nexctl-organization(30 May 2023)
+nexctl-organization(09 June 2023)                                                                                                 nexctl-organization(09 June 2023)
 
 NAME:
        nexctl organization - Commands relating to organizations
@@ -195,13 +200,13 @@ OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                   nexctl-organization(30 May 2023)
+                                                                                                                                  nexctl-organization(09 June 2023)
 ```
 
 #### nexctl user
 
 ```text
-nexctl-user(30 May 2023)                                                                                                   nexctl-user(30 May 2023)
+nexctl-user(09 June 2023)                                                                                                                 nexctl-user(09 June 2023)
 
 NAME:
        nexctl user - Commands relating to users
@@ -227,5 +232,35 @@ OPTIONS:
        --help, -h
               Show help
 
-                                                                                                                           nexctl-user(30 May 2023)
+                                                                                                                                          nexctl-user(09 June 2023)
+```
+
+#### nexctl security-group
+
+```text
+nexctl-security-group(09 June 2023)                                                                                             nexctl-security-group(09 June 2023)
+
+NAME:
+       nexctl security-group - commands relating to security groups
+
+USAGE:
+       nexctl security-group command [command options] [arguments...]
+
+COMMANDS:
+       list   List all security groups
+
+       delete Delete a security group
+
+       create create a security group
+
+       update update a security group
+
+       help, h
+              Shows a list of commands or help for one command
+
+OPTIONS:
+       --help, -h
+              Show help
+
+                                                                                                                                nexctl-security-group(09 June 2023)
 ```

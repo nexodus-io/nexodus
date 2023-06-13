@@ -8,8 +8,8 @@ This guide will walk you through getting your first devices connected via Nexodu
 
 Supported versions:
 
-- Fedora 38
-- CentOS Stream 9
+- Fedora 38 (x86_64, aarch64)
+- CentOS Stream 9 (x86_64, aarch64)
 
 ```sh
 # Enable the COPR repository and install the nexodus package

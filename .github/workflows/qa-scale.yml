@@ -142,8 +142,8 @@ jobs:
         run: |
           set -e
           cat ./ops/ansible/aws/connectivity-results.txt
-          if grep -iq 'Unreachable' ./ops/ansible/aws/connectivity-results.txt; then
-            echo "Connectivity results contain 'Unreachable' nodes, check the connectivity results for details. Failing the job"
+          if grep -iq 'Unreachable' ./ops/ansible/aws/connectivity-results.txt || grep -iq 'Failed' ./ops/ansible/aws/connectivity-results.txt; then
+            echo "Connectivity results contain 'Unreachable or Failed' nodes, check the connectivity results and artifacts for details. Failing the job"
             exit 1
           else
             echo "Connectivity results do not contain any 'Unreachable' nodes"

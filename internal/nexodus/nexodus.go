@@ -75,8 +75,7 @@ type userspaceWG struct {
 	// the last address configured on the userspace wireguard interface
 	userspaceLastAddress string
 	proxyLock            sync.RWMutex
-	ingressProxies       []*UsProxy
-	egressProxies        []*UsProxy
+	proxies              map[ProxyKey]*UsProxy
 }
 
 type deviceCacheEntry struct {
@@ -114,6 +113,7 @@ type Nexodus struct {
 	ipv6Supported            bool
 	os                       string
 	logger                   *zap.SugaredLogger
+	logLevel                 *zap.AtomicLevel
 	// See the NexdStatus* constants
 	status        int
 	statusMsg     string
@@ -148,6 +148,7 @@ type wgLocalConfig struct {
 
 func NewNexodus(
 	logger *zap.SugaredLogger,
+	logLevel *zap.AtomicLevel,
 	controller string,
 	username string,
 	password string,
@@ -212,6 +213,7 @@ func NewNexodus(
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
 		logger:              logger,
+		logLevel:            logLevel,
 		status:              NexdStatusStarting,
 		version:             version,
 		username:            username,
@@ -219,6 +221,9 @@ func NewNexodus(
 		skipTlsVerify:       insecureSkipTlsVerify,
 		stateDir:            stateDir,
 		orgId:               orgId,
+		userspaceWG: userspaceWG{
+			proxies: map[ProxyKey]*UsProxy{},
+		},
 	}
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
@@ -452,10 +457,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
 		ax.reconcileSecurityGroups(ctx)
-		for _, proxy := range ax.ingressProxies {
-			proxy.Start(ctx, wg, ax.userspaceNet)
-		}
-		for _, proxy := range ax.egressProxies {
+		for _, proxy := range ax.proxies {
 			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
 		stunTicker := time.NewTicker(time.Second * 20)
@@ -489,10 +491,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 func (ax *Nexodus) Stop() {
 	ax.logger.Info("Stopping nexd")
-	for _, proxy := range ax.ingressProxies {
-		proxy.Stop()
-	}
-	for _, proxy := range ax.egressProxies {
+	for _, proxy := range ax.proxies {
 		proxy.Stop()
 	}
 }
@@ -702,7 +701,7 @@ func (ax *Nexodus) Reconcile() error {
 	newLocalConfig := false
 	for _, p := range peerMap {
 		existing, ok := ax.deviceCache[p.PublicKey]
-		if !ok || !reflect.DeepEqual(existing.device, p) {
+		if !ok || !ax.isEqualIgnoreSecurityGroup(existing.device, p) {
 			if p.PublicKey == ax.wireguardPubKey {
 				newLocalConfig = true
 			}
@@ -732,6 +731,20 @@ func (ax *Nexodus) Reconcile() error {
 	}
 
 	return nil
+}
+
+func (ax *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
+	// create temporary copies of the instances
+	tmpDev1 := p1
+	tmpDev2 := p2
+	// set the SecurityGroupId to an empty value, so it will not affect the comparison
+	tmpDev1.SecurityGroupId = ""
+	tmpDev2.SecurityGroupId = ""
+	// set the Revision to 0, so it will not affect the comparison
+	tmpDev1.Revision = 0
+	tmpDev2.Revision = 0
+
+	return reflect.DeepEqual(tmpDev1, tmpDev2)
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh

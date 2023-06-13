@@ -353,21 +353,10 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 			return errSecurityGroupNotFound
 		}
 
-		if request.GroupName != "" {
-			securityGroup.GroupName = request.GroupName
-		}
-
-		if request.GroupDescription != "" {
-			securityGroup.GroupDescription = request.GroupDescription
-		}
-
-		if request.InboundRules != nil {
-			securityGroup.InboundRules = request.InboundRules
-		}
-
-		if request.OutboundRules != nil {
-			securityGroup.OutboundRules = request.OutboundRules
-		}
+		securityGroup.GroupName = request.GroupName
+		securityGroup.GroupDescription = request.GroupDescription
+		securityGroup.InboundRules = request.InboundRules
+		securityGroup.OutboundRules = request.OutboundRules
 
 		if res := tx.Save(&securityGroup); res.Error != nil {
 			return res.Error
