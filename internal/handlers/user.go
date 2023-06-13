@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -11,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
 )
 
 // key for username in gin.Context
@@ -118,43 +119,50 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 			ID: userId,
 		}},
 	}
-	if res = api.db.Create(&org); res.Error == nil {
 
+	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Create the organization
+		if res := tx.Create(&org); res.Error != nil {
+			if res.Error != gorm.ErrDuplicatedKey {
+				return res.Error
+			}
+			// If we already have an existing organisation then lets just use that one
+			if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
+				return nil
+			}
+
+			return fmt.Errorf("can't create organization record: %w", res.Error)
+		}
+
+		// Create namespaces and prefixes
 		if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
-			return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
+			return fmt.Errorf("failed to create ipam namespace: %w", err)
 		}
 		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
-			return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+			return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
 		}
 		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
-			return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+			return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 		}
-
 		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String())
+		sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String(), tx)
 		if err != nil {
-			return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+			return fmt.Errorf("failed to create the default security group: %w", res.Error)
 		}
 
 		// Update the default org with the new security group id
-		if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID); err != nil {
-			return noUUID, fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
+		if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID, tx); err != nil {
+			return fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
 		}
 
-		return org.ID, nil
+		return nil
+	})
+
+	if err != nil {
+		return noUUID, err
 	}
 
-	if res.Error.Error() != "duplicated key not allowed" {
-		return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
-	}
-
-	// maybe another concurrent request created it...
-	org = models.Organization{}
-	if api.db.Where("owner_id = ?", userId).First(&org).Error == nil {
-		return org.ID, nil
-	}
-
-	return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
+	return org.ID, nil
 }
 
 // GetUser gets a user

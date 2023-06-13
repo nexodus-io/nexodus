@@ -135,14 +135,14 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	}
 
 	// Create a default security group for the organization
-	sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String())
+	sg, err := api.createDefaultSecurityGroup(ctx, org.ID.String(), nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
 
 	// Update the org with the new security group id, delete the security group if it fails
-	if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID); err != nil {
+	if err := api.updateOrganizationSecGroupId(ctx, sg.ID, org.ID, nil); err != nil {
 		if res := api.db.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
 			errMsg := fmt.Sprintf("failed to update and delete the default security group with an org id: %v", err)
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
