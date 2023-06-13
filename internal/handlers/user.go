@@ -73,31 +73,13 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 
 		user.ID = id
 		user.UserName = userName
-		res = tx.Create(&user)
-		if res.Error == nil {
-			var err error
-			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
-			if err != nil {
-				return err
-			}
-
-			return nil
+		if res = tx.Create(&user); res.Error != nil {
+			return res.Error
 		}
-
-		if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
-			return fmt.Errorf("can't create user record: %w", res.Error)
-		}
-
-		// is another concurrent request creating the user???
-		user = models.User{}
-		if tx.Unscoped().First(&user, "id = ?", id).Error == nil {
-			var err error
-			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
-			if err != nil {
-				return err
-			}
-
-			return nil
+		var err error
+		uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+		if err != nil {
+			return err
 		}
 
 		return nil
