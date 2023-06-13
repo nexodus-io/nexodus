@@ -78,10 +78,37 @@ type userspaceWG struct {
 	proxies              map[ProxyKey]*UsProxy
 }
 
+// Threasholds for determining peer connection health
+const ()
+
+type peerHealth struct {
+	// the time we started tracking this data
+	startTime time.Time
+	// the last tx bytes value for this peer
+	lastTxBytes int64
+	// the time of the last tx bytes update
+	lastTxTime time.Time
+	// the last rx bytes value for this peer
+	lastRxBytes int64
+	// the time of the last rx bytes update
+	lastRxTime time.Time
+	// the last time a handshake occurred with this peer
+	lastHandshakeTime time.Time
+	// last handshake time in raw form
+	lastHandshake string
+	// last time this data was refreshed
+	lastRefresh time.Time
+	// the configured endpoint for this peer
+	endpoint string
+	// whether we see this peer connection as healthy, see peerIsHealthy()
+	peerHealthy bool
+}
+
 type deviceCacheEntry struct {
 	device public.ModelsDevice
 	// the last time this device was updated
 	lastUpdated time.Time
+	peerHealth
 }
 
 type Nexodus struct {
@@ -104,6 +131,7 @@ type Nexodus struct {
 	wgConfig                 wgConfig
 	client                   *client.APIClient
 	controllerURL            *url.URL
+	deviceCacheLock          sync.RWMutex
 	deviceCache              map[string]deviceCacheEntry
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
@@ -504,7 +532,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	existing, ok := nx.deviceCache[nx.wireguardPubKey]
+	existing, ok := nx.deviceCacheLookup(nx.wireguardPubKey)
 	if !ok {
 		// local device not in the cache, so we don't have our config yet.
 		return
@@ -684,6 +712,102 @@ func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization,
 	return nil, fmt.Errorf("user does not belong to organization %s", nx.orgId)
 }
 
+func (nx *Nexodus) deviceCacheIterRead(f func(deviceCacheEntry)) {
+	nx.deviceCacheLock.RLock()
+	defer nx.deviceCacheLock.RUnlock()
+
+	for _, d := range nx.deviceCache {
+		f(d)
+	}
+}
+
+func (nx *Nexodus) deviceCacheLookup(pubKey string) (deviceCacheEntry, bool) {
+	nx.deviceCacheLock.RLock()
+	defer nx.deviceCacheLock.RUnlock()
+
+	d, ok := nx.deviceCache[pubKey]
+	return d, ok
+}
+
+func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
+	// How do we determine a peer is healthy or not?
+	//
+	// We have wireguard keepalives turned on, so if we haven't seen
+	// bidirectional traffic in the keepalive interval + the keepalive timeout,
+	// then it is unhealthy. We can watch the tx and rx counters for this.
+	// We can also watch the LastHandshakeTime.
+	//
+	// The next method we could use here is to check the LastHandshakeTime.
+	// If it is older than the RekeyAfterTime + RekeyTimeout, then it is unhealthy.
+	// That would result in a slower detection of an unhealthy peer than watching
+	// for counters to increment based on keepalives based on our current keepalive
+	// setting, though.
+
+	if d.lastHandshakeTime.IsZero() {
+		// We haven't seen a handshake yet, so this peer connection is not up.
+		if d.peerHealthy {
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to no handshake",
+				d.device.Hostname, d.device.PublicKey,
+				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address)
+		}
+		return false
+	}
+
+	keepaliveWindow := keepaliveInterval + device.KeepaliveTimeout
+
+	if time.Since(d.lastHandshakeTime) < keepaliveWindow {
+		// We have seen a handshake recently enough, so this peer connection is up.
+		if !d.peerHealthy {
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy due to lastHandshakeTime: %s < %s",
+				d.device.Hostname, d.device.PublicKey,
+				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
+				time.Since(d.lastHandshakeTime).String(), keepaliveWindow.String())
+		}
+		return true
+	}
+
+	if time.Since(d.startTime) < keepaliveWindow {
+		// We haven't been tracking this peer long enough to know if it is healthy or not,
+		// so assume the best.
+		if !d.peerHealthy {
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is assumed healthy due to startTime: %s < %s",
+				d.device.Hostname, d.device.PublicKey,
+				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
+				time.Since(d.startTime).String(), keepaliveWindow.String())
+		}
+		return true
+	}
+
+	if time.Since(d.lastTxTime) > keepaliveWindow {
+		if d.peerHealthy {
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastTxTime: %s",
+				d.device.Hostname, d.device.PublicKey,
+				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
+				time.Since(d.lastTxTime).String())
+		}
+		return false
+	}
+
+	if time.Since(d.lastRxTime) > keepaliveWindow {
+		if d.peerHealthy {
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastRxTime: %s",
+				d.device.Hostname, d.device.PublicKey,
+				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
+				time.Since(d.lastRxTime).String())
+		}
+		return false
+	}
+
+	if !d.peerHealthy {
+		nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy based on tx/rx counter activity",
+			d.device.Hostname, d.device.PublicKey,
+			d.device.Endpoints[0].Address, d.device.Endpoints[1].Address)
+	}
+
+	return true
+}
+
+// assumes deviceCacheLock is held with a write-lock
 func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 	nx.deviceCache[p.PublicKey] = deviceCacheEntry{
 		device:      p,
@@ -700,22 +824,77 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		return fmt.Errorf("error: %w", err)
 	}
 
+	// Get the current peer configuration data from the wireguard interface
+	peerStats, err := nx.DumpPeersDefault()
+	if err != nil {
+		if nx.TunnelIP != "" {
+			// Unexpected to fail once we have local interface configuration
+			nx.logger.Warnf("failed to get current peer stats: %w", err)
+		}
+		peerStats = make(map[string]WgSessions)
+	}
+
+	nx.deviceCacheLock.Lock()
+	defer nx.deviceCacheLock.Unlock()
+
+	// Get our device cache up to date
 	newLocalConfig := false
 	for _, p := range peerMap {
+		// Update the cache if the device is new or has changed
 		existing, ok := nx.deviceCache[p.PublicKey]
 		if !ok || !nx.isEqualIgnoreSecurityGroup(existing.device, p) {
 			if p.PublicKey == nx.wireguardPubKey {
 				newLocalConfig = true
 			}
 			nx.addToDeviceCache(p)
+			existing = nx.deviceCache[p.PublicKey]
 		}
+
+		// Store the relay IP for easy reference later
 		if p.Relay {
 			nx.relayWgIP = p.AllowedIps[0]
 		}
+
+		// Keep track of peer connection stats for connection health tracking
+		curStats, ok := peerStats[p.PublicKey]
+		if !ok {
+			// This won't be available early because the peer hasn't been configured yet
+			continue
+		}
+		if curStats.Tx != existing.lastTxBytes {
+			existing.lastTxBytes = curStats.Tx
+			existing.lastTxTime = time.Now()
+		}
+		if curStats.Rx != existing.lastRxBytes {
+			existing.lastRxBytes = curStats.Rx
+			existing.lastRxTime = time.Now()
+		}
+		existing.lastHandshakeTime = curStats.LastHandshakeTime
+		existing.lastHandshake = curStats.LatestHandshake
+		existing.lastRefresh = time.Now()
+		existing.endpoint = curStats.Endpoint
+		existing.peerHealthy = nx.peerIsHealthy(existing)
+		nx.deviceCache[p.PublicKey] = existing
 	}
 
+	// Refresh wireguard peer configuration, getting any new peers or changes to existing peers
 	updatePeers := nx.buildPeersConfig()
 	if newLocalConfig || len(updatePeers) > 0 {
+		// Reset connection health tracking data for any peers that have changed
+		for _, peer := range updatePeers {
+			existing, ok := nx.deviceCache[peer.PublicKey]
+			if !ok {
+				continue
+			}
+			nx.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
+			existing.startTime = time.Now()
+			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
+				existing.endpoint = peerConfig.Endpoint
+			}
+			nx.deviceCache[peer.PublicKey] = existing
+		}
+
+		// Deploy updated wireguard peer configuration
 		if err := nx.DeployWireguardConfig(updatePeers); err != nil {
 			if strings.Contains(err.Error(), securityGroupErr.Error()) {
 				return err

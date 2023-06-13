@@ -13,13 +13,18 @@ import (
 // WgSessions wireguard peer session information
 type WgSessions struct {
 	PublicKey         string
-	PreSharedKey      string
 	Endpoint          string
 	AllowedIPs        []string
 	LatestHandshake   string
 	LastHandshakeTime time.Time `json:"-"`
 	Tx                int64
 	Rx                int64
+	// Only set when populating from the device cache, wgSessionsCached()
+	Healthy bool
+}
+
+func (nx *Nexodus) DumpPeersDefault() (map[string]WgSessions, error) {
+	return nx.DumpPeers(nx.defaultTunnelDev())
 }
 
 func (nx *Nexodus) DumpPeers(iface string) (map[string]WgSessions, error) {
@@ -75,8 +80,6 @@ func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
 				peer = WgSessions{}
 			}
 			peer.PublicKey = pubKeyHexToBase64(kv[1])
-		case "preshared_key":
-			peer.PreSharedKey = kv[1]
 		case "endpoint":
 			peer.Endpoint = kv[1]
 		case "last_handshake_time_sec":
@@ -115,7 +118,6 @@ func (nx *Nexodus) DumpPeersOS(iface string) (map[string]WgSessions, error) {
 		pubKey := peer.PublicKey.String()
 		s := WgSessions{
 			PublicKey:       pubKey,
-			PreSharedKey:    peer.PresharedKey.String(),
 			Endpoint:        peer.Endpoint.String(),
 			AllowedIPs:      util.IPNetSliceToStringSlice(peer.AllowedIPs),
 			LatestHandshake: peer.LastHandshakeTime.String(),

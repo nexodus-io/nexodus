@@ -147,6 +147,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
 }
 
+// assumes a write lock is held on deviceCacheLock
 func (ax *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range ax.deviceCache {
