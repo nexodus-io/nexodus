@@ -563,7 +563,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 
 func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
 	var err error
-	if err = nx.Reconcile(); err == nil {
+	if err = nx.reconcileDeviceCache(); err == nil {
 		return
 	}
 
@@ -647,7 +647,7 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 			nx.logger.Debugf("update device response %+v", res)
 			nx.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
-			if err = nx.Reconcile(); err != nil {
+			if err = nx.reconcileDeviceCache(); err != nil {
 				nx.logger.Debugf("reconcile failed %v", res)
 			}
 		}
@@ -691,7 +691,7 @@ func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 	}
 }
 
-func (nx *Nexodus) Reconcile() error {
+func (nx *Nexodus) reconcileDeviceCache() error {
 	peerMap, resp, err := nx.informer.Execute()
 	if err != nil {
 		if resp != nil {
