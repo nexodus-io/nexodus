@@ -75,7 +75,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			}
 
 			var err error
-			uuid, err = api.createUserOrgIfNotExists(ctx, id, userName)
+			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
 			if err != nil {
 				return err
 			}
@@ -93,7 +93,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			return res.Error
 		}
 		var err error
-		uuid, err = api.createUserOrgIfNotExists(ctx, id, userName)
+		uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	return noUUID, fmt.Errorf("can't create user record")
 }
 
-func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, userName string) (uuid.UUID, error) {
+func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userId string, userName string) (uuid.UUID, error) {
 	// Get the first org the use owns.
 	org := models.Organization{}
 	res := api.db.Where("owner_id = ?", userId).First(&org)
@@ -135,47 +135,39 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, use
 		}},
 	}
 
-	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		// Create the organization
-		if res := tx.Create(&org); res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
-				return res.Error
-			}
-
-			// If we already have an existing organisation then lets just use that one
-			if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
-				return nil
-			}
-
-			return fmt.Errorf("can't create organization record: %w", res.Error)
+	// Create the organization
+	if res := tx.Create(&org); res.Error != nil {
+		if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
+			return noUUID, res.Error
 		}
 
-		// Create namespaces and prefixes
-		if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
-			return fmt.Errorf("failed to create ipam namespace: %w", err)
-		}
-		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
-			return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
-		}
-		if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
-			return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
-		}
-		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
-		if err != nil {
-			return fmt.Errorf("failed to create the default security group: %w", res.Error)
+		// If we already have an existing organisation then lets just use that one
+		if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
+			return org.ID, nil
 		}
 
-		// Update the default org with the new security group id
-		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
-			return fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
-		}
+		return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
+	}
 
-		return nil
-	})
-
+	// Create namespaces and prefixes
+	if err := api.ipam.CreateNamespace(ctx, org.ID); err != nil {
+		return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
+	}
+	if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv4); err != nil {
+		return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+	}
+	if err := api.ipam.AssignPrefix(ctx, org.ID, defaultOrganizationPrefixIPv6); err != nil {
+		return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+	}
+	// Create a default security group for the organization
+	sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
 	if err != nil {
-		return noUUID, err
+		return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+	}
+
+	// Update the default org with the new security group id
+	if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
+		return noUUID, fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
 	}
 
 	return org.ID, nil
