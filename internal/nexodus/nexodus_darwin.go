@@ -11,12 +11,12 @@ import (
 	"os/exec"
 )
 
-func (ax *Nexodus) setupInterfaceOS() error {
+func (nx *Nexodus) setupInterfaceOS() error {
 
-	logger := ax.logger
-	localAddress := ax.TunnelIP
-	localAddressIPv6 := fmt.Sprintf("%s/%s", ax.TunnelIpV6, wgOrgIPv6PrefixLen)
-	dev := ax.tunnelIface
+	logger := nx.logger
+	localAddress := nx.TunnelIP
+	localAddressIPv6 := fmt.Sprintf("%s/%s", nx.TunnelIpV6, wgOrgIPv6PrefixLen)
+	dev := nx.tunnelIface
 
 	if ifaceExists(logger, dev) {
 		deleteDarwinIface(logger, dev)
@@ -40,7 +40,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 
-	if ax.ipv6Supported {
+	if nx.ipv6Supported {
 		_, err = RunCommand("ifconfig", dev, "inet6", localAddressIPv6, "alias")
 		if err != nil {
 			logger.Errorf("failed to assign an IPv6 address to the local osx interface: %v\n", err)
@@ -54,7 +54,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 
-	privateKey, err := wgtypes.ParseKey(ax.wireguardPvtKey)
+	privateKey, err := wgtypes.ParseKey(nx.wireguardPvtKey)
 	if err != nil {
 		logger.Errorf("invalid wiregaurd private key: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
@@ -69,7 +69,7 @@ func (ax *Nexodus) setupInterfaceOS() error {
 
 	err = c.ConfigureDevice(dev, wgtypes.Config{
 		PrivateKey:   &privateKey,
-		ListenPort:   &ax.listenPort,
+		ListenPort:   &nx.listenPort,
 		ReplacePeers: true,
 		Peers:        nil,
 	})
@@ -81,9 +81,9 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	return nil
 }
 
-func (ax *Nexodus) removeExistingInterface() {
-	if ifaceExists(ax.logger, ax.tunnelIface) {
-		deleteDarwinIface(ax.logger, ax.tunnelIface)
+func (nx *Nexodus) removeExistingInterface() {
+	if ifaceExists(nx.logger, nx.tunnelIface) {
+		deleteDarwinIface(nx.logger, nx.tunnelIface)
 	}
 }
 
@@ -102,6 +102,6 @@ func deleteDarwinIface(logger *zap.SugaredLogger, dev string) {
 	}
 }
 
-func (ax *Nexodus) findLocalIP() (string, error) {
-	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
+func (nx *Nexodus) findLocalIP() (string, error) {
+	return discoverGenericIPv4(nx.logger, nx.controllerURL.Host, "443")
 }
