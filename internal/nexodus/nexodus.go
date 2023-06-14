@@ -271,6 +271,8 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	if runtime.GOOS != Linux.String() {
 		ax.logger.Info("Security Groups are currently only supported on Linux")
+	} else if ax.userspaceMode {
+		ax.logger.Info("Security Groups are not supported in userspace proxy mode")
 	}
 
 	var options []client.Option
@@ -498,7 +500,7 @@ func (ax *Nexodus) Stop() {
 
 // reconcileSecurityGroups will check the security group and update it if necessary.
 func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
-	if runtime.GOOS != Linux.String() {
+	if runtime.GOOS != Linux.String() || ax.userspaceMode {
 		return
 	}
 
