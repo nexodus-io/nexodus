@@ -43,6 +43,11 @@ func pubKeyHexToBase64(s string) string {
 }
 
 func (nx *Nexodus) DumpPeersUS(iface string) (map[string]WgSessions, error) {
+	if nx.userspaceDev == nil {
+		// Userspace device not initialized, so there are no sessions to report
+		return map[string]WgSessions{}, nil
+	}
+
 	fullConfig, err := nx.userspaceDev.IpcGet()
 	if err != nil {
 		nx.logger.Errorf("Failed to read back full wireguard config: %w", err)
