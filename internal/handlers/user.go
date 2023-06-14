@@ -52,14 +52,30 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	var user models.User
 	var uuid uuid.UUID
 
-	err := api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		// First lets check if the user has ever existed in the database
 		res := tx.Unscoped().First(&user, "id = ?", id)
 
 		// If the user exists, then lets restore their status in the database
 		if res.Error == nil {
+			if user.DeletedAt.Valid {
+				user.DeletedAt = gorm.DeletedAt{}
+				res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
+				if res.Error != nil {
+					return res.Error
+				}
+			}
+
+			// Check if the UserName has changed since the last time we saw this user
+			if user.UserName != userName {
+				res := tx.Model(&user).Update("UserName", userName)
+				if res.Error != nil {
+					return res.Error
+				}
+			}
+
 			var err error
-			uuid, err = api.restoreDeletedUser(ctx, tx, &user, id, userName)
+			uuid, err = api.createUserOrgIfNotExists(ctx, id, userName)
 			if err != nil {
 				return err
 			}
@@ -77,7 +93,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			return res.Error
 		}
 		var err error
-		uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+		uuid, err = api.createUserOrgIfNotExists(ctx, id, userName)
 		if err != nil {
 			return err
 		}
@@ -96,40 +112,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	return noUUID, fmt.Errorf("can't create user record")
 }
 
-// restoreDeleteUser will restore a user if they have been deleted
-func (api *API) restoreDeletedUser(ctx context.Context, db *gorm.DB, user *models.User, id string, userName string) (uuid.UUID, error) {
-	if user == nil {
-		return noUUID, errors.New("user is nil or has no ID")
-	}
-
-	if db == nil {
-		db = api.db.WithContext(ctx)
-	}
-
-	// If the user was previously deleted, then lets make them active again
-	if user.DeletedAt.Valid {
-		user.DeletedAt = gorm.DeletedAt{}
-		res := db.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
-		if res.Error != nil {
-			return noUUID, res.Error
-		}
-	}
-
-	// Check if the UserName has changed since the last time we saw this user
-	if user.UserName != userName {
-		res := db.Model(&user).Update("UserName", userName)
-		if res.Error != nil {
-			return noUUID, res.Error
-		}
-	}
-
-	return api.createUserOrgIfNotExists(ctx, db, id, userName)
-}
-
-func (api *API) createUserOrgIfNotExists(ctx context.Context, db *gorm.DB, userId string, userName string) (uuid.UUID, error) {
-	// TODO: Check if we even need this? Seems like we could get rid of this and use the logic in the transaction
-	// for returning if Create fails but the organization exists
-
+func (api *API) createUserOrgIfNotExists(ctx context.Context, userId string, userName string) (uuid.UUID, error) {
 	// Get the first org the use owns.
 	org := models.Organization{}
 	res := api.db.Where("owner_id = ?", userId).First(&org)
@@ -152,11 +135,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, db *gorm.DB, userI
 		}},
 	}
 
-	if db == nil {
-		db = api.db.WithContext(ctx)
-	}
-
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		// Create the organization
 		if res := tx.Create(&org); res.Error != nil {
 			if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
