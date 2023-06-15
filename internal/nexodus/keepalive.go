@@ -2,16 +2,15 @@ package nexodus
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"net"
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 const (
@@ -36,6 +35,7 @@ func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 }) {
 	err := nx.ping(peerStatus.WgIP)
 	if err != nil {
+		nx.logger.Debugf("probe error: %v", err)
 		// peer is not replying
 		c <- struct {
 			KeepaliveStatus
@@ -76,23 +76,34 @@ func (nx *Nexodus) doPing(host string, i uint64, waitFor time.Duration) (string,
 	}
 }
 
+const (
+	protocolICMP     = 1
+	protocolIPv6ICMP = 58
+)
+
 func (nx *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string, error) {
+	var networkType string
+	var icmpType icmp.Type
+	var icmpProto int
+
 	if util.IsIPv6Address(host) {
-		return "", fmt.Errorf("IPv6 connectivity check currently not implemented for nexodus userspace mode")
+		networkType = "ping6"
+		icmpType = ipv6.ICMPTypeEchoRequest
+		icmpProto = protocolIPv6ICMP
+	} else {
+		networkType = "ping4"
+		icmpType = ipv4.ICMPTypeEcho
+		icmpProto = protocolICMP
 	}
-	socket, err := nx.userspaceNet.Dial("ping4", host)
-	if err != nil {
-		return "", err
-	}
-	seq, err := rand.Int(rand.Reader, big.NewInt(1<<16))
+	socket, err := nx.userspaceNet.Dial(networkType, host)
 	if err != nil {
 		return "", err
 	}
 	requestPing := icmp.Echo{
-		Seq:  int(seq.Int64()),
+		Seq:  int(i),
 		Data: []byte("pingity ping"),
 	}
-	icmpBytes, _ := (&icmp.Message{Type: ipv4.ICMPTypeEcho, Code: 0, Body: &requestPing}).Marshal(nil)
+	icmpBytes, _ := (&icmp.Message{Type: icmpType, Code: 0, Body: &requestPing}).Marshal(nil)
 	err = socket.SetReadDeadline(time.Now().Add(waitFor))
 	if err != nil {
 		return "", err
@@ -106,7 +117,7 @@ func (nx *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string,
 	if err != nil {
 		return "", err
 	}
-	replyPacket, err := icmp.ParseMessage(1, icmpBytes[:n])
+	replyPacket, err := icmp.ParseMessage(icmpProto, icmpBytes[:n])
 	if err != nil {
 		return "", err
 	}
