@@ -14,12 +14,12 @@ import (
 
 type WgListPeers struct {
 	PublicKey       string
-	PreSharedKey    string
 	Endpoint        string
 	AllowedIPs      []string
 	LatestHandshake string
 	Tx              int64
 	Rx              int64
+	Healthy         bool
 }
 
 func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
@@ -41,9 +41,9 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED")
+			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
 		}
 
 		for _, peer := range peers {
@@ -58,7 +58,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 				secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
 				handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
 			}
-			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx)
+			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
 		}
 
 		w.Flush()
