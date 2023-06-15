@@ -700,7 +700,7 @@ func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization,
 			for _, org := range organizations {
 				nx.logger.Infof("organization name: '%s'  Id: %s", org.Name, org.Id)
 			}
-			return nil, fmt.Errorf("user belongs to multiple organizations, please specify one with --org-id")
+			return nil, fmt.Errorf("user belongs to multiple organizations, please specify one with --organization-id")
 		}
 		return &organizations[0], nil
 	}

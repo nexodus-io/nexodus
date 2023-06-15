@@ -131,10 +131,10 @@ For [try.nexodus.io](https://try.nexodus.io), you may set a password for your ac
 
 When `nexd` starts, it will check to see which organizations it has access to. If no organization is specified, it will connect to the user's default organization. The default is the organization that has the same name as the user.
 
-If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--org-id` flag to `nexd`. For example:
+If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--organization-id` flag to `nexd`. For example:
 
 ```sh
-sudo nexd --org-id 12345678-1234-1234-1234-123456789012 https://try.nexodus.io
+sudo nexd --organization-id 12345678-1234-1234-1234-123456789012 https://try.nexodus.io
 ```
 
 ### Verifying Agent Setup

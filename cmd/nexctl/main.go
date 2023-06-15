@@ -408,14 +408,14 @@ func main() {
 								Required: true,
 							},
 							&cli.StringFlag{
-								Name:     "org-id",
+								Name:     "organization-id",
 								Required: true,
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
-							orgID := cCtx.String("org-id")
+							orgID := cCtx.String("organization-id")
 							return createInvitation(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
 						},
 					},
