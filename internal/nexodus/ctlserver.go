@@ -9,12 +9,12 @@ import (
 )
 
 type NexdCtl struct {
-	ax *Nexodus
+	nx *Nexodus
 }
 
 func (ac *NexdCtl) Status(_ string, result *string) error {
 	var statusStr string
-	switch ac.ax.status {
+	switch ac.nx.status {
 	case NexdStatusStarting:
 		statusStr = "Starting"
 	case NexdStatusAuth:
@@ -25,33 +25,33 @@ func (ac *NexdCtl) Status(_ string, result *string) error {
 		statusStr = "Unknown"
 	}
 	res := fmt.Sprintf("Status: %s\n", statusStr)
-	if len(ac.ax.statusMsg) > 0 {
-		res += ac.ax.statusMsg
+	if len(ac.nx.statusMsg) > 0 {
+		res += ac.nx.statusMsg
 	}
 	*result = res
 	return nil
 }
 
 func (ac *NexdCtl) Version(_ string, result *string) error {
-	*result = ac.ax.version
+	*result = ac.nx.version
 	return nil
 }
 
 func (ac *NexdCtl) GetTunnelIPv4(_ string, result *string) error {
-	*result = ac.ax.TunnelIP
+	*result = ac.nx.TunnelIP
 	return nil
 }
 
 func (ac *NexdCtl) GetTunnelIPv6(_ string, result *string) error {
-	*result = ac.ax.TunnelIpV6
+	*result = ac.nx.TunnelIpV6
 	return nil
 }
 
 func (ac *NexdCtl) ProxyList(_ string, result *string) error {
 	*result = ""
-	ac.ax.proxyLock.RLock()
-	defer ac.ax.proxyLock.RUnlock()
-	for _, proxy := range ac.ax.proxies {
+	ac.nx.proxyLock.RLock()
+	defer ac.nx.proxyLock.RUnlock()
+	for _, proxy := range ac.nx.proxies {
 		proxy.mu.RLock()
 		for _, rule := range proxy.rules {
 			*result += fmt.Sprintf("%s\n", rule.AsFlag())
@@ -69,13 +69,13 @@ func (ac *NexdCtl) proxyAdd(proxyType ProxyType, rule string, result *string) er
 	}
 	proxyRule.stored = true
 
-	proxy, err := ac.ax.UserspaceProxyAdd(proxyRule)
+	proxy, err := ac.nx.UserspaceProxyAdd(proxyRule)
 	if err != nil {
 		return err
 	}
-	proxy.Start(ac.ax.nexCtx, ac.ax.nexWg, ac.ax.userspaceNet)
+	proxy.Start(ac.nx.nexCtx, ac.nx.nexWg, ac.nx.userspaceNet)
 
-	err = ac.ax.StoreProxyRules()
+	err = ac.nx.StoreProxyRules()
 	if err != nil {
 		return err
 	}
@@ -98,11 +98,11 @@ func (ac *NexdCtl) proxyRemove(proxyType ProxyType, rule string, result *string)
 	}
 	proxyRule.stored = true
 
-	_, err = ac.ax.UserspaceProxyRemove(proxyRule)
+	_, err = ac.nx.UserspaceProxyRemove(proxyRule)
 	if err != nil {
 		return err
 	}
-	err = ac.ax.StoreProxyRules()
+	err = ac.nx.StoreProxyRules()
 	if err != nil {
 		return err
 	}
@@ -119,19 +119,19 @@ func (ac *NexdCtl) ProxyRemoveEgress(rule string, result *string) error {
 }
 
 func (ac *NexdCtl) SetDebugOn(_ string, result *string) error {
-	ac.ax.logLevel.SetLevel(zap.DebugLevel)
+	ac.nx.logLevel.SetLevel(zap.DebugLevel)
 	*result = "Debug logging enabled"
 	return nil
 }
 
 func (ac *NexdCtl) SetDebugOff(_ string, result *string) error {
-	ac.ax.logLevel.SetLevel(zap.InfoLevel)
+	ac.nx.logLevel.SetLevel(zap.InfoLevel)
 	*result = "Debug logging disabled"
 	return nil
 }
 
 func (ac *NexdCtl) GetDebug(_ string, result *string) error {
-	if ac.ax.logLevel.Level() == zap.DebugLevel {
+	if ac.nx.logLevel.Level() == zap.DebugLevel {
 		*result = "on"
 	} else {
 		*result = "off"

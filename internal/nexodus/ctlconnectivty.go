@@ -16,7 +16,7 @@ const (
 
 // ConnectivityV4 pings all peers via IPv4
 func (ac *NexdCtl) ConnectivityV4(_ string, keepaliveResults *string) error {
-	res := ac.ax.connectivityProbe(v4)
+	res := ac.nx.connectivityProbe(v4)
 	var err error
 
 	// Marshal the map into a JSON string.
@@ -32,7 +32,7 @@ func (ac *NexdCtl) ConnectivityV4(_ string, keepaliveResults *string) error {
 
 // ConnectivityV6 pings all peers via IPv6
 func (ac *NexdCtl) ConnectivityV6(_ string, keepaliveResults *string) error {
-	res := ac.ax.connectivityProbe(v6)
+	res := ac.nx.connectivityProbe(v6)
 	var err error
 
 	// Marshal the map into a JSON string.
