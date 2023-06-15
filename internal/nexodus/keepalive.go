@@ -2,15 +2,15 @@ package nexodus
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"net"
 	"time"
 
+	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 const (
@@ -20,6 +20,7 @@ const (
 	PACKETSIZE                         = 64
 	ICMP_TYPE_ECHO_REQUEST             = 8
 	ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET = 20
+	ICMP6_TYPE_ECHO_REQUEST            = 128
 )
 
 type KeepaliveStatus struct {
@@ -28,12 +29,13 @@ type KeepaliveStatus struct {
 	Hostname    string `json:"hostname"`
 }
 
-func (ax *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
+func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 	KeepaliveStatus
 	IsReachable bool
 }) {
-	err := ax.ping(peerStatus.WgIP)
+	err := nx.ping(peerStatus.WgIP)
 	if err != nil {
+		nx.logger.Debugf("probe error: %v", err)
 		// peer is not replying
 		c <- struct {
 			KeepaliveStatus
@@ -66,28 +68,42 @@ func cksum(bs []byte) uint16 {
 	return ^uint16(sum)
 }
 
-func (ax *Nexodus) doPing(host string, i uint64, waitFor time.Duration) (string, error) {
-	if ax.userspaceMode {
-		return ax.pingUS(host, i, waitFor)
+func (nx *Nexodus) doPing(host string, i uint64, waitFor time.Duration) (string, error) {
+	if nx.userspaceMode {
+		return nx.pingUS(host, i, waitFor)
 	} else {
-		return ax.pingOS(host, i, waitFor)
+		return nx.pingOS(host, i, waitFor)
 	}
 }
 
-func (ax *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string, error) {
-	socket, err := ax.userspaceNet.Dial("ping4", host)
-	if err != nil {
-		return "", err
+const (
+	protocolICMP     = 1
+	protocolIPv6ICMP = 58
+)
+
+func (nx *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string, error) {
+	var networkType string
+	var icmpType icmp.Type
+	var icmpProto int
+
+	if util.IsIPv6Address(host) {
+		networkType = "ping6"
+		icmpType = ipv6.ICMPTypeEchoRequest
+		icmpProto = protocolIPv6ICMP
+	} else {
+		networkType = "ping4"
+		icmpType = ipv4.ICMPTypeEcho
+		icmpProto = protocolICMP
 	}
-	seq, err := rand.Int(rand.Reader, big.NewInt(1<<16))
+	socket, err := nx.userspaceNet.Dial(networkType, host)
 	if err != nil {
 		return "", err
 	}
 	requestPing := icmp.Echo{
-		Seq:  int(seq.Int64()),
+		Seq:  int(i),
 		Data: []byte("pingity ping"),
 	}
-	icmpBytes, _ := (&icmp.Message{Type: ipv4.ICMPTypeEcho, Code: 0, Body: &requestPing}).Marshal(nil)
+	icmpBytes, _ := (&icmp.Message{Type: icmpType, Code: 0, Body: &requestPing}).Marshal(nil)
 	err = socket.SetReadDeadline(time.Now().Add(waitFor))
 	if err != nil {
 		return "", err
@@ -101,7 +117,7 @@ func (ax *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string,
 	if err != nil {
 		return "", err
 	}
-	replyPacket, err := icmp.ParseMessage(1, icmpBytes[:n])
+	replyPacket, err := icmp.ParseMessage(icmpProto, icmpBytes[:n])
 	if err != nil {
 		return "", err
 	}
@@ -115,8 +131,17 @@ func (ax *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string,
 	return fmt.Sprintf("%d bytes from %v: icmp_seq=%v, time=%v", n, host, i, time.Since(start)), nil
 }
 
-func (ax *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string, error) {
-	netname := "ip4:icmp"
+func (nx *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string, error) {
+	var v6Host bool
+	var netname string
+
+	if util.IsIPv6Address(host) {
+		v6Host = true
+		netname = "ip6:ipv6-icmp"
+	} else {
+		netname = "ip4:icmp"
+	}
+
 	c, err := net.Dial(netname, host)
 	if err != nil {
 		return "", fmt.Errorf("net.Dial(%v %v) failed: %w", netname, host, err)
@@ -124,11 +149,15 @@ func (ax *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 	defer c.Close()
 	// send echo request
 	if err = c.SetDeadline(time.Now().Add(waitFor)); err != nil {
-		ax.logger.Debugf("probe error: %v", err)
+		nx.logger.Debugf("probe error: %v", err)
 	}
 
 	msg := make([]byte, PACKETSIZE)
-	msg[0] = ICMP_TYPE_ECHO_REQUEST
+	if v6Host {
+		msg[0] = ICMP6_TYPE_ECHO_REQUEST
+	} else {
+		msg[0] = ICMP_TYPE_ECHO_REQUEST
+	}
 	msg[1] = 0
 	binary.BigEndian.PutUint16(msg[6:], uint16(i))
 	binary.BigEndian.PutUint16(msg[4:], uint16(i>>16))
@@ -138,7 +167,7 @@ func (ax *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 	}
 	// get echo reply
 	if err = c.SetDeadline(time.Now().Add(waitFor)); err != nil {
-		ax.logger.Debugf("probe error: %v", err)
+		nx.logger.Debugf("probe error: %v", err)
 	}
 	rmsg := make([]byte, PACKETSIZE+256)
 	before := time.Now()
@@ -148,12 +177,11 @@ func (ax *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 	}
 	latency := time.Since(before)
 
-	rmsg = rmsg[ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET:]
-	cks := binary.BigEndian.Uint16(rmsg[2:])
-	binary.BigEndian.PutUint16(rmsg[2:], 0)
-	if cks != cksum(rmsg) {
-		return "", fmt.Errorf("bad ICMP checksum: %v (expected %v)", cks, cksum(rmsg))
+	if !v6Host {
+		rmsg = rmsg[ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET:]
 	}
+
+	binary.BigEndian.PutUint16(rmsg[2:], 0)
 	id := binary.BigEndian.Uint16(rmsg[4:])
 	seq := binary.BigEndian.Uint16(rmsg[6:])
 	rseq := uint64(id)<<16 + uint64(seq)
@@ -164,14 +192,11 @@ func (ax *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 	return fmt.Sprintf("%d bytes from %v: icmp_seq=%v, time=%v", amt, host, i, latency), nil
 }
 
-func (ax *Nexodus) ping(host string) error {
-	if PACKETSIZE < 8 {
-		return fmt.Errorf("packet size too small (must be >= 8): %v", PACKETSIZE)
-	}
+func (nx *Nexodus) ping(host string) error {
 	interval := time.Duration(interval)
 	waitFor := time.Duration(timeWait) * time.Millisecond
 	for i := uint64(0); i <= iterations; i++ {
-		_, err := ax.doPing(host, i+1, waitFor)
+		_, err := nx.doPing(host, i+1, waitFor)
 		if err != nil {
 			return fmt.Errorf("ping failed: %w", err)
 		}

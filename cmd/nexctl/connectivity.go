@@ -12,8 +12,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	v6 = "v6"
+	v4 = "v4"
+)
+
 // cmdConnStatus check the reachability of the node's peers and sort the return by hostname
-func cmdConnStatus(cCtx *cli.Context) error {
+func cmdConnStatus(cCtx *cli.Context, family string) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -23,7 +28,7 @@ func cmdConnStatus(cCtx *cli.Context) error {
 	s.Suffix = " Running Probe..."
 	s.Start()
 
-	result, err := callNexdKeepalives()
+	result, err := callNexdKeepalives(family)
 	if err != nil {
 		// clear spinner on error return
 		fmt.Print("\r \r")
@@ -69,12 +74,22 @@ func cmdConnStatus(cCtx *cli.Context) error {
 	return err
 }
 
-func callNexdKeepalives() (map[string]nexodus.KeepaliveStatus, error) {
+// callNexdKeepalives call the Connectivity ctl methods in nexd agent
+func callNexdKeepalives(family string) (map[string]nexodus.KeepaliveStatus, error) {
 	var result map[string]nexodus.KeepaliveStatus
+	var keepaliveJson string
+	var err error
 
-	keepaliveJson, err := callNexd("Connectivity", "")
-	if err != nil {
-		return result, fmt.Errorf("Failed to get nexd connectivity status: %w\n", err)
+	if family == v6 {
+		keepaliveJson, err = callNexd("ConnectivityV6", "")
+		if err != nil {
+			return result, fmt.Errorf("Failed to get nexd connectivity status: %w\n", err)
+		}
+	} else {
+		keepaliveJson, err = callNexd("ConnectivityV4", "")
+		if err != nil {
+			return result, fmt.Errorf("Failed to get nexd connectivity status: %w\n", err)
+		}
 	}
 
 	err = json.Unmarshal([]byte(keepaliveJson), &result)
