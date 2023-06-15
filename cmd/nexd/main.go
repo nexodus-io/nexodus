@@ -103,7 +103,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		userspaceMode,
 		cCtx.String("state-dir"),
 		ctx,
-		cCtx.String("org-id"),
+		cCtx.String("organization-id"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -356,7 +356,7 @@ func main() {
 				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
-				Name:     "org-id",
+				Name:     "organization-id",
 				Usage:    "Organization ID to use when registering with the nexodus service",
 				EnvVars:  []string{"NEXD_ORG_ID"},
 				Required: false,
