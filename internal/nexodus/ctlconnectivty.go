@@ -8,10 +8,15 @@ import (
 	"go.uber.org/zap"
 )
 
-const batchSize = 10
+const (
+	batchSize = 10
+	v4        = "v4"
+	v6        = "v6"
+)
 
-func (ac *NexdCtl) Connectivity(_ string, keepaliveResults *string) error {
-	res := ac.ax.connectivityProbe()
+// ConnectivityV4 pings all peers via IPv4
+func (ac *NexdCtl) ConnectivityV4(_ string, keepaliveResults *string) error {
+	res := ac.ax.connectivityProbe(v4)
 	var err error
 
 	// Marshal the map into a JSON string.
@@ -25,21 +30,47 @@ func (ac *NexdCtl) Connectivity(_ string, keepaliveResults *string) error {
 	return nil
 }
 
-func (ax *Nexodus) connectivityProbe() map[string]KeepaliveStatus {
+// ConnectivityV6 pings all peers via IPv6
+func (ac *NexdCtl) ConnectivityV6(_ string, keepaliveResults *string) error {
+	res := ac.ax.connectivityProbe(v6)
+	var err error
+
+	// Marshal the map into a JSON string.
+	keepaliveJson, err := json.Marshal(res)
+	if err != nil {
+		return fmt.Errorf("error marshalling connectivty results")
+	}
+
+	*keepaliveResults = string(keepaliveJson)
+
+	return nil
+}
+
+func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 	peerStatusMap := make(map[string]KeepaliveStatus)
 
-	if !ax.relay {
-		for _, value := range ax.deviceCache {
+	if !nx.relay {
+		for _, value := range nx.deviceCache {
 			// skip the node sourcing the probe
-			if ax.wireguardPubKey == value.device.PublicKey {
+			if nx.wireguardPubKey == value.device.PublicKey {
 				continue
 			}
+			var nodeAddr string
 			pubKey := value.device.PublicKey
-			nodeAddr := value.device.TunnelIp
-			if net.ParseIP(value.device.TunnelIp) == nil {
-				ax.logger.Debugf("failed parsing an ip from the prefix %s", value.device.TunnelIp)
-				continue
+			if family == v6 {
+				nodeAddr = value.device.TunnelIpV6
+				if net.ParseIP(value.device.TunnelIpV6) == nil {
+					nx.logger.Debugf("failed parsing an ipv6 address from %s", value.device.TunnelIp)
+					continue
+				}
+			} else {
+				nodeAddr = value.device.TunnelIp
+				if net.ParseIP(value.device.TunnelIp) == nil {
+					nx.logger.Debugf("failed parsing an ipv4 address from %s", value.device.TunnelIp)
+					continue
+				}
 			}
+
 			hostname := value.device.Hostname
 			peerStatusMap[pubKey] = KeepaliveStatus{
 				WgIP:        nodeAddr,
@@ -48,13 +79,13 @@ func (ax *Nexodus) connectivityProbe() map[string]KeepaliveStatus {
 			}
 		}
 	}
-	connResults := ax.probeConnectivity(peerStatusMap, ax.logger)
+	connResults := nx.probeConnectivity(peerStatusMap, nx.logger)
 
 	return connResults
 }
 
 // probeConnectivity check connectivity in batches to limit excessive traffic in the case of a large number of peers
-func (ax *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
+func (nx *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
 	peerConnResultsMap := make(map[string]KeepaliveStatus)
 
 	peerKeys := make([]string, 0, len(peers))
@@ -76,7 +107,7 @@ func (ax *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *z
 		})
 
 		for _, pubKey := range batch {
-			go ax.runProbe(peers[pubKey], c)
+			go nx.runProbe(peers[pubKey], c)
 		}
 
 		for range batch {

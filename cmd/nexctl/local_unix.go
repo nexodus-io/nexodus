@@ -194,7 +194,7 @@ func init() {
 			},
 			{
 				Name:  "peers",
-				Usage: "Commands for interacting nexd exit node configuration",
+				Usage: "Commands for interacting with nexd peer connectivity",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
@@ -205,9 +205,18 @@ func init() {
 						},
 					},
 					{
-						Name:   "ping",
-						Usage:  "run a test to check the nexd peer connectivity (host firewalls may block the ICMP probes)",
-						Action: cmdConnStatus,
+						Name:  "ping",
+						Usage: "run a test to check the nexd IPv4 peer connectivity (host firewalls or security groups may block the ICMP probes)",
+						Action: func(cCtx *cli.Context) error {
+							return cmdConnStatus(cCtx, v4)
+						},
+					},
+					{
+						Name:  "ping6",
+						Usage: "run a test to check the nexd IPv6 peer connectivity (host firewalls or security groups may block the ICMP probes)",
+						Action: func(cCtx *cli.Context) error {
+							return cmdConnStatus(cCtx, v6)
+						},
 					},
 				},
 			},
