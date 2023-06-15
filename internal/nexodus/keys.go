@@ -25,21 +25,21 @@ const (
 )
 
 // generateKeyPair a key pair and write them to disk
-func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
+func (nx *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	ax.wireguardPubKey = privateKey.PublicKey().String()
-	ax.wireguardPvtKey = privateKey.String()
+	nx.wireguardPubKey = privateKey.PublicKey().String()
+	nx.wireguardPvtKey = privateKey.String()
 
 	// TODO remove this debug statement at some point
-	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
+	nx.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", nx.wireguardPubKey, nx.wireguardPvtKey)
 	// write the new keys to disk
-	WriteToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
-	WriteToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+	WriteToFile(nx.logger, nx.wireguardPubKey, publicKeyFile, publicKeyPermissions)
+	WriteToFile(nx.logger, nx.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
 
 	return nil
 }

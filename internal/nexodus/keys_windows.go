@@ -6,28 +6,28 @@ import "fmt"
 
 // handleKeys will look for an existing key pair, if a pair is not found this method
 // will generate a new pair and write them to location on the disk depending on the OS
-func (ax *Nexodus) handleKeys() error {
+func (nx *Nexodus) handleKeys() error {
 	var pubKeyFile string
 	var privKeyFile string
-	if ax.userspaceMode {
+	if nx.userspaceMode {
 		pubKeyFile = workdirPublicKeyFile
 		privKeyFile = workdirPrivateKeyFile
 	} else {
 		pubKeyFile = windowsPublicKeyFile
 		privKeyFile = windowsPrivateKeyFile
 	}
-	publicKey := readKeyFile(ax.logger, pubKeyFile)
-	privateKey := readKeyFile(ax.logger, privKeyFile)
+	publicKey := readKeyFile(nx.logger, pubKeyFile)
+	privateKey := readKeyFile(nx.logger, privKeyFile)
 	if publicKey != "" && privateKey != "" {
-		ax.wireguardPubKey = publicKey
-		ax.wireguardPvtKey = privateKey
-		ax.logger.Infof("Existing key pair found at [ %s ] and [ %s ]", pubKeyFile, privKeyFile)
+		nx.wireguardPubKey = publicKey
+		nx.wireguardPvtKey = privateKey
+		nx.logger.Infof("Existing key pair found at [ %s ] and [ %s ]", pubKeyFile, privKeyFile)
 		return nil
 	}
-	ax.logger.Infof("No existing public/private key pair found, generating a new pair")
-	if err := ax.generateKeyPair(pubKeyFile, privKeyFile); err != nil {
+	nx.logger.Infof("No existing public/private key pair found, generating a new pair")
+	if err := nx.generateKeyPair(pubKeyFile, privKeyFile); err != nil {
 		return fmt.Errorf("Unable to locate or generate a key/pair: %w", err)
 	}
-	ax.logger.Debugf("New keys were written to [ %s ] and [ %s ]", pubKeyFile, privKeyFile)
+	nx.logger.Debugf("New keys were written to [ %s ] and [ %s ]", pubKeyFile, privKeyFile)
 	return nil
 }
