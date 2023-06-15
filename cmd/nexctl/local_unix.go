@@ -199,6 +199,14 @@ func init() {
 					{
 						Name:  "list",
 						Usage: "list the nexd peers for this device",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "display the full set of peer details",
+								Value:   false,
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							return cmdListPeers(cCtx, encodeOut)

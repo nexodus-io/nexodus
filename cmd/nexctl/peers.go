@@ -40,10 +40,19 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		var fs string
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		if cCtx.Bool("full") {
+			fs = "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		} else {
+			fs = "%s\t%s\t%s\n"
+		}
 		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
+			if cCtx.Bool("full") {
+				fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
+			} else {
+				fmt.Fprintf(w, fs, "PUBLIC KEY", "ALLOWED IPS", "HEALTHY")
+			}
 		}
 
 		for _, peer := range peers {
@@ -58,7 +67,11 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 				secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
 				handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
 			}
-			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
+			if cCtx.Bool("full") {
+				fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
+			} else {
+				fmt.Fprintf(w, fs, peer.PublicKey, peer.AllowedIPs, strconv.FormatBool(peer.Healthy))
+			}
 		}
 
 		w.Flush()
