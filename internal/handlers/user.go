@@ -60,16 +60,14 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 		if res.Error == nil {
 			if user.DeletedAt.Valid {
 				user.DeletedAt = gorm.DeletedAt{}
-				res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt)
-				if res.Error != nil {
+				if res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt); res.Error != nil {
 					return res.Error
 				}
 			}
 
 			// Check if the UserName has changed since the last time we saw this user
 			if user.UserName != userName {
-				res := tx.Model(&user).Update("UserName", userName)
-				if res.Error != nil {
+				if res := tx.Model(&user).Update("UserName", userName); res.Error != nil {
 					return res.Error
 				}
 			}
