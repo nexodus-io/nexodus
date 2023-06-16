@@ -226,7 +226,7 @@ func NewNexodus(
 		}
 	}
 
-	nx := &Nexodus{
+	ax := &Nexodus{
 		wireguardPubKey:     wireguardPubKey,
 		wireguardPvtKey:     wireguardPvtKey,
 		controllerIP:        controller,
@@ -253,14 +253,14 @@ func NewNexodus(
 			proxies: map[ProxyKey]*UsProxy{},
 		},
 	}
-	nx.userspaceMode = userspaceMode
-	nx.tunnelIface = nx.defaultTunnelDev()
+	ax.userspaceMode = userspaceMode
+	ax.tunnelIface = ax.defaultTunnelDev()
 
-	if nx.relay {
-		nx.listenPort = WgDefaultPort
+	if ax.relay {
+		ax.listenPort = WgDefaultPort
 	}
 
-	if err := nx.checkUnsupportedConfigs(); err != nil {
+	if err := ax.checkUnsupportedConfigs(); err != nil {
 		return nil, err
 	}
 
@@ -269,70 +269,70 @@ func NewNexodus(
 	}
 
 	// remove orphaned wg interfaces from previous node joins
-	nx.removeExistingInterface()
+	ax.removeExistingInterface()
 
-	if err := nx.symmetricNatDisco(ctx); err != nil {
-		nx.logger.Warn(err)
+	if err := ax.symmetricNatDisco(ctx); err != nil {
+		ax.logger.Warn(err)
 	}
 
-	return nx, nil
+	return ax, nil
 }
 
-func (nx *Nexodus) SetStatus(status int, msg string) {
-	nx.statusMsg = msg
-	nx.status = status
+func (ax *Nexodus) SetStatus(status int, msg string) {
+	ax.statusMsg = msg
+	ax.status = status
 }
 
-func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
-	nx.nexCtx = ctx
-	nx.nexWg = wg
+func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
+	ax.nexCtx = ctx
+	ax.nexWg = wg
 
 	// Block additional proxy configuration coming in via the ctl server until after
 	// initial startup is complete.
-	nx.proxyLock.Lock()
-	defer nx.proxyLock.Unlock()
+	ax.proxyLock.Lock()
+	defer ax.proxyLock.Unlock()
 
 	var err error
-	if err := nx.CtlServerStart(ctx, wg); err != nil {
+	if err := ax.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
 
 	if runtime.GOOS != Linux.String() {
-		nx.logger.Info("Security Groups are currently only supported on Linux")
-	} else if nx.userspaceMode {
-		nx.logger.Info("Security Groups are not supported in userspace proxy mode")
+		ax.logger.Info("Security Groups are currently only supported on Linux")
+	} else if ax.userspaceMode {
+		ax.logger.Info("Security Groups are not supported in userspace proxy mode")
 	}
 
 	var options []client.Option
-	if nx.stateDir != "" {
-		options = append(options, client.WithTokenFile(filepath.Join(nx.stateDir, apiToken)))
+	if ax.stateDir != "" {
+		options = append(options, client.WithTokenFile(filepath.Join(ax.stateDir, apiToken)))
 	}
-	if nx.username == "" {
+	if ax.username == "" {
 		options = append(options, client.WithDeviceFlow())
-	} else if nx.username != "" && nx.password == "" {
+	} else if ax.username != "" && ax.password == "" {
 		fmt.Print("Enter nexodus account password: ")
 		passwdInput, err := term.ReadPassword(int(syscall.Stdin))
 		println()
 		if err != nil {
 			return fmt.Errorf("login aborted: %w", err)
 		}
-		nx.password = string(passwdInput)
-		options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+		ax.password = string(passwdInput)
+		options = append(options, client.WithPasswordGrant(ax.username, ax.password))
 	} else {
-		options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+		options = append(options, client.WithPasswordGrant(ax.username, ax.password))
 	}
-	if nx.skipTlsVerify { // #nosec G402
+	if ax.skipTlsVerify { // #nosec G402
 		options = append(options, client.WithTLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		}))
 	}
 
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		nx.client, err = client.NewAPIClient(ctx, nx.controllerURL.String(), func(msg string) {
-			nx.SetStatus(NexdStatusAuth, msg)
+		ax.client, err = client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+			ax.SetStatus(NexdStatusAuth, msg)
 		}, options...)
 		if err != nil {
-			nx.logger.Warnf("client api error - retrying: %v", err)
+			ax.logger.Warnf("client api error - retrying: %v", err)
 			return err
 		}
 		return nil
@@ -341,25 +341,25 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("client api error: %w", err)
 	}
 
-	nx.SetStatus(NexdStatusRunning, "")
+	ax.SetStatus(NexdStatusRunning, "")
 
-	if err := nx.handleKeys(); err != nil {
+	if err := ax.handleKeys(); err != nil {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
 
 	var user *public.ModelsUser
 	var resp *http.Response
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		user, resp, err = nx.client.UsersApi.GetUser(ctx, "me").Execute()
+		user, resp, err = ax.client.UsersApi.GetUser(ctx, "me").Execute()
 		if err != nil {
 			if resp != nil {
-				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
+				ax.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			} else if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) {
-				nx.logger.Errorf("The nexodus token stored in %s/%s is not valid for the api-server, you can remove the file and try again: %v", nx.stateDir, apiToken, err)
+				ax.logger.Errorf("The nexodus token stored in %s/%s is not valid for the api-server, you can remove the file and try again: %v", ax.stateDir, apiToken, err)
 				return err
 			} else {
-				nx.logger.Warnf("get user error - retrying error: %v", err)
+				ax.logger.Warnf("get user error - retrying error: %v", err)
 				return err
 			}
 		}
@@ -371,14 +371,14 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	var organizations []public.ModelsOrganization
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		organizations, resp, err = nx.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+		organizations, resp, err = ax.client.OrganizationsApi.ListOrganizations(ctx).Execute()
 		if err != nil {
 			if resp != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
+				ax.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			}
 			if err != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v", err)
+				ax.logger.Warnf("get organizations error - retrying error: %v", err)
 				return err
 			}
 		}
@@ -389,31 +389,31 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("get organizations error: %w", err)
 	}
 
-	nx.org, err = nx.chooseOrganization(organizations, *user)
+	ax.org, err = ax.chooseOrganization(organizations, *user)
 	if err != nil {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
 
 	informerCtx, informerCancel := context.WithCancel(ctx)
-	nx.informerStop = informerCancel
-	nx.informer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	ax.informerStop = informerCancel
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.org.Id).Informer()
 
 	var localIP string
 	var localEndpointPort int
 
 	// User requested ip --request-ip takes precedent
-	if nx.userProvidedLocalIP != "" {
-		localIP = nx.userProvidedLocalIP
-		localEndpointPort = nx.listenPort
+	if ax.userProvidedLocalIP != "" {
+		localIP = ax.userProvidedLocalIP
+		localEndpointPort = ax.listenPort
 	}
 
-	if nx.relay {
-		peerMap, _, err := nx.informer.Execute()
+	if ax.relay {
+		peerMap, _, err := ax.informer.Execute()
 		if err != nil {
 			return err
 		}
 
-		existingRelay, err := nx.orgRelayCheck(peerMap)
+		existingRelay, err := ax.orgRelayCheck(peerMap)
 		if err != nil {
 			return err
 		}
@@ -424,27 +424,27 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
 	stunServer1 := stun.NextServer()
-	if !nx.symmetricNat && nx.stun && localIP == "" {
-		ipPort, err := stun.Request(nx.logger, stunServer1, nx.listenPort)
+	if !ax.symmetricNat && ax.stun && localIP == "" {
+		ipPort, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
-			nx.logger.Warn("Unable to determine the public facing address, falling back to the local address")
+			ax.logger.Warn("Unable to determine the public facing address, falling back to the local address")
 		} else {
 			localIP = ipPort.Addr().String()
 			localEndpointPort = int(ipPort.Port())
 		}
 	}
 	if localIP == "" {
-		ip, err := nx.findLocalIP()
+		ip, err := ax.findLocalIP()
 		if err != nil {
 			return fmt.Errorf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %w", err)
 		}
 		localIP = ip
-		localEndpointPort = nx.listenPort
+		localEndpointPort = ax.listenPort
 	}
 
-	nx.os = runtime.GOOS
+	ax.os = runtime.GOOS
 
-	nx.endpointLocalAddress = localIP
+	ax.endpointLocalAddress = localIP
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	endpoints := []public.ModelsEndpoint{
 		{
@@ -454,16 +454,16 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		},
 		{
 			Source:   "stun:" + stunServer1,
-			Address:  nx.nodeReflexiveAddressIPv4.String(),
+			Address:  ax.nodeReflexiveAddressIPv4.String(),
 			Distance: 0,
 		},
 	}
 
 	var modelsDevice public.ModelsDevice
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		modelsDevice, err = nx.createOrUpdateDeviceOperation(user.Id, endpoints)
+		modelsDevice, err = ax.createOrUpdateDeviceOperation(user.Id, endpoints)
 		if err != nil {
-			nx.logger.Warnf("device join error - retrying: %v", err)
+			ax.logger.Warnf("device join error - retrying: %v", err)
 			return err
 		}
 		return nil
@@ -472,23 +472,23 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("join error %w", err)
 	}
 
-	nx.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
-	nx.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
-		modelsDevice.Id, nx.org.Name, nx.org.Id)
+	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
+	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
+		modelsDevice.Id, ax.org.Name, ax.org.Id)
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
-	if nx.relay {
-		if err := nx.relayPrep(); err != nil {
+	if ax.relay {
+		if err := ax.relayPrep(); err != nil {
 			return err
 		}
 	}
 
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
-		nx.reconcileDevices(ctx, options)
-		nx.reconcileSecurityGroups(ctx)
-		for _, proxy := range nx.proxies {
-			proxy.Start(ctx, wg, nx.userspaceNet)
+		ax.reconcileDevices(ctx, options)
+		ax.reconcileSecurityGroups(ctx)
+		for _, proxy := range ax.proxies {
+			proxy.Start(ctx, wg, ax.userspaceNet)
 		}
 		stunTicker := time.NewTicker(time.Second * 20)
 		secGroupTicker := time.NewTicker(time.Second * 20)
@@ -500,18 +500,18 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-ctx.Done():
 				return
 			case <-stunTicker.C:
-				if err := nx.reconcileStun(modelsDevice.Id); err != nil {
-					nx.logger.Debug(err)
+				if err := ax.reconcileStun(modelsDevice.Id); err != nil {
+					ax.logger.Debug(err)
 				}
-			case <-nx.informer.Changed():
-				nx.reconcileDevices(ctx, options)
+			case <-ax.informer.Changed():
+				ax.reconcileDevices(ctx, options)
 			case <-pollTicker.C:
 				// This does not actually poll the API for changes. Peer configuration changes will only
 				// be processed when they come in on the informer. This periodic check is needed to
 				// re-establish our connection to the API if it is lost.
-				nx.reconcileDevices(ctx, options)
+				ax.reconcileDevices(ctx, options)
 			case <-secGroupTicker.C:
-				nx.reconcileSecurityGroups(ctx)
+				ax.reconcileSecurityGroups(ctx)
 			}
 		}
 	})
@@ -519,20 +519,20 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (nx *Nexodus) Stop() {
-	nx.logger.Info("Stopping nexd")
-	for _, proxy := range nx.proxies {
+func (ax *Nexodus) Stop() {
+	ax.logger.Info("Stopping nexd")
+	for _, proxy := range ax.proxies {
 		proxy.Stop()
 	}
 }
 
 // reconcileSecurityGroups will check the security group and update it if necessary.
-func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
-	if runtime.GOOS != Linux.String() || nx.userspaceMode {
+func (ax *Nexodus) reconcileSecurityGroups(ctx context.Context) {
+	if runtime.GOOS != Linux.String() || ax.userspaceMode {
 		return
 	}
 
-	existing, ok := nx.deviceCacheLookup(nx.wireguardPubKey)
+	existing, ok := ax.deviceCacheLookup(ax.wireguardPubKey)
 	if !ok {
 		// local device not in the cache, so we don't have our config yet.
 		return
@@ -540,41 +540,41 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 
 	if existing.device.SecurityGroupId == uuid.Nil.String() {
 		// local device has no security group
-		if nx.securityGroup == nil {
+		if ax.securityGroup == nil {
 			// already set up that way, nothing to do
 			return
 		}
 		// drop local security group configuration
-		nx.securityGroup = nil
-		if err := nx.processSecurityGroupRules(); err != nil {
-			nx.logger.Error(err)
+		ax.securityGroup = nil
+		if err := ax.processSecurityGroupRules(); err != nil {
+			ax.logger.Error(err)
 		}
 		return
 	}
 
 	// if the security group ID is not nil, lookup the ID and check for any changes
-	responseSecGroup, httpResp, err := nx.client.SecurityGroupApi.GetSecurityGroup(ctx, nx.org.Id, existing.device.SecurityGroupId).Execute()
+	responseSecGroup, httpResp, err := ax.client.SecurityGroupApi.GetSecurityGroup(ctx, ax.org.Id, existing.device.SecurityGroupId).Execute()
 	if err != nil {
 		// if the group ID returns a 404, clear the current rules
 		if httpResp != nil && httpResp.StatusCode == http.StatusNotFound {
-			nx.securityGroup = nil
-			if err := nx.processSecurityGroupRules(); err != nil {
-				nx.logger.Error(err)
+			ax.securityGroup = nil
+			if err := ax.processSecurityGroupRules(); err != nil {
+				ax.logger.Error(err)
 			}
 			return
 		}
-		nx.logger.Errorf("Error retrieving the security group: %v", err)
+		ax.logger.Errorf("Error retrieving the security group: %v", err)
 		return
 	}
 
-	if nx.securityGroup != nil && reflect.DeepEqual(responseSecGroup, nx.securityGroup) {
+	if ax.securityGroup != nil && reflect.DeepEqual(responseSecGroup, ax.securityGroup) {
 		// no changes to previously applied security group
 		return
 	}
 
-	nx.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
-	oldSecGroup := nx.securityGroup
-	nx.securityGroup = responseSecGroup
+	ax.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+	oldSecGroup := ax.securityGroup
+	ax.securityGroup = responseSecGroup
 
 	if oldSecGroup != nil && responseSecGroup.Id == oldSecGroup.Id &&
 		reflect.DeepEqual(responseSecGroup.InboundRules, oldSecGroup.InboundRules) &&
@@ -584,25 +584,25 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	}
 
 	// apply the new security group rules
-	if err := nx.processSecurityGroupRules(); err != nil {
-		nx.logger.Error(err)
+	if err := ax.processSecurityGroupRules(); err != nil {
+		ax.logger.Error(err)
 	}
 }
 
-func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
+func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
 	var err error
-	if err = nx.reconcileDeviceCache(); err == nil {
+	if err = ax.reconcileDeviceCache(); err == nil {
 		return
 	}
 
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) && dnsErr.Temporary() {
 		// Temporary dns resolution failure is normal, just debug log it
-		nx.logger.Debugf("%v", err)
+		ax.logger.Debugf("%v", err)
 		return
 	}
 
-	nx.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
+	ax.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
 
 	// if the token grant becomes invalid expires refresh or exit depending on the onboard method
 	if !strings.Contains(err.Error(), invalidTokenGrant.Error()) {
@@ -610,56 +610,56 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	}
 
 	// token grant has become invalid, if we are using a one-time auth token, exit
-	if nx.username == "" {
-		nx.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
+	if ax.username == "" {
+		ax.logger.Fatalf("The token grant has expired due to an extended period offline, please " +
 			"restart the agent for a one-time auth or login with --username --password to automatically reconnect")
 		return
 	}
 
 	// do we need to stop the informer?
-	if nx.informerStop != nil {
-		nx.informerStop()
-		nx.informerStop = nil
+	if ax.informerStop != nil {
+		ax.informerStop()
+		ax.informerStop = nil
 	}
 
 	// refresh the token grant by reconnecting to the API server
-	c, err := client.NewAPIClient(ctx, nx.controllerURL.String(), func(msg string) {
-		nx.SetStatus(NexdStatusAuth, msg)
+	c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+		ax.SetStatus(NexdStatusAuth, msg)
 	}, options...)
 	if err != nil {
-		nx.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
+		ax.logger.Errorf("Failed to reconnect to the api-server, retrying in %v seconds: %v", pollInterval, err)
 		return
 	}
 
-	nx.client = c
+	ax.client = c
 	informerCtx, informerCancel := context.WithCancel(ctx)
-	nx.informerStop = informerCancel
-	nx.informer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	ax.informerStop = informerCancel
+	ax.informer = ax.client.DevicesApi.ListDevicesInOrganization(informerCtx, ax.org.Id).Informer()
 
-	nx.SetStatus(NexdStatusRunning, "")
-	nx.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
+	ax.SetStatus(NexdStatusRunning, "")
+	ax.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
 }
 
-func (nx *Nexodus) reconcileStun(deviceID string) error {
-	if nx.symmetricNat {
+func (ax *Nexodus) reconcileStun(deviceID string) error {
+	if ax.symmetricNat {
 		return nil
 	}
 
-	nx.logger.Debug("sending stun request")
+	ax.logger.Debug("sending stun request")
 	stunServer1 := stun.NextServer()
-	reflexiveIP, err := stun.Request(nx.logger, stunServer1, nx.listenPort)
+	reflexiveIP, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 	if err != nil {
 		return fmt.Errorf("stun request error: %w", err)
 	}
 
-	if nx.nodeReflexiveAddressIPv4 != reflexiveIP {
-		nx.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, nx.nodeReflexiveAddressIPv4, reflexiveIP)
+	if ax.nodeReflexiveAddressIPv4 != reflexiveIP {
+		ax.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, ax.nodeReflexiveAddressIPv4, reflexiveIP)
 
-		res, _, err := nx.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
+		res, _, err := ax.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
 			Endpoints: []public.ModelsEndpoint{
 				{
 					Source:   "local",
-					Address:  net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort)),
+					Address:  net.JoinHostPort(ax.endpointLocalAddress, fmt.Sprintf("%d", ax.listenPort)),
 					Distance: 0,
 				},
 				{
@@ -672,11 +672,11 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 		if err != nil {
 			return fmt.Errorf("failed to update this device's new NAT binding, likely still reconnecting to the api-server, retrying in 20s: %w", err)
 		} else {
-			nx.logger.Debugf("update device response %+v", res)
-			nx.nodeReflexiveAddressIPv4 = reflexiveIP
+			ax.logger.Debugf("update device response %+v", res)
+			ax.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
-			if err = nx.reconcileDeviceCache(); err != nil {
-				nx.logger.Debugf("reconcile failed %v", res)
+			if err = ax.reconcileDeviceCache(); err != nil {
+				ax.logger.Debugf("reconcile failed %v", res)
 			}
 		}
 	}
@@ -815,8 +815,8 @@ func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 	}
 }
 
-func (nx *Nexodus) reconcileDeviceCache() error {
-	peerMap, resp, err := nx.informer.Execute()
+func (ax *Nexodus) reconcileDeviceCache() error {
+	peerMap, resp, err := ax.informer.Execute()
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("error: %w header: %v", err, resp.Header)
@@ -825,34 +825,34 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	}
 
 	// Get the current peer configuration data from the wireguard interface
-	peerStats, err := nx.DumpPeersDefault()
+	peerStats, err := ax.DumpPeersDefault()
 	if err != nil {
-		if nx.TunnelIP != "" {
+		if ax.TunnelIP != "" {
 			// Unexpected to fail once we have local interface configuration
-			nx.logger.Warnf("failed to get current peer stats: %w", err)
+			ax.logger.Warnf("failed to get current peer stats: %w", err)
 		}
 		peerStats = make(map[string]WgSessions)
 	}
 
-	nx.deviceCacheLock.Lock()
-	defer nx.deviceCacheLock.Unlock()
+	ax.deviceCacheLock.Lock()
+	defer ax.deviceCacheLock.Unlock()
 
 	// Get our device cache up to date
 	newLocalConfig := false
 	for _, p := range peerMap {
 		// Update the cache if the device is new or has changed
-		existing, ok := nx.deviceCache[p.PublicKey]
-		if !ok || !nx.isEqualIgnoreSecurityGroup(existing.device, p) {
-			if p.PublicKey == nx.wireguardPubKey {
+		existing, ok := ax.deviceCache[p.PublicKey]
+		if !ok || !ax.isEqualIgnoreSecurityGroup(existing.device, p) {
+			if p.PublicKey == ax.wireguardPubKey {
 				newLocalConfig = true
 			}
-			nx.addToDeviceCache(p)
-			existing = nx.deviceCache[p.PublicKey]
+			ax.addToDeviceCache(p)
+			existing = ax.deviceCache[p.PublicKey]
 		}
 
 		// Store the relay IP for easy reference later
 		if p.Relay {
-			nx.relayWgIP = p.AllowedIps[0]
+			ax.relayWgIP = p.AllowedIps[0]
 		}
 
 		// Keep track of peer connection stats for connection health tracking
@@ -873,48 +873,48 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		existing.lastHandshake = curStats.LatestHandshake
 		existing.lastRefresh = time.Now()
 		existing.endpoint = curStats.Endpoint
-		existing.peerHealthy = nx.peerIsHealthy(existing)
-		nx.deviceCache[p.PublicKey] = existing
+		existing.peerHealthy = ax.peerIsHealthy(existing)
+		ax.deviceCache[p.PublicKey] = existing
 	}
 
 	// Refresh wireguard peer configuration, getting any new peers or changes to existing peers
-	updatePeers := nx.buildPeersConfig()
+	updatePeers := ax.buildPeersConfig()
 	if newLocalConfig || len(updatePeers) > 0 {
 		// Reset connection health tracking data for any peers that have changed
 		for _, peer := range updatePeers {
-			existing, ok := nx.deviceCache[peer.PublicKey]
+			existing, ok := ax.deviceCache[peer.PublicKey]
 			if !ok {
 				continue
 			}
-			nx.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
+			ax.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
 			existing.startTime = time.Now()
-			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
+			if peerConfig, ok := ax.wgConfig.Peers[peer.PublicKey]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}
-			nx.deviceCache[peer.PublicKey] = existing
+			ax.deviceCache[peer.PublicKey] = existing
 		}
 
 		// Deploy updated wireguard peer configuration
-		if err := nx.DeployWireguardConfig(updatePeers); err != nil {
+		if err := ax.DeployWireguardConfig(updatePeers); err != nil {
 			if strings.Contains(err.Error(), securityGroupErr.Error()) {
 				return err
 			}
 			// If the wireguard configuration fails, we should wipe out our peer list
 			// so it is rebuilt and reconfigured from scratch the next time around.
-			nx.wgConfig.Peers = nil
+			ax.wgConfig.Peers = nil
 			return err
 		}
 	}
 
 	// check for any peer deletions
-	if err := nx.handlePeerDelete(peerMap); err != nil {
-		nx.logger.Error(err)
+	if err := ax.handlePeerDelete(peerMap); err != nil {
+		ax.logger.Error(err)
 	}
 
 	return nil
 }
 
-func (nx *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
+func (ax *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
 	// create temporary copies of the instances
 	tmpDev1 := p1
 	tmpDev2 := p2
@@ -929,31 +929,31 @@ func (nx *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
-func (nx *Nexodus) checkUnsupportedConfigs() error {
+func (ax *Nexodus) checkUnsupportedConfigs() error {
 
-	if nx.ipv6Supported = isIPv6Supported(); !nx.ipv6Supported {
-		nx.logger.Warn("IPv6 does not appear to be enabled on this host, only IPv4 will be provisioned or restart nexd with IPv6 enabled on this host")
+	if ax.ipv6Supported = isIPv6Supported(); !ax.ipv6Supported {
+		ax.logger.Warn("IPv6 does not appear to be enabled on this host, only IPv4 will be provisioned or restart nexd with IPv6 enabled on this host")
 	}
 
 	return nil
 }
 
 // symmetricNatDisco determine if the joining node is within a symmetric NAT cone
-func (nx *Nexodus) symmetricNatDisco(ctx context.Context) error {
+func (ax *Nexodus) symmetricNatDisco(ctx context.Context) error {
 
 	stunRetryTimer := time.Second * 1
 	err := util.RetryOperation(ctx, stunRetryTimer, maxRetries, func() error {
 		stunServer1 := stun.NextServer()
 		stunServer2 := stun.NextServer()
-		stunAddr1, err := stun.Request(nx.logger, stunServer1, nx.listenPort)
+		stunAddr1, err := stun.Request(ax.logger, stunServer1, ax.listenPort)
 		if err != nil {
 			return err
 		} else {
-			nx.nodeReflexiveAddressIPv4 = stunAddr1
+			ax.nodeReflexiveAddressIPv4 = stunAddr1
 		}
 
 		isSymmetric := false
-		stunAddr2, err := stun.Request(nx.logger, stunServer2, nx.listenPort)
+		stunAddr2, err := stun.Request(ax.logger, stunServer2, ax.listenPort)
 		if err != nil {
 			return err
 		} else {
@@ -961,20 +961,20 @@ func (nx *Nexodus) symmetricNatDisco(ctx context.Context) error {
 		}
 
 		if stunAddr1.Addr().String() != "" {
-			nx.logger.Debugf("first NAT discovery STUN request returned: %s", stunAddr1.String())
+			ax.logger.Debugf("first NAT discovery STUN request returned: %s", stunAddr1.String())
 		} else {
-			nx.logger.Debugf("first NAT discovery STUN request returned an empty value")
+			ax.logger.Debugf("first NAT discovery STUN request returned an empty value")
 		}
 
 		if stunAddr2.Addr().String() != "" {
-			nx.logger.Debugf("second NAT discovery STUN request returned: %s", stunAddr2.String())
+			ax.logger.Debugf("second NAT discovery STUN request returned: %s", stunAddr2.String())
 		} else {
-			nx.logger.Debugf("second NAT discovery STUN request returned an empty value")
+			ax.logger.Debugf("second NAT discovery STUN request returned an empty value")
 		}
 
 		if isSymmetric {
-			nx.symmetricNat = true
-			nx.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
+			ax.symmetricNat = true
+			ax.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
 		}
 
 		return nil
@@ -987,25 +987,25 @@ func (nx *Nexodus) symmetricNatDisco(ctx context.Context) error {
 }
 
 // orgRelayCheck checks if there is an existing Relay node in the organization that does not match this device's pub key
-func (nx *Nexodus) orgRelayCheck(peerMap map[string]public.ModelsDevice) (string, error) {
+func (ax *Nexodus) orgRelayCheck(peerMap map[string]public.ModelsDevice) (string, error) {
 	for _, p := range peerMap {
-		if p.Relay && nx.wireguardPubKey != p.PublicKey {
+		if p.Relay && ax.wireguardPubKey != p.PublicKey {
 			return p.Id, nil
 		}
 	}
 	return "", nil
 }
 
-func (nx *Nexodus) setupInterface() error {
-	if nx.userspaceMode {
-		return nx.setupInterfaceUS()
+func (ax *Nexodus) setupInterface() error {
+	if ax.userspaceMode {
+		return ax.setupInterfaceUS()
 	}
-	return nx.setupInterfaceOS()
+	return ax.setupInterfaceOS()
 }
 
-func (nx *Nexodus) defaultTunnelDev() string {
-	if nx.userspaceMode {
-		return nx.defaultTunnelDevUS()
+func (ax *Nexodus) defaultTunnelDev() string {
+	if ax.userspaceMode {
+		return ax.defaultTunnelDevUS()
 	}
 	return defaultTunnelDevOS()
 }

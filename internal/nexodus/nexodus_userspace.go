@@ -15,11 +15,11 @@ import (
 // This is the hardcoded default name of the netstack wireguard device
 const defaultDeviceName = "go"
 
-func (nx *Nexodus) setupInterfaceUS() error {
+func (ax *Nexodus) setupInterfaceUS() error {
 	tun, tnet, err := netstack.CreateNetTUN(
 		[]netip.Addr{
-			netip.MustParseAddr(nx.TunnelIP),
-			netip.MustParseAddr(nx.TunnelIpV6),
+			netip.MustParseAddr(ax.TunnelIP),
+			netip.MustParseAddr(ax.TunnelIpV6),
 		},
 		// TODO - Is there something else that makes more sense as a DNS server?
 		// So far I don't think DNS will ever be used. If Nexodus has its own
@@ -33,52 +33,52 @@ func (nx *Nexodus) setupInterfaceUS() error {
 		// to account for its own tunneling (Geneve, for example).
 		1420)
 	if err != nil {
-		nx.logger.Errorf("Failed to create userspace tunnel device: %w", err)
+		ax.logger.Errorf("Failed to create userspace tunnel device: %w", err)
 		return err
 	}
-	nx.userspaceTun = tun
-	nx.userspaceNet = tnet
+	ax.userspaceTun = tun
+	ax.userspaceNet = tnet
 	logger := &device.Logger{
 		Verbosef: device.DiscardLogf,
-		Errorf:   nx.logger.Errorf,
+		Errorf:   ax.logger.Errorf,
 	}
-	if nx.logger.Level() == zap.DebugLevel {
-		logger.Verbosef = nx.logger.Debugf
+	if ax.logger.Level() == zap.DebugLevel {
+		logger.Verbosef = ax.logger.Debugf
 	}
-	dev := device.NewDevice(nx.userspaceTun, conn.NewDefaultBind(), logger)
-	pvtDecoded, err := base64.StdEncoding.DecodeString(nx.wireguardPvtKey)
+	dev := device.NewDevice(ax.userspaceTun, conn.NewDefaultBind(), logger)
+	pvtDecoded, err := base64.StdEncoding.DecodeString(ax.wireguardPvtKey)
 	if err != nil {
-		nx.logger.Errorf("Failed to decode wireguard private key: %w", err)
+		ax.logger.Errorf("Failed to decode wireguard private key: %w", err)
 		return err
 	}
 	err = dev.IpcSet(fmt.Sprintf("private_key=%s", hex.EncodeToString(pvtDecoded)))
 	if err != nil {
-		nx.logger.Errorf("Failed to set private key: %w", err)
+		ax.logger.Errorf("Failed to set private key: %w", err)
 		return err
 	}
-	err = dev.IpcSet(fmt.Sprintf("listen_port=%d", nx.listenPort))
+	err = dev.IpcSet(fmt.Sprintf("listen_port=%d", ax.listenPort))
 	if err != nil {
-		nx.logger.Errorf("Failed to set listen port: %w", err)
+		ax.logger.Errorf("Failed to set listen port: %w", err)
 		return err
 	}
 	err = dev.Up()
 	if err != nil {
-		nx.logger.Errorf("Failed to bring up userspace device: %w", err)
+		ax.logger.Errorf("Failed to bring up userspace device: %w", err)
 		return err
 	}
-	nx.userspaceDev = dev
+	ax.userspaceDev = dev
 
 	devName, err := tun.Name()
 	if err != nil {
-		nx.logger.Errorf("Failed to get userspace device name: %w", err)
+		ax.logger.Errorf("Failed to get userspace device name: %w", err)
 		return err
 	}
-	nx.logger.Infof("Successfully created userspace device: %s", devName)
-	nx.userspaceLastAddress = nx.TunnelIP
+	ax.logger.Infof("Successfully created userspace device: %s", devName)
+	ax.userspaceLastAddress = ax.TunnelIP
 
 	return nil
 }
 
-func (nx *Nexodus) defaultTunnelDevUS() string {
+func (ax *Nexodus) defaultTunnelDevUS() string {
 	return defaultDeviceName
 }
