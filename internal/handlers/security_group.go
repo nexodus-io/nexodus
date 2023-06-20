@@ -380,8 +380,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string) (models.SecurityGroup, error) {
-
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, orgId string) (models.SecurityGroup, error) {
 	orgIdUUID, err := uuid.Parse(orgId)
 	if err != nil {
 		return models.SecurityGroup{}, err
@@ -398,22 +397,30 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, orgId string) (m
 		InboundRules:     inboundRules,
 		OutboundRules:    outboundRules,
 	}
-	res := api.db.WithContext(ctx).Create(&sg)
+
+	if db == nil {
+		db = api.db.WithContext(ctx)
+	}
+
+	res := db.Create(&sg)
 	if res.Error != nil {
-		return models.SecurityGroup{}, fmt.Errorf("failed to create the default organization security group: %w", err)
+		return models.SecurityGroup{}, fmt.Errorf("failed to create the default organization security group: %w", res.Error)
 	}
 
 	return sg, nil
 }
 
 // updateOrganizationSecGroupId updates the security group ID in an org entry
-func (api *API) updateOrganizationSecGroupId(ctx context.Context, sgId, orgId uuid.UUID) error {
-
+func (api *API) updateOrganizationSecGroupId(ctx context.Context, db *gorm.DB, sgId, orgId uuid.UUID) error {
 	var org models.Organization
-	res := api.db.WithContext(ctx).First(&org, "id = ?", orgId)
+	if db == nil {
+		db = api.db.WithContext(ctx)
+	}
+
+	res := db.WithContext(ctx).First(&org, "id = ?", orgId)
 	if res.Error != nil {
 		return res.Error
 	}
 
-	return api.db.WithContext(ctx).Model(&org).Update("SecurityGroupId", sgId).Error
+	return db.WithContext(ctx).Model(&org).Update("SecurityGroupId", sgId).Error
 }
