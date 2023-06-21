@@ -26,7 +26,7 @@ func (nx *Nexodus) peerUpdated(device public.ModelsDevice, peer wgPeerConfig) bo
 }
 
 // buildPeersConfig builds the peer configuration based off peer cache
-// and peer listings from the controller
+// and peer listings from the controller. assumes deviceCacheLock is held.
 func (ax *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	if ax.wgConfig.Peers == nil {
 		ax.wgConfig.Peers = map[string]wgPeerConfig{}

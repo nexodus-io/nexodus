@@ -15,13 +15,13 @@ const (
 	windowsWgConfigFile        = "C:/nexd/wg0.conf"
 )
 
-func (nx *Nexodus) setupInterfaceOS() error {
+func (ax *Nexodus) setupInterfaceOS() error {
 
-	logger := nx.logger
-	dev := nx.tunnelIface
-	listenPortStr := strconv.Itoa(nx.listenPort)
+	logger := ax.logger
+	dev := ax.tunnelIface
+	listenPortStr := strconv.Itoa(ax.listenPort)
 
-	if err := buildWindowsWireguardIfaceConf(nx.wireguardPvtKey, nx.TunnelIP, listenPortStr); err != nil {
+	if err := buildWindowsWireguardIfaceConf(ax.wireguardPvtKey, ax.TunnelIP, listenPortStr); err != nil {
 		return fmt.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
 	}
 
@@ -57,11 +57,11 @@ func (nx *Nexodus) setupInterfaceOS() error {
 	return nil
 }
 
-func (nx *Nexodus) removeExistingInterface() {
+func (ax *Nexodus) removeExistingInterface() {
 }
 
-func (nx *Nexodus) findLocalIP() (string, error) {
-	return discoverGenericIPv4(nx.logger, nx.controllerURL.Host, "443")
+func (ax *Nexodus) findLocalIP() (string, error) {
+	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
 }
 
 func buildWindowsWireguardIfaceConf(pvtKey, wgAddress, wgListenPort string) error {

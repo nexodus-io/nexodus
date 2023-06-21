@@ -9,26 +9,47 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut string) error {
+func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, fullDisplay bool, encodeOut string) error {
 	devices, _, err := c.DevicesApi.ListDevicesInOrganization(context.Background(), organizationID.String()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS IPV4", "NODE ADDRESS IPV6", "ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID", "OS", "RELAY")
+
+		var fs string
+		if fullDisplay {
+			fs = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		} else {
+			fs = "%s\t%s\t%s\t%s\t%s\n"
+		}
+		if encodeOut != encodeNoHeader && !fullDisplay {
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "TUNNEL IPS", "ORGANIZATION ID", "RELAY")
+		}
+		if encodeOut != encodeNoHeader && fullDisplay {
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME",
+				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
+				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
+				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
+				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "SECURITY GROUP ID", "RELAY")
 		}
 		for _, dev := range devices {
 			localIp := ""
+			var reflexiveIp4 []string
 			for _, endpoint := range dev.Endpoints {
 				if endpoint.Source == "local" {
 					localIp = endpoint.Address
-					break
+				} else {
+					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
 				}
 			}
-			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, dev.TunnelIpV6, localIp, dev.PublicKey, dev.OrganizationId, dev.Os, fmt.Sprintf("%t", dev.Relay))
+			if !fullDisplay {
+				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, fmt.Sprintf("[%s %s]", dev.TunnelIp, dev.TunnelIpV6), dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
+			} else {
+				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, localIp, dev.PublicKey, dev.OrganizationId,
+					localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
+					dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
+			}
 		}
 		w.Flush()
 
@@ -43,16 +64,24 @@ func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, encodeOut str
 	return nil
 }
 
-func listAllDevices(c *public.APIClient, encodeOut string) error {
+func listAllDevices(c *public.APIClient, fullDisplay bool, encodeOut string) error {
 	devices, _, err := c.DevicesApi.ListDevices(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "NODE ADDRESS",
+		var fs string
+		if fullDisplay {
+			fs = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		} else {
+			fs = "%s\t%s\t%s\t%s\t%s\n"
+		}
+		if encodeOut != encodeNoHeader && !fullDisplay {
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "TUNNEL IPS", "ORGANIZATION ID", "RELAY")
+		}
+		if encodeOut != encodeNoHeader && fullDisplay {
+			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME",
 				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
 				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
 				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
@@ -60,7 +89,7 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 		}
 		for _, dev := range devices {
 			localIp := ""
-			reflexiveIp4 := []string{}
+			var reflexiveIp4 []string
 			for _, endpoint := range dev.Endpoints {
 				if endpoint.Source == "local" {
 					localIp = endpoint.Address
@@ -68,10 +97,13 @@ func listAllDevices(c *public.APIClient, encodeOut string) error {
 					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
 				}
 			}
-
-			fmt.Fprintf(w, fs, dev.Id, dev.Hostname, dev.TunnelIp, localIp, dev.PublicKey, dev.OrganizationId,
-				localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-				dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
+			if !fullDisplay {
+				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, fmt.Sprintf("[%s %s]", dev.TunnelIp, dev.TunnelIpV6), dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
+			} else {
+				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, localIp, dev.PublicKey, dev.OrganizationId,
+					localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
+					dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
+			}
 		}
 		w.Flush()
 

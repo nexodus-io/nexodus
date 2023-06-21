@@ -14,4 +14,5 @@ Using `-s` with `git commit` will automtaically add this header.
 
 ## Submitting Patches
 
-Patches are accepted via GitHub pull requests.
+Patches are accepted via GitHub pull requests. For more details on the pull
+request workflow for Nexodus, see [Pull Requests](https://docs.nexodus.io/development/pull-requests/).

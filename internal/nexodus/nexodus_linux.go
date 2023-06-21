@@ -4,7 +4,6 @@ package nexodus
 
 import (
 	"fmt"
-
 	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -13,35 +12,35 @@ import (
 // setupLinuxInterface TODO replace with netlink calls
 // this is called if this is the first run or if the local node
 // address got assigned a new address by the controller
-func (nx *Nexodus) setupInterfaceOS() error {
+func (ax *Nexodus) setupInterfaceOS() error {
 
-	logger := nx.logger
+	logger := ax.logger
 	// delete the wireguard ip link interface if it exists
-	if ifaceExists(logger, nx.tunnelIface) {
-		_, err := RunCommand("ip", "link", "del", nx.tunnelIface)
+	if ifaceExists(logger, ax.tunnelIface) {
+		_, err := RunCommand("ip", "link", "del", ax.tunnelIface)
 		if err != nil {
 			logger.Debugf("failed to delete the ip link interface: %v\n", err)
 		}
 	}
 
-	if nx.TunnelIP == "" || nx.TunnelIpV6 == "" {
+	if ax.TunnelIP == "" || ax.TunnelIpV6 == "" {
 		return fmt.Errorf("Have not received local node address configuration from the service, returning for a retry")
 	}
 
 	// create the wireguard ip link interface
-	_, err := RunCommand("ip", "link", "add", nx.tunnelIface, "type", "wireguard")
+	_, err := RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
 	if err != nil {
 		logger.Errorf("failed to create the ip link interface: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
 	}
 
-	listenPort := nx.listenPort
+	listenPort := ax.listenPort
 	// start the wireguard listener on a well-known port if it is a discovery or relay node as all
 	// nodes need to be able to reach those services for state distribution, hole punching and relay.
-	if nx.relay {
+	if ax.relay {
 		listenPort = WgDefaultPort
 	}
-	privateKey, err := wgtypes.ParseKey(nx.wireguardPvtKey)
+	privateKey, err := wgtypes.ParseKey(ax.wireguardPvtKey)
 	if err != nil {
 		logger.Errorf("invalid wiregaurd private key: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
@@ -52,7 +51,7 @@ func (nx *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 	defer util.IgnoreError(c.Close)
-	err = c.ConfigureDevice(nx.tunnelIface, wgtypes.Config{
+	err = c.ConfigureDevice(ax.tunnelIface, wgtypes.Config{
 		PrivateKey:   &privateKey,
 		ListenPort:   &listenPort,
 		ReplacePeers: true,
@@ -64,32 +63,32 @@ func (nx *Nexodus) setupInterfaceOS() error {
 	}
 
 	// assign the wg interface a v6 address
-	if nx.ipv6Supported {
-		localAddressIPv6 := fmt.Sprintf("%s/%s", nx.TunnelIpV6, wgOrgIPv6PrefixLen)
-		_, err = RunCommand("ip", "-6", "address", "add", localAddressIPv6, "dev", nx.tunnelIface)
+	if ax.ipv6Supported {
+		localAddressIPv6 := fmt.Sprintf("%s/%s", ax.TunnelIpV6, wgOrgIPv6PrefixLen)
+		_, err = RunCommand("ip", "-6", "address", "add", localAddressIPv6, "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Infof("failed to assign an IPv6 address to the local linux ipv6 interface, ensure v6 is supported: %v\n", err)
 		}
 	}
 
 	// assign the wg interface a v4 address, delete the existing if one is present
-	_, err = RunCommand("ip", "address", "add", nx.TunnelIP, "dev", nx.tunnelIface)
+	_, err = RunCommand("ip", "address", "add", ax.TunnelIP, "dev", ax.tunnelIface)
 	if err != nil {
 		logger.Debugf("failed to assign an address to the local linux interface, attempting to flush the iface: %v\n", err)
-		wgIP := nx.getIPv4Iface(nx.tunnelIface)
+		wgIP := ax.getIPv4Iface(ax.tunnelIface)
 		// TODO: this is likely legacy from a push model, should be ok to remove the deletes since the agent now deletes wg0 on startup
-		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", nx.tunnelIface)
+		_, err = RunCommand("ip", "address", "del", wgIP.To4().String(), "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an IPv4 address to the local linux interface: %v\n", err)
 		}
-		_, err = RunCommand("ip", "address", "add", nx.TunnelIP, "dev", nx.tunnelIface)
+		_, err = RunCommand("ip", "address", "add", ax.TunnelIP, "dev", ax.tunnelIface)
 		if err != nil {
 			logger.Errorf("failed to assign an address to the local linux interface: %v\n", err)
 			return fmt.Errorf("%w", interfaceErr)
 		}
 	}
 	// bring the wg0 interface up
-	_, err = RunCommand("ip", "link", "set", nx.tunnelIface, "up")
+	_, err = RunCommand("ip", "link", "set", ax.tunnelIface, "up")
 	if err != nil {
 		logger.Errorf("failed to bring up the wg interface: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)
@@ -98,18 +97,18 @@ func (nx *Nexodus) setupInterfaceOS() error {
 	return nil
 }
 
-func (nx *Nexodus) removeExistingInterface() {
-	if linkExists(nx.tunnelIface) {
-		if err := delLink(nx.tunnelIface); err != nil {
+func (ax *Nexodus) removeExistingInterface() {
+	if linkExists(ax.tunnelIface) {
+		if err := delLink(ax.tunnelIface); err != nil {
 			// not a fatal error since if this is on startup it could be absent
-			nx.logger.Debugf("failed to delete netlink interface %s: %v", nx.tunnelIface, err)
+			ax.logger.Debugf("failed to delete netlink interface %s: %v", ax.tunnelIface, err)
 		}
 	}
 }
 
-func (nx *Nexodus) findLocalIP() (string, error) {
+func (ax *Nexodus) findLocalIP() (string, error) {
 	// Linux network discovery
-	linuxIP, err := discoverLinuxAddress(nx.logger, 4)
+	linuxIP, err := discoverLinuxAddress(ax.logger, 4)
 	if err != nil {
 		return "", err
 	}

@@ -155,18 +155,25 @@ func main() {
 								Value:    "",
 								Required: false,
 							},
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "display the full set of device details",
+								Value:   false,
+							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
+							fullDisplay := cCtx.Bool("full")
 							orgID := cCtx.String("organization-id")
 							if orgID != "" {
 								id, err := uuid.Parse(orgID)
 								if err != nil {
 									log.Fatal(err)
 								}
-								return listOrgDevices(mustCreateAPIClient(cCtx), id, encodeOut)
+								return listOrgDevices(mustCreateAPIClient(cCtx), id, fullDisplay, encodeOut)
 							}
-							return listAllDevices(mustCreateAPIClient(cCtx), encodeOut)
+							return listAllDevices(mustCreateAPIClient(cCtx), fullDisplay, encodeOut)
 						},
 					},
 					{

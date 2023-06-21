@@ -11,6 +11,6 @@ More information can be found by visiting the [project homepage](https://nexodus
 
 To try it out, see the [quick start guide](https://docs.nexodus.io/quickstart).
 
-To spin up your own Nexodus service, see [deploying the nexodus service](https://docs.nexodus.io/deployment/nexodus-service/).
+To spin up your own Nexodus service, see [deploying the Nexodus Service](https://docs.nexodus.io/deployment/nexodus-service/).
 
 To join the discussion, review the [Code of Conduct](CODE_OF_CONDUCT.md) and join the [Nexodus Discord server](https://discord.gg/4RyhDSkWmK).

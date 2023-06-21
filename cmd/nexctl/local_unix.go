@@ -194,20 +194,37 @@ func init() {
 			},
 			{
 				Name:  "peers",
-				Usage: "Commands for interacting nexd exit node configuration",
+				Usage: "Commands for interacting with nexd peer connectivity",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "list",
 						Usage: "list the nexd peers for this device",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "display the full set of peer details",
+								Value:   false,
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							return cmdListPeers(cCtx, encodeOut)
 						},
 					},
 					{
-						Name:   "ping",
-						Usage:  "run a test to check the nexd peer connectivity (host firewalls may block the ICMP probes)",
-						Action: cmdConnStatus,
+						Name:  "ping",
+						Usage: "run a test to check the nexd IPv4 peer connectivity (host firewalls or security groups may block the ICMP probes)",
+						Action: func(cCtx *cli.Context) error {
+							return cmdConnStatus(cCtx, v4)
+						},
+					},
+					{
+						Name:  "ping6",
+						Usage: "run a test to check the nexd IPv6 peer connectivity (host firewalls or security groups may block the ICMP probes)",
+						Action: func(cCtx *cli.Context) error {
+							return cmdConnStatus(cCtx, v6)
+						},
 					},
 				},
 			},
