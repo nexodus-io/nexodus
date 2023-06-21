@@ -117,6 +117,17 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			return err
 		}
 
+		// Create a default security group for the organization
+		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
+		if err != nil {
+			return err
+		}
+
+		// Update the org with the new security group id
+		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
+			return fmt.Errorf("failed to update the default security group with an org id: %w", err)
+		}
+
 		span.SetAttributes(attribute.String("id", org.ID.String()))
 		api.logger.Infof("New organization request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", org.Name, org.IpCidr, org.IpCidrV6)
 		return nil
@@ -131,25 +142,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		}
-		return
-	}
-
-	// Create a default security group for the organization
-	sg, err := api.createDefaultSecurityGroup(ctx, nil, org.ID.String())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
-		return
-	}
-
-	// Update the org with the new security group id, delete the security group if it fails
-	if err := api.updateOrganizationSecGroupId(ctx, nil, sg.ID, org.ID); err != nil {
-		if res := api.db.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
-			errMsg := fmt.Sprintf("failed to update and delete the default security group with an org id: %v", err)
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
-			return
-		}
-		errMsg := fmt.Sprintf("failed to update the default security group with an org id: %v", err)
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(errors.New(errMsg)))
 		return
 	}
 
