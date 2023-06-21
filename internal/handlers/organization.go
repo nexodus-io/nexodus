@@ -125,7 +125,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 		// Update the org with the new security group id
 		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
-			return fmt.Errorf("failed to update the default security group with an org id: %v", err.Error())
+			return fmt.Errorf("failed to update the default security group with an org id: %w", err)
 		}
 
 		span.SetAttributes(attribute.String("id", org.ID.String()))
