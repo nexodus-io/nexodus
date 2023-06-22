@@ -298,7 +298,7 @@ func TestChooseOrganization(t *testing.T) {
 	for _, orgID := range useOrgs {
 		args := []string{"--username", username, "--password", password}
 		if orgID != "" {
-			args = append(args, "--org-id", orgID)
+			args = append(args, "--organization-id", orgID)
 		}
 
 		// start nexd on node1
