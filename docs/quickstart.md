@@ -62,7 +62,7 @@ docker run --rm -it --cap-add SYS_MODULE --cap-add NET_ADMIN --cap-add NET_RAW \
 Once the container is running, start `nexd` and follow the instructions to register your device.
 
 ```sh
-nexd https://try.nexodus.io
+nexd --service-url https://try.nexodus.io
 ```
 
 ### Other
@@ -87,7 +87,7 @@ sudo install -m 755 nexd nexctl /usr/local/bin
 Start `nexd` with `sudo` and follow the instructions to register your device.
 
 ```sh
-sudo nexd https://try.nexodus.io
+sudo nexd --service-url https://try.nexodus.io
 ```
 
 ## Test Connectivity

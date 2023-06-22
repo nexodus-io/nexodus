@@ -41,12 +41,21 @@ var Version = "dev"
 var DefaultServiceURL = "https://try.nexodus.io"
 
 func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
-	serviceURL := cCtx.Args().First()
-	if serviceURL == "" && DefaultServiceURL != "" {
-		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
-		serviceURL = DefaultServiceURL
+
+	serviceURL := cCtx.String("service-url")
+	if !cCtx.IsSet("service-url") {
+		serviceURL = cCtx.Args().First()
+		if serviceURL == "" && DefaultServiceURL != "" {
+			logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
+			serviceURL = DefaultServiceURL
+		} else {
+			logger.Info("Configuring the service url via the positional argument is deprecated.  Please use the --service-url flag instead.")
+		}
 	}
 
+	if cCtx.IsSet("service-url") && cCtx.Args().Len() > 0 {
+		return fmt.Errorf("please remove the service URL positional argument, it was configured via the --service-url flag")
+	}
 	if cCtx.Args().Len() > 1 {
 		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
 	}
@@ -177,7 +186,6 @@ func main() {
 	app := &cli.App{
 		Name:                 "nexd",
 		Usage:                "Node agent to configure encrypted mesh networking with nexodus.",
-		ArgsUsage:            "service-url",
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
 			{
@@ -359,6 +367,14 @@ func main() {
 				Name:     "organization-id",
 				Usage:    "Organization ID to use when registering with the nexodus service",
 				EnvVars:  []string{"NEXD_ORG_ID"},
+				Required: false,
+				Category: nexServiceOptions,
+			},
+			&cli.StringFlag{
+				Name:     "service-url",
+				Usage:    "URL to the Nexodus service",
+				Value:    DefaultServiceURL,
+				EnvVars:  []string{"NEXD_SERVICE_URL"},
 				Required: false,
 				Category: nexServiceOptions,
 			},

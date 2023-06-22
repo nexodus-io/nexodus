@@ -84,7 +84,7 @@ sudo install -m 644 bash_autocomplete /etc/bash_completion.d/nexctl
 Proceed by starting `nexd` manually:
 
 ```sh
-sudo nexd https://try.nexodus.io
+sudo nexd --service-url https://try.nexodus.io
 ```
 
 ### Interactive Enrollment
@@ -122,7 +122,7 @@ INFO[0570] Peer setup complete
 If you would like to use a username and password to enroll your node, you can do so by passing the `--username` and `--password` flags to `nexd`. For example:
 
 ```sh
-sudo nexd --username user --password pw https://try.nexodus.io
+sudo nexd --username user --password pw --service-url https://try.nexodus.io
 ```
 
 For [try.nexodus.io](https://try.nexodus.io), you may set a password for your account by visiting the [Keycloak user management UI](https://auth.try.nexodus.io/realms/nexodus/account/#/security/signingin).
@@ -134,7 +134,7 @@ When `nexd` starts, it will check to see which organizations it has access to. I
 If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--organization-id` flag to `nexd`. For example:
 
 ```sh
-sudo nexd --organization-id 12345678-1234-1234-1234-123456789012 https://try.nexodus.io
+sudo nexd --organization-id 12345678-1234-1234-1234-123456789012 --service-url https://try.nexodus.io
 ```
 
 ### Verifying Agent Setup

@@ -64,8 +64,8 @@ Verify the service by attaching a node using built-in accounts as part of the ku
 
 ```console
 # from the nexodus repo directory root:
-make dist/nexd-linux-amd64
-sudo NEXD_LOGLEVEL=debug dist/nexd-linux-amd64 --username admin --password floofykittens  https://try.nexodus.127.0.0.1.nip.io
+make dist/nexd
+sudo NEXD_LOGLEVEL=debug dist/nexd --username admin --password floofykittens --service-url https://try.nexodus.127.0.0.1.nip.io
 
 # or if you wanted to run multiple sandboxed containers:
 make run-nexd-container

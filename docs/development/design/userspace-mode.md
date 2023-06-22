@@ -17,19 +17,19 @@ To support a wider set of use cases in Nexodus, the proposal is to allow `nexd` 
 To allow `nexd` to be run in a different mode, `nexd`'s command line interface shold be modified to make use of subcommands. This will allow a different set of flags to be defined for each operating mode. The first step is to move all existing flags under a new subcommand, `agent`.
 
 ```sh
-sudo nexd agent https://try.nexodus.127.0.0.1.nip.io
+sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io agent
 ```
 
 While the implementation is not considered in scope of this proposal, it should be considered a natural next step to change the `--relay-node` and `--discovery-node` flags into subcommands. For example:
 
 ```sh
-sudo nexd relay https://try.nexodus.127.0.0.1.nip.io
+sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io relay
 ```
 
 or
 
 ```sh
-sudo nexd discovery https://try.nexodus.127.0.0.1.nip.io
+sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io discovery
 ```
 
 Once the current mode has been moved under an `agent` subcommand, a new `proxy` command can be added for this new userspace-only mode of interfacing with a Nexodus network.
