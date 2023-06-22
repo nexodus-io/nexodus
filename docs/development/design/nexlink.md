@@ -31,7 +31,7 @@ nexd proxy --ingress tcp:443:my-svc.my-namespace.svc.cluster.local:8443
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- device1[Remote device running nexd<br/><br/>IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:443]-->|tunnel|network{Nexodus Network<br/><br/>100.100.0.0/16}
+ device1[Remote device running nexd<br/><br/>IP: 100.100.0.1<br/><br/>Initiates connection to 100.100.0.2:443]-->|tunnel|network{Nexodus Network<br/><br/>100.64.0.0/10}
  network-->|tunnel|container[Pod running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.2<br/>Pod IP: 10.10.10.151<br/><br/>Accepts connections on 100.100.0.2:443 and forwards to 172.30.10.50:8443]
 
  subgraph Kubernetes Cluster - 10.0.0.0/16
@@ -55,7 +55,7 @@ nexd proxy --egress tcp:443:100.100.0.1:8443
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- network{Nexodus Network<br/><br/>100.100.0.0/16}-->|tunnel|device1[Remote device running nexd<br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Running a service that listens on TCP port 8443]
+ network{Nexodus Network<br/><br/>100.64.0.0/10}-->|tunnel|device1[Remote device running nexd<br/><br/>Nexodus IP: 100.100.0.1<br/><br/>Running a service that listens on TCP port 8443]
  container[Pod running nexd in proxy mode.<br/><br/>Pod IP: 10.10.10.151<br/>Nexodus IP: 100.100.0.2<br/><br/>Accepts connections on 10.10.10.151:443 and forwards to 100.100.0.1:8443]-->|tunnel|network
 
  subgraph Kubernetes Cluster - 10.0.0.0/16
@@ -89,7 +89,7 @@ nexd proxy --ingress tcp:8443:my-svc.my-namespace.svc.cluster.local:443
 ```mermaid
 flowchart TD
  linkStyle default interpolate basis
- network{Nexodus Network<br/><br/>100.100.0.0/16}
+ network{Nexodus Network<br/><br/>100.64.0.0/10}
  container1[Pod running nexd in proxy mode.<br/><br/>Pod IP: 10.10.20.102<br/>Nexodus IP: 100.100.0.2<br/><br/>Accepts connections on 10.10.20.102:443 and forwards to 100.100.0.1:8443]-->|tunnel|network
 
  subgraph Kubernetes Cluster 1 - 10.0.0.0/16
@@ -98,7 +98,7 @@ flowchart TD
  end
 
 
-  network{Nexodus Network<br/><br/>100.100.0.0/16}
+  network{Nexodus Network<br/><br/>100.64.0.0/10}
  network-->|tunnel|container[Pod running nexd in proxy mode.<br/><br/>Nexodus IP: 100.100.0.1<br/>Pod IP: 10.10.10.151<br/><br/>Accepts connections on 100.100.0.1:8443 and forwards to Service B]
 
  subgraph Kubernetes Cluster 2 - 10.0.0.0/16

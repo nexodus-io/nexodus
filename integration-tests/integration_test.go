@@ -169,8 +169,17 @@ func TestRequestIPOrganization(t *testing.T) {
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
+	orgID, orgName := helper.createOrganization(username, password,
+		"--cidr", "100.100.0.0/16",
+		"--cidr-v6", "200::/32",
+	)
+	helper.Logf("created org id:%s, name:%s", orgID, orgName)
+	defer func() {
+		_ = helper.deleteOrganization(username, password, orgID)
+	}()
+
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--org-id", orgID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
@@ -178,6 +187,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
+		"--org-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -202,7 +212,9 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	// restart nexodus and ensure the nodes receive the same re-quested address
 	helper.Log("Restarting nexodus on two spoke nodes and re-joining")
+
 	helper.runNexd(ctx, node1, "--username", username, "--password", password,
+		"--org-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node1IP), "relay")
 
 	// validate nexd has started on the relay node
@@ -211,6 +223,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
+		"--org-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -251,27 +264,12 @@ func TestChooseOrganization(t *testing.T) {
 	}
 
 	for i, org := range orgs {
-		orgOut, err := helper.runCommand(nexctl,
-			"--username", username, "--password", password,
-			"--output", "json",
-			"organization", "create",
-			"--name", fmt.Sprintf("%s-%s-org%d", "TestChooseOrganization", time.Now().Format("2006-01-02-15-04-05"), i),
-			"--description", "Test Org",
+		orgs[i].id, _ = helper.createOrganization(username, password,
 			"--cidr", org.cidr,
 			"--cidr-v6", org.cidrV6,
 		)
-		require.NoError(err)
-		helper.Logf("Output from creating org: %s", orgOut)
-		var org models.OrganizationJSON
-		err = json.Unmarshal([]byte(orgOut), &org)
-		require.NoErrorf(err, "nexctl organization Unmarshal error: %v\n", err)
-		orgs[i].id = org.ID.String()
-
 		defer func(orgID string) {
-			_, _ = helper.runCommand(nexctl,
-				nexctl,
-				"--username", username, "--password", password,
-				"organization", "delete", "--organization-id", orgID)
+			_ = helper.deleteOrganization(username, password, orgID)
 		}(orgs[i].id)
 	}
 
@@ -854,11 +852,6 @@ func TestNexctl(t *testing.T) {
 	err = ping(ctx, node2, inetV4, node1IP)
 	require.NoError(err)
 
-	node1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
-	require.NoError(err)
-	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
-	require.NoError(err)
-
 	// validate list devices and register IDs and IPs
 	allDevices, err := helper.runCommand(nexctl,
 		"--username", username,
@@ -952,46 +945,17 @@ func TestNexctl(t *testing.T) {
 	newNode1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
 
-	// If the device was not deleted, the next registered device would receive the
-	// next available address in the IPAM pool, not the previously assigned address.
-	// Fail the test if the device IP was not the previous address from the IPAM pool.
-	var addressMatch bool
-	if newNode1IP == node2IP {
-		addressMatch = true
-		helper.Logf("Pinging %s from node1", node1IP)
-		err = ping(ctx, node1, inetV4, node1IP)
-		require.NoError(err)
-	}
-	if newNode1IP == node1IP {
-		addressMatch = true
-		helper.Logf("Pinging %s from node1", node2IP)
-		err = ping(ctx, node1, inetV4, node2IP)
-		require.NoError(err)
-	}
-	if !addressMatch {
-		require.Failf("ipam/device IPv4 delete failed", fmt.Sprintf("Node did not receive the proper IPAM IPv4 address %s, it should have been %s or %s", newNode1IP, node1IP, node2IP))
-	}
+	helper.Logf("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, inetV4, newNode1IP)
+	require.NoError(err)
 
 	// same as above but for v6, ensure IPAM released the leases from the deleted nodes and re-issued them
 	newNode1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
 	require.NoError(err)
 
-	var addressMatchV6 bool
-	if newNode1IPv6 == node2IPv6 {
-		addressMatchV6 = true
-		helper.Logf("Pinging %s from node1", node1IPv6)
-		err = ping(ctx, node1, inetV6, node1IPv6)
-		require.NoError(err)
-	}
-	if newNode1IPv6 == node1IPv6 {
-		addressMatchV6 = true
-		helper.Logf("Pinging %s from node1", node2IPv6)
-		err = ping(ctx, node1, inetV6, node2IPv6)
-		require.NoError(err)
-	}
-	if !addressMatchV6 {
-		require.Failf("ipam/device IPv6 delete failed", fmt.Sprintf("Node did not receive the proper IPAM IPv6 address %s, it should have been %s or %s", newNode1IPv6, node1IPv6, node2IPv6))
-	}
+	helper.Logf("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, inetV6, newNode1IPv6)
+	require.NoError(err)
 
 	// validate list devices in a organization
 	devicesInOrganization, err := helper.runCommand(nexctl,

@@ -1755,6 +1755,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "zone-red"
                 },
+                "private_cidr": {
+                    "type": "boolean"
+                },
                 "security_group_id": {
                     "type": "string"
                 }
@@ -1999,6 +2002,9 @@ const docTemplate = `{
                 },
                 "owner_id": {
                     "type": "string"
+                },
+                "private_cidr": {
+                    "type": "boolean"
                 },
                 "security_group_id": {
                     "type": "string"

@@ -15,19 +15,22 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 	require := suite.Require()
 	organizations := []models.AddOrganization{
 		{
-			Name:     "organization-a",
-			IpCidr:   "10.1.1.0/24",
-			IpCidrV6: "fc00::/20",
+			Name:        "organization-a",
+			PrivateCidr: true,
+			IpCidr:      "10.1.1.0/24",
+			IpCidrV6:    "fc00::/20",
 		},
 		{
-			Name:     "organization-b",
-			IpCidr:   "10.1.2.0/24",
-			IpCidrV6: "fc00:1000::/20",
+			Name:        "organization-b",
+			PrivateCidr: true,
+			IpCidr:      "10.1.2.0/24",
+			IpCidrV6:    "fc00:1000::/20",
 		},
 		{
-			Name:     "organization-c",
-			IpCidr:   "10.1.3.0/24",
-			IpCidrV6: "fc00:2000::/20",
+			Name:        "organization-c",
+			PrivateCidr: true,
+			IpCidr:      "10.1.3.0/24",
+			IpCidrV6:    "fc00:2000::/20",
 		},
 	}
 	organizationDenied := models.AddOrganization{
@@ -162,4 +165,35 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.Equal("testuser", actual[0].Name)
 	}
 
+	{
+		_, res, err := suite.ServeRequest(
+			http.MethodPost,
+			"/", "/",
+			suite.api.CreateOrganization,
+			bytes.NewBuffer(suite.jsonMarshal(models.AddOrganization{
+				Name:   "bad-ipv4-cidr",
+				IpCidr: "10.1.3.0/24",
+			})),
+		)
+		assert.NoError(err)
+		assert.Equal(http.StatusBadRequest, res.Code)
+		assert.Equal(`{"error":"must be '100.64.0.0/10' or not set when private_cidr is not enabled","field":"cidr"}`, res.Body.String())
+
+	}
+
+	{
+		_, res, err := suite.ServeRequest(
+			http.MethodPost,
+			"/", "/",
+			suite.api.CreateOrganization,
+			bytes.NewBuffer(suite.jsonMarshal(models.AddOrganization{
+				Name:     "bad-ipv4-cidr",
+				IpCidrV6: "fc00::/20",
+			})),
+		)
+		assert.NoError(err)
+		assert.Equal(http.StatusBadRequest, res.Code)
+		assert.Equal(`{"error":"must be '200::/64' or not set when private_cidr is not enabled","field":"cidr_v6"}`, res.Body.String())
+
+	}
 }

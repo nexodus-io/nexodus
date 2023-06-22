@@ -17,5 +17,6 @@ type ModelsAddOrganization struct {
 	Description     string `json:"description,omitempty"`
 	HubZone         bool   `json:"hub_zone,omitempty"`
 	Name            string `json:"name,omitempty"`
+	PrivateCidr     bool   `json:"private_cidr,omitempty"`
 	SecurityGroupId string `json:"security_group_id,omitempty"`
 }

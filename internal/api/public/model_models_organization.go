@@ -20,5 +20,6 @@ type ModelsOrganization struct {
 	Invitations     []ModelsInvitation `json:"invitations,omitempty"`
 	Name            string             `json:"name,omitempty"`
 	OwnerId         string             `json:"owner_id,omitempty"`
+	PrivateCidr     bool               `json:"private_cidr,omitempty"`
 	SecurityGroupId string             `json:"security_group_id,omitempty"`
 }

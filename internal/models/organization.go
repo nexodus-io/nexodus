@@ -15,6 +15,7 @@ type Organization struct {
 	Devices         []*Device `json:"-"`
 	Name            string    `json:"name" gorm:"uniqueIndex" sql:"index"`
 	Description     string    `json:"description"`
+	PrivateCidr     bool      `json:"private_cidr"`
 	IpCidr          string    `json:"cidr"`
 	IpCidrV6        string    `json:"cidr_v6"`
 	HubZone         bool      `json:"hub_zone"`
@@ -28,6 +29,7 @@ type OrganizationJSON struct {
 	OwnerID         string    `json:"owner_id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 	Name            string    `json:"name" example:"zone-red"`
 	Description     string    `json:"description" example:"The Red Zone"`
+	PrivateCidr     bool      `json:"private_cidr"`
 	IpCidr          string    `json:"cidr" example:"172.16.42.0/24"`
 	IpCidrV6        string    `json:"cidr_v6" example:"200::/8"`
 	HubZone         bool      `json:"hub_zone"`
@@ -39,6 +41,7 @@ func (o Organization) MarshalJSON() ([]byte, error) {
 		ID:              o.ID,
 		OwnerID:         o.OwnerID,
 		Name:            o.Name,
+		PrivateCidr:     o.PrivateCidr,
 		Description:     o.Description,
 		IpCidr:          o.IpCidr,
 		IpCidrV6:        o.IpCidrV6,
@@ -61,6 +64,7 @@ func (z *Organization) BeforeCreate(tx *gorm.DB) error {
 type AddOrganization struct {
 	Name            string    `json:"name" example:"zone-red"`
 	Description     string    `json:"description" example:"The Red Zone"`
+	PrivateCidr     bool      `json:"private_cidr"`
 	IpCidr          string    `json:"cidr" example:"172.16.42.0/24"`
 	IpCidrV6        string    `json:"cidr_v6" example:"0200::/8"`
 	HubZone         bool      `json:"hub_zone"`

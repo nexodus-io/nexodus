@@ -39,14 +39,15 @@ Feature: Organization API
       """
       [
         {
-          "cidr": "100.100.0.0/16",
+          "cidr": "100.64.0.0/10",
           "cidr_v6": "200::/64",
           "description": "${oscar_username}'s organization",
           "hub_zone": true,
           "id": "${oscar_organization_id}",
           "name": "${oscar_username}",
           "owner_id": "${oscar_user_id}",
-          "security_group_id": "${oscar_security_group_id}"
+          "security_group_id": "${oscar_security_group_id}",
+          "private_cidr": false
         }
       ]
       """
@@ -62,6 +63,7 @@ Feature: Organization API
     When I POST path "/api/organizations" with json body:
       """
       {
+        "private_cidr": true,
         "cidr": "192.168.80.0/24",
         "cidr_v6": "211::/64",
         "description": "The Blue Zone",
@@ -70,27 +72,14 @@ Feature: Organization API
       }
       """
 
-    Given I store the ".id" selection from the response as ${organization_id}
-    Given I store the ".security_group_id" selection from the response as ${security_group_id}
-    Then the response code should be 201
-    And the response should match json:
-      """
-      {
-        "cidr": "192.168.80.0/24",
-        "cidr_v6": "211::/64",
-        "description": "The Blue Zone",
-        "hub_zone": false,
-        "id": "${organization_id}",
-        "name": "zone-blue",
-        "owner_id": "${oliver_user_id}",
-        "security_group_id": "${security_group_id}"
-      }
-      """
+    # The above request will succeed the first time the e2e test is run,
+    # but then should fail with an error, so ignore the result of this request.
 
     # Recreate the same organization to simulate unhappy path
     When I POST path "/api/organizations" with json body:
       """
       {
+        "private_cidr": true,
         "cidr": "192.168.80.0/24",
         "cidr_v6": "211::/64",
         "description": "The Blue Zone",

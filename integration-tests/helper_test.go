@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/models"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -242,6 +244,7 @@ func (helper *Helper) runNexd(ctx context.Context, node testcontainers.Container
 	helper.require.NoError(err, fmt.Errorf("execution of copy command on %s failed: %w", nodeName, err))
 
 	// execute the nexd run script on the test container
+	helper.logf("Running command on %s: %s", nodeName, strings.Join(cmd, " "))
 	_, err = helper.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
 	helper.require.NoError(err)
 }
@@ -569,4 +572,27 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 	helper.Logf("nexctl security-group update output: %s", out)
 
 	return nil
+}
+
+func (helper *Helper) createOrganization(username string, password string, args ...string) (string, string) {
+	orgOut, err := helper.runCommand(append([]string{
+		nexctl,
+		"--username", username, "--password", password,
+		"--output", "json",
+		"organization", "create",
+		"--name", uuid.New().String(),
+		"--description", "Test: " + helper.T.Name(),
+	}, args...)...)
+	helper.require.NoError(err)
+	var org models.OrganizationJSON
+	err = json.Unmarshal([]byte(orgOut), &org)
+	helper.require.NoError(err)
+	return org.ID.String(), org.Name
+}
+
+func (helper *Helper) deleteOrganization(username string, password string, orgID string) error {
+	_, err := helper.runCommand(nexctl,
+		"--username", username, "--password", password,
+		"organization", "delete", "--organization-id", orgID)
+	return err
 }

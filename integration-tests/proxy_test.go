@@ -681,15 +681,15 @@ func TestProxyNexctl(t *testing.T) {
 	// Rules are stored
 	out, err = helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/proxy-rules.json"})
 	require.NoError(err)
-	require.JSONEq(`
+	require.JSONEq(fmt.Sprintf(`
 		{
 		  "egress": [
-			"tcp:80:100.100.0.1:4242"
+			"tcp:80:%s:4242"
 		  ],
 		  "ingress": [
 			"tcp:4242:127.0.0.1:8080"
 		  ]
-		}`, out)
+		}`, node1IP), out)
 
 	// Rules are present now
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})

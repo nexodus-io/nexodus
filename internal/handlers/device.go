@@ -151,6 +151,16 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			return errDeviceNotFound
 		}
 
+		var org models.Organization
+		if result = tx.First(&org, "id = ?", device.OrganizationID); result.Error != nil {
+			return result.Error
+		}
+
+		originalIpamNamespace := defaultIPAMNamespace
+		if org.PrivateCidr {
+			originalIpamNamespace = org.ID
+		}
+
 		if request.EndpointLocalAddressIPv4 != "" {
 			device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
 		}
@@ -174,27 +184,35 @@ func (api *API) UpdateDevice(c *gin.Context) {
 				return errUserOrOrgNotFound
 			}
 
-			if err := api.ipam.ReleaseToPool(c.Request.Context(), device.OrganizationID, device.TunnelIP, device.OrganizationPrefix); err != nil {
-				c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
-				return err
+			newIpamNamespace := defaultIPAMNamespace
+			if org.PrivateCidr {
+				newIpamNamespace = org.ID
 			}
 
-			if err := api.ipam.ReleaseToPool(c.Request.Context(), device.OrganizationID, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
-				c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
-				return err
-			}
+			// We can reuse the ip address if the ipam namespace is not changing.
+			if originalIpamNamespace != newIpamNamespace {
+				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIP, device.OrganizationPrefix); err != nil {
+					c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
+					return err
+				}
 
-			device.TunnelIP, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidr)
-			if err != nil {
-				return fmt.Errorf("failed to request ipam address: %w", err)
-			}
-			device.OrganizationPrefix = org.IpCidr
+				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
+					c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
+					return err
+				}
 
-			device.TunnelIpV6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
-			if err != nil {
-				return fmt.Errorf("failed to request ipam v6 address: %w", err)
+				device.TunnelIP, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidr)
+				if err != nil {
+					return fmt.Errorf("failed to request ipam address: %w", err)
+				}
+				device.OrganizationPrefix = org.IpCidr
+
+				device.TunnelIpV6, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidrV6)
+				if err != nil {
+					return fmt.Errorf("failed to request ipam v6 address: %w", err)
+				}
+				device.OrganizationPrefixV6 = org.IpCidrV6
 			}
-			device.OrganizationPrefixV6 = org.IpCidrV6
 
 			device.AllowedIPs, err = getAllowedIPs(device.TunnelIP, device.TunnelIpV6, device.Relay)
 			if err != nil {
@@ -223,12 +241,12 @@ func (api *API) UpdateDevice(c *gin.Context) {
 				}
 				// lookup miss of prefix means we need to release it
 				if _, ok := prefixAllocated[prefix]; ok {
-					if err := api.ipam.ReleasePrefix(ctx, device.OrganizationID, prefix); err != nil {
+					if err := api.ipam.ReleasePrefix(ctx, originalIpamNamespace, prefix); err != nil {
 						return err
 					}
 				} else {
 					// otherwise we need to allocate it
-					if err := api.ipam.AssignPrefix(ctx, device.OrganizationID, prefix); err != nil {
+					if err := api.ipam.AssignPrefix(ctx, originalIpamNamespace, prefix); err != nil {
 						return err
 					}
 				}
@@ -339,6 +357,11 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return res.Error
 		}
 
+		ipamNamespace := defaultIPAMNamespace
+		if org.PrivateCidr {
+			ipamNamespace = org.ID
+		}
+
 		var relay bool
 		// determine if the node joining is a relay node
 		if request.Relay {
@@ -351,18 +374,18 @@ func (api *API) CreateDevice(c *gin.Context) {
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.TunnelIP != "" {
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, org.ID, org.IpCidr, request.TunnelIP)
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, org.IpCidr, request.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
 		} else {
-			ipamIP, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidr)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamNamespace, org.IpCidr)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
 		}
 		// Currently only support v4 requesting of specific addresses
-		ipamIPv6, err = api.ipam.AssignFromPool(ctx, org.ID, org.IpCidrV6)
+		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, org.IpCidrV6)
 		if err != nil {
 			return fmt.Errorf("failed to request ipam v6 address: %w", err)
 		}
@@ -374,7 +397,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			}
 			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
 			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
-				if err := api.ipam.AssignPrefix(ctx, org.ID, prefix); err != nil {
+				if err := api.ipam.AssignPrefix(ctx, ipamNamespace, prefix); err != nil {
 					return fmt.Errorf("failed to assign child prefix: %w", err)
 				}
 			}
@@ -468,8 +491,19 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		return
 	}
 
+	var org models.Organization
+	result := api.db.
+		First(&org, "id = ?", device.OrganizationID)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+	}
+
+	ipamNamespace := defaultIPAMNamespace
+	if org.PrivateCidr {
+		ipamNamespace = org.ID
+	}
+
 	ipamAddress := device.TunnelIP
-	orgID := device.OrganizationID
 	orgPrefix := device.OrganizationPrefix
 	childPrefix := device.ChildPrefix
 
@@ -483,14 +517,14 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 
 	if ipamAddress != "" && orgPrefix != "" {
-		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddress, orgPrefix); err != nil {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddress, orgPrefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
 			return
 		}
 	}
 
 	for _, prefix := range childPrefix {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), orgID, prefix); err != nil {
+		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, prefix); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release child prefix: %w", err)))
 			return
 		}
@@ -500,7 +534,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	orgPrefixV6 := device.OrganizationPrefixV6
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
-		if err := api.ipam.ReleaseToPool(c.Request.Context(), orgID, ipamAddressV6, orgPrefixV6); err != nil {
+		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {
 			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
 			return
 		}
