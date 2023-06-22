@@ -34,12 +34,17 @@ on:
         required: false
         default: '0'
 
+      timeout_minutes:
+        description: 'timeout in minutes for the deploy-qa job'
+        required: false
+        default: '90'
+
 jobs:
   deploy-qa:
     name: deploy-qa-ec2
     runs-on: ubuntu-latest
     environment: image-repositories
-    timeout-minutes: 90
+    timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes) }}
     env:
       AWS_REGION: "us-east-1"
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
