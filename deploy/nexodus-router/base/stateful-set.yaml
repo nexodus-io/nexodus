@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nexodus-router
+spec:
+  serviceName: nexodus-router
+  selector:
+    matchLabels:
+      app: nexodus-router
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nexodus-router
+    spec:
+
+      volumes:
+        - name: initdir
+          emptyDir: {}
+      initContainers:
+        - name: cert-setup
+          image: quay.io/nexodus/nexd:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /etc/nexodus/.certs; base64 -d /etc/nexodus-client-secret/cert > /etc/nexodus/.certs/rootCA.pem
+              CAROOT=/etc/nexodus/.certs ./mkcert -install
+
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-nexodus
+              mountPath: "/etc/nexodus"
+              mountPropagation: Bidirectional
+            - name: nexodus-client-secret
+              mountPath: "/etc/nexodus-client-secret"
+              readOnly: true
+
+      containers:
+        - name: nexodus-router
+          image: quay.io/nexodus/nexd:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: NEXD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: username
+                  optional: false
+            - name: NEXD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: password
+                  optional: false
+            - name: URL
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: url
+                  optional: false
+          command:
+            - /bin/sh
+            - -c
+            - exec /nexd proxy $URL
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: nexodus
+              mountPath: "/etc/nexodus"
+              mountPropagation: Bidirectional
+            - name: host-wireguard
+              mountPath: "/etc/wireguard"
+              mountPropagation: Bidirectional
+            - name: nexodus-client-secret
+              mountPath: "/etc/nexodus-client-secret"
+              readOnly: true
+      restartPolicy: Always
+
+  volumeClaimTemplates:
+    - metadata:
+        name: nexodus
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: host-wireguard
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: nexodus-client-secret
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+
