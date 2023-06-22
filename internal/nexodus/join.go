@@ -10,7 +10,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, error) {
+func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
 	d, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
 		UserId:                  userID,
 		OrganizationId:          ax.org.Id,
@@ -24,7 +24,7 @@ func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 		Os:                      ax.os,
 		Endpoints:               endpoints,
 	}).Execute()
-
+	deviceOperationMsg := "Successfully registered device"
 	if err != nil {
 		var apiError *public.GenericOpenAPIError
 		if errors.As(err, &apiError) {
@@ -39,24 +39,25 @@ func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 					Endpoints:               endpoints,
 					OrganizationId:          ax.org.Id,
 				}).Execute()
+				deviceOperationMsg = "Reconnected as device"
 				if err != nil {
 					respText := ""
 					if resp != nil {
 						bytes, err := io.ReadAll(resp.Body)
 						if err != nil {
-							return public.ModelsDevice{}, fmt.Errorf("error updating device: %w - %s", err, resp.Status)
+							return public.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, resp.Status)
 						}
 						respText = string(bytes)
 					}
-					return public.ModelsDevice{}, fmt.Errorf("error updating device: %w - %s", err, respText)
+					return public.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, respText)
 				}
 			default:
-				return public.ModelsDevice{}, fmt.Errorf("error creating device: %w", err)
+				return public.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
 			}
 		} else {
-			return public.ModelsDevice{}, fmt.Errorf("error creating device: %w", err)
+			return public.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
 		}
 	}
 
-	return *d, nil
+	return *d, deviceOperationMsg, nil
 }

@@ -460,8 +460,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	var modelsDevice public.ModelsDevice
+	var deviceOperationLogMsg string
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		modelsDevice, err = ax.createOrUpdateDeviceOperation(user.Id, endpoints)
+		modelsDevice, deviceOperationLogMsg, err = ax.createOrUpdateDeviceOperation(user.Id, endpoints)
 		if err != nil {
 			ax.logger.Warnf("device join error - retrying: %v", err)
 			return err
@@ -471,10 +472,9 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err != nil {
 		return fmt.Errorf("join error %w", err)
 	}
-
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
-	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
-		modelsDevice.Id, ax.org.Name, ax.org.Id)
+	ax.logger.Infof("%s with UUID: [ %+v ] into organization: [ %s (%s) ]",
+		deviceOperationLogMsg, modelsDevice.Id, ax.org.Name, ax.org.Id)
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if ax.relay {
