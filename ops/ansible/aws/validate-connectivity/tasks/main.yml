@@ -42,3 +42,8 @@
     src: /home/{{ ansible_user }}/connectivity-results.txt
     dest: ./
     flat: true
+
+- name: Pause for debugging if specified in the github action dispatch
+  pause:
+    seconds: "{{ debug_pause | int * 60 }}"
+  when: debug_pause is defined and debug_pause | int > 0
