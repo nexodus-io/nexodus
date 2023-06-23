@@ -35,6 +35,16 @@ This workflow is for validating the production environment. The api-server/contr
 
 ## Running the Tests
 
-To run the tests, simply go to the actions and choose the deployment size: small, medium, large, or xlarge. The node counts of these will change as we optimize the deployment. Next, choose the pull request number or branch name. This value would simply be a number or something like main. From there, you can watch the logs and troubleshoot any errors as part of debugging a PR, download logs from the artifacts zip at the end of the workflow, or see the successful or unsuccessful connectivity results in the Mesh Connectivity Results step of the workflow.
+To run the tests, simply go to the actions and choose the deployment size: small, medium, large, or xlarge. The node counts of these will change as we optimize the deployment. Next, choose the pull request number or branch name. This value would simply be a number or a branch such as main. From there, you can watch the logs and troubleshoot any errors as part of debugging a PR, download logs from the artifacts zip at the end of the workflow, or see the successful or unsuccessful connectivity results in the Mesh Connectivity Results step of the workflow.
 
 Once the workflow completes, all the EC2 agent instances that were started are torn down, based on the EC2 tag set in the Ansible variables.
+
+### Additional Dispatch Arguments
+
+There are additional arguments that can be passed via the Github Actions dispatch that allows for adjusting the following values.
+
+- EC2 Instance Type: The options are t2.micro, t2.small, t2.medium, or t2.large. The default is t2.micro.
+- Pull Request Number or Branch Name: This defaults to "main" branch. Enter a PR number if you want to test a patch instead of main.
+- Time in Minutes to Pause Before Tearing Down the Infrastructure for Debugging: This is set to 0 minutes by default, meaning there will be no pause.
+- Timeout in Minutes for the Deploy-QA Job: The job will time out after 90 minutes by default. Adjust this to a longer period in conjunction with the pause timer for long-running debugging sessions.
+- Containers Per Node: By default, it is 5 containers per node. If you specify a high number of containers you would likely want to bump the instance type to `t2.medium` or `t2.large`. This option is only available for the `qa-scale-containers` workflow.
