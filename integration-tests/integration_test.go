@@ -179,7 +179,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	}()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--org-id", orgID, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
@@ -187,7 +187,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--org-id", orgID,
+		"--organization-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -214,7 +214,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	helper.Log("Restarting nexodus on two spoke nodes and re-joining")
 
 	helper.runNexd(ctx, node1, "--username", username, "--password", password,
-		"--org-id", orgID,
+		"--organization-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node1IP), "relay")
 
 	// validate nexd has started on the relay node
@@ -223,7 +223,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--org-id", orgID,
+		"--organization-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
