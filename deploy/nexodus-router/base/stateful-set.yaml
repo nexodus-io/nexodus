@@ -14,30 +14,6 @@ spec:
         app: nexodus-router
     spec:
 
-      volumes:
-        - name: initdir
-          emptyDir: {}
-      initContainers:
-        - name: cert-setup
-          image: quay.io/nexodus/nexd:latest
-          imagePullPolicy: IfNotPresent
-          command:
-            - /bin/sh
-            - -c
-            - |
-              mkdir -p /etc/nexodus/.certs; base64 -d /etc/nexodus-client-secret/cert > /etc/nexodus/.certs/rootCA.pem
-              CAROOT=/etc/nexodus/.certs ./mkcert -install
-
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - name: host-nexodus
-              mountPath: "/etc/nexodus"
-              mountPropagation: Bidirectional
-            - name: nexodus-client-secret
-              mountPath: "/etc/nexodus-client-secret"
-              readOnly: true
-
       containers:
         - name: nexodus-router
           image: quay.io/nexodus/nexd:latest
@@ -56,7 +32,7 @@ spec:
                   name: nexodus-client-secret
                   key: password
                   optional: false
-            - name: URL
+            - name: NEXD_SERVICE_URL
               valueFrom:
                 secretKeyRef:
                   name: nexodus-client-secret
@@ -65,7 +41,21 @@ spec:
           command:
             - /bin/sh
             - -c
-            - exec /nexd proxy $URL
+            - |
+              if [ -f /etc/nexodus-client-secret/cert ] ; then
+                if [ `cat /etc/nexodus-client-secret/cert` == '<NEXODUS_SERVICE_CERT>' ]; then
+                  export NEXD_INSECURE_SKIP_TLS_VERIFY=true
+                else
+                  mkdir -p /etc/nexodus/.certs; base64 -d /etc/nexodus-client-secret/cert > /etc/nexodus/.certs/rootCA.pem
+                  CAROOT=/etc/nexodus/.certs /bin/mkcert -install
+                fi
+              fi
+              if [ -f /etc/nexodus-client-secret/hosts ] ; then
+                echo >> /etc/hosts
+                cat /etc/nexodus-client-secret/hosts >> /etc/hosts
+                echo >> /etc/hosts
+              fi
+              exec /bin/nexd proxy
           securityContext:
             privileged: true
           volumeMounts:
@@ -79,6 +69,12 @@ spec:
               mountPath: "/etc/nexodus-client-secret"
               readOnly: true
       restartPolicy: Always
+      volumes:
+        - name: nexodus-client-secret
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: nexodus-client-secret
 
   volumeClaimTemplates:
     - metadata:
@@ -95,11 +91,3 @@ spec:
         resources:
           requests:
             storage: 1Gi
-    - metadata:
-        name: nexodus-client-secret
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
-

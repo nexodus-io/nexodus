@@ -483,6 +483,18 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
+	if ax.userspaceMode && os.Getenv("NEXD_SKUPPER_CONFIG") != "" {
+		controller := &SkupperConfigController{
+			Nexodus:    ax,
+			logger:     ax.logger.With("controller", "proxy-config"),
+			configFile: os.Getenv("NEXD_SKUPPER_CONFIG"),
+		}
+		err = controller.Start(ctx, wg)
+		if err != nil {
+			return fmt.Errorf("failed to start proxy config controller: %w", err)
+		}
+	}
+
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
 		ax.reconcileDevices(ctx, options)
