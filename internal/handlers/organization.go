@@ -608,7 +608,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		OrganizationID uuid.UUID
 	}
 	var usersInOrg []userOrgMapping
-	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(usersInOrg); res.Error != nil {
+	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
 	}
