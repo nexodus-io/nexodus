@@ -12,5 +12,6 @@ package public
 
 // ModelsDeviceMetadataValue struct for ModelsDeviceMetadataValue
 type ModelsDeviceMetadataValue struct {
-	Value string `json:"value,omitempty"`
+	Revision int32                  `json:"revision,omitempty"`
+	Value    map[string]interface{} `json:"value,omitempty"`
 }

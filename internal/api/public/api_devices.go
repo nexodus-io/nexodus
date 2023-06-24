@@ -328,7 +328,6 @@ type ApiDeleteDeviceMetadataRequest struct {
 	ctx        context.Context
 	ApiService *DevicesApiService
 	id         string
-	key        string
 }
 
 func (r ApiDeleteDeviceMetadataRequest) Execute() (*http.Response, error) {
@@ -342,15 +341,13 @@ Delete all metadata for a device
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param id Device ID
-	@param key Metadata Key
 	@return ApiDeleteDeviceMetadataRequest
 */
-func (a *DevicesApiService) DeleteDeviceMetadata(ctx context.Context, id string, key string) ApiDeleteDeviceMetadataRequest {
+func (a *DevicesApiService) DeleteDeviceMetadata(ctx context.Context, id string) ApiDeleteDeviceMetadataRequest {
 	return ApiDeleteDeviceMetadataRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
-		key:        key,
 	}
 }
 
@@ -369,7 +366,6 @@ func (a *DevicesApiService) DeleteDeviceMetadataExecute(r ApiDeleteDeviceMetadat
 
 	localVarPath := localBasePath + "/api/devices/{id}/metadata"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"key"+"}", url.PathEscape(parameterValueToString(r.key, "key")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -385,7 +381,7 @@ func (a *DevicesApiService) DeleteDeviceMetadataExecute(r ApiDeleteDeviceMetadat
 	}
 
 	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
+	localVarHTTPHeaderAccepts := []string{"*/*"}
 
 	// set Accept header
 	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
@@ -491,7 +487,7 @@ func (a *DevicesApiService) DeleteDeviceMetadataKeyExecute(r ApiDeleteDeviceMeta
 	}
 
 	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
+	localVarHTTPHeaderAccepts := []string{"*/*"}
 
 	// set Accept header
 	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)

@@ -163,13 +163,14 @@ definitions:
         type: string
       metadata:
         additionalProperties:
-          type: string
+          $ref: '#/definitions/models.DeviceMetadataValue'
         type: object
     type: object
   models.DeviceMetadataValue:
     properties:
-      value:
-        type: string
+      revision:
+        type: integer
+      value: {}
     type: object
   models.DeviceStartResponse:
     properties:
@@ -582,8 +583,6 @@ paths:
       tags:
       - Devices
     post:
-      consumes:
-      - application/json
       description: Delete all metadata for a device
       operationId: DeleteDeviceMetadata
       parameters:
@@ -592,13 +591,9 @@ paths:
         name: id
         required: true
         type: string
-      - description: Metadata Key
-        in: path
-        name: key
-        type: string
-      produces:
-      - application/json
       responses:
+        "204":
+          description: No Content
         "501":
           description: Not Implemented
           schema:
@@ -638,8 +633,6 @@ paths:
       tags:
       - Devices
     post:
-      consumes:
-      - application/json
       description: Delete a metadata key for a device
       operationId: DeleteDeviceMetadataKey
       parameters:
@@ -652,9 +645,9 @@ paths:
         in: path
         name: key
         type: string
-      produces:
-      - application/json
       responses:
+        "204":
+          description: No Content
         "501":
           description: Not Implemented
           schema:

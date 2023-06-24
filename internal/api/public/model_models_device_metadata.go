@@ -12,6 +12,6 @@ package public
 
 // ModelsDeviceMetadata struct for ModelsDeviceMetadata
 type ModelsDeviceMetadata struct {
-	DeviceId string            `json:"device_id,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	DeviceId string                               `json:"device_id,omitempty"`
+	Metadata map[string]ModelsDeviceMetadataValue `json:"metadata,omitempty"`
 }

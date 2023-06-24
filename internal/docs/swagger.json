@@ -327,12 +327,6 @@
             },
             "post": {
                 "description": "Delete all metadata for a device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Devices"
                 ],
@@ -345,15 +339,12 @@
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Metadata Key",
-                        "name": "key",
-                        "in": "path"
                     }
                 ],
                 "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
@@ -410,12 +401,6 @@
             },
             "post": {
                 "description": "Delete a metadata key for a device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Devices"
                 ],
@@ -437,6 +422,9 @@
                     }
                 ],
                 "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
@@ -2046,7 +2034,7 @@
                 "metadata": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "string"
+                        "$ref": "#/definitions/models.DeviceMetadataValue"
                     }
                 }
             }
@@ -2054,9 +2042,10 @@
         "models.DeviceMetadataValue": {
             "type": "object",
             "properties": {
-                "value": {
-                    "type": "string"
-                }
+                "revision": {
+                    "type": "integer"
+                },
+                "value": {}
             }
         },
         "models.DeviceStartResponse": {
