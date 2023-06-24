@@ -232,8 +232,8 @@ func (helper *Helper) runNexd(ctx context.Context, node testcontainers.Container
 	cmd := []string{"NEXD_LOGLEVEL=debug", "/bin/nexd"}
 	cmd = append(cmd, "--stun-server", fmt.Sprintf("%s:%d", hostDNSName, testStunServer1Port))
 	cmd = append(cmd, "--stun-server", fmt.Sprintf("%s:%d", hostDNSName, testStunServer2Port))
+	cmd = append(cmd, "--service-url", "https://try.nexodus.127.0.0.1.nip.io")
 	cmd = append(cmd, args...)
-	cmd = append(cmd, "https://try.nexodus.127.0.0.1.nip.io")
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
 
 	// write the nexd run command to a local file

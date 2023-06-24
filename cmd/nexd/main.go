@@ -41,14 +41,34 @@ var Version = "dev"
 var DefaultServiceURL = "https://try.nexodus.io"
 
 func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
-	serviceURL := cCtx.Args().First()
+
+	// Fail if you try to configure the service URL both ways
+	if cCtx.IsSet("service-url") && cCtx.Args().Len() > 0 {
+		return fmt.Errorf("please remove the service URL positional argument, it was configured via the --service-url flag")
+	}
+	if cCtx.Args().Len() > 1 {
+		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
+	}
+
+	serviceURL := ""
+	if cCtx.IsSet("service-url") {
+		// It was set via a flag
+		serviceURL = cCtx.String("service-url")
+	} else if cCtx.Args().Len() > 0 {
+		// It was set via a positional arg
+		serviceURL = cCtx.Args().First()
+		logger.Info("DEPRECATION WARNING: configuring the service url via the positional argument will not be supported in a future release.  Please use the --service-url flag instead.")
+	}
+
+	// If it was not set, then fall back to using the default...
 	if serviceURL == "" && DefaultServiceURL != "" {
 		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
 		serviceURL = DefaultServiceURL
 	}
 
-	if cCtx.Args().Len() > 1 {
-		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
+	// DefaultServiceURL may not be set... in this case fail since we don't have a service URL
+	if serviceURL == "" {
+		return fmt.Errorf("no service URL provided: try using the --service-url flag")
 	}
 
 	_, err := nexodus.CtlStatus(cCtx)
@@ -177,7 +197,6 @@ func main() {
 	app := &cli.App{
 		Name:                 "nexd",
 		Usage:                "Node agent to configure encrypted mesh networking with nexodus.",
-		ArgsUsage:            "service-url",
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
 			{
@@ -359,6 +378,14 @@ func main() {
 				Name:     "organization-id",
 				Usage:    "Organization ID to use when registering with the nexodus service",
 				EnvVars:  []string{"NEXD_ORG_ID"},
+				Required: false,
+				Category: nexServiceOptions,
+			},
+			&cli.StringFlag{
+				Name:     "service-url",
+				Usage:    "URL to the Nexodus service",
+				Value:    DefaultServiceURL,
+				EnvVars:  []string{"NEXD_SERVICE_URL"},
 				Required: false,
 				Category: nexServiceOptions,
 			},

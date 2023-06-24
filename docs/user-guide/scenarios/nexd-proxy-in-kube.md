@@ -24,7 +24,7 @@ a Nexodus organization to reach this service, no matter where they are.
 The Pod running `nexd proxy` is using a single ingress proxy rule:
 
 ```sh
-nexd proxy --ingress tcp:80:nginx-service.nexd-proxy-demo1.svc.cluster.local:80 https://try.nexodus.io
+nexd --service-url https://try.nexodus.io proxy --ingress tcp:80:nginx-service.nexd-proxy-demo1.svc.cluster.local:80 
 ```
 
 ```mermaid
@@ -324,7 +324,7 @@ spec:
       - name: nexd-proxy
         image: quay.io/nexodus/nexd
         command: ["sh"]
-        args: ["-c", "ln -s /etc/wireguard/private.key /private.key; ln -s /etc/wireguard/public.key /public.key; nexd proxy --egress tcp:80:100.100.0.1:80 https://try.nexodus.io"]
+        args: ["-c", "ln -s /etc/wireguard/private.key /private.key; ln -s /etc/wireguard/public.key /public.key; nexd --service-url https://try.nexodus.io proxy --egress tcp:80:100.100.0.1:80"]
         env:
         - name: NEXD_USERNAME
           valueFrom:
