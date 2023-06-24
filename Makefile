@@ -419,9 +419,11 @@ endif
 clear-db:
 	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=0 -n nexodus $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m $(PIPE_DEV_NULL)
-	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLE IF EXISTS] apiserver_migrations"
+	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLES] ..."
 	$(CMD_PREFIX) echo "\
 		DROP TABLE IF EXISTS invitations;\
+		DROP TABLE IF EXISTS security_groups;\
+		DROP TABLE IF EXISTS device_metadata;\
 		DROP TABLE IF EXISTS devices;\
 		DROP TABLE IF EXISTS user_organizations;\
 		DROP TABLE IF EXISTS organizations;\
