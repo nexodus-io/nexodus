@@ -161,13 +161,8 @@ definitions:
     properties:
       device_id:
         type: string
-      metadata:
-        additionalProperties:
-          $ref: '#/definitions/models.DeviceMetadataValue'
-        type: object
-    type: object
-  models.DeviceMetadataValue:
-    properties:
+      key:
+        type: string
       revision:
         type: integer
       value: {}
@@ -557,32 +552,7 @@ paths:
       tags:
       - Devices
   /api/devices/{id}/metadata:
-    get:
-      consumes:
-      - application/json
-      description: Lists metadata for a device
-      operationId: GetDeviceMetadata
-      parameters:
-      - description: Device ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.DeviceMetadata'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.BaseError'
-      summary: Get Device Metadata
-      tags:
-      - Devices
-    post:
+    delete:
       description: Delete all metadata for a device
       operationId: DeleteDeviceMetadata
       parameters:
@@ -601,7 +571,61 @@ paths:
       summary: Delete all Device metadata
       tags:
       - Devices
+    get:
+      consumes:
+      - application/json
+      description: Lists metadata for a device
+      operationId: ListDeviceMetadata
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.DeviceMetadata'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: List Device Metadata
+      tags:
+      - Devices
   /api/devices/{id}/metadata/{key}:
+    delete:
+      description: Delete a metadata key for a device
+      operationId: DeleteDeviceMetadataKey
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Metadata Key
+        in: path
+        name: key
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Delete a Device metadata key
+      tags:
+      - Devices
     get:
       consumes:
       - application/json
@@ -624,7 +648,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.DeviceMetadataValue'
+            $ref: '#/definitions/models.DeviceMetadata'
         "501":
           description: Not Implemented
           schema:
@@ -632,9 +656,11 @@ paths:
       summary: Get Device Metadata
       tags:
       - Devices
-    post:
-      description: Delete a metadata key for a device
-      operationId: DeleteDeviceMetadataKey
+    put:
+      consumes:
+      - application/json
+      description: Set metadata key for a device
+      operationId: UpdateDeviceMetadataKey
       parameters:
       - description: Device ID
         in: path
@@ -645,14 +671,24 @@ paths:
         in: path
         name: key
         type: string
+      - description: Metadata Value
+        in: body
+        name: value
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeviceMetadata'
         "501":
           description: Not Implemented
           schema:
             $ref: '#/definitions/models.BaseError'
-      summary: Delete a Device metadata key
+      summary: Set Device Metadata by key
       tags:
       - Devices
   /api/fflags:
@@ -1324,6 +1360,38 @@ paths:
       summary: Update Security Group
       tags:
       - SecurityGroup
+  /api/organizations/{organization}/metadata:
+    get:
+      consumes:
+      - application/json
+      description: Lists metadata for a device
+      operationId: ListOrganizationMetadata
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization
+        required: true
+        type: string
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.DeviceMetadata'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: List Device Metadata
+      tags:
+      - Devices
   /api/users:
     get:
       consumes:

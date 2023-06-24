@@ -142,7 +142,7 @@ func getDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
 		return err
 	}
 
-	metadata, _, err := client.DevicesApi.GetDeviceMetadata(context.Background(), deviceID.String()).Execute()
+	metadata, _, err := client.DevicesApi.ListDeviceMetadata(context.Background(), deviceID.String()).Execute()
 	if err != nil {
 		return err
 	}

@@ -307,8 +307,8 @@ const docTemplate = `{
                 "tags": [
                     "Devices"
                 ],
-                "summary": "Get Device Metadata",
-                "operationId": "GetDeviceMetadata",
+                "summary": "List Device Metadata",
+                "operationId": "ListDeviceMetadata",
                 "parameters": [
                     {
                         "type": "string",
@@ -316,13 +316,22 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.DeviceMetadata"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DeviceMetadata"
+                            }
                         }
                     },
                     "500": {
@@ -333,7 +342,7 @@ const docTemplate = `{
                     }
                 }
             },
-            "post": {
+            "delete": {
                 "description": "Delete all metadata for a device",
                 "tags": [
                     "Devices"
@@ -396,7 +405,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.DeviceMetadataValue"
+                            "$ref": "#/definitions/models.DeviceMetadata"
                         }
                     },
                     "501": {
@@ -407,7 +416,59 @@ const docTemplate = `{
                     }
                 }
             },
-            "post": {
+            "put": {
+                "description": "Set metadata key for a device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Set Device Metadata by key",
+                "operationId": "UpdateDeviceMetadataKey",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Metadata Key",
+                        "name": "key",
+                        "in": "path"
+                    },
+                    {
+                        "description": "Metadata Value",
+                        "name": "value",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.DeviceMetadata"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
                 "description": "Delete a metadata key for a device",
                 "tags": [
                     "Devices"
@@ -1442,6 +1503,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/organizations/{organization}/metadata": {
+            "get": {
+                "description": "Lists metadata for a device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "List Device Metadata",
+                "operationId": "ListOrganizationMetadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DeviceMetadata"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -2039,17 +2148,9 @@ const docTemplate = `{
                 "device_id": {
                     "type": "string"
                 },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/models.DeviceMetadataValue"
-                    }
-                }
-            }
-        },
-        "models.DeviceMetadataValue": {
-            "type": "object",
-            "properties": {
+                "key": {
+                    "type": "string"
+                },
                 "revision": {
                     "type": "integer"
                 },

@@ -102,11 +102,13 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.POST("/devices", api.CreateDevice)
 		private.DELETE("/devices/:id", api.DeleteDevice)
 		// Device Metadata
-		private.GET("/devices/:id/metadata", api.GetDeviceMetadata)
+		private.GET("/devices/:id/metadata", api.ListDeviceMetadata)
 		private.GET("/devices/:id/metadata/:key", api.GetDeviceMetadataKey)
 		private.PUT("/devices/:id/metadata/:key", api.UpdateDeviceMetadataKey)
 		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 		private.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
+		private.GET("/organizations/:organization/metadata", api.ListOrganizationMetadata)
+
 		// Users
 		private.GET("/users/:id", api.GetUser)
 		private.GET("/users", api.ListUsers)

@@ -3,36 +3,37 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"gorm.io/gorm/clause"
-	"net/http"
-
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"net/http"
 )
 
-func (api *API) metadataForDevice(c *gin.Context, deviceId string) func(db *gorm.DB) *gorm.DB {
+func metadataForDevice(deviceId string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		return db.Where("device_id = ?", deviceId)
 	}
 }
 
-// GetDeviceMetadata lists metadata for a device
-// @Summary      Get Device Metadata
-// @Id  		 GetDeviceMetadata
+// ListDeviceMetadata lists metadata for a device
+// @Summary      List Device Metadata
+// @Id  		 ListDeviceMetadata
 // @Tags         Devices
 // @Description  Lists metadata for a device
-// @Param        id   path      string  true "Device ID"
+// @Param        id          path   string  true  "Device ID"
+// @Param		 gt_revision query  uint64  false "greater than revision"
 // @Accept	     json
 // @Produce      json
-// @Success      200  {object}  models.DeviceMetadata
+// @Success      200  {object}  []models.DeviceMetadata
 // @Failure      500  {object}  models.BaseError
 // @Router       /api/devices/{id}/metadata [get]
-func (api *API) GetDeviceMetadata(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceMetadata", trace.WithAttributes(
+func (api *API) ListDeviceMetadata(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListDeviceMetadata", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
@@ -42,52 +43,119 @@ func (api *API) GetDeviceMetadata(c *gin.Context) {
 		return
 	}
 
-	var metadataInstances []models.DeviceMetadataInstance
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		return
+	}
 
-	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		var device models.Device
-		result := api.db.WithContext(ctx).
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
-			First(&device, "id = ?", deviceId)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		result = api.db.WithContext(ctx).
-			Scopes(
-				api.metadataForDevice(c, deviceId.String()),
-				FilterAndPaginate(&models.DeviceMetadataInstance{}, c, "key"),
-			).
-			Find(&metadataInstances)
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
-			return result.Error
-		}
-
-		return nil
-	})
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	var device models.Device
+	result := api.db.WithContext(ctx).
+		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+		First(&device, "id = ?", deviceId)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error fetching metadata: %s", err)
-		c.JSON(http.StatusInternalServerError, err)
+		api.logger.Errorf("error fetching metadata: %s", result.Error)
+		c.JSON(http.StatusInternalServerError, result.Error)
+		return
 	}
-	result := models.DeviceMetadata{
-		DeviceID: deviceId.String(),
-		Metadata: make(map[string]models.DeviceMetadataValue),
-	}
-	for _, metadata := range metadataInstances {
-		result.Metadata[metadata.Key] = models.DeviceMetadataValue{
-			Value:    metadata.Value,
-			Revision: metadata.Revision,
-		}
-	}
-	c.JSON(http.StatusOK, result)
+
+	defaultOrderBy := "key"
+	api.sendList(c, ctx, getDeviceMetadataList, []func(*gorm.DB) *gorm.DB{
+		func(db *gorm.DB) *gorm.DB {
+			return db.Where("device_id = ?", deviceId.String())
+		},
+		FilterAndPaginateWithQuery(&models.Device{}, c, query, defaultOrderBy),
+	})
 }
 
-// GetDeviceMetadata Get value for a metadata key on a device
+func getDeviceMetadataList(db *gorm.DB, scopes []func(*gorm.DB) *gorm.DB) (WatchableList, error) {
+	var items deviceMetadataList
+	result := db.Scopes(scopes...).Find(&items)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, result.Error
+	}
+	return items, nil
+}
+
+// ListOrganizationMetadata lists metadata for all devices in an organization
+// @Summary      List Device Metadata
+// @Id  		 ListOrganizationMetadata
+// @Tags         Devices
+// @Description  Lists metadata for a device
+// @Param        organization    path   string true  "Organization ID"
+// @Param		 gt_revision     query  uint64 false "greater than revision"
+// @Accept	     json
+// @Produce      json
+// @Success      200  {object}  []models.DeviceMetadata
+// @Failure      500  {object}  models.BaseError
+// @Router       /api/organizations/{organization}/metadata [get]
+func (api *API) ListOrganizationMetadata(c *gin.Context) {
+	orgIdParam := c.Param("organization")
+	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizationMetadata", trace.WithAttributes(
+		attribute.String("organization", orgIdParam),
+	))
+	defer span.End()
+
+	orgId, err := uuid.Parse(orgIdParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+		return
+	}
+
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		return
+	}
+
+	var org models.Organization
+	result := api.db.WithContext(ctx).
+		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+		First(&org, "id = ?", orgId.String())
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+		} else {
+			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		}
+		return
+	}
+
+	signalChannel := fmt.Sprintf("/metadata/org=%s", orgId.String())
+	defaultOrderBy := "key"
+	if v := c.Query("watch"); v == "true" {
+		query.Sort = ""
+		defaultOrderBy = "revision"
+	}
+
+	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", getDeviceMetadataList, []func(*gorm.DB) *gorm.DB{
+		func(db *gorm.DB) *gorm.DB {
+			return db.
+				Model(&models.DeviceMetadata{}).
+				Joins("inner join devices on devices.id=device_metadata.device_id").
+				Where("devices.organization_id = ?", orgId.String())
+		},
+		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query, defaultOrderBy),
+	})
+}
+
+type deviceMetadataList []*models.DeviceMetadata
+
+func (d deviceMetadataList) Item(i int) (any, uint64, gorm.DeletedAt) {
+	item := d[i]
+	return item, item.Revision, item.DeletedAt
+}
+
+func (d deviceMetadataList) Len() int {
+	return len(d)
+}
+
+// GetDeviceMetadataKey Get value for a metadata key on a device
 // @Summary      Get Device Metadata
 // @Id  		 GetDeviceMetadataKey
 // @Tags         Devices
@@ -96,7 +164,7 @@ func (api *API) GetDeviceMetadata(c *gin.Context) {
 // @Param        key  path      string  true "Metadata Key"
 // @Accept	     json
 // @Produce      json
-// @Success      200  {object}  models.DeviceMetadataValue
+// @Success      200  {object}  models.DeviceMetadata
 // @Failure      501  {object}  models.BaseError
 // @Router       /api/devices/{id}/metadata/{key} [get]
 func (api *API) GetDeviceMetadataKey(c *gin.Context) {
@@ -113,7 +181,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 	}
 	key := c.Param("key")
 
-	var metadataInstance models.DeviceMetadataInstance
+	var metadataInstance models.DeviceMetadata
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var device models.Device
 		result := api.db.WithContext(ctx).
@@ -124,7 +192,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 		}
 
 		result = api.db.WithContext(ctx).
-			Scopes(api.metadataForDevice(c, deviceId.String())).
+			Scopes(metadataForDevice(deviceId.String())).
 			Where("key = ?", key).
 			First(&metadataInstance)
 
@@ -140,10 +208,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err)
 	}
 
-	c.JSON(http.StatusOK, models.DeviceMetadataValue{
-		Value:    metadataInstance.Value,
-		Revision: metadataInstance.Revision,
-	})
+	c.JSON(http.StatusOK, metadataInstance)
 }
 
 // UpdateDeviceMetadataKey Set value for a metadata key on a device
@@ -156,12 +221,12 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 // @Param		 value body      any true "Metadata Value"
 // @Accept	     json
 // @Produce      json
-// @Success      200  {object}  models.DeviceMetadataValue
+// @Success      200  {object}  models.DeviceMetadata
 // @Failure      501  {object}  models.BaseError
 // @Router       /api/devices/{id}/metadata/{key} [put]
 func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 
-	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceMetadataKey", trace.WithAttributes(
+	ctx, span := tracer.Start(c.Request.Context(), "UpdateDeviceMetadataKey", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
 		attribute.String("key", c.Param("key")),
 	))
@@ -179,13 +244,14 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 		return
 	}
 
-	metadataInstance := models.DeviceMetadataInstance{
+	metadataInstance := models.DeviceMetadata{
 		DeviceID: deviceId,
 		Key:      key,
 		Value:    request,
 	}
+
+	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		var device models.Device
 		result := api.db.WithContext(ctx).
 			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 			First(&device, "id = ?", deviceId)
@@ -208,10 +274,9 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err)
 	}
 
-	c.JSON(http.StatusOK, models.DeviceMetadataValue{
-		Value:    metadataInstance.Value,
-		Revision: metadataInstance.Revision,
-	})
+	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	api.signalBus.Notify(signalChannel)
+	c.JSON(http.StatusOK, metadataInstance)
 
 }
 
@@ -226,7 +291,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 // @Router       /api/devices/{id}/metadata [delete]
 func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 
-	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceMetadataKey", trace.WithAttributes(
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteDeviceMetadata", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
@@ -236,8 +301,8 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 		return
 	}
 
+	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		var device models.Device
 		result := api.db.WithContext(ctx).
 			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 			First(&device, "id = ?", deviceId)
@@ -245,7 +310,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 			return result.Error
 		}
 
-		result = tx.Delete(&models.DeviceMetadataInstance{}, "device_id", deviceId)
+		result = tx.Delete(&models.DeviceMetadata{}, "device_id", deviceId)
 		return result.Error
 	})
 
@@ -258,6 +323,8 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err)
 	}
 
+	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	api.signalBus.Notify(signalChannel)
 	c.Status(http.StatusNoContent)
 }
 
@@ -272,7 +339,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 // @Failure      501  {object}  models.BaseError
 // @Router       /api/devices/{id}/metadata/{key} [delete]
 func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceMetadataKey", trace.WithAttributes(
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteDeviceMetadataKey", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
 		attribute.String("key", c.Param("key")),
 	))
@@ -284,8 +351,8 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 	}
 	key := c.Param("key")
 
+	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		var device models.Device
 		result := api.db.WithContext(ctx).
 			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
 			First(&device, "id = ?", deviceId)
@@ -293,7 +360,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 			return result.Error
 		}
 
-		result = tx.Delete(&models.DeviceMetadataInstance{
+		result = tx.Delete(&models.DeviceMetadata{
 			DeviceID: deviceId,
 			Key:      key,
 		})
@@ -309,5 +376,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err)
 	}
 
+	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	api.signalBus.Notify(signalChannel)
 	c.Status(http.StatusNoContent)
 }
