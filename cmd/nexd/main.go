@@ -42,22 +42,33 @@ var DefaultServiceURL = "https://try.nexodus.io"
 
 func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
 
-	serviceURL := cCtx.String("service-url")
-	if !cCtx.IsSet("service-url") {
-		serviceURL = cCtx.Args().First()
-		if serviceURL == "" && DefaultServiceURL != "" {
-			logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
-			serviceURL = DefaultServiceURL
-		} else {
-			logger.Info("Configuring the service url via the positional argument is deprecated.  Please use the --service-url flag instead.")
-		}
-	}
-
+	// Fail if you try to configure the service URL both ways
 	if cCtx.IsSet("service-url") && cCtx.Args().Len() > 0 {
 		return fmt.Errorf("please remove the service URL positional argument, it was configured via the --service-url flag")
 	}
 	if cCtx.Args().Len() > 1 {
 		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
+	}
+
+	serviceURL := ""
+	if cCtx.IsSet("service-url") {
+		// It was set via a flag
+		serviceURL = cCtx.String("service-url")
+	} else if cCtx.Args().Len() > 0 {
+		// It was set via a positional arg
+		serviceURL = cCtx.Args().First()
+		logger.Info("DEPRECATION WARNING: configuring the service url via the positional argument will not be supported in a future release.  Please use the --service-url flag instead.")
+	}
+
+	// If it was not set, then fall back to using the default...
+	if serviceURL == "" && DefaultServiceURL != "" {
+		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
+		serviceURL = DefaultServiceURL
+	}
+
+	// DefaultServiceURL may not be set... in this case fail since we don't have a service URL
+	if serviceURL == "" {
+		return fmt.Errorf("no service URL provided: try using the --service-url flag")
 	}
 
 	_, err := nexodus.CtlStatus(cCtx)

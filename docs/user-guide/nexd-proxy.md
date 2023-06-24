@@ -135,7 +135,7 @@ From within the container, start an http server and then start `nexd proxy`. Fol
 echo "It works!" > index.html
 python3 -m http.server 8080 &
 
-./nexd proxy --ingress tcp:80:127.0.0.1:8080 --service-url https://try.nexodus.io
+./nexd --service-url https://try.nexodus.io proxy --ingress tcp:80:127.0.0.1:8080
 ```
 
 ### Container with a proxy and an HTTP client
@@ -150,7 +150,7 @@ From within the second container, start `nexd proxy` in the background, and foll
 
 ```console
 REMOTE_NEXD_IP=100.100.0.1
-./nexd proxy --egress tcp:80:${REMOTE_NEXD_IP}:80 --service-url https://try.nexodus.io &
+./nexd --service-url https://try.nexodus.io proxy --egress tcp:80:${REMOTE_NEXD_IP}:80 &
 ```
 
 Once the device has succcessfully connected and authenticated with Nexodus, you should be able to reach the http server from the first container over a Nexodus managed tunnel.
