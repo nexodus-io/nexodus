@@ -3,18 +3,33 @@ package nexodus
 import (
 	"context"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/skupperproject/skupper/pkg/qdr"
 	"go.uber.org/zap"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
 
+type AddressKey struct {
+	protocol string
+	address  string
+}
+
+const lowPortNumber = 1024
+const highPortNumber = 1024 * 32
+
 type SkupperConfigController struct {
 	*Nexodus
-	logger     *zap.SugaredLogger
-	configFile string
+	logger               *zap.SugaredLogger
+	configFile           string
+	metadataInformer     *public.ApiListOrganizationMetadataInformer
+	lastErrorMsg         string
+	ingressPortToAddress map[HostPort]string
+	ingressAddressToPort map[AddressKey]int
+	nextPort             int
 }
 
 func (cntlr *SkupperConfigController) Start(ctx context.Context, wg *sync.WaitGroup) error {
@@ -28,29 +43,42 @@ func (cntlr *SkupperConfigController) reconcileLoop(ctx context.Context) {
 	reconcileTicker := time.NewTicker(time.Second * 20)
 	defer reconcileTicker.Stop()
 
-	lastErrorMsg := "none"
-	errorMsg := ""
+	informerCtx, informerCancel := context.WithCancel(ctx)
+	defer informerCancel()
+
+	prefixes := []string{"tcp:", "udp:"}
+	cntlr.metadataInformer = cntlr.client.DevicesApi.ListOrganizationMetadata(informerCtx, cntlr.org.Id, prefixes).Informer()
+
+	cntlr.lastErrorMsg = "none"
 	for {
 
 		select {
 		case <-ctx.Done():
 			return
+		case <-cntlr.informer.Changed():
+			cntlr.handleReconcile()
 		case <-reconcileTicker.C:
-			err := cntlr.reconcile()
-			if err != nil {
-				errorMsg = err.Error()
-				// avoid spamming the log with the same error over and over... only log when the error changes.
-				if errorMsg != lastErrorMsg {
-					cntlr.logger.Infow("skupper proxy configuration reconcile failed", "error", err)
-				}
-			} else {
-				if lastErrorMsg != "" {
-					cntlr.logger.Info("skupper proxy configuration reconcile succeeded")
-				}
-			}
-			lastErrorMsg = errorMsg
+			cntlr.handleReconcile()
+
 		}
 	}
+}
+
+func (cntlr *SkupperConfigController) handleReconcile() {
+	errorMsg := ""
+	err := cntlr.reconcile()
+	if err != nil {
+		errorMsg = err.Error()
+		// avoid spamming the log with the same error over and over... only log when the error changes.
+		if errorMsg != cntlr.lastErrorMsg {
+			cntlr.logger.Infow("skupper proxy configuration reconcile failed", "error", err)
+		}
+	} else {
+		if cntlr.lastErrorMsg != "" {
+			cntlr.logger.Info("skupper proxy configuration reconcile succeeded")
+		}
+	}
+	cntlr.lastErrorMsg = errorMsg
 }
 
 func (cntlr *SkupperConfigController) reconcile() error {
@@ -94,7 +122,7 @@ func (cntlr *SkupperConfigController) reconcile() error {
 			delete(diffSet, rule)
 		} else {
 			// add the rule..
-			proxy, err := cntlr.UserspaceProxyRemove(rule)
+			proxy, err := cntlr.UserspaceProxyAdd(rule)
 			if err != nil {
 				return err
 			}
@@ -104,7 +132,7 @@ func (cntlr *SkupperConfigController) reconcile() error {
 
 	for rule := range diffSet {
 		// remove the rule
-		proxy, err := cntlr.UserspaceProxyAdd(rule)
+		proxy, err := cntlr.UserspaceProxyRemove(rule)
 		if err != nil {
 			return err
 		}
@@ -124,7 +152,7 @@ func (cntlr *SkupperConfigController) toProxyRulesFromSkupperConfig(config qdr.R
 			return nil, fmt.Errorf("invalid endpoint (%s) port: %w", endpoint.Name, err)
 		}
 
-		listenPort, err := cntlr.getIngressPortForAddress(endpoint.Address)
+		listenPort, err := cntlr.allocateIngressPortForAddress("tcp", endpoint.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +179,7 @@ func (cntlr *SkupperConfigController) toProxyRulesFromSkupperConfig(config qdr.R
 			return nil, fmt.Errorf("invalid endpoint (%s) port: %w", endpoint.Name, err)
 		}
 
-		destinations, err := cntlr.getServiceDestinations(endpoint.Address)
+		destinations, err := cntlr.getServiceDestinations("tcp", endpoint.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -172,21 +200,179 @@ func (cntlr *SkupperConfigController) toProxyRulesFromSkupperConfig(config qdr.R
 	return result, nil
 }
 
-func (cntlr *SkupperConfigController) getIngressPortForAddress(address string) (int, error) {
+func (cntlr *SkupperConfigController) allocateIngressPortForAddress(protocol, address string) (int, error) {
 
-	// find if we have allocated a port of the address before,
-	// if not, then allocate one and update our address/port mappings on the apiserver
+	// is this the first time we are allocating a port?
+	if cntlr.ingressPortToAddress == nil {
 
-	return 0, nil
+		// Get our previous port mapping from the API server...
+		mds, _, err := cntlr.metadataInformer.Execute()
+		if err != nil {
+			return 0, err
+		}
+
+		ingressPortToAddress := map[HostPort]string{}
+		ingressAddressToPort := map[AddressKey]int{}
+		for _, md := range mds {
+			if md.DeviceId != cntlr.Nexodus.deviceId {
+				continue
+			}
+
+			protocolAndPort, err := parseHostPort(md.Key)
+			if err != nil {
+				return 0, err
+			}
+
+			mdAddress := asString(md.Value["address"])
+			ingressPortToAddress[protocolAndPort] = mdAddress
+
+			ingressAddressToPort[AddressKey{
+				protocol: protocolAndPort.host,
+				address:  mdAddress,
+			}] = protocolAndPort.port
+		}
+
+		cntlr.ingressPortToAddress = ingressPortToAddress
+		cntlr.ingressAddressToPort = ingressAddressToPort
+		cntlr.nextPort = lowPortNumber
+	}
+
+	// was a port previously allocated for that protocol/address pair?
+	port, found := cntlr.ingressAddressToPort[AddressKey{
+		protocol: protocol,
+		address:  address,
+	}]
+	if found {
+		return port, nil
+	}
+
+	// find a free port to allocate.
+	searchStartedAt := cntlr.nextPort
+	startCounter := 0
+	for { // loop until port set to value that is not allocated...
+
+		port = cntlr.nextPort
+		if searchStartedAt == port {
+			startCounter += 1
+			if startCounter > 1 { // avoid looping forever...
+				return 0, fmt.Errorf("all ports are allocated")
+			}
+		}
+
+		_, found := cntlr.ingressPortToAddress[HostPort{
+			host: protocol,
+			port: port,
+		}]
+		if !found {
+			break
+		}
+
+		// try the next port....
+		cntlr.nextPort += 1
+		// we may need to wrap our search
+		if cntlr.nextPort > highPortNumber {
+			cntlr.nextPort = lowPortNumber
+		}
+		continue
+	}
+
+	protocolPort := HostPort{
+		host: protocol,
+		port: port,
+	}
+
+	// Post the port allocation to the API server...
+	_, _, err := cntlr.Nexodus.client.DevicesApi.UpdateDeviceMetadataKey(cntlr.nexCtx, cntlr.deviceId, protocolPort.String()).
+		Value(map[string]interface{}{
+			"address": address,
+		}).Execute()
+	if err != nil {
+		return 0, fmt.Errorf("failed to update api server with port allocation: %w", err)
+	}
+
+	// and update our local port mapping cache... given we
+	// are the only writer of the metadata to the api server,
+	// we should not have to worry about the API server changing these values.
+	cntlr.ingressPortToAddress[protocolPort] = address
+	cntlr.ingressAddressToPort[AddressKey{
+		protocol: protocol,
+		address:  address,
+	}] = port
+
+	return port, nil
 }
 
-func (cntlr *SkupperConfigController) getServiceDestinations(address string) ([]HostPort, error) {
+// getServiceDestinations find the ip:port address for devices which have posted
+// metadata stating they are hosting the given service address and protocol
+func (cntlr *SkupperConfigController) getServiceDestinations(protocol, serviceAddress string) ([]HostPort, error) {
 	var result []HostPort
+
+	// as the number of devices and services hosted by those devices grow,
+	// the processing time of this function will grow...
+	// TODO later: figure out how to reduce the work done by this function.
+
+	// index devices by device_id
+	devices := map[string]deviceCacheEntry{}
+	cntlr.deviceCacheIterRead(func(entry deviceCacheEntry) {
+		devices[entry.device.Id] = entry
+	})
+
+	mds, _, err := cntlr.metadataInformer.Execute()
+	if err != nil {
+		return result, err
+	}
+
+	for _, md := range mds {
+
+		mdAddress := asString(md.Value["address"])
+		if serviceAddress != mdAddress {
+			continue
+		}
+		if !strings.HasPrefix(md.Key, protocol) {
+			continue
+		}
+
+		// don't target destination on the local device..
+		if md.DeviceId == cntlr.deviceId {
+			continue
+		}
+
+		device, found := devices[md.DeviceId]
+		if !found {
+			continue
+		}
+
+		// don't target unhealthy devices
+		if !device.peerHealthy {
+			continue
+		}
+
+		protocolAndPort, err := parseHostPort(md.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, HostPort{
+			host: device.device.TunnelIp,
+			port: protocolAndPort.port,
+		})
+	}
 
 	// get all the address/port mappings for all node peers and find which nodes
 	// are hosing the addresses
-
 	return result, nil
+}
+
+func asString(value interface{}) string {
+	switch value := value.(type) {
+	case string:
+		return value
+	case nil:
+		return ""
+	case fmt.Stringer:
+		return value.String()
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 func (cntlr *SkupperConfigController) listProxyRules() ([]ProxyRule, error) {
@@ -195,9 +381,7 @@ func (cntlr *SkupperConfigController) listProxyRules() ([]ProxyRule, error) {
 	defer cntlr.proxyLock.RUnlock()
 	for _, proxy := range cntlr.proxies {
 		proxy.mu.RLock()
-		for _, rule := range proxy.rules {
-			result = append(result, rule)
-		}
+		result = append(result, proxy.rules...)
 		proxy.mu.RUnlock()
 	}
 	return result, nil

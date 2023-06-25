@@ -30,6 +30,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.6.0
 	github.com/sirupsen/logrus v1.9.2
+	github.com/skupperproject/skupper v0.0.0-20230623164432-4d25d21f4e24
 	github.com/stretchr/testify v1.8.3
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
@@ -85,11 +86,13 @@ require (
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/interconnectedcloud/go-amqp v0.12.6-0.20200506124159-f51e540008b5 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/jackc/pgx/v5 v5.3.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
@@ -108,6 +111,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.5 // indirect
+	github.com/openshift/api v0.0.0-20210428205234-a8389931bee7 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/logging v0.2.2 // indirect
@@ -120,7 +124,6 @@ require (
 	github.com/redis/go-redis/v9 v9.0.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	github.com/skupperproject/skupper v0.0.0-20230623164432-4d25d21f4e24 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -136,7 +139,12 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	k8s.io/api v0.22.5 // indirect
+	k8s.io/apimachinery v0.22.5 // indirect
+	k8s.io/klog/v2 v2.30.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 )
 
 require (

@@ -38,6 +38,8 @@ spec:
                   name: nexodus-client-secret
                   key: url
                   optional: false
+            - name: NEXD_SKUPPER_CONFIG
+              value: /etc/skupper/skrouterd.json
           command:
             - /bin/sh
             - -c
@@ -68,6 +70,10 @@ spec:
             - name: nexodus-client-secret
               mountPath: "/etc/nexodus-client-secret"
               readOnly: true
+            - name: skupper-internal
+              mountPath: "/etc/skupper"
+              readOnly: true
+
       restartPolicy: Always
       volumes:
         - name: nexodus-client-secret
@@ -75,6 +81,10 @@ spec:
             defaultMode: 420
             optional: false
             secretName: nexodus-client-secret
+        - name: skupper-internal
+          configMap:
+            name: skupper-internal
+            optional: false
 
   volumeClaimTemplates:
     - metadata:

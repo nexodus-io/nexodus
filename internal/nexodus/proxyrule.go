@@ -69,6 +69,20 @@ func (hp HostPort) String() string {
 	return net.JoinHostPort(hp.host, fmt.Sprintf("%d", hp.port))
 }
 
+func parseHostPort(address string) (result HostPort, err error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return result, err
+	}
+	p, err := parsePort(port)
+	if err != nil {
+		return result, err
+	}
+	result.host = host
+	result.port = p
+	return result, nil
+}
+
 func (rule ProxyRule) String() string {
 	// protocol:port:destination_ip:destination_port
 	return fmt.Sprintf("%s:%d:%s", rule.protocol, rule.listenPort, rule.dest)
