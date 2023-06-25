@@ -1,6 +1,7 @@
 FROM docker.io/library/golang:1.20-alpine as build
 
 ARG BUILD_PROFILE=dev
+ARG NEXODUS_PPROF=
 
 WORKDIR /src
 
@@ -12,11 +13,13 @@ COPY . .
 
 RUN CGO_ENABLED=0 NOISY_BUILD=y \
     NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_PPROF=${NEXODUS_PPROF} \
     NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
     make dist/nexd
 
 RUN CGO_ENABLED=0 NOISY_BUILD=y \
     NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_PPROF=${NEXODUS_PPROF} \
     NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
     make dist/nexctl
 

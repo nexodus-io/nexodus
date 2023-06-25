@@ -32,6 +32,11 @@ else ifeq ($(NEXODUS_BUILD_PROFILE),prod)
 	NEXODUS_LDFLAGS+=-X main.DefaultServiceURL=https://try.nexodus.io
 endif
 
+NEXODUS_BUILD_FLAGS:=
+ifneq ($(NEXODUS_PPROF),)
+    NEXODUS_BUILD_FLAGS+=-tags pprof
+endif
+
 SWAGGER_YAML:=internal/docs/swagger.yaml
 
 # Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
@@ -50,7 +55,7 @@ all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint acti
 ##@ Binaries
 
 .PHONY: nexd
-nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-arm64 dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
+nexd: dist/nexd dist/nexd-pprof dist/nexd-linux-arm dist/nexd-linux-arm64 dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
 
 .PHONY: nexctl
 nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-arm64 dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
@@ -68,21 +73,30 @@ dist:
 
 dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) \
+		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+
+dist/nexd-pprof: $(NEXD_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
+		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
+	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
+		-ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
+		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
-		go build -gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
+		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
+		-ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
 
 dist/packages: \
 	dist/packages/nexodus-linux-amd64.tar.gz \
@@ -468,7 +482,8 @@ image-apiserver:
 .PHONY: image-nexd ## Build the nexodus agent image
 image-nexd: dist/.image-nexd
 dist/.image-nexd: $(NEXD_DEPS) $(NEXCTL_DEPS) Containerfile.nexd hack/update-ca.sh | dist
-	$(CMD_PREFIX) docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
+	$(CMD_PREFIX) docker build -f Containerfile.nexd \
+		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" -t quay.io/nexodus/nexd:$(TAG) .
 	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) touch $@
 
