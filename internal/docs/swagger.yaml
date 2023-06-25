@@ -1376,6 +1376,14 @@ paths:
         in: query
         name: gt_revision
         type: integer
+      - collectionFormat: csv
+        description: used to filter down to the specified key prefixes
+        in: path
+        items:
+          type: string
+        name: prefix
+        required: true
+        type: array
       produces:
       - application/json
       responses:

@@ -1530,6 +1530,17 @@ const docTemplate = `{
                         "description": "greater than revision",
                         "name": "gt_revision",
                         "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "used to filter down to the specified key prefixes",
+                        "name": "prefix",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {

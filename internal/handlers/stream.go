@@ -18,7 +18,7 @@ type WatchableList interface {
 	Item(i int) (any, uint64, gorm.DeletedAt)
 }
 
-func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal string, revisionCol string, getList func(db *gorm.DB, scopes []func(*gorm.DB) *gorm.DB) (WatchableList, error), scopes []func(*gorm.DB) *gorm.DB) {
+func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal string, revisionCol string, getList func(db *gorm.DB) (WatchableList, error), scopes []func(*gorm.DB) *gorm.DB) {
 
 	gtRevision := uint64(0)
 	if v := c.Query("gt_revision"); v != "" {
@@ -83,7 +83,10 @@ func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal stri
 					// get the next list...
 					db := api.db.WithContext(ctx)
 
-					list, err = getList(db, scopes)
+					for _, scope := range scopes {
+						db = scope(db)
+					}
+					list, err = getList(db)
 					if err != nil {
 						return models.WatchEvent{
 							Type:  "error",
@@ -121,9 +124,12 @@ func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal stri
 	}
 }
 
-func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *gorm.DB, scopes []func(*gorm.DB) *gorm.DB) (WatchableList, error), scopes []func(*gorm.DB) *gorm.DB) {
+func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *gorm.DB) (WatchableList, error), scopes []func(*gorm.DB) *gorm.DB) {
 	db := api.db.WithContext(ctx)
-	items, err := getList(db, scopes)
+	for _, scope := range scopes {
+		db = scope(db)
+	}
+	items, err := getList(db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return

@@ -43,7 +43,10 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 		return
 	}
 
-	var query Query
+	query := struct {
+		Query
+		Prefixes []string `form:"prefix"`
+	}{}
 	if err := c.BindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
 		return
@@ -64,17 +67,35 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 	}
 
 	defaultOrderBy := "key"
-	api.sendList(c, ctx, getDeviceMetadataList, []func(*gorm.DB) *gorm.DB{
+
+	scopes := []func(*gorm.DB) *gorm.DB{
 		func(db *gorm.DB) *gorm.DB {
-			return db.Where("device_id = ?", deviceId.String())
+			result := db.Where(
+				db.Where("device_id = ?", deviceId.String()),
+			)
+			if len(query.Prefixes) > 0 {
+				oredExpressions := db
+				for i, prefix := range query.Prefixes {
+					if i == 0 {
+						oredExpressions = oredExpressions.Where("key LIKE ?", prefix+"%")
+					} else {
+						oredExpressions = oredExpressions.Or("key LIKE ?", prefix+"%")
+					}
+				}
+				result = result.Where(
+					oredExpressions,
+				)
+			}
+			return result
 		},
-		FilterAndPaginateWithQuery(&models.Device{}, c, query, defaultOrderBy),
-	})
+		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, defaultOrderBy),
+	}
+	api.sendList(c, ctx, getDeviceMetadataList, scopes)
 }
 
-func getDeviceMetadataList(db *gorm.DB, scopes []func(*gorm.DB) *gorm.DB) (WatchableList, error) {
+func getDeviceMetadataList(db *gorm.DB) (WatchableList, error) {
 	var items deviceMetadataList
-	result := db.Scopes(scopes...).Find(&items)
+	result := db.Find(&items)
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, result.Error
 	}
@@ -86,8 +107,9 @@ func getDeviceMetadataList(db *gorm.DB, scopes []func(*gorm.DB) *gorm.DB) (Watch
 // @Id  		 ListOrganizationMetadata
 // @Tags         Devices
 // @Description  Lists metadata for a device
-// @Param        organization    path   string true  "Organization ID"
-// @Param		 gt_revision     query  uint64 false "greater than revision"
+// @Param        organization    path   string   true  "Organization ID"
+// @Param		 gt_revision     query  uint64   false "greater than revision"
+// @Param        prefix          path   []string true  "used to filter down to the specified key prefixes"
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  []models.DeviceMetadata
@@ -106,7 +128,10 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		return
 	}
 
-	var query Query
+	query := struct {
+		Query
+		Prefixes []string `form:"prefix"`
+	}{}
 	if err := c.BindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
 		return
@@ -133,15 +158,40 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		defaultOrderBy = "revision"
 	}
 
-	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", getDeviceMetadataList, []func(*gorm.DB) *gorm.DB{
+	scopes := []func(*gorm.DB) *gorm.DB{
 		func(db *gorm.DB) *gorm.DB {
-			return db.
-				Model(&models.DeviceMetadata{}).
+			result := db.Model(&models.DeviceMetadata{}).
 				Joins("inner join devices on devices.id=device_metadata.device_id").
-				Where("devices.organization_id = ?", orgId.String())
+				Where( // extra wrapping Where needed to group the SQL expressions
+					db.Where("devices.organization_id = ?", orgId.String()),
+				)
+			if len(query.Prefixes) > 0 {
+				oredExpressions := db
+				for i, prefix := range query.Prefixes {
+					if i == 0 {
+						oredExpressions = oredExpressions.Where("key LIKE ?", prefix+"%")
+					} else {
+						oredExpressions = oredExpressions.Or("key LIKE ?", prefix+"%")
+					}
+				}
+				result = result.Where( // extra wrapping Where needed to group the SQL expressions
+					oredExpressions,
+				)
+			}
+			return result
 		},
-		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query, defaultOrderBy),
-	})
+		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, defaultOrderBy),
+	}
+
+	if len(query.Prefixes) > 0 {
+		scopes = append(scopes, func(db *gorm.DB) *gorm.DB {
+			for _, prefix := range query.Prefixes {
+				db = db.Where("key LIKE ?", prefix+"%")
+			}
+			return db
+		})
+	}
+	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", getDeviceMetadataList, scopes)
 }
 
 type deviceMetadataList []*models.DeviceMetadata

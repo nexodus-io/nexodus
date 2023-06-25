@@ -1365,6 +1365,7 @@ type ApiListOrganizationMetadataRequest struct {
 	ctx          context.Context
 	ApiService   *DevicesApiService
 	organization string
+	prefix       []string
 	gtRevision   *int32
 }
 
@@ -1385,13 +1386,15 @@ Lists metadata for a device
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param organization Organization ID
+	@param prefix used to filter down to the specified key prefixes
 	@return ApiListOrganizationMetadataRequest
 */
-func (a *DevicesApiService) ListOrganizationMetadata(ctx context.Context, organization string) ApiListOrganizationMetadataRequest {
+func (a *DevicesApiService) ListOrganizationMetadata(ctx context.Context, organization string, prefix []string) ApiListOrganizationMetadataRequest {
 	return ApiListOrganizationMetadataRequest{
 		ApiService:   a,
 		ctx:          ctx,
 		organization: organization,
+		prefix:       prefix,
 	}
 }
 
@@ -1413,6 +1416,7 @@ func (a *DevicesApiService) ListOrganizationMetadataExecute(r ApiListOrganizatio
 
 	localVarPath := localBasePath + "/api/organizations/{organization}/metadata"
 	localVarPath = strings.Replace(localVarPath, "{"+"organization"+"}", url.PathEscape(parameterValueToString(r.organization, "organization")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"prefix"+"}", url.PathEscape(parameterValueToString(r.prefix, "prefix")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

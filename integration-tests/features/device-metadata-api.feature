@@ -141,6 +141,23 @@ Feature: Device Metadata API
       ]
       """
 
+    # We can filter down the keys using the prefix query arg
+    When I GET path "/api/devices/${device_id}/metadata?prefix=udp:&prefix=bad:"
+    Then the response code should be 200
+    And the response should match json:
+      """
+      [
+        {
+          "device_id": "${device_id}",
+          "key": "udp:1024",
+          "revision": ${response[0].revision},
+          "value": {
+            "address": "asterisk:5060"
+          }
+        }
+      ]
+      """
+
     #
     # Verify Alice can't see Bob's stuff
     #
