@@ -60,14 +60,14 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.ModelsDevice) {
+func (nx *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.ModelsDevice) {
 	for _, allowedIP := range wgPeerConfig.AllowedIps {
 		// if the host does not support v6, skip adding the route
-		if util.IsIPv6Prefix(allowedIP) && !ax.ipv6Supported {
+		if util.IsIPv6Prefix(allowedIP) && !nx.ipv6Supported {
 			continue
 		}
 		if err := DeleteRoute(allowedIP, dev); err != nil {
-			ax.logger.Debug(err)
+			nx.logger.Debug(err)
 		}
 	}
 }

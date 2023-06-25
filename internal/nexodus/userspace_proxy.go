@@ -41,21 +41,21 @@ const (
 
 var ProxyExistsError = errors.New("port already in use by another proxy rule")
 
-func (ax *Nexodus) UserspaceProxyAdd(newRule ProxyRule) (*UsProxy, error) {
+func (nx *Nexodus) UserspaceProxyAdd(newRule ProxyRule) (*UsProxy, error) {
 
-	ax.logger.Debugf("Adding userspace %s proxy rule: %s", newRule.ruleType, newRule)
+	nx.logger.Debugf("Adding userspace %s proxy rule: %s", newRule.ruleType, newRule)
 
-	ax.proxyLock.Lock()
-	defer ax.proxyLock.Unlock()
+	nx.proxyLock.Lock()
+	defer nx.proxyLock.Unlock()
 
-	proxy, found := ax.proxies[newRule.ProxyKey]
+	proxy, found := nx.proxies[newRule.ProxyKey]
 	if !found {
 		proxy = &UsProxy{
 			key:    newRule.ProxyKey,
-			logger: ax.logger.With("proxy", newRule.ruleType, "key", newRule.ProxyKey),
+			logger: nx.logger.With("proxy", newRule.ruleType, "key", newRule.ProxyKey),
 		}
 		proxy.debugTraffic, _ = strconv.ParseBool(os.Getenv("NEXD_PROXY_DEBUG_TRAFFIC"))
-		ax.proxies[newRule.ProxyKey] = proxy
+		nx.proxies[newRule.ProxyKey] = proxy
 	}
 
 	for _, rule := range proxy.rules {
@@ -71,14 +71,14 @@ func (ax *Nexodus) UserspaceProxyAdd(newRule ProxyRule) (*UsProxy, error) {
 	return proxy, nil
 }
 
-func (ax *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
+func (nx *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 
-	ax.logger.Debugf("Removing userspace %s proxy rule: %s", cmpProxy.ruleType, cmpProxy)
+	nx.logger.Debugf("Removing userspace %s proxy rule: %s", cmpProxy.ruleType, cmpProxy)
 
-	ax.proxyLock.Lock()
-	defer ax.proxyLock.Unlock()
+	nx.proxyLock.Lock()
+	defer nx.proxyLock.Unlock()
 
-	proxy, found := ax.proxies[cmpProxy.ProxyKey]
+	proxy, found := nx.proxies[cmpProxy.ProxyKey]
 	if !found {
 		return nil, fmt.Errorf("no matching %s proxy rule found: %s", cmpProxy.ruleType, cmpProxy)
 	}
@@ -91,7 +91,7 @@ func (ax *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 			proxy.rules = append(proxy.rules[:i], proxy.rules[i+1:]...)
 			if len(proxy.rules) == 0 {
 				proxy.Stop()
-				delete(ax.proxies, cmpProxy.ProxyKey)
+				delete(nx.proxies, cmpProxy.ProxyKey)
 			}
 			return proxy, nil
 		}
@@ -99,12 +99,12 @@ func (ax *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 	return nil, fmt.Errorf("no matching %s proxy rule found: %s", cmpProxy.ruleType, cmpProxy)
 }
 
-func (ax *Nexodus) LoadProxyRules() error {
-	err := ax.stateStore.Load()
+func (nx *Nexodus) LoadProxyRules() error {
+	err := nx.stateStore.Load()
 	if err != nil {
 		return err
 	}
-	rules := ax.stateStore.State().ProxyRulesConfig
+	rules := nx.stateStore.State().ProxyRulesConfig
 
 	parseAndAdd := func(rules []string, proxyType ProxyType) error {
 		for _, r := range rules {
@@ -114,7 +114,7 @@ func (ax *Nexodus) LoadProxyRules() error {
 			}
 			rule.stored = true
 
-			_, err = ax.UserspaceProxyAdd(rule)
+			_, err = nx.UserspaceProxyAdd(rule)
 			if err != nil {
 				if !errors.Is(err, ProxyExistsError) {
 					return err
@@ -134,12 +134,12 @@ func (ax *Nexodus) LoadProxyRules() error {
 	return nil
 }
 
-func (ax *Nexodus) StoreProxyRules() error {
-	ax.proxyLock.Lock()
-	defer ax.proxyLock.Unlock()
+func (nx *Nexodus) StoreProxyRules() error {
+	nx.proxyLock.Lock()
+	defer nx.proxyLock.Unlock()
 
 	rules := state.ProxyRulesConfig{}
-	for _, proxy := range ax.proxies {
+	for _, proxy := range nx.proxies {
 		proxy.mu.Lock()
 		for _, rule := range proxy.rules {
 			if rule.stored {
@@ -153,8 +153,8 @@ func (ax *Nexodus) StoreProxyRules() error {
 		proxy.mu.Unlock()
 	}
 
-	ax.stateStore.State().ProxyRulesConfig = rules
-	return ax.stateStore.Store()
+	nx.stateStore.State().ProxyRulesConfig = rules
+	return nx.stateStore.Store()
 }
 
 func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netstack.Net) {

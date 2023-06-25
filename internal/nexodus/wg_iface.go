@@ -28,19 +28,19 @@ func ifaceExists(logger *zap.SugaredLogger, iface string) bool {
 }
 
 // getIPv4Iface get the IP of the specified net interface
-func (ax *Nexodus) getIPv4Iface(ifname string) net.IP {
-	if ax.userspaceMode {
-		return ax.getIPv4IfaceUS(ifname)
+func (nx *Nexodus) getIPv4Iface(ifname string) net.IP {
+	if nx.userspaceMode {
+		return nx.getIPv4IfaceUS(ifname)
 	} else {
-		return ax.getIPv4IfaceOS(ifname)
+		return nx.getIPv4IfaceOS(ifname)
 	}
 }
 
-func (ax *Nexodus) getIPv4IfaceUS(ifname string) net.IP {
-	return net.ParseIP(ax.userspaceLastAddress)
+func (nx *Nexodus) getIPv4IfaceUS(ifname string) net.IP {
+	return net.ParseIP(nx.userspaceLastAddress)
 }
 
-func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
+func (nx *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 	interfaces, _ := net.Interfaces()
 	for _, inter := range interfaces {
 		if inter.Name != ifname {
@@ -64,7 +64,7 @@ func (ax *Nexodus) getIPv4IfaceOS(ifname string) net.IP {
 }
 
 // enableForwardingIP prepare a node to be a relay, enable ip forwarding if not already done so and nftable rules for v4/v6
-func (ax *Nexodus) enableForwardingIP() error {
+func (nx *Nexodus) enableForwardingIP() error {
 	ipv4FwdEnabled, err := isIPForwardingEnabled(fwdFilePathV4)
 	if err != nil {
 		return err

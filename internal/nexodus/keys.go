@@ -9,18 +9,18 @@ import (
 
 // handleKeys will look for an existing key pair, if a pair is not found this method
 // will generate a new pair and write them to location on the disk depending on the OS
-func (ax *Nexodus) handleKeys() error {
+func (nx *Nexodus) handleKeys() error {
 
-	err := ax.stateStore.Load()
+	err := nx.stateStore.Load()
 	if err != nil {
 		return err
 	}
-	state := ax.stateStore.State()
+	state := nx.stateStore.State()
 
 	if state.PublicKey != "" && state.PrivateKey != "" {
-		ax.logger.Infof("Existing key pair found in [ %s ]", ax.stateStore)
+		nx.logger.Infof("Existing key pair found in [ %s ]", nx.stateStore)
 	} else {
-		ax.logger.Infof("No existing public/private key pair found, generating a new pair")
+		nx.logger.Infof("No existing public/private key pair found, generating a new pair")
 		wgKey, err := wgtypes.GeneratePrivateKey()
 		if err != nil {
 			return fmt.Errorf("failed to generate private key: %w", err)
@@ -28,25 +28,25 @@ func (ax *Nexodus) handleKeys() error {
 		state.PublicKey = wgKey.PublicKey().String()
 		state.PrivateKey = wgKey.String()
 
-		err = ax.stateStore.Store()
+		err = nx.stateStore.Store()
 		if err != nil {
 			return fmt.Errorf("failed store the keys: %w", err)
 		}
-		ax.logger.Debugf("New keys were written to [ %s ]", ax.stateStore)
+		nx.logger.Debugf("New keys were written to [ %s ]", nx.stateStore)
 	}
 
-	ax.wireguardPubKey = state.PublicKey
-	ax.wireguardPvtKey = state.PrivateKey
+	nx.wireguardPubKey = state.PublicKey
+	nx.wireguardPvtKey = state.PrivateKey
 	return nil
 
 }
 
 // loadLegacyKeys should not be needed after everyone has upgraded to the latest nexd.
-func (ax *Nexodus) loadLegacyKeys() (string, string, error) {
+func (nx *Nexodus) loadLegacyKeys() (string, string, error) {
 
 	oldPubKeyFile := "public.key"
 	oldPrivKeyFile := "private.key"
-	if !ax.userspaceMode {
+	if !nx.userspaceMode {
 		switch runtime.GOOS {
 		case "darwin":
 			oldPubKeyFile = "/usr/local/etc/wireguard/public.key"
