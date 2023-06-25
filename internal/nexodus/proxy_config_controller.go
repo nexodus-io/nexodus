@@ -3,11 +3,13 @@ package nexodus
 import (
 	"context"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/skupperproject/skupper/pkg/qdr"
 	"go.uber.org/zap"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +42,28 @@ func (cntlr *SkupperConfigController) Start(ctx context.Context, wg *sync.WaitGr
 }
 
 func (cntlr *SkupperConfigController) reconcileLoop(ctx context.Context) {
-	reconcileTicker := time.NewTicker(time.Second * 20)
+
+	periodicReconcileInterval := time.Second * 5
+
+	// Use FS notifications to more quickly react to config file changes.
+	var fsEvents chan fsnotify.Event
+	var fsErrors chan error
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		// it's fine if we can't watch fs events, we will just periodically
+		// look for config files changes..
+		cntlr.logger.Warnf("Failed to watch FS notifications: %v", err)
+		fsEvents = make(chan fsnotify.Event)
+		fsErrors = make(chan error)
+	} else {
+		// since we can detect FS change events... we can increase the
+		// periodic poll interval..
+		periodicReconcileInterval = time.Second * 60
+		fsEvents = watcher.Events
+		defer watcher.Close()
+	}
+
+	reconcileTicker := time.NewTicker(periodicReconcileInterval)
 	defer reconcileTicker.Stop()
 
 	informerCtx, informerCancel := context.WithCancel(ctx)
@@ -49,17 +72,60 @@ func (cntlr *SkupperConfigController) reconcileLoop(ctx context.Context) {
 	prefixes := []string{"tcp:", "udp:"}
 	cntlr.metadataInformer = cntlr.client.DevicesApi.ListOrganizationMetadata(informerCtx, cntlr.org.Id, prefixes).Informer()
 
+	configFile := filepath.Clean(cntlr.configFile)
+	configDir, _ := filepath.Split(configFile)
+	realConfigFile, _ := filepath.EvalSymlinks(cntlr.configFile)
+
 	cntlr.lastErrorMsg = "none"
 	for {
+
+		if watcher != nil && len(watcher.WatchList()) == 0 {
+			err = watcher.Add(configDir)
+			if err != nil {
+				cntlr.logger.Warn("Cannot watch '%s': %v", configDir, err)
+			}
+		}
 
 		select {
 		case <-ctx.Done():
 			return
+
 		case <-cntlr.informer.Changed():
+			// in case of peer changes...
 			cntlr.handleReconcile()
+
+			// TODO: we should also reconcile when peer health changes.
+
+		case <-cntlr.metadataInformer.Changed():
+			// in case of metadata changes...
+			cntlr.handleReconcile()
+
 		case <-reconcileTicker.C:
 			cntlr.handleReconcile()
 
+		case err := <-fsErrors:
+			cntlr.logger.Infof("fsnotify error: %v", err)
+			for _, n := range watcher.WatchList() {
+				_ = watcher.Remove(n)
+			}
+		case event := <-fsEvents:
+
+			// inspired from from: https://github.com/spf13/viper/blob/e0f7631cf3ac7e7530949c7e154855076b0a4c17/viper.go
+
+			// we only care about the config file with the following cases:
+			// 1 - if the config file was modified or created
+			eventFile := filepath.Clean(event.Name)
+			configFileChanged := (eventFile == configFile && (event.Op.Has(fsnotify.Write) || event.Op.Has(fsnotify.Create)))
+
+			// 2 - if the real path to the config file changed (eg: k8s ConfigMap replacement)
+			currentConfigFile, _ := filepath.EvalSymlinks(cntlr.configFile)
+			symLinksChanged := (currentConfigFile != "" && currentConfigFile != realConfigFile)
+
+			if symLinksChanged || configFileChanged {
+				realConfigFile = currentConfigFile
+				cntlr.logger.Info("Triggering reconcile due to config file change")
+				cntlr.handleReconcile()
+			}
 		}
 	}
 }
@@ -115,7 +181,17 @@ func (cntlr *SkupperConfigController) reconcile() error {
 		diffSet[rule] = struct{}{}
 	}
 
+	activeIngressPorts := map[HostPort]struct{}{}
 	for _, rule := range desiredRules {
+
+		// Keep track of which ingress ports are in use...
+		if rule.ruleType == ProxyTypeIngress {
+			activeIngressPorts[HostPort{
+				host: string(rule.protocol),
+				port: rule.listenPort,
+			}] = struct{}{}
+		}
+
 		if _, found := diffSet[rule]; found {
 			// take it out, anything remaining in the diffSet,
 			// will be rules that need to be removed.
@@ -137,6 +213,34 @@ func (cntlr *SkupperConfigController) reconcile() error {
 			return err
 		}
 		proxy.Stop()
+
+		if rule.ruleType == ProxyTypeIngress {
+			protocol := string(rule.protocol)
+			protocolPort := HostPort{
+				host: protocol,
+				port: rule.listenPort,
+			}
+
+			// if the allocated port is no longer used, then release it...
+			if _, found := activeIngressPorts[protocolPort]; !found {
+				address := cntlr.ingressPortToAddress[protocolPort]
+
+				// release the port on the apiserver...
+				_, err = cntlr.Nexodus.client.DevicesApi.
+					DeleteDeviceMetadataKey(cntlr.nexCtx, cntlr.deviceId, protocolPort.String()).
+					Execute()
+				if err != nil {
+					return fmt.Errorf("failed to update api server with port release: %w", err)
+				}
+
+				delete(cntlr.ingressPortToAddress, protocolPort)
+				delete(cntlr.ingressAddressToPort, AddressKey{
+					protocol: protocol,
+					address:  address,
+				})
+			}
+		}
+
 	}
 
 	return nil
@@ -282,10 +386,10 @@ func (cntlr *SkupperConfigController) allocateIngressPortForAddress(protocol, ad
 	}
 
 	// Post the port allocation to the API server...
-	_, _, err := cntlr.Nexodus.client.DevicesApi.UpdateDeviceMetadataKey(cntlr.nexCtx, cntlr.deviceId, protocolPort.String()).
-		Value(map[string]interface{}{
-			"address": address,
-		}).Execute()
+	_, _, err := cntlr.Nexodus.client.DevicesApi.
+		UpdateDeviceMetadataKey(cntlr.nexCtx, cntlr.deviceId, protocolPort.String()).
+		Value(map[string]interface{}{"address": address}).
+		Execute()
 	if err != nil {
 		return 0, fmt.Errorf("failed to update api server with port allocation: %w", err)
 	}
