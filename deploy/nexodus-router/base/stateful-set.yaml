@@ -7,11 +7,16 @@ spec:
   selector:
     matchLabels:
       app: nexodus-router
+      application: skupper-router
+      skupper.io/component: router
+
   replicas: 1
   template:
     metadata:
       labels:
         app: nexodus-router
+        application: skupper-router
+        skupper.io/component: router
     spec:
 
       containers:
