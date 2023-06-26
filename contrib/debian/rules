@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_test:
+override_dh_auto_build:
+override_dh_auto_clean:
+override_dh_dwz:
+override_dh_strip:
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
+override_dh_install:
+	mkdir -p debian/nexodus/usr/bin/
+ifeq ($(shell dpkg --print-architecture),amd64)
+	cp dist/nexd-linux-amd64 debian/nexodus/usr/bin/nexd
+	cp dist/nexctl-linux-amd64 debian/nexodus/usr/bin/nexctl
+else ifeq ($(shell dpkg --print-architecture),arm64)
+	cp dist/nexd-linux-arm64 debian/nexodus/usr/bin/nexd
+	cp dist/nexctl-linux-arm64 debian/nexodus/usr/bin/nexctl
+endif
+	dh_install
+	# Install the systemd service file
+	install -D -m 644 debian/nexodus.service debian/nexodus/lib/systemd/system/nexodus.service
+	install -D -m 644 debian/nexodus.conf debian/nexodus/etc/default/nexodus
