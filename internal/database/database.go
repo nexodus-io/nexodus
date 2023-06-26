@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230113_0000"
@@ -19,6 +20,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230413_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230428_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20230509_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20230610_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migrations"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel"
@@ -115,6 +117,7 @@ func Migrations() *migrations.Migrations {
 			migration_20230413_0000.Migrate(),
 			migration_20230428_0000.Migrate(),
 			migration_20230509_0000.Migrate(),
+			migration_20230610_0000.Migrate(),
 		},
 	}
 }

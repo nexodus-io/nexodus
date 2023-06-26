@@ -4,8 +4,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/olekukonko/tablewriter"
 	"log"
 	"os"
+	"reflect"
 	"sort"
 	"text/tabwriter"
 
@@ -140,6 +142,11 @@ func main() {
 							return deleteOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationID)
 						},
 					},
+					{
+						Name:        "metadata",
+						Usage:       "Commands relating to device metadata across the organization",
+						Subcommands: organizationMetadataSubcommands,
+					},
 				},
 			},
 			{
@@ -190,6 +197,11 @@ func main() {
 							devID := cCtx.String("device-id")
 							return deleteDevice(mustCreateAPIClient(cCtx), encodeOut, devID)
 						},
+					},
+					{
+						Name:        "metadata",
+						Usage:       "Commands relating to device metadata",
+						Subcommands: deviceMetadataSubcommands,
 					},
 				},
 			},
@@ -518,4 +530,94 @@ func FormatOutput(format string, result interface{}) error {
 	}
 
 	return nil
+}
+
+func showOutput(cCtx *cli.Context, fields []TableField, result any) {
+	output := cCtx.String("output")
+	switch output {
+	case encodeJsonPretty:
+		bytes, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			log.Fatalf("failed to encode the ctl output: %v", err)
+		}
+		fmt.Println(string(bytes))
+
+	case encodeJsonRaw:
+		bytes, err := json.Marshal(result)
+		if err != nil {
+			log.Fatalf("failed to encode the ctl output: %v", err)
+		}
+		fmt.Println(string(bytes))
+
+	case encodeColumn, encodeNoHeader:
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetBorders(tablewriter.Border{
+			Left:   true,
+			Right:  true,
+			Top:    false,
+			Bottom: false,
+		})
+		table.SetAutoWrapText(false)
+
+		if output != encodeNoHeader {
+			var headers []string
+			for _, field := range fields {
+				headers = append(headers, field.Header)
+			}
+			table.SetHeader(headers)
+		}
+
+		itemsValue := reflect.ValueOf(result)
+		for i := 0; i < itemsValue.Len(); i++ {
+			itemValue := itemsValue.Index(i)
+			var line []string
+			for _, field := range fields {
+				if field.Formatter != nil {
+					line = append(line, field.Formatter(itemValue.Interface()))
+				} else if field.Field != "" {
+					fieldValue := itemValue.FieldByName(field.Field)
+					line = append(line, fieldFormatter(fieldValue))
+				} else {
+					panic("TableField.Formatter or TableField.Field must be set")
+				}
+			}
+			table.Append(line)
+		}
+		table.Render()
+		return
+	default:
+		log.Fatalf("unknown --output option: %s", output)
+	}
+}
+
+func fieldFormatter(itemValue reflect.Value) string {
+	switch itemValue.Type().Kind() {
+	case reflect.Invalid:
+		return ""
+	case reflect.Pointer:
+		// deref and try again...
+		return fieldFormatter(itemValue.Elem())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fmt.Sprintf("%d", itemValue.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return fmt.Sprintf("%d", itemValue.Uint())
+	case reflect.Float32, reflect.Float64:
+		return fmt.Sprintf("%f", itemValue.Float())
+	case reflect.Bool:
+		return fmt.Sprintf("%v", itemValue.Bool())
+
+	case reflect.String:
+		return itemValue.String()
+	default:
+		item := itemValue.Interface()
+		if item, ok := item.([]byte); ok {
+			return string(item)
+		}
+		bytes, err := json.MarshalIndent(item, "", " ")
+		if err != nil {
+			panic(err)
+		}
+		return string(bytes)
+	}
 }

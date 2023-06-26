@@ -3,10 +3,11 @@ package routers
 import (
 	"context"
 	"crypto/tls"
-	"go.opentelemetry.io/otel/propagation"
 	"net/http"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
@@ -100,6 +101,14 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.PATCH("/devices/:id", api.UpdateDevice)
 		private.POST("/devices", api.CreateDevice)
 		private.DELETE("/devices/:id", api.DeleteDevice)
+		// Device Metadata
+		private.GET("/devices/:id/metadata", api.ListDeviceMetadata)
+		private.GET("/devices/:id/metadata/:key", api.GetDeviceMetadataKey)
+		private.PUT("/devices/:id/metadata/:key", api.UpdateDeviceMetadataKey)
+		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
+		private.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
+		private.GET("/organizations/:organization/metadata", api.ListOrganizationMetadata)
+
 		// Users
 		private.GET("/users/:id", api.GetUser)
 		private.GET("/users", api.ListUsers)
