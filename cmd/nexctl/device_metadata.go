@@ -2,15 +2,42 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
 )
 
 var deviceMetadataSubcommands []*cli.Command
+var organizationMetadataSubcommands []*cli.Command
 
 func init() {
+	organizationMetadataSubcommands = []*cli.Command{
+		{
+			Name:  "get",
+			Usage: "Get device metadata",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "organization-id",
+					Required: true,
+				},
+				&cli.BoolFlag{
+					Name:    "full",
+					Aliases: []string{"f"},
+					Usage:   "display the full set of metadata details",
+					Value:   false,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				orgId, err := uuid.Parse(c.String("organization-id"))
+				if err != nil {
+					return fmt.Errorf("invalid organization-id: %w", err)
+				}
+				return getOrgMetadata(c, orgId)
+			},
+		},
+	}
 	deviceMetadataSubcommands = []*cli.Command{
 		{
 			Name:  "get",
@@ -26,26 +53,29 @@ func init() {
 					Usage:    "Metadata Key",
 					Required: false,
 				},
+				&cli.BoolFlag{
+					Name:    "full",
+					Aliases: []string{"f"},
+					Usage:   "display the full set of metadata details",
+					Value:   false,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				deviceID, err := uuid.Parse(c.String("device-id"))
 				if err != nil {
-					return err
+					return fmt.Errorf("invalid device-id: %w", err)
 				}
-				key := c.String("key")
-
-				if deviceID != uuid.Nil && key != "" {
-					return getDeviceMetadataKey(c, deviceID, key)
-				} else if deviceID != uuid.Nil {
-					return getDeviceMetadata(c, deviceID)
+				if c.IsSet("key") {
+					return getDeviceMetadataKey(c, deviceID, c.String("key"))
 				} else {
-					return fmt.Errorf("device-id is required")
+					return getDeviceMetadata(c, deviceID)
 				}
 			},
 		},
+
 		{
-			Name:  "update",
-			Usage: "Update device metadata",
+			Name:  "set",
+			Usage: "Set device metadata",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "device-id",
@@ -61,6 +91,12 @@ func init() {
 					Name:     "value",
 					Usage:    "Metadata Value",
 					Required: true,
+				},
+				&cli.BoolFlag{
+					Name:    "full",
+					Aliases: []string{"f"},
+					Usage:   "display the full set of metadata details",
+					Value:   false,
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -133,37 +169,126 @@ func init() {
 	}
 }
 
+func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
+	var fields = []TableField{}
+	full := cCtx.Bool("full")
+	if includeDeviceId || full {
+		fields = append(fields, TableField{
+			Header: "DEVICE ID",
+			Field:  "DeviceId",
+		})
+	}
+	fields = append(fields, TableField{
+		Header: "KEY",
+		Field:  "Key",
+	})
+	fields = append(fields, TableField{
+		Header: "VALUE",
+		Field:  "Value",
+	})
+	if full {
+		fields = append(fields, TableField{
+			Header: "REVISION",
+			Field:  "Revision",
+		})
+	}
+	return fields
+}
+
 func getDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
 	client := mustCreateAPIClient(c)
 
-	// validate device ID
-	_, _, err := client.DevicesApi.GetDevice(context.Background(), deviceID.String()).Execute()
+	metadata, _, err := client.DevicesApi.
+		ListDeviceMetadata(context.Background(), deviceID.String()).
+		Execute()
 	if err != nil {
 		return err
 	}
 
-	metadata, _, err := client.DevicesApi.ListDeviceMetadata(context.Background(), deviceID.String()).Execute()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(metadata)
+	showOutput(c, metadataTableFields(c, false), metadata)
 
 	return nil
 }
 
 func getDeviceMetadataKey(c *cli.Context, deviceID uuid.UUID, key string) error {
-	return fmt.Errorf("not implemented")
+	client := mustCreateAPIClient(c)
+
+	metadata, _, err := client.DevicesApi.
+		GetDeviceMetadataKey(context.Background(), deviceID.String(), key).
+		Execute()
+	if err != nil {
+		return err
+	}
+
+	showOutput(c, metadataTableFields(c, false), []public.ModelsDeviceMetadata{*metadata})
+	return nil
+}
+
+func getOrgMetadata(c *cli.Context, orgID uuid.UUID) error {
+	client := mustCreateAPIClient(c)
+
+	prefixes := []string{}
+	metadata, _, err := client.DevicesApi.
+		ListOrganizationMetadata(context.Background(), orgID.String(), prefixes).
+		Execute()
+	if err != nil {
+		return err
+	}
+
+	showOutput(c, metadataTableFields(c, true), metadata)
+
+	return nil
 }
 
 func updateDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key, value string) error {
-	return fmt.Errorf("not implemented")
+
+	valueMap := map[string]interface{}{}
+	err := json.Unmarshal([]byte(value), &valueMap)
+	if err != nil {
+		return fmt.Errorf("value must be a json obejct: %w", err)
+	}
+
+	client := mustCreateAPIClient(c)
+
+	metadata, _, err := client.DevicesApi.
+		UpdateDeviceMetadataKey(context.Background(), deviceID.String(), key).
+		Value(valueMap).
+		Execute()
+	if err != nil {
+		return err
+	}
+
+	showOutput(c, metadataTableFields(c, false), []public.ModelsDeviceMetadata{*metadata})
+	return nil
 }
 
 func deleteDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key string) error {
-	return fmt.Errorf("not implemented")
+	client := mustCreateAPIClient(c)
+
+	_, err := client.DevicesApi.
+		DeleteDeviceMetadataKey(context.Background(), deviceID.String(), key).
+		Execute()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func clearDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
-	return fmt.Errorf("not implemented")
+	client := mustCreateAPIClient(c)
+
+	_, err := client.DevicesApi.
+		DeleteDeviceMetadata(context.Background(), deviceID.String()).
+		Execute()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type TableField struct {
+	Header    string
+	Field     string
+	Formatter func(item interface{}) string
 }
