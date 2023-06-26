@@ -1,0 +1,13 @@
+Source: nexodus
+Section: net
+Priority: optional
+Maintainer: brentsalisbury <brent.salisbury@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://nexodus.io
+Rules-Requires-Root: no
+
+Package: nexodus
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Network Connectivity as a Service

@@ -1,0 +1,5 @@
+nexodus (RELEASE_GOESS_HERE) jammy; urgency=medium
+
+  * Initial ppa/deb packaging.
+
+ -- brentsalisbury <brent.salisbury@gmail.com>  Mon, 26 Jun 2023 21:49:18 +0000
