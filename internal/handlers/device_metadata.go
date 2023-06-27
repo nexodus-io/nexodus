@@ -191,7 +191,7 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 			return db
 		})
 	}
-	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", getDeviceMetadataList, scopes)
+	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", scopes, getDeviceMetadataList)
 }
 
 type deviceMetadataList []*models.DeviceMetadata
