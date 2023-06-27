@@ -3,118 +3,88 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/urfave/cli/v2"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-func listOrgDevices(c *public.APIClient, organizationID uuid.UUID, fullDisplay bool, encodeOut string) error {
+func listOrgDevices(cCtx *cli.Context, c *public.APIClient, organizationID uuid.UUID) error {
 	devices, _, err := c.DevicesApi.ListDevicesInOrganization(context.Background(), organizationID.String()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		w := newTabWriter()
-
-		var fs string
-		if fullDisplay {
-			fs = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-		} else {
-			fs = "%s\t%s\t%s\t%s\t%s\n"
-		}
-		if encodeOut != encodeNoHeader && !fullDisplay {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "TUNNEL IPS", "ORGANIZATION ID", "RELAY")
-		}
-		if encodeOut != encodeNoHeader && fullDisplay {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME",
-				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
-				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
-				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
-				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "SECURITY GROUP ID", "RELAY")
-		}
-		for _, dev := range devices {
-			localIp := ""
-			var reflexiveIp4 []string
-			for _, endpoint := range dev.Endpoints {
-				if endpoint.Source == "local" {
-					localIp = endpoint.Address
-				} else {
-					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
-				}
-			}
-			if !fullDisplay {
-				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, fmt.Sprintf("[%s %s]", dev.TunnelIp, dev.TunnelIpV6), dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
-			} else {
-				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, localIp, dev.PublicKey, dev.OrganizationId,
-					localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-					dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
-			}
-		}
-		w.Flush()
-
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, devices)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	showOutput(cCtx, deviceTableFields(cCtx), devices)
 	return nil
 }
 
-func listAllDevices(c *public.APIClient, fullDisplay bool, encodeOut string) error {
+func deviceTableFields(cCtx *cli.Context) []TableField {
+	var fields []TableField
+	full := cCtx.Bool("full")
+
+	fields = append(fields, TableField{Header: "DEVICE ID", Field: "Id"})
+	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
+	if full {
+		fields = append(fields, TableField{Header: "TUNNEL IPV4", Field: "TunnelIp"})
+		fields = append(fields, TableField{Header: "TUNNEL IPV6", Field: "TunnelIpV6"})
+	} else {
+		fields = append(fields, TableField{Header: "TUNNEL IPS",
+			Formatter: func(item interface{}) string {
+				dev := item.(public.ModelsDevice)
+				return fmt.Sprintf("%s, %s", dev.TunnelIp, dev.TunnelIpV6)
+			},
+		})
+	}
+
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "RELAY", Field: "Relay"})
+	if full {
+		fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
+		fields = append(fields, TableField{
+			Header: "LOCAL IP",
+			Formatter: func(item interface{}) string {
+				dev := item.(public.ModelsDevice)
+				for _, endpoint := range dev.Endpoints {
+					if endpoint.Source == "local" {
+						return endpoint.Address
+					}
+				}
+				return ""
+			},
+		})
+		fields = append(fields, TableField{Header: "ALLOWED IPS",
+			Formatter: func(item interface{}) string {
+				dev := item.(public.ModelsDevice)
+				return strings.Join(dev.AllowedIps, ", ")
+			},
+		})
+		fields = append(fields, TableField{Header: "ORG PREFIX IPV6", Field: "OrganizationPrefixV6"})
+		fields = append(fields, TableField{Header: "REFLEXIVE IPv4",
+			Formatter: func(item interface{}) string {
+				dev := item.(public.ModelsDevice)
+				var reflexiveIp4 []string
+				for _, endpoint := range dev.Endpoints {
+					if endpoint.Source != "local" {
+						reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
+					}
+				}
+				return strings.Join(reflexiveIp4, ", ")
+			},
+		})
+		fields = append(fields, TableField{Header: "ENDPOINT LOCAL IPv4", Field: "EndpointLocalAddressIp4"})
+		fields = append(fields, TableField{Header: "OS", Field: "Os"})
+		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
+	}
+	return fields
+}
+func listAllDevices(cCtx *cli.Context, c *public.APIClient) error {
 	devices, _, err := c.DevicesApi.ListDevices(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		w := newTabWriter()
-		var fs string
-		if fullDisplay {
-			fs = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-		} else {
-			fs = "%s\t%s\t%s\t%s\t%s\n"
-		}
-		if encodeOut != encodeNoHeader && !fullDisplay {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME", "TUNNEL IPS", "ORGANIZATION ID", "RELAY")
-		}
-		if encodeOut != encodeNoHeader && fullDisplay {
-			fmt.Fprintf(w, fs, "DEVICE ID", "HOSTNAME",
-				"ENDPOINT IP", "PUBLIC KEY", "ORGANIZATION ID",
-				"LOCAL IP", "ALLOWED IPS", "TUNNEL IPV4", "TUNNEL IPV6",
-				"CHILD PREFIX", "ORG PREFIX IPV4", "ORG PREFIX IPV6",
-				"REFLEXIVE IPv4", "ENDPOINT LOCAL IPv4", "OS", "SECURITY GROUP ID", "RELAY")
-		}
-		for _, dev := range devices {
-			localIp := ""
-			var reflexiveIp4 []string
-			for _, endpoint := range dev.Endpoints {
-				if endpoint.Source == "local" {
-					localIp = endpoint.Address
-				} else {
-					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
-				}
-			}
-			if !fullDisplay {
-				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, fmt.Sprintf("[%s %s]", dev.TunnelIp, dev.TunnelIpV6), dev.OrganizationId, fmt.Sprintf("%t", dev.Relay))
-			} else {
-				fmt.Fprintf(w, fs, dev.Id, dev.Hostname, localIp, dev.PublicKey, dev.OrganizationId,
-					localIp, dev.AllowedIps, dev.TunnelIp, dev.TunnelIpV6, dev.ChildPrefix, dev.OrganizationPrefix,
-					dev.OrganizationPrefixV6, reflexiveIp4, dev.EndpointLocalAddressIp4, dev.Os, dev.SecurityGroupId, fmt.Sprintf("%t", dev.Relay))
-			}
-		}
-		w.Flush()
-
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, devices)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	showOutput(cCtx, deviceTableFields(cCtx), devices)
 	return nil
 }
 

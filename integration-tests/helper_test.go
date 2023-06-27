@@ -569,7 +569,7 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 		return err
 	}
 
-	helper.Logf("nexctl security-group update output: %s", out)
+	helper.Logf("nexctl security-group update output:\n%s", out)
 
 	return nil
 }

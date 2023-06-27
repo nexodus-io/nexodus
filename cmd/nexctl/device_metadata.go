@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
 )
 
@@ -173,24 +172,12 @@ func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
 	var fields = []TableField{}
 	full := cCtx.Bool("full")
 	if includeDeviceId || full {
-		fields = append(fields, TableField{
-			Header: "DEVICE ID",
-			Field:  "DeviceId",
-		})
+		fields = append(fields, TableField{Header: "DEVICE ID", Field: "DeviceId"})
 	}
-	fields = append(fields, TableField{
-		Header: "KEY",
-		Field:  "Key",
-	})
-	fields = append(fields, TableField{
-		Header: "VALUE",
-		Field:  "Value",
-	})
+	fields = append(fields, TableField{Header: "KEY", Field: "Key"})
+	fields = append(fields, TableField{Header: "VALUE", Field: "Value"})
 	if full {
-		fields = append(fields, TableField{
-			Header: "REVISION",
-			Field:  "Revision",
-		})
+		fields = append(fields, TableField{Header: "REVISION", Field: "Revision"})
 	}
 	return fields
 }
@@ -220,7 +207,7 @@ func getDeviceMetadataKey(c *cli.Context, deviceID uuid.UUID, key string) error 
 		return err
 	}
 
-	showOutput(c, metadataTableFields(c, false), []public.ModelsDeviceMetadata{*metadata})
+	showOutput(c, metadataTableFields(c, false), metadata)
 	return nil
 }
 
@@ -258,7 +245,7 @@ func updateDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key, value string)
 		return err
 	}
 
-	showOutput(c, metadataTableFields(c, false), []public.ModelsDeviceMetadata{*metadata})
+	showOutput(c, metadataTableFields(c, false), metadata)
 	return nil
 }
 

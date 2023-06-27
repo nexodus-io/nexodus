@@ -88,8 +88,7 @@ func main() {
 						Name:  "list",
 						Usage: "List organizations",
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							return listOrganizations(mustCreateAPIClient(cCtx), encodeOut)
+							return listOrganizations(cCtx, mustCreateAPIClient(cCtx))
 						},
 					},
 					{
@@ -114,12 +113,11 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
 							organizationName := cCtx.String("name")
 							organizationDescrip := cCtx.String("description")
 							organizationCIDR := cCtx.String("cidr")
 							organizationCIDRv6 := cCtx.String("cidr-v6")
-							return createOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6)
+							return createOrganization(cCtx, mustCreateAPIClient(cCtx), organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6)
 						},
 					},
 					{
@@ -134,7 +132,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							organizationID := cCtx.String("organization-id")
-							return deleteOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationID)
+							return deleteOrganization(cCtx, mustCreateAPIClient(cCtx), encodeOut, organizationID)
 						},
 					},
 					{
@@ -165,17 +163,15 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							fullDisplay := cCtx.Bool("full")
 							orgID := cCtx.String("organization-id")
 							if orgID != "" {
 								id, err := uuid.Parse(orgID)
 								if err != nil {
 									log.Fatal(err)
 								}
-								return listOrgDevices(mustCreateAPIClient(cCtx), id, fullDisplay, encodeOut)
+								return listOrgDevices(cCtx, mustCreateAPIClient(cCtx), id)
 							}
-							return listAllDevices(mustCreateAPIClient(cCtx), fullDisplay, encodeOut)
+							return listAllDevices(cCtx, mustCreateAPIClient(cCtx))
 						},
 					},
 					{
@@ -208,16 +204,14 @@ func main() {
 						Name:  "list",
 						Usage: "List all users",
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							return listUsers(mustCreateAPIClient(cCtx), encodeOut)
+							return listUsers(cCtx, mustCreateAPIClient(cCtx))
 						},
 					},
 					{
 						Name:  "get-current",
 						Usage: "Get current user",
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							return getCurrent(mustCreateAPIClient(cCtx), encodeOut)
+							return getCurrent(cCtx, mustCreateAPIClient(cCtx))
 						},
 					},
 					{
@@ -232,7 +226,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
-							return deleteUser(mustCreateAPIClient(cCtx), encodeOut, userID)
+							return deleteUser(cCtx, mustCreateAPIClient(cCtx), encodeOut, userID)
 						},
 					},
 					{
@@ -252,7 +246,7 @@ func main() {
 							encodeOut := cCtx.String("output")
 							userID := cCtx.String("user-id")
 							orgID := cCtx.String("organization-id")
-							return deleteUserFromOrg(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
+							return deleteUserFromOrg(cCtx, mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
 						},
 					},
 				},
@@ -273,7 +267,7 @@ func main() {
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
 							orgID := cCtx.String("organization-id")
-							return listSecurityGroups(mustCreateAPIClient(cCtx), encodeOut, orgID)
+							return listSecurityGroups(cCtx, mustCreateAPIClient(cCtx), encodeOut, orgID)
 						},
 					},
 					{
@@ -293,7 +287,7 @@ func main() {
 							encodeOut := cCtx.String("output")
 							sgID := cCtx.String("security-group-id")
 							orgID := cCtx.String("organization-id")
-							return deleteSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID)
+							return deleteSecurityGroup(cCtx, mustCreateAPIClient(cCtx), encodeOut, sgID, orgID)
 						},
 					},
 					{
@@ -322,7 +316,6 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
 							name := cCtx.String("name")
 							description := cCtx.String("description")
 							orgID := cCtx.String("organization-id")
@@ -346,7 +339,7 @@ func main() {
 								}
 							}
 
-							return createSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, name, description, orgID, inboundRules, outboundRules)
+							return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), name, description, orgID, inboundRules, outboundRules)
 						},
 					},
 					{
@@ -379,7 +372,6 @@ func main() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
 							name := cCtx.String("name")
 							sgID := cCtx.String("security-group-id")
 							orgID := cCtx.String("organization-id")
@@ -404,7 +396,7 @@ func main() {
 								}
 							}
 
-							return updateSecurityGroup(mustCreateAPIClient(cCtx), encodeOut, sgID, orgID, name, description, inboundRules, outboundRules)
+							return updateSecurityGroup(cCtx, mustCreateAPIClient(cCtx), sgID, orgID, name, description, inboundRules, outboundRules)
 						},
 					},
 				},
@@ -564,6 +556,11 @@ func showOutput(cCtx *cli.Context, fields []TableField, result any) {
 		}
 
 		itemsValue := reflect.ValueOf(result)
+		// if the itemsValue is not a slice, lets turn it into one.
+		if itemsValue.Type().Kind() != reflect.Slice {
+			itemsValue = reflect.MakeSlice(reflect.SliceOf(itemsValue.Type()), 0, 1)
+			itemsValue = reflect.Append(itemsValue, reflect.ValueOf(result))
+		}
 		for i := 0; i < itemsValue.Len(); i++ {
 			itemValue := itemsValue.Index(i)
 			var line []string
@@ -571,6 +568,10 @@ func showOutput(cCtx *cli.Context, fields []TableField, result any) {
 				if field.Formatter != nil {
 					line = append(line, field.Formatter(itemValue.Interface()))
 				} else if field.Field != "" {
+					// Deref the items points.
+					for itemValue.Type().Kind() == reflect.Pointer {
+						itemValue = itemValue.Elem()
+					}
 					fieldValue := itemValue.FieldByName(field.Field)
 					line = append(line, fieldFormatter(fieldValue))
 				} else {
