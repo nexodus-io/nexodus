@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/go-session/redis/v3"
+	"github.com/go-session/session/v3"
 	"log"
 	"net/http"
 	"os"
@@ -201,10 +203,11 @@ func main() {
 				EnvVars: []string{"NEXAPI_COOKIE_KEY"},
 			},
 			&cli.StringFlag{
-				Name:    "redis-server",
-				Usage:   "Redis host:port address",
-				Value:   "redis:6379",
-				EnvVars: []string{"NEXAPI_REDIS_SERVER"},
+				Name:     "redis-server",
+				Usage:    "Redis host:port address",
+				Value:    "redis:6379",
+				EnvVars:  []string{"NEXAPI_REDIS_SERVER"},
+				Required: true,
 			},
 			&cli.IntFlag{
 				Name:    "redis-db",
@@ -234,7 +237,22 @@ func main() {
 
 				store := inmem.New()
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus)
+				sessionStore := redis.NewRedisStore(&redis.Options{
+					Addr: cCtx.String("redis-server"),
+					DB:   cCtx.Int("redis-db"),
+				})
+
+				// In case in the future we want to support cookie based sessions:
+				//sessionStore = cookie.NewCookieStore(
+				//	cookie.SetHashKey([]byte(cCtx.String("cookie-key"))),
+				//)
+
+				sessionManager := session.NewManager(
+					session.SetCookieName(handlers.SESSION_ID_COOKIE_NAME),
+					session.SetStore(sessionStore),
+				)
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, sessionManager)
 				if err != nil {
 					log.Fatal(err)
 				}

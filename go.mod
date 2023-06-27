@@ -30,11 +30,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.6.0
 	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.1
-	github.com/testcontainers/testcontainers-go v0.20.1
+	github.com/testcontainers/testcontainers-go v0.21.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.0
 	github.com/urfave/cli/v2 v2.25.3
 	github.com/vishvananda/netlink v1.2.1-beta.2
@@ -89,7 +89,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/jackc/pgx/v5 v5.3.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
@@ -103,7 +103,7 @@ require (
 	github.com/mdlayher/socket v0.2.3 // indirect
 	github.com/moby/patternmatcher v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
-	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
+	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
@@ -131,6 +131,7 @@ require (
 	go.opentelemetry.io/otel/metric v0.38.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
+	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect

@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/go-session/redis/v3"
+	"github.com/go-session/session/v3"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
 	"net"
 	"net/http"
@@ -54,18 +58,45 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	listener, err := net.Listen("tcp", "[::1]:49090")
 	suite.Require().NoError(err)
 
+	ctx := context.Background()
+	req := testcontainers.ContainerRequest{
+		Image:        "redis:latest",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor:   wait.ForLog("Ready to accept connections"),
+	}
+	redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	endpoint, err := redisC.Endpoint(ctx, "")
+	if err != nil {
+		suite.T().Logf("failed to get redis endpoint:%s", err)
+	}
+
 	go func() {
 		defer suite.wg.Done()
 		if err := suite.ipam.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
 			suite.T().Logf("unexpected error starting ipam server: %s", err)
 		}
+		if err := redisC.Terminate(ctx); err != nil {
+			suite.T().Logf("failed to terminate redis container: %s", err.Error())
+		}
 	}()
 
 	ipamClient := ipam.NewIPAM(suite.logger, ipamClientAddr)
 
+	sessionStore := redis.NewRedisStore(&redis.Options{
+		Addr:     endpoint,
+		Password: "", // no password set
+		DB:       0,
+	})
+	sessionManager := session.NewManager(
+		session.SetStore(sessionStore),
+	)
+
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
-	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus())
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus(), sessionManager)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

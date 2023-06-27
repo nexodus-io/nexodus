@@ -24,10 +24,18 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.GetString(gin.AuthUserKey)
 		username := c.GetString(AuthUserName)
-		_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
+		session, err := api.sessionManager.Start(c.Request.Context(), c.Writer, c.Request)
 		if err != nil {
-			_ = c.AbortWithError(http.StatusInternalServerError, err)
-			return
+			api.logger.Errorf("failed to start the redis session manager:%s", err)
+		}
+		_, ok := session.Get(id)
+		if !ok {
+			uuid, err := api.createUserIfNotExists(c.Request.Context(), id, username)
+			session.Set(uuid.String(), username)
+			if err != nil {
+				_ = c.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
 		}
 		c.Next()
 	}
