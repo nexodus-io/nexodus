@@ -20,7 +20,7 @@ func RetryOperation(ctx context.Context, wait time.Duration, retries int, operat
 	return err
 }
 
-// RetryOperationForErrors retries the operation with a backoff policy for the specified errors, otherwise will just return the error.
+// RetryOperationForErrors retries the operation with a backoff policy for the specified errors, otherwise will just perform the operation once and return the error if it fails.
 func RetryOperationForErrors(ctx context.Context, wait time.Duration, retries int, retriableErrors []error, operation func() error) error {
 	bo := backoff.WithMaxRetries(
 		backoff.NewConstantBackOff(wait),
