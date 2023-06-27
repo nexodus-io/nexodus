@@ -78,6 +78,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
+	pprof_init(cCtx, logger)
+
 	userspaceMode := false
 	relayNode := false
 	var childPrefix []string
