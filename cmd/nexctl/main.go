@@ -112,10 +112,6 @@ func main() {
 								Name:     "cidr-v6",
 								Required: false,
 							},
-							&cli.BoolFlag{
-								Name:  "hub-organization",
-								Value: false,
-							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							encodeOut := cCtx.String("output")
@@ -123,8 +119,7 @@ func main() {
 							organizationDescrip := cCtx.String("description")
 							organizationCIDR := cCtx.String("cidr")
 							organizationCIDRv6 := cCtx.String("cidr-v6")
-							organizationHub := cCtx.Bool("hub-organization")
-							return createOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6, organizationHub)
+							return createOrganization(mustCreateAPIClient(cCtx), encodeOut, organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6)
 						},
 					},
 					{
