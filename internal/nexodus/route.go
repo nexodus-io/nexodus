@@ -4,24 +4,24 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-func (ax *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) {
-	if ax.userspaceMode {
-		ax.handlePeerRouteUS(wgPeerConfig)
+func (nx *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) error {
+	if nx.userspaceMode {
+		return nx.handlePeerRouteUS(wgPeerConfig)
 	} else {
-		ax.handlePeerRouteOS(wgPeerConfig)
+		return nx.handlePeerRouteOS(wgPeerConfig)
 	}
 }
 
-func (ax *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig public.ModelsDevice) {
-	if ax.userspaceMode {
-		ax.handlePeerRouteDeleteUS(dev, wgPeerConfig)
+func (nx *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig public.ModelsDevice) {
+	if nx.userspaceMode {
+		nx.handlePeerRouteDeleteUS(dev, wgPeerConfig)
 	} else {
-		ax.handlePeerRouteDeleteOS(dev, wgPeerConfig)
+		nx.handlePeerRouteDeleteOS(dev, wgPeerConfig)
 	}
 }
 
-func (ax *Nexodus) RouteExists(prefix string) (bool, error) {
-	if ax.userspaceMode {
+func (nx *Nexodus) RouteExists(prefix string) (bool, error) {
+	if nx.userspaceMode {
 		return RouteExistsUS(prefix)
 	} else {
 		return RouteExistsOS(prefix)

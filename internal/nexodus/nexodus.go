@@ -815,8 +815,8 @@ func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 	}
 }
 
-func (ax *Nexodus) reconcileDeviceCache() error {
-	peerMap, resp, err := ax.informer.Execute()
+func (nx *Nexodus) reconcileDeviceCache() error {
+	peerMap, resp, err := nx.informer.Execute()
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("error: %w header: %v", err, resp.Header)
@@ -825,34 +825,34 @@ func (ax *Nexodus) reconcileDeviceCache() error {
 	}
 
 	// Get the current peer configuration data from the wireguard interface
-	peerStats, err := ax.DumpPeersDefault()
+	peerStats, err := nx.DumpPeersDefault()
 	if err != nil {
-		if ax.TunnelIP != "" {
+		if nx.TunnelIP != "" {
 			// Unexpected to fail once we have local interface configuration
-			ax.logger.Warnf("failed to get current peer stats: %w", err)
+			nx.logger.Warnf("failed to get current peer stats: %w", err)
 		}
 		peerStats = make(map[string]WgSessions)
 	}
 
-	ax.deviceCacheLock.Lock()
-	defer ax.deviceCacheLock.Unlock()
+	nx.deviceCacheLock.Lock()
+	defer nx.deviceCacheLock.Unlock()
 
 	// Get our device cache up to date
 	newLocalConfig := false
 	for _, p := range peerMap {
 		// Update the cache if the device is new or has changed
-		existing, ok := ax.deviceCache[p.PublicKey]
-		if !ok || !ax.isEqualIgnoreSecurityGroup(existing.device, p) {
-			if p.PublicKey == ax.wireguardPubKey {
+		existing, ok := nx.deviceCache[p.PublicKey]
+		if !ok || !nx.isEqualIgnoreSecurityGroup(existing.device, p) {
+			if p.PublicKey == nx.wireguardPubKey {
 				newLocalConfig = true
 			}
-			ax.addToDeviceCache(p)
-			existing = ax.deviceCache[p.PublicKey]
+			nx.addToDeviceCache(p)
+			existing = nx.deviceCache[p.PublicKey]
 		}
 
 		// Store the relay IP for easy reference later
 		if p.Relay {
-			ax.relayWgIP = p.AllowedIps[0]
+			nx.relayWgIP = p.AllowedIps[0]
 		}
 
 		// Keep track of peer connection stats for connection health tracking
@@ -873,42 +873,42 @@ func (ax *Nexodus) reconcileDeviceCache() error {
 		existing.lastHandshake = curStats.LatestHandshake
 		existing.lastRefresh = time.Now()
 		existing.endpoint = curStats.Endpoint
-		existing.peerHealthy = ax.peerIsHealthy(existing)
-		ax.deviceCache[p.PublicKey] = existing
+		existing.peerHealthy = nx.peerIsHealthy(existing)
+		nx.deviceCache[p.PublicKey] = existing
 	}
 
 	// Refresh wireguard peer configuration, getting any new peers or changes to existing peers
-	updatePeers := ax.buildPeersConfig()
+	updatePeers := nx.buildPeersConfig()
 	if newLocalConfig || len(updatePeers) > 0 {
 		// Reset connection health tracking data for any peers that have changed
 		for _, peer := range updatePeers {
-			existing, ok := ax.deviceCache[peer.PublicKey]
+			existing, ok := nx.deviceCache[peer.PublicKey]
 			if !ok {
 				continue
 			}
-			ax.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
+			nx.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
 			existing.startTime = time.Now()
-			if peerConfig, ok := ax.wgConfig.Peers[peer.PublicKey]; ok {
+			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}
-			ax.deviceCache[peer.PublicKey] = existing
+			nx.deviceCache[peer.PublicKey] = existing
 		}
 
 		// Deploy updated wireguard peer configuration
-		if err := ax.DeployWireguardConfig(updatePeers); err != nil {
+		if err := nx.DeployWireguardConfig(updatePeers); err != nil {
 			if strings.Contains(err.Error(), securityGroupErr.Error()) {
 				return err
 			}
 			// If the wireguard configuration fails, we should wipe out our peer list
 			// so it is rebuilt and reconfigured from scratch the next time around.
-			ax.wgConfig.Peers = nil
+			nx.wgConfig.Peers = nil
 			return err
 		}
 	}
 
 	// check for any peer deletions
-	if err := ax.handlePeerDelete(peerMap); err != nil {
-		ax.logger.Error(err)
+	if err := nx.handlePeerDelete(peerMap); err != nil {
+		nx.logger.Error(err)
 	}
 
 	return nil

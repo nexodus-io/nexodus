@@ -34,6 +34,7 @@ func (ax *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 	updatedPeers := map[string]public.ModelsDevice{}
 
+	// TODO: Check this in PR but why do we do this?
 	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
 
 	relayAllowedIP := []string{

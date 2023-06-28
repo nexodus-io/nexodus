@@ -4,10 +4,11 @@ package nexodus
 
 import (
 	"fmt"
-	"github.com/vishvananda/netlink"
-	"go.uber.org/zap"
 	"net"
 	"strings"
+
+	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 )
 
 // RouteExistsOS currently only used for darwin build purposes
@@ -58,9 +59,19 @@ func delLink(ifaceName string) error {
 	return nil
 }
 
-// DeleteRoute deletes a darwin route
+// DeleteRoute deletes a darwin route for an ipv4 prefix
 func DeleteRoute(prefix, dev string) error {
 	_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix, "-interface", dev)
+	if err != nil {
+		return fmt.Errorf("no route deleted: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRouteV6 deletes a darwin route for an ipv6 prefix
+func DeleteRouteV6(prefix, dev string) error {
+	_, err := RunCommand("route", "-q", "-n", "delete", "-inet6", prefix, "-interface", dev)
 	if err != nil {
 		return fmt.Errorf("no route deleted: %w", err)
 	}

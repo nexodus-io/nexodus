@@ -14,14 +14,14 @@ var (
 	securityGroupErr = errors.New("nftables setup error")
 )
 
-func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
+func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
 	cfg := &wgConfig{
-		Interface: ax.wgConfig.Interface,
-		Peers:     ax.wgConfig.Peers,
+		Interface: nx.wgConfig.Interface,
+		Peers:     nx.wgConfig.Peers,
 	}
 
-	if ax.TunnelIP != ax.getIPv4Iface(ax.tunnelIface).String() {
-		if err := ax.setupInterface(); err != nil {
+	if nx.TunnelIP != nx.getIPv4Iface(nx.tunnelIface).String() {
+		if err := nx.setupInterface(); err != nil {
 			return err
 		}
 	}
@@ -33,13 +33,17 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		}
 		// add routes for each peer candidate (unless the key matches the local nodes key)
 		peer, ok := cfg.Peers[updatedPeer.PublicKey]
-		if !ok || peer.PublicKey == ax.wireguardPubKey {
+		if !ok || peer.PublicKey == nx.wireguardPubKey {
 			continue
 		}
-		ax.handlePeerRoute(peer)
-		ax.handlePeerTunnel(peer)
+		if err := nx.handlePeerRoute(peer); err != nil {
+			return err
+		}
+		if err := nx.handlePeerTunnel(peer); err != nil {
+			return err
+		}
 	}
 
-	ax.logger.Debug("Peer setup complete")
+	nx.logger.Debug("Peer setup complete")
 	return nil
 }

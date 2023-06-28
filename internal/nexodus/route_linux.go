@@ -8,22 +8,24 @@ import (
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) {
+func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
 		// if the host does not support v6, skip adding the route
-		if util.IsIPv6Prefix(allowedIP) && !ax.ipv6Supported {
+		if util.IsIPv6Prefix(allowedIP) && !nx.ipv6Supported {
 			continue
 		}
-		routeExists, err := ax.RouteExists(allowedIP)
+		routeExists, err := nx.RouteExists(allowedIP)
 		if err != nil {
-			ax.logger.Warnf("%v", err)
+			nx.logger.Warnf("%v", err)
 		}
 		if !routeExists {
-			if err := AddRoute(allowedIP, ax.tunnelIface); err != nil {
-				ax.logger.Errorf("route add failed: %v", err)
+			if err := AddRoute(allowedIP, nx.tunnelIface); err != nil {
+				nx.logger.Errorf("route add failed: %v", err)
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 // handlePeerRoute when a peer is this handles route deletion

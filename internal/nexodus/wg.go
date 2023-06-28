@@ -16,18 +16,21 @@ import (
 const keepaliveInterval = time.Second * 20
 
 // handlePeerTunnel build wg tunnels
-func (ax *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
+func (nx *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) error {
 	// validate the endpoint host:port pair parses.
 	// temporary: currently if relay state has not converged the endpoint can be registered as (none)
 	_, _, err := net.SplitHostPort(wgPeerConfig.Endpoint)
 	if err != nil {
-		ax.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
-		return
+		nx.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
+		return nil
 	}
 
-	if err := ax.addPeer(wgPeerConfig); err != nil {
-		ax.logger.Errorf("peer tunnel addition failed: %v\n", err)
+	if err := nx.addPeer(wgPeerConfig); err != nil {
+		nx.logger.Errorf("peer tunnel addition failed: %v\n", err)
+		return err
 	}
+
+	return nil
 }
 
 // addPeer add a wg peer
