@@ -11,8 +11,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// RouteExistsOS currently only used for darwin build purposes
+// RouteExistsOS checks to see if a route exists for the specified prefix
 func RouteExistsOS(s string) (bool, error) {
+	stdout, err := RunCommandPipeline("netstat -r -n", fmt.Sprintf("awk -v ip=%s '$1 == ip {print $1}'", s))
+	if err != nil {
+		return false, fmt.Errorf("error retrieving routes: %w", err)
+	}
+
+	if strings.Contains(stdout, s) {
+		return true, nil
+	}
+
 	return false, nil
 }
 

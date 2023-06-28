@@ -25,11 +25,18 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 		if util.IsIPv6Prefix(allowedIP) && !nx.ipv6Supported {
 			continue
 		}
+		routeExists, err := RouteExistsOS(allowedIP)
+		if err != nil {
+			nx.logger.Debugf("failed to check if route exists: %v", err)
+		}
 
 		if util.IsIPv4Prefix(allowedIP) {
-			if err := DeleteRoute(allowedIP, devName); err != nil {
-				nx.logger.Debugf("no route deleted: %v", err)
+			if routeExists {
+				if err := DeleteRoute(allowedIP, devName); err != nil {
+					nx.logger.Debugf("no route deleted: %v", err)
+				}
 			}
+
 			if err := AddRoute(allowedIP, devName); err != nil {
 				nx.logger.Errorf("%v", err)
 				return err
@@ -37,9 +44,12 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 		}
 
 		if util.IsIPv6Prefix(allowedIP) {
-			if err := DeleteRouteV6(allowedIP, devName); err != nil {
-				nx.logger.Debugf("no route deleted: %v", err)
+			if routeExists {
+				if err := DeleteRouteV6(allowedIP, devName); err != nil {
+					nx.logger.Debugf("no route deleted: %v", err)
+				}
 			}
+
 			if err := AddRouteV6(allowedIP, devName); err != nil {
 				nx.logger.Errorf("%v", err)
 				return err

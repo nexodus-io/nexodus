@@ -2,14 +2,16 @@ package nexodus
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/stun"
 	"net"
 	"net/netip"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/nexodus-io/nexodus/internal/stun"
 
 	"go.uber.org/zap"
 )
@@ -44,6 +46,31 @@ func RunCommand(cmd ...string) (string, error) {
 		return "", fmt.Errorf("failed to run %q: %w (%s)", strings.Join(cmd, " "), err, output)
 	}
 	return string(output), nil
+}
+
+// RunCommandPipeline runs a pipeline of commands in a shell
+func RunCommandPipeline(commands ...string) (string, error) {
+	if len(commands) == 0 {
+		return "", fmt.Errorf("no commands provided")
+	}
+
+	// Create the command string by joining the individual commands with pipes
+	cmdStr := strings.Join(commands, " | ")
+
+	// Create the shell command to run the pipeline
+	cmd := exec.Command("sh", "-c", cmdStr)
+
+	// Capture the output of the command
+	var output bytes.Buffer
+	cmd.Stdout = &output
+
+	// Run the command
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("command execution failed: %w", err)
+	}
+
+	return output.String(), nil
 }
 
 // IsCommandAvailable checks to see if a binary is available in the current path
