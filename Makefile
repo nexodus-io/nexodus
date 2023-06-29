@@ -574,19 +574,28 @@ deploy-monitoring-stack:
 	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-monitoring/overlays/dev
 	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus-monitoring --timeout=15m
 
+.PHONY: load-images-%
+load-images-%:
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/$(subst load-images-,,$@):latest
+
 .PHONY: load-images
-load-images: ## Load images onto kind
-	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
-	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/frontend:latest
-	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
-	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/envsubst:latest
-	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
+load-images: load-images-apiserver load-images-frontend load-images-go-ipam load-images-envsubst load-images-nexd ## Load images onto kind
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
 	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
 	$(CMD_PREFIX) kubectl rollout restart deploy/frontend -n nexodus
 	$(CMD_PREFIX) kubectl rollout restart deploy/apiproxy -n nexodus
+
+.PHONY: deploy-nexd-router
+deploy-nexd-router: image-nexd load-images-nexd ## Deploy a nexd proxy that acts like a skupper router in the current namespace
+	$(CMD_PREFIX) mkdir -p ./deploy/nexodus-router/overlays/local $(PIPE_DEV_NULL) || true
+	$(CMD_PREFIX) sed \
+		-e "s/<NEXODUS_SERVICE_IP>/$(NEXODUS_LOCAL_IP)/" \
+		-e "s/<NEXODUS_SERVICE_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" \
+		./deploy/nexodus-router/overlays/dev/kustomization.yaml > ./deploy/nexodus-router/overlays/local/kustomization.yaml
+	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-router/overlays/local
+	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods nexodus-router-0 --timeout=15m
 
 .PHONY: init-db
 init-db:

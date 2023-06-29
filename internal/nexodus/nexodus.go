@@ -120,6 +120,7 @@ type Nexodus struct {
 	listenPort               int
 	orgId                    string
 	org                      *public.ModelsOrganization
+	deviceId                 string
 	requestedIP              string
 	userProvidedLocalIP      string
 	TunnelIP                 string
@@ -472,6 +473,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("join error %w", err)
 	}
 
+	ax.deviceId = modelsDevice.Id
 	ax.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
 	ax.logger.Infof("Successfully registered device with UUID: [ %+v ] into organization: [ %s (%s) ]",
 		modelsDevice.Id, ax.org.Name, ax.org.Id)
@@ -480,6 +482,18 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if ax.relay {
 		if err := ax.relayPrep(); err != nil {
 			return err
+		}
+	}
+
+	if ax.userspaceMode && os.Getenv("NEXD_SKUPPER_CONFIG") != "" {
+		controller := &SkupperConfigController{
+			Nexodus:    ax,
+			logger:     ax.logger.With("controller", "proxy-config"),
+			configFile: os.Getenv("NEXD_SKUPPER_CONFIG"),
+		}
+		err = controller.Start(ctx, wg)
+		if err != nil {
+			return fmt.Errorf("failed to start proxy config controller: %w", err)
 		}
 	}
 

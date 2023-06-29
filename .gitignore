@@ -41,10 +41,11 @@ kubeconfigs/
 .auth-providers.yaml
 
 # kustomization yaml
-./deploy/nexodus-client/overlays/dev/kustomization.yaml
-./deploy/nexodus-client/overlays/dev/node_selector.yaml
-./deploy/nexodus-client/overlays/sample/kustomization.yaml
-./deploy/nexodus-client/overlays/sample/node_selector.yaml
+deploy/nexodus-client/overlays/dev/kustomization.yaml
+deploy/nexodus-client/overlays/dev/node_selector.yaml
+deploy/nexodus-client/overlays/sample/kustomization.yaml
+deploy/nexodus-client/overlays/sample/node_selector.yaml
+deploy/nexodus-router/overlays/local/
 
 # Auto generated man pages
 /contrib/man/*

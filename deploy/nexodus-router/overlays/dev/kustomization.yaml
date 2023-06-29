@@ -1,0 +1,18 @@
+#
+# `make deploy-nexd-router` will edit /deploy/nexodus-router/overlays/dev/kustomization.yaml
+# and save it as ./deploy/nexodus-router/overlays/local/kustomization.yaml setup to
+# point at your local dev apiserver.
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+secretGenerator:
+  - name: nexodus-client-secret
+    literals:
+      - url=https://try.nexodus.127.0.0.1.nip.io
+      - auth_url=https://auth.try.nexodus.127.0.0.1.nip.io/token
+      - username=kitteh1
+      - password=floofykittens
+      - cert=<NEXODUS_SERVICE_CERT>
+      - hosts=<NEXODUS_SERVICE_IP> auth.try.nexodus.127.0.0.1.nip.io api.try.nexodus.127.0.0.1.nip.io

@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nexodus-router
+spec:
+  serviceName: nexodus-router
+  selector:
+    matchLabels:
+      app: nexodus-router
+      application: skupper-router
+      skupper.io/component: router
+
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nexodus-router
+        application: skupper-router
+        skupper.io/component: router
+    spec:
+
+      containers:
+        - name: nexodus-router
+          image: quay.io/nexodus/nexd:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: NEXD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: username
+                  optional: false
+            - name: NEXD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: password
+                  optional: false
+            - name: NEXD_SERVICE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-client-secret
+                  key: url
+                  optional: false
+            - name: NEXD_SKUPPER_CONFIG
+              value: /etc/skupper/skrouterd.json
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ -f /etc/nexodus-client-secret/cert ] ; then
+                if [ `cat /etc/nexodus-client-secret/cert` == '<NEXODUS_SERVICE_CERT>' ]; then
+                  export NEXD_INSECURE_SKIP_TLS_VERIFY=true
+                else
+                  mkdir -p /etc/nexodus/.certs; base64 -d /etc/nexodus-client-secret/cert > /etc/nexodus/.certs/rootCA.pem
+                  CAROOT=/etc/nexodus/.certs /bin/mkcert -install
+                fi
+              fi
+              if [ -f /etc/nexodus-client-secret/hosts ] ; then
+                echo >> /etc/hosts
+                cat /etc/nexodus-client-secret/hosts >> /etc/hosts
+                echo >> /etc/hosts
+              fi
+              exec /bin/nexd proxy
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: nexodus
+              mountPath: "/etc/nexodus"
+              mountPropagation: Bidirectional
+            - name: host-wireguard
+              mountPath: "/etc/wireguard"
+              mountPropagation: Bidirectional
+            - name: nexodus-client-secret
+              mountPath: "/etc/nexodus-client-secret"
+              readOnly: true
+            - name: skupper-internal
+              mountPath: "/etc/skupper"
+              readOnly: true
+
+      restartPolicy: Always
+      volumes:
+        - name: nexodus-client-secret
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: nexodus-client-secret
+        - name: skupper-internal
+          configMap:
+            name: skupper-internal
+            optional: false
+
+  volumeClaimTemplates:
+    - metadata:
+        name: nexodus
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: host-wireguard
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
