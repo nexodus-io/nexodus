@@ -11,6 +11,6 @@ make deploy-nexd-router
 kubectl scale deployment skupper-router --replicas 0
 kubectl rollout status deployment skupper-router --timeout=1m
 
-kubectl port-forward $(kubectl get pods -l app=frontend -o name) 8080 || true&
+kubectl -n west port-forward $(kubectl -n west  get pods -l app=frontend -o name) 8080 &
 sleep 2
 open http://localhost:8080

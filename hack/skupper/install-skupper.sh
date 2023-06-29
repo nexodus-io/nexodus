@@ -72,14 +72,6 @@ kubectl expose deployment frontend --port 8080 --type LoadBalancer || true
 
 # For some reason the LB ip:port did not work on my machine, so setup a port forward to
 # access the front end app:
-kubectl port-forward $(kubectl get pods -l app=frontend -o name) 8080&
+kubectl -n west port-forward $(kubectl -n west  get pods -l app=frontend -o name) 8080 &
 sleep 2
 open http://localhost:8080
-
-#
-# Deploy nexodus proxy routers that will proxy services based on the skupper config:
-kubectl config set-context --current --namespace west
-make deploy-nexd-router
-
-kubectl config set-context --current --namespace east
-make deploy-nexd-router
