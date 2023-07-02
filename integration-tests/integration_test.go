@@ -377,15 +377,24 @@ func TestHubOrganization(t *testing.T) {
 	node3, stop := helper.CreateNode(ctx, "node3", []string{defaultNetwork}, enableV6)
 	defer stop()
 
+	orgID, orgName := helper.createOrganization(username, password,
+		"--cidr", "100.100.0.0/16",
+		"--cidr-v6", "200::/32",
+	)
+	helper.Logf("created org id:%s, name:%s", orgID, orgName)
+	defer func() {
+		_ = helper.deleteOrganization(username, password, orgID)
+	}()
+
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password)
-	helper.runNexd(ctx, node3, "--username", username, "--password", password)
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--organization-id", orgID)
+	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--organization-id", orgID)
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -424,6 +433,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
+		"--organization-id", orgID,
 		"router", fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
 	)
 
@@ -470,24 +480,11 @@ func TestHubOrganization(t *testing.T) {
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
 
-	commandOut, err = helper.runCommand(nexctl,
-		"--username", username, "--password", password,
-		"--output", "json",
-		"organization", "list",
-	)
-	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var organizations []models.OrganizationJSON
-	err = json.Unmarshal([]byte(commandOut), &organizations)
-	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
-
-	require.Equal(1, len(organizations))
-	orgID := organizations[0].ID
-
 	allDevices, err := helper.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json",
-		"device", "list", "--organization-id", orgID.String(),
+		"device", "list", "--organization-id", orgID,
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
 	var devices []models.Device
