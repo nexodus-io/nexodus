@@ -37,7 +37,9 @@ To stop routing traffic from the frontend pod to your machine, run:
 
     make debug-frontend-stop
 
-## Profiling nexd
+## Profiling
+
+### Profiling nexd
 
 To profile the performance of `nexd`, build it with `pprof` support enabled. If you run `make all`, you can use the `dist/nexd-pprof` binary. If you need to build for a specific and platform and architecture, you can set `NEXODUS_PPROF=y` and have `pprof` enabled in all binaries:
 
@@ -51,12 +53,37 @@ This also works for building the `nexd` container image.
 NEXODUS_PPROF=y make image-nexd
 ```
 
-Once pprof is enabled, `nexd` will expose performance data over http port `8080`. To change this port, set the `NEXD_PPROF_PORT` environment variable.
+Once pprof is enabled, `nexd` will expose performance data over http port `8088`. To change this port, set the `NEXD_PPROF_PORT` environment variable.
 
 To capture performance data and browse the results in a web interface, run this command:
 
 ```sh
-go tool pprof -http=: http://<NEXD_HOST>:8080
+go tool pprof -http=: http://<NEXD_HOST>:8088
+```
+
+A flame graph is available by navigating to `View > Flame Graph` in the web UI. Browse around for the other resources that are available.
+
+### Profiling the API server
+
+To profile the performance of the Nexodus `apiserver`, build it with `pprof` support enabled. You can build the `apiserver` image with `pprof` support enabled by setting the `NEXODUS_PPROF=y` environment variable:
+
+```sh
+NEXODUS_PPROF=y make image-apiserver
+```
+
+To automatically build the `apiserver` image with `pprof` enabled and then deploy it to your development `kind` cluster, run:
+
+```sh
+NEXODUS_PPROF=y make redeploy
+```
+
+Once pprof is enabled, the `apiserver` will expose performance data over http port `8088`. To change this port, set the `NEXAPI_PPROF_PORT` environment variable.
+
+To capture performance data and browse the results in a web interface, run these commands to forward a port from the `apiserver` pod to your local machine and then connect to it to capture data:
+
+```sh
+kubectl port-forward -n nexodus deployment/apiserver 8088:8088 &
+go tool pprof -http=: http://localhost:8088
 ```
 
 A flame graph is available by navigating to `View > Flame Graph` in the web UI. Browse around for the other resources that are available.

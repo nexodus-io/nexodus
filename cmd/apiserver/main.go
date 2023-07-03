@@ -219,6 +219,7 @@ func main() {
 			ctx, span := tracer.Start(ctx, "Run")
 			defer span.End()
 			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
+				pprof_init(cCtx, logger)
 
 				if err := database.Migrations().Migrate(ctx, db); err != nil {
 					log.Fatal(err)

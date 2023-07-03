@@ -50,9 +50,12 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint action-lint nexd nexctl ## Run linters and build nexd
+all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint action-lint apiserver nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
+
+.PHONY: apiserver
+apiserver: dist/apiserver dist/apiserver-pprof
 
 .PHONY: nexd
 nexd: dist/nexd dist/nexd-pprof dist/nexd-linux-arm dist/nexd-linux-arm64 dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
@@ -70,6 +73,16 @@ TAG=$(shell git rev-parse HEAD)
 
 dist:
 	$(CMD_PREFIX) mkdir -p $@
+
+dist/apiserver: $(APISERVER_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) \
+		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/apiserver
+
+dist/apiserver-pprof: $(APISERVER_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
+		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/apiserver
 
 dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
@@ -478,7 +491,8 @@ image-frontend:
 
 .PHONY: image-apiserver
 image-apiserver:
-	docker build -f Containerfile.apiserver -t quay.io/nexodus/apiserver:$(TAG) .
+	docker build -f Containerfile.apiserver \
+		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" -t quay.io/nexodus/apiserver:$(TAG) .
 	docker tag quay.io/nexodus/apiserver:$(TAG) quay.io/nexodus/apiserver:latest
 
 .PHONY: image-nexd ## Build the nexodus agent image
