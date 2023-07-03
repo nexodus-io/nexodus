@@ -16,10 +16,10 @@ import (
 
 func pprof_init(cCtx *cli.Context, logger *zap.Logger) {
 	port := "8088"
-	if envVar := os.Getenv("NEXD_PPROF_PORT"); envVar != "" {
+	if envVar := os.Getenv("NEXAPI_PPROF_PORT"); envVar != "" {
 		_, err := strconv.Atoi(port)
 		if err != nil {
-			logger.Sugar().Errorf("NEXD_PPROF_PORT environment variable is invalid: %v", err.Error())
+			logger.Sugar().Errorf("NEXAPI_PPROF_PORT environment variable is invalid: %v", err.Error())
 		} else {
 			port = envVar
 		}

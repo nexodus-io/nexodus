@@ -1,17 +1,21 @@
 FROM docker.io/library/golang:1.20-alpine as build
 
+ARG NEXODUS_PPROF=
+
 WORKDIR /src
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
+RUN apk add make
 
 COPY . .
-RUN CGO_ENABLED=0 go build \
-    -ldflags="-extldflags=-static" \
-    -o apiserver ./cmd/apiserver
+RUN CGO_ENABLED=0 NOISY_BUILD=y \
+    NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_PPROF=${NEXODUS_PPROF} \
+    make dist/apiserver
 
 FROM registry.access.redhat.com/ubi8/ubi
 
-COPY --from=build /src/apiserver /apiserver
+COPY --from=build /src/dist/apiserver /apiserver
 EXPOSE 8080
 ENTRYPOINT [ "/apiserver" ]
