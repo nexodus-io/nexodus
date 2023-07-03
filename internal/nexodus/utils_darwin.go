@@ -3,8 +3,11 @@
 package nexodus
 
 import (
+	"bytes"
 	"fmt"
 	"net"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/vishvananda/netlink"
@@ -12,13 +15,34 @@ import (
 )
 
 // RouteExistsOS checks to see if a route exists for the specified prefix
-func RouteExistsOS(s string) (bool, error) {
-	stdout, err := RunCommandPipeline("netstat -r -n", fmt.Sprintf("awk -v ip=%s '$1 == ip {print $1}'", s))
-	if err != nil {
-		return false, fmt.Errorf("error retrieving routes: %w", err)
+func RouteExistsOS(prefix string) (bool, error) {
+	if err := ValidateIp(prefix); err != nil {
+		return false, err
 	}
 
-	if strings.Contains(stdout, s) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return false, err
+	}
+	defer r.Close()
+	ns := exec.Command("netstat", "-r", "-n")
+	ns.Stdout = w
+	if err = ns.Start(); err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = ns.Wait()
+	}()
+	w.Close()
+
+	// #nosec -- G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)
+	awk := exec.Command("awk", "-v", fmt.Sprintf("ip=%s", prefix), "$1 == ip {print $1}")
+	awk.Stdin = r
+	var output bytes.Buffer
+	awk.Stdout = &output
+
+	// Validate the IP we're expecting is in the output
+	if strings.Contains(output.String(), prefix) {
 		return true, nil
 	}
 
