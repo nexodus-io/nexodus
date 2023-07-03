@@ -312,7 +312,8 @@ dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt | dist
 
 .PHONY: e2e
 e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e tests
-	go test -race -v --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
+	gotestsum --format standard-quiet -- \
+		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
@@ -320,8 +321,9 @@ e2e-podman: ## Run e2e tests on podman
 	sudo NEXODUS_TEST_PODMAN=1 TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true ./integration-tests.test -test.v
 
 .PHONY: test
-test: ## Run unit tests
-	go test -v ./...
+test: gotestsum-prereqs ## Run unit tests
+	gotestsum --format standard-quiet -- \
+		./...
 
 telepresence_%: telepresence-prereqs
 	$(CMD_PREFIX) if [ "$(shell telepresence status --output json | jq .user_daemon.status -r)" != "Connected" ]; then \
@@ -450,7 +452,7 @@ clear-db:
 ##@ Container Images
 
 .PHONY: e2eprereqs
-e2eprereqs:
+e2eprereqs: gotestsum-prereqs
 	$(CMD_PREFIX) if [ -z "$(shell which kind)" ]; then \
 		echo "Please install kind and then start the kind dev environment." ; \
 		echo "https://kind.sigs.k8s.io/" ; \
@@ -460,6 +462,14 @@ e2eprereqs:
 	$(CMD_PREFIX) if [ -z "$(findstring nexodus-dev,$(shell kind get clusters))" ]; then \
 		echo "Please start the kind dev environment." ; \
 		echo "  $$ make run-on-kind" ; \
+		exit 1 ; \
+	fi
+
+.PHONY: gotestsum-prereqs
+gotestsum-prereqs:
+	$(CMD_PREFIX) if [ -z "$(shell which gotestsum)" ]; then \
+		echo "Please install gotestsum." ; \
+		echo "  $$ ./hack/install-tools.sh" ; \
 		exit 1 ; \
 	fi
 
