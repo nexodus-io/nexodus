@@ -36,3 +36,27 @@ This uses Telepresence, so ignore the URLs on the screen from vite, and instead 
 To stop routing traffic from the frontend pod to your machine, run:
 
     make debug-frontend-stop
+
+## Profiling nexd
+
+To profile the performance of `nexd`, build it with `pprof` support enabled. If you run `make all`, you can use the `dist/nexd-pprof` binary. If you need to build for a specific and platform and architecture, you can set `NEXODUS_PPROF=y` and have `pprof` enabled in all binaries:
+
+```sh
+NEXODUS_PPROF=y make all
+```
+
+This also works for building the `nexd` container image.
+
+```sh
+NEXODUS_PPROF=y make image-nexd
+```
+
+Once pprof is enabled, `nexd` will expose performance data over http port `8080`. To change this port, set the `NEXD_PPROF_PORT` environment variable.
+
+To capture performance data and browse the results in a web interface, run this command:
+
+```sh
+go tool pprof -http=: http://<NEXD_HOST>:8080
+```
+
+A flame graph is available by navigating to `View > Flame Graph` in the web UI. Browse around for the other resources that are available.

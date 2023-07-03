@@ -40,13 +40,13 @@ func listOrganizations(c *client.APIClient, encodeOut string) error {
 	return nil
 }
 
-func createOrganization(c *client.APIClient, encodeOut, name, description, cidr string, cidrV6 string, hub bool) error {
+func createOrganization(c *client.APIClient, encodeOut, name, description, cidr string, cidrV6 string) error {
 	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
 		Name:        name,
 		Description: description,
 		Cidr:        cidr,
 		CidrV6:      cidrV6,
-		HubZone:     hub,
+		HubZone:     false,
 		PrivateCidr: !(cidr == "" && cidrV6 == ""),
 	}).Execute()
 	if err != nil {
