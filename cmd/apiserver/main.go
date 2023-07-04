@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
 	"os"
@@ -201,10 +202,11 @@ func main() {
 				EnvVars: []string{"NEXAPI_COOKIE_KEY"},
 			},
 			&cli.StringFlag{
-				Name:    "redis-server",
-				Usage:   "Redis host:port address",
-				Value:   "redis:6379",
-				EnvVars: []string{"NEXAPI_REDIS_SERVER"},
+				Name:     "redis-server",
+				Usage:    "Redis host:port address",
+				Value:    "redis:6379",
+				EnvVars:  []string{"NEXAPI_REDIS_SERVER"},
+				Required: true,
 			},
 			&cli.IntFlag{
 				Name:    "redis-db",
@@ -235,7 +237,12 @@ func main() {
 
 				store := inmem.New()
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus)
+				redisClient := redis.NewClient(&redis.Options{
+					Addr: cCtx.String("redis-server"),
+					DB:   cCtx.Int("redis-db"),
+				})
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, redisClient)
 				if err != nil {
 					log.Fatal(err)
 				}
