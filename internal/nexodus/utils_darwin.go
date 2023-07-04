@@ -16,7 +16,7 @@ import (
 
 // RouteExistsOS checks to see if a route exists for the specified prefix
 func RouteExistsOS(prefix string) (bool, error) {
-	if err := ValidateIp(prefix); err != nil {
+	if err := ValidateCIDR(prefix); err != nil {
 		return false, err
 	}
 
@@ -25,6 +25,7 @@ func RouteExistsOS(prefix string) (bool, error) {
 		return false, err
 	}
 	defer r.Close()
+	defer w.Close()
 	ns := exec.Command("netstat", "-r", "-n")
 	ns.Stdout = w
 	if err = ns.Start(); err != nil {
@@ -33,7 +34,6 @@ func RouteExistsOS(prefix string) (bool, error) {
 	defer func() {
 		_ = ns.Wait()
 	}()
-	w.Close()
 
 	// #nosec -- G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)
 	awk := exec.Command("awk", "-v", fmt.Sprintf("ip=%s", prefix), "$1 == ip {print $1}")
