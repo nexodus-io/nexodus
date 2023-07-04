@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
@@ -52,26 +54,46 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	var user models.User
 	var uuid uuid.UUID
 
-	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		// First lets check if the user has ever existed in the database
-		res := tx.Unscoped().First(&user, "id = ?", id)
+	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
+	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
+		return api.transaction(ctx, func(tx *gorm.DB) error {
+			// First lets check if the user has ever existed in the database
+			res := tx.Unscoped().First(&user, "id = ?", id)
 
-		// If the user exists, then lets restore their status in the database
-		if res.Error == nil {
-			if user.DeletedAt.Valid {
-				user.DeletedAt = gorm.DeletedAt{}
-				if res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt); res.Error != nil {
-					return res.Error
+			// If the user exists, then lets restore their status in the database
+			if res.Error == nil {
+				if user.DeletedAt.Valid {
+					user.DeletedAt = gorm.DeletedAt{}
+					if res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt); res.Error != nil {
+						return res.Error
+					}
 				}
+
+				// Check if the UserName has changed since the last time we saw this user
+				if user.UserName != userName {
+					if res := tx.Model(&user).Update("UserName", userName); res.Error != nil {
+						return res.Error
+					}
+				}
+
+				var err error
+				uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+				if err != nil {
+					return err
+				}
+
+				return nil
 			}
 
-			// Check if the UserName has changed since the last time we saw this user
-			if user.UserName != userName {
-				if res := tx.Model(&user).Update("UserName", userName); res.Error != nil {
-					return res.Error
-				}
+			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("can't find record for user id %s: %w", id, res.Error)
 			}
 
+			user.ID = id
+			user.UserName = userName
+			if res = tx.Create(&user); res.Error != nil {
+				return res.Error
+			}
 			var err error
 			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
 			if err != nil {
@@ -79,24 +101,7 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			}
 
 			return nil
-		}
-
-		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("can't find record for user id %s: %w", id, res.Error)
-		}
-
-		user.ID = id
-		user.UserName = userName
-		if res = tx.Create(&user); res.Error != nil {
-			return res.Error
-		}
-		var err error
-		uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		})
 	})
 
 	if err != nil {

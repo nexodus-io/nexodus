@@ -19,7 +19,7 @@ type WatchableList interface {
 	Item(i int) (any, uint64, gorm.DeletedAt)
 }
 
-func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal string, revisionCol string, getList func(db *gorm.DB) (WatchableList, error), scopes []func(*gorm.DB) *gorm.DB) {
+func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal string, revisionCol string, scopes []func(*gorm.DB) *gorm.DB, getList func(db *gorm.DB) (WatchableList, error)) {
 
 	gtRevision := uint64(0)
 	if v := c.Query("gt_revision"); v != "" {
