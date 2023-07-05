@@ -1046,3 +1046,56 @@ func TestV6Disabled(t *testing.T) {
 	err = ping(ctx, node2, inetV4, node1IP)
 	require.NoError(err)
 }
+
+func TestConnectivityUsingWireguardGo(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexdWithEnv(ctx, node1, []string{"NEXD_USE_WIREGUARD_GO=1"}, "--username", username, "--password", password, "relay")
+
+	// validate nexd has started on the relay node
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.runNexdWithEnv(ctx, node2, []string{"NEXD_USE_WIREGUARD_GO=1"}, "--username", username, "--password", password)
+
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.NoError(err)
+	node2IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node2)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node1IP)
+	err = ping(ctx, node2, inetV4, node1IP)
+	require.NoError(err)
+
+	node1IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node1)
+	require.NoError(err)
+	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node1", node1IPv6)
+	err = ping(ctx, node1, inetV6, node1IPv6)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node2", node2IPv6)
+	err = ping(ctx, node2, inetV6, node2IPv6)
+	require.NoError(err)
+}
