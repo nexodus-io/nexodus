@@ -22,14 +22,14 @@ func RouteExistsOS(prefix string) (bool, error) {
 
 	r, w, err := os.Pipe()
 	if err != nil {
-		return false, err
+		return true, err
 	}
 	defer r.Close()
 	defer w.Close()
 	ns := exec.Command("netstat", "-r", "-n")
 	ns.Stdout = w
 	if err = ns.Start(); err != nil {
-		return false, err
+		return true, err
 	}
 	defer func() {
 		_ = ns.Wait()
@@ -42,11 +42,7 @@ func RouteExistsOS(prefix string) (bool, error) {
 	awk.Stdout = &output
 
 	// Validate the IP we're expecting is in the output
-	if strings.Contains(output.String(), prefix) {
-		return true, nil
-	}
-
-	return false, nil
+	return strings.Contains(output.String(), prefix), nil
 }
 
 // AddRoute adds a route to the specified interface

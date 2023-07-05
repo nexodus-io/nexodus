@@ -26,8 +26,9 @@ func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		}
 	}
 
+	// keep track of any errors that occur during config setup which can be returned at the end
+	var firstErr error
 	// add routes and tunnels for the new peers only according to the cache diff
-	var err error
 	for _, updatedPeer := range updatedPeers {
 		if updatedPeer.Id == "" {
 			continue
@@ -37,14 +38,16 @@ func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		if !ok || peer.PublicKey == nx.wireguardPubKey {
 			continue
 		}
-		if err = nx.handlePeerRoute(peer); err != nil {
+		if err := nx.handlePeerRoute(peer); err != nil {
 			nx.logger.Errorf("Failed to handle peer route: %v", err)
+			firstErr = err
 		}
-		if err = nx.handlePeerTunnel(peer); err != nil {
+		if err := nx.handlePeerTunnel(peer); err != nil {
 			nx.logger.Errorf("Failed to handle peer tunnel: %v", err)
+			firstErr = err
 		}
 	}
 
 	nx.logger.Debug("Peer setup complete")
-	return err
+	return firstErr
 }
