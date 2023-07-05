@@ -177,7 +177,7 @@ jobs:
         uses: ./.github/actions/setup-go-env
       - name: Unit tests
         run: |
-          go test -v ./...
+          gotestsum --format standard-quiet -- -v ./...
 
   build-packages:
     needs: [ go-lint-linux, generate ]
@@ -310,7 +310,7 @@ jobs:
 
       - name: Run e2e Tests
         run: |
-          go test -v --tags=integration ./integration-tests/...
+          gotestsum --format standard-quiet -- -v --tags=integration ./integration-tests/...
 
       - name: Get Logs
         if: always()

@@ -56,3 +56,9 @@ if [ -z "$(which go-licenses)" ] || [ "$1" = "--force" ]; then
   echo installing go-licenses
   go install github.com/google/go-licenses@latest
 fi
+if [ -z "$(which gotestsum)" ] || [ "$1" = "--force" ]; then
+  echo installing gotestsum
+  go install gotest.tools/gotestsum@v1.10.0
+fi
+
+
