@@ -224,12 +224,18 @@ func (helper *Helper) CreateNetwork(ctx context.Context, name, cidr string) test
 	return net
 }
 
-// runNexd copies the nexd command to a file on the container and runs it piping the logs to a file
 func (helper *Helper) runNexd(ctx context.Context, node testcontainers.Container, args ...string) {
+	helper.runNexdWithEnv(ctx, node, nil, args...)
+}
+
+// runNexd copies the nexd command to a file on the container and runs it piping the logs to a file
+func (helper *Helper) runNexdWithEnv(ctx context.Context, node testcontainers.Container, envs []string, args ...string) {
 	nodeName, _ := node.Name(ctx)
 	runScript := fmt.Sprintf("%s-nexd-run.sh", strings.TrimPrefix(nodeName, "/"))
 	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
-	cmd := []string{"NEXD_LOGLEVEL=debug", "/bin/nexd"}
+	cmd := []string{"NEXD_LOGLEVEL=debug"}
+	cmd = append(cmd, envs...)
+	cmd = append(cmd, "/bin/nexd")
 	cmd = append(cmd, "--stun-server", fmt.Sprintf("%s:%d", hostDNSName, testStunServer1Port))
 	cmd = append(cmd, "--stun-server", fmt.Sprintf("%s:%d", hostDNSName, testStunServer2Port))
 	cmd = append(cmd, "--service-url", "https://try.nexodus.127.0.0.1.nip.io")

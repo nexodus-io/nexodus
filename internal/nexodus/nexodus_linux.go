@@ -7,7 +7,17 @@ import (
 	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"os"
+	"os/exec"
+	"strings"
 )
+
+func (ax *Nexodus) runIpLinkAdd() (string, error) {
+	if _, found := os.LookupEnv("NEXD_USE_WIREGUARD_GO"); found {
+		return "", fmt.Errorf("Error: Unknown device type.")
+	}
+	return RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
+}
 
 // setupLinuxInterface TODO replace with netlink calls
 // this is called if this is the first run or if the local node
@@ -28,10 +38,41 @@ func (ax *Nexodus) setupInterfaceOS() error {
 	}
 
 	// create the wireguard ip link interface
-	_, err := RunCommand("ip", "link", "add", ax.tunnelIface, "type", "wireguard")
+	_, err := ax.runIpLinkAdd()
 	if err != nil {
-		logger.Errorf("failed to create the ip link interface: %v\n", err)
-		return fmt.Errorf("%w", interfaceErr)
+		if !strings.Contains(err.Error(), "Error: Unknown device type.") {
+			logger.Errorf("failed to create the ip link interface: %v\n", err)
+			return fmt.Errorf("%w", interfaceErr)
+		}
+		// the linux kernel might not be compiled with wg support.
+		// fallback to using wireguard-go
+
+		if _, err = os.Stat("/dev/net"); err != nil {
+			err = os.MkdirAll("/dev/net", 0755)
+			if err != nil {
+				return err
+			}
+		}
+
+		if _, err = os.Stat("/dev/net/tun"); err != nil {
+			_, err = RunCommand("mknod", "/dev/net/tun", "c", "10", "200")
+			if err != nil {
+				return err
+			}
+		}
+
+		// prefer nexd-wireguard-go over wireguard-go since it supports port reuse.
+		wgBinary := wgGoBinary
+		if path, err := exec.LookPath(nexdWgGoBinary); err == nil {
+			wgBinary = path
+		}
+
+		logger.Debugf("Creating network interface using wireguard-go")
+		_, err := RunCommand(wgBinary, ax.tunnelIface)
+		if err != nil {
+			logger.Errorf("failed to create the %s interface: %v\n", ax.tunnelIface, err)
+			return fmt.Errorf("%w", interfaceErr)
+		}
 	}
 
 	listenPort := ax.listenPort

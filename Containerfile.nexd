@@ -31,6 +31,10 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-extldflags=-static" \
     -o udpong ./hack/udpong
 
+RUN CGO_ENABLED=0 go install \
+    -ldflags="-extldflags=-static" \
+    golang.zx2c4.com/wireguard
+
 RUN cd / && CGO_ENABLED=0 go install filippo.io/mkcert@v1.4.4
 
 FROM fedora:latest as fedora
@@ -55,6 +59,7 @@ COPY --chmod=755 ./hack/update-ca.sh /update-ca.sh
 COPY --chmod=755 --from=build /src/dist/nexd /bin/nexd
 COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
+COPY --chmod=755 --from=build /go/bin/wireguard /bin/nexd-wireguard-go
 COPY --chmod=755 --from=build /src/udping /bin/udping
 COPY --chmod=755 --from=build /src/udpong /bin/udpong
 COPY --chmod=644 --from=build /src/contrib/bash_autocomplete /etc/bash_completion.d/nexd
