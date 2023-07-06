@@ -47,6 +47,20 @@ func (ax *Nexodus) setupInterfaceOS() error {
 		// the linux kernel might not be compiled with wg support.
 		// fallback to using wireguard-go
 
+		if _, err = os.Stat("/dev/net"); err != nil {
+			err = os.MkdirAll("/dev/net", 0755)
+			if err != nil {
+				return err
+			}
+		}
+
+		if _, err = os.Stat("/dev/net/tun"); err != nil {
+			_, err = RunCommand("mknod", "/dev/net/tun", "c", "10", "200")
+			if err != nil {
+				return err
+			}
+		}
+
 		// prefer nexd-wireguard-go over wireguard-go since it supports port reuse.
 		wgBinary := wgGoBinary
 		if path, err := exec.LookPath(nexdWgGoBinary); err == nil {
