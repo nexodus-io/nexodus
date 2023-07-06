@@ -3,44 +3,34 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/urfave/cli/v2"
+	"log"
 )
 
-func listOrganizations(c *client.APIClient, encodeOut string) error {
+func orgTableFields() []TableField {
+	var fields []TableField
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
+	fields = append(fields, TableField{Header: "NAME", Field: "Name"})
+	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Cidr"})
+	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "CidrV6"})
+	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
+	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
+	return fields
+}
+func listOrganizations(cCtx *cli.Context, c *client.APIClient) error {
 	orgs, _, err := c.OrganizationsApi.ListOrganizations(context.Background()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\n"
-		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "Organization ID", "NAME", "IPV4 CIDR", "IPV6 CIDR", "DESCRIPTION", "SECURITY GROUP ID")
-		}
-
-		for _, org := range orgs {
-			fmt.Fprintf(w, fs, org.Id, org.Name, org.Cidr, org.CidrV6, org.Description, org.SecurityGroupId)
-		}
-
-		w.Flush()
-
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, orgs)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	showOutput(cCtx, orgTableFields(), orgs)
 	return nil
 }
 
-func createOrganization(c *client.APIClient, encodeOut, name, description, cidr string, cidrV6 string) error {
+func createOrganization(cCtx *cli.Context, c *client.APIClient, name, description, cidr string, cidrV6 string) error {
 	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
 		Name:        name,
 		Description: description,
@@ -53,16 +43,7 @@ func createOrganization(c *client.APIClient, encodeOut, name, description, cidr 
 		log.Fatal(err)
 	}
 
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println(res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	showOutput(cCtx, orgTableFields(), res)
 	return nil
 }
 
@@ -92,7 +73,7 @@ func moveUserToOrganization(c *client.APIClient, encodeOut, username, Organizati
 }
 */
 
-func deleteOrganization(c *client.APIClient, encodeOut, OrganizationID string) error {
+func deleteOrganization(cCtx *cli.Context, c *client.APIClient, encodeOut, OrganizationID string) error {
 	OrganizationUUID, err := uuid.Parse(OrganizationID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationUUID, err)
@@ -103,14 +84,9 @@ func deleteOrganization(c *client.APIClient, encodeOut, OrganizationID string) e
 		log.Fatalf("Organization delete failed: %v\n", err)
 	}
 
+	showOutput(cCtx, orgTableFields(), res)
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted Organization %s\n", res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
+		fmt.Println("\nsuccessfully deleted")
 	}
 
 	return nil
