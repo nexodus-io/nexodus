@@ -15,7 +15,7 @@ sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io --stun relay
 You can list the available organizations using the following command
 
 ```sh
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username kitteh1 --password floofykittens organization list
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username kitteh1 --password floofykittens organization list
 Organization ID                          NAME      IPV4 CIDR          IPV6 CIDR     DESCRIPTION
 faa76939-3226-4d09-b695-e981585ab156     kitteh1   100.64.0.0/10     200::/64      kitteh1's organization
 ```

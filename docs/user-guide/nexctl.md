@@ -28,239 +28,149 @@ make dist/nexctl
 ### Usage
 
 ```text
-nexctl(09 June 2023)                                                                                                                           nexctl(09 June 2023)
-
 NAME:
-       nexctl - A new cli application
+   nexctl - controls the Nexodus control and data planes
 
 USAGE:
-       nexctl [global options] command [command options] [arguments...]
+   nexctl [global options] command [command options] [arguments...]
 
 COMMANDS:
-       device Commands relating to devices
-
-       invitation
-              commands relating to invitations
-
-       nexd   Commands for interacting with the local instance of nexd
-
-       organization
-              Commands relating to organizations
-
-       security-group
-              commands relating to security groups
-
-       user   Commands relating to users
-
-       version
-              Get the version of nexctl
-
-       help, h
-              Shows a list of commands or help for one command
+   device          Commands relating to devices
+   invitation      commands relating to invitations
+   nexd            Commands for interacting with the local instance of nexd
+   organization    Commands relating to organizations
+   security-group  commands relating to security groups
+   user            Commands relating to users
+   version         Get the version of nexctl
+   help, h         Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-       --debug
-              Enable debug logging (default: false) [$NEXCTL_DEBUG]
-
-       --host value
-              Api server URL (default: "https://api.try.nexodus.127.0.0.1.nip.io")
-
-       --username value
-              Username
-
-       --password value
-              Password
-
-       --output value
-              Output format: json, json-raw, no-header, column (default columns) (default: "column")
-
-       --insecure-skip-tls-verify
-              If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false)
-
-       --help, -h
-              Show help
-
-                                                                                                                                               nexctl(09 June 2023)
+   --debug                     Enable debug logging (default: false) [$NEXCTL_DEBUG]
+   --service-url value         Api server URL (default: "https://try.nexodus.127.0.0.1.nip.io")
+   --username value            Username
+   --password value            Password
+   --output value              Output format: json, json-raw, no-header, column (default columns) (default: "column")
+   --insecure-skip-tls-verify  If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false)
+   --help, -h                  Show help
 ```
 
 #### nexctl device
 
 ```text
-nexctl-device(09 June 2023)                                                                                                             nexctl-device(09 June 2023)
-
 NAME:
-       nexctl device - Commands relating to devices
+   nexctl device - Commands relating to devices
 
 USAGE:
-       nexctl device command [command options] [arguments...]
+   nexctl device command [command options] [arguments...]
 
 COMMANDS:
-       list   List all devices
-
-       delete Delete a device
-
-       help, h
-              Shows a list of commands or help for one command
+   list      List all devices
+   delete    Delete a device
+   metadata  Commands relating to device metadata
+   help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-       --help, -h
-              Show help
-
-                                                                                                                                        nexctl-device(09 June 2023)
+   --help, -h  Show help
 ```
 
 #### nexctl invitation
 
 ```text
-nexctl-invitation(09 June 2023)                                                                                                     nexctl-invitation(09 June 2023)
-
 NAME:
-       nexctl invitation - commands relating to invitations
+   nexctl invitation - commands relating to invitations
 
 USAGE:
-       nexctl invitation command [command options] [arguments...]
+   nexctl invitation command [command options] [arguments...]
 
 COMMANDS:
-       create create an invitation
-
-       delete delete an invitation
-
-       accept accept an invitation
-
-       help, h
-              Shows a list of commands or help for one command
+   create   create an invitation
+   delete   delete an invitation
+   accept   accept an invitation
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-       --help, -h
-              Show help
-
-                                                                                                                                    nexctl-invitation(09 June 2023)
+   --help, -h  Show help
 ```
 
 #### nexctl nexd
 
 ```text
-nexctl-nexd(09 June 2023)                                                                                                                 nexctl-nexd(09 June 2023)
-
 NAME:
-       nexctl nexd - Commands for interacting with the local instance of nexd
+   nexctl nexd - Commands for interacting with the local instance of nexd
 
 USAGE:
-       nexctl nexd command [command options] [arguments...]
+   nexctl nexd command [command options] [arguments...]
 
 COMMANDS:
-       version
-              Display the nexd version
-
-       status Display the nexd status
-
-       get    Get a value from the local nexd instance
-
-       set    Set a value on the local nexd instance
-
-       proxy  Commands for interacting nexd's proxy configuration
-
-       peers  Commands for interacting nexd exit node configuration
-
-       help, h
-              Shows a list of commands or help for one command
+   version  Display the nexd version
+   status   Display the nexd status
+   get      Get a value from the local nexd instance
+   set      Set a value on the local nexd instance
+   proxy    Commands for interacting nexd's proxy configuration
+   peers    Commands for interacting with nexd peer connectivity
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-       --unix-socket value
-              Path to the unix socket nexd is listening against (default: "/run/nexd.sock")
-
-       --help, -h
-              Show help
-
-                                                                                                                                          nexctl-nexd(09 June 2023)
+   --unix-socket value  Path to the unix socket nexd is listening against (default: "/var/run/nexd.sock")
+   --help, -h           Show help
 ```
 
 #### nexctl organization
 
 ```text
-nexctl-organization(09 June 2023)                                                                                                 nexctl-organization(09 June 2023)
-
 NAME:
-       nexctl organization - Commands relating to organizations
+   nexctl organization - Commands relating to organizations
 
 USAGE:
-       nexctl organization command [command options] [arguments...]
+   nexctl organization command [command options] [arguments...]
 
 COMMANDS:
-       list   List organizations
-
-       create Create a organizations
-
-       delete Delete a organization
-
-       help, h
-              Shows a list of commands or help for one command
+   list      List organizations
+   create    Create a organizations
+   delete    Delete a organization
+   metadata  Commands relating to device metadata across the organization
+   help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-       --help, -h
-              Show help
-
-                                                                                                                                  nexctl-organization(09 June 2023)
+   --help, -h  Show help
 ```
 
 #### nexctl user
 
 ```text
-nexctl-user(09 June 2023)                                                                                                                 nexctl-user(09 June 2023)
-
 NAME:
-       nexctl user - Commands relating to users
+   nexctl user - Commands relating to users
 
 USAGE:
-       nexctl user command [command options] [arguments...]
+   nexctl user command [command options] [arguments...]
 
 COMMANDS:
-       list   List all users
-
-       get-current
-              Get current user
-
-       delete Delete a user
-
-       remove-user
-              Remove a user from an organization
-
-       help, h
-              Shows a list of commands or help for one command
+   list         List all users
+   get-current  Get current user
+   delete       Delete a user
+   remove-user  Remove a user from an organization
+   help, h      Shows a list of commands or help for one command
 
 OPTIONS:
-       --help, -h
-              Show help
-
-                                                                                                                                          nexctl-user(09 June 2023)
+   --help, -h  Show help
 ```
 
 #### nexctl security-group
 
 ```text
-nexctl-security-group(09 June 2023)                                                                                             nexctl-security-group(09 June 2023)
-
 NAME:
-       nexctl security-group - commands relating to security groups
+   nexctl security-group - commands relating to security groups
 
 USAGE:
-       nexctl security-group command [command options] [arguments...]
+   nexctl security-group command [command options] [arguments...]
 
 COMMANDS:
-       list   List all security groups
-
-       delete Delete a security group
-
-       create create a security group
-
-       update update a security group
-
-       help, h
-              Shows a list of commands or help for one command
+   list     List all security groups
+   delete   Delete a security group
+   create   create a security group
+   update   update a security group
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-       --help, -h
-              Show help
-
-                                                                                                                                nexctl-security-group(09 June 2023)
+   --help, -h  Show help
 ```

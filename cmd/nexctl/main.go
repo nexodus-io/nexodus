@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/olekukonko/tablewriter"
 	"log"
+	"net/url"
 	"os"
 	"reflect"
 	"sort"
@@ -37,6 +38,7 @@ func main() {
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	app := &cli.App{
 		Name:                 "nexctl",
+		Usage:                "controls the Nexodus control and data planes",
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -46,7 +48,13 @@ func main() {
 				EnvVars: []string{"NEXCTL_DEBUG"},
 			},
 			&cli.StringFlag{
-				Name:  "host",
+				Name:   "host",
+				Value:  DefaultServiceURL,
+				Usage:  "Api server URL",
+				Hidden: true,
+			},
+			&cli.StringFlag{
+				Name:  "service-url",
 				Value: DefaultServiceURL,
 				Usage: "Api server URL",
 			},
@@ -469,8 +477,37 @@ func main() {
 }
 
 func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
+
+	urlValue := DefaultServiceURL
+	flagUsed := "--service-url"
+	addApiPrefix := true
+	if cCtx.IsSet("host") {
+		if cCtx.IsSet("service-url") {
+			log.Fatalf("please remove the --host flag, the --service-url flag has replaced it")
+		}
+		log.Println("DEPRECATION WARNING: configuring the service url via the --host flag not be supported in a future release.  Please use the --service-url flag instead.")
+		urlValue = cCtx.String("host")
+		flagUsed = "--host"
+		addApiPrefix = false
+	} else if cCtx.IsSet("service-url") {
+		urlValue = cCtx.String("service-url")
+	}
+
+	apiURL, err := url.Parse(urlValue)
+	if err != nil {
+		log.Fatalf("invalid '%s=%s' flag provided. error: %v", flagUsed, urlValue, err)
+	}
+	if apiURL.Scheme != "https" {
+		log.Fatalf("invalid '%s=%s' flag provided. error: 'https://' URL scheme is required", flagUsed, urlValue)
+	}
+
+	if addApiPrefix {
+		apiURL.Host = "api." + apiURL.Host
+		apiURL.Path = ""
+	}
+
 	c, err := client.NewAPIClient(cCtx.Context,
-		cCtx.String("host"), nil,
+		apiURL.String(), nil,
 		createClientOptions(cCtx)...,
 	)
 	if err != nil {

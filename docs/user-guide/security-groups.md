@@ -14,7 +14,7 @@ Currently, only one security group per organization is supported. Support for mu
 The default security group rules are empty, as can be seen in the default security group listing of an organization.
 
 ```shell
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group list --organization-id="${ORGANIZATION_ID}"
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group list --organization-id="${ORGANIZATION_ID}"
 SECURITY GROUP ID                        SECURITY GROUP NAME     SECURITY GROUP DESCRIPTION              ORGANIZATION ID                          SECURITY GROUP RULES INBOUND     SECURITY GROUP RULES INBOUND
 cb2e0192-5eb9-41ee-a732-7484602ac883     default                 default organization security group     7e552731-2f5f-421d-9266-10fa46dfe3ee     []                               []
 ```
@@ -30,7 +30,7 @@ In the provided commands, you'll notice variables `ORGANIZATION_ID` and `SECURIT
 You can obtain the IDs from the output of listing organizations.
 
 ```shell
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens organization list
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens organization list
 Organization ID                          NAME      IPV4 CIDR          IPV6 CIDR     DESCRIPTION              SECURITY GROUP ID
 cd0fa8be-1c6a-4319-884a-e0377d915774     admin     100.100.0.0/16     200::/64      admin's organization     151acab0-6dde-4870-bacf-2f7134dc5085
 ```
@@ -44,7 +44,7 @@ Here are some examples of operations you can perform with security groups.
 This command will list all security groups for the specified organization.
 
 ```shell
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io \
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io \
     --username admin \
     --password floofykittens \
     security-group list --organization-id=${ORGANIZATION_ID}
@@ -60,13 +60,13 @@ SECURITY_GROUP_ID="<UUID_GOES_HERE>"
 Now you can list the security groups for an organization.
 
 ```bash
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group list --organization-id=${ORGANIZATION_ID} 
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group list --organization-id=${ORGANIZATION_ID} 
 ```
 
 ### Creating a Security Group
 
 ```shell
-nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group create \
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group create \
     --name test-group --description "test group example" \
     --inbound-rules='[{"ip_protocol": "icmp"}]' \
     --outbound-rules='' \
@@ -77,7 +77,7 @@ nexctl --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --passwo
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "icmp"}, {"ip_protocol": "icmpv6"}, {"ip_protocol": "tcp"},{"ip_protocol": "udp"}]' \
     --outbound-rules='[{"ip_protocol": "icmp"}, {"ip_protocol": "icmpv6"}, {"ip_protocol": "tcp"},{"ip_protocol": "udp"}]' \
@@ -91,7 +91,7 @@ Note: if you do not specify an L3 IP destination prefix, both IPv4 and IPv6 will
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "tcp", "from_port": 22, "to_port": 22}]' \
     --outbound-rules='[{"ip_protocol": "tcp"}]' \
@@ -103,7 +103,7 @@ If you specify an address family specific destination IP prefix, the rule will o
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "tcp", "from_port": 22, "to_port": 22, "ip_ranges": ["200::/64"]}]' \
     --outbound-rules='[{"ip_protocol": "tcp"}]' \
@@ -115,7 +115,7 @@ You can also specify a range of address seperated by a `-` instead of a cidr pre
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "tcp", "from_port": 22, "to_port": 22, "ip_ranges": ["100.100.0.1-100.100.0.50"]}]' \
     --outbound-rules='[{"ip_protocol": "tcp"}]' \
@@ -127,7 +127,7 @@ nexctl \
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "icmp"}]' \
     --outbound-rules='' \
@@ -143,7 +143,7 @@ Here are a few examples:
 
 ```shell
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "icmp"}, {"ip_protocol": "icmpv6"}, {"ip_protocol": "tcp"},{"ip_protocol": "udp"}]' \
     --outbound-rules='[{"ip_protocol": "icmp"}, {"ip_protocol": "icmpv6"}, {"ip_protocol": "tcp"},{"ip_protocol": "udp"}]' \
@@ -155,7 +155,7 @@ nexctl \
 
 ```shell
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='' \
     --outbound-rules='' \
@@ -167,7 +167,7 @@ nexctl \
 
 ```shell
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --security-group-id="${SECURITY_GROUP_ID}" \
    --organization-id="${ORGANIZATION_ID}"
@@ -177,7 +177,7 @@ nexctl \
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "udp", "from_port": 8080, "to_port": 9000}]' \
     --outbound-rules='[{"ip_protocol": "udp"}]' \
@@ -189,7 +189,7 @@ This is the same rule as above, but only allowing the traffic inbound from the I
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[{"ip_protocol": "udp", "from_port": 8080, "to_port": 9000, "ip_ranges": ["100.100.0.50"]}]' \
     --outbound-rules='[{"ip_protocol": "udp"}]' \
@@ -201,7 +201,7 @@ nexctl \
 
 ```shell
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens security-group update \
     --name="default" --description="security group testing" \
     --inbound-rules='[
         {"ip_protocol": "udp","ip_ranges": ["10.130.0.1-10.130.0.5"],"from_port": 80,"to_port": 90}, 
@@ -237,7 +237,7 @@ nexctl \
 
 ```bash
 nexctl \
-    --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens \
+    --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens \
     security-group delete \
     --security-group-id="${SECURITY_GROUP_ID}" \
     --organization-id="${ORGANIZATION_ID}"

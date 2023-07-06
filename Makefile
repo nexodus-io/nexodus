@@ -97,7 +97,7 @@ dist/nexd-pprof: $(NEXD_DEPS) | dist
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
-		-ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
+		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
@@ -109,7 +109,7 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
-		-ldflags="$(subst https://,https://api.,$(NEXODUS_LDFLAGS))" -o $@ ./cmd/nexctl
+		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 dist/packages: \
 	dist/packages/nexodus-linux-amd64.tar.gz \
