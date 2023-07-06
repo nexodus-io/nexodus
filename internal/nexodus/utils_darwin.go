@@ -3,16 +3,46 @@
 package nexodus
 
 import (
+	"bytes"
 	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"strings"
+
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
-	"net"
-	"strings"
 )
 
-// RouteExistsOS currently only used for darwin build purposes
-func RouteExistsOS(s string) (bool, error) {
-	return false, nil
+// RouteExistsOS checks to see if a route exists for the specified prefix
+func RouteExistsOS(prefix string) (bool, error) {
+	if err := ValidateCIDR(prefix); err != nil {
+		return false, err
+	}
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		return true, err
+	}
+	defer r.Close()
+	defer w.Close()
+	ns := exec.Command("netstat", "-r", "-n")
+	ns.Stdout = w
+	if err = ns.Start(); err != nil {
+		return true, err
+	}
+	defer func() {
+		_ = ns.Wait()
+	}()
+
+	// #nosec -- G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)
+	awk := exec.Command("awk", "-v", fmt.Sprintf("ip=%s", prefix), "$1 == ip {print $1}")
+	awk.Stdin = r
+	var output bytes.Buffer
+	awk.Stdout = &output
+
+	// Validate the IP we're expecting is in the output
+	return strings.Contains(output.String(), prefix), nil
 }
 
 // AddRoute adds a route to the specified interface
@@ -58,9 +88,19 @@ func delLink(ifaceName string) error {
 	return nil
 }
 
-// DeleteRoute deletes a darwin route
+// DeleteRoute deletes a darwin route for an ipv4 prefix
 func DeleteRoute(prefix, dev string) error {
 	_, err := RunCommand("route", "-q", "-n", "delete", "-inet", prefix, "-interface", dev)
+	if err != nil {
+		return fmt.Errorf("no route deleted: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRouteV6 deletes a darwin route for an ipv6 prefix
+func DeleteRouteV6(prefix, dev string) error {
+	_, err := RunCommand("route", "-q", "-n", "delete", "-inet6", prefix, "-interface", dev)
 	if err != nil {
 		return fmt.Errorf("no route deleted: %w", err)
 	}

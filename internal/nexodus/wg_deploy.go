@@ -14,18 +14,20 @@ var (
 	securityGroupErr = errors.New("nftables setup error")
 )
 
-func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
+func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
 	cfg := &wgConfig{
-		Interface: ax.wgConfig.Interface,
-		Peers:     ax.wgConfig.Peers,
+		Interface: nx.wgConfig.Interface,
+		Peers:     nx.wgConfig.Peers,
 	}
 
-	if ax.TunnelIP != ax.getIPv4Iface(ax.tunnelIface).String() {
-		if err := ax.setupInterface(); err != nil {
+	if nx.TunnelIP != nx.getIPv4Iface(nx.tunnelIface).String() {
+		if err := nx.setupInterface(); err != nil {
 			return err
 		}
 	}
 
+	// keep track of the last error that occured during config setup which can be returned at the end
+	var lastErr error
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, updatedPeer := range updatedPeers {
 		if updatedPeer.Id == "" {
@@ -33,13 +35,19 @@ func (ax *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		}
 		// add routes for each peer candidate (unless the key matches the local nodes key)
 		peer, ok := cfg.Peers[updatedPeer.PublicKey]
-		if !ok || peer.PublicKey == ax.wireguardPubKey {
+		if !ok || peer.PublicKey == nx.wireguardPubKey {
 			continue
 		}
-		ax.handlePeerRoute(peer)
-		ax.handlePeerTunnel(peer)
+		if err := nx.handlePeerRoute(peer); err != nil {
+			nx.logger.Errorf("Failed to handle peer route: %v", err)
+			lastErr = err
+		}
+		if err := nx.handlePeerTunnel(peer); err != nil {
+			nx.logger.Errorf("Failed to handle peer tunnel: %v", err)
+			lastErr = err
+		}
 	}
 
-	ax.logger.Debug("Peer setup complete")
-	return nil
+	nx.logger.Debug("Peer setup complete")
+	return lastErr
 }

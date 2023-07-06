@@ -16,8 +16,9 @@ import (
 // code, but we can't get to it.
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) {
+func (ax *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) error {
 	// no-op
+	return nil
 }
 
 // handlePeerRoute when a peer is this handles route deletion

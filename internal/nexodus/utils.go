@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/stun"
 	"net"
 	"net/netip"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/nexodus-io/nexodus/internal/stun"
 
 	"go.uber.org/zap"
 )
