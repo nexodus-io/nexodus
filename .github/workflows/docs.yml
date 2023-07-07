@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - '**/*.md'
+      - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
   pull_request:
@@ -12,6 +13,7 @@ on:
     # Must stay in sync with the paths in .github/workflows/build.yml and .github/mergify.yml
     paths:
       - '**/*.md'
+      - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
 
