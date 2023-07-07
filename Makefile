@@ -206,6 +206,21 @@ k8s-crd-extract: dist/crd-extractor.sh ## Extract the kubernetes CRDs used iin k
 	$(CMD_PREFIX) cp $(HOME)/.datree/crdSchemas/*/* deploy/.crdSchemas
 
 
+.PHONY: png-lint
+png-lint: dist/.png-lint ## Lint the png files from excalidraw
+
+dist/.png-lint: $(shell find . -iname '*.png') | dist
+	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[PNG LINT]"
+	$(CMD_PREFIX) for file in $^; do \
+		if grep -q "$$file" .excalidraw-ignore; then continue ; fi ; \
+		if ! grep -q "excalidraw+json" $$file; then \
+			echo "$$file was not exported from excalidraw with 'Embed Scene' enabled." ; \
+			echo "If this is not an excalidraw file, add it to .excalidraw-ignore" ; \
+			exit 1 ; \
+		fi \
+	done
+	$(CMD_PREFIX) touch $@
+
 .PHONY: md-lint
 md-lint: dist/.md-lint ## Lint markdown files
 

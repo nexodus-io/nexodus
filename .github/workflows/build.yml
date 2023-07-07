@@ -9,6 +9,7 @@ on:
       - '**/*.gitignore'
       - '.vscode/**'
       - '.github/mergify.yml'
+      - '.excalidraw-ignore'
   pull_request:
     branches: ["main"]
     # Must stay in sync with the paths in .github/workflows/docs.yml and .github/mergify.yml
@@ -18,6 +19,7 @@ on:
       - '**/*.gitignore'
       - '.vscode/**'
       - '.github/mergify.yml'
+      - '.excalidraw-ignore'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
