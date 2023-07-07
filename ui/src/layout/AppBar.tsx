@@ -21,7 +21,7 @@ const darkTheme = createTheme({
 
 const CustomAppBar = (props: JSX.IntrinsicAttributes & AppBarProps) => {
   const isLargeEnough = useMediaQuery<Theme>((theme) =>
-    theme.breakpoints.up("sm")
+    theme.breakpoints.up("sm"),
   );
   return (
     <AppBar

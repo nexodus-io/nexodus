@@ -36,13 +36,13 @@ const authProvider = goOidcAgentAuthProvider(backend);
 const baseDataProvider = simpleRestProvider(
   `${backend}/api`,
   fetchJson,
-  "X-Total-Count"
+  "X-Total-Count",
 );
 const dataProvider = {
   ...baseDataProvider,
   getFlag: (name: string) => {
     return fetchJson(new URL(`${backend}/api/fflags/${name}`)).then(
-      (response) => response
+      (response) => response,
     );
   },
 };
