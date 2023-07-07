@@ -1,23 +1,23 @@
 # Network Routers
 
-There may be scenarios where you do not want to run a Nexodus agent runs on every host that you intend to have connectivity to a Nexodus Organization. It is possible to have a host act as a Network Router to provide connectivity between a Nexodus network and a subnet a Nexodus agent node has access to.
+There may be scenarios where you do not want to run a Nexodus agent on every host that you intend to have connectivity to a Nexodus Organization. It is possible to have a host act as a Network Router to provide connectivity between a Nexodus network and a subnet a Nexodus agent node can access.
 
-## Connect any nodes on your network or connect sites to one another
+## Connect any nodes on your network or connect sites
 
 Any Linux Nexodus device running Nexodus can be a network router. The forwarding and NAT are performed with netlink and netfilter.
 
-The situations where this can be useful are wide-ranging. They can span from connecting a remote cluster, an air-gapped EC2 VPC or connecting any number of remote sites that you may not want to or cannot run an agent. SD-WAN solutions can be expensive and overly-complex, this can be a lightweight alternative.
+The situations where this can be useful are wide-ranging. They can span from connecting a remote cluster, an air-gapped EC2 VPC, or connecting any number of remote sites that you may not want to or cannot run an agent. SD-WAN solutions can be expensive and overly complex. This can be a lightweight alternative.
 
-- Site-A Configuration: You simply specify the network prefix you want to advertise and Nexodus will use the physical interface that contains the default route to connect to the non-nexodus nodes.
+- Site-A Configuration: You simply specify the network prefix you want to advertise and Nexodus will use the physical interface that contains the default route to connect to the non-Nexodus nodes.
 
 ```terminal
-nexd router --child-prefix 192.168.1.0/24 --network-router  https://<api-server-address>
+nexd router --child-prefix 192.168.1.0/24 --network-router
 ```
 
 - Site-B Configuration: The only difference is specifying the network CIDR for site-B.
 
 ```terminal
-nexd router --child-prefix 172.16.100.0/24 --network-router  https://<api-server-address>
+nexd router --child-prefix 172.16.100.0/24 --network-router
 ```
 
 ```mermaid
@@ -61,9 +61,9 @@ Non_WG_Device_6 -- eth0 --> Nexodus_Network_Router_B
 ```
 
 > **Note**
-> Nexodus accepts as many networks as you want to specify in the `--child-prefix=192.168.1.0/24,192.168.100.0/24,172.16.100.0/24,...` configuration. This means you can advertise as many subnets as you want from the Nexodus device running as a network router.
+> Nexodus accepts as many networks as you want to specify in the `--child-prefix=192.168.1.0/24 --child-prefix 192.168.100.0/24 --child-prefix 172.16.100.0/24 ...` configuration. This means you can advertise as many subnets as you want from the Nexodus device running as a network router.
 
-By default, network-routers perform NAT, specifically, source NAT for devices coming from a Nexodus mesh with a destination of one of the devices not running the Nexodus agent. This enables connectivity to those devices without any configuration on the devices.
+By default, Nexodus network routers perform NAT, specifically, source NAT for devices coming from a Nexodus mesh with a destination of one of the devices not running the Nexodus agent. This enables connectivity to those devices without any configuration on the devices.
 
 You have the option to disable NAT with `--disable-nat` which will cause the remote non-Nexodus devices to receive traffic from the Nexodus agent devices without any address translations. This mode requires routes to be added (or redistributed in your network IGP) for hosts in `192.168.1.0/24` to reach Nexodus nodes `100.100.0.0/16` via the `Nexodus Network Router` eth0 ip of `192.168.1.10`.
 
