@@ -116,7 +116,6 @@ type Nexodus struct {
 	wireguardPvtKey          string
 	wireguardPubKeyInConfig  bool
 	tunnelIface              string
-	controllerIP             string
 	listenPort               int
 	orgId                    string
 	org                      *public.ModelsOrganization
@@ -130,7 +129,7 @@ type Nexodus struct {
 	relayWgIP                string
 	wgConfig                 wgConfig
 	client                   *client.APIClient
-	controllerURL            *url.URL
+	apiURL                   *url.URL
 	deviceCacheLock          sync.RWMutex
 	deviceCache              map[string]deviceCacheEntry
 	endpointLocalAddress     string
@@ -177,7 +176,7 @@ type wgLocalConfig struct {
 func NewNexodus(
 	logger *zap.SugaredLogger,
 	logLevel *zap.AtomicLevel,
-	controller string,
+	apiURL *url.URL,
 	username string,
 	password string,
 	wgListenPort int,
@@ -201,19 +200,6 @@ func NewNexodus(
 		return nil, err
 	}
 
-	controllerURL, err := url.Parse(controller)
-	if err != nil {
-		return nil, fmt.Errorf("invalid controller-url provided: %s error: %w, please use the following format https://<controller-url>", controller, err)
-	}
-
-	if !strings.HasPrefix(controller, "https://") {
-		return nil, fmt.Errorf("invalid controller-url provided: %s, please use the following format https://<controller-url>", controller)
-	}
-
-	// Force controller URL be api.${DOMAIN}
-	controllerURL.Host = "api." + controllerURL.Host
-	controllerURL.Path = ""
-
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -229,7 +215,6 @@ func NewNexodus(
 	ax := &Nexodus{
 		wireguardPubKey:     wireguardPubKey,
 		wireguardPvtKey:     wireguardPvtKey,
-		controllerIP:        controller,
 		listenPort:          wgListenPort,
 		requestedIP:         requestedIP,
 		userProvidedLocalIP: userProvidedLocalIP,
@@ -237,7 +222,7 @@ func NewNexodus(
 		stun:                stun,
 		relay:               relay,
 		deviceCache:         make(map[string]deviceCacheEntry),
-		controllerURL:       controllerURL,
+		apiURL:              apiURL,
 		hostname:            hostname,
 		symmetricNat:        relayOnly,
 		logger:              logger,
@@ -328,7 +313,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		ax.client, err = client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+		ax.client, err = client.NewAPIClient(ctx, ax.apiURL.String(), func(msg string) {
 			ax.SetStatus(NexdStatusAuth, msg)
 		}, options...)
 		if err != nil {
@@ -623,7 +608,7 @@ func (ax *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	}
 
 	// refresh the token grant by reconnecting to the API server
-	c, err := client.NewAPIClient(ctx, ax.controllerURL.String(), func(msg string) {
+	c, err := client.NewAPIClient(ctx, ax.apiURL.String(), func(msg string) {
 		ax.SetStatus(NexdStatusAuth, msg)
 	}, options...)
 	if err != nil {

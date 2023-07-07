@@ -103,5 +103,5 @@ func deleteDarwinIface(logger *zap.SugaredLogger, dev string) {
 }
 
 func (ax *Nexodus) findLocalIP() (string, error) {
-	return discoverGenericIPv4(ax.logger, ax.controllerURL.Host, "443")
+	return discoverGenericIPv4(ax.logger, ax.apiURL.Host, "443")
 }

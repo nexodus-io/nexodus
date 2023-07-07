@@ -5,7 +5,7 @@ const cleanup = () => {
   window.history.replaceState(
     {},
     window.document.title,
-    window.location.origin
+    window.location.origin,
   );
 };
 

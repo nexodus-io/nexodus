@@ -75,7 +75,7 @@ Alternatively, or build the nexctl binary and running a command with it.
 
 ```console
 make dist/nexctl-linux-amd64
-dist/nexctl-linux-amd64 --host https://api.try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens -output json device list
+dist/nexctl-linux-amd64 --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens -output json device list
 ```
 
 For windows, we recommend installing the root certificate via the [MMC snap-in](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/install-imported-certificates#import-the-certificate-into-the-local-computer-store).

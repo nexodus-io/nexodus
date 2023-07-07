@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -71,7 +72,20 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		return fmt.Errorf("no service URL provided: try using the --service-url flag")
 	}
 
-	_, err := nexodus.CtlStatus(cCtx)
+	apiURL, err := url.Parse(serviceURL)
+	if err != nil {
+		return fmt.Errorf("invalid '--service-url=%s' flag provided. error: %w", serviceURL, err)
+	}
+
+	if apiURL.Scheme != "https" {
+		return fmt.Errorf("invalid '--service-url=%s' flag provided. error: 'https://' URL scheme is required", serviceURL)
+	}
+
+	// Force controller URL be api.${DOMAIN}
+	apiURL.Host = "api." + apiURL.Host
+	apiURL.Path = ""
+
+	_, err = nexodus.CtlStatus(cCtx)
 	if err == nil {
 		return fmt.Errorf("existing nexd service already running")
 	}
@@ -108,7 +122,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
 		logLevel,
-		serviceURL,
+		apiURL,
 		cCtx.String("username"),
 		cCtx.String("password"),
 		cCtx.Int("listen-port"),
