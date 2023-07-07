@@ -3,8 +3,12 @@
 package nexodus
 
 import (
+	"fmt"
+	"net"
+
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/vishvananda/netlink"
 )
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
@@ -48,4 +52,34 @@ func (ax *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.Model
 			}
 		}
 	}
+}
+
+func findInterfaceForIPRoute(ip string) (*net.Interface, error) {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return nil, fmt.Errorf("invalid IP address")
+	}
+
+	routes, err := netlink.RouteList(nil, netlink.FAMILY_ALL)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, route := range routes {
+		if route.Dst != nil && route.Dst.Contains(parsedIP) {
+			link, err := netlink.LinkByIndex(route.LinkIndex)
+			if err != nil {
+				return nil, err
+			}
+
+			interfaceDetails, err := net.InterfaceByName(link.Attrs().Name)
+			if err != nil {
+				return nil, err
+			}
+
+			return interfaceDetails, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no matching interface found")
 }

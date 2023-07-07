@@ -1096,3 +1096,76 @@ func TestConnectivityUsingWireguardGo(t *testing.T) {
 	err = ping(ctx, node2, inetV6, node2IPv6)
 	require.NoError(err)
 }
+
+// TestNetRouterConnectivity is a test that verifies that the network connectivity between nexd network-routers and nodes
+// not running nexd but advertised via child-prefix and network-routers with SNAT enabled for the child-prefix
+// and the matching interface the route is present on.
+// +------------------------+                 +------------------------+                   +------------------------+                 +------------------------+
+// |  (192.168.100.x) eth1  |    site1-net    | eth1          wg0/eth0 |    default-net    | eth0/wg0          eth1 |    site2-net    |  eth1 (192.168.200.x)  |
+// |  site1-node1 (no nexd) |=================|     nexd-router1       |===================|     nexd-router2       |=================|  site2-node1 (no nexd) |
+// +------------------------+                 +------------------------+                   +------------------------+                 +------------------------+
+func TestNetRouterConnectivity(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	site1NetworkPrefix := "192.168.100.0/24"
+	site2NetworkPrefix := "192.168.200.0/24"
+	// add multiple child-prefixes defined but only one is validated e2e
+	site1NetworkChildPrefix := "192.168.100.0/24,10.168.100.0/24"
+	site2NetworkChildPrefix := "192.168.200.0/24,10.168.200.0/24"
+	site1Network := "site1-net"
+	site2Network := "site2-net"
+
+	// create two additional networks that represent two remote sites
+	_ = helper.CreateNetwork(ctx, site1Network, site1NetworkPrefix)
+	_ = helper.CreateNetwork(ctx, site2Network, site2NetworkPrefix)
+
+	// create nodes with two interfaces, one in the default network and one in the site1-net
+	nexRouterSite1, stop := helper.CreateNode(ctx, "net-router1", []string{defaultNetwork, site1Network}, enableV6)
+	defer stop()
+	// create nodes with two interfaces, one in the default network and one in the site2-net
+	nexRouterSite2, stop := helper.CreateNode(ctx, "net-router2", []string{defaultNetwork, site2Network}, enableV6)
+	defer stop()
+	// create a node site1-net that will not run nexodus
+	site1node1, stop := helper.CreateNode(ctx, "site1-node1", []string{site1Network}, enableV6)
+	defer stop()
+	// create a node site2-net that will not run nexodus
+	site2node1, stop := helper.CreateNode(ctx, "site2-node1", []string{site2Network}, enableV6)
+	defer stop()
+
+	helper.runNexd(ctx, nexRouterSite1,
+		"--username", username,
+		"--password", password,
+		"router",
+		"--child-prefix", site1NetworkChildPrefix,
+		"--network-router")
+	helper.runNexd(ctx, nexRouterSite2,
+		"--username", username,
+		"--password", password,
+		"router",
+		"--child-prefix", site2NetworkChildPrefix,
+		"--network-router")
+
+	site1node1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", site1node1)
+	require.NoError(err)
+	site2node1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", site2node1)
+	require.NoError(err)
+	nexRouterSite1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", nexRouterSite1)
+	require.NoError(err)
+	nexRouterSite2IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", nexRouterSite2)
+	require.NoError(err)
+
+	helper.Logf("Pinging site1 node1 non-nexd node %s from nexRouterSite2 %s", site1node1IP, nexRouterSite2IP)
+	err = ping(ctx, nexRouterSite2, inetV4, site1node1IP)
+	require.NoError(err)
+	helper.Logf("Pinging site2 node1 non-nexd node %s from nexRouterSite1 %s", site2node1IP, nexRouterSite1IP)
+	err = ping(ctx, nexRouterSite1, inetV4, site2node1IP)
+	require.NoError(err)
+}
