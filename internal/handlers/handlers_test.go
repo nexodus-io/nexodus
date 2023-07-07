@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/redis/go-redis/v9"
 	"io"
 	"net"
 	"net/http"
@@ -63,9 +64,14 @@ func (suite *HandlerTestSuite) SetupSuite() {
 
 	ipamClient := ipam.NewIPAM(suite.logger, ipamClientAddr)
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
-	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus())
+	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus(), redisClient)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

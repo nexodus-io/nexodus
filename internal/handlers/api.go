@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/open-policy-agent/opa/storage"
@@ -34,9 +35,10 @@ type API struct {
 	dialect       database.Dialect
 	store         storage.Store
 	signalBus     signalbus.SignalBus
+	redis         *redis.Client
 }
 
-func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags, store storage.Store, signalBus signalbus.SignalBus) (*API, error) {
+func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam ipam.IPAM, fflags *fflags.FFlags, store storage.Store, signalBus signalbus.SignalBus, redis *redis.Client) (*API, error) {
 	ctx, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
 
@@ -55,6 +57,7 @@ func NewAPI(parent context.Context, logger *zap.SugaredLogger, db *gorm.DB, ipam
 		dialect:       dialect,
 		store:         store,
 		signalBus:     signalBus,
+		redis:         redis,
 	}
 
 	if err := api.populateStore(ctx); err != nil {

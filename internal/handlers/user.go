@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 	"time"
 
@@ -22,14 +23,30 @@ const AuthUserName string = "_nexodus.UserName"
 
 var noUUID = uuid.UUID{}
 
+// CacheExp Zero expiration means the key has no expiration time.
+const CacheExp time.Duration = 0
+const CachePrefix = "user:"
+
 func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.GetString(gin.AuthUserKey)
 		username := c.GetString(AuthUserName)
-		_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
+		prefixId := fmt.Sprintf("%s:%s", CachePrefix, id)
+		cachedUsername, err := api.redis.Get(c.Request.Context(), prefixId).Result()
 		if err != nil {
-			_ = c.AbortWithError(http.StatusInternalServerError, err)
-			return
+			if errors.Is(err, redis.Nil) {
+				api.logger.Debugf("user id doesn't exits in the cache:%s", err)
+			} else {
+				api.logger.Warnf("failed to find user in the cache:%s", err)
+			}
+		}
+		if cachedUsername == "" {
+			_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
+			if err != nil {
+				_ = c.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+			api.redis.Set(c.Request.Context(), prefixId, username, CacheExp)
 		}
 		c.Next()
 	}
@@ -292,6 +309,13 @@ func (api *API) DeleteUser(c *gin.Context) {
 		}
 		return
 	}
+
+	// delete the cached user
+	prefixId := fmt.Sprintf("%s:%s", CachePrefix, userID)
+	_, err = api.redis.Del(c.Request.Context(), prefixId).Result()
+	if err != nil {
+		api.logger.Warnf("failed to delete the cache user:%s", err)
+	}
 	c.JSON(http.StatusOK, user)
 }
 
@@ -360,6 +384,11 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 		}
 		return
 	}
-
+	// delete the cached user
+	prefixId := fmt.Sprintf("%s:%s", CachePrefix, userID)
+	_, err = api.redis.Del(c.Request.Context(), prefixId).Result()
+	if err != nil {
+		api.logger.Warnf("failed to delete the cache user:%s", err)
+	}
 	c.JSON(http.StatusOK, user)
 }
