@@ -22,13 +22,13 @@ func (nx *Nexodus) setupNetworkRouterNode() error {
 	// default namespace routing table. If no match is found, use the interface containing the default gateway.
 	for _, prefix := range nx.childPrefix {
 		if util.IsIPv6Prefix(prefix) {
-			nx.logger.Debugf("IPv6 is not currently supported for --net-router: %s", prefix)
+			nx.logger.Warnf("IPv6 is not currently supported for --net-router: %s", prefix)
 			continue
 		}
 
 		ip, _, err := net.ParseCIDR(prefix)
 		if err != nil {
-			nx.logger.Debugf("Invalid prefix: %s", prefix)
+			nx.logger.Errorf("Invalid prefix: %s", prefix)
 			continue
 		}
 		iface, err := findInterfaceForIPRoute(ip.String())
