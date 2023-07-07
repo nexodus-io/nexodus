@@ -76,15 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 19
-      - run: npm ci
-        working-directory: ui
-      - run: npx prettier --check .
-        working-directory: ui
-      - run: npm run build
-        working-directory: ui
+      - name: UI Lint
+        run: make ui-lint ui
 
   k8s-lint:
     runs-on: ubuntu-latest
