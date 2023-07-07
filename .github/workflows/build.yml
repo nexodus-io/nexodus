@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths-ignore:
       - '**/*.md'
+      - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
       - '.github/mergify.yml'
@@ -13,6 +14,7 @@ on:
     # Must stay in sync with the paths in .github/workflows/docs.yml and .github/mergify.yml
     paths-ignore:
       - '**/*.md'
+      - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
       - '.github/mergify.yml'
