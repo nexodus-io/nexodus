@@ -309,7 +309,8 @@ opa-fmt: ## Lint the OPA policies
 ui-fmt: dist/.ui-fmt ## Format the UI sources
 dist/.ui-fmt: $(wildcard ui/*) $(wildcard ui/src/**) | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[UI FMT]"
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier --write /workdir/ui/src/ $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir --user $(shell id -u):$(shell id -g) \
+		tmknom/prettier --write /workdir/ui/src/ $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) touch $@
 
 .PHONY: generate
