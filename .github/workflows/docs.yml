@@ -8,6 +8,7 @@ on:
       - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
+      - '.excalidraw-ignore'
   pull_request:
     branches: ["main"]
     # Must stay in sync with the paths in .github/workflows/build.yml and .github/mergify.yml
@@ -16,6 +17,7 @@ on:
       - '**/*.png'
       - '**/*.gitignore'
       - '.vscode/**'
+      - '.excalidraw-ignore'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -30,3 +32,17 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v11
         with:
           globs: '**/*.md'
+
+  png-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: PNG Lint
+        run: make png-lint
+
+  docs-workflow-complete:
+    needs: ["markdown-lint", "png-lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docs Workflow Complete
+        run: echo "Docs Workflow Complete"

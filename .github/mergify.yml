@@ -48,20 +48,20 @@ pull_request_rules:
           - check-success=actionlint
         - -files~=.github/.*$
       - or:
-        # PRs that include doc changes should also pass the markdown-lint check
+        # PRs that include doc changes should also pass the docs workflow
         - and:
           - check-success=build-workflow-complete
           - files~=\.md$
-          - check-success=markdown-lint
+          - check-success=docs-workflow-complete
         # PRs that do not include doc changes only need to pass the build workflow
         - and:
           - check-success=build-workflow-complete
           - -files~=\.md$
-        # PRs that do not run the build workflow (e.g. docs-only changes) must have a successful markdown-lint check
+        # PRs that do not run the build workflow (e.g. docs-only changes) must have a successful docs workflow
         - and:
-          - check-success=markdown-lint
+          - check-success=docs-workflow-complete
           # Must stay in sync with the paths in .github/workflows/docs.yml and .github/workflows/build.yml
-          - -files~=^(?!.*\.md$)(?!.*\.png$)(?!.*\.gitignore$)(?!\.vscode\/).*$
+          - -files~=^(?!.*\.md$)(?!.*\.png$)(?!.*\.gitignore$)(?!\.vscode\/)(?!\.excalidraw-ignore$).*$
     actions:
       merge:
         method: merge
