@@ -3,6 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -11,8 +14,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
-	"strconv"
 )
 
 var defaultIPAMNamespace = uuid.UUID{}
@@ -118,28 +119,33 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			if errors.Is(res.Error, gorm.ErrDuplicatedKey) {
 				return errDuplicateOrganization{ID: org.ID.String()}
 			}
+			api.logger.Error("Failed to create organization: ", res.Error)
 			return res.Error
 		}
 
 		ipamNamespace := defaultIPAMNamespace
 		if org.PrivateCidr {
 			ipamNamespace = org.ID
-			if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
-				return err
-			}
+		}
+		if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
+			api.logger.Error("Failed to create namespace: ", err)
+			return err
 		}
 
 		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidr); err != nil {
+			api.logger.Error("Failed to assign IPv4 prefix: ", err)
 			return err
 		}
 
 		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidrV6); err != nil {
+			api.logger.Error("Failed to assign IPv6 prefix: ", err)
 			return err
 		}
 
 		// Create a default security group for the organization
 		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
 		if err != nil {
+			api.logger.Error("Failed to create default security group for organization: ", err)
 			return err
 		}
 
@@ -147,6 +153,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
 			return fmt.Errorf("failed to update the default security group with an org id: %w", err)
 		}
+		org.SecurityGroupId = sg.ID
 
 		span.SetAttributes(attribute.String("id", org.ID.String()))
 		api.logger.Infof("New organization request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", org.Name, org.IpCidr, org.IpCidrV6)
