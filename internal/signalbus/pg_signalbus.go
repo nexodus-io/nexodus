@@ -3,11 +3,12 @@ package signalbus
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"sync"
-	"time"
 
 	"github.com/lib/pq"
 )
@@ -120,7 +121,7 @@ func (pgsb *PgSignalBus) waitForNotification(ctx context.Context, l *pq.Listener
 		case <-time.After(90 * time.Second):
 			// in case we have not received an event in a while... lets check to make sure the DB
 			// connection is still good... if not exit with error so we can retry...
-			pgsb.logger.Info("Received no events for 90 seconds, checking connection")
+			pgsb.logger.Debug("Received no events for 90 seconds, checking connection")
 			err = l.Ping()
 			if err != nil {
 				return false, err
