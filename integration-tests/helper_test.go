@@ -602,3 +602,17 @@ func (helper *Helper) deleteOrganization(username string, password string, orgID
 		"organization", "delete", "--organization-id", orgID)
 	return err
 }
+func (helper *Helper) peerListNexdDevices(ctx context.Context, ctr testcontainers.Container) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
+	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
+		statOut, err := helper.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexd", "peers", "list"})
+		helper.Logf("nexd device peer list: %s", statOut)
+		return err != nil, err
+	})
+	if !running {
+		nodeName, _ := ctr.Name(ctx)
+		return fmt.Errorf("failed to run nexd device peer list in node: %s", nodeName)
+	}
+	return nil
+}

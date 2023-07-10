@@ -823,6 +823,10 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(organizations[0].IpCidrV6)
 	require.NotEmpty(organizations[0].Description)
 
+	// verify nexd peers list
+	err = helper.peerListNexdDevices(ctx, node1)
+	require.NoError(err)
+
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
 
