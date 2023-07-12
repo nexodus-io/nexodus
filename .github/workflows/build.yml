@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: UI Lint
-        run: make ui-lint ui
+        run: make ui-lint
 
   k8s-lint:
     runs-on: ubuntu-latest
