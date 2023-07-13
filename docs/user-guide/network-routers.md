@@ -11,13 +11,13 @@ The situations where this can be useful are wide-ranging. They can span from con
 - Site-A Configuration: You simply specify the network prefix you want to advertise and Nexodus will use the physical interface that contains the default route to connect to the non-Nexodus nodes.
 
 ```terminal
-nexd router --child-prefix 192.168.1.0/24 --network-router
+nexd router --child-prefix 192.168.1.0/24 --network-router --service-url https://try.nexodus.io
 ```
 
 - Site-B Configuration: The only difference is specifying the network CIDR for site-B.
 
 ```terminal
-nexd router --child-prefix 172.16.100.0/24 --network-router
+nexd router --child-prefix 172.16.100.0/24 --network-router --service-url https://try.nexodus.io
 ```
 
 ```mermaid
@@ -68,3 +68,5 @@ By default, Nexodus network routers perform NAT, specifically, source NAT for de
 You have the option to disable NAT with `--disable-nat` which will cause the remote non-Nexodus devices to receive traffic from the Nexodus agent devices without any address translations. This mode requires routes to be added (or redistributed in your network IGP) for hosts in `192.168.1.0/24` to reach Nexodus nodes `100.100.0.0/16` via the `Nexodus Network Router` eth0 ip of `192.168.1.10`.
 
 The subnet exposed to the Nexodus organization may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
+
+_Additional details and diagrams are located in the network router design documentation_ [docs/development/design/network-router](https://github.com/nexodus-io/nexodus/blob/main/docs/development/design/network-router.md)
