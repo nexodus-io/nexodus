@@ -2,7 +2,11 @@
 
 ## Overview
 
-The following provides details for interacting with security groups using the command-line interface in the Nexodus project. It includes CLI examples and detailed information on the required fields.
+Nexodus Security Groups are virtual firewalls for your Nexodus instances to control inbound and outbound traffic. They act as a white list, only allowing through the traffic that you specify is allowed. Each security group includes a set of rules that filter traffic coming into and out of the instance.
+
+![no-alt-text](../images/security-groups-multi-cloud-1.png)
+
+The following provides details for interacting with security groups using the command-line interface in the Nexodus project. It includes CLI examples and detailed information on the required fields. Support for adding groups and rules via the Nexodus UI is pending.
 
 > **Note:**
 > The default security group will permit all inbound and outbound traffic. Once you add a permit rule, no traffic other than that explicit permit will be allowed. There are no deny statements. This is a similar policy model that you may be used to when using security groups in AWS.
