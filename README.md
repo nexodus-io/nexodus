@@ -1,5 +1,4 @@
 ![Nexodus](docs/assets/wordmark.png#gh-light-mode-only)
-![Nexodus](docs/assets/wordmark_dark.png#gh-dark-mode-only)
 
 > **Warning**: This project is currently in beta.
 
