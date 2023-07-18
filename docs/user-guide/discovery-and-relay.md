@@ -1,12 +1,14 @@
 # Deploying the Nexodus Relay Nodes
 
-- Relay Node - Nexodus Service makes the best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish direct peering. To establish connectivity in those scenarios, Nexodus Service uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network. This **must** be the first device to join the Nexodus network to enable the traffic relay.
+- Relay Node - Nexodus Service makes the best effort to establish a direct peering between the endpoints, but in some scenarios such as symmetric NAT, it's not possible to establish direct peering. To establish connectivity in those scenarios, Nexodus Service uses Nexodus Relay to relay the traffic between the endpoints. To use this feature you need to onboard a Relay node to the Nexodus network.
 
-Relay node needs to be reachable on a predictable Wireguard port such as 51820 and ideally at the top of your NAT cone such as running in a Cloud where all endpoints can reach relay service for peering. There is only a need for one relay node in an organization, after node joins you simply run the basic onboarding [Installing the agent](agent.md#installing-the-agent) .
+A relay node needs to be reachable on a predictable Wireguard port such as the default UDP port of 51820 and ideally at the top of your NAT cone such as running in a Cloud where all endpoints can reach relay service for peering. There is only a need for one relay node in an organization, after node joins you simply run the basic onboarding [Installing the agent](agent.md#installing-the-agent).
+
+![no-alt-text](../images/relay-nodes-diagram-1.png)
 
 ## Setup Nexodus Relay Node
 
-Clone the Nexodus repository on a VM (or bare metal machine). Nexodus relay node must be reachable from all the endpoint nodes that want to join the Nexodus network. Follow the instruction in [Starting The Agent](agent.md#starting-the-agent) section to set up the node and install the `nexd` binary.
+Unlike normal peering, the Nexodus relay node needs to be reachable from all the nodes that want peer to the relay node. The default port in the following command is `51820` but a custom port can be specified using the `--listen-port` flag. Follow the instruction in [Deploying the Nexodus Agent](agent.md) instructions to set up the `nexd` binary.
 
 ```sh
 sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io --stun relay
