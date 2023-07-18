@@ -371,10 +371,28 @@ telepresence_%: telepresence-prereqs
 	fi
 
 .PHONY: debug-apiserver
-debug-apiserver: telepresence_apiserver_8080 ## Use telepresence to debug the apiserver deployment
+debug-apiserver: ## Use telepresence to debug the apiserver deployment
+	$(CMD_PREFIX) if [ "$(shell telepresence status --output json | jq .user_daemon.status -r)" != "Connected" ]; then \
+		telepresence helm install 2> /dev/null || true ;\
+		telepresence connect ;\
+	fi
+	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
+		telepresence intercept -n nexodus apiserver --workload apiserver --service apiserver --port 8080:8080 --env-json=apiserver-envs.json ;\
+		telepresence intercept -n nexodus apiserver-grpc --workload apiserver --service apiserver --port 5080:5080 ;\
+		echo "=======================================================================================" ;\
+		echo ;\
+		echo "   Start the apiserver locally with a debugger with the env variables" ;\
+		echo "   with the values found in: apiserver-envs.json" ;\
+		echo ;\
+		echo "   Hint: use the IDEA EnvFile plugin https://plugins.jetbrains.com/plugin/7861-envfile" ;\
+		echo ;\
+	fi
+
+
 .PHONY: debug-apiserver-stop
 debug-apiserver-stop: telepresence-prereqs ## Stop using telepresence to debug the apiserver deployment
-	$(CMD_PREFIX) telepresence leave apiserver-nexodus
+	$(CMD_PREFIX) telepresence leave apiserver
+	$(CMD_PREFIX) telepresence leave apiserver-grpc
 
 dist/.npm-install:
 	$(CMD_PREFIX) cd ui; npm install
