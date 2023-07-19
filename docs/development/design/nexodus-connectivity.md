@@ -10,10 +10,7 @@ There are three main high level architectural components that play a role in est
 
 **Nexodus ApiServer**: Nexodus control plane that provides various functionalities like Device Onboarding, Sharing device information among the devices etc.
 **Nexodus Agent**: An agent that runs on each node. This agent does partial discovery for the node such as, determining if the device is behind symmetric NAT, discovering local endpoint, discovering server reflexive address (if it's behind a NAT device).
-**ICE Node**: A node reachable on a public ip address. This node does two main functions
-
-1) Assist with endpoint discovery
-2) Relay traffic between two nodes if needed
+**Relay Node**: A node reachable on a public ip address. This nodes function is to relay traffic between two nodes if a direct peering cannot be established.
 
 ## Connectivity Scenarios
 
@@ -132,7 +129,7 @@ I((Internet)) <-.-> NB[NAT\n IP-B:Port-B -> IP-B':Port-B']
 NB[NAT\n IP-B:Port-B -> IP-B':Port-B']<-.-> B(B -> IP-B:Port-B)
 ```
 
-Above scenario is probably very close to the Carrier Grade NAT scenario. Discovery of reflexive addresses heavily relies on STUN server, and we assume that the reflexive address STUN see is the first NAT device in incoming packet, but if that's not the case, reflexive address might fail. Although we can rely on the ICE node to relay the traffic, detection of this scenario needs improvement in discovery. **TODO: Dig into ICE spec to see if there is any solution**
+Above scenario is probably very close to the Carrier Grade NAT scenario. Discovery of reflexive addresses heavily relies on STUN server, and we assume that the reflexive address the STUN server returns is the first NAT device in incoming packet, but if that's not the case, reflexive address might fail. Although we can rely on the relay node to forward the traffic, detection of this scenario has room for improvement.
 
 #### Nodes behind symmetric/hard NAT
 
@@ -167,17 +164,4 @@ I((Internet))-.-> SB[Stun-2]
 
 Nexodus agent sends STUN requests to two different stun servers. If both the stun servers respond with different reflexive addresses, that means the device is behind symmetric NAT.
 
-There are two approaches to solve this scenario.
-
-1> Using ICE node and its relay function to relay traffic between the nodes. This is the current approach that Nexodus supports.
-
-```mermaid
-graph LR
-A(A -> IP-A:Port-A) -.-> NA[symNAT\n IP-A:Port-A -> IP-A':Port-A']<-.->ICE[ICE NODE]
-I((Internet))<-.-> ICE[ICE NODE] -.->NB[symNAT\n IP-B:Port-B -> IP-B':Port-B']
-NB[symNAT\n IP-B:Port-B -> IP-B':Port-B']-.-> B(IP-B:Port-B <- B)
-```
-
-Nexodus agent discovers that the node is behind the symmetric nat, and the peer listing that fetched from the ApiServer will have a relay node as a peer. Nexodus agent will add the ICE node as a wireguard peer. ICE node also receives the peer listing from ApiServer (because it's also a node in the network), and it can determine all the nodes that are behind the symmetric NAT (Nexodus agent pushes that information to API server during onboarding). It uses that peer information to set up nftables rules on the ICE node to enable the traffic forwarding between the symmetric NAT nodes.
-
-2> Using ICE offer/answer mechanism to do direct hole punching.
+The solution is to use the relay node functionality to forward traffic between the nodes. This is the current approach that Nexodus supports.
