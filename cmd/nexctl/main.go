@@ -593,6 +593,10 @@ func showOutput(cCtx *cli.Context, fields []TableField, result any) {
 		}
 
 		itemsValue := reflect.ValueOf(result)
+		if itemsValue.IsNil() {
+			table.Render()
+			return
+		}
 		// if the itemsValue is not a slice, lets turn it into one.
 		if itemsValue.Type().Kind() != reflect.Slice {
 			itemsValue = reflect.MakeSlice(reflect.SliceOf(itemsValue.Type()), 0, 1)
