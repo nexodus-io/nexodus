@@ -63,7 +63,7 @@
             --sysctl net.ipv6.conf.all.disable_ipv6=0 \
             --sysctl net.ipv6.conf.all.forwarding=1 \
             --platform=linux/amd64 \
-            quay.io/networkstatic/nexd-qa:latest sleep 100000
+            quay.io/nexodus/nexd-qa:latest sleep 100000
     done
 
 - name: Running the following nexd command
