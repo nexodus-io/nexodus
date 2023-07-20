@@ -2,6 +2,8 @@
 
 This guide will walk you through getting your first devices connected via Nexodus.
 
+![no-alt-text](images/quickstart-overview-1.png)
+
 ## Install and Start the Nexodus Agent
 
 ### Fedora, CentOS Stream
