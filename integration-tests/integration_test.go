@@ -1197,17 +1197,17 @@ func TestMigrateKeyFiles(t *testing.T) {
 	_, _ = helper.containerExec(ctx, node1, []string{"mkdir", "-p", "/etc/wireguard"})
 	err = node1.CopyToContainer(ctx, []byte(expectedPubKey), "/etc/wireguard/public.key", 0644)
 	require.NoError(err)
-	err = node1.CopyToContainer(ctx, []byte(expectedPubKey), "/etc/wireguard/private.key", 0600)
+	err = node1.CopyToContainer(ctx, []byte(expectedPrivKey), "/etc/wireguard/private.key", 0600)
 	require.NoError(err)
 
 	// start nexodus, it will copy the keys from the legacy location.
-	helper.Log("Restarting nexodus")
+	helper.Log("Starting nexodus")
 	helper.runNexd(ctx, node1, "--username", username, "--password", password)
 
 	err = helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	// Verify that it's using the keys from the legacy locatino...
+	// Verify that it's using the keys from the legacy location...
 	data, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/state.json"})
 	require.NoError(err)
 	s := state.State{}

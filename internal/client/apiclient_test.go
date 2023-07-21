@@ -15,7 +15,6 @@ import (
 	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -50,12 +49,9 @@ func TestWithTokenFileOption(t *testing.T) {
 	})
 	require.NoError(err)
 
-	_ = os.Mkdir("./tmp", 0755)
-	// #nosec G101
-	tokenFile := "./tmp/token.json"
-	_ = os.Remove(tokenFile)
-
 	store := &testTokenStore{}
+	assert.Nil(store.token)
+
 	assert.Equal(int64(0), accesTokensCreated)
 	_, err = client.NewAPIClient(context.Background(), mockServer.URL, nil,
 		client.WithPasswordGrant("fake", "password"),
@@ -63,6 +59,8 @@ func TestWithTokenFileOption(t *testing.T) {
 	)
 	require.NoError(err)
 	assert.Equal(int64(1), accesTokensCreated)
+	assert.NotNil(store.token)
+	originalToken := store.token
 
 	// create the client again... this time it should re-use the token stored in the file..
 	c, err := client.NewAPIClient(context.Background(), mockServer.URL, nil,
@@ -72,8 +70,8 @@ func TestWithTokenFileOption(t *testing.T) {
 	// token endpoint should not have been hit.
 	require.NoError(err)
 	assert.Equal(int64(1), accesTokensCreated)
-	tokenData1, err := os.ReadFile(tokenFile)
-	require.NoError(err)
+	nextToken := store.token
+	assert.Equal(*originalToken, *nextToken)
 
 	// wait for the token to expire...
 	mockRouter.HandleFunc("/api/users/me", func(resp http.ResponseWriter, request *http.Request) {
@@ -83,10 +81,9 @@ func TestWithTokenFileOption(t *testing.T) {
 	_, _, err = c.UsersApi.GetUser(context.Background(), "me").Execute()
 	assert.NoError(err)
 	assert.Equal(int64(2), accesTokensCreated)
-	tokenData2, err := os.ReadFile(tokenFile)
-	assert.NoError(err)
-	assert.NotEqual(string(tokenData1), string(tokenData2))
 
+	nextToken = store.token
+	assert.NotEqual(*originalToken, *nextToken)
 }
 
 func sendJson(resp http.ResponseWriter, status int, body interface{}) {

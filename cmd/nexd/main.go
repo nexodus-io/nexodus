@@ -120,7 +120,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stun.SetServers(stunServers)
 	}
 
-	stateStore := &state.FileStore{File: filepath.Join(cCtx.String("state-dir"), "state.json")}
+	stateDir := cCtx.String("state-dir")
+	stateStore := &state.FileStore{File: filepath.Join(stateDir, "state.json")}
 
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
@@ -143,6 +144,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		Version,
 		userspaceMode,
 		stateStore,
+		stateDir,
 		ctx,
 		cCtx.String("organization-id"),
 	)

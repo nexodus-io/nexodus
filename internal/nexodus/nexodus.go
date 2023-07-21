@@ -3,6 +3,7 @@ package nexodus
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/state"
@@ -12,6 +13,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -43,7 +45,6 @@ const (
 	wgIface            = "wg0"
 	WgWindowsConfPath  = "C:/nexd/"
 	wgOrgIPv6PrefixLen = "64"
-	apiToken           = "apitoken.json"
 )
 
 const (
@@ -198,6 +199,7 @@ func NewNexodus(
 	version string,
 	userspaceMode bool,
 	stateStore state.Store,
+	stateDir string,
 	ctx context.Context,
 	orgId string,
 ) (*Nexodus, error) {
@@ -268,6 +270,11 @@ func NewNexodus(
 		ax.logger.Warn(err)
 	}
 
+	err = ax.migrateLegacyState(stateDir)
+	if err != nil {
+		return nil, err
+	}
+
 	return ax, nil
 }
 
@@ -295,6 +302,55 @@ func (s StateTokenStore) Store(token *oauth2.Token) error {
 
 var _ client.TokenStore = StateTokenStore{}
 
+func (ax *Nexodus) migrateLegacyState(stateDir string) error {
+	err := ax.stateStore.Load()
+	if err != nil {
+		return err
+	}
+
+	s := ax.stateStore.State()
+	if s.PublicKey == "" || s.PrivateKey == "" {
+		// We used to store the keys in a different location
+		// migrate them to the state store
+		s.PrivateKey, s.PublicKey, err = ax.loadLegacyKeys()
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.AuthToken == nil {
+		legacyApitokenFile := filepath.Join(stateDir, "apitoken.json")
+		if _, err = os.Stat(legacyApitokenFile); err == nil {
+			data, err := os.ReadFile(legacyApitokenFile)
+			if err != nil {
+				return err
+			}
+			token := oauth2.Token{}
+			err = json.Unmarshal(data, &token)
+			if err != nil {
+				return err
+			}
+			s.AuthToken = &token
+			_ = os.Remove(legacyApitokenFile)
+		}
+	}
+
+	legacyRulesFile := filepath.Join(stateDir, "proxy-rules.json")
+	if _, err = os.Stat(legacyRulesFile); err == nil {
+		data, err := os.ReadFile(legacyRulesFile)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(data, &s.ProxyRulesConfig)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(legacyRulesFile)
+	}
+
+	return ax.stateStore.Store()
+}
+
 func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.nexCtx = ctx
 	ax.nexWg = wg
@@ -304,7 +360,6 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	ax.proxyLock.Lock()
 	defer ax.proxyLock.Unlock()
 
-	var err error
 	if err := ax.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
@@ -339,6 +394,7 @@ func (ax *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}))
 	}
 
+	var err error
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		ax.client, err = client.NewAPIClient(ctx, ax.apiURL.String(), func(msg string) {
 			ax.SetStatus(NexdStatusAuth, msg)

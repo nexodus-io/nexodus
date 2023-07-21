@@ -17,19 +17,6 @@ func (ax *Nexodus) handleKeys() error {
 	}
 	state := ax.stateStore.State()
 
-	if state.PublicKey == "" || state.PrivateKey == "" {
-		// We used to store the keys in a different location
-		// migrate them to the state store
-		state.PrivateKey, state.PublicKey, err = ax.loadLegacyKeys()
-		if err != nil {
-			return err
-		}
-		err = ax.stateStore.Store()
-		if err != nil {
-			return err
-		}
-	}
-
 	if state.PublicKey != "" && state.PrivateKey != "" {
 		ax.logger.Infof("Existing key pair found in [ %s ]", ax.stateStore)
 	} else {
