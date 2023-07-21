@@ -1011,5 +1011,5 @@ func (ax *Nexodus) defaultTunnelDev() string {
 	if ax.userspaceMode {
 		return ax.defaultTunnelDevUS()
 	}
-	return defaultTunnelDevOS()
+	return avaliableTunnelDevOS()
 }

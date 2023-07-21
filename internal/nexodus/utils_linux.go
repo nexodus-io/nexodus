@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/vishvananda/netlink"
@@ -186,6 +188,38 @@ func DeleteRoute(prefix, dev string) error {
 
 func defaultTunnelDevOS() string {
 	return wgIface
+}
+
+func isIfaceInUse(iface net.Interface) bool {
+	cmd := exec.Command("ip", "link", "show", iface.Name) //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	outputStr := string(output)
+	return strings.Contains(outputStr, "ip: can't find device")
+}
+
+func isIfaceTUN(iface net.Interface) bool {
+	match, _ := regexp.MatchString(`^wg[0-9]*$`, iface.Name)
+	return match
+}
+func avaliableTunnelDevOS() string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		fmt.Errorf("error retrieving network ifaces: %w", err)
+	}
+	var avaliableIface string
+	for _, iface := range ifaces {
+		if isIfaceTUN(iface) && isIfaceInUse(iface) {
+			avaliableIface = iface.Name
+			break
+		}
+	}
+	if avaliableIface == "" {
+		fmt.Errorf("no unused network interface found: %w", err)
+	}
+	return avaliableIface
 }
 
 // binaryChecks validate the required binaries are available
