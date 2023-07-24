@@ -8,16 +8,18 @@
   debug:
     msg: "Running connectivity test on spoke node: {{ inventory_hostname }}"
 
+# Run connections twice, once to stdout and one piped to a file.
 - name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
-    docker exec $(docker ps -l -q) sh -c '
-      printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > /tmp/connectivity-results.txt;
-      nexctl nexd connections;
-      nexctl nexd connections >> /tmp/connectivity-results.txt 2>&1;
-      cat /tmp/connectivity-results.txt'
-  register: result
-  ignore_errors: true
+    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
+    nexctl nexd peers ping
+    nexctl nexd peers ping >> connectivity-results.txt 2>&1
+    nexctl nexd peers ping6 >> connectivity-results.txt 2>&1
+    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
+    nexctl nexd peers list >> connectivity-results.txt 2>&1
+    cat connectivity-results.txt
+  ignore_errors: yes
 
 - name: Print connectivity results
   debug:
