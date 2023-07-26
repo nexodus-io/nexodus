@@ -87,6 +87,10 @@ To validate you have not caused any regressions, run the e2e tests:
 
     make e2e
 
+For a verbose output from e2e or build use `NOISY_BUILD`
+
+     make e2e NOISY_BUILD=y
+
 To run all the code generators, lint source code, and build the binaries for all platforms run:
 
     make all

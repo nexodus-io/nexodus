@@ -11,11 +11,13 @@ ifeq ($(NOISY_BUILD),)
     CMD_PREFIX=@
     PIPE_DEV_NULL=> /dev/null 2> /dev/null
 	SWAG_ARGS?=--quiet
+    GOTESTSUM_FMT=standard-quiet
 else
     ECHO_PREFIX=@\#
     CMD_PREFIX=
     PIPE_DEV_NULL=
 	SWAG_ARGS?=
+    GOTESTSUM_FMT=standard-verbose
 endif
 
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
@@ -340,8 +342,8 @@ dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt | dist
 	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
-e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e tests
-	gotestsum --format standard-quiet -- \
+e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e verbose tests
+	gotestsum --format $(GOTESTSUM_FMT) -- \
 		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
 .PHONY: e2e-podman
