@@ -48,3 +48,42 @@ There are additional arguments that can be passed via the Github Actions dispatc
 - Time in Minutes to Pause Before Tearing Down the Infrastructure for Debugging: This is set to 0 minutes by default, meaning there will be no pause.
 - Timeout in Minutes for the Deploy-QA Job: The job will time out after 90 minutes by default. Adjust this to a longer period in conjunction with the pause timer for long-running debugging sessions.
 - Containers Per Node: By default, it is 5 containers per node. If you specify a high number of containers you would likely want to bump the instance type to `t2.medium` or `t2.large`. This option is only available for the `qa-scale-containers` workflow.
+
+### Scale Test Attaching Containers Outside of CI
+
+You can use the script [nexodus/hack/e2e-scripts/qa-container-scale.sh](../../hack/e2e-scripts/qa-container-scale.sh) to launch containers and attach them to a Nexodus api-server for scale testing.
+
+Prerequisites are having Go and Docker installed.
+
+Run the script with the following arguments.
+
+```text
+git clone https://github.com/nexodus-io/nexodus.git
+cd nexodus/hack/e2e-scripts
+./qa-container-scale.sh -kc-password "<ADMIN_KEYCLOAK_PASSWORD>" -nexd-password "<PASS_CAN_BE_ANYTHING>" --nexd-count 3
+```
+
+Connect to the containers after the script is run.
+
+```text
+docker exec -it <CID> bash
+```
+
+Once on a container, verify connectivity.
+
+```text
+nexctl nexd peers ping
+```
+
+Once done, cleanup the container individually or delete all running containers. Note, this will delete ALL running containers.
+
+```text
+docker rm -f $(docker ps -a -q)
+```
+
+The script assumes the user can run docker by adding the current user to the docker group.
+
+```text
+sudo groupadd docker
+sudo usermod -aG docker $USER
+```
