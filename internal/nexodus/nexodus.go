@@ -185,8 +185,6 @@ func NewNexodus(
 	username string,
 	password string,
 	wgListenPort int,
-	wireguardPubKey string,
-	wireguardPvtKey string,
 	requestedIP string,
 	userProvidedLocalIP string,
 	childPrefix []string,
@@ -221,8 +219,6 @@ func NewNexodus(
 	}
 
 	ax := &Nexodus{
-		wireguardPubKey:         wireguardPubKey,
-		wireguardPvtKey:         wireguardPvtKey,
 		listenPort:              wgListenPort,
 		requestedIP:             requestedIP,
 		userProvidedLocalIP:     userProvidedLocalIP,
