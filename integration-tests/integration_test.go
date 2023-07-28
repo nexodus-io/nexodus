@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/state"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"testing"
 	"time"
@@ -74,10 +76,10 @@ func TestBasicConnectivity(t *testing.T) {
 	require.NoError(err)
 
 	// delete only the public key on node1
-	_, err = helper.containerExec(ctx, node1, []string{"rm", "/etc/wireguard/public.key"})
+	_, err = helper.containerExec(ctx, node1, []string{"rm", "/var/lib/nexd/state.json"})
 	require.NoError(err)
-	// delete the entire wireguard directory on node2
-	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	// delete the entire nexd directory on node2
+	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/var/lib/nexd"})
 	require.NoError(err)
 
 	// start nexodus on the nodes
@@ -924,9 +926,9 @@ func TestNexctl(t *testing.T) {
 
 	// delete the keys on both nodes to force ensure the deleted device released it's
 	// IPAM address and will re-issue that address to a new device with a new keypair.
-	_, err = helper.containerExec(ctx, node1, []string{"rm", "-rf", "/etc/wireguard/"})
+	_, err = helper.containerExec(ctx, node1, []string{"rm", "-rf", "/var/lib/nexd/"})
 	require.NoError(err)
-	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/etc/wireguard/"})
+	_, err = helper.containerExec(ctx, node2, []string{"rm", "-rf", "/var/lib/nexd/"})
 	require.NoError(err)
 
 	time.Sleep(time.Second * 10)
@@ -1172,4 +1174,51 @@ func TestNetRouterConnectivity(t *testing.T) {
 	helper.Logf("Pinging site2 node1 non-nexd node %s from nexRouterSite1 %s", site2node1IP, nexRouterSite1IP)
 	err = ping(ctx, nexRouterSite1, inetV4, site2node1IP)
 	require.NoError(err)
+}
+
+// TestMigrateKeyFiles tests that nexd continues to work even if it's key
+// files are in the previous location instead of the state dir.
+func TestMigrateKeyFiles(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// create some wg keys...
+	wgKey, err := wgtypes.GeneratePrivateKey()
+	require.NoError(err)
+	expectedPubKey := wgKey.PublicKey().String()
+	expectedPrivKey := wgKey.String()
+
+	// move the keys to the legacy location..
+	_, _ = helper.containerExec(ctx, node1, []string{"mkdir", "-p", "/etc/wireguard"})
+	err = node1.CopyToContainer(ctx, []byte(expectedPubKey), "/etc/wireguard/public.key", 0644)
+	require.NoError(err)
+	err = node1.CopyToContainer(ctx, []byte(expectedPrivKey), "/etc/wireguard/private.key", 0600)
+	require.NoError(err)
+
+	// start nexodus, it will copy the keys from the legacy location.
+	helper.Log("Starting nexodus")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	// Verify that it's using the keys from the legacy location...
+	data, err := helper.containerExec(ctx, node1, []string{"cat", "/var/lib/nexd/state.json"})
+	require.NoError(err)
+	s := state.State{}
+
+	err = json.Unmarshal([]byte(data), &s)
+	require.NoError(err)
+
+	require.Equal(expectedPubKey, s.PublicKey)
+	require.Equal(expectedPrivKey, s.PrivateKey)
 }

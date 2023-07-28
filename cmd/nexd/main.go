@@ -2,10 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/state"
+	"github.com/nexodus-io/nexodus/internal/state/fstore"
+	"github.com/nexodus-io/nexodus/internal/state/kstore"
+	"k8s.io/client-go/rest"
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -118,6 +124,25 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stun.SetServers(stunServers)
 	}
 
+	stateDir := cCtx.String("state-dir")
+	var stateStore state.Store
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		if !errors.Is(err, rest.ErrNotInCluster) {
+			logger.Error(fmt.Sprintf("Invalid kubernetes configuration: %v", err))
+		}
+	} else {
+		stateStore, err = kstore.New(config)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Cannot store state in Kubernetes secrets: %v", err))
+		}
+	}
+
+	if stateStore == nil {
+		stateStore = fstore.New(filepath.Join(stateDir, "state.json"))
+	}
+
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),
 		logLevel,
@@ -138,7 +163,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version,
 		userspaceMode,
-		cCtx.String("state-dir"),
+		stateStore,
+		stateDir,
 		ctx,
 		cCtx.String("organization-id"),
 	)
