@@ -111,6 +111,13 @@ type deviceCacheEntry struct {
 	peerHealth
 }
 
+type exitNode struct {
+	exitNodeExists        bool
+	exitNodeClientEnabled bool
+	exitNodeOriginEnabled bool
+	exitNodeOrigins       []wgPeerConfig
+}
+
 type Nexodus struct {
 	wireguardPubKey          string
 	wireguardPvtKey          string
@@ -142,6 +149,7 @@ type Nexodus struct {
 	symmetricNat             bool
 	ipv6Supported            bool
 	os                       string
+	exitNode                 exitNode
 	logger                   *zap.SugaredLogger
 	logLevel                 *zap.AtomicLevel
 	// See the NexdStatus* constants
@@ -602,6 +610,13 @@ func (nx *Nexodus) Stop() {
 	nx.logger.Info("Stopping nexd")
 	for _, proxy := range nx.proxies {
 		proxy.Stop()
+	}
+
+	if nx.exitNode.exitNodeClientEnabled {
+		err := nx.ExitNodeOriginTeardown()
+		if err != nil {
+			nx.logger.Errorf("failed to remove the exit node client configuration %v", err)
+		}
 	}
 }
 

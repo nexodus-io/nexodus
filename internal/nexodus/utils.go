@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -206,4 +207,48 @@ func parseIPfromAddrPort(addrPort string) string {
 	}
 
 	return ip.Addr().String()
+}
+
+// getInterfaceByIP returns the name of the interface that has the given IP address assigned to it.
+func getInterfaceFromIP(ip string) (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrs {
+			var ipNet *net.IPNet
+			if ip4 := addr.(*net.IPNet).IP.To4(); ip4 != nil {
+				ipNet = &net.IPNet{
+					IP:   ip4,
+					Mask: addr.(*net.IPNet).Mask,
+				}
+			} else {
+				continue
+			}
+			if ipNet.IP.String() == ip {
+				return i.Name, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no interface found with the IP: %s", ip)
+}
+
+// ResolveURLToIP resolves the IP address of a given URL.
+func ResolveURLToIP(rawURL string) ([]net.IP, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	ips, err := net.LookupIP(u.Hostname())
+	if err != nil {
+		return nil, err
+	}
+
+	return ips, nil
 }

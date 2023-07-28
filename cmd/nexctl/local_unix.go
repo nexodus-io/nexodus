@@ -228,6 +228,41 @@ func init() {
 					},
 				},
 			},
+			{
+				Name:  "exit-node",
+				Usage: "Commands for interacting nexd exit node configuration",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "list exit nodes",
+						Action: func(cCtx *cli.Context) error {
+							encodeOut := cCtx.String("output")
+							return listExitNodes(cCtx, encodeOut)
+						},
+					},
+					{
+						Name:  "enable",
+						Usage: "Enable the device to use an exit node in the current organization. Warning: this will funnel all traffic through the exit node if one exists and will likely cause your device to be unreachable outside of the nexodus peer network.",
+						Action: func(cCtx *cli.Context) error {
+							return enableExitNodeClient(cCtx)
+						},
+					},
+					{
+						Name:  "disable",
+						Usage: "Disable the device from using an exit node. Traffic will return to using the device's default gateway and direct peers in the nexodus peer network.",
+						Flags: []cli.Flag{
+							&cli.StringSliceFlag{
+								Name:     "client",
+								Usage:    "disable the use of an exit node on this device and remove any exit node client configuration if one exists.",
+								Required: false,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							return disableExitNodeClient(cCtx)
+						},
+					},
+				},
+			},
 		},
 	})
 }

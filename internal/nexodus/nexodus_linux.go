@@ -4,12 +4,13 @@ package nexodus
 
 import (
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/util"
-	"golang.zx2c4.com/wireguard/wgctrl"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/nexodus-io/nexodus/internal/util"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 func (nx *Nexodus) runIpLinkAdd() (string, error) {
@@ -92,11 +93,14 @@ func (nx *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("%w", interfaceErr)
 	}
 	defer util.IgnoreError(c.Close)
+
+	wgFwMark := 51820
 	err = c.ConfigureDevice(nx.tunnelIface, wgtypes.Config{
 		PrivateKey:   &privateKey,
 		ListenPort:   &listenPort,
 		ReplacePeers: true,
 		Peers:        nil,
+		FirewallMark: &wgFwMark,
 	})
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)

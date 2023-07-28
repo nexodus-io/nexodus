@@ -14,6 +14,13 @@ import (
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
+		// if the peer is advertising a default route, append it as an exit origin node, but don't add the route
+		if util.IsDefaultIPv4Route(allowedIP) || util.IsDefaultIPv6Route(allowedIP) {
+			nx.exitNode.exitNodeExists = true
+			nx.exitNode.exitNodeOrigins = append(nx.exitNode.exitNodeOrigins, wgPeerConfig)
+			continue
+		}
+
 		// if the host does not support v6, skip adding the route
 		if util.IsIPv6Prefix(allowedIP) && !nx.ipv6Supported {
 			continue
