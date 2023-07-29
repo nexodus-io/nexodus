@@ -64,6 +64,8 @@ func TestStoreStateInKubeFileSystem(t *testing.T) {
 	err = client.CoreV1().Pods(namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 	require.NoError(err)
 
+	helper.waitForDelete(ctx, client, pod)
+
 	// The new pod should have a different name
 	newPod, newIP := helper.getPodAndTunnelIP(ctx, client, namespace, "app.kubernetes.io/name=nexd")
 
@@ -114,6 +116,8 @@ func TestStoreStateInKubeSecrets(t *testing.T) {
 	// Delete the pod...
 	err = client.CoreV1().Pods(namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 	require.NoError(err)
+
+	helper.waitForDelete(ctx, client, pod)
 
 	// The new pod should have a different name, but the same IP since the state was saved.
 	newPod, newIP := helper.getPodAndTunnelIP(ctx, client, namespace, "app.kubernetes.io/name=nexd")
@@ -212,6 +216,19 @@ func (h *Helper) createNexdDeployment(ctx context.Context, namespace string, use
 			ProgressDeadlineSeconds: nil,
 		},
 	}, metav1.CreateOptions{})
+	h.require.NoError(err)
+}
+func (h *Helper) waitForDelete(ctx context.Context, client *kubernetes.Clientset, pod *corev1.Pod) {
+	err := backoff.Retry(
+		func() error {
+			_, err := client.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+			if err == nil {
+				return fmt.Errorf("found")
+			}
+			return nil
+		},
+		backoff.WithContext(backoff.NewConstantBackOff(1*time.Second), ctx),
+	)
 	h.require.NoError(err)
 }
 
