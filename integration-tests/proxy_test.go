@@ -677,7 +677,7 @@ func TestProxyNexctl(t *testing.T) {
 
 	// Dynamically add a set of loopback proxy rules
 	_, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "add",
-		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s:4242", node1IP)})
+		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "4242"))})
 	require.NoError(err)
 
 	// Rules are stored
@@ -687,7 +687,7 @@ func TestProxyNexctl(t *testing.T) {
 	err = json.Unmarshal([]byte(data), &s)
 	require.NoError(err)
 	require.Equal(state.ProxyRulesConfig{
-		Egress:  []string{fmt.Sprintf("tcp:80:%s:4242", node1IP)},
+		Egress:  []string{fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "4242"))},
 		Ingress: []string{"tcp:4242:127.0.0.1:8080"},
 	}, s.ProxyRulesConfig)
 
@@ -695,7 +695,7 @@ func TestProxyNexctl(t *testing.T) {
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
 	require.NoError(err)
 	require.True(strings.Contains(out, "--ingress tcp:4242:127.0.0.1:8080"))
-	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s:4242", node1IP)))
+	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s", net.JoinHostPort(node1IP, "4242"))))
 
 	// Restarting the proxy...
 	_, err = helper.containerExec(ctx, node1, []string{"killall", "nexd"})
@@ -708,7 +708,7 @@ func TestProxyNexctl(t *testing.T) {
 	out, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "list"})
 	require.NoError(err)
 	require.True(strings.Contains(out, "--ingress tcp:4242:127.0.0.1:8080"))
-	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s:4242", node1IP)))
+	require.True(strings.Contains(out, fmt.Sprintf("--egress tcp:80:%s", net.JoinHostPort(node1IP, "4242"))))
 
 	// Check connectivity through the proxy loopback
 	// curl -> localhost port 80 -> nexd proxy egress rule listening on port 80 -> nexd proxy ingress rule listening on port 4242 -> python http server on port 8080
@@ -718,7 +718,7 @@ func TestProxyNexctl(t *testing.T) {
 
 	// Remove the rules
 	_, err = helper.containerExec(ctx, node1, []string{"nexctl", "nexd", "proxy", "remove",
-		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s:4242", node1IP)})
+		"--ingress", "tcp:4242:127.0.0.1:8080", "--egress", fmt.Sprintf("tcp:80:%s", net.JoinHostPort(node1IP, "4242"))})
 	require.NoError(err)
 
 	// Back to no rules
