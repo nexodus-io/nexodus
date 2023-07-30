@@ -6,7 +6,7 @@ import (
 )
 
 func (ac *NexdCtl) EnableExitNodeClient(_ string, result *string) error {
-	err := ac.ax.ExitNodeClientSetup()
+	err := ac.nx.ExitNodeClientSetup()
 
 	enableExitNodeClientJson, err := json.Marshal(err)
 	if err != nil {
@@ -19,11 +19,11 @@ func (ac *NexdCtl) EnableExitNodeClient(_ string, result *string) error {
 }
 
 func (ac *NexdCtl) DisableExitNodeClient(_ string, result *string) error {
-	err := ac.ax.ExitNodeOriginTeardown()
+	err := ac.nx.exitNodeClientTeardown()
 
 	disableExitNodeClientJson, err := json.Marshal(err)
 	if err != nil {
-		return fmt.Errorf("error marshalling disable exit node results %w", err)
+		return fmt.Errorf("error marshalling disable exit node client results %w", err)
 	}
 
 	*result = string(disableExitNodeClientJson)
@@ -32,7 +32,7 @@ func (ac *NexdCtl) DisableExitNodeClient(_ string, result *string) error {
 }
 
 func (ac *NexdCtl) ListExitNodes(_ string, result *string) error {
-	exitNodeOrigins, err := json.Marshal(ac.ax.exitNode.exitNodeOrigins)
+	exitNodeOrigins, err := json.Marshal(ac.nx.exitNode.exitNodeOrigins)
 	if err != nil {
 		return fmt.Errorf("error marshalling disable exit node results %w", err)
 	}

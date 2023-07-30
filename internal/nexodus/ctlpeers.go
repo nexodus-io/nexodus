@@ -6,13 +6,13 @@ import (
 )
 
 func (ac *NexdCtl) ListPeers(_ string, result *string) error {
-	peers, err := ac.ax.DumpPeersDefault()
+	peers, err := ac.nx.DumpPeersDefault()
 	if err != nil {
 		return fmt.Errorf("error getting list of peers: %w", err)
 	}
 
-	ac.ax.deviceCacheIterRead(func(d deviceCacheEntry) {
-		if d.device.PublicKey == ac.ax.wireguardPubKey {
+	ac.nx.deviceCacheIterRead(func(d deviceCacheEntry) {
+		if d.device.PublicKey == ac.nx.wireguardPubKey {
 			return
 		}
 		p, ok := peers[d.device.PublicKey]

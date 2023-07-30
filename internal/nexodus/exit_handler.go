@@ -6,9 +6,15 @@ import (
 )
 
 const (
-	oobDNS        = 53
-	oobHttps      = 443
-	oobGoogleStun = 19302
+	oobDNS           = 53
+	oobHttps         = 443
+	oobGoogleStun    = 19302
+	wgFwMark         = "51820"
+	oobFwMark        = "19302"
+	oobFwdMarkHex    = "0x4B66"
+	nfExitNodeTable  = "nexodus-exit-node"
+	nfOobMangleTable = "nexodus-oob-mangle"
+	nfOobSnatTable   = "nexodus-oob-snat"
 )
 
 // ExitNodeClientSetup setups up the routing tables, netfilter tables and out of band connections for the exit node client
@@ -37,7 +43,15 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 		return fmt.Errorf("no exit node found in this device's peerings")
 	}
 
-	nx.handlePeerTunnel(nx.exitNode.exitNodeOrigins[0])
+	// teardown any residual nf tables or routing tables from previous runs
+	if err := nx.exitNodeClientTeardown(); err != nil {
+		nx.logger.Debug(err)
+	}
+
+	if err := nx.handlePeerTunnel(nx.exitNode.exitNodeOrigins[0]); err != nil {
+		nx.logger.Debug(err)
+		return err
+	}
 
 	devName, err := getInterfaceFromIP(nx.endpointLocalAddress)
 	if err != nil {
@@ -62,20 +76,19 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 	if err := addExitSrcDefaultRouteTable(); err != nil {
 		nx.logger.Debug(err)
 		nx.logger.Debugf("default route already exists in table %s", oobFwMark)
-		//return err
 	}
 
-	if err := nfAddExitSrcMangleTable(); err != nil {
+	if err := nfAddExitSrcMangleTable(nx.logger); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcMangleOutputChain(); err != nil {
+	if err := nfAddExitSrcMangleOutputChain(nx.logger); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcDestPortMangleRule("udp", oobDNS); err != nil {
+	if err := nfAddExitSrcDestPortMangleRule(nx.logger, "udp", oobDNS); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
@@ -87,33 +100,32 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 	}
 
 	for _, ip := range ips {
-		err := nfAddExitSrcApiServerOOBMangleRule("tcp", ip.String(), oobHttps)
-		if err != nil {
+		if err := nfAddExitSrcApiServerOOBMangleRule(nx.logger, "tcp", ip.String(), oobHttps); err != nil {
 			fmt.Printf("Error adding rule for IP %s: %v\n", ip, err)
 		}
 	}
 
-	if err := nfAddExitSrcDestPortMangleRule("udp", oobGoogleStun); err != nil {
+	if err := nfAddExitSrcDestPortMangleRule(nx.logger, "udp", oobGoogleStun); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcSnatTable(); err != nil {
+	if err := nfAddExitSrcSnatTable(nx.logger); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcSnatOutputChain(); err != nil {
+	if err := nfAddExitSrcSnatOutputChain(nx.logger); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcSnatOutputChain(); err != nil {
+	if err := nfAddExitSrcSnatOutputChain(nx.logger); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
 
-	if err := nfAddExitSrcSnatRule(devName); err != nil {
+	if err := nfAddExitSrcSnatRule(nx.logger, devName); err != nil {
 		nx.logger.Debug(err)
 		return err
 	}
@@ -133,39 +145,39 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 	return nil
 }
 
-func (nx *Nexodus) exitNodeClientTeardown() error {
-
-	return nil
-}
-
 // exitNodeOriginSetup sets up the exit node origin where traffic is originated when it exits the wireguard network
 func (nx *Nexodus) exitNodeOriginSetup() error {
+	// clean up any existing exit-node tables from previous executions
+	if err := nx.exitNodeOriginTeardown(); err != nil {
+		return err
+	}
+
 	devName, err := getInterfaceFromIP(nx.endpointLocalAddress)
 	if err != nil {
 		nx.logger.Debugf("failed to discover the interface with the address [ %s ] %v", nx.endpointLocalAddress, err)
 	}
 
-	if err := addExitDestinationTable(); err != nil {
+	if err := addExitDestinationTable(nx.logger); err != nil {
 		return err
 	}
 
-	if err := addExitOriginPreroutingChain(); err != nil {
+	if err := addExitOriginPreroutingChain(nx.logger); err != nil {
 		return err
 	}
 
-	if err := addExitOriginPostroutingChain(); err != nil {
+	if err := addExitOriginPostroutingChain(nx.logger); err != nil {
 		return err
 	}
 
-	if err := addExitOriginForwardChain(); err != nil {
+	if err := addExitOriginForwardChain(nx.logger); err != nil {
 		return err
 	}
 
-	if err := addExitOriginPostroutingRule(devName); err != nil {
+	if err := addExitOriginPostroutingRule(nx.logger, devName); err != nil {
 		return err
 	}
 
-	if err := addExitOriginForwardRule(); err != nil {
+	if err := addExitOriginForwardRule(nx.logger); err != nil {
 		return err
 	}
 
@@ -174,30 +186,29 @@ func (nx *Nexodus) exitNodeOriginSetup() error {
 	return nil
 }
 
-func (nx *Nexodus) ExitNodeOriginTeardown() error {
+func (nx *Nexodus) exitNodeClientTeardown() error {
 	var err1, err2 error
-	nx.exitNode.exitNodeClientEnabled = false
+
+	// TODO: this needs to be able to be set by nexctl but not for initial pre-deploy checks
+	// nx.exitNode.exitNodeClientEnabled = false
 
 	exitNodeRouteTables := []string{wgFwMark, oobFwMark}
 	for _, routeTable := range exitNodeRouteTables {
-		err1 = flushExitSrcRouteTableOOB(routeTable)
-		if err1 != nil {
+		if err1 = flushExitSrcRouteTableOOB(routeTable); err1 != nil {
 			nx.logger.Debug(err1)
-
 		}
 	}
 
 	exitNodeNFTables := []string{nfOobMangleTable, nfOobSnatTable}
 	for _, nfTable := range exitNodeNFTables {
-		err2 = deleteExitSrcTable(nfTable)
-		if err2 != nil {
+		if err2 = nx.nfTableDrop(nfTable); err2 != nil {
 			nx.logger.Debug(err2)
 		}
 	}
 
 	// If both functions return errors, concatenate their messages and return as a single error.
 	if err1 != nil && err2 != nil {
-		return fmt.Errorf("route table deletion error: %v, nftable deletion error: %v", err1, err2)
+		return fmt.Errorf("route table deletion error: %w, nftable deletion error: %w", err1, err2)
 	}
 
 	if err1 != nil {
@@ -209,6 +220,15 @@ func (nx *Nexodus) ExitNodeOriginTeardown() error {
 	}
 
 	nx.logger.Info("Exit node client configuration has been disabled")
+
+	return nil
+}
+
+// exitNodeOriginTeardown removes the exit node origin where traffic is originated when it exits the wireguard network
+func (nx *Nexodus) exitNodeOriginTeardown() error {
+	if err := nx.nfTableDrop(nfExitNodeTable); err != nil {
+		return err
+	}
 
 	return nil
 }

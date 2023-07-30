@@ -68,7 +68,7 @@ func (nx *Nexodus) CtlServerUnixStart(ctx context.Context, wg *sync.WaitGroup) e
 
 func (nx *Nexodus) CtlServerUnixRun(ctx context.Context, ctlWg *sync.WaitGroup, l *net.UnixListener) error {
 	ac := new(NexdCtl)
-	ac.ax = nx
+	ac.nx = nx
 	err := rpc.Register(ac)
 	if err != nil {
 		nx.logger.Error("Error on rpc.Register(): ", err)
