@@ -10,18 +10,18 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
-	d, _, err := ax.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
+func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
+	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
 		UserId:                  userID,
-		OrganizationId:          ax.org.Id,
-		PublicKey:               ax.wireguardPubKey,
-		TunnelIp:                ax.requestedIP,
-		ChildPrefix:             ax.childPrefix,
-		EndpointLocalAddressIp4: ax.endpointLocalAddress,
-		SymmetricNat:            ax.symmetricNat,
-		Hostname:                ax.hostname,
-		Relay:                   ax.relay,
-		Os:                      ax.os,
+		OrganizationId:          nx.org.Id,
+		PublicKey:               nx.wireguardPubKey,
+		TunnelIp:                nx.requestedIP,
+		ChildPrefix:             nx.childPrefix,
+		EndpointLocalAddressIp4: nx.endpointLocalAddress,
+		SymmetricNat:            nx.symmetricNat,
+		Hostname:                nx.hostname,
+		Relay:                   nx.relay,
+		Os:                      nx.os,
 		Endpoints:               endpoints,
 	}).Execute()
 	deviceOperationMsg := "Successfully registered device"
@@ -31,13 +31,13 @@ func (ax *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 			switch model := apiError.Model().(type) {
 			case public.ModelsConflictsError:
 				var resp *http.Response
-				d, resp, err = ax.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					ChildPrefix:             ax.childPrefix,
-					EndpointLocalAddressIp4: ax.endpointLocalAddress,
-					SymmetricNat:            ax.symmetricNat,
-					Hostname:                ax.hostname,
+				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
+					ChildPrefix:             nx.childPrefix,
+					EndpointLocalAddressIp4: nx.endpointLocalAddress,
+					SymmetricNat:            nx.symmetricNat,
+					Hostname:                nx.hostname,
 					Endpoints:               endpoints,
-					OrganizationId:          ax.org.Id,
+					OrganizationId:          nx.org.Id,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {

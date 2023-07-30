@@ -16,13 +16,13 @@ import (
 // code, but we can't get to it.
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
-func (ax *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) error {
+func (nx *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) error {
 	// no-op
 	return nil
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (ax *Nexodus) handlePeerRouteDeleteUS(dev string, wgPeerConfig public.ModelsDevice) {
+func (nx *Nexodus) handlePeerRouteDeleteUS(dev string, wgPeerConfig public.ModelsDevice) {
 	// no-op
 }
 
@@ -31,7 +31,7 @@ func RouteExistsUS(prefix string) (bool, error) {
 	return false, nil
 }
 
-func (ax *Nexodus) AddRouteUS(prefix string) error {
+func (nx *Nexodus) AddRouteUS(prefix string) error {
 	// no-op
 	return nil
 }

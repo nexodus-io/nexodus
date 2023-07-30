@@ -27,76 +27,76 @@ func (nx *Nexodus) peerUpdated(device public.ModelsDevice, peer wgPeerConfig) bo
 
 // buildPeersConfig builds the peer configuration based off peer cache
 // and peer listings from the controller. assumes deviceCacheLock is held.
-func (ax *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
-	if ax.wgConfig.Peers == nil {
-		ax.wgConfig.Peers = map[string]wgPeerConfig{}
+func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
+	if nx.wgConfig.Peers == nil {
+		nx.wgConfig.Peers = map[string]wgPeerConfig{}
 	}
 
 	updatedPeers := map[string]public.ModelsDevice{}
 
-	_, ax.wireguardPubKeyInConfig = ax.deviceCache[ax.wireguardPubKey]
+	_, nx.wireguardPubKeyInConfig = nx.deviceCache[nx.wireguardPubKey]
 
 	relayAllowedIP := []string{
-		ax.org.Cidr,
-		ax.org.CidrV6,
+		nx.org.Cidr,
+		nx.org.CidrV6,
 	}
 
-	ax.buildLocalConfig()
+	nx.buildLocalConfig()
 
-	for _, d := range ax.deviceCache {
+	for _, d := range nx.deviceCache {
 		// skip ourselves
-		if d.device.PublicKey == ax.wireguardPubKey {
+		if d.device.PublicKey == nx.wireguardPubKey {
 			continue
 		}
 
-		localIP, reflexiveIP4 := ax.extractLocalAndReflexiveIP(d.device)
-		peerPort := ax.extractPeerPort(localIP)
+		localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
+		peerPort := nx.extractPeerPort(localIP)
 
 		// We are a relay node. This block will get hit for every peer.
-		if ax.relay {
-			peer := ax.buildPeerForRelayNode(d.device, localIP, reflexiveIP4)
-			if ax.peerUpdated(d.device, peer) {
+		if nx.relay {
+			peer := nx.buildPeerForRelayNode(d.device, localIP, reflexiveIP4)
+			if nx.peerUpdated(d.device, peer) {
 				updatedPeers[d.device.PublicKey] = d.device
-				ax.wgConfig.Peers[d.device.PublicKey] = peer
-				ax.logPeerInfo(d.device, reflexiveIP4)
+				nx.wgConfig.Peers[d.device.PublicKey] = peer
+				nx.logPeerInfo(d.device, reflexiveIP4)
 			}
 			continue
 		}
 
 		// The peer is a relay node
 		if d.device.Relay {
-			peerRelay := ax.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
-			if ax.peerUpdated(d.device, peerRelay) {
+			peerRelay := nx.buildRelayPeer(d.device, relayAllowedIP, localIP, reflexiveIP4)
+			if nx.peerUpdated(d.device, peerRelay) {
 				updatedPeers[d.device.PublicKey] = d.device
-				ax.wgConfig.Peers[d.device.PublicKey] = peerRelay
-				ax.logPeerInfo(d.device, peerRelay.Endpoint)
+				nx.wgConfig.Peers[d.device.PublicKey] = peerRelay
+				nx.logPeerInfo(d.device, peerRelay.Endpoint)
 			}
 			continue
 		}
 
 		// We are behind the same reflexive address as the peer, try local peering first
-		if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
-			peer := ax.buildDirectLocalPeer(d.device, localIP, peerPort)
-			if ax.peerUpdated(d.device, peer) {
+		if nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
+			peer := nx.buildDirectLocalPeer(d.device, localIP, peerPort)
+			if nx.peerUpdated(d.device, peer) {
 				updatedPeers[d.device.PublicKey] = d.device
-				ax.wgConfig.Peers[d.device.PublicKey] = peer
-				ax.logPeerInfo(d.device, localIP)
+				nx.wgConfig.Peers[d.device.PublicKey] = peer
+				nx.logPeerInfo(d.device, localIP)
 			}
 			continue
 		}
 
 		// If we are behind symmetric NAT, we have no further options
-		if ax.symmetricNat {
+		if nx.symmetricNat {
 			continue
 		}
 
 		// If the peer is not behind symmetric NAT, we can try peering with its reflexive address
 		if !d.device.SymmetricNat {
-			peer := ax.buildDefaultPeer(d.device, reflexiveIP4)
-			if ax.peerUpdated(d.device, peer) {
+			peer := nx.buildDefaultPeer(d.device, reflexiveIP4)
+			if nx.peerUpdated(d.device, peer) {
 				updatedPeers[d.device.PublicKey] = d.device
-				ax.wgConfig.Peers[d.device.PublicKey] = peer
-				ax.logPeerInfo(d.device, reflexiveIP4)
+				nx.wgConfig.Peers[d.device.PublicKey] = peer
+				nx.logPeerInfo(d.device, reflexiveIP4)
 			}
 		}
 	}
@@ -105,7 +105,7 @@ func (ax *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 }
 
 // extractLocalAndReflexiveIP retrieve the local and reflexive endpoint addresses
-func (ax *Nexodus) extractLocalAndReflexiveIP(device public.ModelsDevice) (string, string) {
+func (nx *Nexodus) extractLocalAndReflexiveIP(device public.ModelsDevice) (string, string) {
 	localIP := ""
 	reflexiveIP4 := ""
 	for _, endpoint := range device.Endpoints {
@@ -118,10 +118,10 @@ func (ax *Nexodus) extractLocalAndReflexiveIP(device public.ModelsDevice) (strin
 	return localIP, reflexiveIP4
 }
 
-func (ax *Nexodus) extractPeerPort(localIP string) string {
+func (nx *Nexodus) extractPeerPort(localIP string) string {
 	_, port, err := net.SplitHostPort(localIP)
 	if err != nil {
-		ax.logger.Debugf("failed parse the endpoint address for node (likely still converging) : %v", err)
+		nx.logger.Debugf("failed parse the endpoint address for node (likely still converging) : %v", err)
 		return ""
 	}
 	return port
@@ -129,7 +129,7 @@ func (ax *Nexodus) extractPeerPort(localIP string) string {
 
 // buildRelayPeer Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 // This is the only peer a symmetric NAT node will get unless it also has a direct peering
-func (ax *Nexodus) buildRelayPeer(device public.ModelsDevice, relayAllowedIP []string, localIP, reflexiveIP4 string) wgPeerConfig {
+func (nx *Nexodus) buildRelayPeer(device public.ModelsDevice, relayAllowedIP []string, localIP, reflexiveIP4 string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
 	config := wgPeerConfig{
 		PublicKey:           device.PublicKey,
@@ -137,7 +137,7 @@ func (ax *Nexodus) buildRelayPeer(device public.ModelsDevice, relayAllowedIP []s
 		AllowedIPs:          relayAllowedIP,
 		PersistentKeepAlive: persistentKeepalive,
 	}
-	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
+	if nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
 		config.Endpoint = localIP
 	}
 	return config
@@ -145,7 +145,7 @@ func (ax *Nexodus) buildRelayPeer(device public.ModelsDevice, relayAllowedIP []s
 
 // buildPeerForRelayNode build a config for all peers if this node is the organization's relay node. Also check for direct peering.
 // The peer for a relay node is currently left blank and assumed to be exposed to all peers, we still build its peer config for flexibility.
-func (ax *Nexodus) buildPeerForRelayNode(device public.ModelsDevice, localIP, reflexiveIP4 string) wgPeerConfig {
+func (nx *Nexodus) buildPeerForRelayNode(device public.ModelsDevice, localIP, reflexiveIP4 string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
 	config := wgPeerConfig{
 		PublicKey:           device.PublicKey,
@@ -153,7 +153,7 @@ func (ax *Nexodus) buildPeerForRelayNode(device public.ModelsDevice, localIP, re
 		AllowedIPs:          device.AllowedIps,
 		PersistentKeepAlive: persistentKeepalive,
 	}
-	if ax.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
+	if nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4) {
 		config.Endpoint = localIP
 	}
 	return config
@@ -161,7 +161,7 @@ func (ax *Nexodus) buildPeerForRelayNode(device public.ModelsDevice, localIP, re
 
 // buildDirectLocalPeer If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 // The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-func (ax *Nexodus) buildDirectLocalPeer(device public.ModelsDevice, localIP, peerPort string) wgPeerConfig {
+func (nx *Nexodus) buildDirectLocalPeer(device public.ModelsDevice, localIP, peerPort string) wgPeerConfig {
 	directLocalPeerEndpointSocket := net.JoinHostPort(device.EndpointLocalAddressIp4, peerPort)
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
 	return wgPeerConfig{
@@ -174,7 +174,7 @@ func (ax *Nexodus) buildDirectLocalPeer(device public.ModelsDevice, localIP, pee
 
 // buildDefaultPeer the bulk of the peers will be added here except for local address peers or
 // symmetric NAT peers or if this device is itself a symmetric nat node, that require relaying.
-func (ax *Nexodus) buildDefaultPeer(device public.ModelsDevice, reflexiveIP4 string) wgPeerConfig {
+func (nx *Nexodus) buildDefaultPeer(device public.ModelsDevice, reflexiveIP4 string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
@@ -184,38 +184,38 @@ func (ax *Nexodus) buildDefaultPeer(device public.ModelsDevice, reflexiveIP4 str
 	}
 }
 
-func (ax *Nexodus) logPeerInfo(device public.ModelsDevice, endpointIP string) {
-	ax.logger.Debugf("Peer Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ]",
+func (nx *Nexodus) logPeerInfo(device public.ModelsDevice, endpointIP string) {
+	nx.logger.Debugf("Peer Configuration - Peer AllowedIps [ %s ] Peer Endpoint IP [ %s ] Peer Public Key [ %s ]",
 		strings.Join(device.AllowedIps, ", "),
 		endpointIP,
 		device.PublicKey)
 }
 
 // buildLocalConfig builds the configuration for the local interface
-func (ax *Nexodus) buildLocalConfig() {
+func (nx *Nexodus) buildLocalConfig() {
 	var localInterface wgLocalConfig
 	var d deviceCacheEntry
 	var ok bool
 
-	if d, ok = ax.deviceCache[ax.wireguardPubKey]; !ok {
+	if d, ok = nx.deviceCache[nx.wireguardPubKey]; !ok {
 		return
 	}
 
 	// if the local node address changed replace it on wg0
-	if ax.TunnelIP != d.device.TunnelIp {
-		ax.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
-		if runtime.GOOS == Linux.String() && linkExists(ax.tunnelIface) {
-			if err := delLink(ax.tunnelIface); err != nil {
-				ax.logger.Infof("Failed to delete %s: %v", ax.tunnelIface, err)
+	if nx.TunnelIP != d.device.TunnelIp {
+		nx.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
+		if runtime.GOOS == Linux.String() && linkExists(nx.tunnelIface) {
+			if err := delLink(nx.tunnelIface); err != nil {
+				nx.logger.Infof("Failed to delete %s: %v", nx.tunnelIface, err)
 			}
 		}
 	}
-	ax.TunnelIP = d.device.TunnelIp
-	ax.TunnelIpV6 = d.device.TunnelIpV6
+	nx.TunnelIP = d.device.TunnelIp
+	nx.TunnelIpV6 = d.device.TunnelIpV6
 	localInterface = wgLocalConfig{
-		ax.wireguardPvtKey,
-		ax.listenPort,
+		nx.wireguardPvtKey,
+		nx.listenPort,
 	}
 	// set the node unique local interface configuration
-	ax.wgConfig.Interface = localInterface
+	nx.wgConfig.Interface = localInterface
 }

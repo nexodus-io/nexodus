@@ -34,20 +34,20 @@ func (nx *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) error {
 }
 
 // addPeer add a wg peer
-func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
-	if ax.userspaceMode {
-		return ax.addPeerUS(wgPeerConfig)
+func (nx *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
+	if nx.userspaceMode {
+		return nx.addPeerUS(wgPeerConfig)
 	}
-	return ax.addPeerOS(wgPeerConfig)
+	return nx.addPeerOS(wgPeerConfig)
 }
 
 // addPeerUs handles adding a new wireguard peer when using the userspace-only mode.
-func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
+func (nx *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
 	// https://www.wireguard.com/xplatform/#configuration-protocol
 
 	pubDecoded, err := base64.StdEncoding.DecodeString(wgPeerConfig.PublicKey)
 	if err != nil {
-		ax.logger.Errorf("Failed to decode wireguard public key: %w", err)
+		nx.logger.Errorf("Failed to decode wireguard public key: %w", err)
 		return err
 	}
 
@@ -61,23 +61,23 @@ func (ax *Nexodus) addPeerUS(wgPeerConfig wgPeerConfig) error {
 	config += fmt.Sprintf("endpoint=%s\n", wgPeerConfig.Endpoint)
 	config += fmt.Sprintf("persistent_keepalive_interval=%d\n", keepaliveInterval/time.Second)
 
-	ax.logger.Debugf("Adding wireguard peer using: %s", config)
-	err = ax.userspaceDev.IpcSet(config)
+	nx.logger.Debugf("Adding wireguard peer using: %s", config)
+	err = nx.userspaceDev.IpcSet(config)
 	if err != nil {
-		ax.logger.Errorf("Failed to set wireguard config for new peer: %w", err)
+		nx.logger.Errorf("Failed to set wireguard config for new peer: %w", err)
 		return err
 	}
-	fullConfig, err := ax.userspaceDev.IpcGet()
+	fullConfig, err := nx.userspaceDev.IpcGet()
 	if err != nil {
-		ax.logger.Errorf("Failed to read back full wireguard config: %w", err)
+		nx.logger.Errorf("Failed to read back full wireguard config: %w", err)
 		return nil
 	}
-	ax.logger.Debugf("Updated config: %s", fullConfig)
+	nx.logger.Debugf("Updated config: %s", fullConfig)
 	return nil
 }
 
 // addPeerOS configures a new wireguard peer when using an OS tun networking interface
-func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
+func (nx *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 
 	LocalIP, endpointPort, err := net.SplitHostPort(wgPeerConfig.Endpoint)
 	if err != nil {
-		ax.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
+		nx.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
 		return err
 	}
 
@@ -118,7 +118,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 
 	// relay nodes do not set explicit endpoints
 	cfg := wgtypes.Config{}
-	if ax.relay {
+	if nx.relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -132,7 +132,7 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 	// all other nodes set peer endpoints
-	if !ax.relay {
+	if !nx.relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -147,65 +147,65 @@ func (ax *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 
-	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
+	return wgClient.ConfigureDevice(nx.tunnelIface, cfg)
 }
 
 // assumes a write lock is held on deviceCacheLock
-func (ax *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
+func (nx *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
-	for _, p := range ax.deviceCache {
+	for _, p := range nx.deviceCache {
 		if _, ok := peerMap[p.device.PublicKey]; ok {
 			continue
 		}
 
-		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.device.PublicKey])
-		if err := ax.deletePeer(p.device.PublicKey, ax.tunnelIface); err != nil {
+		nx.logger.Debugf("Deleting peer with key: %s\n", nx.deviceCache[p.device.PublicKey])
+		if err := nx.deletePeer(p.device.PublicKey, nx.tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
 		}
 		// delete the peer route(s)
-		ax.handlePeerRouteDelete(ax.tunnelIface, p.device)
+		nx.handlePeerRouteDelete(nx.tunnelIface, p.device)
 		// remove peer from local peer and key cache
-		delete(ax.deviceCache, p.device.PublicKey)
+		delete(nx.deviceCache, p.device.PublicKey)
 	}
 
 	return nil
 }
 
-func (ax *Nexodus) deletePeer(publicKey, dev string) error {
-	if ax.userspaceMode {
-		return ax.deletePeerUS(publicKey)
+func (nx *Nexodus) deletePeer(publicKey, dev string) error {
+	if nx.userspaceMode {
+		return nx.deletePeerUS(publicKey)
 	} else {
-		return ax.deletePeerOS(publicKey, dev)
+		return nx.deletePeerOS(publicKey, dev)
 	}
 }
 
 // deletePeerUS deletes a wireguard peer when using a userspace device
-func (ax *Nexodus) deletePeerUS(publicKey string) error {
+func (nx *Nexodus) deletePeerUS(publicKey string) error {
 	// https://www.wireguard.com/xplatform/#configuration-protocol
 
 	pubDecoded, err := base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
-		ax.logger.Errorf("Failed to decode wireguard public key: %w", err)
+		nx.logger.Errorf("Failed to decode wireguard public key: %w", err)
 		return err
 	}
 	config := fmt.Sprintf("public_key=%s\nremove=true\n", hex.EncodeToString(pubDecoded))
-	ax.logger.Debugf("Removing wireguard peer using: %s", config)
-	err = ax.userspaceDev.IpcSet(config)
+	nx.logger.Debugf("Removing wireguard peer using: %s", config)
+	err = nx.userspaceDev.IpcSet(config)
 	if err != nil {
-		ax.logger.Errorf("Failed to remove wireguard peer (%s): %w", publicKey, err)
+		nx.logger.Errorf("Failed to remove wireguard peer (%s): %w", publicKey, err)
 		return err
 	}
-	fullConfig, err := ax.userspaceDev.IpcGet()
+	fullConfig, err := nx.userspaceDev.IpcGet()
 	if err != nil {
-		ax.logger.Errorf("Failed to read back full wireguard config: %w", err)
+		nx.logger.Errorf("Failed to read back full wireguard config: %w", err)
 		return nil
 	}
-	ax.logger.Debugf("Updated config: %s", fullConfig)
+	nx.logger.Debugf("Updated config: %s", fullConfig)
 	return nil
 }
 
 // deletePeerOS deletes a wireguard peer when using an OS tun networking device
-func (ax *Nexodus) deletePeerOS(publicKey, dev string) error {
+func (nx *Nexodus) deletePeerOS(publicKey, dev string) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -233,7 +233,7 @@ func (ax *Nexodus) deletePeerOS(publicKey, dev string) error {
 		return fmt.Errorf("failed to remove peer with key %s: %w", key, err)
 	}
 
-	ax.logger.Infof("Removed peer with key %s", key)
+	nx.logger.Infof("Removed peer with key %s", key)
 	return nil
 }
 
