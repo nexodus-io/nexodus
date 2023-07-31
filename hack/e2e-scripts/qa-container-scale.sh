@@ -12,8 +12,9 @@
 # sudo usermod -aG docker $USER
 
 # API Server URLs
-NEXODUS_API_SERVER="https://qa.nexodus.io"
-NEXODUS_AUTH_SERVER="https://auth.qa.nexodus.io"
+NEXODUS_API_SERVER="https://qa.nexodus.io" # example https://try.nexodus.io
+NEXODUS_AUTH_SERVER="https://auth.qa.nexodus.io" # example https://auth.try.nexodus.io
+NEXD_IMAGE="quay.io/nexodus/nexd" # example quay.io/nexodus/nexd-qa
 
 # Function to check for required tools
 check_requirements() {
@@ -38,7 +39,7 @@ launch_containers() {
             --sysctl net.ipv4.ip_forward=1 \
             --sysctl net.ipv6.conf.all.disable_ipv6=0 \
             --sysctl net.ipv6.conf.all.forwarding=1 \
-            quay.io/nexodus/nexd:latest sleep 100000)
+            $NEXD_IMAGE sleep 100000)
 
     docker cp nexd-init.sh $container_id:/
     docker exec $container_id chmod +x /nexd-init.sh
