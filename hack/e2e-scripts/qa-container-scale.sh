@@ -42,7 +42,7 @@ launch_containers() {
 
     docker cp nexd-init.sh $container_id:/
     docker exec $container_id chmod +x /nexd-init.sh
-    docker exec $container_id sh -c "nohup sh ./nexd-init.sh > /dev/null 2>&1 &"
+    docker exec $container_id sh -c "nohup sh ./nexd-init.sh > nexodus-logs.txt 2>&1 &"
     # Uncomment the following to add a pause between container launches for variations in the scale testing
     # sleep 1
   done
