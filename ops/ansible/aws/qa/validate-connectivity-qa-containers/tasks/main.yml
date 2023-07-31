@@ -8,18 +8,28 @@
   debug:
     msg: "Running connectivity test on spoke node: {{ inventory_hostname }}"
 
-# Run connections twice, once to stdout and one piped to a file.
+- name: Register the list of running containers
+  become: yes
+  command: docker ps -q
+  register: container_ids
+
+- name: Set a fact for the first container ID for connectivity tests
+  set_fact:
+    first_container_id: "{{ container_ids.stdout_lines[0] }}"
+
 - name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
-    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
-    nexctl nexd peers ping
-    nexctl nexd peers ping >> connectivity-results.txt 2>&1
-    nexctl nexd peers ping6 >> connectivity-results.txt 2>&1
-    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
-    nexctl nexd peers list >> connectivity-results.txt 2>&1
+    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
+    docker exec {{ first_container_id }} nexctl nexd peers ping
+    docker exec {{ first_container_id }} nexctl nexd peers ping  >> connectivity-results.txt
+    docker exec {{ first_container_id }} nexctl nexd peers ping6  >> connectivity-results.txt
     cat connectivity-results.txt
   ignore_errors: yes
+
+# TODO: add this back after fixing the nexctl nexd peers list bug
+#    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
+#    nexctl nexd peers list >> connectivity-results.txt 2>&1
 
 - name: Print connectivity results
   debug:
