@@ -29,6 +29,7 @@ configMapGenerator:
       - APIPROXY_API_DOMAIN=api.qa.nexodus.io
       - APIPROXY_WEB_DOMAIN=qa.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://qa.nexodus.io
+      - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug
     name: apiproxy
   - behavior: merge
     literals:
@@ -37,6 +38,7 @@ configMapGenerator:
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
       - NEXAPI_ENVIRONMENT=qa
+      - NEXAPI_DEBUG=0
     name: apiserver
 patches:
   - patch: |-
@@ -109,3 +111,10 @@ patches:
       - op: add
         path: /rules/1
         value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
+  - patch: |-
+      - op: replace
+        path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
+        value: 4Gi
+    target:
+      kind: PostgresCluster
+      name: database

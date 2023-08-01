@@ -68,7 +68,13 @@ spec:
             - --config-path
             - /configs/envoy/envoy.yaml
             - --component-log-level
-            - upstream:info,http:debug,router:debug,jwt:debug
+            - $(ENVOY_COMP_LOG_LEVEL)
+          env:
+            - name: ENVOY_COMP_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: ENVOY_COMP_LOG_LEVEL
           ports:
             - name: api-envoy
               protocol: TCP
