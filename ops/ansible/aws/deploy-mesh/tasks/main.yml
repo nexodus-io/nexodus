@@ -21,7 +21,7 @@
 - name: Remove the stored token
   become: yes
   shell: |
-    rm /var/lib/nexd/apitoken.json
+    rm /var/lib/nexd/state.json
   ignore_errors: yes
 
 - name: Create the certs dir
