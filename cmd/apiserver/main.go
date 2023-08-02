@@ -5,6 +5,7 @@ import (
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	redisStore "github.com/go-session/redis/v3"
 	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/internal/ipam/cmd"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/redis/go-redis/v9"
@@ -415,6 +416,88 @@ func main() {
 				}
 			})
 			return nil
+		},
+	})
+	app.Commands = append(app.Commands, &cli.Command{
+		Name:  "ipam",
+		Usage: "Interact with the ipam service",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "rebuild",
+				Usage: "Rebuild the IPAM service using the allocated ips and cidrs in nexodus database",
+				Action: func(cCtx *cli.Context) error {
+					ctx := cCtx.Context
+					withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
+						ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
+						if err := cmd.Rebuild(ctx, logger, db, ipam); err != nil {
+							log.Fatal(err)
+						}
+					})
+					return nil
+				},
+			},
+			{
+				Name:  "clear",
+				Usage: "Clear the IPAM db",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "ipam-db-host",
+						Value:   "postgres",
+						Usage:   "Database host name",
+						EnvVars: []string{"IPAM_DB_HOST"},
+					},
+					&cli.StringFlag{
+						Name:    "ipam-db-port",
+						Value:   "5432",
+						Usage:   "Database port",
+						EnvVars: []string{"IPAM_DB_PORT"},
+					},
+					&cli.StringFlag{
+						Name:    "ipam-db-user",
+						Value:   "ipam",
+						Usage:   "Database user",
+						EnvVars: []string{"IPAM_DB_USER"},
+					},
+					&cli.StringFlag{
+						Name:    "ipam-db-password",
+						Value:   "",
+						Usage:   "Database password",
+						EnvVars: []string{"IPAM_DB_PASSWORD"},
+					},
+					&cli.StringFlag{
+						Name:    "ipam-db-name",
+						Value:   "ipam",
+						Usage:   "Database name",
+						EnvVars: []string{"IPAM_DB_NAME"},
+					},
+					&cli.StringFlag{
+						Name:    "ipam-db-sslmode",
+						Value:   "disable",
+						Usage:   "Database ssl mode",
+						EnvVars: []string{"IPAM_DB_SSLMODE"},
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					ctx := cCtx.Context
+					ipamDB, _, err := database.NewDatabase(
+						ctx,
+						zap.NewNop().Sugar(),
+						cCtx.String("ipam-db-host"),
+						cCtx.String("ipam-db-user"),
+						cCtx.String("ipam-db-password"),
+						cCtx.String("ipam-db-name"),
+						cCtx.String("ipam-db-port"),
+						cCtx.String("ipam-db-sslmode"),
+					)
+					if err != nil {
+						log.Fatal(err)
+					}
+					if err := cmd.ClearIpamDB(ipamDB); err != nil {
+						log.Fatal(err)
+					}
+					return nil
+				},
+			},
 		},
 	})
 
