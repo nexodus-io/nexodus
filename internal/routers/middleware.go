@@ -26,7 +26,7 @@ var policy string
 var jwksCache = cache.NewMemoizeCache[string, string](time.Second*30, time.Second*5)
 
 // Naive JWS Key validation
-func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(*gin.Context), error) {
+func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodusJWKS string) (func(*gin.Context), error) {
 	query, err := rego.New(
 		rego.Query(`result = {
 			"authorized": data.token.valid_token,
@@ -34,6 +34,7 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			"user_id": data.token.user_id,
 			"user_name": data.token.user_name,
 			"full_name": data.token.full_name,
+			"token_payload": data.token.token_payload,
 		}`),
 		rego.Store(o.Store),
 		rego.Module("policy.rego", policy),
@@ -69,6 +70,7 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 		path := strings.Split(strings.TrimLeft(c.Request.URL.Path, "/"), "/")
 		input := map[string]interface{}{
 			"jwks":         keySet,
+			"nexodus_jwks": nexodusJWKS,
 			"access_token": parts[1],
 			"method":       c.Request.Method,
 			"path":         path,
@@ -140,6 +142,9 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			c.Abort()
 			return
 		}
+
+		claims := result["token_payload"].(map[string]interface{})
+		c.Set("_nexodus.Claims", claims)
 
 		c.Set(gin.AuthUserKey, userID)
 		if len(username) > 0 {

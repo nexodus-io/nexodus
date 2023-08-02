@@ -235,7 +235,7 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
                       providers:
-                        provider1:
+                        keycloak:
                           from_headers:
                             - name: Authorization
                               value_prefix: "Bearer "
@@ -251,11 +251,28 @@ static_resources:
                               timeout: 2s
                             cache_duration:
                               seconds: 300
+                        apiserver:
+                          from_headers:
+                            - name: Authorization
+                              value_prefix: "Bearer "
+                          forward: true
+                          payload_in_metadata: payload
+                          issuer: "${APIPROXY_API_URL}"
+                          remote_jwks:
+                            http_uri:
+                              uri: "${APIPROXY_API_URL}/device/certs"
+                              cluster: apiserver
+                              timeout: 2s
+                            cache_duration:
+                              seconds: 300
                       rules:
                         - match:
                             prefix: /api
                           requires:
-                            provider_name: provider1
+                            requires_any:
+                              requirements:
+                                - provider_name: keycloak
+                                - provider_name: apiserver
 
                   # This is needed to enable the rate limiter:
                   - name: envoy.filters.http.ratelimit

@@ -315,6 +315,12 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+		return
+	}
+
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		db = db.Where("organization_id = ?", orgId.String())
 		db = FilterAndPaginateWithQuery(db, &models.Device{}, c, query, "hostname")
@@ -323,6 +329,12 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
+		}
+
+		for i, device := range items {
+			if hideDeviceBearerToken(device, tokenClaims) {
+				items[i].BearerToken = ""
+			}
 		}
 		return items, nil
 	})
@@ -400,6 +412,18 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 		}
 		return
 	}
+
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+		return
+	}
+
+	// only show the device token when using the reg token that created the device.
+	if hideDeviceBearerToken(&device, tokenClaims) {
+		device.BearerToken = ""
+	}
+
 	c.JSON(http.StatusOK, device)
 }
 

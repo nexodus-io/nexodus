@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	redisStore "github.com/go-session/redis/v3"
 	"github.com/go-session/session/v3"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/nexodus-io/nexodus/internal/ipam/cmd"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -227,6 +229,18 @@ func main() {
 				Value:   1,
 				EnvVars: []string{"NEXAPI_REDIS_DB"},
 			},
+			&cli.StringFlag{
+				Name:     "tls-key",
+				Usage:    "the server tls private key",
+				Required: true,
+				EnvVars:  []string{"NEXAPI_TLS_KEY"},
+			},
+			&cli.StringFlag{
+				Name:     "url",
+				Usage:    "the server url",
+				Required: true,
+				EnvVars:  []string{"NEXAPI_URL"},
+			},
 		},
 
 		Action: func(cCtx *cli.Context) error {
@@ -309,6 +323,13 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+
+				tlsKey := cCtx.String("tls-key")
+				api.PrivateKey, err = jwt.ParseRSAPrivateKeyFromPEM([]byte(tlsKey))
+				if err != nil {
+					log.Fatal(fmt.Errorf("invalid tls-key: %w", err))
+				}
+				api.URL = cCtx.String("url")
 
 				router, err := routers.NewAPIRouter(ctx, routers.APIRouterOptions{
 					Logger:          logger.Sugar(),

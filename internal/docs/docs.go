@@ -1727,6 +1727,226 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/registration-tokens": {
+            "get": {
+                "description": "Lists all registration tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegistrationToken"
+                ],
+                "summary": "List RegistrationTokens",
+                "operationId": "ListRegistrationTokens",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RegistrationToken"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a RegistrationToken to an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegistrationToken"
+                ],
+                "summary": "Create a RegistrationToken",
+                "operationId": "CreateRegistrationToken",
+                "parameters": [
+                    {
+                        "description": "Add RegistrationToken",
+                        "name": "RegistrationToken",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddRegistrationToken"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.RegistrationToken"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registration-tokens/{token-id}": {
+            "get": {
+                "description": "Gets a RegistrationToken by RegistrationToken ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegistrationToken"
+                ],
+                "summary": "Get a RegistrationToken",
+                "operationId": "GetRegistrationToken",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RegistrationToken ID",
+                        "name": "token-id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing RegistrationToken",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegistrationToken"
+                ],
+                "summary": "Delete RegistrationToken",
+                "operationId": "DeleteRegistrationToken",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RegistrationToken ID",
+                        "name": "token-id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.RegistrationToken"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -1958,6 +2178,36 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "boolean"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/device/certs": {
+            "get": {
+                "description": "gets the jwks that can be used to verify JWTs created by this server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegistrationToken"
+                ],
+                "summary": "gets the jwks",
+                "operationId": "Certs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -2258,6 +2508,25 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AddRegistrationToken": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "description": "Expiration is optional, if set the registration token is only valid until the Expiration time.",
+                    "type": "string"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "single_use": {
+                    "description": "SingleUse only allows the registration token to be used once.",
+                    "type": "boolean"
+                }
+            }
+        },
         "models.AddSecurityGroup": {
             "type": "object",
             "properties": {
@@ -2316,6 +2585,10 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "bearer_token": {
+                    "description": "the token nexd should use to reconcile device state.",
+                    "type": "string"
                 },
                 "child_prefix": {
                     "type": "array",
@@ -2560,6 +2833,33 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RegistrationToken": {
+            "type": "object",
+            "properties": {
+                "bearer_token": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }

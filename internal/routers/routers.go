@@ -56,6 +56,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	device := r.Group("/device", loggerMiddleware)
 	{
 		device.POST("/login/start", o.DeviceFlow.DeviceStart)
+		device.GET("/certs", o.Api.Certs)
 	}
 	web := r.Group("/web", loggerMiddleware)
 	{
@@ -74,7 +75,12 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	private := r.Group("/api", loggerMiddleware)
 	{
 		api := o.Api
-		validateJWT, err := newValidateJWT(ctx, o)
+		nexodusJWKS, err := api.JSONWebKeySet()
+		if err != nil {
+			return nil, err
+		}
+
+		validateJWT, err := newValidateJWT(ctx, o, string(nexodusJWKS))
 		if err != nil {
 			return nil, err
 		}
@@ -95,6 +101,11 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.GET("/invitations/:invitation", api.GetInvitation)
 		private.POST("/invitations/:invitation/accept", api.AcceptInvitation)
 		private.DELETE("/invitations/:invitation", api.DeleteInvitation)
+		// Registration Tokens
+		private.GET("/registration-tokens", api.ListRegistrationTokens)
+		private.GET("/registration-tokens/:token-id", api.GetRegistrationToken)
+		private.POST("/registration-tokens", api.CreateRegistrationToken)
+		private.DELETE("/registration-tokens/:token-id", api.DeleteRegistrationToken)
 		// Devices
 		private.GET("/devices", api.ListDevices)
 		private.GET("/devices/:id", api.GetDevice)
@@ -147,7 +158,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	return r, nil
 }
 
-func newValidateJWT(ctx context.Context, o APIRouterOptions) (func(*gin.Context), error) {
+func newValidateJWT(ctx context.Context, o APIRouterOptions, nexodusJWKS string) (func(*gin.Context), error) {
 	if o.InsecureTLS {
 		transport := &http.Transport{
 			// #nosec -- G402: TLS InsecureSkipVerify set true.
@@ -175,7 +186,7 @@ func newValidateJWT(ctx context.Context, o APIRouterOptions) (func(*gin.Context)
 		return nil, err
 	}
 
-	return ValidateJWT(ctx, o, claims.JWKSUri)
+	return ValidateJWT(ctx, o, claims.JWKSUri, nexodusJWKS)
 }
 
 func newPrometheus() *ginprometheus.Prometheus {

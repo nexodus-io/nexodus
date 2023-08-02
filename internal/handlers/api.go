@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/rsa"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
@@ -46,6 +47,8 @@ type API struct {
 	sessionManager *session.Manager
 	fetchManager   fetchmgr.FetchManager
 	onlineTracker  *DeviceTracker
+	URL            string
+	PrivateKey     *rsa.PrivateKey
 }
 
 func NewAPI(

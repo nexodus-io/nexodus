@@ -12,7 +12,9 @@ package public
 
 // ModelsDevice struct for ModelsDevice
 type ModelsDevice struct {
-	AllowedIps              []string         `json:"allowed_ips,omitempty"`
+	AllowedIps []string `json:"allowed_ips,omitempty"`
+	// the token nexd should use to reconcile device state.
+	BearerToken             string           `json:"bearer_token,omitempty"`
 	ChildPrefix             []string         `json:"child_prefix,omitempty"`
 	Discovery               bool             `json:"discovery,omitempty"`
 	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`

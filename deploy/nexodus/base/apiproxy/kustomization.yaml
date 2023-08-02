@@ -6,6 +6,7 @@ configMapGenerator:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
       - APIPROXY_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
       - APIPROXY_API_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
+      - APIPROXY_API_URL=https://api.try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_DOMAIN=try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug

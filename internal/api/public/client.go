@@ -60,6 +60,8 @@ type APIClient struct {
 
 	OrganizationsApi *OrganizationsApiService
 
+	RegistrationTokenApi *RegistrationTokenApiService
+
 	SecurityGroupApi *SecurityGroupApiService
 
 	UsersApi *UsersApiService
@@ -86,6 +88,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.FFlagApi = (*FFlagApiService)(&c.common)
 	c.InvitationApi = (*InvitationApiService)(&c.common)
 	c.OrganizationsApi = (*OrganizationsApiService)(&c.common)
+	c.RegistrationTokenApi = (*RegistrationTokenApiService)(&c.common)
 	c.SecurityGroupApi = (*SecurityGroupApiService)(&c.common)
 	c.UsersApi = (*UsersApiService)(&c.common)
 
