@@ -8,6 +8,7 @@ configMapGenerator:
       - APIPROXY_API_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_DOMAIN=try.nexodus.127.0.0.1.nip.io
       - APIPROXY_WEB_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
+      - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug
     name: apiproxy
   - files:
       - files/envoy.yaml
