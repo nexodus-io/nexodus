@@ -150,8 +150,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.String("username"),
 		cCtx.String("password"),
 		cCtx.Int("listen-port"),
-		cCtx.String("public-key"),
-		cCtx.String("private-key"),
 		cCtx.String("request-ip"),
 		cCtx.String("local-endpoint-ip"),
 		childPrefix,
@@ -319,22 +317,6 @@ func main() {
 			},
 		},
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "public-key",
-				Value:    "",
-				Usage:    "Base64 encoded public `key` for the local host - agent generates keys by default",
-				EnvVars:  []string{"NEXD_PUB_KEY"},
-				Required: false,
-				Category: wireguardOptions,
-			},
-			&cli.StringFlag{
-				Name:     "private-key",
-				Value:    "",
-				Usage:    "Base64 encoded private `key` for the local host (dev purposes only - soon to be removed)",
-				EnvVars:  []string{"NEXD_PRIVATE_KEY"},
-				Required: false,
-				Category: wireguardOptions,
-			},
 			&cli.IntFlag{
 				Name:     "listen-port",
 				Value:    0,

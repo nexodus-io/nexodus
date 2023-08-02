@@ -8,7 +8,7 @@ import (
 )
 
 // handleKeys will look for an existing key pair, if a pair is not found this method
-// will generate a new pair and write them to location on the disk depending on the OS
+// will generate a new pair and store them in the nexd persistent state
 func (nx *Nexodus) handleKeys() error {
 
 	err := nx.stateStore.Load()
