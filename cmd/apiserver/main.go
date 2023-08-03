@@ -419,8 +419,10 @@ func main() {
 		},
 	})
 	app.Commands = append(app.Commands, &cli.Command{
-		Name:  "ipam",
-		Usage: "Interact with the ipam service",
+		Name: "ipam",
+		// only show this sub command if your in debug mode.
+		Hidden: os.Getenv("NEXAPI_DEBUG") != "true",
+		Usage:  "Interact with the ipam service",
 		Subcommands: []*cli.Command{
 			{
 				Name:  "rebuild",
@@ -479,22 +481,25 @@ func main() {
 				},
 				Action: func(cCtx *cli.Context) error {
 					ctx := cCtx.Context
-					ipamDB, _, err := database.NewDatabase(
-						ctx,
-						zap.NewNop().Sugar(),
-						cCtx.String("ipam-db-host"),
-						cCtx.String("ipam-db-user"),
-						cCtx.String("ipam-db-password"),
-						cCtx.String("ipam-db-name"),
-						cCtx.String("ipam-db-port"),
-						cCtx.String("ipam-db-sslmode"),
-					)
-					if err != nil {
-						log.Fatal(err)
-					}
-					if err := cmd.ClearIpamDB(ipamDB); err != nil {
-						log.Fatal(err)
-					}
+					withLogger(cCtx, func(logger *zap.Logger) {
+						log := logger.Sugar()
+						ipamDB, _, err := database.NewDatabase(
+							ctx,
+							log,
+							cCtx.String("ipam-db-host"),
+							cCtx.String("ipam-db-user"),
+							cCtx.String("ipam-db-password"),
+							cCtx.String("ipam-db-name"),
+							cCtx.String("ipam-db-port"),
+							cCtx.String("ipam-db-sslmode"),
+						)
+						if err != nil {
+							log.Fatal(err)
+						}
+						if err := cmd.ClearIpamDB(log, ipamDB); err != nil {
+							log.Fatal(err)
+						}
+					})
 					return nil
 				},
 			},
@@ -506,8 +511,7 @@ func main() {
 	}
 }
 
-func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
-
+func withLogger(cCtx *cli.Context, f func(logger *zap.Logger)) {
 	var logger *zap.Logger
 	var err error
 	// set the log level
@@ -521,32 +525,36 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 	if err != nil {
 		log.Fatal(err)
 	}
+	f(logger)
+}
+func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
+	withLogger(cCtx, func(logger *zap.Logger) {
+		cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
+		defer func() {
+			if cleanup == nil {
+				return
+			}
+			if err := cleanup(ctx); err != nil {
+				logger.Error(err.Error())
+			}
+		}()
 
-	cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
-	defer func() {
-		if cleanup == nil {
-			return
+		db, dsn, err := database.NewDatabase(
+			ctx,
+			logger.Sugar(),
+			cCtx.String("db-host"),
+			cCtx.String("db-user"),
+			cCtx.String("db-password"),
+			cCtx.String("db-name"),
+			cCtx.String("db-port"),
+			cCtx.String("db-sslmode"),
+		)
+		if err != nil {
+			log.Fatal(err)
 		}
-		if err := cleanup(ctx); err != nil {
-			logger.Error(err.Error())
-		}
-	}()
 
-	db, dsn, err := database.NewDatabase(
-		ctx,
-		logger.Sugar(),
-		cCtx.String("db-host"),
-		cCtx.String("db-user"),
-		cCtx.String("db-password"),
-		cCtx.String("db-name"),
-		cCtx.String("db-port"),
-		cCtx.String("db-sslmode"),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	f(logger, db, dsn)
+		f(logger, db, dsn)
+	})
 }
 
 func initTracer(logger *zap.SugaredLogger, insecure bool, collector string) func(context.Context) error {
