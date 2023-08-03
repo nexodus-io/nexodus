@@ -59,6 +59,21 @@ func (i *IPAM) DeleteNamespace(parent context.Context, namespace uuid.UUID) erro
 	return err
 }
 
+func (i *IPAM) AcquireIP(parent context.Context, namespace uuid.UUID, ipamPrefix string, TunnelIP string) error {
+	ctx, span := tracer.Start(parent, "AssignSpecificTunnelIP")
+	defer span.End()
+	if err := validateIP(TunnelIP); err != nil {
+		return fmt.Errorf("Address %s is not valid", TunnelIP)
+	}
+	ns := uuidToNamespace(namespace)
+	_, err := i.client.AcquireIP(ctx, connect.NewRequest(&apiv1.AcquireIPRequest{
+		PrefixCidr: ipamPrefix,
+		Ip:         &TunnelIP,
+		Namespace:  &ns,
+	}))
+	return err
+}
+
 func (i *IPAM) AssignSpecificTunnelIP(parent context.Context, namespace uuid.UUID, ipamPrefix string, TunnelIP string) (string, error) {
 	ctx, span := tracer.Start(parent, "AssignSpecificTunnelIP")
 	defer span.End()
