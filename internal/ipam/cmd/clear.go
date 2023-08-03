@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
-func ClearIpamDB(ipamDB *gorm.DB) error {
+func ClearIpamDB(log *zap.SugaredLogger, ipamDB *gorm.DB) error {
 	type Table struct {
 		TableName string `json:"table_name"`
 	}
+	ipamDB = ipamDB.Debug()
 	tables := []Table{}
 	res := ipamDB.Raw(`SELECT table_name FROM information_schema.tables WHERE table_schema='public'`).Find(&tables)
 	if res.Error != nil {

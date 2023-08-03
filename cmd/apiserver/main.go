@@ -419,8 +419,10 @@ func main() {
 		},
 	})
 	app.Commands = append(app.Commands, &cli.Command{
-		Name:  "ipam",
-		Usage: "Interact with the ipam service",
+		Name: "ipam",
+		// only show this sub command if your in debug mode.
+		Hidden: os.Getenv("NEXAPI_DEBUG") != "true",
+		Usage:  "Interact with the ipam service",
 		Subcommands: []*cli.Command{
 			{
 				Name:  "rebuild",
@@ -479,9 +481,10 @@ func main() {
 				},
 				Action: func(cCtx *cli.Context) error {
 					ctx := cCtx.Context
+					log := getLogger(cCtx).Sugar()
 					ipamDB, _, err := database.NewDatabase(
 						ctx,
-						zap.NewNop().Sugar(),
+						log,
 						cCtx.String("ipam-db-host"),
 						cCtx.String("ipam-db-user"),
 						cCtx.String("ipam-db-password"),
@@ -492,7 +495,7 @@ func main() {
 					if err != nil {
 						log.Fatal(err)
 					}
-					if err := cmd.ClearIpamDB(ipamDB); err != nil {
+					if err := cmd.ClearIpamDB(log, ipamDB); err != nil {
 						log.Fatal(err)
 					}
 					return nil
@@ -506,8 +509,7 @@ func main() {
 	}
 }
 
-func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
-
+func getLogger(cCtx *cli.Context) *zap.Logger {
 	var logger *zap.Logger
 	var err error
 	// set the log level
@@ -521,7 +523,10 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	return logger
+}
+func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
+	logger := getLogger(cCtx)
 	cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
 	defer func() {
 		if cleanup == nil {
