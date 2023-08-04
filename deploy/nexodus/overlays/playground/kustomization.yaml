@@ -1,0 +1,154 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../released
+  - issuer.yaml
+  - sealed-secret.yaml
+  - serviceaccount.yaml
+components:
+  #  - ../../components/promtail
+  - ../../components/limitador
+namespace: nexodus-playground
+configMapGenerator:
+  - behavior: replace
+    literals:
+      - hostname=auth.playground.nexodus.io
+      - frontend-url=https://playground.nexodus.io
+    name: auth-config
+  - behavior: replace
+    files:
+      - files/nexodus.json
+    name: realm
+  #  - behavior: replace
+  #    files:
+  #      - files/promtail.yaml
+  #    name: promtail-config
+  - behavior: merge
+    literals:
+      - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
+      - APIPROXY_API_DOMAIN=api.playground.nexodus.io
+      - APIPROXY_WEB_DOMAIN=playground.nexodus.io
+      - APIPROXY_WEB_ORIGINS=https://playground.nexodus.io
+      - ENVOY_COMP_LOG_LEVEL=upstream:info,http:info,router:info,jwt:info
+    name: apiproxy
+  - behavior: merge
+    literals:
+      - NEXAPI_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
+      - NEXAPI_DOMAIN=api.playground.nexodus.io
+      - NEXAPI_REDIRECT_URL=https://playground.nexodus.io/#/login
+      - NEXAPI_ORIGINS=https://playground.nexodus.io
+      - NEXAPI_ENVIRONMENT=qa
+      - NEXAPI_DEBUG=0
+    name: apiserver
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.playground.nexodus.io
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.playground.nexodus.io
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: letsencrypt
+    target:
+      kind: Ingress
+      name: apiproxy
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: nexodus-serviceaccount
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: letsencrypt
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.playground.nexodus.io
+      - op: replace
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
+      - op: replace
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
+    target:
+      kind: Ingress
+      name: auth
+  - patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: auth.playground.nexodus.io
+      - op: replace
+        path: /spec/issuerRef/name
+        value: letsencrypt
+    target:
+      kind: Certificate
+      name: nexodus-auth-cert
+  - patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: playground.nexodus.io
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: playground.nexodus.io
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1issuer
+        value: letsencrypt
+    target:
+      kind: Ingress
+      name: frontend
+  - patch: |-
+      - op: add
+        path: /rules/1
+        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
+    target:
+      group: rbac.authorization.k8s.io
+      version: v1
+      kind: Role
+      name: promtail-role
+  - patch: |-
+      - op: replace
+        path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
+        value: 4Gi
+      - op: replace
+        path: /spec/instances/0/resources/limits/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/instances/0/resources/limits/memory
+        value: 2Gi
+    target:
+      kind: PostgresCluster
+      name: database
+  - patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+    target:
+      kind: Deployment
+      name: apiserver
+  - patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+    target:
+      kind: Deployment
+      name: frontend
+  - patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+    target:
+      kind: Deployment
+      name: ipam
