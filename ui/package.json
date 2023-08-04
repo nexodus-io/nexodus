@@ -43,8 +43,5 @@
     "vite-plugin-svgr": "^3.2.0",
     "vite-plugin-favicons-inject": "^2.2.0",
     "vite-tsconfig-paths": "^4.2.0"
-  },
-  "overrides": {
-    "minimist": ">=0.2.4"
   }
 }
