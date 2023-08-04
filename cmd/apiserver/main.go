@@ -446,13 +446,13 @@ func main() {
 						Name:    "ipam-db-host",
 						Value:   "postgres",
 						Usage:   "Database host name",
-						EnvVars: []string{"IPAM_DB_HOST"},
+						EnvVars: []string{"NEXAPI_DB_HOST"},
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-port",
 						Value:   "5432",
 						Usage:   "Database port",
-						EnvVars: []string{"IPAM_DB_PORT"},
+						EnvVars: []string{"NEXAPI_DB_PORT"},
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-user",
@@ -462,7 +462,7 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-password",
-						Value:   "",
+						Value:   "password",
 						Usage:   "Database password",
 						EnvVars: []string{"IPAM_DB_PASSWORD"},
 					},
