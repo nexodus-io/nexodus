@@ -49,7 +49,7 @@ There are additional arguments that can be passed via the Github Actions dispatc
 - Timeout in Minutes for the Deploy-QA Job: The job will time out after 90 minutes by default. Adjust this to a longer period in conjunction with the pause timer for long-running debugging sessions.
 - Containers Per Node: By default, it is 5 containers per node. If you specify a high number of containers you would likely want to bump the instance type to `t2.medium` or `t2.large`. This option is only available for the `qa-scale-containers` workflow.
 
-### Scale Test Attaching Containers Outside of CI
+### Scale Test Attaching Containers Outside of CI to QA Servers
 
 You can use the script [nexodus/hack/e2e-scripts/qa-container-scale.sh](../../hack/e2e-scripts/qa-container-scale.sh) to launch containers and attach them to a Nexodus api-server for scale testing.
 
@@ -60,7 +60,7 @@ Run the script with the following arguments.
 ```text
 git clone https://github.com/nexodus-io/nexodus.git
 cd nexodus/hack/e2e-scripts
-./qa-container-scale.sh -kc-password "<ADMIN_KEYCLOAK_PASSWORD>" -nexd-password "<PASS_CAN_BE_ANYTHING>" --nexd-count 3
+./qa-container-scale.sh --kc-password "<ADMIN_KEYCLOAK_PASSWORD>" --nexd-password "<PASS_CAN_BE_ANYTHING>" --nexd-count 3
 ```
 
 Connect to the containers after the script is run.
@@ -87,3 +87,15 @@ The script assumes the user can run docker by adding the current user to the doc
 sudo groupadd docker
 sudo usermod -aG docker $USER
 ```
+
+### Scale Testing Attaching to a KIND Deployment
+
+If you want to run scale testing via containers outside of CI similar to the last example but to a KIND server, you can use the  [nexodus/hack/e2e-scripts/qa-kind-container-scale.sh](../../hack/e2e-scripts/qa-kind-container-scale.sh)
+
+```text
+git clone https://github.com/nexodus-io/nexodus.git
+cd nexodus/hack/e2e-scripts
+/qa-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
+```
+
+The difference is this script adds the self-signed cert from the kind deployment, that is created with the `make ca-cert` in the KIND configuration. The cert has to be in the same directory as the script in a file named `rootCA.pem` in order to be copied to each container for import.

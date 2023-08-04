@@ -1,7 +1,6 @@
 #!/bin/bash
 # Usage:
-# qa-container-scale.sh --kc-password "<ADMIN_KEYCLOAK_PASSWORD>" --nexd-password "<PASS_CAN_BE_ANYTHING>" --nexd-count 3
-# Connect to the containers after the script is run:
+# /qa-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x# Connect to the containers after the script is run:
 # docker exec -it <CID> bash
 # Once on a container, verify connectivity:
 # nexctl nexd peers ping
@@ -12,9 +11,9 @@
 # sudo usermod -aG docker $USER
 
 # API Server URLs
-NEXODUS_API_SERVER="https://qa.nexodus.io" # example https://try.nexodus.io
-NEXODUS_AUTH_SERVER="https://auth.qa.nexodus.io" # example https://auth.try.nexodus.io
+CUSTOM_API_SERVER_IP=""
 NEXD_IMAGE="quay.io/nexodus/nexd" # example quay.io/nexodus/nexd-qa
+CUSTOM_CERT=false
 
 # Function to check for required tools
 check_requirements() {
@@ -41,6 +40,16 @@ launch_containers() {
             --sysctl net.ipv6.conf.all.forwarding=1 \
             $NEXD_IMAGE sleep 100000)
 
+    # Add the custom cert
+    docker exec $container_id mkdir /.certs/
+    docker cp rootCA.pem $container_id:/.certs/
+    docker exec $container_id chmod 0644 /.certs/rootCA.pem
+    docker exec $container_id sh -c "CAROOT=/.certs mkcert -install"
+
+    # Add the custom api-server IP
+    line="$CUSTOM_API_SERVER_IP auth.try.nexodus.127.0.0.1.nip.io api.try.nexodus.127.0.0.1.nip.io try.nexodus.127.0.0.1.nip.io"
+    echo "$line" | docker exec -i $container_id tee -a /etc/hosts
+
     docker cp nexd-init.sh $container_id:/
     docker exec $container_id chmod +x /nexd-init.sh
     docker exec $container_id sh -c "nohup sh ./nexd-init.sh > nexodus-logs.txt 2>&1 &"
@@ -51,12 +60,14 @@ launch_containers() {
 
 # Function to print help message
 print_help() {
-  echo "Usage: ./script.sh -kc-password <password> -nexd-password <password> --nexd-count <count>"
+  echo "Usage: ./script.sh -kc-password <password> -nexd-password <password> --nexd-count <count> [--custom-script]"
   echo ""
   echo "Arguments:"
-  echo "--kc-password <password>: The keycloak password for the kctool command."
-  echo "--nexd-password <password>: The user password for the nexd command."
+  echo "-nexd-user username."
+  echo "-nexd-password <password>: The user password for the nexd command."
   echo "--nexd-count <count>: The number of nexd containers to launch and attach to the api-server."
+  echo "--custom-cert: Enable custom modifications (modifying hosts and importing certs)."
+  echo "--api-server-ip <ip_address>: The IP address of the custom API server."
   echo "-help: Prints this help message."
   exit 1
 }
@@ -65,15 +76,15 @@ print_help() {
 check_requirements
 
 # Default passwords and count
-KC_PASSWORD=""
 NEXD_PASSWORD=""
 NEXD_COUNT=""
+NEXD_USER=""
 
 # Parse command line arguments
 while (( "$#" )); do
   case "$1" in
-    --kc-password)
-      KC_PASSWORD="$2"
+    --nexd-user)
+      NEXD_USER="$2"
       shift 2
       ;;
     --nexd-password)
@@ -84,6 +95,10 @@ while (( "$#" )); do
       NEXD_COUNT="$2"
       shift 2
       ;;
+    --api-server-ip)
+     CUSTOM_API_SERVER_IP="$2"
+     shift 2
+     ;;
     -help)
       print_help
       ;;
@@ -94,29 +109,22 @@ while (( "$#" )); do
   esac
 done
 
-# Check if passwords and container count were provided
-if [ -z "$KC_PASSWORD" ] || [ -z "$NEXD_PASSWORD" ] || [ -z "$NEXD_COUNT" ]; then
-    print_help
+# Check if username, password, api server IP and container count were provided
+if [ -z "$NEXD_USER" ] || [ -z "$NEXD_PASSWORD" ] || [ -z "$NEXD_COUNT" ] || [ -z "$CUSTOM_API_SERVER_IP" ]; then
+   print_help
 fi
 
-# Check if the directory exists
-if [ ! -d "kctool" ]; then
-  echo "kctool directory was not found. Please ensure you are running the script from the nexodus/hack/e2e-scripts/ directory"
+# Check if rootCA.pem exists
+if [ ! -f "rootCA.pem" ]; then
+  echo "rootCA.pem is required to run the script. Please ensure it's in the same directory as the script."
   exit 1
 fi
 
-pushd kctool
-go build -o kctool
-popd
-
-# The keycloak password is passed as an argument
-NEXD_USER=$(./kctool/kctool --create-user -ku admin -u qa -kp "$KC_PASSWORD" -p "$NEXD_PASSWORD" $NEXODUS_AUTH_SERVER)
-
 cat << EOF > nexd-init.sh
 #!/bin/sh
-echo "Running command: nexd  --service-url $NEXODUS_API_SERVER  --username <username> --password <password>" > nexodus-logs.txt
+echo "Running command: nexd  --service-url https://try.nexodus.127.0.0.1.nip.io  --username <username> --password <password>" > nexodus-logs.txt
 NEXD_LOGLEVEL=debug nexd \
---service-url '$NEXODUS_API_SERVER' \
+--service-url https://try.nexodus.127.0.0.1.nip.io \
 --username '$NEXD_USER' \
 --password '$NEXD_PASSWORD' 2>&1
 EOF
