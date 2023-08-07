@@ -497,6 +497,8 @@ clear-db:
 		" | make run-sql-apiserver $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=1 -n nexodus $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m
+	$(CMD_PREFIX) kubectl rollout restart statefulset redis -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status statefulset redis -n nexodus --timeout=5m
 
 ##@ Container Images
 
@@ -699,6 +701,8 @@ recreate-db: ## Delete and bring up a new nexodus database
 	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
 	$(CMD_PREFIX) OVERLAY=$(OVERLAY) make init-db
 	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
+	$(CMD_PREFIX) kubectl rollout restart statefulset redis -n nexodus $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) kubectl rollout status statefulset redis -n nexodus --timeout=5m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
