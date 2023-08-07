@@ -16,6 +16,14 @@ spec:
       containers:
         - name: redis
           image: redis:6.0
+          args: ["--maxmemory", "200mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+          resources:
+            limits:
+              cpu: 250m
+              memory: 250Mi
+            requests:
+              cpu: 250m
+              memory: 250Mi
           ports:
             - containerPort: 6379
               name: redis
@@ -39,17 +47,3 @@ spec:
               command:
                 - redis-cli
                 - ping
-          volumeMounts:
-            - name: redis-storage
-              mountPath: /data
-              subPath: data
-  volumeClaimTemplates:
-    - metadata:
-        name: redis-storage
-      spec:
-        volumeMode: Filesystem
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
