@@ -95,7 +95,15 @@ If you want to run scale testing via containers outside of CI similar to the las
 ```text
 git clone https://github.com/nexodus-io/nexodus.git
 cd nexodus/hack/e2e-scripts
-/qa-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
+/qa-kind-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
+```
+
+To use Podman as the container runtime, simply add the `--podman` flag.
+
+```text
+git clone https://github.com/nexodus-io/nexodus.git
+cd nexodus/hack/e2e-scripts
+/qa-kind-container-scale.sh --podman --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
 ```
 
 The difference is this script adds the self-signed cert from the kind deployment, that is created with the `make ca-cert` in the KIND configuration. The cert has to be in the same directory as the script in a file named `rootCA.pem` in order to be copied to each container for import.
