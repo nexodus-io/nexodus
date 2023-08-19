@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -269,8 +270,30 @@ func main() {
 				Name:  "router",
 				Usage: "Enable advertise-cidr function of the node agent to enable prefix forwarding.",
 				Action: func(cCtx *cli.Context) error {
+					if cCtx.Bool("exit-node") {
+						if runtime.GOOS != nexodus.Linux.String() {
+							return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
+						}
+					}
+					if cCtx.Bool("exit-node") {
+						// Check if a default route was specified in the child-prefix
+						childPrefixes := cCtx.StringSlice("child-prefix")
+						found := false
+						for _, prefix := range childPrefixes {
+							if prefix == "0.0.0.0/0" {
+								found = true
+								break
+							}
+						}
+						if !found {
+							// Update the child-prefixes to originate a default route if one was not specified
+							childPrefixes = append(childPrefixes, "0.0.0.0/0")
+							cCtx.Set("child-prefix", strings.Join(childPrefixes, ","))
+						}
+					}
 					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)
 				},
+
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
 						Name:     "advertise-cidr",
@@ -463,7 +486,7 @@ func main() {
 					return fmt.Errorf("--advertise-cidr is required for a device to be a network-router")
 				}
 			}
-			if c.Bool("exit-node") || c.Bool("exit-node-client") {
+			if c.Bool("exit-node-client") {
 				if runtime.GOOS != nexodus.Linux.String() {
 					return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
 				}
