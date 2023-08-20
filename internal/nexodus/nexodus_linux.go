@@ -94,14 +94,16 @@ func (nx *Nexodus) setupInterfaceOS() error {
 	}
 	defer util.IgnoreError(c.Close)
 
-	wgFwMark := 51820
+	fwMark := wgFwMark
+
 	err = c.ConfigureDevice(nx.tunnelIface, wgtypes.Config{
 		PrivateKey:   &privateKey,
 		ListenPort:   &listenPort,
 		ReplacePeers: true,
 		Peers:        nil,
-		FirewallMark: &wgFwMark,
+		FirewallMark: &fwMark,
 	})
+
 	if err != nil {
 		logger.Errorf("failed to start the wireguard listener: %v\n", err)
 		return fmt.Errorf("%w", interfaceErr)

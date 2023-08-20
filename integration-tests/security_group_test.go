@@ -27,11 +27,11 @@ import (
 // 1. The security group IDs for the nodes are verified present and org ID is gathered.
 // 2. This section will validate the default policy is allowing port traffic to ports.
 // 3. The second set will add a policy and verify the explicitly allowed ports are reachable.
-// 5. The next section will perform negative tests that will add a new policy and a netcat
+// 4. The next section will perform negative tests that will add a new policy and a netcat
 // listener will be put in place on a port that is not in the policy allow and verify that
 // connection is not permitted.
-// 6. Test scopes by creating a new user and performing negative tests.
-// 7. Validate security group creation and deletion.
+// 5. Test scopes by creating a new user and performing negative tests.
+// 6. Validate security group creation and deletion.
 func TestSecurityGroups(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)

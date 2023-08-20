@@ -18,7 +18,7 @@ func enableExitSrcValidMarkV4() error {
 // addExitSrcRuleToRPDB adds a rule to the routing policy database (RPDB) that says, If a packet does
 // not have the firewall mark 51820, look up the routing table 51820.
 func addExitSrcRuleToRPDB() error {
-	if _, err := RunCommand("ip", "-4", "rule", "add", "not", "fwmark", wgFwMark, "table", wgFwMark); err != nil {
+	if _, err := RunCommand("ip", "-4", "rule", "add", "not", "fwmark", wgFwMarkStr, "table", wgFwMarkStr); err != nil {
 		return fmt.Errorf("failed to add fwmark rule to RPDB: %w", err)
 	}
 
@@ -37,7 +37,7 @@ func addExitSrcRuleIgnorePrefixLength() error {
 
 // addExitSrcDefaultRouteTable adds a default route to the routing table 51820, which says that all traffic should be sent through wg0.
 func addExitSrcDefaultRouteTable() error {
-	if _, err := RunCommand("ip", "-4", "route", "add", "0.0.0.0/0", "dev", wgIface, "table", wgFwMark); err != nil {
+	if _, err := RunCommand("ip", "-4", "route", "add", "0.0.0.0/0", "dev", wgIface, "table", wgFwMarkStr); err != nil {
 		return fmt.Errorf("failed to add default route to routing table: %w", err)
 	}
 

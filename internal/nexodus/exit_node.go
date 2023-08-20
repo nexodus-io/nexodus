@@ -9,7 +9,8 @@ const (
 	oobDNS           = 53
 	oobHttps         = 443
 	oobGoogleStun    = 19302
-	wgFwMark         = "51820"
+	wgFwMark         = 51820
+	wgFwMarkStr      = "51820"
 	oobFwMark        = "19302"
 	oobFwdMarkHex    = "0x4B66"
 	nfExitNodeTable  = "nexodus-exit-node"
@@ -33,7 +34,7 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 					PublicKey:           deviceEntry.device.PublicKey,
 					Endpoint:            deviceEntry.device.EndpointLocalAddressIp4,
 					AllowedIPs:          deviceEntry.device.AllowedIps,
-					PersistentKeepAlive: "25",
+					PersistentKeepAlive: persistentKeepalive,
 				}
 			}
 		}
@@ -53,7 +54,7 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 		return err
 	}
 
-	devName, err := getInterfaceFromIP(nx.endpointLocalAddress)
+	devName, err := getInterfaceFromIPv4(nx.endpointLocalAddress)
 	if err != nil {
 		nx.logger.Debugf("failed to discover the interface with the address [ %s ] %v", nx.endpointLocalAddress, err)
 	}
@@ -152,7 +153,7 @@ func (nx *Nexodus) exitNodeOriginSetup() error {
 		return err
 	}
 
-	devName, err := getInterfaceFromIP(nx.endpointLocalAddress)
+	devName, err := getInterfaceFromIPv4(nx.endpointLocalAddress)
 	if err != nil {
 		nx.logger.Debugf("failed to discover the interface with the address [ %s ] %v", nx.endpointLocalAddress, err)
 	}
@@ -192,7 +193,7 @@ func (nx *Nexodus) exitNodeClientTeardown() error {
 	// TODO: this needs to be able to be set by nexctl but not for initial pre-deploy checks
 	// nx.exitNode.exitNodeClientEnabled = false
 
-	exitNodeRouteTables := []string{wgFwMark, oobFwMark}
+	exitNodeRouteTables := []string{wgFwMarkStr, oobFwMark}
 	for _, routeTable := range exitNodeRouteTables {
 		if err1 = flushExitSrcRouteTableOOB(routeTable); err1 != nil {
 			nx.logger.Debug(err1)

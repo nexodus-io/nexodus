@@ -210,7 +210,7 @@ func parseIPfromAddrPort(addrPort string) string {
 }
 
 // getInterfaceByIP returns the name of the interface that has the given IP address assigned to it.
-func getInterfaceFromIP(ip string) (string, error) {
+func getInterfaceFromIPv4(ip string) (string, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err

@@ -288,7 +288,10 @@ func main() {
 						if !found {
 							// Update the child-prefixes to originate a default route if one was not specified
 							childPrefixes = append(childPrefixes, "0.0.0.0/0")
-							cCtx.Set("child-prefix", strings.Join(childPrefixes, ","))
+							err := cCtx.Set("child-prefix", strings.Join(childPrefixes, ","))
+							if err != nil {
+								return fmt.Errorf("failed to set child-prefix: %w", err)
+							}
 						}
 					}
 					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)

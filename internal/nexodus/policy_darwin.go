@@ -2,7 +2,10 @@
 
 package nexodus
 
-import "go.uber.org/zap"
+import (
+	"fmt"
+	"go.uber.org/zap"
+)
 
 // ProcessSecurityGroup for darwin build purposes, policy currently unsupported on darwin
 func (nx *Nexodus) processSecurityGroupRules() error {
@@ -21,5 +24,5 @@ func runNftCmd(logger *zap.SugaredLogger, cmd []string) (string, error) {
 
 // nfTableDrop for Darwin build purposes
 func (nx *Nexodus) nfTableDrop(table string) error {
-	return nil
+	return fmt.Errorf("nft table drop method currently unsupported for darwin")
 }
