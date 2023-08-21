@@ -6,14 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/state"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/nexodus-io/nexodus/internal/models"
+	"github.com/nexodus-io/nexodus/internal/state"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 func TestBasicConnectivity(t *testing.T) {
@@ -825,7 +825,7 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(organizations[0].IpCidrV6)
 	require.NotEmpty(organizations[0].Description)
 
-	// verify nexd peers list
+	// validate nexctl nexd peers list does not throw any errors with no peers present
 	err = helper.peerListNexdDevices(ctx, node1)
 	require.NoError(err)
 
@@ -863,6 +863,15 @@ func TestNexctl(t *testing.T) {
 		"device", "list",
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+
+	// validate nexctl nexd peers list does not throw any errors with peers present
+	pListOut, err := helper.containerExec(ctx, node1, []string{"/bin/nexctl", "nexd", "peers", "list"})
+	require.NoError(err)
+	node2Eth0, err := node2.ContainerIP(ctx)
+	require.NoError(err)
+	require.Contains(pListOut, node2Eth0)
+	helper.Logf("nexctl nexd peer list output: %s", pListOut)
+
 	var devices []models.Device
 	err = json.Unmarshal([]byte(allDevices), &devices)
 	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)

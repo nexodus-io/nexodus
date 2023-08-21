@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
-
-	"encoding/json"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/urfave/cli/v2"
@@ -21,38 +21,7 @@ type WgListPeers struct {
 	Healthy         bool
 }
 
-func peerTableFields(cCtx *cli.Context) []TableField {
-	var fields []TableField
-	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
-	full := cCtx.Bool("full")
-	if full {
-		fields = append(fields, TableField{Header: "ENDPOINT", Field: "Endpoint"})
-	}
-	fields = append(fields, TableField{Header: "ALLOWED IPS", Field: "AllowedIPs"})
-	if full {
-		fields = append(fields, TableField{
-			Header: "LATEST HANDSHAKE",
-			Formatter: func(item interface{}) string {
-				peer := item.(WgListPeers)
-				handshakeTime, err := util.ParseTime(peer.LatestHandshake)
-				if err != nil {
-					log.Printf("Unable to parse LatestHandshake to time: %v", err)
-				}
-				handshake := "None"
-				if !handshakeTime.IsZero() {
-					secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
-					handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
-				}
-				return handshake
-			},
-		})
-		fields = append(fields, TableField{Header: "TRANSMITTED", Field: "Tx"})
-		fields = append(fields, TableField{Header: "RECEIVED", Field: "Rx"})
-	}
-	fields = append(fields, TableField{Header: "HEALTHY", Field: ""})
-	return fields
-}
-
+// cmdListPeers get peer listings from nexd
 func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	var err error
 	var peers map[string]WgListPeers
@@ -70,6 +39,37 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 		return fmt.Errorf("Failed to marshall peer results: %w\n", err)
 	}
 
-	showOutput(cCtx, peerTableFields(cCtx), peers)
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		w := newTabWriter()
+		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+		if encodeOut != encodeNoHeader {
+			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
+		}
+
+		for _, peer := range peers {
+			tx := strconv.FormatInt(peer.Tx, 10)
+			rx := strconv.FormatInt(peer.Rx, 10)
+			handshakeTime, err := util.ParseTime(peer.LatestHandshake)
+			if err != nil {
+				log.Printf("Unable to parse LatestHandshake to time: %v", err)
+			}
+			handshake := "None"
+			if !handshakeTime.IsZero() {
+				secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
+				handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
+			}
+			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
+		}
+
+		w.Flush()
+
+		return nil
+	}
+
+	err = FormatOutput(encodeOut, peers)
+	if err != nil {
+		log.Fatalf("Failed to print output: %v", err)
+	}
+
 	return nil
 }
