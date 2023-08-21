@@ -343,7 +343,7 @@ dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt | dist
 
 .PHONY: e2e
 e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e verbose tests
-	gotestsum --format $(GOTESTSUM_FMT) -- \
+	CGO_ENABLED=1 gotestsum --format $(GOTESTSUM_FMT) -- \
 		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
 .PHONY: e2e-podman
