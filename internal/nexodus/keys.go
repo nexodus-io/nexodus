@@ -2,86 +2,68 @@ package nexodus
 
 import (
 	"fmt"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"os"
-	"runtime"
+	"strings"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"go.uber.org/zap"
 )
 
-// handleKeys will look for an existing key pair, if a pair is not found this method
-// will generate a new pair and store them in the nexd persistent state
-func (nx *Nexodus) handleKeys() error {
+// default key pair file locations (windows needs work)
+const (
+	workdirPublicKeyFile  = "public.key"
+	workdirPrivateKeyFile = "private.key"
+	linuxPublicKeyFile    = "/etc/wireguard/public.key"
+	linuxPrivateKeyFile   = "/etc/wireguard/private.key"
+	darwinPublicKeyFile   = "/usr/local/etc/wireguard/public.key"
+	darwinPrivateKeyFile  = "/usr/local/etc/wireguard/private.key"
+	windowsPublicKeyFile  = "C:/nexd/public.key"
+	windowsPrivateKeyFile = "C:/nexd/private.key"
+	publicKeyPermissions  = 0644
+	privateKeyPermissions = 0600
+)
 
-	err := nx.stateStore.Load()
+// generateKeyPair a key pair and write them to disk
+func (ax *Nexodus) generateKeyPair(publicKeyFile, privateKeyFile string) error {
+
+	privateKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
-		return err
-	}
-	state := nx.stateStore.State()
-
-	if state.PublicKey != "" && state.PrivateKey != "" {
-		nx.logger.Infof("Existing key pair found in [ %s ]", nx.stateStore)
-	} else {
-		nx.logger.Infof("No existing public/private key pair found, generating a new pair")
-		wgKey, err := wgtypes.GeneratePrivateKey()
-		if err != nil {
-			return fmt.Errorf("failed to generate private key: %w", err)
-		}
-		state.PublicKey = wgKey.PublicKey().String()
-		state.PrivateKey = wgKey.String()
-
-		err = nx.stateStore.Store()
-		if err != nil {
-			return fmt.Errorf("failed store the keys: %w", err)
-		}
-		nx.logger.Debugf("New keys were written to [ %s ]", nx.stateStore)
+		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	nx.wireguardPubKey = state.PublicKey
-	nx.wireguardPvtKey = state.PrivateKey
+	ax.wireguardPubKey = privateKey.PublicKey().String()
+	ax.wireguardPvtKey = privateKey.String()
+
+	// TODO remove this debug statement at some point
+	ax.logger.Debugf("Public Key [ %s ] Private Key [ %s ]", ax.wireguardPubKey, ax.wireguardPvtKey)
+	// write the new keys to disk
+	WriteToFile(ax.logger, ax.wireguardPubKey, publicKeyFile, publicKeyPermissions)
+	WriteToFile(ax.logger, ax.wireguardPvtKey, privateKeyFile, privateKeyPermissions)
+
 	return nil
-
 }
 
-// loadLegacyKeys should not be needed after everyone has upgraded to the latest nexd.
-func (nx *Nexodus) loadLegacyKeys() (string, string, error) {
-
-	oldPubKeyFile := "public.key"
-	oldPrivKeyFile := "private.key"
-	if !nx.userspaceMode {
-		switch runtime.GOOS {
-		case "darwin":
-			oldPubKeyFile = "/usr/local/etc/wireguard/public.key"
-			oldPrivKeyFile = "/usr/local/etc/wireguard/private.key"
-		case "windows":
-			oldPubKeyFile = "C:/nexd/public.key"
-			oldPrivKeyFile = "C:/nexd/private.key"
-		case "linux":
-			oldPubKeyFile = "/etc/wireguard/public.key"
-			oldPrivKeyFile = "/etc/wireguard/private.key"
-		}
+// readKeyFile reads the contents of a key file
+func readKeyFile(logger *zap.SugaredLogger, keyFile string) string {
+	if !FileExists(keyFile) {
+		return ""
 	}
-
-	// skip if the old key files don't exist
-	if !(canReadFile(oldPubKeyFile) && canReadFile(oldPrivKeyFile)) {
-		return "", "", nil
-	}
-
-	publicKey, err := os.ReadFile(oldPubKeyFile)
+	key, err := readKeyFileToString(keyFile)
 	if err != nil {
-		return "", "", err
+		logger.Debugf("unable to read key file: %v", err)
+		return ""
 	}
 
-	privateKey, err := os.ReadFile(oldPrivKeyFile)
-	if err != nil {
-		return "", "", err
-	}
-
-	return string(privateKey), string(publicKey), nil
+	return key
 }
 
-func canReadFile(name string) bool {
-	info, err := os.Stat(name)
-	if err != nil || info.IsDir() {
-		return false
+// readKeyFileToString reads the key file and strips any newline chars that create wireguard issues
+func readKeyFileToString(s string) (string, error) {
+	buf, err := os.ReadFile(s)
+	if err != nil {
+		return "", fmt.Errorf("unable to read file: %w", err)
 	}
-	return true
+	rawStr := string(buf)
+	return strings.Replace(rawStr, "\n", "", -1), nil
 }

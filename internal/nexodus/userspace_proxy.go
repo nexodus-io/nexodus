@@ -1,19 +1,23 @@
 package nexodus
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/state"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/bytedance/gopkg/util/logger"
+
+	atomicFile "github.com/natefinch/atomic"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
@@ -99,12 +103,32 @@ func (nx *Nexodus) UserspaceProxyRemove(cmpProxy ProxyRule) (*UsProxy, error) {
 	return nil, fmt.Errorf("no matching %s proxy rule found: %s", cmpProxy.ruleType, cmpProxy)
 }
 
+type ProxyRulesConfig struct {
+	Egress  []string `json:"egress"`
+	Ingress []string `json:"ingress"`
+}
+
 func (nx *Nexodus) LoadProxyRules() error {
-	err := nx.stateStore.Load()
+
+	fileName := filepath.Join(nx.stateDir, "proxy-rules.json")
+	// don't load if file does not exist...
+	if _, err := os.Stat(fileName); err != nil {
+		return nil
+	}
+
+	file, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
-	rules := nx.stateStore.State().ProxyRulesConfig
+	defer func() {
+		_ = file.Close()
+	}()
+
+	rules := ProxyRulesConfig{}
+	err = json.NewDecoder(file).Decode(&rules)
+	if err != nil {
+		return err
+	}
 
 	parseAndAdd := func(rules []string, proxyType ProxyType) error {
 		for _, r := range rules {
@@ -138,7 +162,7 @@ func (nx *Nexodus) StoreProxyRules() error {
 	nx.proxyLock.Lock()
 	defer nx.proxyLock.Unlock()
 
-	rules := state.ProxyRulesConfig{}
+	rules := ProxyRulesConfig{}
 	for _, proxy := range nx.proxies {
 		proxy.mu.Lock()
 		for _, rule := range proxy.rules {
@@ -153,8 +177,18 @@ func (nx *Nexodus) StoreProxyRules() error {
 		proxy.mu.Unlock()
 	}
 
-	nx.stateStore.State().ProxyRulesConfig = rules
-	return nx.stateStore.Store()
+	buf := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(buf)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(rules)
+	if err != nil {
+		return err
+	}
+	err = atomicFile.WriteFile(filepath.Join(nx.stateDir, "proxy-rules.json"), buf)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (proxy *UsProxy) Start(ctx context.Context, wg *sync.WaitGroup, net *netstack.Net) {

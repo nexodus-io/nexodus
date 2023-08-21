@@ -3,11 +3,8 @@ package nexodus
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/state"
-	"golang.org/x/oauth2"
 	"net"
 	"net/http"
 	"net/netip"
@@ -45,6 +42,7 @@ const (
 	wgIface            = "wg0"
 	WgWindowsConfPath  = "C:/nexd/"
 	wgOrgIPv6PrefixLen = "64"
+	apiToken           = "apitoken.json"
 )
 
 const (
@@ -153,7 +151,7 @@ type Nexodus struct {
 	username      string
 	password      string
 	skipTlsVerify bool
-	stateStore    state.Store
+	stateDir      string
 	userspaceWG
 	informer     *public.ApiListDevicesInOrganizationInformer
 	informerStop context.CancelFunc
@@ -196,7 +194,6 @@ func NewNexodus(
 	insecureSkipTlsVerify bool,
 	version string,
 	userspaceMode bool,
-	stateStore state.Store,
 	stateDir string,
 	ctx context.Context,
 	orgId string,
@@ -238,7 +235,7 @@ func NewNexodus(
 		username:                username,
 		password:                password,
 		skipTlsVerify:           insecureSkipTlsVerify,
-		stateStore:              stateStore,
+		stateDir:                stateDir,
 		orgId:                   orgId,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
@@ -266,85 +263,12 @@ func NewNexodus(
 		ax.logger.Warn(err)
 	}
 
-	err = ax.migrateLegacyState(stateDir)
-	if err != nil {
-		return nil, err
-	}
-
 	return ax, nil
 }
 
 func (nx *Nexodus) SetStatus(status int, msg string) {
 	nx.statusMsg = msg
 	nx.status = status
-}
-
-type StateTokenStore struct {
-	store state.Store
-}
-
-func (s StateTokenStore) Load() (*oauth2.Token, error) {
-	err := s.store.Load()
-	if err != nil {
-		return nil, err
-	}
-	return s.store.State().AuthToken, nil
-}
-
-func (s StateTokenStore) Store(token *oauth2.Token) error {
-	s.store.State().AuthToken = token
-	return s.store.Store()
-}
-
-var _ client.TokenStore = StateTokenStore{}
-
-func (nx *Nexodus) migrateLegacyState(stateDir string) error {
-	err := nx.stateStore.Load()
-	if err != nil {
-		return err
-	}
-
-	s := nx.stateStore.State()
-	if s.PublicKey == "" || s.PrivateKey == "" {
-		// We used to store the keys in a different location
-		// migrate them to the state store
-		s.PrivateKey, s.PublicKey, err = nx.loadLegacyKeys()
-		if err != nil {
-			return err
-		}
-	}
-
-	if s.AuthToken == nil {
-		legacyApitokenFile := filepath.Join(stateDir, "apitoken.json")
-		if _, err = os.Stat(legacyApitokenFile); err == nil {
-			data, err := os.ReadFile(legacyApitokenFile)
-			if err != nil {
-				return err
-			}
-			token := oauth2.Token{}
-			err = json.Unmarshal(data, &token)
-			if err != nil {
-				return err
-			}
-			s.AuthToken = &token
-			_ = os.Remove(legacyApitokenFile)
-		}
-	}
-
-	legacyRulesFile := filepath.Join(stateDir, "proxy-rules.json")
-	if _, err = os.Stat(legacyRulesFile); err == nil {
-		data, err := os.ReadFile(legacyRulesFile)
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(data, &s.ProxyRulesConfig)
-		if err != nil {
-			return err
-		}
-		_ = os.Remove(legacyRulesFile)
-	}
-
-	return nx.stateStore.Store()
 }
 
 func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
@@ -356,6 +280,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.proxyLock.Lock()
 	defer nx.proxyLock.Unlock()
 
+	var err error
 	if err := nx.CtlServerStart(ctx, wg); err != nil {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
@@ -367,8 +292,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	var options []client.Option
-	if nx.stateStore != nil {
-		options = append(options, client.WithTokenStore(StateTokenStore{store: nx.stateStore}))
+	if nx.stateDir != "" {
+		options = append(options, client.WithTokenFile(filepath.Join(nx.stateDir, apiToken)))
 	}
 	if nx.username == "" {
 		options = append(options, client.WithDeviceFlow())
@@ -390,7 +315,6 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}))
 	}
 
-	var err error
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
 			nx.SetStatus(NexdStatusAuth, msg)
@@ -420,7 +344,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			} else if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) {
-				nx.logger.Errorf("The nexodus token stored in %s is not valid for the api-server, you can remove the file and try again: %v", nx.stateStore, err)
+				nx.logger.Errorf("The nexodus token stored in %s/%s is not valid for the api-server, you can remove the file and try again: %v", nx.stateDir, apiToken, err)
 				return err
 			} else {
 				nx.logger.Warnf("get user error - retrying error: %v", err)

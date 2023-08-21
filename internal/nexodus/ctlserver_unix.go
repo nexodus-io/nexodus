@@ -8,6 +8,7 @@ import (
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -22,7 +23,10 @@ func (nx *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error
 
 func (nx *Nexodus) createListener() (*net.UnixListener, error) {
 	socketPath := api.UnixSocketPath
-	_ = os.Remove(socketPath)
+	if nx.userspaceMode {
+		socketPath = filepath.Base(socketPath)
+	}
+	os.Remove(socketPath)
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
 	if err != nil {
 		nx.logger.Error("Error creating unix socket: ", err)

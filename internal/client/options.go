@@ -2,7 +2,6 @@ package client
 
 import (
 	"crypto/tls"
-	"golang.org/x/oauth2"
 )
 
 type options struct {
@@ -10,13 +9,8 @@ type options struct {
 	clientSecret string
 	username     string
 	password     string
-	tokenStore   TokenStore
+	tokenFile    string
 	tlsConfig    *tls.Config
-}
-
-type TokenStore interface {
-	Load() (*oauth2.Token, error)
-	Store(*oauth2.Token) error
 }
 
 func newOptions(opts ...Option) (*options, error) {
@@ -59,11 +53,11 @@ func WithDeviceFlow() Option {
 	}
 }
 
-func WithTokenStore(
-	tokenStore TokenStore,
+func WithTokenFile(
+	file string,
 ) Option {
 	return func(o *options) error {
-		o.tokenStore = tokenStore
+		o.tokenFile = file
 		return nil
 	}
 }
