@@ -7,8 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"io"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -39,10 +37,8 @@ const (
 
 type Helper struct {
 	*testing.T
-	require    *require.Assertions
-	assert     *assert.Assertions
-	kubeConfig *rest.Config
-	kubeClient *kubernetes.Clientset
+	require *require.Assertions
+	assert  *assert.Assertions
 }
 
 func NewHelper(t *testing.T) *Helper {

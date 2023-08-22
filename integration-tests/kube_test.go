@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration && kubernetes
 
 package integration_tests
 
@@ -272,25 +272,18 @@ func (h *Helper) getPodAndTunnelIP(ctx context.Context, client *kubernetes.Clien
 }
 
 func (h *Helper) getKubeConfig() *rest.Config {
-	if h.kubeConfig == nil {
-		// create a kube client..
-		c, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-		h.require.NoError(err)
-		clientConfig := clientcmd.NewDefaultClientConfig(*c, nil)
-		config, err := clientConfig.ClientConfig()
-		h.require.NoError(err)
-		h.kubeConfig = config
-	}
-	return h.kubeConfig
+	c, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	h.require.NoError(err)
+	clientConfig := clientcmd.NewDefaultClientConfig(*c, nil)
+	config, err := clientConfig.ClientConfig()
+	h.require.NoError(err)
+	return config
 }
 
 func (h *Helper) getKubeClient() *kubernetes.Clientset {
-	if h.kubeClient == nil {
-		client, err := kubernetes.NewForConfig(h.getKubeConfig())
-		h.require.NoError(err)
-		h.kubeClient = client
-	}
-	return h.kubeClient
+	client, err := kubernetes.NewForConfig(h.getKubeConfig())
+	h.require.NoError(err)
+	return client
 }
 
 func (h *Helper) createKubeCACerts(ctx context.Context, namespace string) {
