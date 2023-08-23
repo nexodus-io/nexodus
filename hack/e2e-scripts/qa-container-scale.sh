@@ -32,7 +32,7 @@ check_requirements() {
 launch_containers() {
   for i in $(seq 1 $1)
   do
-    container_id=$(docker run -d --network bridge \
+    container_id=$(docker run -l user=$2 -d --network bridge \
             --cap-add SYS_MODULE \
             --cap-add NET_ADMIN \
             --cap-add NET_RAW \
@@ -51,13 +51,14 @@ launch_containers() {
 
 # Function to print help message
 print_help() {
-  echo "Usage: ./script.sh -kc-password <password> -nexd-password <password> --nexd-count <count>"
+  echo "Usage: $0 --kc-password <password> --nexd-password <password> --nexd-count <count>"
   echo ""
   echo "Arguments:"
   echo "--kc-password <password>: The keycloak password for the kctool command."
   echo "--nexd-password <password>: The user password for the nexd command."
   echo "--nexd-count <count>: The number of nexd containers to launch and attach to the api-server."
-  echo "-help: Prints this help message."
+  echo "-d |--deployment <deployment>: The deployment to use. Valid values are prod,qa and playground. Default is qa."
+  echo "-h |--help: Prints this help message."
   exit 1
 }
 
@@ -84,7 +85,22 @@ while (( "$#" )); do
       NEXD_COUNT="$2"
       shift 2
       ;;
-    -help)
+    --deployment|-d)
+      case "$2" in
+        "prod")
+           NEXODUS_API_SERVER="https://try.nexodus.io"
+           NEXODUS_AUTH_SERVER="https://auth.try.nexodus.io"
+           ;;
+        "playground")
+           NEXODUS_API_SERVER="https://playground.nexodus.io"
+           NEXODUS_AUTH_SERVER="https://auth.playground.nexodus.io"
+           ;;
+        *)
+           ;;
+      esac
+      shift 2
+      ;;
+    -h|--help)
       print_help
       ;;
     *)
@@ -122,4 +138,4 @@ NEXD_LOGLEVEL=debug nexd \
 EOF
 
 # Call the function to launch containers and attach the nodes to the api-server
-launch_containers $NEXD_COUNT
+launch_containers $NEXD_COUNT $NEXD_USER
