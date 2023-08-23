@@ -1,9 +1,12 @@
+//go:build kubernetes
+
 package kstore
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/state"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +33,22 @@ type store struct {
 }
 
 var _ state.Store = &store{}
+
+func NewIfInCluster() (state.Store, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		if !goerrors.Is(err, rest.ErrNotInCluster) {
+			return nil, fmt.Errorf("invalid kubernetes configuration: %v", err)
+		}
+	} else {
+		stateStore, err := New(config)
+		if err != nil {
+			return nil, fmt.Errorf("cannot store state in Kubernetes secrets: %v", err)
+		}
+		return stateStore, nil
+	}
+	return nil, nil
+}
 
 func New(config *rest.Config) (state.Store, error) {
 	client, err := kubernetes.NewForConfig(config)

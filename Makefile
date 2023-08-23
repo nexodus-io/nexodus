@@ -38,6 +38,9 @@ NEXODUS_BUILD_FLAGS:=
 ifneq ($(NEXODUS_PPROF),)
     NEXODUS_BUILD_FLAGS+=-tags pprof
 endif
+ifneq ($(NEXODUS_BUILD_TAGS),)
+	NEXODUS_BUILD_FLAGS+=-tags $(NEXODUS_BUILD_TAGS)
+endif
 
 SWAGGER_YAML:=internal/docs/swagger.yaml
 
