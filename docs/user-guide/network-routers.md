@@ -14,6 +14,16 @@ The situations where this can be useful are wide-ranging. They can span from con
 nexd router --child-prefix 192.168.100.0/24 --network-router
 ```
 
+- If you are running nexd in a container, additional capabilities need to be added to the container at runtime. Here is an example on how to start a container with IPv4/IPv6 forwarding capabilities enabled.
+
+```terminal
+docker run --rm -it --cap-add SYS_MODULE --cap-add NET_ADMIN --cap-add NET_RAW \
+--sysctl net.ipv4.ip_forward=1 \
+--sysctl net.ipv6.conf.all.disable_ipv6=0 \
+--sysctl net.ipv6.conf.all.forwarding=1 \
+quay.io/nexodus/nexd
+```
+
 ![no-alt-text](../images/network-router-simple-example-1.png)
 
 > **Note**
