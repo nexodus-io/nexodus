@@ -51,6 +51,7 @@ RUN dnf update -qy && \
     hostname \
     netcat \
     tmux \
+    wireguard-tools \
     && \
     dnf clean all -y &&\
     rm -rf /var/cache/yum
