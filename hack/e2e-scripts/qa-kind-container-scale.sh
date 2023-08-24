@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage:
-# /qa-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
+# /qa-kind-container-scale.sh  --nexd-user kitteh1 --nexd-password "floofykittens" --nexd-count 3 --api-server-ip x.x.x.x
 # Connect to the containers after the script is run:
 # $CONTAINER_RUNTIME exec -it <CID> bash
 # Once on a container, verify connectivity:
@@ -68,7 +68,7 @@ launch_containers() {
 
 # Function to print help message
 print_help() {
-  echo "Usage: ./script.sh -kc-password <password> -nexd-password <password> --nexd-count <count> [--custom-script]"
+  echo "Usage: $0 --kc-password <password> --nexd-password <password> --nexd-count <count> [--custom-script]"
   echo ""
   echo "Arguments:"
   echo "-nexd-user username."
@@ -76,7 +76,7 @@ print_help() {
   echo "--nexd-count <count>: The number of nexd containers to launch and attach to the api-server."
   echo "--custom-cert: Enable custom modifications (modifying hosts and importing certs)."
   echo "--api-server-ip <ip_address>: The IP address of the custom API server."
-  echo "-help: Prints this help message."
+  echo "-h | --help: Prints this help message."
   exit 1
 }
 
@@ -108,7 +108,7 @@ while (( "$#" )); do
       CONTAINER_RUNTIME="sudo podman"
       shift
       ;;
-    -help)
+    -h|--help)
       print_help
       ;;
     *)
