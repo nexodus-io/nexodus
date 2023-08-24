@@ -8,23 +8,23 @@ RUN mkdir /etc/apt/keyrings &&\
 RUN apt-get update -qy && \
     apt-get install --no-install-recommends -qy \
     ca-certificates \
-    iputils-ping \
+    conntrack \
+    curl \
+    docker.io \
+    gcc \
+    git \
     iproute2 \
     iptables \
-    net-tools \
-    traceroute \
-    tcpdump \
-    conntrack \
-    psmisc \
-    curl \
-    python3 \
-    make \
-    git \
-    gcc \
-    docker.io \
-    libc-dev \
-    yamllint \
+    iputils-ping \
     kubectl \
+    libc-dev \
+    make \
+    net-tools \
+    psmisc \
+    python3 \
+    tcpdump \
+    traceroute \
+    yamllint \
     && \
     apt-get clean
 
@@ -39,4 +39,3 @@ RUN cd /src &&\
     go mod download &&\
     cd / &&\
     rm -rf /src
-
