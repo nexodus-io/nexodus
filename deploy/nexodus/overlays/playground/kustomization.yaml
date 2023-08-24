@@ -19,6 +19,10 @@ configMapGenerator:
     files:
       - files/nexodus.json
     name: realm
+  - behavior: replace
+    files:
+      - files/limits.yaml
+    name: limitador-config
   #  - behavior: replace
   #    files:
   #      - files/promtail.yaml
