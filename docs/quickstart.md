@@ -52,6 +52,25 @@ Query the status of `nexd` and follow the instructions to register your device.
 sudo nexctl nexd status
 ```
 
+### Windows
+
+There are various ways for Windows to start processes and services with Powershell and an eventual nexodus agent GUI, but for testing Nexodus on a Windows device, the following is a simple method.
+
+- For Windows, you will need to install Wireguard from the official [Windows Wireguard](https://www.wireguard.com/install/) installer.
+- Download the [Windows x86-64](https://nexodus-io.s3.amazonaws.com/qa/nexodus-windows-amd64.zip) zip file containing the `nexd.exe` and `nexctl.exe` executables. For simplicity, move those two files to `C:\` (or into a directory in your $PATH).
+- In the start menu, type `cmd` and right-click on `Command Prompt` and `Run as Administrator`. Then, run the following in the command line and follow the URL to authenticate.
+
+```terminal
+C:\Users\Administrator> cd C:\
+C:\> nexd.exe
+Your device must be registered with Nexodus.
+Your one-time code is: LYNW-HKGO
+Please open the following URL in your browser to sign in:
+https://auth.try.nexodus.io/realms/nexodus/device?user_code=LYNW-HKGO
+```
+
+- You will now have an IP address on an interface named `wg0` and be peered with other Nexodus devices in the organization, which can be viewed by running `nexctl nexd peers list` in another window.
+
 ### Docker or Podman
 
 For testing purposes, you can run the Nexodus Agent in a container. The following command will start a container and launch a shell inside it.
