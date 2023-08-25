@@ -52,3 +52,7 @@ kubeconfigs/
 
 # site generated with mkdocs
 site/
+
+# scale test temp files
+hack/e2e-scripts/kctool/kctool
+hack/e2e-scripts/nexd-init.sh
