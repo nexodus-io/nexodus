@@ -3,21 +3,47 @@
 package nexodus
 
 import (
+	"bytes"
 	"fmt"
 	"net"
+	"os/exec"
+	"strings"
 
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 )
 
-// RouteExistsOS currently only used for windows build purposes
-func RouteExistsOS(s string) (bool, error) {
-	return false, nil
+// RouteExistsOS checks to see if a route exists for the specified prefix
+func RouteExistsOS(prefix string) (bool, error) {
+	if err := ValidateCIDR(prefix); err != nil {
+		return false, err
+	}
+
+	var output bytes.Buffer
+	var cmd *exec.Cmd
+
+	if util.IsIPv4Prefix(prefix) {
+		cmd = exec.Command("netsh", "interface", "ipv4", "show", "route")
+		cmd.Stdout = &output
+	}
+
+	if util.IsIPv6Prefix(prefix) {
+		cmd = exec.Command("netsh", "interface", "ipv6", "show", "route")
+		cmd.Stdout = &output
+	}
+
+	if err := cmd.Run(); err != nil {
+		return false, err
+	}
+
+	// Validate the IP we're expecting is in the output
+	return strings.Contains(output.String(), prefix), nil
 }
 
 // AddRoute adds a windows route to the specified interface
 func AddRoute(prefix, dev string) error {
 	// TODO: replace with powershell
-	_, err := RunCommand("netsh", "int", "ipv4", "add", "route", prefix, dev)
+	_, err := RunCommand("netsh", "interface", "ipv4", "add", "route", prefix, dev)
 	if err != nil {
 		return fmt.Errorf("no windows route added: %w", err)
 	}
@@ -51,7 +77,8 @@ func delLink(wgIface string) (err error) {
 
 // DeleteRoute deletes a windows route
 func DeleteRoute(prefix, dev string) error {
-	_, err := RunCommand("netsh", "int", "ipv4", "del", "route", prefix, dev)
+	// netsh interface ip delete route [prefix] [interface|*] [gateway]
+	_, err := RunCommand("netsh", "interface", "ipv4", "del", "route", prefix, dev)
 	if err != nil {
 		return fmt.Errorf("no route deleted: %w", err)
 	}
@@ -80,8 +107,17 @@ func prepOS(logger *zap.SugaredLogger) error {
 	return nil
 }
 
-// isIPv6Supported TODO: add support via powershell, netsh or ipconfig or any system check options if there are any
+// isIPv6Supported returns true if the platform supports IPv6
 func isIPv6Supported() bool {
-	// implmenet ipv4 only on Windows until this TODO is completed and tested (the rest of the functionality is in place)
-	return false
+	// Use netsh to check IPv6 status on interfaces
+	data, err := RunCommand("netsh", "interface", "ipv6", "show", "interfaces")
+	if err != nil {
+		return false
+	}
+
+	if strings.Contains(strings.ToLower(data), "disabled") {
+		return false
+	}
+
+	return true
 }
