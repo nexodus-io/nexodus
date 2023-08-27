@@ -1,0 +1,65 @@
+name: deb packaging and PPA push
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_and_upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts debhelper make
+
+      - name: Make binaries
+        run: |
+          make dist/nexctl-linux-arm64
+          make dist/nexctl-linux-amd64
+          make dist/nexd-linux-arm64
+          make dist/nexd-linux-amd64
+
+      - name: Import GPG key
+        run: |
+          echo "$PPA_GPG_PRIVATE_KEY" | gpg --batch --import -
+          echo "$PPA_GPG_PUBLIC_KEY" | gpg --batch --import -
+        env:
+          PPA_GPG_PRIVATE_KEY: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+          PPA_GPG_PUBLIC_KEY: ${{ secrets.PPA_GPG_PUBLIC_KEY }}
+
+      - name: Create symbolic link
+        run: ln -s contrib/debian debian
+
+      - name: Update changelog
+        run: |
+          FULL_DATE=$(date '+%a, %d %b %Y %H:%M:%S %z')
+          DATE=$(date '+%Y.%m.%d')
+          {
+            echo "nexodus ($DATE) jammy; urgency=medium";
+            echo "";
+            echo "  * Debian ppa/deb packaging.";
+            echo "";
+            echo " -- brentsalisbury <brent.salisbury@gmail.com>  $FULL_DATE";
+            echo "";
+          } > debian/changelog
+
+      - name: Build deb files
+        run: debuild -us -uc -S
+
+      - name: Sign and upload the deb file
+        run: |
+          export GPG_TTY
+          GPG_TTY=$(tty)
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+
+          DATE=$(date '+%Y.%m.%d')
+          debsign --re-sign -k brent.salisbury@gmail.com -p"gpg --batch --passphrase \"$PPA_GPG_PASSPHRASE\"" "../nexodus_${DATE}_source.changes"
+          dput -f ppa:nexodus/ppa "../nexodus_${DATE}_source.changes"
+        env:
+          PPA_GPG_PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}

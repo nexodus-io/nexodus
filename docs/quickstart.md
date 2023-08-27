@@ -52,6 +52,62 @@ Query the status of `nexd` and follow the instructions to register your device.
 sudo nexctl nexd status
 ```
 
+### Debian, Ubuntu Install with apt
+
+To install the Nexodus binaries using apt package management, first add the [Nexodus PPA](https://launchpad.net/~nexodus) repository and perform an apt-get update. The supported hardware architectures are AMD64 and ARM64.
+
+```shell
+sudo add-apt-repository ppa:nexodus/ppa
+sudo apt update
+```
+
+Next, install the Nexodus package.
+
+```shell
+sudo apt-get install nexodus
+```
+
+Now you can either connect using the nexd command or start the Nexodus systemd service. To simply execute the installed binary run `nexd` and follow the authentication instructions.
+
+```terminal
+$ nexd
+Your device must be registered with Nexodus.
+Your one-time code is: UWOJ-UEVS
+Please open the following URL in your browser to sign in:
+https://auth.try.nexodus.io/realms/nexodus/device?user_code=UWOJ-UEVS
+```
+
+Alternatively, to run Nexodus as a service, the necessary systemd service files are installed but not enabled. To enable and start the service, run the following.
+
+```shell
+sudo systemctl enable nexodus
+sudo systemctl start nexodus
+```
+
+After starting the Nexodus service, you can run `sudo nexctl nexd status` to view the one-time code and URL to login. The login URL can also be viewed in the service logs with `sudo journalctl -u nexodus -n 20`. Once you log in for the first time, the token is cached in `/var/lib/nexd/state.json`. If you were to stop and start the Nexodus service, the nexd binary or restart the host, you would not need to re-authenticate unless the token expired.
+
+```shell
+sudo nexctl nexd status
+Status: WaitingForAuth
+Your device must be registered with Nexodus.
+Your one-time code is: UWOJ-UEVS
+Please open the following URL in your browser to sign in:
+https://auth.try.nexodus.io/realms/nexodus/device?user_code=UWOJ-UEVS
+```
+
+To remove all binaries, service and files, stop the service and purge the package.
+
+```shell
+sudo systemctl stop nexodus
+sudo apt-get purge nexodus
+```
+
+If you prefer, you can download the deb files from the [Nexodus PPA](https://launchpad.net/~nexodus) repo and install using `dpkg`.
+
+```shell
+sudo dpkg -i ./nexodus_(version)_(arch).deb
+```
+
 ### Windows
 
 There are various ways for Windows to start processes and services with Powershell and an eventual nexodus agent GUI, but for testing Nexodus on a Windows device, the following is a simple method.
