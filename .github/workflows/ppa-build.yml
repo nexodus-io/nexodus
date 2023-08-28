@@ -53,13 +53,15 @@ jobs:
 
       - name: Sign and upload the deb file
         run: |
-          export GPG_TTY
-          GPG_TTY=$(tty)
+          set -ex
+          echo "Configuring gpg..."
           echo "use-agent" >> ~/.gnupg/gpg.conf
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-
           DATE=$(date '+%Y.%m.%d')
-          debsign --re-sign -k brent.salisbury@gmail.com -p"gpg --batch --passphrase \"$PPA_GPG_PASSPHRASE\"" "../nexodus_${DATE}_source.changes"
+          echo "Using DATE: $DATE"
+          echo "Running debsign..."
+          debsign --re-sign -k brent.salisbury@gmail.com -p "gpg --batch --passphrase $PPA_GPG_PASSPHRASE" "../nexodus_${DATE}_source.changes"
+          echo "Uploading with dput..."
           dput -f ppa:nexodus/ppa "../nexodus_${DATE}_source.changes"
         env:
           PPA_GPG_PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
