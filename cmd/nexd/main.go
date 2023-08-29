@@ -131,6 +131,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	if stateStore == nil {
 		stateStore = fstore.New(filepath.Join(stateDir, "state.json"))
 	}
+	defer util.IgnoreError(stateStore.Close)
 
 	nex, err := nexodus.NewNexodus(
 		logger.Sugar(),

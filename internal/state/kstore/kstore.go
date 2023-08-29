@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	goerrors "errors"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/state"
 	corev1 "k8s.io/api/core/v1"
@@ -35,22 +34,32 @@ type store struct {
 var _ state.Store = &store{}
 
 func NewIfInCluster() (state.Store, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		if !goerrors.Is(err, rest.ErrNotInCluster) {
-			return nil, fmt.Errorf("invalid kubernetes configuration: %v", err)
-		}
-	} else {
-		stateStore, err := New(config)
-		if err != nil {
-			return nil, fmt.Errorf("cannot store state in Kubernetes secrets: %v", err)
-		}
-		return stateStore, nil
+	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	if len(host) == 0 || len(port) == 0 {
+		fmt.Println("not in a kube cluster")
+		return nil, nil
 	}
-	return nil, nil
+
+	s, err := New()
+	if err != nil {
+		fmt.Println("error starting ipc", err)
+		return nil, fmt.Errorf("cannot store state in Kubernetes secrets: %v", err)
+	}
+
+	err = s.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
-func New(config *rest.Config) (state.Store, error) {
+func New() (state.Store, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -91,7 +100,7 @@ func New(config *rest.Config) (state.Store, error) {
 		name = refs[0].Name
 	}
 
-	s := &store{
+	return &store{
 		config:    config,
 		client:    client,
 		namespace: namespace,
@@ -101,13 +110,7 @@ func New(config *rest.Config) (state.Store, error) {
 			Name:            name,
 			OwnerReferences: refs,
 		},
-	}
-
-	err = s.Load()
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
+	}, nil
 }
 
 func findRootOwnerRef(ctx context.Context, client *dynamic.DynamicClient, namespace string, mapper meta.RESTMapper, refs []metav1.OwnerReference) []metav1.OwnerReference {
@@ -139,6 +142,10 @@ func findRootOwnerRef(ctx context.Context, client *dynamic.DynamicClient, namesp
 		return findRootOwnerRef(ctx, client, namespace, mapper, res.GetOwnerReferences())
 	}
 
+	return nil
+}
+
+func (s *store) Close() error {
 	return nil
 }
 

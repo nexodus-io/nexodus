@@ -21,6 +21,12 @@ RUN CGO_ENABLED=0 NOISY_BUILD=y \
     NEXODUS_LDFLAGS=-extldflags=-static \
     NEXODUS_PPROF=${NEXODUS_PPROF} \
     NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
+    make dist/nexd-kstore
+
+RUN CGO_ENABLED=0 NOISY_BUILD=y \
+    NEXODUS_LDFLAGS=-extldflags=-static \
+    NEXODUS_PPROF=${NEXODUS_PPROF} \
+    NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
     make dist/nexctl
 
 RUN CGO_ENABLED=0 go build \
@@ -58,6 +64,7 @@ RUN dnf update -qy && \
 
 COPY --chmod=755 ./hack/update-ca.sh /update-ca.sh
 COPY --chmod=755 --from=build /src/dist/nexd /bin/nexd
+COPY --chmod=755 --from=build /src/dist/nexd-kstore /bin/nexd-kstore
 COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
 COPY --chmod=755 --from=build /go/bin/wireguard /bin/nexd-wireguard-go

@@ -63,6 +63,8 @@ require (
 	k8s.io/client-go v0.27.4
 )
 
+require github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect

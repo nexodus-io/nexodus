@@ -65,14 +65,18 @@ apiserver: dist/apiserver dist/apiserver-pprof
 .PHONY: nexd
 nexd: dist/nexd dist/nexd-pprof dist/nexd-linux-arm dist/nexd-linux-arm64 dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64.exe ## Build the nexd binary for all architectures
 
+.PHONY: nexd-kstore
+nexd-kstore: dist/nexd-kstore ## Build the nexd-kstore binary
+
 .PHONY: nexctl
 nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-arm64 dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64.exe ## Build the nexctl binary for all architectures
 
 # Use go list to find all the go files that make up a binary.
-NEXD_DEPS:=     $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexd)
-NEXCTL_DEPS:=   $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexctl)
-APISERVER_DEPS:=$(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/apiserver)
-NEX_ALL_GO:=    $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./...)
+NEXD_DEPS:=       $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexd)
+NEXD_KSTORE_DEPS:=$(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexd-kstore)
+NEXCTL_DEPS:=     $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/nexctl)
+APISERVER_DEPS:=  $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./cmd/apiserver)
+NEX_ALL_GO:=      $(shell go list -deps -f '{{if (and .Module (eq .Module.Path "github.com/nexodus-io/nexodus"))}}{{$$dir := .Dir}}{{range .GoFiles}}{{$$dir}}/{{.}} {{end}}{{end}}' ./...)
 
 TAG=$(shell git rev-parse HEAD)
 
@@ -115,6 +119,12 @@ dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
 		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
+
+dist/nexd-kstore: $(NEXD_KSTORE_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 \
+		go build -tags kubernetes $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
+		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd-kstore
 
 dist/packages: \
 	dist/packages/nexodus-linux-amd64.tar.gz \

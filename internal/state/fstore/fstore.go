@@ -82,3 +82,7 @@ func (fs *store) Store() error {
 	}
 	return atomic.WriteFile(fs.File, buf)
 }
+
+func (fs *store) Close() error {
+	return nil
+}

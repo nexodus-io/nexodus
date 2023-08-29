@@ -1,4 +1,4 @@
-//go:build integration && kubernetes
+//go:build integration
 
 package integration_tests
 
