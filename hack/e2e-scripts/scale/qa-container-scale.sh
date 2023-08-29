@@ -116,17 +116,17 @@ if [ -z "$KC_PASSWORD" ] || [ -z "$NEXD_PASSWORD" ] || [ -z "$NEXD_COUNT" ]; the
 fi
 
 # Check if the directory exists
-if [ ! -d "kctool" ]; then
-  echo "kctool directory was not found. Please ensure you are running the script from the nexodus/hack/e2e-scripts/ directory"
+if [ ! -d "../kctool" ]; then
+  echo "kctool directory was not found. Please ensure you are running the script from the nexodus/hack/e2e-scripts/scale directory"
   exit 1
 fi
 
-pushd kctool
+pushd ../kctool
 go build -o kctool
 popd
 
 # The keycloak password is passed as an argument
-NEXD_USER=$(./kctool/kctool --create-user -ku admin -u qa -kp "$KC_PASSWORD" -p "$NEXD_PASSWORD" $NEXODUS_AUTH_SERVER)
+NEXD_USER=$(../kctool/kctool --create-user -ku admin -u qa -kp "$KC_PASSWORD" -p "$NEXD_PASSWORD" $NEXODUS_AUTH_SERVER)
 
 cat << EOF > nexd-init.sh
 #!/bin/sh
