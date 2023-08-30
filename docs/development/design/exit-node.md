@@ -21,7 +21,7 @@ nexd router --exit-node
 
 ### Exit Node Client
 
-- In order for a client to use the exit node, the user will need to explicitly subscribe to the exit node. Since exit nodes can be disruptive to the user's connection by tunneling all traffic to the exit node, it makes sense to have the extra step needed to explicitly join an exit node. The user can join via `nexctl` or via the web UI.
+- In order for a client to use the exit node, the user will need to explicitly subscribe to the exit node. Since exit nodes can be disruptive to the user's connection by tunneling all traffic to the exit node, it makes sense to have the extra step needed to explicitly join an exit node. The user can join via `nexctl`, via the web UI, or via a command-line argument to `nexd`.
 
 An example workflow of an agent node looks like the following (open to adding client to the command):
 
