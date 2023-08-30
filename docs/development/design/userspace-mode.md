@@ -39,7 +39,7 @@ Once the current mode has been moved under an `agent` subcommand, a new `proxy` 
 Only a subset of the flags used in `agent` mode apply to `proxy` mode. The following flags will not be present under the `proxy` mode:
 
 ```text
-   --child-prefix value [ --child-prefix value ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_CHILD_PREFIX]
+   --advertise-cidr value [ --advertise-cidr value ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_CHILD_PREFIX]
    --relay-node                                   Set if this node is to be the relay node for a hub and spoke scenarios (default: false) [$NEXD_RELAY_NODE]
    --discovery-node                               Set if this node is to be the discovery node for NAT traversal in an organization (default: false) [$NEXD_DISCOVERY_NODE]
    --relay-only                                   Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]

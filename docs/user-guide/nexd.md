@@ -17,13 +17,13 @@ USAGE:
 COMMANDS:
    version  Get the version of nexd
    proxy    Run nexd as an L4 proxy instead of creating a network interface
-   router   Enable child-prefix function of the node agent to enable prefix forwarding.
+   router   Enable advertise-cidr function of the node agent to enable prefix forwarding.
    relay    Enable relay and discovery support function for the node agent.
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --help, -h           Show help
-   --unix-socket value  Path to the unix socket nexd is listening against (default: "/Users/chirino/.nexodus/nexd.sock")
+   --unix-socket value  Path to the unix socket nexd is listening against (default: "~/.nexodus/nexd.sock")
 
    Agent Options
 
@@ -36,7 +36,7 @@ GLOBAL OPTIONS:
    --organization-id value                      Organization ID to use when registering with the nexodus service [$NEXD_ORG_ID]
    --password string                            Password string for accessing the nexodus service [$NEXD_PASSWORD]
    --service-url value                          URL to the Nexodus service (default: "https://try.nexodus.127.0.0.1.nip.io") [$NEXD_SERVICE_URL]
-   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'/Users/chirino/.nexodus' (default: "/Users/chirino/.nexodus") [$NEXD_STATE_DIR]
+   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'~/.nexodus' (default: "~/.nexodus") [$NEXD_STATE_DIR]
    --stun-server value [ --stun-server value ]  stun server to use discover our endpoint address.  At least two are required. [$NEXD_STUN_SERVER]
    --username string                            Username string for accessing the nexodus service [$NEXD_USERNAME]
 
@@ -67,16 +67,16 @@ OPTIONS:
 
 ```text
 NAME:
-   nexd router - Enable child-prefix function of the node agent to enable prefix forwarding.
+   nexd router - Enable advertise-cidr function of the node agent to enable prefix forwarding.
 
 USAGE:
    nexd router [command options] [arguments...]
 
 OPTIONS:
-   --child-prefix CIDR [ --child-prefix CIDR ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_CHILD_PREFIX]
-   --network-router                             Make the node a network router node that will forward traffic specified by --child-prefix through the physical interface that contains the default gateway (default: false) [$NEXD_NET_ROUTER_NODE]
-   --disable-nat                                disable NAT for the network router mode. This will require devices on the network to be configured with an ip route (default: false) [$NEXD_DISABLE_NAT]
-   --help, -h                                   Show help
+   --advertise-cidr CIDR [ --advertise-cidr CIDR ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_ADVERTISE_CIDR]
+   --network-router                                 Make the node a network router node that will forward traffic specified by --child-prefix through the physical interface that contains the default gateway (default: false) [$NEXD_NET_ROUTER_NODE]
+   --disable-nat                                    disable NAT for the network router mode. This will require devices on the network to be configured with an ip route (default: false) [$NEXD_DISABLE_NAT]
+   --help, -h                                       Show help
 ```
 
 #### nexd relay

@@ -21,10 +21,10 @@ This is a zero touch provisioning for the non-nexodus device since the edge nexd
 
 ```shell
 nexd --username admin --password floofykittens --service-url https://try.nexodus.127.0.0.1.nip.io \
-    router --child-prefix 192.168.100.0/24 --network-router  
+    router --advertise-cidr 192.168.100.0/24 --network-router  
 ```
 
-The child-prefix subnet specified will get distributed to all Nexodus peers. Those peers will get a route with a next hop of the Wireguard interface. In the following, you can view the child-prefix routes in the routing tables of nexd-node2 in the diagram.
+The advertise-cidr subnet specified will get distributed to all Nexodus peers. Those peers will get a route with a next hop of the Wireguard interface. In the following, you can view the advertise-cidr routes in the routing tables of nexd-node2 in the diagram.
 
 ```shell
 # Linux
@@ -74,10 +74,10 @@ sudo ip route add 100.100.0.0/16 via 192.168.100.5
 Start the daemon with the additional `--disable-nat` parameter:
 
 ```shell
-nexd  --username admin --password floofykittens router --child-prefix 192.168.100.0/24 --network-router --disable-nat  https://try.nexodus.127.0.0.1.nip.io
+nexd  --username admin --password floofykittens router --advertise-cidr 192.168.100.0/24 --network-router --disable-nat  https://try.nexodus.127.0.0.1.nip.io
 ```
 
-The child-prefix subnet specified will get distributed to all Nexodus peers. Those peers will get a route with a next hop of the Wireguard interface. In the following, you can view the child-prefix routes in the routing tables of nexd-node2 in the diagram.
+The advertise-cidr subnet specified will get distributed to all Nexodus peers. Those peers will get a route with a next hop of the Wireguard interface. In the following, you can view the advertise-cidr routes in the routing tables of nexd-node2 in the diagram.
 
 ```shell
 # Linux
@@ -112,7 +112,7 @@ table inet nexodus-net-router {
 
 ### Security Considerations
 
-- Since devices are forwarding traffic from non-nexodus devices, nexodus restricts the allowed traffic to the IP prefix specified in the `--child-prefix`. This prevents arbitrary hosts from gaining access to the nexodus device peers.
+- Since devices are forwarding traffic from non-nexodus devices, nexodus restricts the allowed traffic to the IP prefix specified in the `--advertise-cidr`. This prevents arbitrary hosts from gaining access to the nexodus device peers.
 - Additional compensating controls can be added via nexodus security groups to further restrict what traffic is permitted to be allowed in or out of the peerings from non-nexd devices.
 
 ## Future Enhancements
