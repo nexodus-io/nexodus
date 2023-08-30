@@ -577,7 +577,9 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				return
 			case <-stunTicker.C:
 				if err := nx.reconcileStun(modelsDevice.Id); err != nil {
-					nx.logger.Debug(err)
+					if nx.os != Windows.String() { // windows does not currently support reuse port or bpf
+						nx.logger.Debug(err)
+					}
 				}
 			case <-nx.informer.Changed():
 				nx.reconcileDevices(ctx, options)

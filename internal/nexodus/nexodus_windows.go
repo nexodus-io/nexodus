@@ -17,7 +17,6 @@ const (
 
 func (nx *Nexodus) setupInterfaceOS() error {
 
-	logger := nx.logger
 	dev := nx.tunnelIface
 	listenPortStr := strconv.Itoa(nx.listenPort)
 
@@ -25,32 +24,29 @@ func (nx *Nexodus) setupInterfaceOS() error {
 		return fmt.Errorf("failed to create the windows wireguard wg0 interface file: %w", err)
 	}
 
-	var wgOut string
 	var err error
-	if ifaceExists(logger, dev) {
-		wgOut, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", dev)
+	if ifaceExists(nx.logger, dev) {
+		_, err = RunCommand("wireguard.exe", "/uninstalltunnelservice", dev)
 		if err != nil {
-			logger.Debugf("failed to down the wireguard interface (this is generally ok): %w", err)
+			nx.logger.Debugf("failed to down the wireguard interface (this is generally ok): %v", err)
 		}
-		if ifaceExists(logger, dev) {
-			logger.Debugf("existing windows iface %s has not been torn down yet, pausing for 1 second", dev)
+		if ifaceExists(nx.logger, dev) {
+			nx.logger.Debugf("existing windows iface %s has not been torn down yet", dev)
 			time.Sleep(time.Second * 1)
 		}
 	}
-	logger.Debugf("stopped windows tunnel svc:%v\n", wgOut)
 	// sleep for one second to give the wg async exe time to tear down any existing wg0 configuration
-	wgOut, err = RunCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
+	_, err = RunCommand("wireguard.exe", "/installtunnelservice", windowsWgConfigFile)
 	if err != nil {
 		return fmt.Errorf("failed to start the wireguard interface: %w", err)
 	}
-	logger.Debugf("started windows tunnel svc: %v\n", wgOut)
+	nx.logger.Debugf("started windows tunnel service")
 	// ensure the link is created before adding peers
-	if !ifaceExists(logger, dev) {
-		logger.Debugf("windows iface %s has not been created yet, pausing for 1 second", dev)
+	if !ifaceExists(nx.logger, dev) {
 		time.Sleep(time.Second * 1)
 	}
 	// fatal out if the interface is not created
-	if !ifaceExists(logger, dev) {
+	if !ifaceExists(nx.logger, dev) {
 		return fmt.Errorf("failed to create the windows wireguard interface: %w", err)
 	}
 
@@ -58,6 +54,12 @@ func (nx *Nexodus) setupInterfaceOS() error {
 }
 
 func (nx *Nexodus) removeExistingInterface() {
+	wgOut, err := RunCommand("wireguard.exe", "/uninstalltunnelservice", wgIface)
+	if err != nil {
+		nx.logger.Debugf("failed to down the wireguard interface (this is generally ok): %w", err)
+	}
+
+	nx.logger.Debugf("stopped windows tunnel svc:%v\n", wgOut)
 }
 
 func (nx *Nexodus) findLocalIP() (string, error) {

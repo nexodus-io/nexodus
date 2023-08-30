@@ -6,13 +6,17 @@ import (
 	"github.com/pion/stun"
 	"go.uber.org/zap"
 	"net/netip"
+	"runtime"
 )
 
 func RequestWithReusePort(logger *zap.SugaredLogger, stunServer string, srcPort int) (netip.AddrPort, error) {
 	logger.Debugf("dialing stun Server %s", stunServer)
 	conn, err := reuseport.Dial("udp4", fmt.Sprintf(":%d", srcPort), stunServer)
 	if err != nil {
-		logger.Errorf("stun dialing timed out %v", err)
+		// Windows is currently not capable of binding to the source wg port to source STUN requests
+		if runtime.GOOS != "windows" {
+			logger.Errorf("stun dialing timed out %v", err)
+		}
 		return netip.AddrPort{}, fmt.Errorf("failed to dial stun Server %s: %w", stunServer, err)
 	}
 	defer func() {
