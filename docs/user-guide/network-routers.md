@@ -11,7 +11,7 @@ The situations where this can be useful are wide-ranging. They can span from con
 - You simply specify the network prefix you want to advertise and Nexodus will use the physical interface that contains the default route to connect to the non-Nexodus nodes.
 
 ```terminal
-nexd router --child-prefix 192.168.100.0/24 --network-router
+nexd router --advertise-cidr 192.168.100.0/24 --network-router
 ```
 
 - If you are running nexd in a container, additional capabilities need to be added to the container at runtime. Here is an example on how to start a container with IPv4/IPv6 forwarding capabilities enabled.
@@ -27,7 +27,7 @@ quay.io/nexodus/nexd
 ![no-alt-text](../images/network-router-simple-example-1.png)
 
 > **Note**
-> Nexodus accepts as many networks as you want to specify in the `--child-prefix=192.168.1.0/24 --child-prefix 192.168.100.0/24 --child-prefix 172.16.100.0/24 ...` configuration. This means you can advertise as many subnets as you want from the Nexodus device running as a network router.
+> Nexodus accepts as many networks as you want to specify in the `--advertise-cidr=192.168.1.0/24 --advertise-cidr 192.168.100.0/24 --advertise-cidr 172.16.100.0/24 ...` configuration. This means you can advertise as many subnets as you want from the Nexodus device running as a network router.
 
 By default, Nexodus network routers perform NAT, specifically, source NAT for devices coming from a Nexodus mesh with a destination of one of the devices not running the Nexodus agent. This enables connectivity to those devices without any configuration on the devices.
 

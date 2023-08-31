@@ -99,12 +99,17 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 
 	userspaceMode := false
 	relayNode := false
-	var childPrefix []string
+	var advertiseCidr []string
 	switch mode {
 	case nexdModeAgent:
 		logger.Info("Starting node agent with wireguard driver")
 	case nexdModeRouter:
-		childPrefix = cCtx.StringSlice("child-prefix")
+		advertiseCidr = cCtx.StringSlice("advertise-cidr")
+		// Check if child-prefix is set and log a deprecation warning.
+		if cCtx.IsSet("child-prefix") {
+			logger.Warn("DEPRECATION WARNING: The 'child-prefix' flag is deprecated. In the future, please use 'advertise-cidr' instead.")
+			advertiseCidr = append(advertiseCidr, cCtx.StringSlice("child-prefix")...)
+		}
 		logger.Info("Starting node agent with wireguard driver and router function")
 	case nexdModeRelay:
 		relayNode = true
@@ -141,7 +146,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.Int("listen-port"),
 		cCtx.String("request-ip"),
 		cCtx.String("local-endpoint-ip"),
-		childPrefix,
+		advertiseCidr,
 		cCtx.Bool("stun"),
 		relayNode,
 		cCtx.Bool("relay-only"),
@@ -258,20 +263,33 @@ func main() {
 			},
 			{
 				Name:  "router",
-				Usage: "Enable child-prefix function of the node agent to enable prefix forwarding.",
+				Usage: "Enable advertise-cidr function of the node agent to enable prefix forwarding.",
 				Action: func(cCtx *cli.Context) error {
 					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)
 				},
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
-						Name:     "child-prefix",
+						Name:     "advertise-cidr",
 						Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
-						EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
-						Required: true,
-						Action: func(ctx *cli.Context, childPrefixes []string) error {
-							for _, prefix := range childPrefixes {
-								if err := nexodus.ValidateCIDR(prefix); err != nil {
-									return fmt.Errorf("Child prefix CIDRs passed in --child-prefix %s is not valid: %w", prefix, err)
+						EnvVars:  []string{"NEXD_REQUESTED_ADVERTISE_CIDR"},
+						Required: false,
+						Action: func(ctx *cli.Context, advertiseCidr []string) error {
+							for _, cidr := range advertiseCidr {
+								if err := nexodus.ValidateCIDR(cidr); err != nil {
+									return fmt.Errorf("advertise prefix CIDR(s) passed in --advertise-cidr %s is not valid: %w", cidr, err)
+								}
+							}
+							return nil
+						},
+					},
+					&cli.StringSliceFlag{
+						Name:   "child-prefix",
+						Usage:  "(DEPRECATED WARNING) please use --advertise-cidr instead.",
+						Hidden: true,
+						Action: func(ctx *cli.Context, advertiseCidr []string) error {
+							for _, cidr := range advertiseCidr {
+								if err := nexodus.ValidateCIDR(cidr); err != nil {
+									return fmt.Errorf("advertise prefix CIDR(s) passed in --advertise-cidr %s is not valid: %w", cidr, err)
 								}
 							}
 							return nil
@@ -423,8 +441,8 @@ func main() {
 				if runtime.GOOS != nexodus.Linux.String() {
 					return fmt.Errorf("network-router mode is only supported for Linux operating systems")
 				}
-				if len(c.StringSlice("child-prefix")) == 0 {
-					return fmt.Errorf("--child-prefix is required for a device to be a network-router")
+				if len(c.StringSlice("advertise-cidr")) == 0 {
+					return fmt.Errorf("--advertise-cidr is required for a device to be a network-router")
 				}
 			}
 			return nil

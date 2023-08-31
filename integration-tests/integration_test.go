@@ -421,22 +421,22 @@ func TestHubOrganization(t *testing.T) {
 	err = ping(ctx, node2, inetV4, node3IP)
 	require.NoError(err)
 
-	hubOrganizationChildPrefix := "10.188.100.0/24"
-	node2ChildPrefixLoopbackNet := "10.188.100.1/32"
+	hubOrganizationAdvertiseCidr := "10.188.100.0/24"
+	node2AdvertiseCidrLoopbackNet := "10.188.100.1/32"
 
 	t.Logf("killing nexodus on node2")
 
 	_, err = helper.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
-	t.Logf("rejoining on node2 with --child-prefix=%s", hubOrganizationChildPrefix)
+	t.Logf("rejoining on node2 with --advertise-cidr=%s", hubOrganizationAdvertiseCidr)
 
-	// add a loopback that are contained in the node's child prefix
-	_, err = helper.containerExec(ctx, node2, []string{"ip", "addr", "add", node2ChildPrefixLoopbackNet, "dev", "lo"})
+	// add a loopback that are contained in the node's advertise cidr
+	_, err = helper.containerExec(ctx, node2, []string{"ip", "addr", "add", node2AdvertiseCidrLoopbackNet, "dev", "lo"})
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
 		"--organization-id", orgID,
-		"router", fmt.Sprintf("--child-prefix=%s", hubOrganizationChildPrefix),
+		"router", fmt.Sprintf("--advertise-cidr=%s", hubOrganizationAdvertiseCidr),
 	)
 
 	// validate nexd has started on the relay node
@@ -452,7 +452,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 
 	// parse the loopback ip from the loopback prefix
-	node2LoopbackIP, _, _ := net.ParseCIDR(node2ChildPrefixLoopbackNet)
+	node2LoopbackIP, _, _ := net.ParseCIDR(node2AdvertiseCidrLoopbackNet)
 
 	t.Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
 	err = ping(ctx, node2, inetV4, node2LoopbackIP.String())
@@ -523,10 +523,10 @@ func TestHubOrganization(t *testing.T) {
 	require.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device")
 }
 
-// TestChildPrefix tests requesting a specific address in a newly created organization for v4 and v6. This will start nexd three
+// TestAdvertiseCidr tests requesting a specific address in a newly created organization for v4 and v6. This will start nexd three
 // different times. The first makes sure the prefix is created and routes are added. The second is started and then killed.
-// The third start of nexd is to validate the child-prefix was not deleted from the ipam database. TODO: test changing the child-prefix
-func TestChildPrefix(t *testing.T) {
+// The third start of nexd is to validate the advertise-cidr was not deleted from the ipam database. TODO: test changing the advertise-cidr
+func TestAdvertiseCidr(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
@@ -540,8 +540,8 @@ func TestChildPrefix(t *testing.T) {
 	node3LoopbackNet := "172.16.10.101/32"
 	node2LoopbackNetV6 := "200:2::1/64"
 	node3LoopbackNetV6 := "200:3::1/64"
-	node2ChildPrefix := "172.16.20.0/24,200:2::/64"
-	node3ChildPrefix := "172.16.10.0/24,200:3::/64"
+	node2AdvertiseCidr := "172.16.20.0/24,200:2::/64"
+	node3AdvertiseCidr := "172.16.10.0/24,200:3::/64"
 
 	// create the nodes
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
@@ -563,20 +563,20 @@ func TestChildPrefix(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"router", fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
+		"router", fmt.Sprintf("--advertise-cidr=%s", node2AdvertiseCidr),
 	)
 
 	helper.runNexd(ctx, node3,
 		"--username", username, "--password", password,
-		"router", fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
+		"router", fmt.Sprintf("--advertise-cidr=%s", node3AdvertiseCidr),
 	)
 
-	// add v4 loopbacks to the containers that are contained in the node's child prefix
+	// add v4 loopbacks to the containers that are contained in the node's advertised cidr
 	_, err = helper.containerExec(ctx, node3, []string{"ip", "addr", "add", node3LoopbackNet, "dev", "lo"})
 	require.NoError(err)
 	_, err = helper.containerExec(ctx, node2, []string{"ip", "addr", "add", node2LoopbackNet, "dev", "lo"})
 	require.NoError(err)
-	// add v6 loopbacks to the containers that are contained in the node's child prefix
+	// add v6 loopbacks to the containers that are contained in the node's advertised cidr
 	_, err = helper.containerExec(ctx, node3, []string{"ip", "-6", "addr", "add", node3LoopbackNetV6, "dev", "lo"})
 	require.NoError(err)
 	_, err = helper.containerExec(ctx, node2, []string{"ip", "-6", "addr", "add", node2LoopbackNetV6, "dev", "lo"})
@@ -647,12 +647,12 @@ func TestChildPrefix(t *testing.T) {
 
 		helper.runNexd(ctx, node2,
 			"--username", username, "--password", password,
-			"router", fmt.Sprintf("--child-prefix=%s", node2ChildPrefix),
+			"router", fmt.Sprintf("--advertise-cidr=%s", node2AdvertiseCidr),
 		)
 
 		helper.runNexd(ctx, node3,
 			"--username", username, "--password", password,
-			"router", fmt.Sprintf("--child-prefix=%s", node3ChildPrefix),
+			"router", fmt.Sprintf("--advertise-cidr=%s", node3AdvertiseCidr),
 		)
 
 		// readiness check
@@ -836,7 +836,7 @@ func TestNexctl(t *testing.T) {
 	err = helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "router", "--child-prefix=100.22.100.0/24")
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "router", "--advertise-cidr=100.22.100.0/24")
 
 	// validate nexd has started
 	err = helper.nexdStatus(ctx, node2)
@@ -941,8 +941,8 @@ func TestNexctl(t *testing.T) {
 	require.NoError(err)
 
 	time.Sleep(time.Second * 10)
-	// re-join both nodes, flipping the child-prefix to node1 to ensure the child-prefix was released
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "router", "--child-prefix=100.22.100.0/24")
+	// re-join both nodes, flipping the advertise-cidr to node1 to ensure the advertise-cidr was released
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "router", "--advertise-cidr=100.22.100.0/24")
 
 	// validate nexd has started on the relay node
 	err = helper.nexdStatus(ctx, node1)
@@ -1113,7 +1113,7 @@ func TestConnectivityUsingWireguardGo(t *testing.T) {
 }
 
 // TestNetRouterConnectivity is a test that verifies that the network connectivity between nexd network-routers and nodes
-// not running nexd but advertised via child-prefix and network-routers with SNAT enabled for the child-prefix
+// not running nexd but advertised via advertise-cidr and network-routers with SNAT enabled for the advertise-cidr
 // and the matching interface the route is present on.
 // +------------------------+                 +------------------------+                   +------------------------+                 +------------------------+
 // |  (192.168.100.x) eth1  |    site1-net    | eth1          wg0/eth0 |    default-net    | eth0/wg0          eth1 |    site2-net    |  eth1 (192.168.200.x)  |
@@ -1132,9 +1132,9 @@ func TestNetRouterConnectivity(t *testing.T) {
 
 	site1NetworkPrefix := "192.168.100.0/24"
 	site2NetworkPrefix := "192.168.200.0/24"
-	// add multiple child-prefixes defined but only one is validated e2e
-	site1NetworkChildPrefix := "192.168.100.0/24,10.168.100.0/24"
-	site2NetworkChildPrefix := "192.168.200.0/24,10.168.200.0/24"
+	// add multiple advertise-cidres defined but only one is validated e2e
+	site1NetworkAdvertiseCidr := "192.168.100.0/24,10.168.100.0/24"
+	site2NetworkAdvertiseCidr := "192.168.200.0/24,10.168.200.0/24"
 	site1Network := "site1-net"
 	site2Network := "site2-net"
 
@@ -1159,13 +1159,13 @@ func TestNetRouterConnectivity(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"router",
-		"--child-prefix", site1NetworkChildPrefix,
+		"--advertise-cidr", site1NetworkAdvertiseCidr,
 		"--network-router")
 	helper.runNexd(ctx, nexRouterSite2,
 		"--username", username,
 		"--password", password,
 		"router",
-		"--child-prefix", site2NetworkChildPrefix,
+		"--advertise-cidr", site2NetworkAdvertiseCidr,
 		"--network-router")
 
 	site1node1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", site1node1)

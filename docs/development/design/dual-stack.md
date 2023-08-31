@@ -23,7 +23,7 @@ While `local_ip_v6` (v6 tunnel endpoint) is not used in the dual stack implement
 
 ### CLI Changes
 
-The only CLI changes are some details in descriptions specifically calling out IPv4 only support to features such as `router --child-prefix` and `tunnel-ip` that are not implemented in the initial work. Ideally we don't add flag bloat here and accept v4/v6 in applicable fields rather than net new fields for v6. For example, `--child-prefix=172.17.20.0/24,2001:db8:abcd:0012::0/64`.
+The only CLI changes are some details in descriptions specifically calling out IPv4 only support to features such as `router --advertise-cidr` and `tunnel-ip` that are not implemented in the initial work. Ideally we don't add flag bloat here and accept v4/v6 in applicable fields rather than net new fields for v6. For example, `--advertise-cidr=172.17.20.0/24,2001:db8:abcd:0012::0/64`.
 
 ### IPv4 Only Support
 

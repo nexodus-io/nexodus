@@ -54,7 +54,7 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 				return ""
 			},
 		})
-		fields = append(fields, TableField{Header: "ALLOWED IPS",
+		fields = append(fields, TableField{Header: "ADVERTISED CIDR",
 			Formatter: func(item interface{}) string {
 				dev := item.(public.ModelsDevice)
 				return strings.Join(dev.AllowedIps, ", ")
