@@ -2,7 +2,8 @@
 
 This guide will walk you through getting your first devices connected via Nexodus.
 
-![no-alt-text](images/quickstart-overview-1.png)
+![no-alt-text](images/quickstart-overview-1.png#only-light)
+![no-alt-text](images/quickstart-overview-1-dark.png#only-dark)
 
 ## Install and Start the Nexodus Agent
 
