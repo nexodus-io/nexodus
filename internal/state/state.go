@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"golang.org/x/oauth2"
+	"io"
 )
 
 type State struct {
@@ -19,6 +20,7 @@ type ProxyRulesConfig struct {
 
 type Store interface {
 	fmt.Stringer
+	io.Closer
 	Load() error
 	Store() error
 	State() *State
