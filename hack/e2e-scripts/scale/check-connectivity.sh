@@ -52,7 +52,7 @@ for container_id in $container_ids; do
 	unreachable=$(docker exec $container_id nexctl nexd peers ping| grep "Unreachable"| wc -l)
         # Print the container ID
 	if [ $unreachable -gt 0 ]; then
-		echo -e "container-d: $container_id    user:$label_value    peers:$peers    \e[91munreachable:$unreachable\e[0m"
+		echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[91munreachable:$unreachable\e[0m"
 	else
 		echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[32munreachable:$unreachable\e[0m"
 	fi

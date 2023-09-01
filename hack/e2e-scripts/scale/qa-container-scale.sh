@@ -51,12 +51,13 @@ launch_containers() {
 
 # Function to print help message
 print_help() {
-  echo "Usage: $0 --kc-password <password> --nexd-password <password> --nexd-count <count>"
+  echo "Usage: $0 --kc-password <password> --nexd-password <password> --org-count <count> --nexd-count <count>"
   echo ""
   echo "Arguments:"
   echo "--kc-password <password>: The keycloak password for the kctool command."
   echo "--nexd-password <password>: The user password for the nexd command."
-  echo "--nexd-count <count>: The number of nexd containers to launch and attach to the api-server."
+  echo "--org-count <count>: The number of organizations to create."
+  echo "--nexd-count <count>: The number of nexd containers to launch and onboard to per organization."
   echo "-d |--deployment <deployment>: The deployment to use. Valid values are prod,qa and playground. Default is qa."
   echo "-h |--help: Prints this help message."
   exit 1
@@ -68,6 +69,7 @@ check_requirements
 # Default passwords and count
 KC_PASSWORD=""
 NEXD_PASSWORD=""
+ORG_COUNT=""
 NEXD_COUNT=""
 
 # Parse command line arguments
@@ -79,6 +81,10 @@ while (( "$#" )); do
       ;;
     --nexd-password)
       NEXD_PASSWORD="$2"
+      shift 2
+      ;;
+    --org-count)
+      ORG_COUNT="$2"
       shift 2
       ;;
     --nexd-count)
@@ -111,7 +117,7 @@ while (( "$#" )); do
 done
 
 # Check if passwords and container count were provided
-if [ -z "$KC_PASSWORD" ] || [ -z "$NEXD_PASSWORD" ] || [ -z "$NEXD_COUNT" ]; then
+if [ -z "$KC_PASSWORD" ] || [ -z "$NEXD_PASSWORD" ] || [ -z "$ORG_COUNT" ] || [ -z "$NEXD_COUNT" ]; then
     print_help
 fi
 
@@ -125,17 +131,23 @@ pushd ../kctool
 go build -o kctool
 popd
 
-# The keycloak password is passed as an argument
-NEXD_USER=$(../kctool/kctool --create-user -ku admin -u qa -kp "$KC_PASSWORD" -p "$NEXD_PASSWORD" $NEXODUS_AUTH_SERVER)
+# Run below code in the loop for $ORG_COUNT times
+for i in $(seq 1 $ORG_COUNT)
+do
+  echo "Creating organization $i and onboarding $NEXD_COUNT nexd containers to it"
 
-cat << EOF > nexd-init.sh
-#!/bin/sh
-echo "Running command: nexd  --service-url $NEXODUS_API_SERVER  --username <username> --password <password>" > nexodus-logs.txt
-NEXD_LOGLEVEL=debug nexd \
---service-url '$NEXODUS_API_SERVER' \
---username '$NEXD_USER' \
---password '$NEXD_PASSWORD' 2>&1
+  # The keycloak password is passed as an argument
+  NEXD_USER=$(../kctool/kctool --create-user -ku admin -u qa -kp "$KC_PASSWORD" -p "$NEXD_PASSWORD" $NEXODUS_AUTH_SERVER)
+
+  cat << EOF > nexd-init.sh
+  #!/bin/sh
+  echo "Running command: nexd  --service-url $NEXODUS_API_SERVER  --username <username> --password <password>" > nexodus-logs.txt
+  NEXD_LOGLEVEL=debug nexd \
+  --service-url '$NEXODUS_API_SERVER' \
+  --username '$NEXD_USER' \
+  --password '$NEXD_PASSWORD' 2>&1
 EOF
 
 # Call the function to launch containers and attach the nodes to the api-server
 launch_containers $NEXD_COUNT $NEXD_USER
+done
