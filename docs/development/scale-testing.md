@@ -51,7 +51,7 @@ There are additional arguments that can be passed via the Github Actions dispatc
 
 ### Scale Test Attaching Containers Outside of CI to QA Servers
 
-You can use the script [nexodus/hack/e2e-scripts/qa-container-scale.sh](../../hack/e2e-scripts/qa-container-scale.sh) to launch containers and attach them to a Nexodus api-server for scale testing.
+You can use the script [nexodus/hack/e2e-scripts/scale/qa-container-scale.sh](../../hack/e2e-scripts/scale/qa-container-scale.sh) to launch containers and attach them to a Nexodus api-server for scale testing.
 
 Prerequisites are having Go and Docker installed.
 
@@ -59,8 +59,8 @@ Run the script with the following arguments.
 
 ```text
 git clone https://github.com/nexodus-io/nexodus.git
-cd nexodus/hack/e2e-scripts
-./qa-container-scale.sh --kc-password "<ADMIN_KEYCLOAK_PASSWORD>" --nexd-password "<PASS_CAN_BE_ANYTHING>" --nexd-count 3
+cd nexodus/hack/e2e-scripts/scale
+./qa-container-scale.sh --kc-password "<ADMIN_KEYCLOAK_PASSWORD>" --nexd-password "<PASS_CAN_BE_ANYTHING>" --org-count 1 --nexd-count 3
 ```
 
 Connect to the containers after the script is run.
