@@ -40,10 +40,10 @@ for container_id in $container_ids; do
     error_503=$(echo "$logs" | grep -c "error: 503")
     error_json=$(echo "$logs" | grep -c "error: json")
     error_eof=$(echo "$logs" | grep -c "EOF")
-    error_stun=$(echo "$logs" | grep -c "STUN")
+    error_stun=$(echo "$logs" | grep -ci "STUN")
     error_timeout=$(echo "$logs" | grep -c "timeout")
     known_error=$((error_400 + error_401 + error_429 + error_500 + error_501 + error_503 + error_json + error_eof + error_stun + error_timeout))
-    error_count=$(echo "$logs" | wc -l)
+    error_count=$(echo "$logs" | grep -v '^$'| wc -l)
 
     if [ "$error_count" -gt 0 ]; then
 	    if [ "$error_count" -eq "$known_error" ]; then
