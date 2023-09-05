@@ -124,6 +124,7 @@ func (nx *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *z
 				WgIP:        result.WgIP,
 				IsReachable: result.IsReachable,
 				Hostname:    result.Hostname,
+				Latency:     result.Latency,
 			}
 		}
 	}
