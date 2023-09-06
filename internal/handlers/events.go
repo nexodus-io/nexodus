@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type Watch struct {
 	kind       string
 	signal     string
 	gtRevision uint64
-	fetch      func(db *gorm.DB, gtRevision uint64) (WatchableList, error)
+	fetch      fetchmgr.FetchFn
 	atTail     bool
 }
 
@@ -79,7 +81,8 @@ func (api *API) WatchEvents(c *gin.Context) {
 		switch r.Kind {
 
 		case "device":
-			fetch := func(db *gorm.DB, gtRevision uint64) (WatchableList, error) {
+
+			fetcher := api.fetchManager.Open("org-devices:"+orgId.String(), 500, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 				var items deviceList
 				db = db.Unscoped().Limit(100).Order("revision")
 				if gtRevision != 0 {
@@ -91,13 +94,15 @@ func (api *API) WatchEvents(c *gin.Context) {
 					return nil, result.Error
 				}
 				return items, nil
-			}
+			})
+			defer fetcher.Close()
+
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/devices/org=%s", orgId.String()),
-				fetch:      fetch,
+				fetch:      fetcher.Fetch,
 			})
 
 		case "security-group":
@@ -106,7 +111,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/security-groups/org=%s", orgId.String()),
-				fetch: func(db *gorm.DB, gtRevision uint64) (WatchableList, error) {
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 					var items securityGroupList
 					db = db.Unscoped().Limit(100).Order("revision")
 					if gtRevision != 0 {
@@ -143,7 +148,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/metadata/org=%s", orgId.String()),
-				fetch: func(db *gorm.DB, gtRevision uint64) (WatchableList, error) {
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 
 					tempDB := db.Model(&models.DeviceMetadata{}).
 						Joins("inner join devices on devices.id=device_metadata.device_id").
@@ -195,7 +200,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 		Watch
 		sub    *signalbus.Subscription
 		idx    int
-		list   WatchableList
+		list   fetchmgr.ResourceList
 		atTail bool
 		err    error
 		parked bool
@@ -320,4 +325,41 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 			}
 		}
 	})
+}
+
+func stream(c *gin.Context, nextEvent func() models.WatchEvent) {
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("streaming unsupported")))
+		return
+	}
+	for {
+		result := nextEvent()
+		if result.Type == "close" {
+			return
+		}
+		_ = json.NewEncoder(c.Writer).Encode(result)
+		_, _ = c.Writer.Write([]byte("\n"))
+		flusher.Flush() // sends the result to the client (forces Transfer-Encoding: chunked)
+		if result.Type == "error" {
+			return
+		}
+	}
+}
+
+// WaitForCancelTimeoutOrNotification returns -2 if ctx is closed, -1 on timeout, otherwise the index of the channel that
+// was notified.
+func waitForCancelTimeoutOrNotification(ctx context.Context, timeout time.Duration, channels ...<-chan struct{}) int {
+	tc, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cases := []reflect.SelectCase{
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())},
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(tc.Done())},
+	}
+	for _, ch := range channels {
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)})
+	}
+	chosen, _, _ := reflect.Select(cases)
+	return chosen - 2
 }

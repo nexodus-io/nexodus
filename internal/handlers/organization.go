@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"net/http"
 	"strconv"
 
@@ -291,7 +292,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInOrganization")
 	defer span.End()
 
-	k, err := uuid.Parse(c.Param("organization"))
+	orgId, err := uuid.Parse(c.Param("organization"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
@@ -299,7 +300,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 	var org models.Organization
 	result := api.db.WithContext(ctx).
 		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
-		First(&org, "id = ?", k.String())
+		First(&org, "id = ?", orgId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -316,21 +317,10 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/devices/org=%s", k.String())
-	defaultOrderBy := "hostname"
-	if v := c.Query("watch"); v == "true" {
-		query.Sort = ""
-		defaultOrderBy = "revision"
-	}
+	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
+		db = db.Where("organization_id = ?", orgId.String())
+		db = FilterAndPaginateWithQuery(&models.Device{}, c, query, "hostname")(db)
 
-	scopes := []func(*gorm.DB) *gorm.DB{
-		func(db *gorm.DB) *gorm.DB {
-			return db.Where("organization_id = ?", k.String())
-		},
-		FilterAndPaginateWithQuery(&models.Device{}, c, query, defaultOrderBy),
-	}
-
-	api.sendListOrWatch(c, ctx, signalChannel, "revision", scopes, func(db *gorm.DB) (WatchableList, error) {
 		var items deviceList
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {

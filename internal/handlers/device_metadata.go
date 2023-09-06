@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -66,40 +67,36 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 		return
 	}
 
-	defaultOrderBy := "key"
+	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 
-	scopes := []func(*gorm.DB) *gorm.DB{
-		func(db *gorm.DB) *gorm.DB {
-			result := db.Where(
-				db.Where("device_id = ?", deviceId.String()),
-			)
-			if len(query.Prefixes) > 0 {
-				oredExpressions := db
-				for i, prefix := range query.Prefixes {
-					if i == 0 {
-						oredExpressions = oredExpressions.Where("key LIKE ?", prefix+"%")
-					} else {
-						oredExpressions = oredExpressions.Or("key LIKE ?", prefix+"%")
-					}
+		tempDB := db.Where(
+			db.Where("device_id = ?", deviceId.String()),
+		)
+
+		// Building OR expressions with gorm is tricky...
+		if len(query.Prefixes) > 0 {
+			expressions := db
+			for i, prefix := range query.Prefixes {
+				if i == 0 {
+					expressions = expressions.Where("key LIKE ?", prefix+"%")
+				} else {
+					expressions = expressions.Or("key LIKE ?", prefix+"%")
 				}
-				result = result.Where(
-					oredExpressions,
-				)
 			}
-			return result
-		},
-		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, defaultOrderBy),
-	}
-	api.sendList(c, ctx, getDeviceMetadataList, scopes)
-}
+			tempDB = tempDB.Where( // extra wrapping Where needed to group the SQL expressions
+				expressions,
+			)
+		}
+		db = tempDB
+		db = FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, "key")(db)
 
-func getDeviceMetadataList(db *gorm.DB) (WatchableList, error) {
-	var items deviceMetadataList
-	result := db.Find(&items)
-	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, result.Error
-	}
-	return items, nil
+		var items deviceMetadataList
+		result := db.Find(&items)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return items, nil
+	})
 }
 
 // ListOrganizationMetadata lists metadata for all devices in an organization
@@ -151,47 +148,38 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/metadata/org=%s", orgId.String())
-	defaultOrderBy := "key"
-	if v := c.Query("watch"); v == "true" {
-		query.Sort = ""
-		defaultOrderBy = "revision"
-	}
+	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 
-	scopes := []func(*gorm.DB) *gorm.DB{
-		func(db *gorm.DB) *gorm.DB {
-			result := db.Model(&models.DeviceMetadata{}).
-				Joins("inner join devices on devices.id=device_metadata.device_id").
-				Where( // extra wrapping Where needed to group the SQL expressions
-					db.Where("devices.organization_id = ?", orgId.String()),
-				)
-			if len(query.Prefixes) > 0 {
-				oredExpressions := db
-				for i, prefix := range query.Prefixes {
-					if i == 0 {
-						oredExpressions = oredExpressions.Where("key LIKE ?", prefix+"%")
-					} else {
-						oredExpressions = oredExpressions.Or("key LIKE ?", prefix+"%")
-					}
+		tempDB := db.Model(&models.DeviceMetadata{}).
+			Joins("inner join devices on devices.id=device_metadata.device_id").
+			Where( // extra wrapping Where needed to group the SQL expressions
+				db.Where("devices.organization_id = ?", orgId.String()),
+			)
+
+		// Building OR expressions with gorm is tricky...
+		if len(query.Prefixes) > 0 {
+			expressions := db
+			for i, prefix := range query.Prefixes {
+				if i == 0 {
+					expressions = expressions.Where("key LIKE ?", prefix+"%")
+				} else {
+					expressions = expressions.Or("key LIKE ?", prefix+"%")
 				}
-				result = result.Where( // extra wrapping Where needed to group the SQL expressions
-					oredExpressions,
-				)
 			}
-			return result
-		},
-		FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, defaultOrderBy),
-	}
+			tempDB = tempDB.Where( // extra wrapping Where needed to group the SQL expressions
+				expressions,
+			)
+		}
+		db = tempDB
+		db = FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, "key")(db)
 
-	if len(query.Prefixes) > 0 {
-		scopes = append(scopes, func(db *gorm.DB) *gorm.DB {
-			for _, prefix := range query.Prefixes {
-				db = db.Where("key LIKE ?", prefix+"%")
-			}
-			return db
-		})
-	}
-	api.sendListOrWatch(c, ctx, signalChannel, "device_metadata.revision", scopes, getDeviceMetadataList)
+		var items deviceMetadataList
+		result := db.Find(&items)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return items, nil
+	})
 }
 
 type deviceMetadataList []*models.DeviceMetadata
