@@ -23,9 +23,11 @@ SECURITY GROUP ID                        SECURITY GROUP NAME     SECURITY GROUP 
 cb2e0192-5eb9-41ee-a732-7484602ac883     default                 default organization security group     7e552731-2f5f-421d-9266-10fa46dfe3ee     []                               []
 ```
 
+Security Groups can be completely disabled on a per-agent basis at runtiime by simply passing the flag `nexd --disable-security-groups`.
+
 ## Prerequisites
 
-Ensure that you have the `nexctl` CLI available on your machine.
+Ensure that the `nexctl` CLI is installed on your machine and that you also have the `nftables` package, which provides the `nft` command.
 
 ## Organization and Security Group Identification
 

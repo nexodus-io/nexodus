@@ -160,6 +160,7 @@ type Nexodus struct {
 	informerStop           context.CancelFunc
 	nexCtx                 context.Context
 	nexWg                  *sync.WaitGroup
+	disableSecGroups       bool
 }
 
 type wgConfig struct {
@@ -201,6 +202,7 @@ func NewNexodus(
 	stateDir string,
 	ctx context.Context,
 	orgId string,
+	disableSecGroups bool,
 ) (*Nexodus, error) {
 
 	if err := binaryChecks(); err != nil {
@@ -244,6 +246,7 @@ func NewNexodus(
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
+		disableSecGroups: disableSecGroups,
 	}
 	ax.userspaceMode = userspaceMode
 	ax.tunnelIface = ax.defaultTunnelDev()
@@ -610,6 +613,10 @@ func (nx *Nexodus) Stop() {
 
 // reconcileSecurityGroups will check the security group and update it if necessary.
 func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
+	if nx.disableSecGroups {
+		return
+	}
+
 	if runtime.GOOS != Linux.String() || nx.userspaceMode {
 		return
 	}
@@ -1026,6 +1033,10 @@ func (nx *Nexodus) checkUnsupportedConfigs() error {
 
 	if nx.ipv6Supported = isIPv6Supported(); !nx.ipv6Supported {
 		nx.logger.Warn("IPv6 does not appear to be enabled on this host, only IPv4 will be provisioned or restart nexd with IPv6 enabled on this host")
+	}
+
+	if !nx.disableSecGroups && runtime.GOOS == "linux" && !IsCommandAvailable(nftablesBinary) {
+		return fmt.Errorf("pre-requisite installation of the package 'nftables' was not found, verify it is installed and the command 'nft' is available or disable security groups with '--disable-security-groups'")
 	}
 
 	return nil

@@ -160,6 +160,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stateDir,
 		ctx,
 		cCtx.String("organization-id"),
+		cCtx.Bool("disable-security-groups"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -381,6 +382,14 @@ func main() {
 				Usage:    "Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected)",
 				Value:    false,
 				EnvVars:  []string{"NEXD_RELAY_ONLY"},
+				Required: false,
+				Category: agentOptions,
+			},
+			&cli.BoolFlag{
+				Name:     "disable-security-groups",
+				Usage:    "Disable Security Group policies from being applied on this device",
+				Value:    false,
+				EnvVars:  []string{"NEXD_DISABLE_SECURITY_GROUPS"},
 				Required: false,
 				Category: agentOptions,
 			},
