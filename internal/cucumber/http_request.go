@@ -48,6 +48,7 @@ func init() {
 		ctx.Step(`^I (GET|POST|PUT|DELETE|PATCH|OPTION) path "([^"]*)"$`, s.sendHttpRequest)
 		ctx.Step(`^I (GET|POST|PUT|DELETE|PATCH|OPTION) path "([^"]*)" as a json event stream$`, s.sendHttpRequestAsEventStream)
 		ctx.Step(`^I (GET|POST|PUT|DELETE|PATCH|OPTION) path "([^"]*)" with json body:$`, s.SendHttpRequestWithJsonBody)
+		ctx.Step(`^I (GET|POST|PUT|DELETE|PATCH|OPTION) path "([^"]*)" with json body expecting a json event stream:$`, s.SendHttpRequestWithJsonBodyAsEventStream)
 		ctx.Step(`^I wait up to "([^"]*)" seconds for a GET on path "([^"]*)" response "([^"]*)" selection to match "([^"]*)"$`, s.iWaitUpToSecondsForAGETOnPathResponseSelectionToMatch)
 		ctx.Step(`^I wait up to "([^"]*)" seconds for a GET on path "([^"]*)" response code to match "([^"]*)"$`, s.iWaitUpToSecondsForAGETOnPathResponseCodeToMatch)
 		ctx.Step(`^I wait up to "([^"]*)" seconds for a response event$`, s.iWaitUpToSecondsForAResponseJsonEvent)
@@ -69,6 +70,10 @@ func (s *TestScenario) sendHttpRequestAsEventStream(method, path string) error {
 
 func (s *TestScenario) SendHttpRequestWithJsonBody(method, path string, jsonTxt *godog.DocString) (err error) {
 	return s.SendHttpRequestWithJsonBodyAndStyle(method, path, jsonTxt, false, true)
+}
+
+func (s *TestScenario) SendHttpRequestWithJsonBodyAsEventStream(method, path string, jsonTxt *godog.DocString) (err error) {
+	return s.SendHttpRequestWithJsonBodyAndStyle(method, path, jsonTxt, true, true)
 }
 
 func (s *TestScenario) SendHttpRequestWithJsonBodyAndStyle(method, path string, jsonTxt *godog.DocString, eventStream bool, expandJson bool) (err error) {

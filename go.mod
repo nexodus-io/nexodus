@@ -63,7 +63,10 @@ require (
 	k8s.io/client-go v0.27.4
 )
 
-require github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
+require (
+	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
+	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -144,7 +147,6 @@ require (
 	go.opentelemetry.io/otel/metric v0.38.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
