@@ -235,6 +235,9 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		return
 	}
 
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
+
 	c.JSON(http.StatusCreated, sg)
 }
 
@@ -319,8 +322,8 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	// TODO: signal bus notify of SecGroup deletes
-	//api.signalBus.Notify
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
 
 	c.JSON(http.StatusOK, sg)
 }
@@ -407,6 +410,9 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		}
 		return
 	}
+
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", securityGroup.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
 
 	c.JSON(http.StatusOK, securityGroup)
 }
