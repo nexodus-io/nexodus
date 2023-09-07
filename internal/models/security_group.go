@@ -12,6 +12,7 @@ type SecurityGroup struct {
 	OrganizationId   uuid.UUID      `json:"org_id"`
 	InboundRules     []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	OutboundRules    []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
+	Revision         uint64         `json:"revision"  gorm:"type:bigserial;index:"`
 }
 
 // AddSecurityGroup is the information needed to add a new Security Group.

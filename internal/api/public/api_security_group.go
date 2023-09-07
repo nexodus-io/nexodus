@@ -487,6 +487,13 @@ type ApiListSecurityGroupsRequest struct {
 	ctx            context.Context
 	ApiService     *SecurityGroupApiService
 	organizationId string
+	gtRevision     *int32
+}
+
+// greater than revision
+func (r ApiListSecurityGroupsRequest) GtRevision(gtRevision int32) ApiListSecurityGroupsRequest {
+	r.gtRevision = &gtRevision
+	return r
 }
 
 func (r ApiListSecurityGroupsRequest) Execute() ([]ModelsSecurityGroup, *http.Response, error) {
@@ -533,6 +540,9 @@ func (a *SecurityGroupApiService) ListSecurityGroupsExecute(r ApiListSecurityGro
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
 
+	if r.gtRevision != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
+	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
 

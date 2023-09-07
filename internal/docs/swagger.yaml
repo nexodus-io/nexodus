@@ -272,6 +272,8 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
+      revision:
+        type: integer
     type: object
   models.SecurityRule:
     properties:
@@ -1207,6 +1209,10 @@ paths:
       description: Lists all Security Groups
       operationId: ListSecurityGroups
       parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
       - description: Organization ID
         in: path
         name: organization_id
