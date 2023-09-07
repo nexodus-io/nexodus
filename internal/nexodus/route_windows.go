@@ -26,26 +26,22 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 		if util.IsIPv4Prefix(allowedIP) {
 			if routeExists {
 				if err := DeleteRoute(allowedIP, wgIface); err != nil {
-					nx.logger.Debugf("no route deleted: %v", err)
+					nx.logger.Debug(err)
 				}
 			}
-
 			if err := AddRoute(allowedIP, wgIface); err != nil {
-				nx.logger.Errorf("%v", err)
-				return err
+				nx.logger.Debug(err)
 			}
 		}
 
 		if util.IsIPv6Prefix(allowedIP) {
 			if routeExists {
 				if err := DeleteRouteV6(allowedIP, wgIface); err != nil {
-					nx.logger.Debugf("no route deleted: %v", err)
+					nx.logger.Debug(err)
 				}
 			}
-
 			if err := AddRouteV6(allowedIP, wgIface); err != nil {
-				nx.logger.Errorf("%v", err)
-				return err
+				nx.logger.Debug(err)
 			}
 		}
 	}
@@ -94,6 +90,28 @@ func findInterfaceForIPRoute(ipRoute string) (*net.Interface, error) {
 	}
 
 	return nil, fmt.Errorf("no matching interface found")
+}
+
+// AddRoute adds a windows route to the specified interface
+func AddRoute(prefix, dev string) error {
+	// netsh interface ip add route [prefix] [interface|*]
+	_, err := RunCommand("netsh", "interface", "ipv4", "add", "route", prefix, dev)
+	if err != nil {
+		return fmt.Errorf("no windows route added: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRoute deletes a windows route
+func DeleteRoute(prefix, dev string) error {
+	// netsh interface ip delete route [prefix] [interface|*]
+	_, err := RunCommand("netsh", "interface", "ipv4", "del", "route", prefix, dev)
+	if err != nil {
+		return fmt.Errorf("no route deleted: %w", err)
+	}
+
+	return nil
 }
 
 // AddRouteV6 adds a route to the specified interface using netsh in Windows

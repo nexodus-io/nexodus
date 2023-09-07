@@ -40,17 +40,6 @@ func RouteExistsOS(prefix string) (bool, error) {
 	return strings.Contains(output.String(), prefix), nil
 }
 
-// AddRoute adds a windows route to the specified interface
-func AddRoute(prefix, dev string) error {
-	// TODO: replace with powershell
-	_, err := RunCommand("netsh", "interface", "ipv4", "add", "route", prefix, dev)
-	if err != nil {
-		return fmt.Errorf("no windows route added: %w", err)
-	}
-
-	return nil
-}
-
 // discoverLinuxAddress only used for windows build purposes
 func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	return nil, nil
@@ -72,17 +61,6 @@ func linkExists(wgIface string) bool {
 
 // delLink only used for windows build purposes
 func delLink(wgIface string) (err error) {
-	return nil
-}
-
-// DeleteRoute deletes a windows route
-func DeleteRoute(prefix, dev string) error {
-	// netsh interface ip delete route [prefix] [interface|*] [gateway]
-	_, err := RunCommand("netsh", "interface", "ipv4", "del", "route", prefix, dev)
-	if err != nil {
-		return fmt.Errorf("no route deleted: %w", err)
-	}
-
 	return nil
 }
 
