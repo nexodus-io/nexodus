@@ -27,26 +27,39 @@ type KeepaliveStatus struct {
 	WgIP        string `json:"wg_ip"`
 	IsReachable bool   `json:"is_reachable"`
 	Hostname    string `json:"hostname"`
+	Latency     string `json:""`
 }
 
 func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 	KeepaliveStatus
 	IsReachable bool
 }) {
-	err := nx.ping(peerStatus.WgIP)
+	latency, err := nx.ping(peerStatus.WgIP)
 	if err != nil {
 		nx.logger.Debugf("probe error: %v", err)
-		// peer is not replying
 		c <- struct {
 			KeepaliveStatus
 			IsReachable bool
-		}{peerStatus, false}
+		}{
+			KeepaliveStatus: KeepaliveStatus{
+				WgIP:     peerStatus.WgIP,
+				Hostname: peerStatus.Hostname,
+				Latency:  "-",
+			},
+			IsReachable: false,
+		}
 	} else {
-		// peer is replying
 		c <- struct {
 			KeepaliveStatus
 			IsReachable bool
-		}{peerStatus, true}
+		}{
+			KeepaliveStatus: KeepaliveStatus{
+				WgIP:     peerStatus.WgIP,
+				Hostname: peerStatus.Hostname,
+				Latency:  latency,
+			},
+			IsReachable: true,
+		}
 	}
 }
 
@@ -128,7 +141,12 @@ func (nx *Nexodus) pingUS(host string, i uint64, waitFor time.Duration) (string,
 	if !bytes.Equal(replyPing.Data, requestPing.Data) || replyPing.Seq != requestPing.Seq {
 		return "", fmt.Errorf("invalid ping reply: %v", replyPing)
 	}
-	return fmt.Sprintf("%d bytes from %v: icmp_seq=%v, time=%v", n, host, i, time.Since(start)), nil
+	// calculate latency, round up and return
+	latency := time.Since(start)
+	roundedLatency := float64(latency) / float64(time.Millisecond)
+	nx.logger.Debugf("%d bytes from %v: icmp_seq=%v, time=%v", n, host, i, time.Since(start))
+
+	return fmt.Sprintf("%.2fms", roundedLatency), nil
 }
 
 func (nx *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string, error) {
@@ -170,12 +188,11 @@ func (nx *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 		nx.logger.Debugf("probe error: %v", err)
 	}
 	rmsg := make([]byte, PACKETSIZE+256)
-	before := time.Now()
+	start := time.Now()
 	amt, err := c.Read(rmsg[:])
 	if err != nil {
 		return "", fmt.Errorf("read failed: %w", err)
 	}
-	latency := time.Since(before)
 
 	if !v6Host {
 		rmsg = rmsg[ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET:]
@@ -189,19 +206,27 @@ func (nx *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 		return "", fmt.Errorf("wrong sequence number %v (expected %v)", rseq, i)
 	}
 
-	return fmt.Sprintf("%d bytes from %v: icmp_seq=%v, time=%v", amt, host, i, latency), nil
+	latency := time.Since(start)
+	roundedLatency := float64(latency) / float64(time.Millisecond)
+	nx.logger.Debugf("ping probe results: %d bytes from %v: icmp_seq=%v, time=%dms", amt, host, i, roundedLatency)
+
+	return fmt.Sprintf("%.2fms", roundedLatency), nil
 }
 
-func (nx *Nexodus) ping(host string) error {
-	interval := time.Duration(interval)
+func (nx *Nexodus) ping(host string) (string, error) {
+	intervalDuration := time.Duration(interval)
 	waitFor := time.Duration(timeWait) * time.Millisecond
+
+	var lastResult string
+
 	for i := uint64(0); i <= iterations; i++ {
-		_, err := nx.doPing(host, i+1, waitFor)
+		result, err := nx.doPing(host, i+1, waitFor)
 		if err != nil {
-			return fmt.Errorf("ping failed: %w", err)
+			return "", fmt.Errorf("ping failed: %w", err)
 		}
-		// TODO: this is probably irrelevant on one iteration
-		time.Sleep(time.Millisecond * interval)
+		lastResult = result
+		time.Sleep(time.Millisecond * intervalDuration)
 	}
-	return nil
+
+	return lastResult, nil
 }
