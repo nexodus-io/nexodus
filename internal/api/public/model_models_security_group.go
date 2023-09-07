@@ -18,4 +18,5 @@ type ModelsSecurityGroup struct {
 	InboundRules     []ModelsSecurityRule `json:"inbound_rules,omitempty"`
 	OrgId            string               `json:"org_id,omitempty"`
 	OutboundRules    []ModelsSecurityRule `json:"outbound_rules,omitempty"`
+	Revision         int32                `json:"revision,omitempty"`
 }

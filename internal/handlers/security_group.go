@@ -14,6 +14,17 @@ import (
 	"gorm.io/gorm"
 )
 
+type securityGroupList []*models.SecurityGroup
+
+func (d securityGroupList) Item(i int) (any, uint64, gorm.DeletedAt) {
+	item := d[i]
+	return item, item.Revision, item.DeletedAt
+}
+
+func (d securityGroupList) Len() int {
+	return len(d)
+}
+
 // ListSecurityGroups lists all Security Groups
 // @Summary      List Security Groups
 // @Description  Lists all Security Groups
@@ -21,6 +32,7 @@ import (
 // @Tags         SecurityGroup
 // @Accepts		 json
 // @Produce      json
+// @Param		 gt_revision       query     uint64 false "greater than revision"
 // @Param        organization_id   path      string  true "Organization ID"
 // @Success      200  {object}  []models.SecurityGroup
 // @Failure		 401  {object}  models.BaseError
@@ -44,14 +56,34 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 		return
 	}
 
-	securityGroups := make([]models.SecurityGroup, 0)
-	result := api.db.WithContext(ctx).Where("organization_id = ?", orgId).Find(&securityGroups)
-
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching security groups from db"})
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
 		return
 	}
-	c.JSON(http.StatusOK, securityGroups)
+
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", orgId.String())
+	defaultOrderBy := "id"
+	if v := c.Query("watch"); v == "true" {
+		query.Sort = ""
+		defaultOrderBy = "revision"
+	}
+
+	scopes := []func(*gorm.DB) *gorm.DB{
+		func(db *gorm.DB) *gorm.DB {
+			return db.Where("organization_id = ?", orgId)
+		},
+		FilterAndPaginateWithQuery(&models.SecurityGroup{}, c, query, defaultOrderBy),
+	}
+
+	api.sendListOrWatch(c, ctx, signalChannel, "revision", scopes, func(db *gorm.DB) (WatchableList, error) {
+		var items securityGroupList
+		result := db.Find(&items)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return items, nil
+	})
 }
 
 // GetSecurityGroup gets a Security Group by ID
@@ -203,6 +235,9 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		return
 	}
 
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
+
 	c.JSON(http.StatusCreated, sg)
 }
 
@@ -287,8 +322,8 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	// TODO: signal bus notify of SecGroup deletes
-	//api.signalBus.Notify
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
 
 	c.JSON(http.StatusOK, sg)
 }
@@ -375,6 +410,9 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		}
 		return
 	}
+
+	signalChannel := fmt.Sprintf("/security-groups/org=%s", securityGroup.OrganizationId.String())
+	api.signalBus.Notify(signalChannel)
 
 	c.JSON(http.StatusOK, securityGroup)
 }

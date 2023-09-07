@@ -1281,6 +1281,12 @@ const docTemplate = `{
                 "operationId": "ListSecurityGroups",
                 "parameters": [
                     {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Organization ID",
                         "name": "organization_id",
@@ -2321,6 +2327,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                },
+                "revision": {
+                    "type": "integer"
                 }
             }
         },

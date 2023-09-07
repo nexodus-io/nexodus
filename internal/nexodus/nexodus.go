@@ -155,10 +155,11 @@ type Nexodus struct {
 	skipTlsVerify bool
 	stateStore    state.Store
 	userspaceWG
-	informer     *public.ApiListDevicesInOrganizationInformer
-	informerStop context.CancelFunc
-	nexCtx       context.Context
-	nexWg        *sync.WaitGroup
+	securityGroupsInformer *public.ApiListSecurityGroupsInformer
+	devicesInformer        *public.ApiListDevicesInOrganizationInformer
+	informerStop           context.CancelFunc
+	nexCtx                 context.Context
+	nexWg                  *sync.WaitGroup
 }
 
 type wgConfig struct {
@@ -458,9 +459,10 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
 
-	informerCtx, informerCancel := context.WithCancel(ctx)
-	nx.informerStop = informerCancel
-	nx.informer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	devicesInformerCtx, devicesInformerCancel := context.WithCancel(ctx)
+	nx.informerStop = devicesInformerCancel
+	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(devicesInformerCtx, nx.org.Id).Informer()
+	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(devicesInformerCtx, nx.org.Id).Informer()
 
 	var localIP string
 	var localEndpointPort int
@@ -472,7 +474,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if nx.relay {
-		peerMap, _, err := nx.informer.Execute()
+		peerMap, _, err := nx.devicesInformer.Execute()
 		if err != nil {
 			return err
 		}
@@ -581,8 +583,10 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 						nx.logger.Debug(err)
 					}
 				}
-			case <-nx.informer.Changed():
+			case <-nx.devicesInformer.Changed():
 				nx.reconcileDevices(ctx, options)
+			case <-nx.securityGroupsInformer.Changed():
+				nx.reconcileSecurityGroups(ctx)
 			case <-pollTicker.C:
 				// This does not actually poll the API for changes. Peer configuration changes will only
 				// be processed when they come in on the informer. This periodic check is needed to
@@ -631,7 +635,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	}
 
 	// if the security group ID is not nil, lookup the ID and check for any changes
-	responseSecGroup, httpResp, err := nx.client.SecurityGroupApi.GetSecurityGroup(ctx, nx.org.Id, existing.device.SecurityGroupId).Execute()
+	securityGroups, httpResp, err := nx.securityGroupsInformer.Execute()
 	if err != nil {
 		// if the group ID returns a 404, clear the current rules
 		if httpResp != nil && httpResp.StatusCode == http.StatusNotFound {
@@ -641,7 +645,17 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 			}
 			return
 		}
-		nx.logger.Errorf("Error retrieving the security group: %v", err)
+		nx.logger.Errorf("Error retrieving the security groups: %v", err)
+		return
+	}
+
+	responseSecGroup, found := securityGroups[existing.device.SecurityGroupId]
+	if !found {
+		nx.securityGroup = nil
+		if err := nx.processSecurityGroupRules(); err != nil {
+			nx.logger.Error(err)
+		}
+		nx.logger.Errorf("Error retrieving the security group")
 		return
 	}
 
@@ -652,7 +666,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 
 	nx.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
 	oldSecGroup := nx.securityGroup
-	nx.securityGroup = responseSecGroup
+	nx.securityGroup = &responseSecGroup
 
 	if oldSecGroup != nil && responseSecGroup.Id == oldSecGroup.Id &&
 		reflect.DeepEqual(responseSecGroup.InboundRules, oldSecGroup.InboundRules) &&
@@ -712,7 +726,8 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	nx.client = c
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	nx.informerStop = informerCancel
-	nx.informer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
+	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
 
 	nx.SetStatus(NexdStatusRunning, "")
 	nx.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
@@ -894,7 +909,7 @@ func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 }
 
 func (nx *Nexodus) reconcileDeviceCache() error {
-	peerMap, resp, err := nx.informer.Execute()
+	peerMap, resp, err := nx.devicesInformer.Execute()
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("error: %w header: %v", err, resp.Header)
