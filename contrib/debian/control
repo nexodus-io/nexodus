@@ -9,5 +9,5 @@ Rules-Requires-Root: no
 
 Package: nexodus
 Architecture: amd64 arm64
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, nftables
 Description: Network Connectivity as a Service
