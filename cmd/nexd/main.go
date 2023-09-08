@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/state/fstore"
-	"github.com/nexodus-io/nexodus/internal/state/kstore"
-	log "github.com/sirupsen/logrus"
 	"net/url"
 	"os"
 	"os/signal"
@@ -15,11 +12,16 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/nexodus-io/nexodus/internal/state/fstore"
+	"github.com/nexodus-io/nexodus/internal/state/kstore"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/stun"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -213,14 +215,13 @@ func main() {
 	if debug != "" {
 		logCfg := zap.NewDevelopmentConfig()
 		logLevel = &logCfg.Level
-		logCfg.EncoderConfig.TimeKey = ""
 		logger, err = logCfg.Build()
 		logger.Info("Debug logging enabled")
 	} else {
 		logCfg := zap.NewProductionConfig()
 		logLevel = &logCfg.Level
 		logCfg.DisableStacktrace = true
-		logCfg.EncoderConfig.TimeKey = ""
+		logCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		logger, err = logCfg.Build()
 	}
 	if err != nil {
