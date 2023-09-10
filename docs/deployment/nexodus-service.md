@@ -79,3 +79,14 @@ dist/nexctl-linux-amd64 --service-url https://try.nexodus.127.0.0.1.nip.io --use
 ```
 
 For windows, we recommend installing the root certificate via the [MMC snap-in](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/install-imported-certificates#import-the-certificate-into-the-local-computer-store).
+
+### Redeploy with code changes
+
+If you modify api-server code and would like to build and redeploy the KIND cluster, the following make commands are available to you from the Makefile.
+
+```console
+# make, load and redeploy the services
+make redeploy
+# redeploy the services and reset the database
+make recreate-db
+```

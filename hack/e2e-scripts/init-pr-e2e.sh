@@ -16,12 +16,8 @@ function build_project {
   # replace the current kind images with this branch
   make images
   make load-images
-  kind load --name nexodus-dev docker-image quay.io/nexodus/apiserver:latest
-  kubectl delete deployment auth -n nexodus
-  kubectl delete -n nexodus deploy/apiserver postgrescluster/database deploy/ipam
-  kubectl delete -n nexodus deploy/frontend
-  sleep 10
-  kubectl apply -k ./deploy/nexodus/overlays/dev
+  make recreate-db
+  sleep 100
 }
 
 # grab a fresh copy of the repo to avoid fast-forward issues
