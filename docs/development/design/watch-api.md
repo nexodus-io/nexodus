@@ -1,12 +1,13 @@
-# Nexodus Device Watch API Implementation Notes
+# Nexodus Device Event API Implementation Notes
 
 ## The Problem
 
-In order to connect or disconnect devices from a Nexodus-managed organization, the list of all desired devices in the organization need to be replicated to all devices in the organization.  The `ListDevicesInOrganization` operation provides this list and can be accessed via the following REST call:
+In order to connect or disconnect devices from a Nexodus-managed organization, the list of all desired devices and security groups in the organization need to be replicated to all devices in the organization.  The `ListDevicesInOrganization` and `ListSecurityGroups` operations provides these lists and can be accessed via the following REST calls:
 
-`GET /api/organizations/{organization_id}/devices`
+* `GET /api/organizations/{organization_id}/devices`
+* `GET /api/organizations/{organization_id}/security_groups`
 
-The `nexd` agent would need to periodically poll this endpoint to get the current desired state from the API server and reconcile the device configuration to add or remove Wireguard peers endpoints as necessary.
+The `nexd` agent would need to periodically poll these endpoint to get the current desired state from the API server and reconcile the device configuration to add or remove Wireguard peers endpoints and firewall rules as necessary.
 
 As the number of devices (N) in the organization increases, the number of periodic API requests to `ListDevicesInOrganization` increases linearly.  The size of the response list also increases linearly.  Put those two together, and you get the response bandwidth to the API server increasing exponentially (N requests/polling interval x N device elements in the response).  This will clearly lead to scaling challenges with large organizations.
 
@@ -14,9 +15,23 @@ This also has the problem that desired state changes recorded in the apiserver w
 
 ## The Solution: The Watch style API
 
-Inspired by the Kubernetes List/Watch style APIs, the Nexodus `ListDevicesInOrganization` operation can be called with the `watch=true` query parameter.  Furthermore, devices have been given a `revision` field that can be used to efficiently make change tracking of devices possible.
+Inspired by the Kubernetes List/Watch style APIs, the Nexodus now supports a `WatchEvents` operation that can be called to get an event stream of those resources.  Watchable resources have been given a `revision` field that can be used to efficiently make change tracking of devices possible.  When you call the `WatchEvents` operation, you give it an array of resource kinds that you want to watch.  Example:
 
-When you call the `ListDevicesInOrganization` operation with the `watch=true` query parameter, the API server responds with a stream of changes. These changes itemize the outcome of operations (such as **change**, **delete**, and **update**) that occurred after the `revision` you specified as a query parameter to the request. The overall **watch** mechanism allows a client to fetch the current state and then subscribe to subsequent changes, without missing any events.
+* `POST /api/organizations/{organization_id}/events`
+   with an example `application/json` request body
+
+      [
+        {
+          "kind": "device",
+        },
+        {
+          "kind": "security-groups",
+          "gt_revision": 0,
+          "at_tail": false
+        }
+      ] 
+
+The API server will respond with a stream of changes. These changes itemize the outcome of operations (such as **change**, **delete**, and **update**) that occurred after the `revision` you specified in the `gt_revision` field in the request. The overall **watch** mechanism allows a client to fetch the current state and then subscribe to subsequent changes, without missing any events.
 
 If a client **watch** is disconnected then that client can start a new **watch** from the last returned `revision`; the client could also perform a fresh watch without specifying a revision and begin again.
 
@@ -24,14 +39,20 @@ This has the effect of having better bandwidth scaling characteristics since onl
 
 ### Example
 
-When you use the `watch=true` query parameter, the HTTP response body (served as `application/json;stream=watch`) consists of a series of JSON documents.  When you don't specify the `revision` argument, you will get all the devices in an organization like in a typical list request followed by a `bookmark` event.
+The `WatchEvents` operation HTTP response body (served as `application/json;stream=watch`) consists of a series of JSON documents.  When you don't specify the `gt_revision` argument, you will get all the resources in an organization like in a typical list request.  If the `at_tail` field in the request is false, or not set, then the list will be followed by a `tail` event.
 
-1. List all of the devices in a given organization.
+1. List all the devices in a given organization.
 
    ```console
-   GET /api/organizations/{organization_id}/devices?watch=true
+   POST /api/organizations/{organization_id}/events
+   [
+     {
+       "kind": "device"
+     }
+   ]    
    ---
    200 OK
+   Transfer-Encoding: chunked
    Content-Type: application/json
 
    {
@@ -52,22 +73,28 @@ When you use the `watch=true` query parameter, the HTTP response body (served as
        "revision": 10246
      }
    }
-   { "type": "bookmark" }   
+   { "type": "tail" }   
    ```
 
-If a client **watch** operation is disconnected then that client can start a new **watch** from
-the last returned `revision`;
-2. Starting from revision 10245, use the following request to receive notifications of any API operations that affect devices.
+   If a `WatchEvents` operation is disconnected then that client can start a new `WatchEvents` from
+   the last returned `revision`
 
-   ```console
-   GET /api/organizations/{organization_id}/devices?watch=true&revision=10245
+2. Starting from revision `10246`, use the following request to receive notifications of any API operations that affect devices. In this case we set the `"at_tail": true` so that we don't get teh tail marker again since the client has previously seen the tail marker already.
+
+```console
+   POST /api/organizations/{organization_id}/events
+   [
+     {
+       "kind": "device",
+       "at_tail": true,
+       "gt_revision": 10246
+     }
+   ]    
    ---
    200 OK
    Transfer-Encoding: chunked
    Content-Type: application/json;stream=watch
 
-   { "type": "bookmark" }
-   ...
    {
      "type": "delete",
      "value":  {
@@ -89,8 +116,6 @@ the last returned `revision`;
    ...
    ```
 
-In the above example, the client gets a bookmark event immediately indicating no changes had occurred since revision 10245, but then a little while later a delete event is delivered.
-
 ### Client Library Access
 
 The traditional non-watch API for listing devices in an organization is:
@@ -101,23 +126,30 @@ devices, _, err := client.DevicesApi.
    Execute()
 ```
 
-To use the `watch=true` version of the API, use:
+To use the `WatchEvents` operation version of the API, use:
 
 ```go
-watch, _, err := client.DevicesApi.
-   ListDevicesInOrganization(context.Background(), orgID).
-   Watch()
+stream, _, err := client.OrganizationsApi.
+   WatchEvents(context.Background(), orgID).
+   Watches([]public.ModelsWatch{
+      {
+          Kind: "device",
+          GtRevision: 0,
+          AtTail: false,
+      }
+   }).
+   WatchEventStream()
 
 defer watch.Close()
 
 // get all the events..
 for {
-    kind, device, err := watch.Receive()    
+    event, err := stream.Receive()    
 }
 
 ```
 
-To simplify working against the event-based *watch* operations we have implemented a Kubernetes-style Informer API.
+To simplify working against the event-based `WatchEvents` operation we have implemented a Kubernetes-style Informer API.
 
 An Informer, in essence, is a local cached copy of the resources that clients are interested in. The local cache will be refreshed via the watch operation. But the use of the watch API occurs asynchronously and is hidden from the clients.
 
@@ -149,14 +181,44 @@ for {
 }
 ```
 
-### Apiserver Implementation of `watch=true`
+To get different informers sharing a single `WatchEvents` API call, you need to have them use a `context.Context`
+created using the `client.OrganizationsApi.WatchEvents(ctx, orgID).NewSharedInformerContext()` call.  Example:
 
-The HTTP request handler servicing the `ListDevicesInOrganization` will:
+```go
+informerCtx := client.OrganizationsApi.
+   WatchEvents(ctx, orgID).
+   NewSharedInformerContext()
+
+devicceInformer := client.DevicesApi.
+   ListDevicesInOrganization(informerCtx, orgID).
+   Informer()
+
+securityGroupsInformer := client.SecurityGroupApi.
+   ListSecurityGroups(informerCtx, orgID).
+   Informer()
+
+for {
+    select {
+        case <- ctx.Done():
+            return
+        case <- devicceInformer.Changed():
+            devices, _, err := devicceInformer.Execute()
+            ... process the devices ....
+        case <- securityGroupsInformer.Changed():
+            securityGroups, _, err := securityGroupsInformer.Execute()
+            ... process the security securityGroups ....
+    }
+}
+```
+
+### Apiserver Implementation of `WatchEvents`
+
+The HTTP request handler servicing the `WatchEvents` will for each requested watch:
 
 1. Create a **SignalBus** (described later in this doc) subscription to `/devices/org={orgId}`
 2. Select matching devices from the DB.  It will force device results to be ordered by `revision` so that the last selected result has the highest revision.
 3. Each result will be sent to the client as an independent JSON document.  This will continue until it gets an empty result set from the database.
-4. At that point, it will send the bookmark event the the client
+4. At that point, it will send the tail event to the client if `"at_tail": false`
 5. Parks the go routine waiting for the http request to be terminated or the **SignalBus** subscription to be notified.
 6. It loops back and selects matching devices from the DB since that last seen revision.
 7. Sends each selected device to the client,
@@ -180,7 +242,7 @@ type SignalBus interface {
 
 type Subscription interface { 
     // You can wait on this channel to know when it's been signaled
-    Signal() <-chan bool
+    Signal() <-chan struct{}
     // close out the subscription.
     Close()
 }

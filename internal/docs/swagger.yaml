@@ -362,6 +362,8 @@ definitions:
     type: object
   models.Watch:
     properties:
+      at_tail:
+        type: boolean
       gt_revision:
         type: integer
       kind:

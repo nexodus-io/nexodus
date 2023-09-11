@@ -2531,6 +2531,9 @@ const docTemplate = `{
         "models.Watch": {
             "type": "object",
             "properties": {
+                "at_tail": {
+                    "type": "boolean"
+                },
                 "gt_revision": {
                     "type": "integer"
                 },

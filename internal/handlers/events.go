@@ -20,6 +20,7 @@ type Watch struct {
 	signal     string
 	gtRevision uint64
 	fetch      func(db *gorm.DB, gtRevision uint64) (WatchableList, error)
+	atTail     bool
 }
 
 // WatchEvents lists all devices in an Organization
@@ -94,6 +95,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/devices/org=%s", orgId.String()),
 				fetch:      fetch,
 			})
@@ -102,6 +104,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/security-groups/org=%s", orgId.String()),
 				fetch: func(db *gorm.DB, gtRevision uint64) (WatchableList, error) {
 					var items securityGroupList
@@ -138,6 +141,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/metadata/org=%s", orgId.String()),
 				fetch: func(db *gorm.DB, gtRevision uint64) (WatchableList, error) {
 
@@ -189,12 +193,12 @@ func (api *API) WatchEvents(c *gin.Context) {
 func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Watch) {
 	type watchState struct {
 		Watch
-		sub          *signalbus.Subscription
-		idx          int
-		list         WatchableList
-		bookmarkSent bool
-		err          error
-		parked       bool
+		sub    *signalbus.Subscription
+		idx    int
+		list   WatchableList
+		atTail bool
+		err    error
+		parked bool
 	}
 
 	var states []*watchState
@@ -215,7 +219,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 		state.sub = api.signalBus.Subscribe(w.signal)
 
 		state.idx = 1
-		state.bookmarkSent = false
+		state.atTail = w.atTail
 
 		states = append(states, state)
 	}
@@ -282,11 +286,11 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 					// did we run out of items to send?
 					if state.list.Len() == 0 {
 						// bookmark idea taken from: https://kubernetes.io/docs/reference/using-api/api-concepts/#watch-bookmarks
-						if !state.bookmarkSent {
-							state.bookmarkSent = true
+						if !state.atTail {
+							state.atTail = true
 							return models.WatchEvent{
 								Kind: state.kind,
-								Type: "bookmark",
+								Type: "tail",
 							}
 						}
 						state.parked = true
@@ -308,12 +312,6 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 					// the client.  Signal the event stream is done.
 					return models.WatchEvent{
 						Type: "close",
-					}
-				}
-				if notified == -1 {
-					// timeout occurred..
-					return models.WatchEvent{
-						Type: "alive",
 					}
 				}
 				if notified >= 0 {
