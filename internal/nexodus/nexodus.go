@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/state"
-	"golang.org/x/oauth2"
 	"net"
 	"net/http"
 	"net/netip"
@@ -20,6 +18,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/state"
+	"golang.org/x/oauth2"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
@@ -823,18 +824,23 @@ func (nx *Nexodus) deviceCacheLookup(pubKey string) (deviceCacheEntry, bool) {
 }
 
 func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
-	// How do we determine a peer is healthy or not?
+	// The most reliable method to passively check for an active wireguard session
+	// is to check that the last handshake is within the REJECT_AFTER_TIME constant
+	// defined in the wireguard paper (180 seconds).
 	//
-	// We have wireguard keepalives turned on, so if we haven't seen
-	// bidirectional traffic in the keepalive interval + the keepalive timeout,
-	// then it is unhealthy. We can watch the tx and rx counters for this.
-	// We can also watch the LastHandshakeTime.
+	// > After REJECT_AFTER_MESSAGES transport data messages or after the
+	// > current secure session is REJECT_AFTER_TIME seconds old, whichever
+	// > comes first, WireGuard will refuse to send or receive any more
+	// > transport data messages using the current secure session, until a new
+	// > secure session is created through the 1-RTT handshake.
 	//
-	// The next method we could use here is to check the LastHandshakeTime.
-	// If it is older than the RekeyAfterTime + RekeyTimeout, then it is unhealthy.
-	// That would result in a slower detection of an unhealthy peer than watching
-	// for counters to increment based on keepalives based on our current keepalive
-	// setting, though.
+	// It is tempting to try to do something with the tx and rx counters availble
+	// in the wireguard stats, but a past attempt helped determine that was not
+	// reliable, as we can only count on keepalives going in one direction,
+	// not both. For even more detail on this, check the git commit logs for this
+	// file.
+	//
+	// For now, we will detect that peering is not working within about 3 minutes.
 
 	if d.lastHandshakeTime.IsZero() {
 		// We haven't seen a handshake yet, so this peer connection is not up.
@@ -846,53 +852,19 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 		return false
 	}
 
-	keepaliveWindow := keepaliveInterval + device.KeepaliveTimeout
-
-	if time.Since(d.lastHandshakeTime) < keepaliveWindow {
-		// We have seen a handshake recently enough, so this peer connection is up.
-		if !d.peerHealthy {
-			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy due to lastHandshakeTime: %s < %s",
-				d.device.Hostname, d.device.PublicKey,
-				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
-				time.Since(d.lastHandshakeTime).String(), keepaliveWindow.String())
-		}
-		return true
-	}
-
-	if time.Since(d.startTime) < keepaliveWindow {
-		// We haven't been tracking this peer long enough to know if it is healthy or not,
-		// so assume the best.
-		if !d.peerHealthy {
-			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is assumed healthy due to startTime: %s < %s",
-				d.device.Hostname, d.device.PublicKey,
-				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
-				time.Since(d.startTime).String(), keepaliveWindow.String())
-		}
-		return true
-	}
-
-	if time.Since(d.lastTxTime) > keepaliveWindow {
+	if time.Since(d.lastHandshakeTime) > device.RejectAfterTime {
+		// It has been too long since the last handshake, so this session has expired.
 		if d.peerHealthy {
-			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastTxTime: %s",
+			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastHandshakeTime: %s > %s",
 				d.device.Hostname, d.device.PublicKey,
 				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
-				time.Since(d.lastTxTime).String())
-		}
-		return false
-	}
-
-	if time.Since(d.lastRxTime) > keepaliveWindow {
-		if d.peerHealthy {
-			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastRxTime: %s",
-				d.device.Hostname, d.device.PublicKey,
-				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
-				time.Since(d.lastRxTime).String())
+				time.Since(d.lastHandshakeTime).String(), device.RejectAfterTime.String())
 		}
 		return false
 	}
 
 	if !d.peerHealthy {
-		nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy based on tx/rx counter activity",
+		nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy",
 			d.device.Hostname, d.device.PublicKey,
 			d.device.Endpoints[0].Address, d.device.Endpoints[1].Address)
 	}
