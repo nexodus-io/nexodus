@@ -30,7 +30,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
@@ -57,7 +57,7 @@ jobs:
       matrix:
         os: ["linux"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
       - name: Lint ${{ matrix.os }}
@@ -70,7 +70,7 @@ jobs:
       matrix:
         os: ["darwin", "windows"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
       - name: Lint ${{ matrix.os }}
@@ -79,14 +79,14 @@ jobs:
   ui-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: UI Lint
         run: make ui-lint
 
   k8s-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
 
@@ -100,7 +100,7 @@ jobs:
   opa-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@v2
         with:
@@ -125,7 +125,7 @@ jobs:
           - name: envsubst
             tags: quay.io/nexodus/envsubst:latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v2
       - name: Build and export ${{ matrix.name }}
         uses: docker/build-push-action@v4
@@ -169,7 +169,7 @@ jobs:
     env:
       GOARCH: ${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
       - name: Unit tests
@@ -180,7 +180,7 @@ jobs:
     needs: [ go-lint-linux, generate ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: ./.github/actions/setup-go-env
 
@@ -248,7 +248,7 @@ jobs:
         overlay: ["dev"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v2
 
       - name: Setup Go
@@ -334,7 +334,7 @@ jobs:
             srpm_mock_root: centos-stream-9-x86_64
             srpm_distro: el9
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Needed for building binaries to generate manpages
       - name: Setup Go

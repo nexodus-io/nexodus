@@ -45,7 +45,7 @@ jobs:
               quay.io/nexodus/envsubst:${{ github.ref_name }}
             target:
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Calculate Short SHA
         id: gitsha
@@ -149,7 +149,7 @@ jobs:
             srpm_mock_root: centos-stream+epel-9-x86_64
             srpm_distro: el9
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Needed for building binaries to generate manpages
       - name: Setup Go
