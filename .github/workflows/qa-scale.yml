@@ -44,7 +44,7 @@ jobs:
       ANSIBLE_HOST_KEY_CHECKING: "false"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Determine if pr_or_branch is a PR number
         id: check_pr
