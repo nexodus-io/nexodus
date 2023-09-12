@@ -17,7 +17,6 @@ import {
 const UserListBulkActions = () => (
   <Fragment>
     <BulkExportButton />
-    <BulkDeleteButton />
   </Fragment>
 );
 
