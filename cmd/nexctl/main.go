@@ -229,6 +229,7 @@ func main() {
 							&cli.StringFlag{
 								Name:     "user-id",
 								Required: true,
+								Hidden:   true,
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
