@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -98,4 +99,13 @@ func isIPv6Supported() bool {
 	}
 
 	return true
+}
+
+// isElevatedWindows checks that nexd was started with appropriate permissions for Windows OS mode
+func isElevated() (bool, error) {
+	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
+	if err != nil {
+		return false, fmt.Errorf("nexd OS mode requires elevated privileges, please run again with administrative privileges")
+	}
+	return true, nil
 }
