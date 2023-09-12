@@ -193,15 +193,6 @@ func binaryChecks() error {
 	return nil
 }
 
-// prepOS perform OS specific OS changes
-func prepOS(logger *zap.SugaredLogger) error {
-	// ensure the linux wireguard directory exists
-	if err := CreateDirectory(WgLinuxConfPath); err != nil {
-		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)
-	}
-	return nil
-}
-
 // isIPv6Supported returns true if the platform supports IPv6
 func isIPv6Supported() bool {
 	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {

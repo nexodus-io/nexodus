@@ -121,15 +121,6 @@ func binaryChecks() error {
 	return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
 }
 
-// prepOS perform OS specific OS changes
-func prepOS(logger *zap.SugaredLogger) error {
-	// ensure the osx wireguard directory exists
-	if err := CreateDirectory(WgDarwinConfPath); err != nil {
-		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgDarwinConfPath, err)
-	}
-	return nil
-}
-
 // isIPv6Supported returns true if the platform supports IPv6, return true if ifconfig isn't present for whatever reason
 func isIPv6Supported() bool {
 	res, err := RunCommand("ifconfig")
