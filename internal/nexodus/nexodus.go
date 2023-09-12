@@ -39,12 +39,9 @@ const (
 	wgGoBinary         = "wireguard-go"
 	nexdWgGoBinary     = "nexd-wireguard-go"
 	wgWinBinary        = "wireguard.exe"
-	WgLinuxConfPath    = "/etc/wireguard/"
-	WgDarwinConfPath   = "/usr/local/etc/wireguard/"
 	darwinIface        = "utun8"
 	WgDefaultPort      = 51820
 	wgIface            = "wg0"
-	WgWindowsConfPath  = "C:/nexd/"
 	wgOrgIPv6PrefixLen = "64"
 )
 
@@ -257,10 +254,6 @@ func NewNexodus(
 		return nil, err
 	}
 
-	if err := prepOS(logger); err != nil {
-		return nil, err
-	}
-
 	// remove orphaned wg interfaces from previous node joins
 	ax.removeExistingInterface()
 
@@ -307,14 +300,6 @@ func (nx *Nexodus) migrateLegacyState(stateDir string) error {
 	}
 
 	s := nx.stateStore.State()
-	if s.PublicKey == "" || s.PrivateKey == "" {
-		// We used to store the keys in a different location
-		// migrate them to the state store
-		s.PrivateKey, s.PublicKey, err = nx.loadLegacyKeys()
-		if err != nil {
-			return err
-		}
-	}
 
 	if s.AuthToken == nil {
 		legacyApitokenFile := filepath.Join(stateDir, "apitoken.json")
