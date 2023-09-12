@@ -244,6 +244,14 @@ func NewNexodus(
 		},
 	}
 	ax.userspaceMode = userspaceMode
+
+	if !ax.userspaceMode {
+		isOk, err := isElevated()
+		if !isOk {
+			return nil, err
+		}
+	}
+
 	ax.tunnelIface = ax.defaultTunnelDev()
 
 	if ax.relay {

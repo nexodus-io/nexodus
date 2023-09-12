@@ -133,3 +133,11 @@ func isIPv6Supported() bool {
 
 	return true
 }
+
+// isElevatedUnix checks that nexd was started with appropriate permissions for Unix-based OS mode (Linux/macOS)
+func isElevated() (bool, error) {
+	if os.Geteuid() != 0 {
+		return false, fmt.Errorf("nexd OS mode requires elevated privileges, please run again with sudo")
+	}
+	return true, nil
+}
