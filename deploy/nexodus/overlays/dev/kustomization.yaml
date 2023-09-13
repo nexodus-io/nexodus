@@ -61,6 +61,12 @@ patches:
         value: nexodus-issuer
   - target:
       kind: Deployment
+      name: auth
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
+  - target:
+      kind: Deployment
       name: apiproxy
     patch: |-
       - op: remove

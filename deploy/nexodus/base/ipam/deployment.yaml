@@ -17,12 +17,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-ipam
-                  key: host
+                  key: pgbouncer-host
             - name: GOIPAM_PG_PORT
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-ipam
-                  key: port
+                  key: pgbouncer-port
             - name: GOIPAM_PG_USER
               valueFrom:
                 secretKeyRef:
