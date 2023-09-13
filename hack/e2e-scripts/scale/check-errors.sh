@@ -18,9 +18,11 @@ print_usage() {
 # Parse command line arguments
 while getopts "l" opt; do
     case $opt in
-        l) print_log=true ;;
-        \?) echo "Invalid option: -$OPTARG" >&2
-            print_usage ;;
+    l) print_log=true ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        print_usage
+        ;;
     esac
 done
 
@@ -43,17 +45,17 @@ for container_id in $container_ids; do
     error_stun=$(echo "$logs" | grep -ci "STUN")
     error_timeout=$(echo "$logs" | grep -c "timeout")
     known_error=$((error_400 + error_401 + error_429 + error_500 + error_501 + error_503 + error_json + error_eof + error_stun + error_timeout))
-    error_count=$(echo "$logs" | grep -v '^$'| wc -l)
+    error_count=$(echo "$logs" | grep -v '^$' | wc -l)
 
     if [ "$error_count" -gt 0 ]; then
-	    if [ "$error_count" -eq "$known_error" ]; then
-		    echo -e "$container_id\t$user_id\t\t$error_count\t $error_json\t $error_eof\t $error_stun\t $error_timeout\t $error_400\t $error_401\t $error_429\t $error_500\t $error_501\t $error_503\t \e[32mNo\e[0m"
-	    else
-		echo -e "$container_id\t$user_id\t\t$error_count\t $error_json\t $error_eof\t $error_stun\t $error_timeout\t $error_400\t $error_401\t $error_429\t $error_500\t $error_501\t $error_503\t \e[91mYes\e[0m"
-	    fi
+        if [ "$error_count" -eq "$known_error" ]; then
+            echo -e "$container_id\t$user_id\t\t$error_count\t $error_json\t $error_eof\t $error_stun\t $error_timeout\t $error_400\t $error_401\t $error_429\t $error_500\t $error_501\t $error_503\t \e[32mNo\e[0m"
+        else
+            echo -e "$container_id\t$user_id\t\t$error_count\t $error_json\t $error_eof\t $error_stun\t $error_timeout\t $error_400\t $error_401\t $error_429\t $error_500\t $error_501\t $error_503\t \e[91mYes\e[0m"
+        fi
 
-	    if [ "$print_log" = true ]; then
-	    	echo "$logs"
-	    fi
+        if [ "$print_log" = true ]; then
+            echo "$logs"
+        fi
     fi
 done

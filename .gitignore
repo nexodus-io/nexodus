@@ -55,4 +55,4 @@ site/
 
 # scale test temp files
 hack/e2e-scripts/kctool/kctool
-hack/e2e-scripts/nexd-init.sh
+hack/e2e-scripts/scale/nexd-init.sh

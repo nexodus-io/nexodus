@@ -26,9 +26,11 @@ print_usage() {
 # Parse command line arguments
 while getopts "d" opt; do
     case $opt in
-        d) print_wg=true ;;
-        \?) echo "Invalid option: -$OPTARG" >&2
-            print_usage ;;
+    d) print_wg=true ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        print_usage
+        ;;
     esac
 done
 
@@ -37,29 +39,29 @@ total_orgs=0
 
 # Loop through each container
 for container_id in $container_ids; do
-    total_nexd=$((total_nexd + 1 ))
+    total_nexd=$((total_nexd + 1))
 
     # Get the value of the "user" label for this container
     label_value=$(docker inspect --format '{{ index .Config.Labels "user" }}' $container_id)
 
     # If the label exists and the value is not in the encountered_labels array
     if [ ! -z "$label_value" ] && [[ ! " ${encountered_labels[@]} " =~ " $label_value " ]]; then
-	total_orgs=$((total_orgs + 1))
+        total_orgs=$((total_orgs + 1))
         # Add the label value to the encountered_labels array
         encountered_labels+=("$label_value")
 
-	peers=$(docker  exec -it $container_id wg show wg0 dump |grep -v "off"| wc -l)
-	unreachable=$(docker exec $container_id nexctl nexd peers ping| grep "Unreachable"| wc -l)
+        peers=$(docker exec -it $container_id wg show wg0 dump | grep -v "off" | wc -l)
+        unreachable=$(docker exec $container_id nexctl nexd peers ping | grep "Unreachable" | wc -l)
         # Print the container ID
-	if [ $unreachable -gt 0 ]; then
-		echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[91munreachable:$unreachable\e[0m"
-	else
-		echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[32munreachable:$unreachable\e[0m"
-	fi
+        if [ $unreachable -gt 0 ]; then
+            echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[91munreachable:$unreachable\e[0m"
+        else
+            echo -e "container-id: $container_id    user:$label_value    peers:$peers    \e[32munreachable:$unreachable\e[0m"
+        fi
 
-	if [ "$print_wg" = true ]; then
-		docker exec -it $container_id wg show wg0 dump
-	fi
+        if [ "$print_wg" = true ]; then
+            docker exec -it $container_id wg show wg0 dump
+        fi
     fi
 done
 
