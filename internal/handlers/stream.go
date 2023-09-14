@@ -59,7 +59,7 @@ func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal stri
 				if err != nil {
 					return models.WatchEvent{
 						Type:  "error",
-						Value: err.Error(),
+						Value: models.NewApiInternalError(err),
 					}
 				}
 				if list != nil && idx < list.Len() {
@@ -148,6 +148,8 @@ func stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("streaming unsupported")))
 		return
 	}
+	c.Writer.WriteHeader(200)
+	c.Writer.Flush()
 	for {
 		result := nextEvent()
 		if result.Type == "close" {

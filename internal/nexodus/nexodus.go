@@ -153,8 +153,8 @@ type Nexodus struct {
 	skipTlsVerify bool
 	stateStore    state.Store
 	userspaceWG
-	securityGroupsInformer *public.ApiListSecurityGroupsInformer
-	devicesInformer        *public.ApiListDevicesInOrganizationInformer
+	securityGroupsInformer *public.Informer[public.ModelsSecurityGroup]
+	devicesInformer        *public.Informer[public.ModelsDevice]
 	informerStop           context.CancelFunc
 	nexCtx                 context.Context
 	nexWg                  *sync.WaitGroup
@@ -200,7 +200,7 @@ func NewNexodus(
 	ctx context.Context,
 	orgId string,
 ) (*Nexodus, error) {
-
+	public.Logger = logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
@@ -453,10 +453,13 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("failed to choose an organization: %w", err)
 	}
 
-	devicesInformerCtx, devicesInformerCancel := context.WithCancel(ctx)
-	nx.informerStop = devicesInformerCancel
-	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(devicesInformerCtx, nx.org.Id).Informer()
-	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(devicesInformerCtx, nx.org.Id).Informer()
+	informerCtx, informerCancel := context.WithCancel(ctx)
+	nx.informerStop = informerCancel
+
+	// event stream sharing occurs due to the informers sharing the context created in following line:
+	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
+	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
 
 	var localIP string
 	var localEndpointPort int
@@ -653,7 +656,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	if nx.securityGroup != nil && reflect.DeepEqual(responseSecGroup, nx.securityGroup) {
+	if nx.securityGroup != nil && reflect.DeepEqual(responseSecGroup, *nx.securityGroup) {
 		// no changes to previously applied security group
 		return
 	}
@@ -720,6 +723,8 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	nx.client = c
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	nx.informerStop = informerCancel
+
+	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).NewSharedInformerContext()
 	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
 	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
 

@@ -207,8 +207,7 @@ static_resources:
                         timeout: 0.250s
                       service_name: apiproxy
 
-                common_http_protocol_options:
-                  idle_timeout: 120s
+                request_headers_timeout: 0s
                 upgrade_configs:
                   - upgrade_type: websocket
                 http_filters:
@@ -332,6 +331,38 @@ static_resources:
                                   - generic_key:
                                       descriptor_key: resource_group
                                       descriptor_value: device-auth
+
+                        - name: events
+                          match:
+                            safe_regex:
+                              google_re2: {}
+                              regex: "^\/api\/organizations\/[^/?]+\/events$"
+
+                          request_headers_to_add:
+                            header:
+                              key: "x-jwt-claim-sub"
+                              value: "test %DYNAMIC_METADATA(envoy.filters.http.jwt_authn:payload:sub)%"
+                            keep_empty_value: true
+                            append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                          route:
+                            timeout: 0s
+                            idle_timeout: 0s
+                            cluster: apiserver
+                            rate_limits:
+                              - actions:
+                                  - generic_key:
+                                      descriptor_key: resource_group
+                                      descriptor_value: api
+                                  - generic_key:
+                                      descriptor_key: tier
+                                      descriptor_value: default
+                                  - metadata:
+                                      descriptor_key: sub
+                                      metadata_key:
+                                        key: "envoy.filters.http.jwt_authn"
+                                        path:
+                                          - key: payload
+                                          - key: sub
 
                         - name: default
                           match:

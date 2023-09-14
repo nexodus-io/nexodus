@@ -1223,7 +1223,7 @@ const docTemplate = `{
                 "operationId": "WatchEvents",
                 "parameters": [
                     {
-                        "description": "List if events to watch",
+                        "description": "List of events to watch",
                         "name": "Watches",
                         "in": "body",
                         "required": true,
@@ -2531,6 +2531,9 @@ const docTemplate = `{
         "models.Watch": {
             "type": "object",
             "properties": {
+                "at_tail": {
+                    "type": "boolean"
+                },
                 "gt_revision": {
                     "type": "integer"
                 },

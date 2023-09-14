@@ -362,6 +362,8 @@ definitions:
     type: object
   models.Watch:
     properties:
+      at_tail:
+        type: boolean
       gt_revision:
         type: integer
       kind:
@@ -1188,7 +1190,7 @@ paths:
       description: Watches events occurring in the organization
       operationId: WatchEvents
       parameters:
-      - description: List if events to watch
+      - description: List of events to watch
         in: body
         name: Watches
         required: true

@@ -12,6 +12,7 @@ package public
 
 // ModelsWatch struct for ModelsWatch
 type ModelsWatch struct {
+	AtTail     bool                   `json:"at_tail,omitempty"`
 	GtRevision int32                  `json:"gt_revision,omitempty"`
 	Kind       string                 `json:"kind,omitempty"`
 	Options    map[string]interface{} `json:"options,omitempty"`

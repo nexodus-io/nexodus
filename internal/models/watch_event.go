@@ -4,6 +4,7 @@ package models
 type Watch struct {
 	Kind       string                 `json:"kind,omitempty"`
 	GtRevision uint64                 `json:"gt_revision,omitempty"`
+	AtTail     bool                   `json:"at_tail,omitempty"`
 	Options    map[string]interface{} `json:"options,omitempty"`
 }
 

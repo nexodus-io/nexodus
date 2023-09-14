@@ -4,6 +4,11 @@ metadata:
   name: apiproxy
   annotations:
     cert-manager.io/issuer: nexodus-issuer
+    # see: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-read-timeout
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # see: https://docs.openshift.com/container-platform/4.13/networking/routes/route-configuration.html#nw-configuring-route-timeouts_route-configuration
+    haproxy.router.openshift.io/timeout: "3600s"
+
 spec:
   tls:
     - hosts:

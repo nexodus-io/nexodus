@@ -83,7 +83,7 @@ Feature: Events API
       """
       {
         "kind": "device-metadata",
-        "type": "bookmark"
+        "type": "tail"
       }
       """
 
@@ -103,7 +103,7 @@ Feature: Events API
       """
       {
         "kind": "device",
-        "type": "bookmark"
+        "type": "tail"
       }
       """
 
