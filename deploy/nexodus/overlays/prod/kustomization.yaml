@@ -19,6 +19,14 @@ configMapGenerator:
     files:
       - files/nexodus.json
     name: realm
+  - behavior: create
+    files:
+      - files/limits.yaml
+    name: limitador-config
+  - behavior: replace
+    files:
+      - files/envoy.yaml
+    name: apiproxy-envoy-config
   - behavior: merge
     literals:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
@@ -40,6 +48,16 @@ configMapGenerator:
 patches:
   - patch: |-
       - op: replace
+        path: /spec/dnsNames/0
+        value: auth.try.nexodus.io
+      - op: replace
+        path: /spec/issuerRef/name
+        value: letsencrypt
+    target:
+      kind: Certificate
+      name: nexodus-auth-cert
+  - patch: |-
+      - op: replace
         path: /spec/rules/0/host
         value: api.try.nexodus.io
       - op: replace
@@ -50,13 +68,6 @@ patches:
         value: letsencrypt
     target:
       kind: Ingress
-      name: apiproxy
-  - patch: |-
-      - op: add
-        path: /spec/template/spec/serviceAccountName
-        value: nexodus-serviceaccount
-    target:
-      kind: Deployment
       name: apiproxy
   - patch: |-
       - op: add
@@ -78,16 +89,6 @@ patches:
       name: auth
   - patch: |-
       - op: replace
-        path: /spec/dnsNames/0
-        value: auth.try.nexodus.io
-      - op: replace
-        path: /spec/issuerRef/name
-        value: letsencrypt
-    target:
-      kind: Certificate
-      name: nexodus-auth-cert
-  - patch: |-
-      - op: replace
         path: /spec/rules/0/host
         value: try.nexodus.io
       - op: replace
@@ -99,19 +100,127 @@ patches:
     target:
       kind: Ingress
       name: frontend
-  - target:
+  - patch: |-
+      - op: add
+        path: /rules/1
+        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
+    target:
       group: rbac.authorization.k8s.io
       version: v1
       kind: Role
       name: promtail-role
-    patch: |-
-      - op: add
-        path: /rules/1
-        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
   - patch: |-
       - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 250m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 500Mi
+    target:
+      kind: StatefulSet
+      name: redis
+  - patch: |-
+      - op: replace
+        path: /spec/instances/0/replicas
+        value: 1
+      - op: replace
         path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
-        value: 6Gi
+        value: 8Gi
+      - op: replace
+        path: /spec/instances/0/resources/limits/cpu
+        value: 2000m
+      - op: replace
+        path: /spec/instances/0/resources/limits/memory
+        value: 2Gi
+      - op: replace
+        path: /spec/proxy/pgBouncer/replicas
+        value: 1
+      - op: replace
+        path: /spec/proxy/pgBouncer/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/proxy/pgBouncer/resources/limits/memory
+        value: 500Mi
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/ipam
+        value: "host=database-primary port=5432 pool_size=15 reserve_pool=5 max_db_connections=20"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/apiserver
+        value: "host=database-primary port=5432 pool_size=35 reserve_pool=5 max_db_connections=40"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/keycloak
+        value: "host=database-primary port=5432 pool_size=35 reserve_pool=5 max_db_connections=40"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/global/max_client_conn
+        value: "4000"
+      - op: replace
+        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/max_connections
+        value: "200"
+      - op: replace
+        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/shared_buffers
+        value: 256MB
     target:
       kind: PostgresCluster
       name: database
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: nexodus-serviceaccount
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: apiproxy
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 2000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 2000Mi
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: apiserver
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1000Mi
+    target:
+      kind: Deployment
+      name: auth
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 200m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 400Mi
+    target:
+      kind: Deployment
+      name: frontend
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 300m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 500Mi
+    target:
+      kind: Deployment
+      name: ipam
