@@ -632,7 +632,7 @@ type ApiWatchEventsRequest struct {
 	watches        *[]ModelsWatch
 }
 
-// List if events to watch
+// List of events to watch
 func (r ApiWatchEventsRequest) Watches(watches []ModelsWatch) ApiWatchEventsRequest {
 	r.watches = &watches
 	return r

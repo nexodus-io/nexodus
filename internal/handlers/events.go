@@ -23,14 +23,14 @@ type Watch struct {
 	atTail     bool
 }
 
-// WatchEvents lists all devices in an Organization
+// WatchEvents lets you watch for resource change events
 // @Summary      Watch events occurring in the organization
 // @Description  Watches events occurring in the organization
 // @Id           WatchEvents
 // @Tags         Organizations
 // @Accept       json
 // @Produce      json
-// @Param        Watches         body   []models.Watch  true "List if events to watch"
+// @Param        Watches         body   []models.Watch  true "List of events to watch"
 // @Param		 organization_id path   string          true "Organization ID"
 // @Success      200  {object}  models.WatchEvent
 // @Failure      400  {object}  models.BaseError
