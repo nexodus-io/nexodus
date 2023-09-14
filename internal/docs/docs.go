@@ -1792,6 +1792,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/web/check_auth": {
+            "get": {
+                "description": "Checks if the user is authenticated and returns appropriate status and message.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Check Authenticated User",
+                "operationId": "CheckAuth",
+                "responses": {
+                    "200": {
+                        "description": "User is authenticated.",
+                        "schema": {
+                            "$ref": "#/definitions/models.CheckAuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "User is not authenticated.",
+                        "schema": {
+                            "$ref": "#/definitions/models.CheckAuthResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/web/claims": {
             "get": {
                 "description": "Gets the claims of the users access token",
@@ -2071,6 +2098,17 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "something bad"
+                }
+            }
+        },
+        "models.CheckAuthResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

@@ -100,6 +100,13 @@ definitions:
         example: something bad
         type: string
     type: object
+  models.CheckAuthResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
   models.ConflictsError:
     properties:
       error:
@@ -1554,6 +1561,25 @@ paths:
           schema:
             $ref: '#/definitions/models.DeviceStartResponse'
       summary: Start Login
+      tags:
+      - Auth
+  /web/check_auth:
+    get:
+      description: Checks if the user is authenticated and returns appropriate status
+        and message.
+      operationId: CheckAuth
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User is authenticated.
+          schema:
+            $ref: '#/definitions/models.CheckAuthResponse'
+        "401":
+          description: User is not authenticated.
+          schema:
+            $ref: '#/definitions/models.CheckAuthResponse'
+      summary: Check Authenticated User
       tags:
       - Auth
   /web/claims:

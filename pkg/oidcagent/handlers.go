@@ -476,3 +476,29 @@ func JsonStringToToken(s string) (*oauth2.Token, error) {
 	return &t, nil
 
 }
+
+// CheckAuth checks if the user is authenticated or not
+// @Summary      Check Authenticated User
+// @Description  Checks if the user is authenticated and returns appropriate status and message.
+// @Id           CheckAuth
+// @Tags         Auth
+// @Accepts      json
+// @Produce      json
+// @Success      200	{object} models.CheckAuthResponse "User is authenticated."
+// @Failure      401 {object} models.CheckAuthResponse "User is not authenticated."
+// @Router       /web/check_auth [get]
+func (o *OidcAgent) CheckAuth(c *gin.Context) {
+	loggedIn := isLoggedIn(c)
+
+	if loggedIn {
+		c.JSON(http.StatusOK, models.CheckAuthResponse{
+			Status:  "success",
+			Message: "User is authenticated.",
+		})
+	} else {
+		c.JSON(http.StatusUnauthorized, models.CheckAuthResponse{
+			Status:  "failure",
+			Message: "User is not authenticated.",
+		})
+	}
+}
