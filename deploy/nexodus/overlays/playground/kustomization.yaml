@@ -23,6 +23,10 @@ configMapGenerator:
     files:
       - files/limits.yaml
     name: limitador-config
+  - behavior: replace
+    files:
+      - files/envoy.yaml
+    name: apiproxy-envoy-config
   #  - behavior: replace
   #    files:
   #      - files/promtail.yaml
@@ -47,6 +51,16 @@ configMapGenerator:
 patches:
   - patch: |-
       - op: replace
+        path: /spec/dnsNames/0
+        value: auth.playground.nexodus.io
+      - op: replace
+        path: /spec/issuerRef/name
+        value: letsencrypt
+    target:
+      kind: Certificate
+      name: nexodus-auth-cert
+  - patch: |-
+      - op: replace
         path: /spec/rules/0/host
         value: api.playground.nexodus.io
       - op: replace
@@ -57,13 +71,6 @@ patches:
         value: letsencrypt
     target:
       kind: Ingress
-      name: apiproxy
-  - patch: |-
-      - op: add
-        path: /spec/template/spec/serviceAccountName
-        value: nexodus-serviceaccount
-    target:
-      kind: Deployment
       name: apiproxy
   - patch: |-
       - op: add
@@ -83,16 +90,6 @@ patches:
     target:
       kind: Ingress
       name: auth
-  - patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.playground.nexodus.io
-      - op: replace
-        path: /spec/issuerRef/name
-        value: letsencrypt
-    target:
-      kind: Certificate
-      name: nexodus-auth-cert
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
@@ -117,42 +114,116 @@ patches:
       name: promtail-role
   - patch: |-
       - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+    target:
+      kind: StatefulSet
+      name: redis
+  - patch: |-
+      - op: replace
+        path: /spec/instances/0/replicas
+        value: 1
+      - op: replace
         path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
-        value: 4Gi
+        value: 6Gi
       - op: replace
         path: /spec/instances/0/resources/limits/cpu
-        value: 1000m
+        value: 8000m
       - op: replace
         path: /spec/instances/0/resources/limits/memory
-        value: 2Gi
+        value: 12Gi
+      - op: replace
+        path: /spec/proxy/pgBouncer/replicas
+        value: 2
+      - op: replace
+        path: /spec/proxy/pgBouncer/resources/limits/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/proxy/pgBouncer/resources/limits/memory
+        value: 500Mi
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/ipam
+        value: "host=database-primary port=5432 pool_size=15 reserve_pool=5 max_db_connections=20"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/apiserver
+        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/databases/keycloak
+        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+      - op: replace
+        path: /spec/proxy/pgBouncer/config/global/max_client_conn
+        value: "10000"
+      - op: replace
+        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/max_connections
+        value: "300"
+      - op: replace
+        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/shared_buffers
+        value: 512MB
     target:
       kind: PostgresCluster
       name: database
   - patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/resources/limits
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: nexodus-serviceaccount
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/replicas
+        value: 4
     target:
       kind: Deployment
       name: apiproxy
   - patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 1000m
+        value: 2000m
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 1Gi
+        value: 2000Mi
+      - op: replace
+        path: /spec/replicas
+        value: 8
     target:
       kind: Deployment
       name: apiserver
   - patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/resources/limits
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 2000Mi
+    target:
+      kind: Deployment
+      name: auth
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 200m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 400Mi
     target:
       kind: Deployment
       name: frontend
   - patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/resources/limits
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 300m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 500Mi
     target:
       kind: Deployment
       name: ipam

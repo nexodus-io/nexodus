@@ -18,12 +18,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
-                  key: host
+                  key: pgbouncer-host
             - name: KC_DB_URL_PORT
               valueFrom:
                 secretKeyRef:
                   name: database-pguser-keycloak
-                  key: port
+                  key: pgbouncer-port
             - name: KC_DB_URL_DATABASE
               valueFrom:
                 secretKeyRef:
@@ -95,6 +95,13 @@ spec:
                   name: auth-providers
                   key: GOOGLE_CLIENT_SECRET
                   optional: true
+          resources:
+            requests:
+              cpu: 200m
+              memory: 400Mi
+            limits:
+              cpu: 200m
+              memory: 400Mi
           ports:
             - name: http
               containerPort: 8080
