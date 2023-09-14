@@ -37,7 +37,7 @@ func (sb *signalBus) Notify(name string) {
 
 	for _, sub := range result {
 		select {
-		case sub.c <- true:
+		case sub.c <- struct{}{}:
 		default:
 		}
 	}
@@ -52,7 +52,7 @@ func (sb *signalBus) NotifyAll() {
 
 	for _, sub := range result {
 		select {
-		case sub.c <- true:
+		case sub.c <- struct{}{}:
 		default:
 		}
 	}
@@ -63,7 +63,7 @@ func (sb *signalBus) Subscribe(name string) *Subscription {
 	sub := &Subscription{
 		sb:   sb,
 		name: name,
-		c:    make(chan bool, 1),
+		c:    make(chan struct{}, 1),
 	}
 
 	sb.Lock()
@@ -97,7 +97,7 @@ type Subscription struct {
 	sb        *signalBus
 	name      string
 	closeOnce sync.Once
-	c         chan bool
+	c         chan struct{}
 }
 
 // Signal returns a channel that receives a true message when the subscription is notified.
@@ -115,7 +115,7 @@ type Subscription struct {
 //	 		}
 //	 	}
 //	}
-func (sub *Subscription) Signal() <-chan bool {
+func (sub *Subscription) Signal() <-chan struct{} {
 	return sub.c
 }
 

@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nexodus-io/nexodus/internal/models"
-	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"gorm.io/gorm"
 )
 
@@ -108,7 +108,7 @@ func (api *API) sendListOrWatch(c *gin.Context, ctx context.Context, signal stri
 						}
 
 						// Wait for some items to come into the list
-						if waitForCancelOrTimeoutOrNotification(ctx, 30*time.Second, sub) {
+						if waitForCancelTimeoutOrNotification(ctx, 30*time.Second, sub.Signal()) == -2 {
 							// ctx was canceled... likely due to the http connection being closed by
 							// the client.  Signal the event stream is done.
 							return models.WatchEvent{
@@ -162,16 +162,19 @@ func stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 	}
 }
 
-// waitForCancelOrTimeoutOrNotification returns true if the context has been canceled or false after the timeout or sub signal
-func waitForCancelOrTimeoutOrNotification(ctx context.Context, timeout time.Duration, sub *signalbus.Subscription) bool {
+// waitForCancelTimeoutOrNotification returns -2 if ctx is closed, -1 on timeout, otherwise the index of the channel that
+// was notified.
+func waitForCancelTimeoutOrNotification(ctx context.Context, timeout time.Duration, channels ...<-chan struct{}) int {
 	tc, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	select {
-	case <-tc.Done():
-		return false
-	case <-sub.Signal():
-		return false
-	case <-ctx.Done():
-		return true
+
+	cases := []reflect.SelectCase{
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())},
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(tc.Done())},
 	}
+	for _, ch := range channels {
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)})
+	}
+	chosen, _, _ := reflect.Select(cases)
+	return chosen - 2
 }

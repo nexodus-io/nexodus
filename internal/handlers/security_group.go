@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -393,7 +394,9 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		securityGroup.InboundRules = request.InboundRules
 		securityGroup.OutboundRules = request.OutboundRules
 
-		if res := tx.Save(&securityGroup); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Save(&securityGroup); res.Error != nil {
 			return res.Error
 		}
 

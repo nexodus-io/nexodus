@@ -1207,6 +1207,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/organizations/{organization_id}/events": {
+            "post": {
+                "description": "Watches events occurring in the organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Watch events occurring in the organization",
+                "operationId": "WatchEvents",
+                "parameters": [
+                    {
+                        "description": "List if events to watch",
+                        "name": "Watches",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Watch"
+                            }
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WatchEvent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/organizations/{organization_id}/security_group/{id}": {
             "get": {
                 "description": "Gets a security group in an organization by ID",
@@ -2457,6 +2526,33 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "integer"
                 }
+            }
+        },
+        "models.Watch": {
+            "type": "object",
+            "properties": {
+                "gt_revision": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "models.WatchEvent": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {}
             }
         }
     },

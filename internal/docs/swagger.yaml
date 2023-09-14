@@ -360,6 +360,24 @@ definitions:
       updated_at:
         type: integer
     type: object
+  models.Watch:
+    properties:
+      gt_revision:
+        type: integer
+      kind:
+        type: string
+      options:
+        additionalProperties: true
+        type: object
+    type: object
+  models.WatchEvent:
+    properties:
+      kind:
+        type: string
+      type:
+        type: string
+      value: {}
+    type: object
 info:
   contact:
     name: The Nexodus Authors
@@ -1163,6 +1181,52 @@ paths:
       summary: Get Device
       tags:
       - Devices
+  /api/organizations/{organization_id}/events:
+    post:
+      consumes:
+      - application/json
+      description: Watches events occurring in the organization
+      operationId: WatchEvents
+      parameters:
+      - description: List if events to watch
+        in: body
+        name: Watches
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.Watch'
+          type: array
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WatchEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.BaseError'
+      summary: Watch events occurring in the organization
+      tags:
+      - Organizations
   /api/organizations/{organization_id}/security_group/{id}:
     get:
       description: Gets a security group in an organization by ID
