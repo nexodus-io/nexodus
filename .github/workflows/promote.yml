@@ -8,6 +8,7 @@ on:
 
 jobs:
   update-prod:
+    # Sync prod with the QA ref
     name: Update Production Deployment
     runs-on: ubuntu-20.04
 
@@ -22,3 +23,67 @@ jobs:
         run: |
           git tag prod --force
           git push origin prod --force 
+
+  build-packages:
+    # Sync the agent binary in s3 /download with the prod promotion in the update-prod job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the qa Tag
+        uses: actions/checkout@v4
+        with:
+          ref: "qa"
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+
+      - name: Build nexodus packages
+        id: build
+        shell: bash
+        run: |
+          NEXODUS_BUILD_PROFILE=prod make -j dist/packages
+
+      - name: Upload nexodus zip packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: nexodus-packages
+          if-no-files-found: error
+          path: |
+            dist/packages/*.zip
+
+      - name: Upload nexodus tar.gz packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: nexodus-packages
+          if-no-files-found: error
+          path: |
+            dist/packages/*.tar.gz
+
+  upload-s3-packages:
+    needs: ["build-packages"]
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    environment: image-repositories
+
+    steps:
+      - name: download binary artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: nexodus-packages
+          path: dist/packages
+
+      - name: Display structure of downloaded files
+        run: ls -lah -R
+        working-directory: dist/packages
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          role-session-name: nexodus-ci-deploy
+          aws-region: us-east-1
+
+      - name: copy binaries to s3
+        run: |
+          aws s3 sync dist/packages s3://nexodus-io/download
