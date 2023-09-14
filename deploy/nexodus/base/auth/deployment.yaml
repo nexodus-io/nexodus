@@ -97,11 +97,11 @@ spec:
                   optional: true
           resources:
             requests:
-              cpu: 200m
-              memory: 400Mi
+              cpu: 500m
+              memory: 1000Mi
             limits:
-              cpu: 200m
-              memory: 400Mi
+              cpu: 500m
+              memory: 1000Mi
           ports:
             - name: http
               containerPort: 8080
