@@ -28,6 +28,10 @@ func TestFetchManager(t *testing.T) {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
+	defer func() {
+		cancel() // to kill the process
+		_ = cmd.Wait()
+	}()
 	require.NoError(t, err)
 
 	logger, _ := zap.NewProductionConfig().Build()
