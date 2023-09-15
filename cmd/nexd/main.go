@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -155,6 +156,8 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("network-router"),
 		cCtx.Bool("disable-nat"),
+		cCtx.Bool("exit-node-client"),
+		cCtx.Bool("exit-node"),
 		cCtx.Bool("insecure-skip-tls-verify"),
 		Version,
 		userspaceMode,
@@ -267,8 +270,33 @@ func main() {
 				Name:  "router",
 				Usage: "Enable advertise-cidr function of the node agent to enable prefix forwarding.",
 				Action: func(cCtx *cli.Context) error {
+					if cCtx.Bool("exit-node") {
+						if runtime.GOOS != nexodus.Linux.String() {
+							return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
+						}
+					}
+					if cCtx.Bool("exit-node") {
+						// Check if a default route was specified in the child-prefix
+						childPrefixes := cCtx.StringSlice("child-prefix")
+						found := false
+						for _, prefix := range childPrefixes {
+							if prefix == "0.0.0.0/0" {
+								found = true
+								break
+							}
+						}
+						if !found {
+							// Update the child-prefixes to originate a default route if one was not specified
+							childPrefixes = append(childPrefixes, "0.0.0.0/0")
+							err := cCtx.Set("child-prefix", strings.Join(childPrefixes, ","))
+							if err != nil {
+								return fmt.Errorf("failed to set child-prefix: %w", err)
+							}
+						}
+					}
 					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)
 				},
+
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
 						Name:     "advertise-cidr",
@@ -309,6 +337,13 @@ func main() {
 						Usage:    "disable NAT for the network router mode. This will require devices on the network to be configured with an ip route",
 						Value:    false,
 						EnvVars:  []string{"NEXD_DISABLE_NAT"},
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:     "exit-node",
+						Usage:    "Enable this node to be an exit node. This allows other agents to source all traffic leaving the Nexodus mesh from this node",
+						Value:    false,
+						EnvVars:  []string{"NEXD_EXIT_NODE"},
 						Required: false,
 					},
 				},
@@ -437,6 +472,13 @@ func main() {
 				Required: false,
 				Category: nexServiceOptions,
 			},
+			&cli.BoolFlag{
+				Name:     "exit-node-client",
+				Usage:    "Enable this node to use an available exit node",
+				Value:    false,
+				EnvVars:  []string{"NEXD_EXIT_NODE_CLIENT"},
+				Required: false,
+			},
 		},
 		Before: func(c *cli.Context) error {
 			if c.Bool("network-router") {
@@ -445,6 +487,11 @@ func main() {
 				}
 				if len(c.StringSlice("advertise-cidr")) == 0 {
 					return fmt.Errorf("--advertise-cidr is required for a device to be a network-router")
+				}
+			}
+			if c.Bool("exit-node-client") {
+				if runtime.GOOS != nexodus.Linux.String() {
+					return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
 				}
 			}
 			return nil

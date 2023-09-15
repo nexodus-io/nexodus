@@ -111,6 +111,13 @@ type deviceCacheEntry struct {
 	peerHealth
 }
 
+type exitNode struct {
+	exitNodeExists        bool
+	exitNodeClientEnabled bool
+	exitNodeOriginEnabled bool
+	exitNodeOrigins       []wgPeerConfig
+}
+
 type Nexodus struct {
 	wireguardPubKey          string
 	wireguardPvtKey          string
@@ -142,6 +149,7 @@ type Nexodus struct {
 	symmetricNat             bool
 	ipv6Supported            bool
 	os                       string
+	exitNode                 exitNode
 	logger                   *zap.SugaredLogger
 	logLevel                 *zap.AtomicLevel
 	// See the NexdStatus* constants
@@ -192,6 +200,8 @@ func NewNexodus(
 	relayOnly bool,
 	networkRouterNode bool,
 	networkRouterDisableNAT bool,
+	exitNodeClientEnabled bool,
+	exitNodeOriginEnabled bool,
 	insecureSkipTlsVerify bool,
 	version string,
 	userspaceMode bool,
@@ -217,7 +227,7 @@ func NewNexodus(
 		}
 	}
 
-	ax := &Nexodus{
+	nx := &Nexodus{
 		listenPort:              wgListenPort,
 		requestedIP:             requestedIP,
 		userProvidedLocalIP:     userProvidedLocalIP,
@@ -242,39 +252,44 @@ func NewNexodus(
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
+		exitNode: exitNode{
+			exitNodeClientEnabled: exitNodeClientEnabled,
+			exitNodeOriginEnabled: exitNodeOriginEnabled,
+		},
 	}
-	ax.userspaceMode = userspaceMode
 
-	if !ax.userspaceMode {
+	nx.userspaceMode = userspaceMode
+
+	if !nx.userspaceMode {
 		isOk, err := isElevated()
 		if !isOk {
 			return nil, err
 		}
 	}
 
-	ax.tunnelIface = ax.defaultTunnelDev()
+	nx.tunnelIface = nx.defaultTunnelDev()
 
-	if ax.relay {
-		ax.listenPort = WgDefaultPort
+	if nx.relay {
+		nx.listenPort = WgDefaultPort
 	}
 
-	if err := ax.checkUnsupportedConfigs(); err != nil {
+	if err := nx.checkUnsupportedConfigs(); err != nil {
 		return nil, err
 	}
 
 	// remove orphaned wg interfaces from previous node joins
-	ax.removeExistingInterface()
+	nx.removeExistingInterface()
 
-	if err := ax.symmetricNatDisco(ctx); err != nil {
-		ax.logger.Warn(err)
+	if err := nx.symmetricNatDisco(ctx); err != nil {
+		nx.logger.Warn(err)
 	}
 
-	err = ax.migrateLegacyState(stateDir)
+	err = nx.migrateLegacyState(stateDir)
 	if err != nil {
 		return nil, err
 	}
 
-	return ax, nil
+	return nx, nil
 }
 
 func (nx *Nexodus) SetStatus(status int, msg string) {
@@ -517,6 +532,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
+	if nx.exitNode.exitNodeOriginEnabled {
+		if err := nx.exitNodeOriginSetup(); err != nil {
+			return fmt.Errorf("failed to setup this device as an exit-node: %w", err)
+		}
+	}
+
 	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
 	endpoints := []public.ModelsEndpoint{
 		{
@@ -565,6 +586,11 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		for _, proxy := range nx.proxies {
 			proxy.Start(ctx, wg, nx.userspaceNet)
 		}
+		if nx.exitNode.exitNodeClientEnabled {
+			if err := nx.ExitNodeClientSetup(); err != nil {
+				nx.logger.Errorf("failed to enable this device as an exit-node client: %v", err)
+			}
+		}
 		stunTicker := time.NewTicker(time.Second * 20)
 		secGroupTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
@@ -602,6 +628,20 @@ func (nx *Nexodus) Stop() {
 	nx.logger.Info("Stopping nexd")
 	for _, proxy := range nx.proxies {
 		proxy.Stop()
+	}
+
+	if nx.exitNode.exitNodeClientEnabled {
+		nx.logger.Debugf("Stopping Exit Node Client")
+		if err := nx.exitNodeClientTeardown(); err != nil {
+			nx.logger.Errorf("failed to remove the exit node client configuration %v", err)
+		}
+	}
+
+	if nx.exitNode.exitNodeOriginEnabled {
+		nx.logger.Debugf("Stopping Exit Node Origin")
+		if err := nx.exitNodeOriginTeardown(); err != nil {
+			nx.logger.Errorf("failed to remove the exit node configuration %v", err)
+		}
 	}
 }
 

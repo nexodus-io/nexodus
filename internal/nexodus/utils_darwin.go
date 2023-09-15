@@ -134,6 +134,11 @@ func isIPv6Supported() bool {
 	return true
 }
 
+// getDefaultGatewayIPv4 not currently implemented for darwin
+func getDefaultGatewayIPv4() (string, error) {
+	return "", fmt.Errorf("method currently unsupported for darwin")
+}
+
 // isElevatedUnix checks that nexd was started with appropriate permissions for Unix-based OS mode (Linux/macOS)
 func isElevated() (bool, error) {
 	if os.Geteuid() != 0 {

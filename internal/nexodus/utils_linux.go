@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
@@ -209,6 +210,25 @@ func isIPv6Supported() bool {
 	}
 
 	return true
+}
+
+// getDefaultGatewayIPv4 return the default gateway
+func getDefaultGatewayIPv4() (string, error) {
+	routes, err := netlink.RouteList(nil, syscall.AF_INET)
+	if err != nil {
+		return "", err
+	}
+
+	for _, route := range routes {
+		if route.Dst == nil || route.Dst.String() == "0.0.0.0/0" {
+			if route.Gw.To4() == nil {
+				return "", fmt.Errorf("default route present, but gateway was not found")
+			}
+			return route.Gw.To4().String(), nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to determine default route")
 }
 
 // isElevatedUnix checks that nexd was started with appropriate permissions for Unix-based OS mode (Linux/macOS)

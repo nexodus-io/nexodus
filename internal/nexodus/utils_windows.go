@@ -92,6 +92,11 @@ func isIPv6Supported() bool {
 	return true
 }
 
+// getDefaultGatewayIPv4 not currently implemented for windows
+func getDefaultGatewayIPv4() (string, error) {
+	return "", fmt.Errorf("method currently unsupported for windows")
+}
+
 // isElevatedWindows checks that nexd was started with appropriate permissions for Windows OS mode
 func isElevated() (bool, error) {
 	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
