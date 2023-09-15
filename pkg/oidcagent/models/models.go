@@ -33,3 +33,8 @@ type DeviceStartResponse struct {
 	Issuer        string `json:"issuer"`
 	ClientID      string `json:"client_id"`
 }
+
+type CheckAuthResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
