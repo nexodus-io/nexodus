@@ -2,11 +2,42 @@
 - name: Initialize the PR or Branch on the api-server
   hosts: localhost
   gather_facts: true
+  vars:
+    repo_dir: /home/ubuntu/nexodus
   tasks:
-    - name: Initialize the PR or Branch on the api-server
-      shell: |
-        curl https://nexodus-io.s3.amazonaws.com/ec2-e2e/init-pr-e2e.sh -o ./init-pr-e2e.sh
-        chmod +x ./init-pr-e2e.sh
-        ./init-pr-e2e.sh "{{ pr_or_branch }}" 2>&1 | tee e2e-action.log
-      register: result
+    - name: Ensure nexodus directory is absent (remove it)
+      file:
+        path: "{{ repo_dir }}"
+        state: absent
+      delegate_to: "{{ target_host }}"
+
+    - name: Clone nexodus repository
+      git:
+        repo: 'https://github.com/nexodus-io/nexodus.git'
+        dest: "{{ repo_dir }}"
+      delegate_to: "{{ target_host }}"
+
+    - name: Checkout the appropriate branch or PR
+      command:
+        cmd: "{% if pr_or_branch == 'main' %}git checkout main{% else %}gh pr checkout {{ pr_or_branch }}{% endif %}"
+        chdir: "{{ repo_dir }}"
+      delegate_to: "{{ target_host }}"
+      ignore_errors: true
+
+    - name: Replace the current kind images with this branch
+      make:
+        chdir: "{{ repo_dir }}"
+        target: images
+      delegate_to: "{{ target_host }}"
+
+    - name: Load images
+      make:
+        chdir: "{{ repo_dir }}"
+        target: load-images
+      delegate_to: "{{ target_host }}"
+
+    - name: Recreate DB
+      make:
+        chdir: "{{ repo_dir }}"
+        target: recreate-db
       delegate_to: "{{ target_host }}"
