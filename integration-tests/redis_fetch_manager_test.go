@@ -4,6 +4,8 @@ package integration_tests
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/redisfm"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/tests"
@@ -13,6 +15,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -39,7 +42,20 @@ func TestFetchManager(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "127.0.0.1:6379",
 	})
-	_, _ = client.Del(context.Background(), "key1").Result()
+	for i := 0; i < 10; i++ {
+		_, err = client.Del(context.Background(), "key1").Result()
+		if err != nil {
+			if strings.Contains(err.Error(), "connect: connection refused") {
+				// the port forward is not up and running yet... try agiant in a bit.
+				fmt.Println(err, ", will retry in 100ms")
+				time.Sleep(100 * time.Millisecond)
+				continue
+			} else if !errors.Is(err, redis.Nil) {
+				// this one happens when key1 does not exist.
+				require.NoError(t, err)
+			}
+		}
+	}
 	_ = client.Close()
 
 	clients := []*redis.Client{}
