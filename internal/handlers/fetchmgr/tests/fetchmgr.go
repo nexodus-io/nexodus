@@ -18,7 +18,7 @@ func init() {
 	_ = util.TimeBeginPeriod(1)
 }
 
-func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, manager FetchManager) {
+func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, managers ...FetchManager) {
 	require := require.New(t)
 
 	sourceVersion := int32(0)
@@ -58,7 +58,8 @@ func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, manager FetchManage
 
 	for i := 0; i < fetcherCount; i++ {
 		go func(fetcherId int) {
-			fetcher := manager.Open("key1", 10, source)
+			fetcher := managers[fetcherId%len(managers)].Open("key1", 10, source)
+			defer fetcher.Close()
 			lastSeq := uint64(0)
 			for {
 				wl, err := fetcher.Fetch(nil, lastSeq)

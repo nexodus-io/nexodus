@@ -4,6 +4,7 @@ package integration_tests
 
 import (
 	"context"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/redisfm"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/tests"
 	"github.com/redis/go-redis/v9"
@@ -29,13 +30,29 @@ func TestFetchManager(t *testing.T) {
 	err := cmd.Start()
 	require.NoError(t, err)
 
+	logger, _ := zap.NewProductionConfig().Build()
+
 	client := redis.NewClient(&redis.Options{
 		Addr: "127.0.0.1:6379",
 	})
-
-	// reset any previous data...
 	_, _ = client.Del(context.Background(), "key1").Result()
+	_ = client.Close()
 
-	logger, _ := zap.NewProductionConfig().Build()
-	tests.TestFetchManagerReducesDBFetchesAtTheTail(t, redisfm.New(client, 1000*time.Second, logger, ""))
+	clients := []*redis.Client{}
+	managers := []fetchmgr.FetchManager{}
+	for i := 0; i < 5; i++ {
+		client := redis.NewClient(&redis.Options{
+			Addr: "127.0.0.1:6379",
+		})
+		clients = append(clients, client)
+		manager := redisfm.New(client, 1000*time.Second, logger, "")
+		managers = append(managers, manager)
+	}
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
+	tests.TestFetchManagerReducesDBFetchesAtTheTail(t, managers...)
 }

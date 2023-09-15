@@ -136,7 +136,7 @@ func (cache *cache) Fill(f *basefm.Fetcher, db *gorm.DB, gtRevision uint64, seq 
 		fetchLength = int(cache.cacheSize)
 	}
 
-	_, err = redisClient.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	addCmds, err := redisClient.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for i := 0; i < fetchLength; i++ {
 			item, revision, deletedAt := w.Item(i)
 			data, err := json.Marshal(fetchmgr.ResourceItem{
@@ -160,7 +160,10 @@ func (cache *cache) Fill(f *basefm.Fetcher, db *gorm.DB, gtRevision uint64, seq 
 		return nil
 	})
 	if err != nil {
-		cache.options.logger.Warn("Fill XAdd failed", zap.Error(err))
+		// this error is normal, it just means another replica was able to fill the cache before we could.
+		if err.Error() != "ERR The ID specified in XADD is equal or smaller than the target stream top item" {
+			cache.options.logger.Warn("Fill XADD failed", zap.Error(err), zap.String("cmds", fmt.Sprintf("%+v", addCmds)))
+		}
 		return nil, nil
 	}
 	return w, nil
