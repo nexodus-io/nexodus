@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
-	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/memfm"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/envfm"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/redis/go-redis/v9"
@@ -44,7 +44,7 @@ type API struct {
 	signalBus      signalbus.SignalBus
 	redis          *redis.Client
 	sessionManager *session.Manager
-	watchManager   fetchmgr.FetchManager
+	fetchManager   fetchmgr.FetchManager
 }
 
 func NewAPI(
@@ -67,6 +67,11 @@ func NewAPI(
 		return nil, err
 	}
 
+	fetchManager, err := envfm.New(logger.Desugar())
+	if err != nil {
+		return nil, err
+	}
+
 	api := &API{
 		logger:         logger,
 		db:             db,
@@ -79,7 +84,7 @@ func NewAPI(
 		signalBus:      signalBus,
 		redis:          redis,
 		sessionManager: sessionManager,
-		watchManager:   memfm.New(),
+		fetchManager:   fetchManager,
 	}
 
 	if err := api.populateStore(ctx); err != nil {
