@@ -3,7 +3,3 @@ kind: Component
 resources:
   - limitador-deployment.yaml
   - limitador-service.yaml
-configMapGenerator:
-  - files:
-      - files/limits.yaml
-    name: limitador-config

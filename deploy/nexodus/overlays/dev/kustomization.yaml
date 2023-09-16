@@ -6,7 +6,7 @@ resources:
 components:
   - ../../components/promtail
 # Uncomment this to enable rate limiting
-#  - ../../components/promtail
+#  - ../../components/limitador
 namespace: nexodus
 secretGenerator:
   - name: auth-secrets
@@ -24,6 +24,10 @@ configMapGenerator:
     literals:
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug
     name: apiproxy
+  - behavior: create
+    files:
+      - files/promtail.yaml
+    name: promtail-config
 patches:
   - target:
       kind: Ingress
