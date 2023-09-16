@@ -19,7 +19,7 @@ configMapGenerator:
     files:
       - files/nexodus.json
     name: realm
-  - behavior: replace
+  - behavior: create
     files:
       - files/limits.yaml
     name: limitador-config
@@ -27,7 +27,7 @@ configMapGenerator:
     files:
       - files/envoy.yaml
     name: apiproxy-envoy-config
-  - behavior: replace
+  - behavior: create
     files:
       - files/promtail.yaml
     name: promtail-config

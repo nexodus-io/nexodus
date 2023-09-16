@@ -6,7 +6,6 @@ resources:
   - sealed-secret.yaml
   - serviceaccount.yaml
 components:
-  #  - ../../components/promtail
   - ../../components/limitador
 namespace: nexodus-playground
 configMapGenerator:
@@ -19,7 +18,7 @@ configMapGenerator:
     files:
       - files/nexodus.json
     name: realm
-  - behavior: replace
+  - behavior: create
     files:
       - files/limits.yaml
     name: limitador-config
@@ -27,10 +26,6 @@ configMapGenerator:
     files:
       - files/envoy.yaml
     name: apiproxy-envoy-config
-  #  - behavior: replace
-  #    files:
-  #      - files/promtail.yaml
-  #    name: promtail-config
   - behavior: merge
     literals:
       - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus

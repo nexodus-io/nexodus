@@ -201,6 +201,8 @@ dist/.k8s-lint: $(shell find deploy -type f ) | dist
 	$(CMD_PREFIX) mkdir -p ./dist/kubeconfigs
 	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/dev > ./dist/kubeconfigs/dev.yaml
 	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/prod > ./dist/kubeconfigs/prod.yaml
+	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/qa > ./dist/kubeconfigs/qa.yaml
+	$(CMD_PREFIX) kustomize build ./deploy/nexodus/overlays/playground > ./dist/kubeconfigs/playground.yaml
 	$(CMD_PREFIX) kubeconform -summary -output json -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -schema-location 'deploy/.crdSchemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' ./dist/kubeconfigs/
 	$(CMD_PREFIX) touch $@
 
