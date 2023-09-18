@@ -126,7 +126,7 @@ jobs:
             tags: quay.io/nexodus/envsubst:latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v3
       - name: Build and export ${{ matrix.name }}
         uses: docker/build-push-action@v4
         with:
@@ -249,7 +249,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v3
 
       - name: Setup Go
         uses: ./.github/actions/setup-go-env

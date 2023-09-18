@@ -83,7 +83,7 @@ jobs:
           password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
       - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push
         uses: docker/build-push-action@v4
