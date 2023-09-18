@@ -227,7 +227,7 @@ jobs:
         working-directory: dist/packages
         
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           role-session-name: nexodus-ci-deploy
