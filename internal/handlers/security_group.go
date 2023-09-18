@@ -51,8 +51,8 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 	}
 
 	var org models.Organization
-	if res := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", orgId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
@@ -67,7 +67,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
 		db = db.Where("organization_id = ?", orgId)
-		db = FilterAndPaginateWithQuery(&models.SecurityGroup{}, c, query, "id")(db)
+		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "id")
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -110,15 +110,15 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 	}
 
 	var org models.Organization
-	if res := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", orgId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
 	}
 
 	var securityGroup models.SecurityGroup
-	result := api.db.WithContext(ctx).
+	result := db.
 		First(&securityGroup, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
@@ -188,8 +188,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 	var sg models.SecurityGroup
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		var org models.Organization
-		if res := api.db.WithContext(ctx).
-			Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
 			First(&org, "id = ?", request.OrganizationId); res.Error != nil {
 			return res.Error
 		}
@@ -272,7 +271,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 
 	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var organization models.Organization
-		result := tx.Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+		result := api.OrganizationIsOwnedByCurrentUser(c, tx).
 			First(&organization, "id = ?", orgId.String())
 		if result.Error != nil {
 			return result.Error
@@ -365,8 +364,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var org models.Organization
-		if res := tx.WithContext(ctx).
-			Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
 			First(&org, "id = ?", orgId); res.Error != nil {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("security_group"))
 			return res.Error

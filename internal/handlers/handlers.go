@@ -53,41 +53,38 @@ func (q *Query) GetFilter() (map[string]interface{}, error) {
 	return parts, nil
 }
 
-func FilterAndPaginate(model interface{}, c *gin.Context, orderBy string) func(db *gorm.DB) *gorm.DB {
+func FilterAndPaginate(db *gorm.DB, model interface{}, c *gin.Context, orderBy string) *gorm.DB {
 	var query Query
 	if err := c.BindQuery(&query); err != nil {
-		return func(db *gorm.DB) *gorm.DB {
-			db.Error = err
-			return db
-		}
-	}
-	return FilterAndPaginateWithQuery(model, c, query, orderBy)
-}
-
-func FilterAndPaginateWithQuery(model interface{}, c *gin.Context, query Query, defaultOrderBy string) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-
-		if order, err := query.GetSort(); err == nil {
-			db = db.Order(order)
-		} else if defaultOrderBy != "" {
-			db = db.Order(defaultOrderBy)
-		}
-
-		if filter, err := query.GetFilter(); err == nil {
-			db = db.Where(filter)
-		}
-
-		if pageSize, offset, err := query.GetRange(); err == nil {
-			var totalCount int64
-			countDBSession := db.Session(&gorm.Session{Initialized: true})
-			res := countDBSession.Model(model).Count(&totalCount)
-			if res.Error != nil {
-				return db
-			}
-			c.Header("Access-Control-Expose-Headers", TotalCountHeader)
-			c.Header(TotalCountHeader, strconv.Itoa(int(totalCount)))
-			db = db.Offset(offset).Limit(pageSize)
-		}
+		db.Error = err
 		return db
 	}
+	return FilterAndPaginateWithQuery(db, model, c, query, orderBy)
+}
+
+func FilterAndPaginateWithQuery(db *gorm.DB, model interface{}, c *gin.Context, query Query, defaultOrderBy string) *gorm.DB {
+
+	if order, err := query.GetSort(); err == nil {
+		db = db.Order(order)
+	} else if defaultOrderBy != "" {
+		db = db.Order(defaultOrderBy)
+	}
+
+	if filter, err := query.GetFilter(); err == nil {
+		db = db.Where(filter)
+	}
+
+	if pageSize, offset, err := query.GetRange(); err == nil {
+		var totalCount int64
+		countDBSession := db.Session(&gorm.Session{Initialized: true})
+		res := countDBSession.Model(model).Count(&totalCount)
+		if res.Error != nil {
+			return db
+		}
+		c.Header("Access-Control-Expose-Headers", TotalCountHeader)
+		c.Header(TotalCountHeader, strconv.Itoa(int(totalCount)))
+		db = db.Offset(offset).Limit(pageSize)
+	}
+	return db
+
 }

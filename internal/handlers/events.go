@@ -58,9 +58,9 @@ func (api *API) WatchEvents(c *gin.Context) {
 	}
 
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
-		First(&org, "id = ?", orgId.String())
+	db := api.db.WithContext(ctx)
+	db = api.OrganizationIsReadableByCurrentUser(c, db)
+	result := db.First(&org, "id = ?", orgId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

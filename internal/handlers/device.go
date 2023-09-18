@@ -48,10 +48,10 @@ func (api *API) ListDevices(c *gin.Context) {
 	defer span.End()
 	devices := make([]models.Device, 0)
 
-	result := api.db.WithContext(ctx).Scopes(
-		api.DeviceIsOwnedByCurrentUser(c),
-		FilterAndPaginate(&models.Device{}, c, "hostname"),
-	).Find(&devices)
+	db := api.db.WithContext(ctx)
+	db = api.DeviceIsOwnedByCurrentUser(c, db)
+	db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
+	result := db.Find(&devices)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
@@ -60,19 +60,17 @@ func (api *API) ListDevices(c *gin.Context) {
 	c.JSON(http.StatusOK, devices)
 }
 
-func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
+func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
 
-		// this could potentially be driven by rego output
+	// this could potentially be driven by rego output
 
-		return db.Where("user_id = ?", userId)
-		//if api.dialect == database.DialectSqlLite {
-		//	return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
-		//} else {
-		//	return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
-		//}
-	}
+	return db.Where("user_id = ?", userId)
+	//if api.dialect == database.DialectSqlLite {
+	//	return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+	//} else {
+	//	return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+	//}
 }
 
 // GetDevice gets a device by ID
@@ -100,9 +98,10 @@ func (api *API) GetDevice(c *gin.Context) {
 		return
 	}
 	var device models.Device
-	result := api.db.WithContext(ctx).
-		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
-		First(&device, "id = ?", k)
+
+	db := api.db.WithContext(ctx)
+	db = api.DeviceIsOwnedByCurrentUser(c, db)
+	result := db.First(&device, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
@@ -144,9 +143,11 @@ func (api *API) UpdateDevice(c *gin.Context) {
 
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		result := tx.
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
-			First(&device, "id = ?", k)
+
+		db := api.DeviceIsOwnedByCurrentUser(c, tx)
+		db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
+
+		result := db.First(&device, "id = ?", k)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errDeviceNotFound
 		}
@@ -479,8 +480,8 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	device := models.Device{}
-	if res := api.db.
-		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.DeviceIsOwnedByCurrentUser(c, db).
 		First(&device, "id = ?", deviceID); res.Error != nil {
 
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
@@ -492,7 +493,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	}
 
 	var org models.Organization
-	result := api.db.
+	result := db.
 		First(&org, "id = ?", device.OrganizationID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
