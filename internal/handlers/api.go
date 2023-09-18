@@ -2,9 +2,15 @@ package handlers
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/envfm"
+	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/redis/go-redis/v9"
+	"net/http"
+	"strconv"
 
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/open-policy-agent/opa/storage"
@@ -38,6 +44,7 @@ type API struct {
 	signalBus      signalbus.SignalBus
 	redis          *redis.Client
 	sessionManager *session.Manager
+	fetchManager   fetchmgr.FetchManager
 }
 
 func NewAPI(
@@ -60,6 +67,11 @@ func NewAPI(
 		return nil, err
 	}
 
+	fetchManager, err := envfm.New(logger.Desugar())
+	if err != nil {
+		return nil, err
+	}
+
 	api := &API{
 		logger:         logger,
 		db:             db,
@@ -72,6 +84,7 @@ func NewAPI(
 		signalBus:      signalBus,
 		redis:          redis,
 		sessionManager: sessionManager,
+		fetchManager:   fetchManager,
 	}
 
 	if err := api.populateStore(ctx); err != nil {
@@ -83,4 +96,19 @@ func NewAPI(
 
 func (api *API) Logger(ctx context.Context) *zap.SugaredLogger {
 	return util.WithTrace(ctx, api.logger)
+}
+
+func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *gorm.DB) (fetchmgr.ResourceList, error)) {
+	db := api.db.WithContext(ctx)
+
+	items, err := getList(db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		return
+	}
+
+	// For pagination
+	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
+	c.Header(TotalCountHeader, strconv.Itoa(items.Len()))
+	c.JSON(http.StatusOK, items)
 }
