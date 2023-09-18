@@ -9,9 +9,7 @@ admin:
       path: /sockets/admin.socket
 
 static_resources:
-
   clusters:
-
     # upstream server: admin
     # provides metrics
     - name: admin
@@ -47,11 +45,18 @@ static_resources:
 
     # upstream server: apiserver
     - name: apiserver
-      connect_timeout: 5s
+      connect_timeout: 10s
       type: STRICT_DNS
       dns_refresh_rate: 1s
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
+      circuit_breakers:
+        thresholds:
+          - priority: DEFAULT
+            max_connections: 4000
+            max_pending_requests: 4000
+            max_requests: 4000
+            max_retries: 2
       load_assignment:
         cluster_name: apiserver
         endpoints:
@@ -138,9 +143,7 @@ static_resources:
                       address: tempo.nexodus-monitoring.svc
                       port_value: 4317
 
-
   listeners:
-
     # listeners: admin (only accessible within the kube cluster)
     - name: admin
       address:
@@ -211,8 +214,6 @@ static_resources:
                 upgrade_configs:
                   - upgrade_type: websocket
                 http_filters:
-
-
                   - name: envoy.filters.http.cors
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
@@ -282,6 +283,12 @@ static_resources:
                     - name: frontend
                       domains:
                         - "${APIPROXY_WEB_DOMAIN}"
+                      retry_policy:
+                        num_retries: 2
+                        retry_back_off:
+                          base_interval: 0.25s
+                          max_interval: 60s
+                        retry_on: 5xx,connect-failure,refused-stream
                       routes:
                         - name: default
                           match:
@@ -310,10 +317,18 @@ static_resources:
                           allow_headers: origin,content-type
                           allow_methods: GET,PUT,POST,DELETE,PATCH
                           allow_credentials: true
-
+                      # Adding a retry policy at host level
+                      retry_policy:
+                        num_retries: 2
+                        retry_back_off:
+                          base_interval: 0.25s
+                          max_interval: 60s
+                        retry_on: 5xx
                       routes:
                         - match: {prefix: "/web/"}
+                          name: web
                           route:
+                            priority: DEFAULT
                             timeout: 30s
                             cluster: apiserver
                             rate_limits:
@@ -321,9 +336,10 @@ static_resources:
                                   - generic_key:
                                       descriptor_key: resource_group
                                       descriptor_value: web-auth
-
                         - match: {prefix: "/device/"}
+                          name: device
                           route:
+                            priority: DEFAULT
                             timeout: 30s
                             cluster: apiserver
                             rate_limits:
@@ -331,7 +347,6 @@ static_resources:
                                   - generic_key:
                                       descriptor_key: resource_group
                                       descriptor_value: device-auth
-
                         - name: events
                           match:
                             safe_regex:
@@ -364,9 +379,8 @@ static_resources:
                                           - key: payload
                                           - key: sub
 
-                        - name: default
-                          match:
-                            prefix: "/api/"
+                        - match: {prefix: "/api/"}
+                          name: default
                           request_headers_to_add:
                             header:
                               key: "x-jwt-claim-sub"
@@ -374,6 +388,7 @@ static_resources:
                             keep_empty_value: true
                             append_action: OVERWRITE_IF_EXISTS_OR_ADD
                           route:
+                            priority: DEFAULT
                             timeout: 30s
                             cluster: apiserver
                             rate_limits:

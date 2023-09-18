@@ -23,10 +23,6 @@ configMapGenerator:
     files:
       - files/limits.yaml
     name: limitador-config
-  - behavior: replace
-    files:
-      - files/envoy.yaml
-    name: apiproxy-envoy-config
   - behavior: merge
     literals:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
