@@ -333,6 +333,8 @@ func stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("streaming unsupported")))
 		return
 	}
+	c.Writer.WriteHeader(200)
+	flusher.Flush()
 	for {
 		result := nextEvent()
 		if result.Type == "close" {
