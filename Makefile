@@ -34,13 +34,21 @@ else ifeq ($(NEXODUS_BUILD_PROFILE),prod)
 	NEXODUS_LDFLAGS+=-X main.DefaultServiceURL=https://try.nexodus.io
 endif
 
-NEXODUS_BUILD_FLAGS:=
+CGO_ENABLED?=0
+ifeq ($(NEXODUS_RACE_DETECTOR),1)
+    CGO_ENABLED=1
+    NEXODUS_BUILD_FLAGS+=-race
+endif
 ifneq ($(NEXODUS_PPROF),)
     NEXODUS_BUILD_FLAGS+=-tags pprof
 endif
 ifneq ($(NEXODUS_BUILD_TAGS),)
 	NEXODUS_BUILD_FLAGS+=-tags $(NEXODUS_BUILD_TAGS)
 endif
+ifeq ($(CGO_ENABLED),0)
+    NEXODUS_LDFLAGS+=-extldflags=-static
+endif
+
 
 SWAGGER_YAML:=internal/docs/swagger.yaml
 
@@ -85,44 +93,44 @@ dist:
 
 dist/apiserver: $(APISERVER_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) go build $(NEXODUS_BUILD_FLAGS) \
 		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/apiserver
 
 dist/apiserver-pprof: $(APISERVER_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
 		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/apiserver
 
 dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) go build $(NEXODUS_BUILD_FLAGS) \
 		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexd-pprof: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) go build $(NEXODUS_BUILD_FLAGS) -tags pprof \
 		-gcflags="$(NEXODUS_GCFLAGS)" -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
 		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
 		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
 dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
 		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
 
 dist/nexd-kstore: $(NEXD_KSTORE_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
-	$(CMD_PREFIX) CGO_ENABLED=0 \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) \
 		go build -tags kubernetes $(NEXODUS_BUILD_FLAGS) -gcflags="$(NEXODUS_GCFLAGS)" \
 		-ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd-kstore
 
@@ -170,7 +178,7 @@ go-lint-prereqs:
 
 dist/.go-lint-%: $(NEX_ALL_GO) | go-lint-prereqs gen-docs dist gen-openapi-client $(wildcard internal/api/public/*.go)
 	$(ECHO_PREFIX) printf "  %-12s GOOS=$(word 3,$(subst -, ,$@))\n" "[GO LINT]"
-	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
+	$(CMD_PREFIX) CGO_ENABLED=$(CGO_ENABLED) GOOS=$(word 3,$(subst -, ,$@)) GOARCH=amd64 \
 		golangci-lint run --build-tags integration --timeout 5m ./...
 	$(CMD_PREFIX) touch $@
 
@@ -555,14 +563,18 @@ image-frontend:
 .PHONY: image-apiserver
 image-apiserver:
 	docker build -f Containerfile.apiserver \
-		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" -t quay.io/nexodus/apiserver:$(TAG) .
+		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" \
+		--build-arg NEXODUS_RACE_DETECTOR="$(NEXODUS_RACE_DETECTOR)" \
+		-t quay.io/nexodus/apiserver:$(TAG) .
 	docker tag quay.io/nexodus/apiserver:$(TAG) quay.io/nexodus/apiserver:latest
 
 .PHONY: image-nexd ## Build the nexodus agent image
 image-nexd: dist/.image-nexd
 dist/.image-nexd: $(NEXD_DEPS) $(NEXCTL_DEPS) Containerfile.nexd hack/update-ca.sh | dist
 	$(CMD_PREFIX) docker build -f Containerfile.nexd \
-		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" -t quay.io/nexodus/nexd:$(TAG) .
+		--build-arg NEXODUS_PPROF="$(NEXODUS_PPROF)" \
+		--build-arg NEXODUS_RACE_DETECTOR="$(NEXODUS_RACE_DETECTOR)" \
+		-t quay.io/nexodus/nexd:$(TAG) .
 	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) touch $@
 
