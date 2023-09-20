@@ -16,12 +16,10 @@ pull_request_rules:
       - base=main
       - label!=hold
       - check-success=DCO
+      - -check-failure=Mixed content - nexodus-docs
       - or:
         - check-success=Header rules - nexodus-docs
         - check-neutral=Header rules - nexodus-docs
-      - or:
-        - check-success=Mixed content - nexodus-docs
-        - check-neutral=Mixed content - nexodus-docs
       - or:
         - check-success=Pages changed - nexodus-docs
         - check-neutral=Pages changed - nexodus-docs
