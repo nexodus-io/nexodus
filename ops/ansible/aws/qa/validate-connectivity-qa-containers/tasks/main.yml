@@ -20,16 +20,16 @@
 - name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
-    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
+    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" >> {{ inventory_hostname }}-connectivity-results.txt
     docker exec {{ first_container_id }} nexctl nexd peers ping
-    docker exec {{ first_container_id }} nexctl nexd peers ping  >> connectivity-results.txt
-    docker exec {{ first_container_id }} nexctl nexd peers ping6  >> connectivity-results.txt
-    cat connectivity-results.txt
+    docker exec {{ first_container_id }} nexctl nexd peers ping  >> {{ inventory_hostname }}-connectivity-results.txt
+    docker exec {{ first_container_id }} nexctl nexd peers ping6  >> {{ inventory_hostname }}-connectivity-results.txt
+    cat {{ inventory_hostname }}-connectivity-results.txt
   ignore_errors: yes
 
 # TODO: add this back after fixing the nexctl nexd peers list bug
-#    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
-#    nexctl nexd peers list >> connectivity-results.txt 2>&1
+#    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> {{ inventory_hostname }}-connectivity-results.txt
+#    nexctl nexd peers list >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
 
 - name: Print connectivity results
   debug:
@@ -37,11 +37,11 @@
 
 - name: Copy connectivity results back to the runner
   become: yes
-  shell: "docker cp $(docker ps -l -q):/tmp/connectivity-results.txt /home/{{ ansible_user }}/connectivity-results.txt"
+  shell: "docker cp $(docker ps -l -q):/tmp/{{ inventory_hostname }}-connectivity-results.txt /home/{{ ansible_user }}/{{ inventory_hostname }}-connectivity-results.txt"
 
 - name: Fetch connectivity results to Ansible control node
   fetch:
-    src: "/home/{{ ansible_user }}/connectivity-results.txt"
+    src: "/home/{{ ansible_user }}/{{ inventory_hostname }}-connectivity-results.txt"
     dest: "./"
     flat: true
 
