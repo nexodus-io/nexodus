@@ -102,13 +102,19 @@ type peerHealth struct {
 	endpoint string
 	// whether we see this peer connection as healthy, see peerIsHealthy()
 	peerHealthy bool
+	// the last time we saw this peer as healthy
+	peerHealthyTime time.Time
 }
 
 type deviceCacheEntry struct {
 	device public.ModelsDevice
-	// the last time this device was updated
+	// the last time this device was updated as seen from the API
 	lastUpdated time.Time
 	peerHealth
+	peeringMethod      string
+	peeringMethodIndex int
+	// The last time a new peering configuration was generated for this device
+	peeringTime time.Time
 }
 
 type exitNode struct {
@@ -890,13 +896,14 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 		return false
 	}
 
-	if time.Since(d.lastHandshakeTime) > device.RejectAfterTime {
+	deadline := device.RejectAfterTime + (time.Second * 30)
+	if time.Since(d.lastHandshakeTime) > deadline {
 		// It has been too long since the last handshake, so this session has expired.
 		if d.peerHealthy {
 			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastHandshakeTime: %s > %s",
 				d.device.Hostname, d.device.PublicKey,
 				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
-				time.Since(d.lastHandshakeTime).String(), device.RejectAfterTime.String())
+				time.Since(d.lastHandshakeTime).String(), deadline.String())
 		}
 		return false
 	}
@@ -911,11 +918,13 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 }
 
 // assumes deviceCacheLock is held with a write-lock
-func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
-	nx.deviceCache[p.PublicKey] = deviceCacheEntry{
+func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice, reset bool) {
+	d := deviceCacheEntry{
 		device:      p,
 		lastUpdated: time.Now(),
 	}
+	nx.peeringReset(&d, reset)
+	nx.deviceCache[p.PublicKey] = d
 }
 
 func (nx *Nexodus) reconcileDeviceCache() error {
@@ -937,6 +946,8 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		peerStats = make(map[string]WgSessions)
 	}
 
+	now := time.Now()
+
 	nx.deviceCacheLock.Lock()
 	defer nx.deviceCacheLock.Unlock()
 
@@ -945,12 +956,13 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	for _, p := range peerMap {
 		// Update the cache if the device is new or has changed
 		existing, ok := nx.deviceCache[p.PublicKey]
-		if !ok || !nx.isEqualIgnoreSecurityGroup(existing.device, p) {
+		if !ok || nx.deviceUpdated(existing.device, p) {
 			if p.PublicKey == nx.wireguardPubKey {
 				newLocalConfig = true
 			}
-			nx.addToDeviceCache(p)
+			nx.addToDeviceCache(p, ok)
 			existing = nx.deviceCache[p.PublicKey]
+			delete(peerStats, p.PublicKey)
 		}
 
 		// Store the relay IP for easy reference later
@@ -961,6 +973,9 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		// Keep track of peer connection stats for connection health tracking
 		curStats, ok := peerStats[p.PublicKey]
 		if !ok {
+			if nx.wireguardPubKey != p.PublicKey && existing.peeringMethod != peeringMethodViaRelay {
+				nx.logger.Debugf("peer (hostname:%s pubkey:%s) has no stats", p.Hostname, p.PublicKey)
+			}
 			// This won't be available early because the peer hasn't been configured yet
 			continue
 		}
@@ -974,9 +989,12 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		}
 		existing.lastHandshakeTime = curStats.LastHandshakeTime
 		existing.lastHandshake = curStats.LatestHandshake
-		existing.lastRefresh = time.Now()
+		existing.lastRefresh = now
 		existing.endpoint = curStats.Endpoint
 		existing.peerHealthy = nx.peerIsHealthy(existing)
+		if existing.peerHealthy {
+			existing.startTime = now
+		}
 		nx.deviceCache[p.PublicKey] = existing
 	}
 
@@ -989,8 +1007,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if !ok {
 				continue
 			}
-			nx.logger.Debugf("resetting connection health tracking for peer %s", peer.PublicKey)
-			existing.startTime = time.Now()
+			existing.startTime = now
 			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}
@@ -1017,18 +1034,14 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	return nil
 }
 
-func (nx *Nexodus) isEqualIgnoreSecurityGroup(p1, p2 public.ModelsDevice) bool {
-	// create temporary copies of the instances
-	tmpDev1 := p1
-	tmpDev2 := p2
-	// set the SecurityGroupId to an empty value, so it will not affect the comparison
-	tmpDev1.SecurityGroupId = ""
-	tmpDev2.SecurityGroupId = ""
-	// set the Revision to 0, so it will not affect the comparison
-	tmpDev1.Revision = 0
-	tmpDev2.Revision = 0
-
-	return reflect.DeepEqual(tmpDev1, tmpDev2)
+// deviceUpdated() returns whether fields that impact peering configuration have changed
+// between d1 and d2.
+func (nx *Nexodus) deviceUpdated(d1, d2 public.ModelsDevice) bool {
+	return !reflect.DeepEqual(d1.AllowedIps, d2.AllowedIps) ||
+		!reflect.DeepEqual(d1.ChildPrefix, d2.ChildPrefix) ||
+		!reflect.DeepEqual(d1.Endpoints, d2.Endpoints) ||
+		d1.Relay != d2.Relay ||
+		d1.SymmetricNat != d2.SymmetricNat
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh

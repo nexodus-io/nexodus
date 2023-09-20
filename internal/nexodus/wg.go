@@ -158,15 +158,23 @@ func (nx *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) erro
 			continue
 		}
 
-		nx.logger.Debugf("Deleting peer with key: %s\n", nx.deviceCache[p.device.PublicKey])
-		if err := nx.deletePeer(p.device.PublicKey, nx.tunnelIface); err != nil {
-			return fmt.Errorf("failed to delete peer: %w", err)
+		if err := nx.peerCleanup(p.device); err != nil {
+			return err
 		}
-		// delete the peer route(s)
-		nx.handlePeerRouteDelete(nx.tunnelIface, p.device)
 		// remove peer from local peer and key cache
 		delete(nx.deviceCache, p.device.PublicKey)
 	}
+
+	return nil
+}
+
+func (nx *Nexodus) peerCleanup(peer public.ModelsDevice) error {
+	nx.logger.Debugf("Deleting peering config for key: %s\n", peer.PublicKey)
+	if err := nx.deletePeer(peer.PublicKey, nx.tunnelIface); err != nil {
+		return fmt.Errorf("failed to delete peer: %w", err)
+	}
+	// delete the peer route(s)
+	nx.handlePeerRouteDelete(nx.tunnelIface, peer)
 
 	return nil
 }

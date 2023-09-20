@@ -5,15 +5,25 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
+)
+
+const (
+	// How long to wait for successful peering after choosing a new peering method
+	peeringTimeout = time.Second * 30
+	// How long to wait for peering to successfully restore itself after seeing
+	// successful peering using a given method, but it goes down.
+	peeringRestoreTimeout = time.Second * 180
+	peeringMethodViaRelay = "via-relay"
 )
 
 type wgPeerMethod struct {
 	// name of the peering method
 	name string
 	// determine if this peering method is available for the given device
-	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string) bool
+	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool
 	// buildPeerConfig builds the peer configuration for a given peering method
 	buildPeerConfig func(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, localIP, peerPort, reflexiveIP4 string) wgPeerConfig
 }
@@ -23,7 +33,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// This node is a relay node and we have the same reflexive address as the peer
 		name: "relay-node-self-direct-local",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
 			return nx.relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalPeerForRelayNode,
@@ -31,7 +41,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// This node is a relay node
 		name: "relay-node-self",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
 			return nx.relay
 		},
 		buildPeerConfig: buildPeerForRelayNode,
@@ -39,24 +49,24 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// The peer is a relay node and we have the same reflexive address as the peer
 		name: "relay-node-peer-direct-local",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string) bool {
-			return device.Relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
+			return !nx.relay && device.Relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalRelayPeer,
 	},
 	{
 		// The peer is a relay node
 		name: "relay-node-peer",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string) bool {
-			return device.Relay
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+			return !nx.relay && device.Relay
 		},
 		buildPeerConfig: buildRelayPeer,
 	},
 	{
 		// We are behind the same reflexive address as the peer, try direct, local peering
 		name: "direct-local",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string) bool {
-			return nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
+			return !nx.relay && !device.Relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalPeer,
 	},
@@ -64,18 +74,50 @@ var wgPeerMethods = []wgPeerMethod{
 		// If neither side is behind symmetric NAT, we can try peering with its reflexive address.
 		// This is the address+port opened up by the peer using STUN.
 		name: "reflexive",
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string) bool {
-			return !device.SymmetricNat && !nx.symmetricNat
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+			return !nx.relay && !device.Relay && !device.SymmetricNat && !nx.symmetricNat
 		},
 		buildPeerConfig: buildReflexivePeer,
 	},
-	// If no peer-specific configuration was generated, connectivity will be handled by a relay node
-	// if one is available. That configuration is generated when determining the peering method for
-	// the relay node itself.
+	{
+		// Last chance, try connecting to the peer via a relay
+		name: peeringMethodViaRelay,
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+			return !nx.relay && !device.Relay && healthyRelay
+		},
+		buildPeerConfig: func(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, _, _, _ string) wgPeerConfig {
+			return wgPeerConfig{}
+		},
+	},
+}
+
+func (nx *Nexodus) peeringReset(d *deviceCacheEntry, reset bool) {
+	if reset {
+		nx.logger.Debugf("Resetting peer configuration - Peer AllowedIps [ %s ] Peer Public Key [ %s ]",
+			strings.Join(d.device.AllowedIps, ", "), d.device.PublicKey)
+	}
+
+	// By default, the only connectivity that may be availabe is via a relay.
+	d.peeringMethod = peeringMethodViaRelay
+	// By setting the peering method index to -1, we will consider all other
+	// methods that may be available.
+	d.peeringMethodIndex = -1
+
+	// All the stats are now invalid
+	d.peeringTime = time.Time{}
+	d.peerHealthy = false
+	d.peerHealthyTime = time.Time{}
+	d.lastTxBytes = 0
+	d.lastRxBytes = 0
+	d.lastHandshakeTime = time.Time{}
+	d.lastHandshake = ""
+	d.lastRefresh = time.Time{}
 }
 
 // buildPeersConfig builds the peer configuration based off peer cache
 // and peer listings from the controller. assumes deviceCacheLock is held.
+// Returns a map of peer public keys to devices that have had their wireguard
+// configuration updated.
 func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	if nx.wgConfig.Peers == nil {
 		nx.wgConfig.Peers = map[string]wgPeerConfig{}
@@ -91,24 +133,69 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	}
 
 	nx.buildLocalConfig()
-
+	// do we have a healthy relay available?
+	healthyRelay := false
 	for _, d := range nx.deviceCache {
+		if d.device.Relay && d.peerHealthy {
+			healthyRelay = true
+			break
+		}
+	}
+
+	now := time.Now()
+	for _, dIter := range nx.deviceCache {
+		d := dIter
 		// skip ourselves
 		if d.device.PublicKey == nx.wireguardPubKey {
 			continue
 		}
 
+		tryNextMethod := nx.peeringFailed(d, healthyRelay)
+		if tryNextMethod {
+			nx.logger.Debugf("Peering with peer [ %s ] using method [ %s ] has failed, trying next method", d.device.PublicKey, d.peeringMethod)
+			if d.peeringMethod == peeringMethodViaRelay {
+				// We failed to connect via a relay, which is the last resort, so start over at the beginning
+				nx.peeringReset(&d, true)
+				tryNextMethod = false
+			}
+		}
+
 		localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
 		peerPort := nx.extractPeerPort(localIP)
 
-		for _, method := range wgPeerMethods {
-			if !method.checkPrereqs(nx, d.device, reflexiveIP4) {
+		for i, method := range wgPeerMethods {
+			if i < d.peeringMethodIndex {
+				// A peering method was previously chosen and we haven't reached it yet
 				continue
+			}
+			if i == d.peeringMethodIndex && tryNextMethod {
+				// A peering method was previously chosen and it failed
+				continue
+			}
+			if !method.checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay) {
+				// This peering method is not a candidate for this peer, the prereqs failed
+				continue
+			}
+			if method.name == peeringMethodViaRelay && d.peeringMethod == peeringMethodViaRelay {
+				// We are already set up to use a relay for this peer
+				break
 			}
 			peer := method.buildPeerConfig(nx, d.device, relayAllowedIP, localIP, peerPort, reflexiveIP4)
 			if nx.peerConfigUpdated(d.device, peer) {
 				updatedPeers[d.device.PublicKey] = d.device
-				nx.wgConfig.Peers[d.device.PublicKey] = peer
+				if method.name == peeringMethodViaRelay {
+					// When switching to a relay, we have no configuration to connect directly to the peer
+					if _, ok := nx.wgConfig.Peers[d.device.PublicKey]; ok {
+						delete(nx.wgConfig.Peers, d.device.PublicKey)
+						_ = nx.peerCleanup(d.device)
+					}
+				} else {
+					nx.wgConfig.Peers[d.device.PublicKey] = peer
+				}
+				d.peeringMethodIndex = i
+				d.peeringMethod = method.name
+				d.peeringTime = now
+				nx.deviceCache[d.device.PublicKey] = d
 				nx.logPeerInfo(d.device, peer.Endpoint, method.name)
 			}
 			break
@@ -116,6 +203,34 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	}
 
 	return updatedPeers
+}
+
+func (nx *Nexodus) peeringFailed(d deviceCacheEntry, healthyRelay bool) bool {
+	if d.peerHealthy {
+		return false
+	}
+
+	if d.peeringMethodIndex == len(wgPeerMethods)-1 {
+		return !healthyRelay
+	}
+
+	if d.peeringTime.IsZero() {
+		// haven't even tried yet ...
+		return false
+	}
+
+	if d.peerHealthyTime.IsZero() && time.Since(d.peeringTime) < peeringTimeout {
+		// Peering has never been successful since choosing this method,
+		// so time out quicker than if it had worked and we're waiting for it to come back up.
+		return false
+	}
+
+	if !d.peerHealthyTime.IsZero() && time.Since(d.peeringTime) < peeringRestoreTimeout {
+		// Peering worked, but went down, so give it a few minutes to come back up.
+		return false
+	}
+
+	return true
 }
 
 func (nx *Nexodus) peerConfigUpdated(device public.ModelsDevice, peer wgPeerConfig) bool {
