@@ -176,25 +176,21 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	c.JSON(http.StatusCreated, org)
 }
 
-func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
+func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
 
-		// this could potentially be driven by rego output
-		if api.dialect == database.DialectSqlLite {
-			return db.Where("owner_id = ? OR id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
-		} else {
-			return db.Where("owner_id = ? OR id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
-		}
+	// this could potentially be driven by rego output
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("owner_id = ? OR id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+	} else {
+		return db.Where("owner_id = ? OR id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
 	}
 }
 
-func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
-		// this could potentially be driven by rego output
-		return db.Where("owner_id = ?", userId)
-	}
+func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
+	// this could potentially be driven by rego output
+	return db.Where("owner_id = ?", userId)
 }
 
 // ListOrganizations lists all Organizations
@@ -213,10 +209,11 @@ func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
 	var orgs []models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
-		Scopes(FilterAndPaginate(&models.Organization{}, c, "name")).
-		Find(&orgs)
+
+	db := api.db.WithContext(ctx)
+	db = api.OrganizationIsReadableByCurrentUser(c, db)
+	db = FilterAndPaginate(db, &models.Organization{}, c, "name")
+	result := db.Find(&orgs)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -256,8 +253,8 @@ func (api *API) GetOrganizations(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", k.String())
 
 	if result.Error != nil {
@@ -298,8 +295,8 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", orgId.String())
 
 	if result.Error != nil {
@@ -319,7 +316,7 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		db = db.Where("organization_id = ?", orgId.String())
-		db = FilterAndPaginateWithQuery(&models.Device{}, c, query, "hostname")(db)
+		db = FilterAndPaginateWithQuery(db, &models.Device{}, c, query, "hostname")
 
 		var items deviceList
 		result := db.Find(&items)
@@ -372,8 +369,8 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	}
 
 	var organization models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&organization, "id = ?", orgId.String())
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -391,7 +388,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	}
 
 	var device models.Device
-	result = api.db.WithContext(ctx).
+	result = db.
 		Where("organization_id = ?", orgId.String()).
 		First(&device, "id = ?", id.String())
 	if result.Error != nil {
@@ -428,8 +425,8 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 		return
 	}
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", k.String())
 
 	if result.Error != nil {
@@ -442,11 +439,11 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 	}
 
 	var users []*models.User
-	result = api.db.WithContext(ctx).
+	db = db.
 		Joins("inner join user_organizations on user_organizations.user_id=users.id").
-		Where("user_organizations.organization_id = ?", k.String()).
-		Scopes(FilterAndPaginate(&models.User{}, c, "user_name")).
-		Find(&users)
+		Where("user_organizations.organization_id = ?", k.String())
+	db = FilterAndPaginate(db, &models.User{}, c, "user_name")
+	result = db.Find(&users)
 
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
@@ -497,8 +494,8 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", orgID)
 
 	if result.Error != nil {
@@ -520,7 +517,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		OrganizationID uuid.UUID
 	}
 	var usersInOrg []userOrgMapping
-	if res := api.db.WithContext(ctx).Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
+	if res := db.Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
 	}

@@ -48,8 +48,8 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	// Only allow org owners to create invites...
 	var org models.Organization
-	if res := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsOwnedByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.OrganizationIsOwnedByCurrentUser(c, db).
 		First(&org, "id = ?", request.OrganizationID); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
@@ -57,7 +57,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	var user models.User
 	if request.UserID != "" {
-		if res := api.db.WithContext(ctx).
+		if res := db.
 			Preload("Organizations").
 			Preload("Invitations").
 			First(&user, "id = ?", request.UserID); res.Error != nil {
@@ -65,7 +65,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 			return
 		}
 	} else if request.UserName != "" {
-		if res := api.db.WithContext(ctx).Debug().
+		if res := db.Debug().
 			Preload("Organizations").
 			Preload("Invitations").
 			First(&user, "user_name = ?", request.UserName); res.Error != nil {
@@ -91,7 +91,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	}
 
 	invite := models.NewInvitation(user.ID, request.OrganizationID)
-	if res := api.db.WithContext(ctx).Create(&invite); res.Error != nil {
+	if res := db.Create(&invite); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
 		return
 	}
@@ -113,15 +113,33 @@ func (api *API) ListInvitations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListInvitations")
 	defer span.End()
 	invitations := make([]*models.Invitation, 0)
-	result := api.db.WithContext(ctx).
-		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
-		Scopes(FilterAndPaginate(&models.Invitation{}, c, "id")).
-		Find(&invitations)
+	db := api.db.WithContext(ctx)
+	db = api.InvitationIsForCurrentUserOrOrgOwner(c, db)
+	db = FilterAndPaginate(db, &models.Invitation{}, c, "id")
+	result := db.Find(&invitations)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
 		return
 	}
 	c.JSON(http.StatusOK, invitations)
+}
+
+func (api *API) InvitationIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
+
+	// this could potentially be driven by rego output
+	return db.Where("user_id = ?", userId)
+}
+
+func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
+
+	// this could potentially be driven by rego output
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("user_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
+	} else {
+		return db.Where("user_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
+	}
 }
 
 // GetInvitation gets a specific Invitation
@@ -150,8 +168,8 @@ func (api *API) GetInvitation(c *gin.Context) {
 		return
 	}
 	var org models.Invitation
-	result := api.db.WithContext(ctx).
-		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
+	db := api.db.WithContext(ctx)
+	result := api.InvitationIsForCurrentUserOrOrgOwner(c, db).
 		First(&org, "id = ?", k.String())
 
 	if result.Error != nil {
@@ -164,28 +182,6 @@ func (api *API) GetInvitation(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, org)
-}
-
-func (api *API) InvitationIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
-
-		// this could potentially be driven by rego output
-		return db.Where("user_id = ?", userId)
-	}
-}
-
-func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
-
-		// this could potentially be driven by rego output
-		if api.dialect == database.DialectSqlLite {
-			return db.Where("user_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
-		} else {
-			return db.Where("user_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
-		}
-	}
 }
 
 // AcceptInvitation accepts an invitation
@@ -222,8 +218,7 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 
 	var invitation models.Invitation
 	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if res := tx.
-			Scopes(api.InvitationIsForCurrentUser(c)).
+		if res := api.InvitationIsForCurrentUser(c, tx).
 			First(&invitation, "id = ?", k); res.Error != nil {
 			return errInvitationNotFound
 		}
@@ -296,14 +291,14 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 	}
 
 	var invitation models.Invitation
-	if res := api.db.WithContext(ctx).
-		Scopes(api.InvitationIsForCurrentUserOrOrgOwner(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.InvitationIsForCurrentUserOrOrgOwner(c, db).
 		First(&invitation, "id = ?", k); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("invitation"))
 		return
 	}
 
-	if res := api.db.WithContext(ctx).Delete(&models.Invitation{}, k); res.Error != nil {
+	if res := db.Delete(&models.Invitation{}, k); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
 		return
 	}

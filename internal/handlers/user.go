@@ -52,13 +52,11 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 	}
 }
 
-func (api *API) UserIsCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
+func (api *API) UserIsCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := c.Value(gin.AuthUserKey).(string)
 
-		// this could potentially be driven by rego output
-		return db.Where("id = ?", userId)
-	}
+	// this could potentially be driven by rego output
+	return db.Where("id = ?", userId)
 }
 
 func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
@@ -228,8 +226,8 @@ func (api *API) GetUser(c *gin.Context) {
 		userId = c.GetString(gin.AuthUserKey)
 	}
 
-	if res := api.db.WithContext(ctx).
-		Scopes(api.UserIsCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	if res := api.UserIsCurrentUser(c, db).
 		First(&user, "id = ?", userId); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		return
@@ -252,10 +250,10 @@ func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
 	defer span.End()
 	users := make([]*models.User, 0)
-	result := api.db.WithContext(ctx).
-		Scopes(api.UserIsCurrentUser(c)).
-		Scopes(FilterAndPaginate(&models.User{}, c, "user_name")).
-		Find(&users)
+	db := api.db.WithContext(ctx)
+	db = api.UserIsCurrentUser(c, db)
+	db = FilterAndPaginate(db, &models.User{}, c, "user_name")
+	result := db.Find(&users)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
@@ -289,8 +287,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		if res := api.db.
-			Scopes(api.UserIsCurrentUser(c)).
+		if res := api.UserIsCurrentUser(c, tx).
 			First(&user, "id = ?", userID); res.Error != nil {
 			return errUserNotFound
 		}

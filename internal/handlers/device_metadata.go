@@ -15,12 +15,6 @@ import (
 	"net/http"
 )
 
-func metadataForDevice(deviceId string) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		return db.Where("device_id = ?", deviceId)
-	}
-}
-
 // ListDeviceMetadata lists metadata for a device
 // @Summary      List Device Metadata
 // @Id  		 ListDeviceMetadata
@@ -54,8 +48,8 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 	}
 
 	var device models.Device
-	result := api.db.WithContext(ctx).
-		Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.DeviceIsOwnedByCurrentUser(c, db).
 		First(&device, "id = ?", deviceId)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -88,7 +82,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 			)
 		}
 		db = tempDB
-		db = FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, "key")(db)
+		db = FilterAndPaginateWithQuery(db, &models.DeviceMetadata{}, c, query.Query, "key")
 
 		var items deviceMetadataList
 		result := db.Find(&items)
@@ -135,8 +129,8 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 	}
 
 	var org models.Organization
-	result := api.db.WithContext(ctx).
-		Scopes(api.OrganizationIsReadableByCurrentUser(c)).
+	db := api.db.WithContext(ctx)
+	result := api.OrganizationIsReadableByCurrentUser(c, db).
 		First(&org, "id = ?", orgId.String())
 
 	if result.Error != nil {
@@ -171,7 +165,7 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 			)
 		}
 		db = tempDB
-		db = FilterAndPaginateWithQuery(&models.DeviceMetadata{}, c, query.Query, "key")(db)
+		db = FilterAndPaginateWithQuery(db, &models.DeviceMetadata{}, c, query.Query, "key")
 
 		var items deviceMetadataList
 		result := db.Find(&items)
@@ -222,15 +216,14 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 	var metadataInstance models.DeviceMetadata
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var device models.Device
-		result := api.db.WithContext(ctx).
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+		db := api.db.WithContext(ctx)
+		result := api.DeviceIsOwnedByCurrentUser(c, db).
 			First(&device, "id = ?", deviceId)
 		if result.Error != nil {
 			return result.Error
 		}
 
-		result = api.db.WithContext(ctx).
-			Scopes(metadataForDevice(deviceId.String())).
+		result = db.Where("device_id = ?", deviceId.String()).
 			Where("key = ?", key).
 			First(&metadataInstance)
 
@@ -290,8 +283,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		result := api.db.WithContext(ctx).
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+		result := api.DeviceIsOwnedByCurrentUser(c, tx).
 			First(&device, "id = ?", deviceId)
 		if result.Error != nil {
 			return result.Error
@@ -341,8 +333,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		result := api.db.WithContext(ctx).
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+		result := api.DeviceIsOwnedByCurrentUser(c, tx).
 			First(&device, "id = ?", deviceId)
 		if result.Error != nil {
 			return result.Error
@@ -391,8 +382,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 
 	var device models.Device
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		result := api.db.WithContext(ctx).
-			Scopes(api.DeviceIsOwnedByCurrentUser(c)).
+		result := api.DeviceIsOwnedByCurrentUser(c, tx).
 			First(&device, "id = ?", deviceId)
 		if result.Error != nil {
 			return result.Error
