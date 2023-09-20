@@ -23,22 +23,22 @@ secretGenerator:
       - PGDATA=/data/pgdata
     name: postgres
   - literals:
-      - host=postgres
-      - port=5432
+      - pgbouncer-host=postgres
+      - pgbouncer-port=5432
       - user=apiserver
       - password=password
       - dbname=apiserver
     name: database-pguser-apiserver
   - literals:
-      - host=postgres
-      - port=5432
+      - pgbouncer-host=postgres
+      - pgbouncer-port=5432
       - user=ipam
       - password=password
       - dbname=ipam
     name: database-pguser-ipam
   - literals:
-      - host=postgres
-      - port=5432
+      - pgbouncer-host=postgres
+      - pgbouncer-port=5432
       - user=keycloak
       - password=password
       - dbname=keycloak
