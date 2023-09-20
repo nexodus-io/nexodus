@@ -9,7 +9,7 @@ Restart=always
 RestartSec=1
 User=root
 EnvironmentFile=/etc/sysconfig/nexodus
-ExecStart=/usr/bin/nexd ${NEXD_ARGS}
+ExecStart=/bin/sh -c '/usr/bin/nexd $${NEXD_ARGS}'
 
 [Install]
 WantedBy=multi-user.target
