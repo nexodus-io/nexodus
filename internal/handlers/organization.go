@@ -117,7 +117,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		if res := tx.Create(&org); res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrDuplicatedKey) {
+			if database.IsDuplicateError(res.Error) {
 				return errDuplicateOrganization{ID: org.ID.String()}
 			}
 			api.logger.Error("Failed to create organization: ", res.Error)
