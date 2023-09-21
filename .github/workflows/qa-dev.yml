@@ -133,8 +133,9 @@ jobs:
       - name: Mesh Connectivity Results
         run: |
           set -e
-          cat ./ops/ansible/aws/*-connectivity-results.txt
-          if grep -iq 'Unreachable' ./ops/ansible/aws/*-connectivity-results.txt || grep -iq 'Failed' ./ops/ansible/aws/*-connectivity-results.txt; then
+          /bin/sh -c 'cat ./ops/ansible/aws/*-connectivity-results.txt > ./ops/ansible/aws/mesh-connectivity-results.txt'
+          cat ./ops/ansible/aws/mesh-connectivity-results.txt
+          if grep -iq 'Unreachable' ./ops/ansible/aws/*-connectivity-results.txt || grep -iq 'Failed' ./ops/ansible/aws/mesh-connectivity-results.txt; then
             echo "Connectivity results contain 'Unreachable or Failed' nodes, check the connectivity results and artifacts for details. Failing the job"
             exit 1
           else
