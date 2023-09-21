@@ -46,6 +46,9 @@ func (a *OrganizationsApiService) WatchEventsStream(r ApiWatchEventsRequest) (*W
 		return localVarReturnValue, nil, reportError("watches is required and must be specified")
 	}
 
+	if r.publicKey != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "public_key", r.publicKey, "")
+	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{"application/json"}
 

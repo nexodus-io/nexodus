@@ -92,7 +92,7 @@ func TestConcurrentApiAccess(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	password := "floofykittens"

@@ -67,7 +67,7 @@ func (fs *store) Store() error {
 	// Create the path to the file if it doesn't exist.
 	dir := filepath.Dir(fs.File)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0600); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			return err
 		}
 	}

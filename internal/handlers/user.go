@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/redis/go-redis/v9"
 	"net/http"
 	"time"
@@ -107,6 +108,9 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			user.ID = id
 			user.UserName = userName
 			if res = tx.Create(&user); res.Error != nil {
+				if database.IsDuplicateError(res.Error) {
+					res.Error = gorm.ErrDuplicatedKey
+				}
 				return res.Error
 			}
 			var err error
@@ -156,7 +160,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 
 	// Create the organization
 	if res := tx.Create(&org); res.Error != nil {
-		if !errors.Is(res.Error, gorm.ErrDuplicatedKey) {
+		if database.IsDuplicateError(res.Error) {
 			return noUUID, res.Error
 		}
 

@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"time"
 )
 
 // Device is a unique, end-user device.
@@ -27,6 +28,8 @@ type Device struct {
 	Endpoints                []Endpoint     `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Revision                 uint64         `json:"revision" gorm:"type:bigserial;index:"`
 	SecurityGroupId          uuid.UUID      `json:"security_group_id"`
+	Online                   bool           `json:"online"`
+	OnlineAt                 *time.Time     `json:"online_at"`
 }
 
 // AddDevice is the information needed to add a new Device.
