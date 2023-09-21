@@ -45,6 +45,7 @@ type API struct {
 	redis          *redis.Client
 	sessionManager *session.Manager
 	fetchManager   fetchmgr.FetchManager
+	onlineTracker  *DeviceTracker
 }
 
 func NewAPI(
@@ -72,6 +73,11 @@ func NewAPI(
 		return nil, err
 	}
 
+	onlineTracker, err := New(logger.Desugar())
+	if err != nil {
+		return nil, err
+	}
+
 	api := &API{
 		logger:         logger,
 		db:             db,
@@ -85,6 +91,7 @@ func NewAPI(
 		redis:          redis,
 		sessionManager: sessionManager,
 		fetchManager:   fetchManager,
+		onlineTracker:  onlineTracker,
 	}
 
 	if err := api.populateStore(ctx); err != nil {

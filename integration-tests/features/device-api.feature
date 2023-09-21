@@ -1,4 +1,5 @@
 Feature: Device API
+
   Background:
     Given a user named "Bob" with password "testpass"
     Given a user named "Alice" with password "testpass"
@@ -71,6 +72,8 @@ Feature: Device API
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
         ],
+        "online": false,
+        "online_at": null,
         "child_prefix": null,
         "discovery": false,
         "endpoints": [{
@@ -115,6 +118,8 @@ Feature: Device API
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
         ],
+        "online": false,
+        "online_at": null,
         "child_prefix": null,
         "discovery": false,
         "endpoints": [{
@@ -155,6 +160,8 @@ Feature: Device API
             "${response[0].allowed_ips[0]}",
             "${response[0].allowed_ips[1]}"
           ],
+          "online": false,
+          "online_at": null,
           "child_prefix": null,
           "discovery": false,
           "endpoints": [{
@@ -232,6 +239,8 @@ Feature: Device API
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
         ],
+        "online": false,
+        "online_at": null,
         "child_prefix": null,
         "discovery": false,
         "endpoints": [{

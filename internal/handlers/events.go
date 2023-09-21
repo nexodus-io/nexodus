@@ -32,8 +32,9 @@ type Watch struct {
 // @Tags         Organizations
 // @Accept       json
 // @Produce      json
-// @Param        Watches         body   []models.Watch  true "List of events to watch"
-// @Param		 organization_id path   string          true "Organization ID"
+// @Param		 public_key      query  string          false "connect as the device with the given public key, device will be considered to be online for the duration of this request"
+// @Param        Watches         body   []models.Watch  true  "List of events to watch"
+// @Param		 organization_id path   string          true  "Organization ID"
 // @Success      200  {object}  models.WatchEvent
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
@@ -44,6 +45,15 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 	ctx, span := tracer.Start(c.Request.Context(), "WatchEventsInOrganization")
 	defer span.End()
+
+	var query struct {
+		PublicKey string `form:"public_key"`
+	}
+
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		return
+	}
 
 	var request []models.Watch
 	if err := c.BindJSON(&request); err != nil {
@@ -192,7 +202,10 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 	}
 
-	api.sendMultiWatch(c, ctx, watches)
+	api.onlineTracker.Connected(api, c, query.PublicKey, func() {
+		api.sendMultiWatch(c, ctx, watches)
+	})
+
 }
 
 func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Watch) {

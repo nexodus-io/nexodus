@@ -630,11 +630,18 @@ type ApiWatchEventsRequest struct {
 	ApiService     *OrganizationsApiService
 	organizationId string
 	watches        *[]ModelsWatch
+	publicKey      *string
 }
 
 // List of events to watch
 func (r ApiWatchEventsRequest) Watches(watches []ModelsWatch) ApiWatchEventsRequest {
 	r.watches = &watches
+	return r
+}
+
+// connect as the device with the given public key, device will be considered to be online for the duration of this request
+func (r ApiWatchEventsRequest) PublicKey(publicKey string) ApiWatchEventsRequest {
+	r.publicKey = &publicKey
 	return r
 }
 
@@ -685,6 +692,9 @@ func (a *OrganizationsApiService) WatchEventsExecute(r ApiWatchEventsRequest) (*
 		return localVarReturnValue, nil, reportError("watches is required and must be specified")
 	}
 
+	if r.publicKey != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "public_key", r.publicKey, "")
+	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{"application/json"}
 

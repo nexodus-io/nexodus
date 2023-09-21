@@ -472,7 +472,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.informerStop = informerCancel
 
 	// event stream sharing occurs due to the informers sharing the context created in following line:
-	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).NewSharedInformerContext()
+	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
 	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
 	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
 

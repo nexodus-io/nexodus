@@ -1223,6 +1223,12 @@ const docTemplate = `{
                 "operationId": "WatchEvents",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "connect as the device with the given public key, device will be considered to be online for the duration of this request",
+                        "name": "public_key",
+                        "in": "query"
+                    },
+                    {
                         "description": "List of events to watch",
                         "name": "Watches",
                         "in": "body",
@@ -2227,6 +2233,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "online": {
+                    "type": "boolean"
+                },
+                "online_at": {
+                    "type": "string"
                 },
                 "organization_id": {
                     "type": "string"

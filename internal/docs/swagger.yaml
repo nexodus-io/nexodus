@@ -139,6 +139,10 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      online:
+        type: boolean
+      online_at:
+        type: string
       organization_id:
         type: string
       organization_prefix:
@@ -1197,6 +1201,11 @@ paths:
       description: Watches events occurring in the organization
       operationId: WatchEvents
       parameters:
+      - description: connect as the device with the given public key, device will
+          be considered to be online for the duration of this request
+        in: query
+        name: public_key
+        type: string
       - description: List of events to watch
         in: body
         name: Watches

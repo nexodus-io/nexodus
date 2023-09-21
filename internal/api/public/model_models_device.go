@@ -19,6 +19,8 @@ type ModelsDevice struct {
 	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname                string           `json:"hostname,omitempty"`
 	Id                      string           `json:"id,omitempty"`
+	Online                  bool             `json:"online,omitempty"`
+	OnlineAt                string           `json:"online_at,omitempty"`
 	OrganizationId          string           `json:"organization_id,omitempty"`
 	OrganizationPrefix      string           `json:"organization_prefix,omitempty"`
 	OrganizationPrefixV6    string           `json:"organization_prefix_v6,omitempty"`
