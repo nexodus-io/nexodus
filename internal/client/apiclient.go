@@ -69,9 +69,29 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 }
 
 func createOAuthHttpClient(ctx context.Context, apiClient *public.APIClient, opts *options, authcb func(string)) (*http.Client, error) {
+	startTime := time.Now()
 	resp, _, err := apiClient.AuthApi.DeviceStart(ctx).Execute()
 	if err != nil {
 		return nil, err
+	}
+
+	// knowing the right time is needed to validate if the JWT has expired
+	serverTimeFn := time.Now
+
+	// Can we use the server's reported time to detect if our time is skewed?
+	if !resp.ServerTime.IsZero() {
+
+		// account for the time spend sending the request to the server...
+		rtt := time.Since(startTime)
+		timeSkew := resp.ServerTime.Sub(startTime.Add(rtt / 2))
+
+		timeSkewGrace := 5 * time.Second
+		if timeSkew > timeSkewGrace || timeSkew < -timeSkewGrace {
+			// adjust for the time skew...
+			serverTimeFn = func() time.Time {
+				return time.Now().Add(timeSkew)
+			}
+		}
 	}
 
 	provider, err := oidc.NewProvider(ctx, resp.Issuer)
@@ -81,6 +101,7 @@ func createOAuthHttpClient(ctx context.Context, apiClient *public.APIClient, opt
 
 	oidcConfig := &oidc.Config{
 		ClientID: resp.ClientId,
+		Now:      serverTimeFn,
 	}
 
 	verifier := provider.Verifier(oidcConfig)
