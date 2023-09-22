@@ -1,4 +1,6 @@
-import { Admin, Resource, fetchUtils } from "react-admin";
+import { Admin, CustomRoutes, Resource, fetchUtils } from "react-admin";
+import { Route } from "react-router";
+
 import simpleRestProvider from "ra-data-simple-rest";
 import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 
@@ -24,6 +26,10 @@ import {
   InvitationList,
   InvitationShow,
 } from "./pages/Invitations";
+import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
+
+// components
+import { CustomMenu } from "./layout/Menus";
 
 const fetchJson = (url: URL, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
@@ -56,6 +62,7 @@ const App = () => {
       title="Controller"
       layout={Layout}
       loginPage={LoginPage}
+      menu={CustomMenu}
       requireAuth
     >
       <Resource
@@ -65,6 +72,9 @@ const App = () => {
         icon={UserIcon}
         recordRepresentation={(record) => `${record.username}`}
       />
+      <CustomRoutes>
+        <Route path="/security-groups" element={<SecurityGroups />} />
+      </CustomRoutes>
       <Resource
         name="organizations"
         list={OrganizationList}
