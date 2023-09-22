@@ -371,6 +371,14 @@ definitions:
       updated_at:
         type: integer
     type: object
+  models.ValidationError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      field:
+        type: string
+    type: object
   models.Watch:
     properties:
       at_tail:
@@ -1354,6 +1362,10 @@ paths:
           description: Conflict
           schema:
             $ref: '#/definitions/models.ConflictsError'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/models.ValidationError'
         "429":
           description: Too Many Requests
           schema:
@@ -1441,6 +1453,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/models.ValidationError'
         "429":
           description: Too Many Requests
           schema:

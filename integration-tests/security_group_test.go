@@ -32,6 +32,7 @@ import (
 // connection is not permitted.
 // 5. Test scopes by creating a new user and performing negative tests.
 // 6. Validate security group creation and deletion.
+// 7. Negative testing to verify sanity checks of [ Port, IP_Ranges, Protocols ] are functional.
 func TestSecurityGroups(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
@@ -563,4 +564,58 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"--outbound-rules", string(outboundJSON),
 	)
 	require.NoError(err)
+
+	// Negative test where the from_port is greater than the to_port
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "456", "123",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"192.168.168.100",
+			}),
+		helper.createSecurityRule("udp", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.Error(err)
+
+	// Negative test where there is an invalid address in ip_ranges
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "123", "456",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"MEOWDY_PARTNER",
+			}),
+		helper.createSecurityRule("udp", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.Error(err)
+
+	// Negative test where there is an invalid protocol specified
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "123", "456",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"192.168.168.100",
+			}),
+		helper.createSecurityRule("ipv9", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.Error(err)
 }

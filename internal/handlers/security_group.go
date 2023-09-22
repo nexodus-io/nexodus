@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"gorm.io/gorm/clause"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +17,27 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
+
+const (
+	// Protocols
+	protoIPv4   = "ipv4"
+	protoIPv6   = "ipv6"
+	protoICMPv4 = "icmpv4"
+	protoICMP   = "icmp"
+	protoICMPv6 = "icmpv6"
+	protoTCP    = "tcp"
+	protoUDP    = "udp"
+)
+
+var allowedProtocols = map[string]bool{
+	protoIPv4:   true,
+	protoIPv6:   true,
+	protoICMPv4: true,
+	protoICMP:   true,
+	protoICMPv6: true,
+	protoTCP:    true,
+	protoUDP:    true,
+}
 
 type securityGroupList []*models.SecurityGroup
 
@@ -152,9 +175,10 @@ func (api *API) secGroupsEnabled(c *gin.Context) bool {
 // @Param        SecurityGroup   body   models.AddSecurityGroup  true "Add SecurityGroup"
 // @Success      201  {object}  models.SecurityGroup
 // @Failure      400  {object}  models.BaseError
-// @Failure		 401  {object}  models.BaseError
+// @Failure      401  {object}  models.BaseError
 // @Failure      409  {object}  models.ConflictsError
-// @Failure		 429  {object}  models.BaseError
+// @Failure      422  {object}  models.ValidationError
+// @Failure      429  {object}  models.BaseError
 // @Failure      500  {object}  models.BaseError
 // @Router       /api/organizations/{organization_id}/security_groups [post]
 func (api *API) CreateSecurityGroup(c *gin.Context) {
@@ -172,6 +196,21 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 	// Call BindJSON to bind the received JSON
 	if err := c.BindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+		return
+	}
+
+	// Validate security group rules for any invalid fields in ports/ip_ranges/protocol
+	if err := ValidateCreateSecurityGroupRules(request); err != nil {
+		switch {
+		case strings.Contains(err.Error(), "invalid protocol"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("protocol", err.Error()))
+		case strings.Contains(err.Error(), "invalid port range"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("port_range", err.Error()))
+		case strings.Contains(err.Error(), "invalid IP range"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("ip_range", err.Error()))
+		default:
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("rule", "invalid rule"))
+		}
 		return
 	}
 
@@ -320,18 +359,19 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 // UpdateSecurityGroup updates a Security Group
 // @Summary      Update Security Group
 // @Description  Updates a Security Group by ID
-// @Id  		 UpdateSecurityGroup
+// @Id           UpdateSecurityGroup
 // @Tags         SecurityGroup
-// @Accepts		 json
+// @Accepts      json
 // @Produce      json
 // @Param        organization_id   path      string  true "Organization ID"
-// @Param        security_group_id   path      string  true "Security Group ID"
-// @Param		 update body models.UpdateSecurityGroup true "Security Group Update"
-// @Success      200  {object}  models.SecurityGroup
-// @Failure		 401  {object}  models.BaseError
-// @Failure      400  {object}  models.BaseError
-// @Failure      404  {object}  models.BaseError
-// @Failure		 429  {object}  models.BaseError
+// @Param        security_group_id path      string  true "Security Group ID"
+// @Param        update body       models.UpdateSecurityGroup true "Security Group Update"
+// @Success      200  {object}     models.SecurityGroup
+// @Failure      400  {object}     models.BaseError
+// @Failure      401  {object}     models.BaseError
+// @Failure      404  {object}     models.BaseError
+// @Failure      422  {object}     models.ValidationError
+// @Failure      429  {object}     models.BaseError
 // @Router       /api/organizations/{organization_id}/security_groups/{security_group_id} [patch]
 func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateSecurityGroup", trace.WithAttributes(
@@ -360,8 +400,23 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
-	var securityGroup models.SecurityGroup
 
+	// Validate security group rules for any invalid fields in ports/ip_ranges/protocol
+	if err := ValidateUpdateSecurityGroupRules(request); err != nil {
+		switch {
+		case strings.Contains(err.Error(), "invalid protocol"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("protocol", err.Error()))
+		case strings.Contains(err.Error(), "invalid port range"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("port_range", err.Error()))
+		case strings.Contains(err.Error(), "invalid IP range"):
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("ip_range", err.Error()))
+		default:
+			c.JSON(http.StatusUnprocessableEntity, models.NewFieldValidationError("rule", "invalid rule"))
+		}
+		return
+	}
+
+	var securityGroup models.SecurityGroup
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		var org models.Organization
 		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
@@ -451,4 +506,57 @@ func (api *API) updateOrganizationSecGroupId(ctx context.Context, db *gorm.DB, s
 	}
 
 	return db.WithContext(ctx).Model(&org).Update("SecurityGroupId", sgId).Error
+}
+
+// ValidateUpdateSecurityGroupRules validates rules for updating the security group
+func ValidateUpdateSecurityGroupRules(sg models.UpdateSecurityGroup) error {
+	for _, rule := range append(sg.InboundRules, sg.OutboundRules...) {
+		if err := ValidateRule(rule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateCreateSecurityGroupRules validates rules for creating a new security group
+func ValidateCreateSecurityGroupRules(sg models.AddSecurityGroup) error {
+	for _, rule := range append(sg.InboundRules, sg.OutboundRules...) {
+		if err := ValidateRule(rule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateRule validates individual rule
+func ValidateRule(rule models.SecurityRule) error {
+	// Validate Protocol
+	if rule.IpProtocol != "" && !allowedProtocols[rule.IpProtocol] {
+		return fmt.Errorf("invalid protocol: %s", rule.IpProtocol)
+	}
+
+	// Validate Ports
+	if rule.FromPort != 0 || rule.ToPort != 0 { // Checks if they are set (i.e., not wildcard)
+		if rule.FromPort > rule.ToPort || rule.FromPort < 0 || rule.ToPort > 65535 {
+			return fmt.Errorf("invalid port range: from %d to %d", rule.FromPort, rule.ToPort)
+		}
+	}
+
+	// Validate IP Ranges
+	for _, ipRange := range rule.IpRanges {
+		if ipRange == "" { // Wildcard case
+			continue
+		}
+
+		// Check the
+		isIPv4 := util.ContainsValidCustomIPv4Ranges([]string{ipRange})
+		isIPv6 := util.ContainsValidCustomIPv6Ranges([]string{ipRange})
+
+		// If the IP range is neither a valid IPv4 nor a valid IPv6, then it's invalid
+		if !isIPv4 && !isIPv6 {
+			return fmt.Errorf("invalid IP range: %s", ipRange)
+		}
+	}
+
+	return nil
 }

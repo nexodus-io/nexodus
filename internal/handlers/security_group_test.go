@@ -267,6 +267,8 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 		OutboundRules:    []models.SecurityRule{{IpProtocol: "tcp", FromPort: 8080, ToPort: 9001, IpRanges: []string{"192.168.200.1/24"}}},
 	}
 
+	fmt.Printf("WTF2 %v", updateGroup)
+
 	updateBody, err := json.Marshal(updateGroup)
 	require.NoError(err)
 

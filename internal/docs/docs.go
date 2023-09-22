@@ -1446,6 +1446,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.ConflictsError"
                         }
                     },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
@@ -1573,6 +1579,12 @@ const docTemplate = `{
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
                         }
                     },
                     "429": {
@@ -2575,6 +2587,18 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.ValidationError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "something bad"
+                },
+                "field": {
+                    "type": "string"
                 }
             }
         },

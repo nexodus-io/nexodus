@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/urfave/cli/v2"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
+	"github.com/urfave/cli/v2"
 )
 
 func securityGroupTableFields(cCtx *cli.Context) []TableField {
@@ -34,7 +35,7 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 		return fmt.Errorf("create security group failed: %w", err)
 	}
 
-	res, _, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background(), orgID.String()).SecurityGroup(public.ModelsAddSecurityGroup{
+	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background(), orgID.String()).SecurityGroup(public.ModelsAddSecurityGroup{
 		GroupName:        name,
 		GroupDescription: description,
 		OrgId:            orgID.String(),
@@ -42,6 +43,15 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 		OutboundRules:    outboundRules,
 	}).Execute()
 	if err != nil {
+		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks
+		if httpResp != nil && httpResp.StatusCode == http.StatusUnprocessableEntity {
+			var validationErr public.ModelsValidationError
+			decodeErr := json.NewDecoder(httpResp.Body).Decode(&validationErr)
+			if decodeErr != nil {
+				return fmt.Errorf("create security group failed and error decoding: %w", decodeErr)
+			}
+			return fmt.Errorf("create security group validation failed: %s - %s", validationErr.Field, validationErr.Error)
+		}
 		return fmt.Errorf("create security group failed: %w", err)
 	}
 
@@ -61,13 +71,22 @@ func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID, org
 		return fmt.Errorf("create security group failed: %w", err)
 	}
 
-	res, _, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), orgID.String(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
+	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), orgID.String(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
 		GroupName:        name,
 		GroupDescription: description,
 		InboundRules:     inboundRules,
 		OutboundRules:    outboundRules,
 	}).Execute()
 	if err != nil {
+		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks
+		if httpResp != nil && httpResp.StatusCode == http.StatusUnprocessableEntity {
+			var validationErr public.ModelsValidationError
+			decodeErr := json.NewDecoder(httpResp.Body).Decode(&validationErr)
+			if decodeErr != nil {
+				return fmt.Errorf("update security group failed and error decoding: %w", decodeErr)
+			}
+			return fmt.Errorf("update security group validation failed: %s - %s", validationErr.Field, validationErr.Error)
+		}
 		return fmt.Errorf("update security group failed: %w", err)
 	}
 

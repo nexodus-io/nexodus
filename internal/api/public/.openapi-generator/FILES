@@ -30,6 +30,7 @@ model_models_update_device.go
 model_models_update_security_group.go
 model_models_user.go
 model_models_user_info_response.go
+model_models_validation_error.go
 model_models_watch.go
 model_models_watch_event.go
 response.go
