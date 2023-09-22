@@ -28,18 +28,18 @@
 - name: Verify Connectivity from a spoke node to all spokes
   become: yes
   shell: |
-    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > connectivity-results.txt
+    printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > {{ inventory_hostname }}-connectivity-results.txt
     nexctl nexd peers ping
-    nexctl nexd peers ping >> connectivity-results.txt 2>&1
-    nexctl nexd peers ping6 >> connectivity-results.txt 2>&1
-    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> connectivity-results.txt
-    wg show wg0 dump >> connectivity-results.txt 2>&1
-    cat connectivity-results.txt
+    nexctl nexd peers ping >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
+    nexctl nexd peers ping6 >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
+    printf "\n====== WG Dump from Node: {{ inventory_hostname }} ======\n" >> {{ inventory_hostname }}-connectivity-results.txt
+    wg show wg0 dump >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
+    cat {{ inventory_hostname }}-connectivity-results.txt
   ignore_errors: yes
 
 - name: Copy connectivity results back to the runner
   ansible.builtin.fetch:
-    src: /home/{{ ansible_user }}/connectivity-results.txt
+    src: /home/{{ ansible_user }}/{{ inventory_hostname }}-connectivity-results.txt
     dest: ./
     flat: true
 
