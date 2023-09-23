@@ -1,12 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import viteTsconfigPaths from "vite-tsconfig-paths";
-import viteFaviconsPlugin from "vite-plugin-favicon";
 import { Logout } from "react-admin";
 
-// https://vitejs.dev/config/
+const plugins = [react(), viteTsconfigPaths()];
+
 export default defineConfig({
-  plugins: [react(), viteTsconfigPaths(), viteFaviconsPlugin("./src/logo.png")],
+  plugins,
   build: {
     outDir: "build",
   },
