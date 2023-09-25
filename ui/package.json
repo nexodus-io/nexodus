@@ -36,7 +36,7 @@
   "devDependencies": {
     "@mui/material": "^5.14.10",
     "@types/jest": "^29.5.5",
-    "@types/react": "^18.2.21",
+    "@types/react": "^18.2.22",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.1.0",
     "cross-env": "^7.0.3",
