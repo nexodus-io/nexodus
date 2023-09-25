@@ -38,7 +38,7 @@
     "@types/jest": "^29.5.5",
     "@types/react": "^18.2.21",
     "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.4",
+    "@vitejs/plugin-react": "^4.1.0",
     "cross-env": "^7.0.3",
     "ip-cidr": "^3.1.0",
     "prettier": "3.0.3",
