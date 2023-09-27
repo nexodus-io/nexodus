@@ -24,6 +24,10 @@ NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
 NEXODUS_RELEASE?=$(shell git describe --always --exclude qa --exclude prod)
 NEXODUS_GCFLAGS?=
 
+NEXODUS_KUBE_CONTEXT?=kind-nexodus-dev
+NEXODUS_KUBE_NAMESPACE?=nexodus
+kubectl:=kubectl --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE)
+
 NEXODUS_BUILD_PROFILE?=dev
 NEXODUS_LDFLAGS:=$(NEXODUS_LDFLAGS) -X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 ifeq ($(NEXODUS_BUILD_PROFILE),dev)
@@ -385,7 +389,7 @@ telepresence_%: telepresence-prereqs
 		telepresence connect ;\
 	fi
 	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
-		telepresence intercept -n nexodus $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json ;\
+		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json ;\
 		echo "=======================================================================================" ;\
 		echo ;\
 		echo "   Start the $(word 2,$(subst _, ,$(basename $@))) locally with a debugger with the env variables" ;\
@@ -402,8 +406,8 @@ debug-apiserver: ## Use telepresence to debug the apiserver deployment
 		telepresence connect ;\
 	fi
 	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
-		telepresence intercept -n nexodus apiserver --workload apiserver --service apiserver --port 8080:8080 --env-json=apiserver-envs.json ;\
-		telepresence intercept -n nexodus apiserver-grpc --workload apiserver --service apiserver --port 5080:5080 ;\
+		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) apiserver --workload apiserver --service apiserver --port 8080:8080 --env-json=apiserver-envs.json ;\
+		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) apiserver-grpc --workload apiserver --service apiserver --port 5080:5080 ;\
 		echo "=======================================================================================" ;\
 		echo ;\
 		echo "   Start the apiserver locally with a debugger with the env variables" ;\
@@ -469,44 +473,44 @@ run-dev-container: .dev-container ## Run docker container that you can develop a
 .PHONY: run-sql-apiserver
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
+	$(CMD_PREFIX) $(kubectl) exec -it \
+		$(shell $(kubectl) get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql apiserver
 else ifeq ($(OVERLAY),arm64)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U apiserver apiserver
+	$(CMD_PREFIX) $(kubectl) exec -it svc/postgres -c postgres -- psql -U apiserver apiserver
 else ifeq ($(OVERLAY),cockroach)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
+	$(CMD_PREFIX) $(kubectl) exec -it svc/cockroachdb -- cockroach sql --insecure --user apiserver --database apiserver
 endif
 
 .PHONY: run-sql-ipam
 run-sql-ipam: ## runs a command line SQL client to interact with the ipam database
 ifeq ($(OVERLAY),dev)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
+	$(CMD_PREFIX) $(kubectl) exec -it \
+		$(shell $(kubectl) get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql ipam
 else ifeq ($(OVERLAY),arm64)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U ipam ipam
+	$(CMD_PREFIX) $(kubectl) exec -it svc/postgres -c postgres -- psql -U ipam ipam
 else ifeq ($(OVERLAY),cockroach)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user ipam --database ipam
+	$(CMD_PREFIX) $(kubectl) exec -it svc/cockroachdb -- cockroach sql --insecure --user ipam --database ipam
 endif
 
 .PHONY: run-sql-keycloak
 run-sql-keycloak: ## runs a command line SQL client to interact with the keycloak database
 ifeq ($(OVERLAY),dev)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus \
-		$(shell kubectl get pods -l postgres-operator.crunchydata.com/role=master -o name -n nexodus) \
+	$(CMD_PREFIX) $(kubectl) exec -it \
+		$(shell $(kubectl) get pods -l postgres-operator.crunchydata.com/role=master -o name) \
 		-c database -- psql keycloak
 else ifeq ($(OVERLAY),arm64)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/postgres -c postgres -- psql -U keycloak keycloak
+	$(CMD_PREFIX) $(kubectl) exec -it svc/postgres -c postgres -- psql -U keycloak keycloak
 else ifeq ($(OVERLAY),cockroach)
-	$(CMD_PREFIX) kubectl exec -it -n nexodus svc/cockroachdb -- cockroach sql --insecure --user keycloak --database keycloak
+	$(CMD_PREFIX) $(kubectl) exec -it svc/cockroachdb -- cockroach sql --insecure --user keycloak --database keycloak
 endif
 
 
 .PHONY: clear-db
 clear-db:
-	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=0 -n nexodus $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) $(kubectl) scale deployment apiserver --replicas=0 $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) $(kubectl) rollout status deploy/apiserver --timeout=5m $(PIPE_DEV_NULL)
 	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLES] ..."
 	$(CMD_PREFIX) echo "\
 		DROP TABLE IF EXISTS invitations;\
@@ -518,10 +522,10 @@ clear-db:
 		DROP TABLE IF EXISTS users;\
 		DROP TABLE IF EXISTS apiserver_migrations;\
 		" | make run-sql-apiserver $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) kubectl scale deployment apiserver --replicas=1 -n nexodus $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) kubectl rollout status deploy/apiserver -n nexodus --timeout=5m
-	$(CMD_PREFIX) kubectl rollout restart statefulset redis -n nexodus $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) kubectl rollout status statefulset redis -n nexodus --timeout=5m
+	$(CMD_PREFIX) $(kubectl) scale deployment apiserver --replicas=1 $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) $(kubectl) rollout status deploy/apiserver --timeout=5m
+	$(CMD_PREFIX) $(kubectl) rollout restart statefulset redis $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) $(kubectl) rollout status statefulset redis --timeout=5m
 
 ##@ Container Images
 
@@ -604,16 +608,16 @@ teardown: ## Teardown the kind cluster
 .PHONY: setup-kind
 setup-kind: teardown ## Create a kind cluster with ingress enabled, but don't install nexodus.
 	$(CMD_PREFIX) kind create cluster --config ./deploy/kind.yaml
-	$(CMD_PREFIX) kubectl cluster-info --context kind-nexodus-dev
-	$(CMD_PREFIX) kubectl apply -f ./deploy/kind-ingress.yaml
+	$(CMD_PREFIX) $(kubectl) cluster-info
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -f ./deploy/kind-ingress.yaml
 
 .PHONY: deploy-nexodus-agent ## Deply the nexodus agent in the kind cluster
 deploy-nexodus-agent: image-nexd
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) cp deploy/nexodus-client/overlays/dev/kustomization.yaml.sample deploy/nexodus-client/overlays/dev/kustomization.yaml
 	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_SERVICE_IP>/$(NEXODUS_LOCAL_IP)/" deploy/nexodus-client/overlays/dev/kustomization.yaml
-	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_SERVICE_CERT>/$(shell kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
-	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-client/overlays/dev
+	$(CMD_PREFIX) sed -i -e "s/<NEXODUS_SERVICE_CERT>/$(shell $(kubectl) get secret nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"')/" deploy/nexodus-client/overlays/dev/kustomization.yaml
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -k ./deploy/nexodus-client/overlays/dev
 
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 .PHONY: install-olm
@@ -622,7 +626,7 @@ install-olm: ## Install OLM on the cluster
 
 .PHONY: deploy-operators
 deploy-operators: ## Deploy all operators and wait for readiness
-	$(CMD_PREFIX) kubectl apply -k ./deploy/operators/overlays/$(OVERLAY)
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -k ./deploy/operators/overlays/$(OVERLAY)
 
 .PHONY: use-cockroach
 use-cockroach: ## Recreate the database with a Cockroach based server
@@ -638,30 +642,30 @@ use-postgres: ## Recreate the database with a simple Postgres server
 
 .PHONY: wait-for-readiness
 wait-for-readiness: # Wait for operators to be ready
-	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n operators -l operators.coreos.com/cert-manager.operators
-	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n operators -l operators.coreos.com/prometheus.operators
-	$(CMD_PREFIX) kubectl wait -n operators --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
-	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv -n nexodus-monitoring -l operators.coreos.com/grafana-operator.nexodus-monitoring
-	$(CMD_PREFIX) kubectl wait -n nexodus-monitoring --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
-	$(CMD_PREFIX) ./hack/wait-for-resource-exists.sh secrets -n ingress-nginx ingress-nginx-admission
-	$(CMD_PREFIX) kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
-	$(CMD_PREFIX) kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv --context=$(NEXODUS_KUBE_CONTEXT) -n operators -l operators.coreos.com/cert-manager.operators
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv --context=$(NEXODUS_KUBE_CONTEXT) -n operators -l operators.coreos.com/prometheus.operators
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) -n operators wait --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-labelled-resource.sh csv --context=$(NEXODUS_KUBE_CONTEXT) -n nexodus-monitoring -l operators.coreos.com/grafana-operator.nexodus-monitoring
+	$(CMD_PREFIX) kubectl wait --context=$(NEXODUS_KUBE_CONTEXT) -n nexodus-monitoring --for=jsonpath='{.status.phase}'=Succeeded csv --all --timeout=5m
+	$(CMD_PREFIX) ./hack/wait-for-resource-exists.sh --context=$(NEXODUS_KUBE_CONTEXT) -n ingress-nginx secrets ingress-nginx-admission
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) -n ingress-nginx rollout restart deployment ingress-nginx-controller
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) -n ingress-nginx rollout status deployment ingress-nginx-controller --timeout=5m
 
 .PHONY: deploy
 deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernetes cluster
-	$(CMD_PREFIX) kubectl create namespace nexodus
-	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY)
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) create namespace nexodus
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -k ./deploy/nexodus/overlays/$(OVERLAY)
 	$(CMD_PREFIX) OVERLAY=$(OVERLAY) make init-db
-	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
+	$(CMD_PREFIX) $(kubectl) wait --for=condition=Ready pods --all -l app.kubernetes.io/part-of=nexodus --timeout=15m
 
 .PHONY: undeploy
 undeploy: ## Remove the nexodus stack from a kubernetes cluster
-	$(CMD_PREFIX) kubectl delete namespace nexodus
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) elete namespace nexodus
 
 .PHONY: deploy-monitoring-stack ## Deploy the monitoring stack in the kind cluster
 deploy-monitoring-stack:
-	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus-monitoring/overlays/dev
-	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus-monitoring --timeout=15m
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -k ./deploy/nexodus-monitoring/overlays/dev
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) -n nexodus-monitoring wait --for=condition=Ready pods --all --timeout=15m
 
 .PHONY: load-images
 load-images: ## Load images onto kind
@@ -673,22 +677,22 @@ load-images: ## Load images onto kind
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
-	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
-	$(CMD_PREFIX) kubectl rollout restart deploy/frontend -n nexodus
-	$(CMD_PREFIX) kubectl rollout restart deploy/apiproxy -n nexodus
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/apiserver
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/frontend
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/apiproxy
 
 .PHONY: init-db
 init-db:
 # wait for the DB to be up, then restart the services that use it.
 ifeq ($(OVERLAY),dev)
-	$(CMD_PREFIX) kubectl wait -n nexodus postgresclusters/database --timeout=15m --for=condition=PGBackRestReplicaRepoReady || true
+	$(CMD_PREFIX) $(kubectl) wait postgresclusters/database --timeout=15m --for=condition=PGBackRestReplicaRepoReady || true
 else ifeq ($(OVERLAY),arm64)
-	$(CMD_PREFIX) kubectl wait -n nexodus statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1 || true
+	$(CMD_PREFIX) $(kubectl) wait statefulsets/postgres --timeout=15m --for=jsonpath='{.status.readyReplicas}'=1 || true
 else ifeq ($(OVERLAY),cockroach)
 	$(CMD_PREFIX) make deploy-cockroach-operator
-	$(CMD_PREFIX) kubectl -n nexodus wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=15m
-	$(CMD_PREFIX) kubectl -n nexodus rollout status statefulsets/cockroachdb --timeout=15m
-	$(CMD_PREFIX) kubectl -n nexodus exec -it cockroachdb-0 \
+	$(CMD_PREFIX) $(kubectl) wait --for=condition=Initialized crdbcluster/cockroachdb --timeout=15m
+	$(CMD_PREFIX) $(kubectl) rollout status statefulsets/cockroachdb --timeout=15m
+	$(CMD_PREFIX) $(kubectl) exec -it cockroachdb-0 \
 	  	-- ./cockroach sql \
 		--insecure \
 		--certs-dir=/cockroach/cockroach-certs \
@@ -705,36 +709,36 @@ else ifeq ($(OVERLAY),cockroach)
 			GRANT ALL ON DATABASE keycloak TO keycloak;\
 			"
 endif
-	$(CMD_PREFIX) kubectl rollout restart deploy/auth -n nexodus
-	$(CMD_PREFIX) kubectl rollout restart deploy/apiserver -n nexodus
-	$(CMD_PREFIX) kubectl rollout restart deploy/ipam -n nexodus
-	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/auth --timeout=5m
-	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/apiserver --timeout=5m
-	$(CMD_PREFIX) kubectl -n nexodus rollout status deploy/ipam --timeout=5m
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/auth
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/apiserver
+	$(CMD_PREFIX) $(kubectl) rollout restart deploy/ipam
+	$(CMD_PREFIX) $(kubectl) rollout status deploy/auth --timeout=5m
+	$(CMD_PREFIX) $(kubectl) rollout status deploy/apiserver --timeout=5m
+	$(CMD_PREFIX) $(kubectl) rollout status deploy/ipam --timeout=5m
 
 .PHONY: recreate-db
 recreate-db: ## Delete and bring up a new nexodus database
-	$(CMD_PREFIX) kubectl delete -n nexodus postgrescluster/database 2> /dev/null || true
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus postgrescluster/database || true
-	$(CMD_PREFIX) kubectl delete -n nexodus statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/postgres-disk-postgres-0
-	$(CMD_PREFIX) kubectl delete -n nexodus crdbclusters/cockroachdb 2> /dev/null || true
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
-	$(CMD_PREFIX) kubectl delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-0
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-1
-	$(CMD_PREFIX) kubectl wait --for=delete -n nexodus persistentvolumeclaims/datadir-cockroachdb-2
+	$(CMD_PREFIX) $(kubectl) delete postgrescluster/database 2> /dev/null || true
+	$(CMD_PREFIX) $(kubectl) wait --for=delete postgrescluster/database || true
+	$(CMD_PREFIX) $(kubectl) delete statefulsets/postgres persistentvolumeclaims/postgres-disk-postgres-0 2> /dev/null || true
+	$(CMD_PREFIX) $(kubectl) wait --for=delete persistentvolumeclaims/postgres-disk-postgres-0
+	$(CMD_PREFIX) $(kubectl) delete crdbclusters/cockroachdb 2> /dev/null || true
+	$(CMD_PREFIX) $(kubectl) wait --for=delete --all pods -l app.kubernetes.io/name=cockroachdb --timeout=2m
+	$(CMD_PREFIX) $(kubectl) delete persistentvolumeclaims/datadir-cockroachdb-0 persistentvolumeclaims/datadir-cockroachdb-1 persistentvolumeclaims/datadir-cockroachdb-2 2> /dev/null || true
+	$(CMD_PREFIX) $(kubectl) wait --for=delete persistentvolumeclaims/datadir-cockroachdb-0
+	$(CMD_PREFIX) $(kubectl) wait --for=delete persistentvolumeclaims/datadir-cockroachdb-1
+	$(CMD_PREFIX) $(kubectl) wait --for=delete persistentvolumeclaims/datadir-cockroachdb-2
 
-	$(CMD_PREFIX) kubectl apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) apply -k ./deploy/nexodus/overlays/$(OVERLAY) | grep -v unchanged
 	$(CMD_PREFIX) OVERLAY=$(OVERLAY) make init-db
-	$(CMD_PREFIX) kubectl wait --for=condition=Ready pods --all -n nexodus -l app.kubernetes.io/part-of=nexodus --timeout=15m
-	$(CMD_PREFIX) kubectl rollout restart statefulset redis -n nexodus $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) kubectl rollout status statefulset redis -n nexodus --timeout=5m
+	$(CMD_PREFIX) $(kubectl) wait --for=condition=Ready pods --all -l app.kubernetes.io/part-of=nexodus --timeout=15m
+	$(CMD_PREFIX) $(kubectl) rollout restart statefulset redis $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) $(kubectl) rollout status statefulset redis --timeout=5m
 
 .PHONY: cacerts
 cacerts: ## Install the Self-Signed CA Certificate
 	$(CMD_PREFIX) mkdir -p $(CURDIR)/.certs
-	$(CMD_PREFIX) kubectl get secret -n nexodus nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
+	$(CMD_PREFIX) $(kubectl) get secret nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	$(CMD_PREFIX) CAROOT=$(CURDIR)/.certs mkcert -install
 
 ##@ Packaging
