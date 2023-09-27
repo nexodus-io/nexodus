@@ -1912,13 +1912,25 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/web/login/end": {
             "post": {
-                "description": "Called auth server redirect to finish the Oauth login",
+                "description": "Handles the callback from the OAuth2 provider and completes the login process.",
                 "produces": [
                     "application/json"
                 ],
@@ -1940,9 +1952,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Login successful",
                         "schema": {
                             "$ref": "#/definitions/models.LoginEndResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request, usually due to state mismatch or other protocol errors",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized, specifically when login is required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error, including token validation or exchange issues",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -1965,6 +1995,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.LoginStartResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -1986,13 +2022,25 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.LogoutResponse"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/web/refresh": {
             "get": {
-                "description": "Refreshes the access token",
+                "description": "Refreshes the access token and updates the session ID",
                 "produces": [
                     "application/json"
                 ],
@@ -2004,26 +2052,50 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/web/user_info": {
             "get": {
-                "description": "Returns information about the currently logged-in user",
+                "description": "Fetches the information of the currently logged-in user from the OAuth2 provider.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "User Info",
+                "summary": "Retrieve User Information",
                 "operationId": "UserInfo",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successfully retrieved user information",
                         "schema": {
                             "$ref": "#/definitions/models.UserInfoResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized, user not logged in or session expired",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error, during token validation or info retrieval",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }

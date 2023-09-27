@@ -28,6 +28,7 @@ func AddCodeFlowRoutes(r gin.IRouter, auth *OidcAgent) {
 	r.GET("/claims", auth.Claims)
 	r.POST("/logout", auth.Logout)
 	r.GET("/check_auth", auth.CheckAuth)
+	r.GET("/refresh", auth.Refresh)
 }
 
 func NewDeviceFlowRouter(auth *OidcAgent) *gin.Engine {
