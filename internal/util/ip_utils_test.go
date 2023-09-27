@@ -165,3 +165,29 @@ func TestIsDefaultIPv6Route(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsValidCustomIPv4Ranges(t *testing.T) {
+	assert := assert.New(t)
+	// Test CIDR notation
+	assert.True(ContainsValidCustomIPv4Ranges([]string{"192.168.1.0/24"}))
+	// Test individual IP
+	assert.True(ContainsValidCustomIPv4Ranges([]string{"192.168.1.1"}))
+	// Test Dash-separated range
+	assert.True(ContainsValidCustomIPv4Ranges([]string{"192.168.1.1-192.168.1.2"}))
+	// Test invalid ranges
+	assert.False(ContainsValidCustomIPv4Ranges([]string{"192.300.1.1"}))
+	assert.False(ContainsValidCustomIPv4Ranges([]string{"kitten_loaf"}))
+}
+
+func TestContainsValidCustomIPv6Ranges(t *testing.T) {
+	assert := assert.New(t)
+	// Test CIDR notation
+	assert.True(ContainsValidCustomIPv6Ranges([]string{"2001:db8::/32"}))
+	// Test individual IP
+	assert.True(ContainsValidCustomIPv6Ranges([]string{"2001:db8::1"}))
+	// Test Dash-separated range
+	assert.True(ContainsValidCustomIPv6Ranges([]string{"2001:db8::1-2001:db8::2"}))
+	// Test invalid ranges
+	assert.False(ContainsValidCustomIPv6Ranges([]string{"making_biscuits"}))
+	assert.False(ContainsValidCustomIPv6Ranges([]string{"2001:db8::zzz"}))
+}
