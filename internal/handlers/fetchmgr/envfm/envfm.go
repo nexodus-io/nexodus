@@ -22,7 +22,7 @@ func New(logger *zap.Logger) (fetchmgr.FetchManager, error) {
 		return memfm.New(), nil
 	case "redis":
 
-		timeout, err := util.GetenvDuration("wNEXAPI_FETCH_MGR_TIMEOUT", "2s")
+		timeout, err := util.GetenvDuration("NEXAPI_FETCH_MGR_TIMEOUT", "2s")
 		if err != nil {
 			return nil, err
 		}
