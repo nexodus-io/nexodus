@@ -1,43 +1,27 @@
-import { Fragment } from "react";
+import React, { FC } from "react";
 import {
   Datagrid,
   List,
   TextField,
-  ReferenceArrayField,
-  Show,
   SimpleShowLayout,
-  SingleFieldList,
   ReferenceField,
-  useRecordContext,
-  useGetOne,
-  Loading,
   BulkExportButton,
   BulkDeleteButton,
   ArrayField,
+  DateField,
+  BooleanField,
+  Show,
+  useRecordContext,
 } from "react-admin";
-
-const ZoneNameFromPeer = () => {
-  const peer = useRecordContext();
-  if (!peer) return null;
-  const {
-    data: zone,
-    isLoading,
-    error,
-  } = useGetOne("zones", { id: peer.zone_id });
-  if (isLoading) {
-    return <Loading />;
-  }
-  if (error) {
-    return <p>ERROR</p>;
-  }
-  return <div>{zone.name}</div>;
-};
+import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { useTheme } from "@mui/material/styles";
 
 const DeviceListBulkActions = () => (
-  <Fragment>
+  <div style={{ display: "flex", justifyContent: "space-between" }}>
     <BulkExportButton />
     <BulkDeleteButton />
-  </Fragment>
+  </div>
 );
 
 export const DeviceList = () => (
@@ -45,11 +29,9 @@ export const DeviceList = () => (
     <Datagrid rowClick="show" bulkActionButtons={<DeviceListBulkActions />}>
       <TextField label="Hostname" source="hostname" />
       <TextField label="Tunnel IP" source="tunnel_ip" />
-
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Address" source="address" />
-          <TextField label="Distance" source="distance" />
         </Datagrid>
       </ArrayField>
       <ReferenceField
@@ -64,12 +46,64 @@ export const DeviceList = () => (
         reference="users"
         link="show"
       />
+      <BooleanField
+        label="Online Status"
+        source="online"
+        textAlign={"center"}
+        valueLabelTrue={"Connected"}
+        valueLabelFalse={"Not Connected"}
+        TrueIcon={OnlineIcon}
+        FalseIcon={HighlightOffIcon}
+      />
     </Datagrid>
   </List>
 );
 
-export const DeviceShow = () => (
+const ConditionalOnlineSinceField = () => {
+  const record = useRecordContext();
+  const theme = useTheme();
+
+  const labelStyle = {
+    fontWeight: 400,
+    fontSize: "0.75rem",
+    lineHeight: 1.43,
+    letterSpacing: "0.00938em",
+    color:
+      theme.palette.mode === "light"
+        ? "rgba(0, 0, 0, 0.6)"
+        : "rgba(255, 255, 255, 0.7)",
+    marginBottom: "0.2rem",
+  };
+
+  return record && record.online ? (
+    <>
+      <div style={labelStyle}>Online Since</div>
+      <DateField
+        source="online_at"
+        options={{
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        }}
+      />
+    </>
+  ) : null;
+};
+
+export const DeviceShow: FC = () => (
   <Show>
+    <DeviceShowLayout />
+  </Show>
+);
+
+const DeviceShowLayout: FC = () => {
+  const record = useRecordContext();
+  if (!record) return null;
+  return (
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Hostname" source="hostname" />
@@ -97,6 +131,56 @@ export const DeviceShow = () => (
         reference="users"
         link="show"
       />
+      <TextField label="Online" source="online" />
+      <ConditionalOnlineSinceField />
     </SimpleShowLayout>
-  </Show>
-);
+  );
+};
+
+//
+// export const DeviceShow: FC = () => (
+//   <Show>
+//     <SimpleShowLayout>
+//       <TextField label="ID" source="id" />
+//       <TextField label="Hostname" source="hostname" />
+//       <TextField label="Public Key" source="public_key" />
+//       <TextField label="Tunnel IP" source="tunnel_ip" />
+//       <TextField label="Organization Prefix" source="organization_prefix" />
+//       <TextField label="Allowed IPs" source="allowed_ips" />
+//       <ArrayField label="Endpoints" source="endpoints">
+//         <Datagrid rowClick="show" bulkActionButtons={false}>
+//           <TextField label="Address" source="address" />
+//           <TextField label="Distance" source="distance" />
+//           <TextField label="Source" source="source" />
+//         </Datagrid>
+//       </ArrayField>
+//       <TextField label="Online" source="online" />
+//       <DateField
+//         label="Online Since"
+//         source="online_at"
+//         options={{
+//           weekday: "long",
+//           year: "numeric",
+//           month: "long",
+//           day: "numeric",
+//           hour: "numeric",
+//           minute: "numeric",
+//           second: "numeric",
+//         }}
+//       />
+//       <TextField label="Relay Node" source="relay" />
+//       <ReferenceField
+//         label="Organization"
+//         source="organization_id"
+//         reference="organizations"
+//         link="show"
+//       />
+//       <ReferenceField
+//         label="Owner"
+//         source="user_id"
+//         reference="users"
+//         link="show"
+//       />
+//     </SimpleShowLayout>
+//   </Show>
+// );
