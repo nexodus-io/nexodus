@@ -10,6 +10,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"net/http"
@@ -23,6 +24,15 @@ type Watch struct {
 	gtRevision uint64
 	fetch      fetchmgr.FetchFn
 	atTail     bool
+}
+
+var deviceCacheSize = 500
+
+func init() {
+	size, err := util.GetenvInt("NEXAPI_DEVICE_CACHE_SIZE", "500")
+	if err == nil {
+		deviceCacheSize = size
+	}
 }
 
 // WatchEvents lets you watch for resource change events
@@ -92,7 +102,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 		case "device":
 
-			fetcher := api.fetchManager.Open("org-devices:"+orgId.String(), 500, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+			fetcher := api.fetchManager.Open("org-devices:"+orgId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 				var items deviceList
 				db = db.Unscoped().Limit(100).Order("revision")
 				if gtRevision != 0 {

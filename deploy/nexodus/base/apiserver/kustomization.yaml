@@ -19,6 +19,9 @@ configMapGenerator:
       - NEXAPI_REDIS_SERVER=redis:6379
       - NEXAPI_REDIS_DB=1
       - NEXAPI_ENVIRONMENT=development
+      - NEXAPI_FETCH_MGR=redis
+      - NEXAPI_FETCH_MGR_TIMEOUT=2s
+      - NEXAPI_DEVICE_CACHE_SIZE=500
 resources:
   - service.yaml
   - deployment.yaml
