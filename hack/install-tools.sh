@@ -26,6 +26,7 @@ if [ -z "$(which kubectl)" ] || [ "$1" = "--force" ]; then
     exit 1
   fi
   chmod 755 kubectl
+  mkdir -p "$(go env GOPATH)/bin"
   mv kubectl "$(go env GOPATH)/bin"
 fi
 if [ -z "$(which kind)" ] || [ "$1" = "--force" ]; then
