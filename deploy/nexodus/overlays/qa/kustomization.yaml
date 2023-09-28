@@ -42,6 +42,7 @@ configMapGenerator:
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
       - NEXAPI_ENVIRONMENT=qa
+      - NEXAPI_FFLAG_SECURITY_GROUPS=true
       - NEXAPI_DEBUG=0
     name: apiserver
 patches:
