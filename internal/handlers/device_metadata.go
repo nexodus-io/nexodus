@@ -25,7 +25,7 @@ import (
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  []models.DeviceMetadata
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id}/metadata [get]
 func (api *API) ListDeviceMetadata(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDeviceMetadata", trace.WithAttributes(
@@ -43,7 +43,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 		Prefixes []string `form:"prefix"`
 	}{}
 	if err := c.BindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
@@ -56,8 +56,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error fetching metadata: %s", result.Error)
-		c.JSON(http.StatusInternalServerError, result.Error)
+		api.sendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", result.Error))
 		return
 	}
 
@@ -104,7 +103,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  []models.DeviceMetadata
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization}/metadata [get]
 func (api *API) ListOrganizationMetadata(c *gin.Context) {
 	orgIdParam := c.Param("organization")
@@ -124,7 +123,7 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		Prefixes []string `form:"prefix"`
 	}{}
 	if err := c.BindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
@@ -137,7 +136,7 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -197,7 +196,7 @@ func (d deviceMetadataList) Len() int {
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  models.DeviceMetadata
-// @Failure      501  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id}/metadata/{key} [get]
 func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 
@@ -235,8 +234,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error fetching metadata: %s", err)
-		c.JSON(http.StatusInternalServerError, err)
+		api.sendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", err))
 	}
 
 	c.JSON(http.StatusOK, metadataInstance)
@@ -253,7 +251,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  models.DeviceMetadata
-// @Failure      501  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id}/metadata/{key} [put]
 func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 
@@ -300,8 +298,8 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error updating metadata: %s", err)
-		c.JSON(http.StatusInternalServerError, err)
+		api.sendInternalServerError(c, fmt.Errorf("error updating metadata: %w", err))
+		return
 	}
 
 	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
@@ -317,7 +315,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 // @Description  Delete all metadata for a device
 // @Param        id   path      string  true "Device ID"
 // @Success      204
-// @Failure      501  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id}/metadata [delete]
 func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 
@@ -348,8 +346,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error deleting metadata: %s", err)
-		c.JSON(http.StatusInternalServerError, err)
+		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
 	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
@@ -365,7 +362,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 // @Param        id   path      string  true "Device ID"
 // @Param        key  path      string  false "Metadata Key"
 // @Success      204
-// @Failure      501  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id}/metadata/{key} [delete]
 func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteDeviceMetadataKey", trace.WithAttributes(
@@ -400,8 +397,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.logger.Errorf("error deleting metadata: %s", err)
-		c.JSON(http.StatusInternalServerError, err)
+		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
 	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())

@@ -44,7 +44,8 @@ func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
 		if cachedUsername == "" {
 			_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
 			if err != nil {
-				_ = c.AbortWithError(http.StatusInternalServerError, err)
+				api.sendInternalServerError(c, err)
+				c.Abort()
 				return
 			}
 			api.redis.Set(c.Request.Context(), prefixId, username, CacheExp)
@@ -211,7 +212,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 // @Failure		 401  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users/{id} [get]
 func (api *API) GetUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetUser",
@@ -249,6 +250,7 @@ func (api *API) GetUser(c *gin.Context) {
 // @Success      200  {object}  []models.User
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users [get]
 func (api *API) ListUsers(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsers")
@@ -260,7 +262,7 @@ func (api *API) ListUsers(c *gin.Context) {
 	result := db.Find(&users)
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
+		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -278,7 +280,7 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Failure		 400  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
@@ -296,7 +298,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 			return errUserNotFound
 		}
 		if res := api.db.Select(clause.Associations).Delete(&user); res.Error != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to delete user: %w", res.Error)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to delete user: %w", res.Error))
 		}
 
 		return nil
@@ -306,7 +308,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -337,7 +339,7 @@ type UserOrganization struct {
 // @Success      204  {object}  models.User
 // @Failure      400  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users/{id}/organizations/{organization} [delete]
 func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
@@ -369,7 +371,7 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 			Where("user_id = ?", userID).
 			Where("organization_id = ?", orgID).
 			Delete(&UserOrganization{}); res.Error != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error))
 		}
 		return nil
 	})
@@ -381,7 +383,7 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 		if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}

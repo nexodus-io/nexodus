@@ -49,7 +49,7 @@ func init() {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure		 500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/events [post]
 func (api *API) WatchEvents(c *gin.Context) {
 
@@ -61,7 +61,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 	}
 
 	if err := c.BindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
@@ -86,7 +86,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -155,11 +155,11 @@ func (api *API) WatchEvents(c *gin.Context) {
 			if r.Options != nil {
 				b, err := json.Marshal(r.Options)
 				if err != nil {
-					c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+					c.JSON(http.StatusBadRequest, models.NewApiError(err))
 				}
 				err = json.Unmarshal(b, &watchOptions)
 				if err != nil {
-					c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+					c.JSON(http.StatusBadRequest, models.NewApiError(err))
 				}
 			}
 
@@ -254,7 +254,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 
 	c.Header("Content-Type", "application/json;stream=watch")
 	c.Status(http.StatusOK)
-	stream(c, func() models.WatchEvent {
+	api.stream(c, func() models.WatchEvent {
 		// This function blocks until there is an event to return...
 		for {
 			parkedCounter := 0
@@ -306,7 +306,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 						states = slices.Delete(states, i, 1)
 						return models.WatchEvent{
 							Type:  "error",
-							Value: models.NewApiInternalError(state.err),
+							Value: models.NewApiError(state.err),
 						}
 					}
 					state.idx = 0
@@ -350,10 +350,10 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 	})
 }
 
-func stream(c *gin.Context, nextEvent func() models.WatchEvent) {
+func (api *API) stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("streaming unsupported")))
+		api.sendInternalServerError(c, fmt.Errorf("streaming unsupported"))
 		return
 	}
 	c.Writer.WriteHeader(200)
