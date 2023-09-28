@@ -62,6 +62,7 @@ func (d securityGroupList) Len() int {
 // @Success      200  {object}  []models.SecurityGroup
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/security_groups [get]
 func (api *API) ListSecurityGroups(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListSecurityGroups")
@@ -83,7 +84,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 
 	var query Query
 	if err := c.BindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
@@ -113,6 +114,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/security_group/{id} [get]
 func (api *API) GetSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetSecurityGroup", trace.WithAttributes(
@@ -153,7 +155,7 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 func (api *API) secGroupsEnabled(c *gin.Context) bool {
 	secGroupsEnabled, err := api.fflags.GetFlag("security-groups")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		api.sendInternalServerError(c, err)
 		return false
 	}
 	allowForTests := c.GetString("nexodus.secGroupsEnabled")
@@ -179,7 +181,7 @@ func (api *API) secGroupsEnabled(c *gin.Context) bool {
 // @Failure      409  {object}  models.ConflictsError
 // @Failure      422  {object}  models.ValidationError
 // @Failure      429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/security_groups [post]
 func (api *API) CreateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup", trace.WithAttributes(
@@ -256,9 +258,9 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.NewApiInternalError(err))
+			c.JSON(http.StatusNotFound, models.NewApiError(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -281,7 +283,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 // @Success      204  {object}  models.SecurityGroup
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/security_groups/{security_group_id} [delete]
 func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteSecurityGroup", trace.WithAttributes(
@@ -345,7 +347,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			c.JSON(http.StatusInternalServerError, err)
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -372,6 +374,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 // @Failure      404  {object}     models.BaseError
 // @Failure      422  {object}     models.ValidationError
 // @Failure      429  {object}     models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/security_groups/{security_group_id} [patch]
 func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateSecurityGroup", trace.WithAttributes(
@@ -451,7 +454,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		} else if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}

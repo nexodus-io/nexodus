@@ -164,7 +164,7 @@ func (a *DevicesApiService) CreateDeviceExecute(r ApiCreateDeviceRequest) (*Mode
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -300,7 +300,7 @@ func (a *DevicesApiService) DeleteDeviceExecute(r ApiDeleteDeviceRequest) (*Mode
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -410,8 +410,8 @@ func (a *DevicesApiService) DeleteDeviceMetadataExecute(r ApiDeleteDeviceMetadat
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		if localVarHTTPResponse.StatusCode == 501 {
-			var v ModelsBaseError
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -516,8 +516,8 @@ func (a *DevicesApiService) DeleteDeviceMetadataKeyExecute(r ApiDeleteDeviceMeta
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		if localVarHTTPResponse.StatusCode == 501 {
-			var v ModelsBaseError
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -656,6 +656,17 @@ func (a *DevicesApiService) GetDeviceExecute(r ApiGetDeviceRequest) (*ModelsDevi
 		}
 		if localVarHTTPResponse.StatusCode == 429 {
 			var v ModelsBaseError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -817,7 +828,7 @@ func (a *DevicesApiService) GetDeviceInOrganizationExecute(r ApiGetDeviceInOrgan
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -934,8 +945,8 @@ func (a *DevicesApiService) GetDeviceMetadataKeyExecute(r ApiGetDeviceMetadataKe
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		if localVarHTTPResponse.StatusCode == 501 {
-			var v ModelsBaseError
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -1059,7 +1070,7 @@ func (a *DevicesApiService) ListDeviceMetadataExecute(r ApiListDeviceMetadataReq
 			error: localVarHTTPResponse.Status,
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -1181,6 +1192,17 @@ func (a *DevicesApiService) ListDevicesExecute(r ApiListDevicesRequest) ([]Model
 		}
 		if localVarHTTPResponse.StatusCode == 429 {
 			var v ModelsBaseError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -1337,7 +1359,7 @@ func (a *DevicesApiService) ListDevicesInOrganizationExecute(r ApiListDevicesInO
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -1465,7 +1487,7 @@ func (a *DevicesApiService) ListOrganizationMetadataExecute(r ApiListOrganizatio
 			error: localVarHTTPResponse.Status,
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsBaseError
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
@@ -1632,6 +1654,17 @@ func (a *DevicesApiService) UpdateDeviceExecute(r ApiUpdateDeviceRequest) (*Mode
 			}
 			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
 			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -1753,8 +1786,8 @@ func (a *DevicesApiService) UpdateDeviceMetadataKeyExecute(r ApiUpdateDeviceMeta
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		if localVarHTTPResponse.StatusCode == 501 {
-			var v ModelsBaseError
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()

@@ -204,6 +204,14 @@ definitions:
         description: How the endpoint was discovered
         type: string
     type: object
+  models.InternalServerError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      trace_id:
+        type: string
+    type: object
   models.Invitation:
     properties:
       expiry:
@@ -433,6 +441,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Devices
       tags:
       - Devices
@@ -474,7 +486,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Add Devices
       tags:
       - Devices
@@ -508,7 +520,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete Device
       tags:
       - Devices
@@ -546,6 +558,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get Devices
       tags:
       - Devices
@@ -589,6 +605,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Update Devices
       tags:
       - Devices
@@ -605,10 +625,10 @@ paths:
       responses:
         "204":
           description: No Content
-        "501":
-          description: Not Implemented
+        "500":
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete all Device metadata
       tags:
       - Devices
@@ -639,7 +659,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Device Metadata
       tags:
       - Devices
@@ -660,10 +680,10 @@ paths:
       responses:
         "204":
           description: No Content
-        "501":
-          description: Not Implemented
+        "500":
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete a Device metadata key
       tags:
       - Devices
@@ -690,10 +710,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.DeviceMetadata'
-        "501":
-          description: Not Implemented
+        "500":
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get Device Metadata
       tags:
       - Devices
@@ -725,10 +745,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.DeviceMetadata'
-        "501":
-          description: Not Implemented
+        "500":
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Set Device Metadata by key
       tags:
       - Devices
@@ -751,6 +771,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Feature Flags
       tags:
       - FFlag
@@ -787,6 +811,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get Feature Flag
       tags:
       - FFlag
@@ -813,6 +841,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Invitations
       tags:
       - Invitation
@@ -847,6 +879,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Create an invitation
       tags:
       - Invitation
@@ -879,6 +915,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Accept an invitation
       tags:
       - Invitation
@@ -916,7 +956,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete Invitation
       tags:
       - Invitation
@@ -946,7 +986,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Organizations
       tags:
       - Organizations
@@ -992,7 +1032,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Create an Organization
       tags:
       - Organizations
@@ -1030,7 +1070,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete Organization
       tags:
       - Organizations
@@ -1068,6 +1108,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get Organizations
       tags:
       - Organizations
@@ -1107,7 +1151,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Users
       tags:
       - Users
@@ -1151,7 +1195,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Devices
       tags:
       - Devices
@@ -1198,7 +1242,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get Device
       tags:
       - Devices
@@ -1249,7 +1293,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Watch events occurring in the organization
       tags:
       - Organizations
@@ -1291,6 +1335,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get SecurityGroup
       tags:
       - SecurityGroup
@@ -1325,6 +1373,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Security Groups
       tags:
       - SecurityGroup
@@ -1373,7 +1425,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Add SecurityGroup
       tags:
       - SecurityGroup
@@ -1410,7 +1462,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete SecurityGroup
       tags:
       - SecurityGroup
@@ -1461,6 +1513,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: Update Security Group
       tags:
       - SecurityGroup
@@ -1500,7 +1556,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Device Metadata
       tags:
       - Devices
@@ -1527,6 +1583,10 @@ paths:
           description: Too Many Requests
           schema:
             $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
       summary: List Users
       tags:
       - Users
@@ -1560,7 +1620,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Delete User
       tags:
       - Users
@@ -1601,7 +1661,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Get User
       tags:
       - Users
@@ -1636,7 +1696,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.InternalServerError'
       summary: Remove a User from an Organization
       tags:
       - Users

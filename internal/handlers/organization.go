@@ -46,14 +46,14 @@ func (e errDuplicateOrganization) Error() string {
 // @Failure		 405  {object}  models.BaseError
 // @Failure      409  {object}  models.ConflictsError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations [post]
 func (api *API) CreateOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateOrganization")
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		api.sendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("nexodus.testCreateOrganization")
@@ -164,11 +164,11 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	if err != nil {
 		var duplicate errDuplicateOrganization
 		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.NewApiInternalError(err))
+			c.JSON(http.StatusNotFound, models.NewApiError(err))
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -203,7 +203,7 @@ func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *g
 // @Success      200  {object}  []models.Organization
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure		 500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations [get]
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
@@ -219,7 +219,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -240,6 +240,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{id} [get]
 func (api *API) GetOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
@@ -261,7 +262,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -282,7 +283,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure		 500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/devices [get]
 func (api *API) ListDevicesInOrganization(c *gin.Context) {
 
@@ -303,14 +304,14 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
 
 	var query Query
 	if err := c.BindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(err))
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
@@ -353,7 +354,7 @@ func (d deviceList) Len() int {
 // @Failure		 401  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure		 500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{organization_id}/devices/{device_id} [get]
 func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDeviceInOrganization",
@@ -376,7 +377,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -395,7 +396,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -414,7 +415,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure		 500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{id}/devices [get]
 func (api *API) ListUsersInOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListUsersInOrganization")
@@ -433,7 +434,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -446,7 +447,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 	result = db.Find(&users)
 
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		api.sendInternalServerError(c, result.Error)
 		return
 	}
 
@@ -468,7 +469,7 @@ func (api *API) ListUsersInOrganization(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/organizations/{id} [delete]
 func (api *API) DeleteOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteOrganization",
@@ -479,7 +480,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		api.sendInternalServerError(c, err)
 		return
 	}
 	if !multiOrganizationEnabled {
@@ -502,7 +503,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+			api.sendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -518,12 +519,12 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 	var usersInOrg []userOrgMapping
 	if res := db.Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(res.Error))
+		api.sendInternalServerError(c, res.Error)
 		return
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to delete the organization: %w", err)))
+		api.sendInternalServerError(c, fmt.Errorf("failed to delete the organization: %w", err))
 		return
 	}
 
@@ -532,12 +533,12 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 
 	if org.PrivateCidr {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, orgCIDR); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release ipam organization prefix: %w", err)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam organization prefix: %w", err))
 			return
 		}
 
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, orgCIDRV6); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release ipam organization prefix: %w", err)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam organization prefix: %w", err))
 			return
 		}
 	}

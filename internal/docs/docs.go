@@ -58,6 +58,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             },
@@ -119,7 +125,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -178,6 +184,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             },
@@ -225,7 +237,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -291,6 +303,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             }
@@ -337,7 +355,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -362,10 +380,10 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
-                    "501": {
-                        "description": "Not Implemented",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -408,10 +426,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.DeviceMetadata"
                         }
                     },
-                    "501": {
-                        "description": "Not Implemented",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -460,10 +478,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.DeviceMetadata"
                         }
                     },
-                    "501": {
-                        "description": "Not Implemented",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -494,10 +512,10 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
-                    "501": {
-                        "description": "Not Implemented",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -531,6 +549,12 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -586,6 +610,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             }
@@ -624,6 +654,12 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -676,6 +712,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             }
@@ -723,6 +765,12 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -779,7 +827,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -824,7 +872,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -893,7 +941,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -952,6 +1000,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             },
@@ -1005,7 +1059,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1065,7 +1119,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1131,7 +1185,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1201,7 +1255,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1276,7 +1330,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1339,6 +1393,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             }
@@ -1389,6 +1449,12 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1461,7 +1527,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1516,7 +1582,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1592,6 +1658,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
                     }
                 }
             }
@@ -1649,7 +1721,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1689,6 +1761,12 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1751,7 +1829,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1800,7 +1878,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -1852,7 +1930,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.InternalServerError"
                         }
                     }
                 }
@@ -2407,6 +2485,18 @@ const docTemplate = `{
                 },
                 "source": {
                     "description": "How the endpoint was discovered",
+                    "type": "string"
+                }
+            }
+        },
+        "models.InternalServerError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "something bad"
+                },
+                "trace_id": {
                     "type": "string"
                 }
             }

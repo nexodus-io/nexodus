@@ -3,6 +3,8 @@ package routers
 import (
 	"context"
 	_ "embed"
+	"errors"
+	"github.com/nexodus-io/nexodus/internal/handlers"
 	"io"
 	"net/http"
 	"strings"
@@ -47,8 +49,8 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			return getURLAsText(ctx, jwksURI)
 		})
 		if err != nil {
-			logger.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, err)
+			c.Abort()
 			return
 		}
 
@@ -79,26 +81,26 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 			return
 		}
 		if err != nil {
-			logger.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, err)
+			c.Abort()
 			return
 		} else if len(results) == 0 {
-			logger.Error("undefined result from authz policy")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("undefined result from authz policy"))
+			c.Abort()
 			return
 		}
 		result, ok := results[0].Bindings["result"].(map[string]interface{})
 		if !ok {
-			logger.With("result", results[0].Bindings).Error("opa policy result is not a map")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger.With("result", results[0].Bindings), errors.New("opa policy result is not a map"))
+			c.Abort()
 			return
 		}
 		logger = logger.With("result", result)
 
 		authorized, ok := result["authorized"].(bool)
 		if !ok {
-			logger.Error("authorized is not a bool")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("authorized is not a bool"))
+			c.Abort()
 			return
 		}
 		if !authorized {
@@ -108,8 +110,8 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 
 		allowed, ok := result["allow"].(bool)
 		if !ok {
-			logger.Error("allow is not a bool")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("allow is not a bool"))
+			c.Abort()
 			return
 		}
 		if !allowed {
@@ -120,22 +122,22 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string) (func(
 
 		userID, ok := result["user_id"].(string)
 		if !ok {
-			logger.Error("user_id is not a string")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("user_id is not a string"))
+			c.Abort()
 			return
 		}
 
 		username, ok := result["user_name"].(string)
 		if !ok {
-			logger.Error("user_name is not a string")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("user_name is not a string"))
+			c.Abort()
 			return
 		}
 
 		fullName, ok := result["full_name"].(string)
 		if !ok {
-			logger.Error("full_name is not a string")
-			c.AbortWithStatus(http.StatusInternalServerError)
+			handlers.SendInternalServerError(c, o.Logger, errors.New("full_name is not a string"))
+			c.Abort()
 			return
 		}
 

@@ -42,6 +42,7 @@ func (e errDuplicateDevice) Error() string {
 // @Success      200  {object}  []models.Device
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices [get]
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
@@ -54,7 +55,7 @@ func (api *API) ListDevices(c *gin.Context) {
 	result := db.Find(&devices)
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "error fetching keys from db"})
+		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 	c.JSON(http.StatusOK, devices)
@@ -86,6 +87,7 @@ func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id} [get]
 func (api *API) GetDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetDevice", trace.WithAttributes(
@@ -123,6 +125,7 @@ func (api *API) GetDevice(c *gin.Context) {
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id} [patch]
 func (api *API) UpdateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateDevice", trace.WithAttributes(
@@ -193,12 +196,12 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			// We can reuse the ip address if the ipam namespace is not changing.
 			if originalIpamNamespace != newIpamNamespace {
 				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIP, device.OrganizationPrefix); err != nil {
-					c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
+					api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
 					return err
 				}
 
 				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
-					c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
+					api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
 					return err
 				}
 
@@ -269,7 +272,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		if errors.Is(err, errDeviceNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -320,7 +323,7 @@ func getAllowedIPs(ip string, ip6 string, relay bool) ([]string, error) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure      409  {object}  models.ConflictsError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices [post]
 func (api *API) CreateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "AddDevice")
@@ -448,7 +451,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+			api.sendInternalServerError(c, err)
 		}
 		return
 	}
@@ -468,7 +471,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 // @Success      204  {object}  models.Device
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
-// @Failure      500  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/devices/{id} [delete]
 func (api *API) DeleteDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteDevice")
@@ -487,7 +490,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else {
-			c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
+			c.JSON(http.StatusBadRequest, models.NewApiError(res.Error))
 		}
 		return
 	}
@@ -496,7 +499,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	result := db.
 		First(&org, "id = ?", device.OrganizationID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(result.Error))
+		api.sendInternalServerError(c, result.Error)
 	}
 
 	ipamNamespace := defaultIPAMNamespace
@@ -511,7 +514,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	if res := api.db.WithContext(ctx).
 		Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
 		Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiInternalError(res.Error))
+		c.JSON(http.StatusBadRequest, models.NewApiError(res.Error))
 		return
 	}
 
@@ -519,14 +522,14 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddress, orgPrefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v4 address to pool: %w", err)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
 			return
 		}
 	}
 
 	for _, prefix := range childPrefix {
 		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, prefix); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release child prefix: %w", err)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to release child prefix: %w", err))
 			return
 		}
 	}
@@ -536,7 +539,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {
-			c.JSON(http.StatusInternalServerError, models.NewApiInternalError(fmt.Errorf("failed to release the v6 address to pool: %w", err)))
+			api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
 			return
 		}
 	}

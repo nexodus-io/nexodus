@@ -110,7 +110,7 @@ func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *g
 
 	items, err := getList(db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.NewApiInternalError(err))
+		api.sendInternalServerError(c, err)
 		return
 	}
 
@@ -118,4 +118,24 @@ func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *g
 	c.Header("Access-Control-Expose-Headers", TotalCountHeader)
 	c.Header(TotalCountHeader, strconv.Itoa(items.Len()))
 	c.JSON(http.StatusOK, items)
+}
+
+func (api *API) sendInternalServerError(c *gin.Context, err error) {
+	SendInternalServerError(c, api.logger, err)
+}
+
+func SendInternalServerError(c *gin.Context, logger *zap.SugaredLogger, err error) {
+	ctx := c.Request.Context()
+	util.WithTrace(ctx, logger).Errorw("internal server error", "error", err)
+
+	result := models.InternalServerError{
+		BaseError: models.BaseError{
+			Error: "internal server error",
+		},
+	}
+	sc := trace.SpanFromContext(ctx).SpanContext()
+	if sc.HasTraceID() {
+		result.TraceId = sc.TraceID().String()
+	}
+	c.JSON(http.StatusInternalServerError, result)
 }

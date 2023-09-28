@@ -5,8 +5,8 @@ type BaseError struct {
 	Error string `json:"error" example:"something bad"`
 }
 
-// NewApiInternalError returns a new response body for a HTTP 501
-func NewApiInternalError(err error) BaseError {
+// NewApiError returns a new response body for a general error
+func NewApiError(err error) BaseError {
 	return BaseError{
 		Error: err.Error(),
 	}
@@ -16,6 +16,11 @@ func NewApiInternalError(err error) BaseError {
 type ValidationError struct {
 	BaseError
 	Field string `json:"field,omitempty"`
+}
+
+type InternalServerError struct {
+	BaseError
+	TraceId string `json:"trace_id,omitempty"`
 }
 
 func NewBadPayloadError() ValidationError {
