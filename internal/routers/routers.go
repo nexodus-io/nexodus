@@ -68,7 +68,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		web.GET("/user_info", o.BrowserFlow.UserInfo)
 		web.GET("/claims", o.BrowserFlow.Claims)
 		web.POST("/logout", o.BrowserFlow.Logout)
-		web.GET("/check_auth", o.BrowserFlow.CheckAuth)
+		// web.GET("/check_auth", o.BrowserFlow.CheckAuth)
 		web.GET("/refresh", o.BrowserFlow.Refresh)
 	}
 	private := r.Group("/api", loggerMiddleware)

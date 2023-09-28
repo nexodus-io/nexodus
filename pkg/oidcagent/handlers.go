@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -47,15 +46,14 @@ func (o *OidcAgent) prepareContext(c *gin.Context) context.Context {
 	return c.Request.Context()
 }
 
-// LoginStart starts a login request
-// @Summary      Start Web Login
-// @Description  Starts a login request for the frontend application
-// @Id 			 WebStart
+// LoginStart initiates the OIDC login process.
+// @Summary      Initiates OIDC Web Login
+// @Description  Generates state and nonce, then redirects the user to the OAuth2 authorization URL.
+// @Id           WebStart
 // @Tags         Auth
-// @Accepts		 json
+// @Accepts      json
 // @Produce      json
-// @Success      200  {object}  models.LoginStartResponse "OK"
-// @Failure      500  {string}  json "Internal Server Error"
+// @Success      200 {object} models.LoginStartResponse
 // @Router       /web/login/start [post]
 func (o *OidcAgent) LoginStart(c *gin.Context) {
 	logger := o.logger
@@ -85,18 +83,15 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 	})
 }
 
-// LoginEnd completes the login request
-// @Summary      End Web Login
-// @Description  Handles the callback from the OAuth2 provider and completes the login process.
-// @Id 			 WebEnd
+// LoginEnd completes the OIDC login process.
+// @Summary      Completes OIDC Web Login
+// @Description  Handles the callback from the OAuth2/OpenID provider and verifies the tokens.
+// @Id           WebEnd
 // @Tags         Auth
-// @Accepts		 json
+// @Accepts      json
 // @Produce      json
-// @Param        data  body models.LoginEndRequest  true "End Login"
-// @Success      200 {object}  models.LoginEndResponse "Login successful"
-// @Failure      400 {string}  json "Bad Request, usually due to state mismatch or other protocol errors"
-// @Failure      401 {string}  json "Unauthorized, specifically when login is required"
-// @Failure      500 {string}  json "Internal Server Error, including token validation or exchange issues"
+// @Param        data body models.LoginEndRequest true "End Login"
+// @Success      200 {object} models.LoginEndResponse
 // @Router       /web/login/end [post]
 func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	var data models.LoginEndRequest
@@ -217,8 +212,6 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 
-		c.Header("Authorization", fmt.Sprintf("Bearer %s", oauth2Token.AccessToken))
-
 		logger.With("session_id", session.SessionID()).Debug("user is logged in")
 		loggedIn = true
 	} else {
@@ -235,17 +228,15 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// UserInfo gets information about the current user
-// @Summary      Retrieve User Information
-// @Description  Fetches the information of the currently logged-in user from the OAuth2 provider.
-// @Id 			 UserInfo
-// @Tags         Auth
-// @Accepts		 json
-// @Produce      json
-// @Success      200 {object}  models.UserInfoResponse "Successfully retrieved user information"
-// @Failure      401 {string}  json "Unauthorized, user not logged in or session expired"
-// @Failure      500 {string}  json "Internal Server Error, during token validation or info retrieval"
-// @Router       /web/user_info [get]
+// UserInfo retrieves details about the currently authenticated user.
+// @Summary     Retrieve Current User Information
+// @Description Fetches and returns information for the user who is currently authenticated.
+// @Id          UserInfo
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     200 {object} models.UserInfoResponse
+// @Router      /web/user_info [get]
 func (o *OidcAgent) UserInfo(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -293,17 +284,15 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// Claims gets the claims of the users access token
-// @Summary      Claims
-// @Description  Gets the claims of the users access token
-// @Id 			 Claims
-// @Tags         Auth
-// @Accepts		 json
-// @Produce      json
-// @Success      200  {object}  map[string]interface{} "OK"
-// @Failure      401  {string}  json "Unauthorized"
-// @Failure      500  {string}  json "Internal Server Error"
-// @Router       /web/claims [get]
+// Claims fetches the claims associated with the user's access token.
+// @Summary     Get Access Token Claims
+// @Description Retrieves the claims present in the user's access token.
+// @Id          Claims
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     200 {object} map[string]interface{}
+// @Router      /web/claims [get]
 func (o *OidcAgent) Claims(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -327,92 +316,57 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 	c.JSON(http.StatusOK, claims)
 }
 
-// Refresh refreshes the access token and session ID
-// @Summary      Refresh
-// @Description  Refreshes the access token and updates the session ID
-// @Id           Refresh
-// @Tags         Auth
-// @Accepts      json
-// @Produce      json
-// @Success      204
-// @Failure      401  {string}  json "Unauthorized"
-// @Failure      500  {string}  json "Internal Server Error"
-// @Router       /web/refresh [get]
+// Refresh updates the user's access token. Currently not implemented.
+// @Summary     Refresh Access Token
+// @Description Obtains and updates a new access token for the user.
+// @Id          Refresh
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     204
+// @Router      /web/refresh [get]
 func (o *OidcAgent) Refresh(c *gin.Context) {
 	session := ginsession.FromContext(c)
-
 	ctx := o.prepareContext(c)
-
-	// Existing token retrieval
 	tokenRaw, ok := session.Get(TokenKey)
 	if !ok {
-		o.logger.Debug("Token not found in session")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-
-	// Token decoding
 	token, err := JsonStringToToken(tokenRaw.(string))
 	if err != nil {
-		o.logger.Debug("Failed to decode token")
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	// Token refreshing
 	src := o.oauthConfig.TokenSource(ctx, token)
 	newToken, err := src.Token()
 	if err != nil {
-		o.logger.Debug("Failed to refresh token")
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	// New session ID generation
-	newSID, err := generateNewSID()
-	if err != nil {
-		o.logger.Debug("Failed to generate a new session ID")
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	// Convert new token to string
 	tokenString, err := tokenToJSONString(newToken)
 	if err != nil {
-		o.logger.Debug("Can't convert refreshed token to string")
-		c.AbortWithStatus(http.StatusBadRequest)
+		o.logger.Debug("can't convert token to string")
+		_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("can't convert token to string"))
 		return
 	}
-
-	// Updating session with new token and new session ID
 	session.Set(TokenKey, tokenString)
-	session.Set("sessionID", newSID)
-
-	// Save session
 	if err := session.Save(); err != nil {
-		o.logger.Debug("Failed to save session")
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	// Set the session ID as a cookie
-	c.SetCookie("sessionID", newSID, 0, "/", "", c.Request.URL.Scheme == "https", true)
-	c.Header("Authorization", fmt.Sprintf("Bearer %s", newToken.AccessToken))
-
 	c.Status(http.StatusNoContent)
 }
 
-// Logout returns the URL to logout the current user
-// @Summary      Logout
-// @Description  Returns the URL to logout the current user
-// @Id 			 Logout
-// @Tags         Auth
-// @Accepts		 json
-// @Produce      json
-// @Success      200  {object}  models.LogoutResponse "OK"
-// @Failure      401  {string}  json "Unauthorized"
-// @Failure      500  {string}  json "Internal Server Error"
-// @Router       /web/logout [post]
+// Logout provides the URL to log out the current user.
+// @Summary     Generate Logout URL
+// @Description Provides the URL to initiate the logout process for the current user.
+// @Id          Logout
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     200 {object} models.LogoutResponse
+// @Router      /web/logout [post]
 func (o *OidcAgent) Logout(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	idToken, ok := session.Get(IDTokenKey)
@@ -477,15 +431,15 @@ func isLoggedIn(c *gin.Context) bool {
 	return ok
 }
 
-// DeviceStart starts a device login request
-// @Summary      Start Login
-// @Description  Starts a device login request
-// @Id 			 DeviceStart
-// @Tags         Auth
-// @Accepts		 json
-// @Produce      json
-// @Success      200  {object}  models.DeviceStartResponse
-// @Router       /device/login/start [post]
+// DeviceStart initiates the device login process.
+// @Summary     Start Login
+// @Description Starts a device login request
+// @Id          DeviceStart
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     200 {object} models.DeviceStartResponse
+// @Router      /device/login/start [post]
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
 	c.JSON(http.StatusOK, models.DeviceStartResponse{
 		DeviceAuthURL: o.deviceAuthURL,
@@ -521,55 +475,4 @@ func JsonStringToToken(s string) (*oauth2.Token, error) {
 	}
 	return &t, nil
 
-}
-
-// CheckAuth checks if the user is authenticated or not
-// @Summary      Check Authenticated User
-// @Description  Checks if the user is authenticated and returns appropriate status and message.
-// @Id           CheckAuth
-// @Tags         Auth
-// @Accepts      json
-// @Produce      json
-// @Success      200  {object}  models.CheckAuthResponse "User is authenticated."
-// @Failure      401  {object}  models.CheckAuthResponse "User is not authenticated."
-// @Router       /web/check_auth [get]
-func (o *OidcAgent) CheckAuth(c *gin.Context) {
-	session := ginsession.FromContext(c)
-
-	tokenRaw, ok := session.Get(TokenKey)
-	if !ok {
-		o.logger.Debug("Aborting with HTTP Status Unauthorized")
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
-	token, err := JsonStringToToken(tokenRaw.(string))
-	if err != nil {
-		o.logger.Debug("Failed to decode token %v", err)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	if !token.Valid() {
-		c.JSON(http.StatusUnauthorized, models.CheckAuthResponse{
-			Status:  "failure",
-			Message: "User is not authenticated.",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, models.CheckAuthResponse{
-		Status:  "success",
-		Message: "User is authenticated.",
-	})
-}
-
-// generateNewSID Generates a new Session ID using crypto/rand
-func generateNewSID() (string, error) {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
