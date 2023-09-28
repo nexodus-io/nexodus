@@ -9,6 +9,7 @@ import {
   TextField,
   Select,
   MenuItem,
+  Tooltip,
 } from "@mui/material";
 import {
   IpProtocol,
@@ -22,6 +23,7 @@ import Notifications from "../../common/Notifications";
 import * as Mui from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import { validateProtocolAndIpRange } from "../../common/IpHelpers";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 interface EditRulesProps {
   groupName: string;
@@ -274,14 +276,6 @@ const EditRules: React.FC<EditRulesProps> = ({
           ip_ranges: [],
         };
         break;
-      case "ip": // All Traffic
-        updatedRule = {
-          ...updatedRule,
-          from_port: 0,
-          to_port: 0,
-          ip_ranges: [],
-        };
-        break;
     }
 
     onRuleChange(index, updatedRule);
@@ -331,7 +325,17 @@ const EditRules: React.FC<EditRulesProps> = ({
       <div style={{ marginTop: "20px", marginBottom: "10px" }}>
         <ButtonGroup variant="outlined" style={{ marginRight: "10px" }}>
           <Button onClick={handleAddRule}>Add Rule</Button>
+          <Tooltip title="Adding a rule will begin blocking all traffic not explicitly allowed by a rule for the traffic direction you are editing (inbound or outbound)">
+            <Button onClick={() => {}}>
+              <HelpOutlineIcon />
+            </Button>
+          </Tooltip>
           <Button onClick={handleSaveRules}>Save Rules</Button>
+          <Tooltip title="Removing all rules will allow all traffic for the rule direction you are editing (inbound or outbound)">
+            <Button onClick={() => {}}>
+              <HelpOutlineIcon />
+            </Button>
+          </Tooltip>
         </ButtonGroup>
       </div>
       <Table>
@@ -381,7 +385,6 @@ const EditRules: React.FC<EditRulesProps> = ({
                     fullWidth
                   >
                     <MenuItem value="">Select Option</MenuItem>
-                    <MenuItem value="ip">All Traffic</MenuItem>
                     <MenuItem value="icmp">All ICMP</MenuItem>
                     <MenuItem value="tcp">TCP</MenuItem>
                     <MenuItem value="udp">UDP</MenuItem>
@@ -494,7 +497,7 @@ const EditRules: React.FC<EditRulesProps> = ({
                 >
                   <Autocomplete
                     multiple
-                    // Disable the dropdown based on the condition such as "All Traffic"
+                    // Disable the dropdown based on the condition such as "All ICMP"
                     disabled={isUnmodifiableIpRange(rule.ip_protocol)}
                     options={[
                       "::/0",
