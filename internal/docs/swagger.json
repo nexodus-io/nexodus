@@ -1853,6 +1853,9 @@
         "/device/login/start": {
             "post": {
                 "description": "Starts a device login request",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1871,43 +1874,19 @@
                 }
             }
         },
-        "/web/check_auth": {
-            "get": {
-                "description": "Checks if the user is authenticated and returns appropriate status and message.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Check Authenticated User",
-                "operationId": "CheckAuth",
-                "responses": {
-                    "200": {
-                        "description": "User is authenticated.",
-                        "schema": {
-                            "$ref": "#/definitions/models.CheckAuthResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "User is not authenticated.",
-                        "schema": {
-                            "$ref": "#/definitions/models.CheckAuthResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/web/claims": {
             "get": {
-                "description": "Gets the claims of the users access token",
+                "description": "Retrieves the claims present in the user's access token.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Claims",
+                "summary": "Get Access Token Claims",
                 "operationId": "Claims",
                 "responses": {
                     "200": {
@@ -1916,32 +1895,20 @@
                             "type": "object",
                             "additionalProperties": true
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 }
             }
         },
         "/web/login/end": {
             "post": {
-                "description": "Handles the callback from the OAuth2 provider and completes the login process.",
+                "description": "Handles the callback from the OAuth2/OpenID provider and verifies the tokens.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "End Web Login",
+                "summary": "Completes OIDC Web Login",
                 "operationId": "WebEnd",
                 "parameters": [
                     {
@@ -1956,27 +1923,9 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Login successful",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.LoginEndResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request, usually due to state mismatch or other protocol errors",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized, specifically when login is required",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error, including token validation or exchange issues",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -1984,14 +1933,14 @@
         },
         "/web/login/start": {
             "post": {
-                "description": "Starts a login request for the frontend application",
+                "description": "Generates state and nonce, then redirects the user to the OAuth2 authorization URL.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Start Web Login",
+                "summary": "Initiates OIDC Web Login",
                 "operationId": "WebStart",
                 "responses": {
                     "200": {
@@ -1999,26 +1948,23 @@
                         "schema": {
                             "$ref": "#/definitions/models.LoginStartResponse"
                         }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 }
             }
         },
         "/web/logout": {
             "post": {
-                "description": "Returns the URL to logout the current user",
+                "description": "Provides the URL to initiate the logout process for the current user.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Logout",
+                "summary": "Generate Logout URL",
                 "operationId": "Logout",
                 "responses": {
                     "200": {
@@ -2026,80 +1972,50 @@
                         "schema": {
                             "$ref": "#/definitions/models.LogoutResponse"
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 }
             }
         },
         "/web/refresh": {
             "get": {
-                "description": "Refreshes the access token and updates the session ID",
+                "description": "Obtains and updates a new access token for the user.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Refresh",
+                "summary": "Refresh Access Token",
                 "operationId": "Refresh",
                 "responses": {
                     "204": {
                         "description": "No Content"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 }
             }
         },
         "/web/user_info": {
             "get": {
-                "description": "Fetches the information of the currently logged-in user from the OAuth2 provider.",
+                "description": "Fetches and returns information for the user who is currently authenticated.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Retrieve User Information",
+                "summary": "Retrieve Current User Information",
                 "operationId": "UserInfo",
                 "responses": {
                     "200": {
-                        "description": "Successfully retrieved user information",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.UserInfoResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized, user not logged in or session expired",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error, during token validation or info retrieval",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -2249,17 +2165,6 @@
                 "error": {
                     "type": "string",
                     "example": "something bad"
-                }
-            }
-        },
-        "models.CheckAuthResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
                 }
             }
         },

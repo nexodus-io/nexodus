@@ -12,7 +12,6 @@ model_models_add_invitation.go
 model_models_add_organization.go
 model_models_add_security_group.go
 model_models_base_error.go
-model_models_check_auth_response.go
 model_models_conflicts_error.go
 model_models_device.go
 model_models_device_metadata.go
