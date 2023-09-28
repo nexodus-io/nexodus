@@ -438,6 +438,7 @@ debug-frontend-stop: telepresence-prereqs ## Stop using telepresence to debug th
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-nexd-container
 run-nexd-container: image-nexd ## Run a container that you can run nexodus in
+	$(CMD_PREFIX) mkdir -p .certs
 	$(CMD_PREFIX) docker run --rm -it --network bridge \
 		--cap-add SYS_MODULE \
 		--cap-add NET_ADMIN \
