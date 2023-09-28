@@ -207,28 +207,60 @@ const EditRules: React.FC<EditRulesProps> = ({
 
   const [tempPortValues, setTempPortValues] = useState<string[]>([]);
 
-  const handleProtocolChange = (e: Mui.SelectChangeEvent, index: number) => {
-    const value = e.target.value as IpProtocol;
-    let updatedRule = { ...secRule[index], ip_protocol: value };
-
-    switch (value) {
+  const handleProtocolChange = (
+    e: Mui.SelectChangeEvent<IpProtocol>,
+    index: number,
+  ) => {
+    const aliasProtocol = e.target.value as IpProtocol;
+    let updatedRule = { ...secRule[index], ip_protocol: aliasProtocol };
+    switch (aliasProtocol) {
       case "SSH":
-        updatedRule = { ...updatedRule, from_port: 22, to_port: 22 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 22,
+          to_port: 22,
+          ip_protocol: "tcp",
+        };
         break;
       case "HTTP":
-        updatedRule = { ...updatedRule, from_port: 80, to_port: 80 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 80,
+          to_port: 80,
+          ip_protocol: "tcp",
+        };
         break;
       case "HTTPS":
-        updatedRule = { ...updatedRule, from_port: 443, to_port: 443 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 443,
+          to_port: 443,
+          ip_protocol: "tcp",
+        };
         break;
       case "PostgreSQL":
-        updatedRule = { ...updatedRule, from_port: 5432, to_port: 5432 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 5432,
+          to_port: 5432,
+          ip_protocol: "tcp",
+        };
         break;
       case "MySQL":
-        updatedRule = { ...updatedRule, from_port: 3306, to_port: 3306 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 3306,
+          to_port: 3306,
+          ip_protocol: "tcp",
+        };
         break;
       case "SMB":
-        updatedRule = { ...updatedRule, from_port: 445, to_port: 445 };
+        updatedRule = {
+          ...updatedRule,
+          from_port: 445,
+          to_port: 445,
+          ip_protocol: "tcp",
+        };
         break;
       case "icmpv4":
       case "icmpv6":
@@ -268,6 +300,22 @@ const EditRules: React.FC<EditRulesProps> = ({
       "icmpv6",
       "ip",
     ].includes(protocol);
+  };
+
+  // map predefined protocol names to their corresponding port ranges for display render only, rules get sent with ip_protocol:tcp
+  const getPredefinedProtocolName = (
+    from_port: number,
+    to_port: number,
+  ): IpProtocol | undefined => {
+    const predefinedProtocols: { [key: string]: IpProtocol } = {
+      "22-22": "SSH",
+      "80-80": "HTTP",
+      "443-443": "HTTPS",
+      "5432-5432": "PostgreSQL",
+      "3306-3306": "MySQL",
+      "445-445": "SMB",
+    };
+    return predefinedProtocols[`${from_port}-${to_port}`];
   };
 
   const isUnmodifiableIpRange = (protocol: IpProtocol): boolean => {
@@ -319,12 +367,20 @@ const EditRules: React.FC<EditRulesProps> = ({
                   }}
                 >
                   <Select
-                    value={rule.ip_protocol}
-                    onChange={(e) => handleProtocolChange(e, index)}
+                    value={
+                      (getPredefinedProtocolName(
+                        rule.from_port,
+                        rule.to_port,
+                      ) as any) || (rule.ip_protocol as any)
+                    }
+                    onChange={(e: Mui.SelectChangeEvent<IpProtocol>) =>
+                      handleProtocolChange(e, index)
+                    }
                     variant="outlined"
                     size="small"
                     fullWidth
                   >
+                    <MenuItem value="">Select Option</MenuItem>
                     <MenuItem value="ip">All Traffic</MenuItem>
                     <MenuItem value="icmp">All ICMP</MenuItem>
                     <MenuItem value="tcp">TCP</MenuItem>
@@ -341,7 +397,6 @@ const EditRules: React.FC<EditRulesProps> = ({
                     <MenuItem value="SMB">SMB</MenuItem>
                   </Select>
                 </TableCell>
-
                 {/* From Port - Starting Port Range  */}
                 <TableCell
                   style={{
@@ -350,7 +405,12 @@ const EditRules: React.FC<EditRulesProps> = ({
                 >
                   <TextField
                     value={
-                      isPredefinedRule(rule.ip_protocol)
+                      isPredefinedRule(
+                        getPredefinedProtocolName(
+                          rule.from_port,
+                          rule.to_port,
+                        ) || rule.ip_protocol,
+                      )
                         ? `${rule.from_port}${
                             rule.to_port !== rule.from_port
                               ? `-${rule.to_port}`
@@ -386,13 +446,13 @@ const EditRules: React.FC<EditRulesProps> = ({
                       };
                       onRuleChange(index, updatedRule);
                     }}
-                    // TODO: placeholder is a temporary workaround to initialize a value here for predefined ports
                     placeholder="Ports"
                     type="text"
                     variant="outlined"
                     size="small"
                     fullWidth
                     style={{
+                      // TODO: this doesnt work for aliased PROTOs, e.g., mysql, https, etc.
                       backgroundColor: isPredefinedRule(rule.ip_protocol)
                         ? "#E8F4F9"
                         : "transparent",
