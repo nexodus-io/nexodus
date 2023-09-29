@@ -30,7 +30,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.6.0
-	github.com/redis/go-redis/v9 v9.2.0
+	github.com/redis/go-redis/v9 v9.2.1
 	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/files v1.0.1
