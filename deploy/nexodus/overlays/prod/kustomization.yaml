@@ -23,6 +23,10 @@ configMapGenerator:
     files:
       - files/limits.yaml
     name: limitador-config
+  - behavior: create
+    files:
+      - files/promtail.yaml
+    name: promtail-config
   - behavior: merge
     literals:
       - APIPROXY_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
