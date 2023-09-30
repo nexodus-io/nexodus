@@ -224,10 +224,14 @@ definitions:
     type: object
   models.LoginEndResponse:
     properties:
+      access_token:
+        type: string
       handled:
         type: boolean
       logged_in:
         type: boolean
+      refresh_token:
+        type: string
     type: object
   models.LoginStartResponse:
     properties:
@@ -263,6 +267,18 @@ definitions:
       private_cidr:
         type: boolean
       security_group_id:
+        type: string
+    type: object
+  models.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  models.RefreshTokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
         type: string
     type: object
   models.SecurityGroup:
@@ -1693,6 +1709,24 @@ paths:
       summary: Remove a User from an Organization
       tags:
       - Users
+  /check/auth:
+    get:
+      consumes:
+      - application/json
+      description: Checks if the user is currently authenticated
+      operationId: CheckAuth
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: logged_in status will be returned
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Check Authentication
+      tags:
+      - Auth
   /device/login/start:
     post:
       consumes:
@@ -1781,16 +1815,25 @@ paths:
       tags:
       - Auth
   /web/refresh:
-    get:
+    post:
       consumes:
       - application/json
       description: Obtains and updates a new access token for the user.
       operationId: Refresh
+      parameters:
+      - description: End Login
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.RefreshTokenRequest'
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RefreshTokenResponse'
       summary: Refresh Access Token
       tags:
       - Auth

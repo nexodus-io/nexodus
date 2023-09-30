@@ -10,10 +10,8 @@ API version: 1.0
 
 package public
 
-// ModelsLoginEndResponse struct for ModelsLoginEndResponse
-type ModelsLoginEndResponse struct {
+// ModelsRefreshTokenResponse struct for ModelsRefreshTokenResponse
+type ModelsRefreshTokenResponse struct {
 	AccessToken  string `json:"access_token,omitempty"`
-	Handled      bool   `json:"handled,omitempty"`
-	LoggedIn     bool   `json:"logged_in,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 }
