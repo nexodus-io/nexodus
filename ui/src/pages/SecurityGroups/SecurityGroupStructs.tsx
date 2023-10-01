@@ -52,11 +52,11 @@ interface UpdateSecurityGroup {
   outbound_rules: SecurityRule[];
 }
 
-type Organization = {
+interface Organization {
   id: string;
   name: string;
   security_group_id: string;
-};
+}
 
 export type {
   SecurityGroup,

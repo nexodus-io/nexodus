@@ -17,20 +17,20 @@ interface Props {
   data: SecurityGroup;
   type: "inbound_rules" | "outbound_rules";
   editable?: boolean;
-  // callback to parent to update rules
   updateData?: (
     type: "inbound_rules" | "outbound_rules",
     updatedRules: SecurityRule[],
   ) => void;
+  inboundRules: SecurityRule[];
+  outboundRules: SecurityRule[];
 }
-
 const SecurityGroupTable: React.FC<Props> = ({
   data,
   type,
   editable = false,
   updateData,
 }) => {
-  const derivedRules =
+  const derivedRules: SecurityRule[] =
     type === "inbound_rules"
       ? data.inbound_rules || []
       : data.outbound_rules || [];
@@ -39,17 +39,22 @@ const SecurityGroupTable: React.FC<Props> = ({
 
   useEffect(() => {
     console.log("Setting rules in useEffect:", derivedRules);
-    if (!rules.length) {
-      // Only update if the rules are empty (TODO: not sure this is needed)
-      setRules(derivedRules);
-    }
+    // Force update the rules from derivedRules
+    setRules(derivedRules);
   }, [type, data]);
 
-  const handleDeleteRule = (index: number) => {
+  const handleDeleteRule = (index: number): void => {
     const newRules = [...rules];
     newRules.splice(index, 1);
     setRules(newRules);
-    updateData && updateData(type, newRules);
+
+    if (updateData) {
+      updateData(type, newRules);
+    } else {
+      console.warn(
+        "updateData function is not provided, changes won't propagate.",
+      );
+    }
   };
 
   const handleRuleChange = (

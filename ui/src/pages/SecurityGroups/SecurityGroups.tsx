@@ -11,23 +11,21 @@ import {
   Tab,
   Button,
 } from "@mui/material";
-import { SecurityGroup, SecurityRule } from "./SecurityGroupStructs";
+import {
+  Organization,
+  SecurityGroup,
+  SecurityRule,
+} from "./SecurityGroupStructs";
 import EditRules from "./SecurityGroupEditRules";
 import { backend, fetchJson } from "../../common/Api";
 import Notifications from "../../common/Notifications";
 
-type OrgType = {
-  id: string;
-  name: string;
-  security_group_id: string;
-};
-
 export const SecurityGroups = () => {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [securityGroupId, setSecurityGroupId] = useState<string | null>(null);
-  const [orgs, setOrgs] = useState<OrgType[]>([]);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [securityGroups, setSecurityGroups] = useState<SecurityGroup[]>([]);
-  const [selectedOrg, setSelectedOrg] = useState<OrgType | null>(null);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [selectedSecurityGroup, setSelectedSecurityGroup] =
     useState<SecurityGroup | null>(null);
 
@@ -38,7 +36,6 @@ export const SecurityGroups = () => {
   const [editedRules, setEditedRules] = useState<SecurityRule[]>([]);
   const [inboundRules, setInboundRules] = useState<SecurityRule[]>([]);
   const [outboundRules, setOutboundRules] = useState<SecurityRule[]>([]);
-  const [apiError, setApiError] = useState<string | null>(null);
 
   // Snackbar notifications in common/Notifications.tsx
   const [notificationMessage, setNotificationMessage] = useState<string | null>(
@@ -48,27 +45,34 @@ export const SecurityGroups = () => {
     "success" | "error" | "info" | null
   >(null);
 
-  const fetchData = () => {
-    fetchJson(`${backend}/api/organizations`)
-      .then((orgs: OrgType[]) => {
-        setOrgs(orgs);
-        // Store the organizationId and securityGroupId for later use
-        setOrganizationId(orgs[0].id); // TODO: using the first org's id
-        setSecurityGroupId(orgs[0].security_group_id); // TODO: using the first org's security group id
-        return Promise.all(
-          orgs.map((org) =>
-            fetchJson(
-              `${backend}/api/organizations/${org.id}/security_group/${org.security_group_id}`,
-            ),
-          ),
-        );
-      })
-      .then((securityGroupsData) => {
-        setSecurityGroups(securityGroupsData);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
+  const fetchSecurityGroup = async (orgId: string, securityGroupId: string) => {
+    return await fetchJson(
+      `${backend}/api/organizations/${orgId}/security_group/${securityGroupId}`,
+    );
+  };
+
+  const fetchData = async () => {
+    try {
+      const orgs: Organization[] = await fetchJson(
+        `${backend}/api/organizations`,
+      );
+      setOrgs(orgs);
+      // Set the organizationId and securityGroupId based on the selected organization
+      if (orgs.length > 0) {
+        // TODO: handle an array of security groups
+        setOrganizationId(orgs[0].id);
+        setSecurityGroupId(orgs[0].security_group_id);
+      }
+      // Fetch security groups data
+      const securityGroupPromises = orgs.map((org) =>
+        fetchSecurityGroup(org.id, org.security_group_id),
+      );
+
+      const securityGroupsData = await Promise.all(securityGroupPromises);
+      setSecurityGroups(securityGroupsData);
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   useEffect(() => {
@@ -83,6 +87,25 @@ export const SecurityGroups = () => {
     }
   }, [selectedSecurityGroup]);
 
+  const handleExitEditMode = async () => {
+    setIsEditing(false);
+    if (selectedOrg) {
+      try {
+        const updatedSecurityGroupData = await fetchSecurityGroup(
+          selectedOrg.id,
+          selectedOrg.security_group_id,
+        );
+        setSelectedSecurityGroup(updatedSecurityGroupData);
+      } catch (error) {
+        console.error("Error:", error);
+        setNotificationType("error");
+        setNotificationMessage(
+          "Unable to fetch data from the Nexodus api-server.",
+        );
+      }
+    }
+  };
+
   const handleEditClick = () => {
     setIsEditing(true);
     const rulesToEdit =
@@ -93,15 +116,17 @@ export const SecurityGroups = () => {
     setEditedRules(rulesToEdit);
   };
 
-  const selectOrganization = (org: OrgType) => {
+  const selectOrganization = (org: Organization) => {
     setSelectedOrg(org);
+    // Updating state for the selected organization and security group
+    setOrganizationId(org.id);
+    setSecurityGroupId(org.security_group_id);
+
     const matchingSecurityGroup = securityGroups.find(
       (sg) => sg.id === org.security_group_id,
     );
-    console.log("Setting selectedSecurityGroup:", matchingSecurityGroup);
     setSelectedSecurityGroup(matchingSecurityGroup || null);
   };
-
   const handleTabChange = (
     event: React.ChangeEvent<{}>,
     newValue: "inbound_rules" | "outbound_rules",
@@ -120,34 +145,9 @@ export const SecurityGroups = () => {
     }
   };
 
-  // TODO: this isn't updating on cancel, you have to click another tab and come back to see the latest change from a save
-  const handleExitEditMode = async () => {
-    setIsEditing(false);
-    if (selectedOrg) {
-      try {
-        // Reset notification state
-        setNotificationType(null);
-        setNotificationMessage(null);
-
-        // setApiError(null);
-        const updatedSecurityGroupData = await fetchJson(
-          `${backend}/api/organizations/${selectedOrg.id}/security_group/${selectedOrg.security_group_id}`,
-        );
-        setSelectedSecurityGroup(updatedSecurityGroupData);
-      } catch (error) {
-        console.error("Error:", error);
-        // Use Snackbar notifications for displaying the error
-        setNotificationType("error");
-        setNotificationMessage(
-          "Unable to fetch data from the Nexodus api-server.",
-        );
-      }
-    }
-  };
-
   return (
     <div>
-      {/* Listen to notification state */}
+      {/* Listen for notification state */}
       <Notifications type={notificationType} message={notificationMessage} />
       <Table>
         <TableHead>
@@ -252,6 +252,8 @@ export const SecurityGroups = () => {
               data={selectedSecurityGroup}
               type={activeTab}
               updateData={updateDataInParent}
+              inboundRules={inboundRules}
+              outboundRules={outboundRules}
             />
           )}
         </>

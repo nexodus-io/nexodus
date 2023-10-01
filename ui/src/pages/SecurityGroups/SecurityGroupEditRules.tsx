@@ -89,7 +89,7 @@ const EditRules: React.FC<EditRulesProps> = ({
     "success" | "error" | "info" | null
   >(null);
 
-  const [ipRangeInputValue, setIpRangeInputValue] = useState<string>("");
+  const [ipRangeInputValue, setIpRangeInputValue] = useState<string[]>([]);
 
   useEffect(() => {
     // Initialize tempPortValues whenever secRule changes
@@ -275,13 +275,19 @@ const EditRules: React.FC<EditRulesProps> = ({
       <div style={{ marginTop: "20px", marginBottom: "10px" }}>
         <ButtonGroup variant="outlined" style={{ marginRight: "10px" }}>
           <Button onClick={handleAddRule}>Add Rule</Button>
-          <Tooltip title="Adding a rule will begin blocking all traffic not explicitly allowed by a rule for the traffic direction you are editing (inbound or outbound)">
+          <Tooltip
+            title="Adding a rule will begin blocking all traffic not explicitly allowed by a rule for the traffic direction you are editing (inbound or outbound)"
+            placement="top"
+          >
             <Button onClick={() => {}}>
               <HelpOutlineIcon />
             </Button>
           </Tooltip>
           <Button onClick={handleSaveRules}>Save Rules</Button>
-          <Tooltip title="Removing all rules will allow all traffic for the rule direction you are editing (inbound or outbound)">
+          <Tooltip
+            title="Removing all rules will allow all traffic for the rule direction you are editing (inbound or outbound)"
+            placement="top"
+          >
             <Button onClick={() => {}}>
               <HelpOutlineIcon />
             </Button>
@@ -298,7 +304,7 @@ const EditRules: React.FC<EditRulesProps> = ({
               <div style={{ display: "flex", alignItems: "center" }}>
                 Port Range
                 <Tooltip
-                  title="Add a single port number or a comma-seperated number range"
+                  title="Add a port number or a comma-seperated port range."
                   placement="top"
                 >
                   <HelpOutlineIcon
@@ -308,7 +314,7 @@ const EditRules: React.FC<EditRulesProps> = ({
                 </Tooltip>
               </div>
             </TableCell>
-            <TableCell style={{ fontSize: "14", width: "25%" }}>
+            <TableCell style={{ fontSize: "14", width: "40%" }}>
               <div style={{ display: "flex", alignItems: "center" }}>
                 IP Ranges
                 <Tooltip
@@ -426,80 +432,87 @@ const EditRules: React.FC<EditRulesProps> = ({
                     paddingBottom: hasErrorInRow(index) ? "2em" : undefined,
                   }}
                 >
-                  <Tooltip
-                    title="Add a an IP range in the form of an IP address, an IP CIDR or a comma seperated address range and then hit return to populate the list"
-                    placement="top"
-                  >
-                    <Autocomplete
-                      multiple // allow multiple prefixes in the cell
-                      inputValue={ipRangeInputValue}
-                      onInputChange={(_, newInputValue) => {
-                        console.debug(
-                          "onInputChange - newInputValue:",
-                          newInputValue,
-                        );
-                        setIpRangeInputValue(newInputValue);
-                      }}
-                      disabled={isUnmodifiableIpRange(rule.ip_protocol)}
-                      options={[
-                        "::/0",
-                        "0.0.0.0/0",
-                        {
-                          title: "Organization IPv4",
-                          value: "100.64.0.0/10",
-                        },
-                        { title: "Organization IPv6", value: "0200::/8" },
-                      ]}
-                      getOptionLabel={(option) =>
-                        typeof option === "string" ? option : option.title
-                      }
-                      getOptionDisabled={(option) =>
-                        isUnmodifiableIpRange(rule.ip_protocol)
-                      }
-                      value={rule.ip_ranges || []}
-                      freeSolo
-                      autoHighlight // Highlight the first match as the user types
-                      onChange={(_, newValue) => {
-                        console.debug("onChange - newValue:", newValue);
-                        // If the protocol is unmodifiable, clear the IP ranges for this rule
-                        if (isUnmodifiableIpRange(rule.ip_protocol)) {
-                          const updatedRule = { ...rule, ip_ranges: [] };
-                          onRuleChange(index, updatedRule);
-                          setIpRangeInputValue("");
-                          return;
-                        }
-                        // Otherwise, update the IP ranges as normal
-                        const updatedIpRanges = newValue.map((item) =>
-                          typeof item === "string" || typeof item === "number"
-                            ? item
-                            : item.value,
-                        );
-                        const updatedRule = {
-                          ...rule,
-                          ip_ranges: updatedIpRanges,
-                        };
+                  <Autocomplete
+                    multiple // allow multiple prefixes in the cell
+                    inputValue={ipRangeInputValue[index] || ""} // Use index to manage individual rows
+                    onInputChange={(_, newInputValue) => {
+                      console.debug(
+                        "onInputChange - newInputValue:",
+                        newInputValue,
+                      );
+                      // Update state for the individual row
+                      setIpRangeInputValue((prev) => {
+                        const newArr = [...prev];
+                        newArr[index] = newInputValue;
+                        return newArr;
+                      });
+                    }}
+                    disabled={isUnmodifiableIpRange(rule.ip_protocol)}
+                    options={[
+                      "::/0",
+                      "0.0.0.0/0",
+                      {
+                        title: "Organization IPv4",
+                        value: "100.64.0.0/10",
+                      },
+                      { title: "Organization IPv6", value: "0200::/8" },
+                    ]}
+                    getOptionLabel={(option) =>
+                      typeof option === "string" ? option : option.title
+                    }
+                    getOptionDisabled={(option) =>
+                      isUnmodifiableIpRange(rule.ip_protocol)
+                    }
+                    value={rule.ip_ranges || []}
+                    freeSolo
+                    autoHighlight // Highlight the first match as the user types
+                    onChange={(_, newValue) => {
+                      console.debug("onChange - newValue:", newValue);
+                      if (isUnmodifiableIpRange(rule.ip_protocol)) {
+                        const updatedRule = { ...rule, ip_ranges: [] };
                         onRuleChange(index, updatedRule);
-                        setIpRangeInputValue(""); // Clear the input value
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          variant="outlined"
-                          size="small"
-                          fullWidth
-                          style={{
-                            backgroundColor: isUnmodifiableIpRange(
-                              rule.ip_protocol,
-                            )
-                              ? "#E8F4F9"
-                              : "transparent",
-                          }}
-                          disabled={isUnmodifiableIpRange(rule.ip_protocol)}
-                        />
-                      )}
-                    />
-                  </Tooltip>
+                        setIpRangeInputValue((prev) => {
+                          const newArr = [...prev];
+                          newArr[index] = "";
+                          return newArr;
+                        });
+                        return;
+                      }
+                      const updatedIpRanges = newValue.map((item) =>
+                        typeof item === "string" || typeof item === "number"
+                          ? item
+                          : item.value,
+                      );
+                      const updatedRule = {
+                        ...rule,
+                        ip_ranges: updatedIpRanges,
+                      };
+                      onRuleChange(index, updatedRule);
+                      setIpRangeInputValue((prev) => {
+                        const newArr = [...prev];
+                        newArr[index] = "";
+                        return newArr;
+                      }); // Clear the input value
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        style={{
+                          backgroundColor: isUnmodifiableIpRange(
+                            rule.ip_protocol,
+                          )
+                            ? "#E8F4F9"
+                            : "transparent",
+                        }}
+                        disabled={isUnmodifiableIpRange(rule.ip_protocol)}
+                      />
+                    )}
+                  />
                 </TableCell>
+
                 {/*Actions Column*/}
                 <TableCell
                   style={{
