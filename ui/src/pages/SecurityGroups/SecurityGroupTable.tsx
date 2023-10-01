@@ -11,30 +11,26 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import {
-  IpProtocol,
-  SecurityGroup,
-  SecurityRule,
-} from "./SecurityGroupStructs";
+import { SecurityGroup, SecurityRule } from "./SecurityGroupStructs";
 
 interface Props {
   data: SecurityGroup;
   type: "inbound_rules" | "outbound_rules";
   editable?: boolean;
-  // callback to parent to update rules
   updateData?: (
     type: "inbound_rules" | "outbound_rules",
     updatedRules: SecurityRule[],
   ) => void;
+  inboundRules: SecurityRule[];
+  outboundRules: SecurityRule[];
 }
-
 const SecurityGroupTable: React.FC<Props> = ({
   data,
   type,
   editable = false,
   updateData,
 }) => {
-  const derivedRules =
+  const derivedRules: SecurityRule[] =
     type === "inbound_rules"
       ? data.inbound_rules || []
       : data.outbound_rules || [];
@@ -43,17 +39,22 @@ const SecurityGroupTable: React.FC<Props> = ({
 
   useEffect(() => {
     console.log("Setting rules in useEffect:", derivedRules);
-    if (!rules.length) {
-      // Only update if the rules are empty (TODO: not sure this is needed)
-      setRules(derivedRules);
-    }
+    // Force update the rules from derivedRules
+    setRules(derivedRules);
   }, [type, data]);
 
-  const handleDeleteRule = (index: number) => {
+  const handleDeleteRule = (index: number): void => {
     const newRules = [...rules];
     newRules.splice(index, 1);
     setRules(newRules);
-    updateData && updateData(type, newRules);
+
+    if (updateData) {
+      updateData(type, newRules);
+    } else {
+      console.warn(
+        "updateData function is not provided, changes won't propagate.",
+      );
+    }
   };
 
   const handleRuleChange = (
@@ -64,7 +65,7 @@ const SecurityGroupTable: React.FC<Props> = ({
     const newRules = [...rules];
 
     if (field === "ip_protocol" && typeof value === "string") {
-      newRules[index].ip_protocol = value as IpProtocol;
+      newRules[index].ip_protocol = value;
     } else if (
       (field === "from_port" || field === "to_port") &&
       typeof value === "number"
