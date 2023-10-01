@@ -29,8 +29,8 @@
   become: yes
   shell: |
     printf "====== Connectivity Results from Node: {{ inventory_hostname }} ======\n" > {{ inventory_hostname }}-connectivity-results.txt
-    printf "IPv4 tunnel IP: "
-    nexctl nexd get tunnelip
+    printf "IPv4 tunnel IP: " >> {{ inventory_hostname }}-connectivity-results.txt
+    nexctl nexd get tunnelip >> {{ inventory_hostname }}-connectivity-results.txt
     nexctl nexd peers ping
     nexctl nexd peers ping >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
     nexctl nexd peers ping6 >> {{ inventory_hostname }}-connectivity-results.txt 2>&1
