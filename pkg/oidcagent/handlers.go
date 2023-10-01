@@ -95,6 +95,8 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 // @Router       /web/login/end [post]
 func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	var data models.LoginEndRequest
+	var accessToken, refreshToken, rawIDToken string
+
 	err := c.BindJSON(&data)
 	if err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -172,7 +174,8 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 			return
 		}
 
-		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+		var ok bool
+		rawIDToken, ok = oauth2Token.Extra("id_token").(string)
 		if !ok {
 			logger.With(
 				"ok", ok,
@@ -214,6 +217,11 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 
 		logger.With("session_id", session.SessionID()).Debug("user is logged in")
 		loggedIn = true
+
+		// extract the access_token and refresh_token from the oauth2Token
+		// to be returned in the response for the web auth token lifecycle.
+		accessToken = oauth2Token.Extra("access_token").(string)
+		refreshToken = oauth2Token.Extra("refresh_token").(string)
 	} else {
 		logger.Debug("checking if user is logged in")
 		loggedIn = isLoggedIn(c)
@@ -222,9 +230,12 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	session := ginsession.FromContext(c)
 	logger.With("session_id", session.SessionID()).With("logged_in", loggedIn).Debug("complete")
 	res := models.LoginEndResponse{
-		Handled:  handleAuth,
-		LoggedIn: loggedIn,
+		Handled:      handleAuth,
+		LoggedIn:     loggedIn,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}
+
 	c.JSON(http.StatusOK, res)
 }
 
@@ -316,46 +327,71 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 	c.JSON(http.StatusOK, claims)
 }
 
-// Refresh updates the user's access token. Currently not implemented.
+// Refresh updates the user's access token.
 // @Summary     Refresh Access Token
 // @Description Obtains and updates a new access token for the user.
 // @Id          Refresh
 // @Tags        Auth
 // @Accept      json
 // @Produce     json
-// @Success     204
-// @Router      /web/refresh [get]
+// @Param        data body models.RefreshTokenRequest true "End Login"
+// @Success      200 {object} models.RefreshTokenResponse
+// @Router      /web/refresh [post]
 func (o *OidcAgent) Refresh(c *gin.Context) {
+	logger := o.logger
+
+	var data models.RefreshTokenRequest
+
+	err := c.BindJSON(&data)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
 	tokenRaw, ok := session.Get(TokenKey)
+
 	if !ok {
+		logger.Debug("No existing token in session, unauthorized")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
+
 	token, err := JsonStringToToken(tokenRaw.(string))
 	if err != nil {
+		logger.Debug("Failed to convert token from JSON string %v", tokenRaw)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+
 	src := o.oauthConfig.TokenSource(ctx, token)
 	newToken, err := src.Token()
+
 	if err != nil {
+		logger.Debug("Failed to refresh token: %v", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+
 	tokenString, err := tokenToJSONString(newToken)
 	if err != nil {
-		o.logger.Debug("can't convert token to string")
-		_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("can't convert token to string"))
+		logger.Debug("Failed to convert new token to string: %v", err)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
 	session.Set(TokenKey, tokenString)
 	if err := session.Save(); err != nil {
+		logger.Debug("Failed to save new token in session: %v", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	c.Status(http.StatusNoContent)
+
+	c.JSON(http.StatusOK, models.RefreshTokenResponse{
+		AccessToken:  newToken.AccessToken,
+		RefreshToken: newToken.RefreshToken,
+	})
 }
 
 // Logout provides the URL to log out the current user.
@@ -429,6 +465,20 @@ func isLoggedIn(c *gin.Context) bool {
 	session := ginsession.FromContext(c)
 	_, ok := session.Get(TokenKey)
 	return ok
+}
+
+// CheckAuth checks if the user is authenticated.
+// @Summary     Check Authentication
+// @Description Checks if the user is currently authenticated
+// @Id          CheckAuth
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Success     200 {object} map[string]bool "logged_in status will be returned"
+// @Router      /check/auth [get]
+func (o *OidcAgent) CheckAuth(c *gin.Context) {
+	loggedIn := isLoggedIn(c)
+	c.JSON(http.StatusOK, gin.H{"logged_in": loggedIn})
 }
 
 // DeviceStart initiates the device login process.

@@ -21,6 +21,106 @@ import (
 // AuthApiService AuthApi service
 type AuthApiService service
 
+type ApiCheckAuthRequest struct {
+	ctx        context.Context
+	ApiService *AuthApiService
+}
+
+func (r ApiCheckAuthRequest) Execute() (map[string]bool, *http.Response, error) {
+	return r.ApiService.CheckAuthExecute(r)
+}
+
+/*
+CheckAuth Check Authentication
+
+Checks if the user is currently authenticated
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCheckAuthRequest
+*/
+func (a *AuthApiService) CheckAuth(ctx context.Context) ApiCheckAuthRequest {
+	return ApiCheckAuthRequest{
+		ApiService: a,
+		ctx:        ctx,
+	}
+}
+
+// Execute executes the request
+//
+//	@return map[string]bool
+func (a *AuthApiService) CheckAuthExecute(r ApiCheckAuthRequest) (map[string]bool, *http.Response, error) {
+	var (
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue map[string]bool
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AuthApiService.CheckAuth")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/check/auth"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
 type ApiClaimsRequest struct {
 	ctx        context.Context
 	ApiService *AuthApiService
@@ -324,9 +424,16 @@ func (a *AuthApiService) LogoutExecute(r ApiLogoutRequest) (*ModelsLogoutRespons
 type ApiRefreshRequest struct {
 	ctx        context.Context
 	ApiService *AuthApiService
+	data       *ModelsRefreshTokenRequest
 }
 
-func (r ApiRefreshRequest) Execute() (*http.Response, error) {
+// End Login
+func (r ApiRefreshRequest) Data(data ModelsRefreshTokenRequest) ApiRefreshRequest {
+	r.data = &data
+	return r
+}
+
+func (r ApiRefreshRequest) Execute() (*ModelsRefreshTokenResponse, *http.Response, error) {
 	return r.ApiService.RefreshExecute(r)
 }
 
@@ -346,16 +453,19 @@ func (a *AuthApiService) Refresh(ctx context.Context) ApiRefreshRequest {
 }
 
 // Execute executes the request
-func (a *AuthApiService) RefreshExecute(r ApiRefreshRequest) (*http.Response, error) {
+//
+//	@return ModelsRefreshTokenResponse
+func (a *AuthApiService) RefreshExecute(r ApiRefreshRequest) (*ModelsRefreshTokenResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodGet
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod  = http.MethodPost
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *ModelsRefreshTokenResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AuthApiService.Refresh")
 	if err != nil {
-		return nil, &GenericOpenAPIError{error: err.Error()}
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
 	localVarPath := localBasePath + "/web/refresh"
@@ -363,9 +473,12 @@ func (a *AuthApiService) RefreshExecute(r ApiRefreshRequest) (*http.Response, er
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
+	if r.data == nil {
+		return localVarReturnValue, nil, reportError("data is required and must be specified")
+	}
 
 	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
+	localVarHTTPContentTypes := []string{"application/json"}
 
 	// set Content-Type header
 	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
@@ -374,28 +487,30 @@ func (a *AuthApiService) RefreshExecute(r ApiRefreshRequest) (*http.Response, er
 	}
 
 	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{}
+	localVarHTTPHeaderAccepts := []string{"application/json"}
 
 	// set Accept header
 	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
 	if localVarHTTPHeaderAccept != "" {
 		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
 	}
+	// body params
+	localVarPostBody = r.data
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
-		return nil, err
+		return localVarReturnValue, nil, err
 	}
 
 	localVarHTTPResponse, err := a.client.callAPI(req)
 	if err != nil || localVarHTTPResponse == nil {
-		return localVarHTTPResponse, err
+		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
 	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
 	localVarHTTPResponse.Body.Close()
 	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
 	if err != nil {
-		return localVarHTTPResponse, err
+		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
 	if localVarHTTPResponse.StatusCode >= 300 {
@@ -403,10 +518,19 @@ func (a *AuthApiService) RefreshExecute(r ApiRefreshRequest) (*http.Response, er
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		return localVarHTTPResponse, newErr
+		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
 
-	return localVarHTTPResponse, nil
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
 type ApiUserInfoRequest struct {

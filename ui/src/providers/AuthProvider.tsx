@@ -1,6 +1,9 @@
 import { AuthProvider, UserIdentity } from "react-admin";
+import { RefreshManager } from "./RefreshManager";
 
 const cleanup = () => {
+  RefreshManager.stopRefreshing();
+  console.log("Cleanup Called");
   // Remove the ?code&state from the URL
   window.history.replaceState(
     {},
@@ -39,16 +42,25 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
       const response = await fetch(request);
       const data = await response.json();
       if (response && data) {
-        cleanup();
+        if (data.access_token !== null) {
+          localStorage.setItem("AccessToken", data.access_token);
+          console.debug(`Stored Access Token: ${data.access_token}`);
+        }
+        if (data.refresh_token !== null) {
+          localStorage.setItem("RefreshToken", data.refresh_token);
+          console.debug(`Stored Refresh Token: ${data.refresh_token}`);
+        }
         return data.handled && data.logged_in
           ? Promise.resolve()
           : Promise.reject();
       }
     } catch (err: any) {
+      console.log("Login Error");
       cleanup();
       throw new Error(err.statusText);
     }
   },
+
   logout: async () => {
     const request = new Request(`${api}/web/logout`, {
       method: "post",
@@ -67,6 +79,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
       throw new Error(err.statusText);
     }
   },
+
   checkError: async (error: any) => {
     const status = error.status;
     if (status === 401) {
@@ -74,33 +87,76 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     }
     return Promise.resolve();
   },
+
   checkAuth: async () => {
-    const request = new Request(`${api}/web/login/end`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request_url: window.location.href }),
-    });
-    try {
-      const response = await fetch(request);
-      const data = await response.json();
-      if (response && data) {
+    console.log("Check Auth Called");
+    const token = localStorage.getItem("AccessToken");
+
+    if (!token) {
+      console.debug("Token not found, calling /web/login/end");
+      const request = new Request(`${api}/web/login/end`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_url: window.location.href }),
+      });
+
+      try {
+        const response = await fetch(request);
+        const data = await response.json();
         return data.logged_in ? Promise.resolve() : Promise.reject();
+      } catch (err: any) {
+        console.log("Error during login:", err);
+        return Promise.reject();
       }
-    } catch (err: any) {
-      throw new Error(err.statusText);
+    }
+
+    if (token) {
+      const refreshToken = localStorage.getItem("RefreshToken");
+      if (!refreshToken) {
+        console.debug("No refresh token found. Cannot start refresh.");
+        return Promise.reject();
+      }
+
+      if (!RefreshManager.hasStartedRefreshInterval) {
+        console.debug("Starting the refresh interval.");
+
+        const intervalId = window.setInterval(() => {
+          RefreshManager.startRefreshing(api);
+        }, RefreshManager.REFRESH_INTERVAL_MS);
+
+        // Update RefreshManager's state
+        RefreshManager.setRefreshIntervalId(intervalId);
+        RefreshManager.setHasStartedRefreshInterval(true);
+      }
+
+      try {
+        const refreshToken = localStorage.getItem("RefreshToken");
+        if (!refreshToken) {
+          console.log("No refresh token found. Cannot refresh the token.");
+          return Promise.reject();
+        }
+        await RefreshManager.refreshToken(api);
+        return Promise.resolve();
+      } catch (err) {
+        console.log("Error refreshing the token:", err);
+        return Promise.reject();
+      }
     }
   },
+
   getPermissions: async () => {
-    console.log("getPermissions");
+    console.log("Get Permissions Called");
     // TODO: Add a callback so people can decode the claims
     return Promise.resolve();
   },
+
   getIdentity: async (): Promise<UserIdentity> => {
+    console.log("Get Identity Called");
     const request = new Request(`${api}/web/user_info`, {
       credentials: "include",
     });
-    var id;
+    let id;
     try {
       const response = await fetch(request);
       const data = await response.json();

@@ -1936,6 +1936,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/check/auth": {
+            "get": {
+                "description": "Checks if the user is currently authenticated",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Check Authentication",
+                "operationId": "CheckAuth",
+                "responses": {
+                    "200": {
+                        "description": "logged_in status will be returned",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/device/login/start": {
             "post": {
                 "description": "Starts a device login request",
@@ -2063,7 +2090,7 @@ const docTemplate = `{
             }
         },
         "/web/refresh": {
-            "get": {
+            "post": {
                 "description": "Obtains and updates a new access token for the user.",
                 "consumes": [
                     "application/json"
@@ -2076,9 +2103,23 @@ const docTemplate = `{
                 ],
                 "summary": "Refresh Access Token",
                 "operationId": "Refresh",
+                "parameters": [
+                    {
+                        "description": "End Login",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RefreshTokenRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RefreshTokenResponse"
+                        }
                     }
                 }
             }
@@ -2435,11 +2476,17 @@ const docTemplate = `{
         "models.LoginEndResponse": {
             "type": "object",
             "properties": {
+                "access_token": {
+                    "type": "string"
+                },
                 "handled": {
                     "type": "boolean"
                 },
                 "logged_in": {
                     "type": "boolean"
+                },
+                "refresh_token": {
+                    "type": "string"
                 }
             }
         },
@@ -2494,6 +2541,25 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "security_group_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RefreshTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RefreshTokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
                     "type": "string"
                 }
             }

@@ -113,7 +113,11 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 					RefreshToken: "kittens",
 				}
 				field := reflect.ValueOf(t).Elem().FieldByName("raw")
-				setUnexportedField(field, map[string]interface{}{"id_token": "boxofkittehs"})
+				setUnexportedField(field, map[string]interface{}{
+					"id_token":      "boxofkittehs",
+					"access_token":  "floofy",
+					"refresh_token": "kittens",
+				})
 				return t, nil
 			},
 		},

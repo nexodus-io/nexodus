@@ -9,8 +9,10 @@ type LoginEndRequest struct {
 }
 
 type LoginEndResponse struct {
-	Handled  bool `json:"handled"`
-	LoggedIn bool `json:"logged_in"`
+	Handled      bool   `json:"handled"`
+	LoggedIn     bool   `json:"logged_in"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type LogoutResponse struct {
@@ -24,6 +26,15 @@ type UserInfoResponse struct {
 	UpdatedAt         int64  `json:"updated_at"`
 	FamilyName        string `json:"family_name"`
 	Picture           string `json:"picture"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type DeviceStartResponse struct {
