@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
   Button,
   ButtonGroup,
@@ -11,19 +12,17 @@ import {
   MenuItem,
   Tooltip,
 } from "@mui/material";
+import * as Mui from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import {
-  IpProtocol,
+  ProtocolAliases,
   SecurityGroup,
   SecurityRule,
   UpdateSecurityGroup,
 } from "./SecurityGroupStructs";
 import { fetchJson, backend } from "../../common/Api";
-import React, { useEffect, useState } from "react";
 import Notifications from "../../common/Notifications";
-import * as Mui from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
-import { validateProtocolAndIpRange } from "../../common/IpHelpers";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 interface EditRulesProps {
   groupName: string;
@@ -89,6 +88,19 @@ const EditRules: React.FC<EditRulesProps> = ({
   const [notificationType, setNotificationType] = useState<
     "success" | "error" | "info" | null
   >(null);
+
+  const [ipRangeInputValue, setIpRangeInputValue] = useState<string>("");
+
+  useEffect(() => {
+    // Initialize tempPortValues whenever secRule changes
+    const initialPortValues = secRule.map(
+      (rule) =>
+        `${rule.from_port}${
+          rule.to_port !== rule.from_port ? `-${rule.to_port}` : ""
+        }`,
+    );
+    setTempPortValues(initialPortValues);
+  }, [secRule]);
 
   // Message box errors for table edits
   const [fieldErrors, setFieldErrors] = useState<
@@ -179,24 +191,6 @@ const EditRules: React.FC<EditRulesProps> = ({
   };
 
   // TODO: Implement for v4/v6 sanity checks against protocol and family. Tracked in issue #1445
-  const handleIpRangeChange = (newValue: string[], index: number) => {
-    const updatedRule = {
-      ...secRule[index],
-      ip_ranges: newValue,
-    };
-
-    try {
-      validateProtocolAndIpRange(updatedRule.ip_protocol, newValue);
-    } catch (error: any) {
-      if (error instanceof Error) {
-        setNotificationType("error");
-        setNotificationMessage(error.message);
-      }
-      return; // Skip updating the rule if validation fails
-    }
-
-    onRuleChange(index, updatedRule);
-  };
 
   const validatePortRange = (
     port: number,
@@ -209,79 +203,49 @@ const EditRules: React.FC<EditRulesProps> = ({
 
   const [tempPortValues, setTempPortValues] = useState<string[]>([]);
 
-  const handleProtocolChange = (
-    e: Mui.SelectChangeEvent<IpProtocol>,
-    index: number,
-  ) => {
-    const aliasProtocol = e.target.value as IpProtocol;
-    let updatedRule = { ...secRule[index], ip_protocol: aliasProtocol };
-    switch (aliasProtocol) {
-      case "SSH":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 22,
-          to_port: 22,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "HTTP":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 80,
-          to_port: 80,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "HTTPS":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 443,
-          to_port: 443,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "PostgreSQL":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 5432,
-          to_port: 5432,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "MySQL":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 3306,
-          to_port: 3306,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "SMB":
-        updatedRule = {
-          ...updatedRule,
-          from_port: 445,
-          to_port: 445,
-          ip_protocol: "tcp",
-        };
-        break;
-      case "icmpv4":
-      case "icmpv6":
-        updatedRule = { ...updatedRule, from_port: 0, to_port: 0 };
-        break;
-      case "icmp": // ALL ICMP
-        updatedRule = {
-          ...updatedRule,
-          from_port: 0,
-          to_port: 0,
-          ip_ranges: [],
-        };
-        break;
+  const handleProtocolChange = (e: Mui.SelectChangeEvent, index: number) => {
+    const selectedProtocol = e.target.value;
+    let updatedRule = { ...secRule[index], ip_protocol: selectedProtocol };
+
+    if (ProtocolAliases[selectedProtocol]) {
+      const { port, type } = ProtocolAliases[selectedProtocol];
+      updatedRule = {
+        ...updatedRule,
+        from_port: port,
+        to_port: port,
+        ip_protocol: type,
+      };
+    } else if (["icmpv4", "icmpv6"].includes(selectedProtocol)) {
+      updatedRule = { ...updatedRule, from_port: 0, to_port: 0 };
     }
 
     onRuleChange(index, updatedRule);
   };
 
-  const isPredefinedRule = (protocol: IpProtocol): boolean => {
+  const getProtocolNameByPorts = (
+    from_port: number,
+    to_port: number,
+    ip_protocol: string,
+  ): string | null => {
+    console.debug(
+      `Looking for protocol with from_port: ${from_port}, to_port: ${to_port}, ip_protocol: ${ip_protocol}`,
+    );
+    // Loop through the ProtocolAliases to find a match, either a proto with a defined set
+    // of ports e.g., SSH or a protocol such as TCP with a port of 0-0, should always match
+    for (const [key, value] of Object.entries(ProtocolAliases)) {
+      if (
+        value.port === from_port &&
+        value.port === to_port &&
+        value.type === ip_protocol
+      ) {
+        console.log(`Found match: ${key}`);
+        return key;
+      }
+    }
+    return null;
+  };
+
+  const isPredefinedRule = (protocol: string): boolean => {
     return [
       "SSH",
       "HTTP",
@@ -293,26 +257,12 @@ const EditRules: React.FC<EditRulesProps> = ({
       "icmpv4",
       "icmpv6",
       "ip",
+      "TCP",
+      "UDP",
     ].includes(protocol);
   };
 
-  // map predefined protocol names to their corresponding port ranges for display render only, rules get sent with ip_protocol:tcp
-  const getPredefinedProtocolName = (
-    from_port: number,
-    to_port: number,
-  ): IpProtocol | undefined => {
-    const predefinedProtocols: { [key: string]: IpProtocol } = {
-      "22-22": "SSH",
-      "80-80": "HTTP",
-      "443-443": "HTTPS",
-      "5432-5432": "PostgreSQL",
-      "3306-3306": "MySQL",
-      "445-445": "SMB",
-    };
-    return predefinedProtocols[`${from_port}-${to_port}`];
-  };
-
-  const isUnmodifiableIpRange = (protocol: IpProtocol): boolean => {
+  const isUnmodifiableIpRange = (protocol: string): boolean => {
     return ["ip", "icmp"].includes(protocol);
   };
 
@@ -341,17 +291,36 @@ const EditRules: React.FC<EditRulesProps> = ({
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell style={{ fontSize: "14", width: "20%" }}>
+            <TableCell style={{ fontSize: "14", width: "30%" }}>
               IP Protocol
             </TableCell>
-            <TableCell style={{ fontSize: "14", width: "10%" }}>
-              Port Range
+            <TableCell style={{ fontSize: "14", width: "20%" }}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                Port Range
+                <Tooltip
+                  title="Add a single port number or a comma-seperated number range"
+                  placement="top"
+                >
+                  <HelpOutlineIcon
+                    fontSize="small"
+                    style={{ marginLeft: "8px" }}
+                  />
+                </Tooltip>
+              </div>
             </TableCell>
             <TableCell style={{ fontSize: "14", width: "25%" }}>
-              IP Ranges
-            </TableCell>
-            <TableCell style={{ fontSize: "14", width: "25%" }}>
-              Defined IP Ranges
+              <div style={{ display: "flex", alignItems: "center" }}>
+                IP Ranges
+                <Tooltip
+                  title="Add a an IP range in the form of an IP address, an IP CIDR or a comma separated address range and then hit return to populate the list"
+                  placement="top"
+                >
+                  <HelpOutlineIcon
+                    fontSize="small"
+                    style={{ marginLeft: "8px" }}
+                  />
+                </Tooltip>
+              </div>
             </TableCell>
             <TableCell style={{ fontSize: "14", width: "10%" }}>
               Action
@@ -372,12 +341,13 @@ const EditRules: React.FC<EditRulesProps> = ({
                 >
                   <Select
                     value={
-                      (getPredefinedProtocolName(
+                      (getProtocolNameByPorts(
                         rule.from_port,
                         rule.to_port,
+                        rule.ip_protocol,
                       ) as any) || (rule.ip_protocol as any)
                     }
-                    onChange={(e: Mui.SelectChangeEvent<IpProtocol>) =>
+                    onChange={(e: Mui.SelectChangeEvent) =>
                       handleProtocolChange(e, index)
                     }
                     variant="outlined"
@@ -400,27 +370,14 @@ const EditRules: React.FC<EditRulesProps> = ({
                     <MenuItem value="SMB">SMB</MenuItem>
                   </Select>
                 </TableCell>
-                {/* From Port - Starting Port Range  */}
+                {/* Port Range Column*/}
                 <TableCell
                   style={{
                     paddingBottom: hasErrorInRow(index) ? "2em" : undefined,
                   }}
                 >
                   <TextField
-                    value={
-                      isPredefinedRule(
-                        getPredefinedProtocolName(
-                          rule.from_port,
-                          rule.to_port,
-                        ) || rule.ip_protocol,
-                      )
-                        ? `${rule.from_port}${
-                            rule.to_port !== rule.from_port
-                              ? `-${rule.to_port}`
-                              : ""
-                          }`
-                        : tempPortValues[index] || ""
-                    }
+                    value={tempPortValues[index] || ""}
                     onFocus={() => {
                       const newTempPortValues = [...tempPortValues];
                       newTempPortValues[index] = `${rule.from_port}${
@@ -463,85 +420,87 @@ const EditRules: React.FC<EditRulesProps> = ({
                     disabled={isPredefinedRule(rule.ip_protocol)}
                   />
                 </TableCell>
-                {/*User Defined IP Ranges*/}
+                {/*IP Ranges Column*/}
                 <TableCell
                   style={{
                     paddingBottom: hasErrorInRow(index) ? "2em" : undefined,
                   }}
                 >
-                  <TextField
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={rule.ip_ranges?.join(", ") ?? ""}
-                    onChange={(e) => {
-                      const newValue = e.target.value
-                        .split(",")
-                        .map((item) => item.trim());
-                      const updatedRule = { ...rule, ip_ranges: newValue };
-                      onRuleChange(index, updatedRule);
-                    }}
-                    style={{
-                      backgroundColor: isUnmodifiableIpRange(rule.ip_protocol)
-                        ? "#E8F4F9"
-                        : "transparent",
-                    }}
-                    disabled={isUnmodifiableIpRange(rule.ip_protocol)}
-                  />
+                  <Tooltip
+                    title="Add a an IP range in the form of an IP address, an IP CIDR or a comma seperated address range and then hit return to populate the list"
+                    placement="top"
+                  >
+                    <Autocomplete
+                      multiple // allow multiple prefixes in the cell
+                      inputValue={ipRangeInputValue}
+                      onInputChange={(_, newInputValue) => {
+                        console.debug(
+                          "onInputChange - newInputValue:",
+                          newInputValue,
+                        );
+                        setIpRangeInputValue(newInputValue);
+                      }}
+                      disabled={isUnmodifiableIpRange(rule.ip_protocol)}
+                      options={[
+                        "::/0",
+                        "0.0.0.0/0",
+                        {
+                          title: "Organization IPv4",
+                          value: "100.64.0.0/10",
+                        },
+                        { title: "Organization IPv6", value: "0200::/8" },
+                      ]}
+                      getOptionLabel={(option) =>
+                        typeof option === "string" ? option : option.title
+                      }
+                      getOptionDisabled={(option) =>
+                        isUnmodifiableIpRange(rule.ip_protocol)
+                      }
+                      value={rule.ip_ranges || []}
+                      freeSolo
+                      autoHighlight // Highlight the first match as the user types
+                      onChange={(_, newValue) => {
+                        console.debug("onChange - newValue:", newValue);
+                        // If the protocol is unmodifiable, clear the IP ranges for this rule
+                        if (isUnmodifiableIpRange(rule.ip_protocol)) {
+                          const updatedRule = { ...rule, ip_ranges: [] };
+                          onRuleChange(index, updatedRule);
+                          setIpRangeInputValue("");
+                          return;
+                        }
+                        // Otherwise, update the IP ranges as normal
+                        const updatedIpRanges = newValue.map((item) =>
+                          typeof item === "string" || typeof item === "number"
+                            ? item
+                            : item.value,
+                        );
+                        const updatedRule = {
+                          ...rule,
+                          ip_ranges: updatedIpRanges,
+                        };
+                        onRuleChange(index, updatedRule);
+                        setIpRangeInputValue(""); // Clear the input value
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          style={{
+                            backgroundColor: isUnmodifiableIpRange(
+                              rule.ip_protocol,
+                            )
+                              ? "#E8F4F9"
+                              : "transparent",
+                          }}
+                          disabled={isUnmodifiableIpRange(rule.ip_protocol)}
+                        />
+                      )}
+                    />
+                  </Tooltip>
                 </TableCell>
-                {/*PreDefined IP Ranges*/}
-                <TableCell
-                  style={{
-                    paddingBottom: hasErrorInRow(index) ? "2em" : undefined,
-                  }}
-                >
-                  <Autocomplete
-                    multiple
-                    // Disable the dropdown based on the condition such as "All ICMP"
-                    disabled={isUnmodifiableIpRange(rule.ip_protocol)}
-                    options={[
-                      "::/0",
-                      "0.0.0.0/0",
-                      {
-                        title: "Nexodus Private IPv4 CIDR",
-                        value: "100.64.0.0/10",
-                      },
-                      { title: "Nexodus Private IPv6 CIDR", value: "0200::/8" },
-                    ]}
-                    getOptionLabel={(option) =>
-                      typeof option === "string" ? option : option.title
-                    }
-                    getOptionDisabled={(option) =>
-                      isUnmodifiableIpRange(rule.ip_protocol)
-                    }
-                    value={rule.ip_ranges || []}
-                    onChange={(_, newValue) => {
-                      const updatedRule = {
-                        ...rule,
-                        ip_ranges: newValue.map((item) =>
-                          typeof item === "string" ? item : item.value,
-                        ),
-                      };
-                      onRuleChange(index, updatedRule);
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        variant="outlined"
-                        size="small"
-                        fullWidth
-                        style={{
-                          backgroundColor: isUnmodifiableIpRange(
-                            rule.ip_protocol,
-                          )
-                            ? "#E8F4F9"
-                            : "transparent",
-                        }}
-                        disabled={isUnmodifiableIpRange(rule.ip_protocol)}
-                      />
-                    )}
-                  />
-                </TableCell>
+                {/*Actions Column*/}
                 <TableCell
                   style={{
                     paddingBottom: hasErrorInRow(index) ? "2em" : undefined,

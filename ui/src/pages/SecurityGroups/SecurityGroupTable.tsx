@@ -11,11 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import {
-  IpProtocol,
-  SecurityGroup,
-  SecurityRule,
-} from "./SecurityGroupStructs";
+import { SecurityGroup, SecurityRule } from "./SecurityGroupStructs";
 
 interface Props {
   data: SecurityGroup;
@@ -64,7 +60,7 @@ const SecurityGroupTable: React.FC<Props> = ({
     const newRules = [...rules];
 
     if (field === "ip_protocol" && typeof value === "string") {
-      newRules[index].ip_protocol = value as IpProtocol;
+      newRules[index].ip_protocol = value;
     } else if (
       (field === "from_port" || field === "to_port") &&
       typeof value === "number"

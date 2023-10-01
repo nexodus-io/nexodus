@@ -1,27 +1,27 @@
-// TODO: should probably be an enum / DRY etc
-export type IpProtocol =
-  | ""
-  | "ip"
-  | "tcp"
-  | "udp"
-  | "icmp"
-  | "icmpv6"
-  | "ipv6"
-  | "ipv4"
-  | "icmpv4"
-  | "SSH"
-  | "HTTP"
-  | "HTTPS"
-  | "PostgreSQL"
-  | "MySQL"
-  | "SMB";
+// Protocol aliases with predefined ports and types
+export const ProtocolAliases: {
+  [key: string]: { port: number; type: string };
+} = {
+  SSH: { port: 22, type: "tcp" },
+  HTTP: { port: 80, type: "tcp" },
+  HTTPS: { port: 443, type: "tcp" },
+  PostgreSQL: { port: 5432, type: "tcp" },
+  MySQL: { port: 3306, type: "tcp" },
+  SMB: { port: 445, type: "tcp" },
+  tcp: { port: 0, type: "tcp" },
+  udp: { port: 0, type: "udp" },
+  icmpv6: { port: 0, type: "icmpv6" },
+  icmp: { port: 0, type: "icmp" },
+  ipv6: { port: 0, type: "ipv6" },
+  ipv4: { port: 0, type: "ipv4" },
+  icmpv4: { port: 0, type: "icmpv4" },
+};
 
-// Represents a security rule
 interface SecurityRule {
-  ip_protocol: IpProtocol;
-  from_port: number;
-  to_port: number;
   ip_ranges?: string[];
+  to_port: number;
+  from_port: number;
+  ip_protocol: string;
 }
 
 // Represents a security group containing security rules and a group owner
@@ -52,9 +52,16 @@ interface UpdateSecurityGroup {
   outbound_rules: SecurityRule[];
 }
 
+type Organization = {
+  id: string;
+  name: string;
+  security_group_id: string;
+};
+
 export type {
   SecurityGroup,
   AddSecurityGroup,
   UpdateSecurityGroup,
   SecurityRule,
+  Organization,
 };

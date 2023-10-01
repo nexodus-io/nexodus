@@ -15,7 +15,9 @@ import {
 } from "react-admin";
 import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTheme } from "@mui/material/styles";
+import { Tooltip } from "@mui/material";
 
 const DeviceListBulkActions = () => (
   <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -131,56 +133,16 @@ const DeviceShowLayout: FC = () => {
         reference="users"
         link="show"
       />
-      <TextField label="Online" source="online" />
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <TextField label="Online" source="online" />
+        <Tooltip
+          title="Online Status displays the nexodus agent's control plane connection status to the API server."
+          placement="right"
+        >
+          <HelpOutlineIcon fontSize="small" style={{ marginLeft: "5px" }} />
+        </Tooltip>
+      </div>
       <ConditionalOnlineSinceField />
     </SimpleShowLayout>
   );
 };
-
-//
-// export const DeviceShow: FC = () => (
-//   <Show>
-//     <SimpleShowLayout>
-//       <TextField label="ID" source="id" />
-//       <TextField label="Hostname" source="hostname" />
-//       <TextField label="Public Key" source="public_key" />
-//       <TextField label="Tunnel IP" source="tunnel_ip" />
-//       <TextField label="Organization Prefix" source="organization_prefix" />
-//       <TextField label="Allowed IPs" source="allowed_ips" />
-//       <ArrayField label="Endpoints" source="endpoints">
-//         <Datagrid rowClick="show" bulkActionButtons={false}>
-//           <TextField label="Address" source="address" />
-//           <TextField label="Distance" source="distance" />
-//           <TextField label="Source" source="source" />
-//         </Datagrid>
-//       </ArrayField>
-//       <TextField label="Online" source="online" />
-//       <DateField
-//         label="Online Since"
-//         source="online_at"
-//         options={{
-//           weekday: "long",
-//           year: "numeric",
-//           month: "long",
-//           day: "numeric",
-//           hour: "numeric",
-//           minute: "numeric",
-//           second: "numeric",
-//         }}
-//       />
-//       <TextField label="Relay Node" source="relay" />
-//       <ReferenceField
-//         label="Organization"
-//         source="organization_id"
-//         reference="organizations"
-//         link="show"
-//       />
-//       <ReferenceField
-//         label="Owner"
-//         source="user_id"
-//         reference="users"
-//         link="show"
-//       />
-//     </SimpleShowLayout>
-//   </Show>
-// );
