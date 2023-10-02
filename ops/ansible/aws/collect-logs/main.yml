@@ -1,0 +1,43 @@
+---
+# tasks file for collect-logs
+
+- name: Get IPv4 address of wg0
+  shell: "ip -4 addr show wg0 | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}'"
+  register: ipv4_address_result
+  ignore_errors: yes
+
+- name: wg dump to logs
+  become: yes
+  shell: |
+    printf "\n\n====== WG Dump from Node: {{ inventory_hostname }} wg0 Addr: {{ ipv4_address_result }} ======\n" >> /home/{{ ansible_user }}/nexodus-logs.txt
+    wg show wg0 dump >> /home/{{ ansible_user }}/nexodus-logs.txt
+  ignore_errors: yes
+
+- name: Display the nexd logs to stdout
+  become: yes
+  shell: |
+    cat /home/{{ ansible_user }}/nexodus-logs.txt
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'nexodusNodes' in group_names"
+
+- name: Copy file from remote host to localhost when the node is --relay-only (symmetric NAT)
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-nexodus-relay-only-symmetric-nat-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'nexodusRelayNodes' in group_names"
+
+- name: Copy file from remote host to localhost
+  fetch:
+    src: /home/{{ ansible_user }}/nexodus-logs.txt
+    dest: ./nexd-logs/{{ ansible_hostname }}-relay-node-nexodus-logs.txt
+    flat: yes
+  ignore_errors: yes
+  when: "'relayNode' in group_names"
