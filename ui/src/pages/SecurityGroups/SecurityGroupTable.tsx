@@ -37,6 +37,9 @@ const SecurityGroupTable: React.FC<Props> = ({
 
   const [rules, setRules] = useState<SecurityRule[]>(derivedRules);
 
+  const ipRangesColumnLabel =
+    type === "inbound_rules" ? "Source IP Ranges" : "Destination IP Ranges";
+
   useEffect(() => {
     console.log("Setting rules in useEffect:", derivedRules);
     // Force update the rules from derivedRules
@@ -89,7 +92,7 @@ const SecurityGroupTable: React.FC<Props> = ({
           <TableRow>
             <TableCell>IP Protocol</TableCell>
             <TableCell>Port Ranges</TableCell>
-            <TableCell>IP Ranges</TableCell>
+            <TableCell>{ipRangesColumnLabel}</TableCell>
             {editable && <TableCell>Action</TableCell>}
           </TableRow>
         </TableHead>

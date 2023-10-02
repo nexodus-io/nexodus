@@ -17,6 +17,7 @@
     "web-vitals": "^3.5.0"
   },
   "scripts": {
+    "description": "For development building replace vite build with vite build --mode development",
     "start": "vite --host",
     "build": "cross-env tsc && cross-env vite build",
     "serve": "vite preview"
