@@ -329,6 +329,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 	var actualGroup models.SecurityGroup
 	err = json.Unmarshal(body, &actualGroup)
 	require.NoError(err)
+
 	// Update the security group with an invalid rule (FromPort > ToPort)
 	updateGroup := models.UpdateSecurityGroup{
 		GroupName:        "updatedTestGroup",
@@ -340,6 +341,33 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 	}
 
 	updateBody, err := json.Marshal(updateGroup)
+	require.NoError(err)
+
+	_, res, err = suite.ServeRequest(
+		http.MethodPatch,
+		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		func(c *gin.Context) {
+			c.Set("nexodus.secGroupsEnabled", "true")
+			suite.api.UpdateSecurityGroup(c)
+		},
+		bytes.NewBuffer(updateBody),
+	)
+	require.NoError(err)
+
+	// Should be http.StatusStatusUnprocessableEntity.
+	require.Equal(http.StatusUnprocessableEntity, res.Code)
+
+	// Update the security group with an invalid port range with a from_port of 0
+	updateGroup = models.UpdateSecurityGroup{
+		GroupName:        "updatedTestGroup",
+		GroupDescription: "This is an updated test group",
+		InboundRules: []models.SecurityRule{
+			{IpProtocol: "tcp", FromPort: 0, ToPort: 8080, IpRanges: []string{"10.130.0.1-10.130.0.5,10.20.0.0/28"}},
+		},
+		OutboundRules: []models.SecurityRule{{IpProtocol: "tcp", FromPort: 8080, ToPort: 9001, IpRanges: []string{"200::/64"}}},
+	}
+
+	updateBody, err = json.Marshal(updateGroup)
 	require.NoError(err)
 
 	_, res, err = suite.ServeRequest(

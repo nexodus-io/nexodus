@@ -304,7 +304,7 @@ const EditRules: React.FC<EditRulesProps> = ({
               <div style={{ display: "flex", alignItems: "center" }}>
                 Port Range
                 <Tooltip
-                  title="Add a port number or a comma-seperated port range."
+                  title="Add a port number or a comma-seperated port range between 1-65535. A value of 0 opens all ports."
                   placement="top"
                 >
                   <HelpOutlineIcon

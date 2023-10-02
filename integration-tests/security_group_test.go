@@ -305,14 +305,14 @@ func TestSecurityGroups(t *testing.T) {
 	// v6 tcp 350 should succeed
 	err = helper.startPortListener(ctx, node1, node1IPv6, protoTCP, "350")
 	require.NoError(err)
-	connectResults, err = helper.connectToPort(ctx, node2, node1IPv4, protoTCP, "350")
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv6, protoTCP, "350")
 	require.NoError(err)
 	require.Equal(node1Hostname, connectResults)
 
 	// v6 udp 360 should succeed
 	err = helper.startPortListener(ctx, node1, node1IPv6, protoUDP, "360")
 	require.NoError(err)
-	connectResults, err = helper.connectToPort(ctx, node2, node1IPv4, protoUDP, "360")
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv6, protoUDP, "360")
 	require.NoError(err)
 	require.Equal(node1Hostname, connectResults)
 
@@ -646,6 +646,23 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
 	require.Error(err)
 
+	// Negative test where the from_port is 0 and not a valid 1-65535
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "0", "123",
+			[]string{"100.64.0.0/10",
+				"172.58.100.1-172.28.100.100",
+			}),
+		helper.createSecurityRule("ipv6", "0", "0",
+			[]string{"200::/60",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db6:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0020",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.Error(err)
+
 	// Negative test where there is an invalid address in ip_ranges
 	inboundRules = []public.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "123", "456",
@@ -832,7 +849,7 @@ func TestSecurityGroupProtocolsPortsOnly(t *testing.T) {
 	require.NoError(err)
 	require.NotEmpty(nfOutBefore)
 
-	// Test all accepted protocols and a null and empty string
+	// Test all accepted protocols that accept a port range of 1-65535
 	inboundRules := []public.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "1000", "1100", []string{""}),
 		helper.createSecurityRule("ipv6", "2000", "2100", []string{}),
@@ -914,7 +931,7 @@ func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
 	require.NoError(err)
 	require.NotEmpty(nfOutBefore)
 
-	// Test all accepted protocols and a null and empty string
+	// Test all accepted protocols, port range and the various accepted ip_range formats
 	inboundRules := []public.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "5000", "5999", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
 		helper.createSecurityRule("ipv6", "6000", "6999", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}),
@@ -922,10 +939,10 @@ func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
 		helper.createSecurityRule("udp", "8000", "8999", []string{"100.3.2.1"}),
 	}
 	outboundRules := []public.ModelsSecurityRule{
-		helper.createSecurityRule("ipv4", "4400", "1400", []string{"192.168.64.10-192.168.64.50"}),
-		helper.createSecurityRule("ipv6", "2400", "2400", []string{"fd00:face:b00c:cafe::/64", "200::1-200::5", "fd00:face:b00c:cafe::1"}),
-		helper.createSecurityRule("tcp", "3400", "3400", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
-		helper.createSecurityRule("udp", "4400", "4400", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff", "2002:0db8::/64"}),
+		helper.createSecurityRule("ipv4", "1400", "1400", []string{"192.168.64.10-192.168.64.50"}),
+		helper.createSecurityRule("ipv6", "2400", "2401", []string{"fd00:face:b00c:cafe::/64", "200::1-200::5", "fd00:face:b00c:cafe::1"}),
+		helper.createSecurityRule("tcp", "3400", "3402", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
+		helper.createSecurityRule("udp", "4400", "4403", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff", "2002:0db8::/64"}),
 	}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)

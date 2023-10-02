@@ -539,10 +539,14 @@ func ValidateRule(rule models.SecurityRule) error {
 	}
 
 	// Validate Ports
-	if rule.FromPort != 0 || rule.ToPort != 0 { // Checks if they are set (i.e., not wildcard)
-		if rule.FromPort > rule.ToPort || rule.FromPort < 0 || rule.ToPort > 65535 {
-			return fmt.Errorf("invalid port range: from %d to %d", rule.FromPort, rule.ToPort)
-		}
+	if rule.FromPort == 0 && rule.ToPort == 0 {
+		// Both ports are zero, which is a valid case
+	} else if rule.FromPort == 0 || rule.ToPort == 0 {
+		// If either port is 0, they both have to be zero
+		return fmt.Errorf("invalid port range: port ranges need to have a value greater than 0")
+	} else if rule.FromPort > rule.ToPort || rule.FromPort < 1 || rule.ToPort > 65535 {
+		// from_port needs to be less than the to_port in the range of 1-65535
+		return fmt.Errorf("invalid port range: from %d to %d", rule.FromPort, rule.ToPort)
 	}
 
 	// Validate IP Ranges
