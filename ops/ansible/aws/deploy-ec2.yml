@@ -35,3 +35,22 @@
     - vars.yml
   roles:
     - role: validate-connectivity
+
+# Collect nexd logs at the end
+- hosts: nexodusNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: collect-logs
+
+- hosts: nexodusRelayNodes
+  vars_files:
+    - vars.yml
+  roles:
+    - role: collect-logs
+
+- hosts: relayNode
+  vars_files:
+    - vars.yml
+  roles:
+    - role: collect-logs
