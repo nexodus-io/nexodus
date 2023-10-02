@@ -114,6 +114,10 @@ const EditRules: React.FC<EditRulesProps> = ({
   const [rules, setRules] = useState<SecurityRule[]>(derivedRules);
 
   const handleSaveRules = () => {
+    // Reset notification states
+    setNotificationMessage(null);
+    setNotificationType(null);
+
     let valid = true;
     const errorMessages: {
       index: number;

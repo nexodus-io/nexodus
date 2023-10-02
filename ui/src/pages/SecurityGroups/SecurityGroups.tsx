@@ -88,6 +88,9 @@ export const SecurityGroups = () => {
   }, [selectedSecurityGroup]);
 
   const handleExitEditMode = async () => {
+    // Reset notification states
+    setNotificationMessage(null);
+    setNotificationType(null);
     setIsEditing(false);
     if (selectedOrg) {
       try {
