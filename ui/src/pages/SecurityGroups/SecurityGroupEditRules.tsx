@@ -91,6 +91,9 @@ const EditRules: React.FC<EditRulesProps> = ({
 
   const [ipRangeInputValue, setIpRangeInputValue] = useState<string[]>([]);
 
+  const ipRangesColumnLabel =
+    type === "inbound_rules" ? "Source IP Ranges" : "Destination IP Ranges";
+
   useEffect(() => {
     // Initialize tempPortValues whenever secRule changes
     const initialPortValues = secRule.map(
@@ -320,9 +323,9 @@ const EditRules: React.FC<EditRulesProps> = ({
             </TableCell>
             <TableCell style={{ fontSize: "14", width: "40%" }}>
               <div style={{ display: "flex", alignItems: "center" }}>
-                IP Ranges
+                {ipRangesColumnLabel}
                 <Tooltip
-                  title="Add a an IP range in the form of an IP address, an IP CIDR or a comma separated address range and then hit return to populate the list"
+                  title="Add an IP range in the form of an IP address, an IP CIDR or a comma separated address range and then hit return to populate the list"
                   placement="top"
                 >
                   <HelpOutlineIcon
