@@ -17,7 +17,11 @@ import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTheme } from "@mui/material/styles";
-import { Tooltip } from "@mui/material";
+import { Tooltip, Accordion, AccordionDetails } from "@mui/material";
+
+interface DeviceAccordionDetailsProps {
+  id: string | number;
+}
 
 const DeviceListBulkActions = () => (
   <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -28,7 +32,11 @@ const DeviceListBulkActions = () => (
 
 export const DeviceList = () => (
   <List>
-    <Datagrid rowClick="show" bulkActionButtons={<DeviceListBulkActions />}>
+    <Datagrid
+      rowClick="show"
+      expand={<DeviceAccordion />}
+      bulkActionButtons={<DeviceListBulkActions />}
+    >
       <TextField label="Hostname" source="hostname" />
       <TextField label="Tunnel IP" source="tunnel_ip" />
       <ArrayField label="Endpoints" source="endpoints">
@@ -60,6 +68,29 @@ export const DeviceList = () => (
     </Datagrid>
   </List>
 );
+
+const DeviceAccordion: FC = () => {
+  const record = useRecordContext();
+  if (record && record.id !== undefined) {
+    return (
+      <Accordion expanded={true}>
+        <DeviceAccordionDetails id={record.id} />
+      </Accordion>
+    );
+  }
+  return null;
+};
+
+const DeviceAccordionDetails: FC<DeviceAccordionDetailsProps> = ({ id }) => {
+  // Use the same layout as DeviceShow
+  return (
+    <AccordionDetails>
+      <div>
+        <DeviceShowLayout />
+      </div>
+    </AccordionDetails>
+  );
+};
 
 const ConditionalOnlineSinceField = () => {
   const record = useRecordContext();
