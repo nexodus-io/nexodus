@@ -16,9 +16,9 @@ func (nx *Nexodus) handleKeys() error {
 	state := nx.stateStore.State()
 
 	if state.PublicKey != "" && state.PrivateKey != "" {
-		nx.logger.Infof("Existing key pair found in [ %s ]", nx.stateStore)
+		nx.logger.Debugf("Existing key pair found in [ %s ]", nx.stateStore)
 	} else {
-		nx.logger.Infof("No existing public/private key pair found, generating a new pair")
+		nx.logger.Debugf("No existing public/private key pair found, generating a new pair")
 		wgKey, err := wgtypes.GeneratePrivateKey()
 		if err != nil {
 			return fmt.Errorf("failed to generate private key: %w", err)
