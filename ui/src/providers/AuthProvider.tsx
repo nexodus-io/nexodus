@@ -10,6 +10,7 @@ const cleanup = () => {
     window.document.title,
     window.location.origin,
   );
+  console.log("Window location after cleanup:", window.location.href);
 };
 
 export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
@@ -41,7 +42,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     try {
       const response = await fetch(request);
       const data = await response.json();
-      if (response && data) {
+      if (response.ok && data) {
         if (data.access_token !== null) {
           localStorage.setItem("AccessToken", data.access_token);
           console.debug(`Stored Access Token: ${data.access_token}`);
@@ -53,11 +54,15 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
         return data.handled && data.logged_in
           ? Promise.resolve()
           : Promise.reject();
+      } else {
+        console.log("Login failed:", response.statusText);
+        cleanup();
+        throw new Error("Login failed");
       }
     } catch (err: any) {
-      console.log("Login Error");
+      console.log("Login Error:", err);
       cleanup();
-      throw new Error(err.statusText);
+      throw new Error(err.statusText || "Unknown error");
     }
   },
 
@@ -69,13 +74,26 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
     try {
       const response = await fetch(request);
       if (response.status === 401) {
+        cleanup(); // Run cleanup if status is 401
         return Promise.resolve();
+      } else if (response.status !== 200) {
+        // If the status is neither 401 nor 200, something went wrong.
+        cleanup();
+        throw new Error(`Logout failed with status ${response.status}`);
       }
       const data = await response.json();
       if (response && data) {
         window.location.replace(data.logout_url);
+      } else {
+        // If the response object or data is somehow null or undefined, call cleanup().
+        cleanup();
+        throw new Error(
+          "Logout failed, response or data is null or undefined.",
+        );
       }
     } catch (err: any) {
+      // If an exception is thrown while trying to logout, call the cleanup function.
+      cleanup();
       throw new Error(err.statusText);
     }
   },
