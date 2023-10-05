@@ -23,7 +23,13 @@ SECURITY GROUP ID                        SECURITY GROUP NAME     SECURITY GROUP 
 cb2e0192-5eb9-41ee-a732-7484602ac883     default                 default organization security group     7e552731-2f5f-421d-9266-10fa46dfe3ee     []                               []
 ```
 
-## Prerequisites
+## Configuring Security Groups with the Web UI
+
+Modifying security groups from the web UI is as straightforward as using a cloud service provider. Simply navigate to the desired security group and adjust the rules. Users have access to some pre-provisioned protocols and IP ranges. Thanks to the fast convergence times of the Nexodus control plane, security group rule changes are replicated to the device's data path in approximately one or two seconds.
+
+![no-alt-text](../images/security-groups-ui-1.png)
+
+## Configuring Security Groups with the CLI
 
 Ensure that you have the `nexctl` CLI available on your machine.
 

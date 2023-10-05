@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { styled } from "@mui/material/styles";
 import { useLogin, Form, Login, LoginFormProps } from "react-admin";
 import { CardContent, Button, CircularProgress } from "@mui/material";
+import LogoSrc from "../wordmark.png";
 
 const LoginForm = (props: LoginFormProps) => {
   const { redirectTo, className } = props;
@@ -47,6 +48,9 @@ const LoginForm = (props: LoginFormProps) => {
           Login
         </Button>
       </CardContent>
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <img src={LogoSrc} alt="Logo" style={{ height: "40px" }} />
+      </div>
     </StyledForm>
   );
 };
