@@ -90,7 +90,7 @@ done
 %doc docs DCO CONTRIBUTING.md README.md
 %{_bindir}/*
 /usr/lib/systemd/system/nexodus.service
-%{_sysconfdir}/sysconfig/nexodus
+%config(noreplace) %{_sysconfdir}/sysconfig/nexodus
 %{_mandir}/man8/*
 %{_sysconfdir}/bash_completion.d/*
 
