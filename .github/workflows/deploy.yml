@@ -167,4 +167,4 @@ jobs:
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
           docker run --name copr-cli -v "$(pwd):/nexodus" -v ~/.config:/root/.config quay.io/nexodus/mock:latest \
               copr-cli build nexodus -r "$(echo ${{ matrix.mock_root }} | cut -f2 -d'+')" --nowait \
-              "/nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always).${{ matrix.srpm_distro }}.src.rpm"
+              "/nexodus/dist/rpm/mock/nexodus-0-0.1.$(date +%Y%m%d)git$(git describe --always --abrev=6).${{ matrix.srpm_distro }}.src.rpm"
