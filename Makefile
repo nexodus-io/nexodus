@@ -21,7 +21,7 @@ else
 endif
 
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
-NEXODUS_RELEASE?=$(shell git describe --always --exclude qa --exclude prod)
+NEXODUS_RELEASE?=$(shell git describe --always --abbrev=6 --exclude qa --exclude prod)
 NEXODUS_GCFLAGS?=
 
 NEXODUS_KUBE_CONTEXT?=kind-nexodus-dev
