@@ -264,6 +264,69 @@ func TestSecurityGroups(t *testing.T) {
 	helper.Logf("Pinging %s from node2", node1IPv6)
 	err = pingWithoutRetry(ctx, node2, inetV6, node1IPv6)
 	require.NoError(err)
+
+	// Test Proto: ipv4/ipv6 Port: x-y Range: 100.64.0.0/10 & 0200::/8
+	nfOutBefore, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
+
+	// create the new inbound and outbound rules
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "100", "200", []string{"100.64.0.0/10"}),
+		helper.createSecurityRule("ipv6", "300", "400", []string{"200::/64"}),
+	}
+	outboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "0", "0", []string{"100.64.0.0/10"}),
+		helper.createSecurityRule("ipv6", "0", "0", []string{"200::/64"}),
+	}
+
+	// update the security group with the new inbound and outbound rules
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.NoError(err)
+
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	require.NoError(err)
+	require.True(allSucceeded)
+
+	// v4 tcp 150 should succeed
+	err = helper.startPortListener(ctx, node1, node1IPv4, protoTCP, "150")
+	require.NoError(err)
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv4, protoTCP, "150")
+	require.NoError(err)
+	require.Equal(node1Hostname, connectResults)
+
+	// v4 udp 160 should succeed
+	err = helper.startPortListener(ctx, node1, node1IPv4, protoUDP, "160")
+	require.NoError(err)
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv4, protoUDP, "160")
+	require.NoError(err)
+	require.Equal(node1Hostname, connectResults)
+
+	// v6 tcp 350 should succeed
+	err = helper.startPortListener(ctx, node1, node1IPv6, protoTCP, "350")
+	require.NoError(err)
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv6, protoTCP, "350")
+	require.NoError(err)
+	require.Equal(node1Hostname, connectResults)
+
+	// v6 udp 360 should succeed
+	err = helper.startPortListener(ctx, node1, node1IPv6, protoUDP, "360")
+	require.NoError(err)
+	connectResults, err = helper.connectToPort(ctx, node2, node1IPv6, protoUDP, "360")
+	require.NoError(err)
+	require.Equal(node1Hostname, connectResults)
+
+	// v4 tcp 12345 should fail
+	err = helper.startPortListener(ctx, node1, node1IPv4, protoTCP, "12345")
+	require.NoError(err)
+	connectResults, _ = helper.connectToPort(ctx, node2, node1IPv4, protoTCP, "12345")
+	require.Empty(connectResults)
+
+	// v6 udp 54321 should fail
+	err = helper.startPortListener(ctx, node1, node1IPv6, protoUDP, "54321")
+	require.NoError(err)
+	connectResults, _ = helper.connectToPort(ctx, node2, node1IPv6, protoUDP, "54321")
+	require.Empty(connectResults)
 }
 
 // TestSecurityGroupsExtended is a continuation of TestSecurityGroups() tests in order
@@ -583,6 +646,23 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
 	require.Error(err)
 
+	// Negative test where the from_port is 0 and not a valid 1-65535
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "0", "123",
+			[]string{"100.64.0.0/10",
+				"172.58.100.1-172.28.100.100",
+			}),
+		helper.createSecurityRule("ipv6", "0", "0",
+			[]string{"200::/60",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db6:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0020",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.Error(err)
+
 	// Negative test where there is an invalid address in ip_ranges
 	inboundRules = []public.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "123", "456",
@@ -618,4 +698,253 @@ func TestSecurityGroupsExtended(t *testing.T) {
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
 	require.Error(err)
+}
+
+// TestSecurityGroupProtocolsOnly tests rule entry without error only, for
+// all combinations of an explicit protocol and wildcard port and ip_range
+func TestSecurityGroupProtocolsOnly(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.runNexd(ctx, node2, "--username", username, "--password", password)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	// validate list devices and register IDs and IPs
+	allDevices, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json-raw",
+		"device", "list",
+	)
+	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+	var devices []models.Device
+	err = json.Unmarshal([]byte(allDevices), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
+
+	node1Hostname, err := helper.getNodeHostname(ctx, node1)
+	helper.Logf("deleting Node1 running in container: %s", node1Hostname)
+	require.NoError(err)
+	node2Hostname, err := helper.getNodeHostname(ctx, node2)
+	helper.Logf("deleting Node2 running in container: %s", node2Hostname)
+	require.NoError(err)
+
+	deviceMap := map[string]models.Device{}
+	for _, device := range devices {
+		deviceMap[device.Hostname] = device
+	}
+	require.Equal(len(deviceMap), 2)
+	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
+	orgID := deviceMap[node1Hostname].OrganizationID.String()
+	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
+
+	// gather the nftables before the new rules are applied to check against the new rules created next
+	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
+
+	// Test all accepted protocols and a null and empty string
+	inboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "0", "0", []string{""}),
+		helper.createSecurityRule("ipv6", "0", "0", []string{}),
+		helper.createSecurityRule("tcp", "0", "0", []string{""}),
+		helper.createSecurityRule("udp", "0", "0", []string{}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{""}),
+		helper.createSecurityRule("icmpv6", "0", "0", []string{}),
+	}
+	outboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "0", "0", []string{""}),
+		helper.createSecurityRule("ipv6", "0", "0", []string{}),
+		helper.createSecurityRule("tcp", "0", "0", []string{""}),
+		helper.createSecurityRule("udp", "0", "0", []string{}),
+		helper.createSecurityRule("icmp", "0", "0", []string{""}),
+	}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.NoError(err)
+}
+
+// TestSecurityGroupProtocolsPortsOnly tests rule entry without error only, for
+// all combinations of an explicit protocol and ports with a wildcard ip_range
+func TestSecurityGroupProtocolsPortsOnly(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.runNexd(ctx, node2, "--username", username, "--password", password)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	// validate list devices and register IDs and IPs
+	allDevices, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json-raw",
+		"device", "list",
+	)
+	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+	var devices []models.Device
+	err = json.Unmarshal([]byte(allDevices), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
+
+	node1Hostname, err := helper.getNodeHostname(ctx, node1)
+	helper.Logf("deleting Node1 running in container: %s", node1Hostname)
+	require.NoError(err)
+	node2Hostname, err := helper.getNodeHostname(ctx, node2)
+	helper.Logf("deleting Node2 running in container: %s", node2Hostname)
+	require.NoError(err)
+
+	deviceMap := map[string]models.Device{}
+	for _, device := range devices {
+		deviceMap[device.Hostname] = device
+	}
+	require.Equal(len(deviceMap), 2)
+	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
+	orgID := deviceMap[node1Hostname].OrganizationID.String()
+	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
+
+	// gather the nftables before the new rules are applied to check against the new rules created next
+	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
+
+	// Test all accepted protocols that accept a port range of 1-65535
+	inboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "1000", "1100", []string{""}),
+		helper.createSecurityRule("ipv6", "2000", "2100", []string{}),
+		helper.createSecurityRule("tcp", "3000", "3100", []string{""}),
+		helper.createSecurityRule("udp", "4000", "4100", []string{}),
+	}
+	outboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "1300", "1300", []string{""}),
+		helper.createSecurityRule("ipv6", "2300", "2300", []string{}),
+		helper.createSecurityRule("tcp", "3300", "3300", []string{""}),
+		helper.createSecurityRule("udp", "4300", "4300", []string{}),
+	}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.NoError(err)
+}
+
+// TestSecurityGroupProtocolsPortsCIDR tests rule entry without error only, for
+// all combinations of an explicit protocol, ports and ip_range e.g., no wildcards
+func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	// create the nodes
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password)
+	err := helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	helper.runNexd(ctx, node2, "--username", username, "--password", password)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+	err = helper.nexdStatus(ctx, node2)
+	require.NoError(err)
+
+	// validate list devices and register IDs and IPs
+	allDevices, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json-raw",
+		"device", "list",
+	)
+	require.NoErrorf(err, "nexctl device list error: %v\n", err)
+	var devices []models.Device
+	err = json.Unmarshal([]byte(allDevices), &devices)
+	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
+
+	node1Hostname, err := helper.getNodeHostname(ctx, node1)
+	helper.Logf("deleting Node1 running in container: %s", node1Hostname)
+	require.NoError(err)
+	node2Hostname, err := helper.getNodeHostname(ctx, node2)
+	helper.Logf("deleting Node2 running in container: %s", node2Hostname)
+	require.NoError(err)
+
+	deviceMap := map[string]models.Device{}
+	for _, device := range devices {
+		deviceMap[device.Hostname] = device
+	}
+	require.Equal(len(deviceMap), 2)
+	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
+	orgID := deviceMap[node1Hostname].OrganizationID.String()
+	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
+
+	// gather the nftables before the new rules are applied to check against the new rules created next
+	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore)
+
+	// Test all accepted protocols, port range and the various accepted ip_range formats
+	inboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "5000", "5999", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
+		helper.createSecurityRule("ipv6", "6000", "6999", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}),
+		helper.createSecurityRule("tcp", "7000", "7999", []string{"100.3.2.1/32"}),
+		helper.createSecurityRule("udp", "8000", "8999", []string{"100.3.2.1"}),
+	}
+	outboundRules := []public.ModelsSecurityRule{
+		helper.createSecurityRule("ipv4", "1400", "1400", []string{"192.168.64.10-192.168.64.50"}),
+		helper.createSecurityRule("ipv6", "2400", "2401", []string{"fd00:face:b00c:cafe::/64", "200::1-200::5", "fd00:face:b00c:cafe::1"}),
+		helper.createSecurityRule("tcp", "3400", "3402", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
+		helper.createSecurityRule("udp", "4400", "4403", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff", "2002:0db8::/64"}),
+	}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	require.NoError(err)
 }

@@ -188,7 +188,6 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 	} else {
 		srcOrDst = destAddr
 	}
-
 	switch rule.IpProtocol {
 	case protoIPv4:
 		// if the specified proto is ipv4 that specifies an L3 address and does not specify ports.
@@ -199,6 +198,19 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, ruleInterface, counter, actionAccept}
 				if _, err := runNftCmd(nx.logger, nft); err != nil {
 					return err
+				}
+			}
+		} else if rule.FromPort != 0 && rule.ToPort != 0 {
+			// if the specified proto is ipv4 that specifies an L3 address and does specify ports.
+			ports := fmt.Sprintf("%d-%d", rule.FromPort, rule.ToPort)
+			if len(rule.IpRanges) > 0 {
+				for _, ipRange := range rule.IpRanges {
+					srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
+					// v4 permits for L3 src or dst with specific ports
+					nft := []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, "th", "dport", ports, ruleInterface, counter, actionAccept}
+					if _, err := runNftCmd(nx.logger, nft); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -290,6 +302,19 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 					return err
 				}
 			}
+		} else if rule.FromPort > 0 && rule.ToPort > 0 {
+			// ipv6 that specifies an L3 src/dst and specifies ports.
+			ports := fmt.Sprintf("%d-%d", rule.FromPort, rule.ToPort)
+			if len(rule.IpRanges) > 0 {
+				for _, ipRange := range rule.IpRanges {
+					srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
+					// IPv6 permits for L3 with specified ports
+					nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, "th", "dport", ports, ruleInterface, counter, actionAccept}
+					if _, err := runNftCmd(nx.logger, nft); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	case protoTCP:
 		// permit ipv4 tcp to src/dst L3 to any destination port
@@ -358,8 +383,8 @@ func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 	var nft []string
 	dportOption = nx.nftPortOption(rule)
 	switch rule.IpProtocol {
-	case protoIPv4, protoIPv6:
-		// if the specified proto is ipv4 or ipv6, add rules for both tcp and udp to the chain with the specified dport
+	case protoIPv4:
+		// if the specified proto is ipv4, add rules for both tcp and udp to the chain with the specified dport
 		if dportOption == "" {
 			return nil
 		}
@@ -368,12 +393,17 @@ func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
+		// udp permits for ports to the specified dport for v4/v6
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
 		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		// udp permits for ports to the specified dport for v4/v6
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, protoUDP, dportOption, ruleInterface, counter, actionAccept}
+	case protoIPv6:
+		// if the specified proto is ipv6, add rules for both tcp and udp to the chain with the specified dport
+		if dportOption == "" {
+			return nil
+		}
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, protoTCP, dportOption, ruleInterface, counter, actionAccept}
 		if _, err := runNftCmd(nx.logger, nft); err != nil {
 			return err
 		}
@@ -412,14 +442,14 @@ func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 	var nft []string
 	switch rule.IpProtocol {
 	case protoIPv4, protoIPv6:
-		// permit ipv6 any
+		// permit ipv4 any
 		if rule.IpProtocol == protoIPv4 {
 			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
 			if _, err := runNftCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
-		// permit ipv4 any
+		// permit ipv6 any
 		if rule.IpProtocol == protoIPv6 {
 			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
 			if _, err := runNftCmd(nx.logger, nft); err != nil {
