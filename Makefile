@@ -383,13 +383,21 @@ test: gotestsum-prereqs ## Run unit tests
 	gotestsum --format standard-quiet -- \
 		./...
 
-telepresence_%: telepresence-prereqs
+.PHONY: telepresence-connect-f
+telepresence-connect-f: telepresence-prereqs
+	telepresence helm install 2> /dev/null || true ;\
+	telepresence quit -s || true ;\
+	telepresence connect --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE);\
+
+.PHONY: telepresence-connect
+telepresence-connect: telepresence-prereqs
 	$(CMD_PREFIX) if [ "$(shell telepresence status --output json | jq .user_daemon.status -r)" != "Connected" ]; then \
-		telepresence helm install 2> /dev/null || true ;\
-		telepresence connect ;\
+		make telepresence-connect-f ;\
 	fi
+
+telepresence_%: telepresence-connect
 	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
-		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json ;\
+		telepresence intercept $(word 2,$(subst _, ,$(basename $@))) --port $(word 3,$(subst _, ,$(basename $@))) --env-json=$(word 2,$(subst _, ,$(basename $@)))-envs.json ;\
 		echo "=======================================================================================" ;\
 		echo ;\
 		echo "   Start the $(word 2,$(subst _, ,$(basename $@))) locally with a debugger with the env variables" ;\
@@ -400,14 +408,10 @@ telepresence_%: telepresence-prereqs
 	fi
 
 .PHONY: debug-apiserver
-debug-apiserver: ## Use telepresence to debug the apiserver deployment
-	$(CMD_PREFIX) if [ "$(shell telepresence status --output json | jq .user_daemon.status -r)" != "Connected" ]; then \
-		telepresence helm install 2> /dev/null || true ;\
-		telepresence connect ;\
-	fi
+debug-apiserver: telepresence-connect ## Use telepresence to debug the apiserver deployment
 	$(CMD_PREFIX) if [ -z "$(shell telepresence status --output json | jq '.user_daemon.intercepts[]|select(.name == "$(word 2,$(subst _, ,$(basename $@)))-nexodus")' 2> /dev/null)" ]; then \
-		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) apiserver --workload apiserver --service apiserver --port 8080:8080 --env-json=apiserver-envs.json ;\
-		telepresence intercept --context=$(NEXODUS_KUBE_CONTEXT) --namespace=$(NEXODUS_KUBE_NAMESPACE) apiserver-grpc --workload apiserver --service apiserver --port 5080:5080 ;\
+		telepresence intercept apiserver --workload apiserver --service apiserver --port 8080:8080 --env-json=apiserver-envs.json ;\
+		telepresence intercept apiserver-grpc --workload apiserver --service apiserver --port 5080:5080 ;\
 		echo "=======================================================================================" ;\
 		echo ;\
 		echo "   Start the apiserver locally with a debugger with the env variables" ;\
