@@ -434,7 +434,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		if err2 != nil {
 			return err2
 		}
-		if tokenClaims.Scope != "reg-token" {
+		if tokenClaims != nil && tokenClaims.Scope != "reg-token" {
 			tokenClaims = nil
 		}
 
@@ -537,9 +537,12 @@ func (api *API) CreateDevice(c *gin.Context) {
 		//	claims.ExpiresAt = jwt.NewNumericDate(*request.Expiration)
 		//}
 
-		deviceToken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, deviceClaims).SignedString(api.PrivateKey)
-		if err != nil {
-			return err
+		deviceToken := ""
+		if api.PrivateKey != nil { // unit tests will not have the private key set
+			deviceToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, deviceClaims).SignedString(api.PrivateKey)
+			if err != nil {
+				return err
+			}
 		}
 
 		device = models.Device{
