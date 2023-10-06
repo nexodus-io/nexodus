@@ -20,6 +20,14 @@ func RetryOperation(ctx context.Context, wait time.Duration, retries int, operat
 	return err
 }
 
+// RetryOperationExpBackoff retries the operation with an exponential backoff policy.
+func RetryOperationExpBackoff(ctx context.Context, maxWait time.Duration, operation func() error) error {
+	ebo := backoff.NewExponentialBackOff()
+	ebo.MaxInterval = maxWait
+	bo := backoff.WithContext(ebo, ctx)
+	return backoff.Retry(operation, bo)
+}
+
 // RetryOperationForErrors retries the operation with a backoff policy for the specified errors, otherwise will just perform the operation once and return the error if it fails.
 func RetryOperationForErrors(ctx context.Context, wait time.Duration, retries int, retriableErrors []error, operation func() error) error {
 	bo := backoff.WithMaxRetries(
