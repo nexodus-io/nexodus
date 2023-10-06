@@ -3,9 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -13,15 +12,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"net/http"
 )
 
 var (
-	errUserOrOrgNotFound     = errors.New("user or organization not found")
-	errOrgNotFound           = errors.New("organization not found")
-	errUserNotFound          = errors.New("user not found")
-	errDeviceNotFound        = errors.New("device not found")
-	errInvitationNotFound    = errors.New("invitation not found")
-	errSecurityGroupNotFound = errors.New("security group not found")
+	errUserOrOrgNotFound          = errors.New("user or organization not found")
+	errOrgNotFound                = errors.New("organization not found")
+	errUserNotFound               = errors.New("user not found")
+	errDeviceNotFound             = errors.New("device not found")
+	errInvitationNotFound         = errors.New("invitation not found")
+	errSecurityGroupNotFound      = errors.New("security group not found")
+	errRegistrationTokenExhausted = errors.New("single use registration token exhausted")
 )
 
 type errDuplicateDevice struct {
@@ -53,12 +54,37 @@ func (api *API) ListDevices(c *gin.Context) {
 	db = api.DeviceIsOwnedByCurrentUser(c, db)
 	db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
 	result := db.Find(&devices)
-
 	if result.Error != nil {
 		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
+
+	tokenClaims, err := NxodusClaims(c, api.db.WithContext(ctx))
+	if err != nil {
+		c.JSON(err.Status, err.Body)
+		return
+	}
+
+	// only show the device token when using the reg token that created the device.
+	for i := range devices {
+		if hideDeviceBearerToken(&devices[i], tokenClaims) {
+			devices[i].BearerToken = ""
+		}
+	}
 	c.JSON(http.StatusOK, devices)
+}
+
+func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) bool {
+	if claims == nil {
+		return true
+	}
+	switch claims.Scope {
+	case "reg-token":
+		return claims.ID != device.RegistrationTokenID.String()
+	case "device-token":
+		return claims.ID != device.ID.String()
+	}
+	return true
 }
 
 func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
@@ -108,6 +134,18 @@ func (api *API) GetDevice(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 		return
 	}
+
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+		return
+	}
+
+	// only show the device token when using the reg token that created the device.
+	if hideDeviceBearerToken(&device, tokenClaims) {
+		device.BearerToken = ""
+	}
+
 	c.JSON(http.StatusOK, device)
 }
 
@@ -132,7 +170,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
-	k, err := uuid.Parse(c.Param("id"))
+	deviceId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
@@ -145,14 +183,37 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	}
 
 	var device models.Device
+	var tokenClaims *models.NexodusClaims
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
 		db := api.DeviceIsOwnedByCurrentUser(c, tx)
 		db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
 
-		result := db.First(&device, "id = ?", k)
+		result := db.First(&device, "id = ?", deviceId)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errDeviceNotFound
+		}
+
+		var err2 *ApiResponseError
+		tokenClaims, err2 = NxodusClaims(c, tx)
+		if err2 != nil {
+			return err2
+		}
+
+		if tokenClaims != nil {
+			switch tokenClaims.Scope {
+			case "reg-token":
+				if tokenClaims.ID != device.RegistrationTokenID.String() {
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+				}
+			case "device-token":
+				if tokenClaims.ID != device.ID.String() {
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+				}
+			default:
+				return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+			}
+			// we can only update tokens that were created by us.
 		}
 
 		var org models.Organization
@@ -269,12 +330,19 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
+		var apiResponseError ApiResponseError
 		if errors.Is(err, errDeviceNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+		} else if errors.As(err, &apiResponseError) {
+			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
 			api.sendInternalServerError(c, err)
 		}
 		return
+	}
+
+	if hideDeviceBearerToken(&device, tokenClaims) {
+		device.BearerToken = ""
 	}
 
 	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
@@ -341,8 +409,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 	}
 
 	userId := c.GetString(gin.AuthUserKey)
+	var tokenClaims *models.NexodusClaims
 	var device models.Device
-
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 
 		var org models.Organization
@@ -361,6 +429,48 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return res.Error
 		}
 
+		var err2 *ApiResponseError
+		tokenClaims, err2 = NxodusClaims(c, tx)
+		if err2 != nil {
+			return err2
+		}
+		if tokenClaims != nil && tokenClaims.Scope != "reg-token" {
+			tokenClaims = nil
+		}
+
+		deviceId := uuid.Nil
+		registrationTokenID := uuid.Nil
+		var err error
+		if tokenClaims != nil {
+			registrationTokenID, err = uuid.Parse(tokenClaims.ID)
+			if err != nil {
+				return NewApiResponseError(http.StatusBadRequest, fmt.Errorf("invalid registration token id"))
+			}
+
+			// is the user token restricted to operating on a single device?
+			if tokenClaims.DeviceID == uuid.Nil {
+				err = tx.Where("id = ?", tokenClaims.DeviceID).First(&device).Error
+				if err == nil {
+					// If we get here the device exists but has a different public key, so assume
+					// the reg toke has been previously used.
+					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegistrationTokenExhausted))
+				}
+
+				deviceId = tokenClaims.DeviceID
+				//deviceId, err = uuid.Parse(claims.DeviceID)
+				//if err != nil {
+				//	return fmt.Errorf("invalid registration token device id: %w", err)
+				//}
+			}
+
+			if tokenClaims.OrganizationID != request.OrganizationID {
+				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("organization_id", "does not match the registration token organization_id"))
+			}
+		}
+		if deviceId == uuid.Nil {
+			deviceId = uuid.New()
+		}
+
 		ipamNamespace := defaultIPAMNamespace
 		if org.PrivateCidr {
 			ipamNamespace = org.ID
@@ -374,7 +484,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		var ipamIP string
 		var ipamIPv6 string
-		var err error
+
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.TunnelIP != "" {
@@ -412,7 +522,33 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return err
 		}
 
+		deviceClaims := models.NexodusClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				Issuer:  api.URL,
+				ID:      deviceId.String(),
+				Subject: userId,
+			},
+			OrganizationID: org.ID,
+			Scope:          "device-token",
+		}
+
+		// TODO: should device tokens expire?
+		//if request.Expiration != nil {
+		//	claims.ExpiresAt = jwt.NewNumericDate(*request.Expiration)
+		//}
+
+		deviceToken := ""
+		if api.PrivateKey != nil { // unit tests will not have the private key set
+			deviceToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, deviceClaims).SignedString(api.PrivateKey)
+			if err != nil {
+				return err
+			}
+		}
+
 		device = models.Device{
+			Base: models.Base{
+				ID: deviceId,
+			},
 			UserID:                   userId,
 			OrganizationID:           org.ID,
 			PublicKey:                request.PublicKey,
@@ -430,6 +566,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Hostname:                 request.Hostname,
 			Os:                       request.Os,
 			SecurityGroupId:          org.SecurityGroupId,
+			RegistrationTokenID:      registrationTokenID,
+			BearerToken:              deviceToken,
 		}
 
 		if res := tx.
@@ -440,20 +578,27 @@ func (api *API) CreateDevice(c *gin.Context) {
 		span.SetAttributes(
 			attribute.String("id", device.ID.String()),
 		)
-
 		return nil
 	})
 
 	if err != nil {
 		var duplicate errDuplicateDevice
+		var apiResponseError ApiResponseError
 		if errors.Is(err, errUserOrOrgNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotAllowedError("user or organization"))
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
+		} else if errors.As(err, &apiResponseError) {
+			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
 			api.sendInternalServerError(c, err)
 		}
 		return
+	}
+
+	// only display the device token if request was done with a reg token.
+	if hideDeviceBearerToken(&device, tokenClaims) {
+		device.BearerToken = ""
 	}
 
 	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
@@ -544,6 +689,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		}
 	}
 
+	device.BearerToken = ""
 	c.JSON(http.StatusOK, device)
 }
 

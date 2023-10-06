@@ -1,48 +1,41 @@
-# Device registration flow using dynamic client registration in keycloak
+# Device registration flow using a registration token
 
 > [Issue #1209](https://github.com/nexodus-io/nexodus/issues/1209)
 
 ## Summary
 
-* Device registration through access a token
-* Support non-browser authorization flow to allow
-* Client representation for per device in Keycloak
+* Device registration through user managed registration token.
+* Support non-browser authorization flow
+* Support disconnecting individual devices from the admin control plane.
 
 ## Proposal
 
 ### Problem
 
-Currently, devices are registered on behalf of users using the user and password. If I register 3 devices using the admin user, I will see three sessions against the admin user. It will be challenging to differentiate the device request for authentication and maintain sessions.
+Currently, devices are registered on behalf of users using the user and password. If I register 3 devices using the admin user, I will see three sessions against the admin user.  Furthermore, the device has the user access token stored, so it has access to recreate a device so the admin control plane can't really stop the device from going online again.
 
 ### Solution
 
-With the help of the [keycloak dynamic client registration](https://medium.com/keycloak/dynamic-client-registration-in-keycloak-4dd1c5cd5e69) feature, I am proposing to generate an initial access token with a configurable max count and expiration date.
+The apiserver will generate registration JWT tokens that can be used to onboard new devices and also per device JWT tokens that will be used per device to access the apiserver.  APIs will be provided to the user so he can revoke those JWT tokens.
 
-![design-registration flow](./diagrams/design-registration-d1.png)
+![design-registration flow](./diagrams/design-registration-d2.png)
 
 #### Steps to register device
 
-1. Register a initial access token with a count number and expiration date.
-    1. command: `nexctl registration-token create --count 10 (clients) --exp date --username --password`
-    2. Store the intial access token in `/var/lib/nexd/apitoken.json`
-2. Register a service account & device registration using the initial access token
-    1. command: `nexd --registration-token https://try.nexodus.127.0.0.1.nip.io`
-    2. Store the client-id and client-secret in `/var/lib/nexd/apitoken.json`
-3. When Nexd is restarted, load the client id/secret stored previously. As a result, nexd can be started with the same arguments every time.
-4. Device reconnection (optional)
-    1. command: `nexd --clientid <sa> --secret <secret> https://try.nexodus.127.0.0.1.nip.io`
+1. Create a registration token: .
+    1. command: `nexctl registration-token create --exp date`
+    2. Write down the registration token, you will need it to startup nexd.
+2. Start nexd with the registration token:
+    1. command: `nexd --registration-token {token}`
+       1. nexd will use the registartion token as an API Bearer token, it only has access to create a device or update a device that token has previously created.
+       2. the apiserver will return a new device token in the `bearer_token` field of the device.  nexd should store the device token to disk and use that token for a all future API calls.  The device token has access to all the API operations that a nexd client requires.
 
-### Data model requirments
+### Notes
 
-![design-registration data](./diagrams/data-registration-datamodel.png)
-
-* Table 1 will store the initial access token with a max count for the number of devices that can be registered, expiration date, and user id.
-* For client id/secret are stored in the keycloak db out of the box feature
+Since a JWT is still being used to auth the API calls, and the same "sub" claim is present on apiserver created JWTs as the normal Oauth access tokens and therfore can be used by the apiproxy to rate limit the user the same way.
 
 ## Alternatives Considered
 
-*Document any alternatives that were considered other than what was proposed.*
+* Use KeyCloak dynamic client registration to create a Oauth client per user device.  The problems with this approach are that #1: it would tightly couple the apiserver to KeyCloak.  #2 It would only solve being able to disconnect a registered device.  Onboarding the device would still require an authentication flow so that we could control who is creating devices.
 
 ## References
-
-*Leave links to helpful references related to this proposal.*

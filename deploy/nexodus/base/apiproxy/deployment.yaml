@@ -42,6 +42,11 @@ spec:
                 configMapKeyRef:
                   name: apiproxy
                   key: APIPROXY_WEB_ORIGINS
+            - name: APIPROXY_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_API_URL
           resources:
             requests:
               cpu: 100m

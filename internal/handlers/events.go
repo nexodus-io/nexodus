@@ -90,6 +90,14 @@ func (api *API) WatchEvents(c *gin.Context) {
 		}
 		return
 	}
+
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+
+		return
+	}
+
 	var closers []func()
 	defer func() {
 		for _, closer := range closers {
@@ -113,6 +121,13 @@ func (api *API) WatchEvents(c *gin.Context) {
 				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					return nil, result.Error
 				}
+
+				for i := range items {
+					if hideDeviceBearerToken(items[i], tokenClaims) {
+						items[i].BearerToken = ""
+					}
+				}
+
 				return items, nil
 			})
 			defer fetcher.Close()

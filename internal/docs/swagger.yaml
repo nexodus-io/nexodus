@@ -75,6 +75,20 @@ definitions:
       security_group_id:
         type: string
     type: object
+  models.AddRegistrationToken:
+    properties:
+      description:
+        type: string
+      expiration:
+        description: Expiration is optional, if set the registration token is only
+          valid until the Expiration time.
+        type: string
+      organization_id:
+        type: string
+      single_use:
+        description: SingleUse only allows the registration token to be used once.
+        type: boolean
+    type: object
   models.AddSecurityGroup:
     properties:
       group_description:
@@ -115,6 +129,9 @@ definitions:
         items:
           type: string
         type: array
+      bearer_token:
+        description: the token nexd should use to reconcile device state.
+        type: string
       child_prefix:
         items:
           type: string
@@ -279,6 +296,24 @@ definitions:
       access_token:
         type: string
       refresh_token:
+        type: string
+    type: object
+  models.RegistrationToken:
+    properties:
+      bearer_token:
+        type: string
+      description:
+        type: string
+      device_id:
+        type: string
+      expiration:
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      organization_id:
+        type: string
+      user_id:
         type: string
     type: object
   models.SecurityGroup:
@@ -1569,6 +1604,153 @@ paths:
       summary: List Device Metadata
       tags:
       - Devices
+  /api/registration-tokens:
+    get:
+      consumes:
+      - application/json
+      description: Lists all registration tokens
+      operationId: ListRegistrationTokens
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RegistrationToken'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List RegistrationTokens
+      tags:
+      - RegistrationToken
+    post:
+      consumes:
+      - application/json
+      description: Create a RegistrationToken to an organization
+      operationId: CreateRegistrationToken
+      parameters:
+      - description: Add RegistrationToken
+        in: body
+        name: RegistrationToken
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddRegistrationToken'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.RegistrationToken'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Create a RegistrationToken
+      tags:
+      - RegistrationToken
+  /api/registration-tokens/{token-id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing RegistrationToken
+      operationId: DeleteRegistrationToken
+      parameters:
+      - description: RegistrationToken ID
+        in: path
+        name: token-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.RegistrationToken'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete RegistrationToken
+      tags:
+      - RegistrationToken
+    get:
+      consumes:
+      - application/json
+      description: Gets a RegistrationToken by RegistrationToken ID
+      operationId: GetRegistrationToken
+      parameters:
+      - description: RegistrationToken ID
+        in: path
+        name: token-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get a RegistrationToken
+      tags:
+      - RegistrationToken
   /api/users:
     get:
       consumes:
@@ -1727,6 +1909,26 @@ paths:
       summary: Check Authentication
       tags:
       - Auth
+  /device/certs:
+    get:
+      consumes:
+      - application/json
+      description: gets the jwks that can be used to verify JWTs created by this server.
+      operationId: Certs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: gets the jwks
+      tags:
+      - RegistrationToken
   /device/login/start:
     post:
       consumes:

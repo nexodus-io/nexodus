@@ -71,6 +71,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	})
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()
+
 	suite.api, err = NewAPI(context.Background(), suite.logger, db, ipamClient, fflags, store, signalbus.NewSignalBus(), redisClient, nil)
 	if err != nil {
 		suite.T().Fatal(err)

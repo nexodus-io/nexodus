@@ -153,6 +153,16 @@ spec:
                 configMapKeyRef:
                   name: apiserver
                   key: NEXAPI_DEVICE_CACHE_SIZE
+            - name: NEXAPI_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_URL
+            - name: NEXAPI_TLS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-api-cert
+                  key: tls.key
 
           resources:
             requests:

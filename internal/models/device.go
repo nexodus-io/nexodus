@@ -30,6 +30,10 @@ type Device struct {
 	SecurityGroupId          uuid.UUID      `json:"security_group_id"`
 	Online                   bool           `json:"online"`
 	OnlineAt                 *time.Time     `json:"online_at"`
+	// the registration token id that created the device (if it was created with a registration token)
+	RegistrationTokenID uuid.UUID `json:"-"`
+	// the token nexd should use to reconcile device state.
+	BearerToken string `json:"bearer_token,omitempty"`
 }
 
 // AddDevice is the information needed to add a new Device.
