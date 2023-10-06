@@ -357,6 +357,18 @@ func (nx *Nexodus) migrateLegacyState(stateDir string) error {
 	return nx.stateStore.Store()
 }
 
+func (nx *Nexodus) resetApiClient(ctx context.Context, options []client.Option) error {
+	var err error
+	nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
+		nx.SetStatus(NexdStatusAuth, msg)
+	}, options...)
+	if err != nil {
+		nx.logger.Warnf("client api error - retrying: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.nexCtx = ctx
 	nx.nexWg = wg
@@ -402,14 +414,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	var err error
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
-			nx.SetStatus(NexdStatusAuth, msg)
-		}, options...)
-		if err != nil {
-			nx.logger.Warnf("client api error - retrying: %v", err)
-			return err
-		}
-		return nil
+		return nx.resetApiClient(ctx, options)
 	})
 	if err != nil {
 		return fmt.Errorf("client api error: %w", err)
@@ -423,14 +428,20 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	var user *public.ModelsUser
 	var resp *http.Response
-	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+	err = util.RetryOperationExpBackoff(ctx, retryInterval, func() error {
 		user, resp, err = nx.client.UsersApi.GetUser(ctx, "me").Execute()
 		if err != nil {
-			if resp != nil {
-				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
+			if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) ||
+				strings.Contains(resp.Header.Get("Www-Authenticate"), invalidToken.Error()) {
+				nx.logger.Debug("invalid auth token, removing and retrying")
+				s := nx.stateStore.State()
+				s.AuthToken = nil
+				_ = nx.stateStore.Store()
+				_ = nx.resetApiClient(ctx, options)
+				nx.SetStatus(NexdStatusRunning, "")
 				return err
-			} else if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) {
-				nx.logger.Errorf("The nexodus token stored in %s is not valid for the api-server, you can remove the file and try again: %v", nx.stateStore, err)
+			} else if resp != nil {
+				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			} else {
 				nx.logger.Warnf("get user error - retrying error: %v", err)
