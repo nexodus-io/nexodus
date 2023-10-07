@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"sort"
 	"text/tabwriter"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
@@ -86,6 +87,64 @@ func main() {
 				Action: func(cCtx *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
+				},
+			},
+			{
+				Name:  "registration-token",
+				Usage: "Commands relating to registration tokens",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "List registration tokens",
+						Action: func(cCtx *cli.Context) error {
+							return listRegistrationTokens(cCtx, mustCreateAPIClient(cCtx))
+						},
+					},
+					{
+						Name:  "create",
+						Usage: "Create a registration token",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "organization-id",
+								Required: false,
+							},
+							&cli.StringFlag{
+								Name:     "description",
+								Required: false,
+							},
+							&cli.BoolFlag{
+								Name:     "single-use",
+								Required: false,
+							},
+							&cli.DurationFlag{
+								Name:     "expiration",
+								Required: false,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							return createRegistrationToken(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegistrationToken{
+								OrganizationId: cCtx.String("organization-id"),
+								Description:    cCtx.String("description"),
+								Expiration:     toExpiration(cCtx.Duration("expiration")),
+								SingleUse:      cCtx.Bool("single-use"),
+							})
+						},
+					},
+					{
+						Name:  "delete",
+						Usage: "Delete a registration token",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "id",
+								Required: true,
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							encodeOut := cCtx.String("output")
+							id := cCtx.String("id")
+							return deleteRegistrationToken(cCtx, mustCreateAPIClient(cCtx), encodeOut, id)
+						},
+					},
 				},
 			},
 			{
@@ -424,7 +483,7 @@ func main() {
 							},
 							&cli.StringFlag{
 								Name:     "organization-id",
-								Required: true,
+								Required: false,
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -475,6 +534,13 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func toExpiration(duration time.Duration) string {
+	if duration == 0 {
+		return ""
+	}
+	return time.Now().Add(duration).String()
 }
 
 func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
