@@ -47,8 +47,8 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 
 	if err == nil {
 		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\n"
-		fmt.Fprintf(w, fs, "HOSTNAME", "WIREGUARD ADDRESS", "LATENCY", "CONNECTION STATUS")
+		fs := "%s\t%s\t%s\t%s\t%s\n"
+		fmt.Fprintf(w, fs, "HOSTNAME", "WIREGUARD ADDRESS", "LATENCY", "CONNECTION STATUS", "PEERING METHOD")
 
 		keys := make([]string, 0, len(result))
 		for k := range result {
@@ -65,7 +65,7 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 			if v.IsReachable {
 				status = fmt.Sprintf("%s Reachable", checkmark)
 			}
-			fmt.Fprintf(w, fs, v.Hostname, k, v.Latency, status) // Added v.Latency to the output
+			fmt.Fprintf(w, fs, v.Hostname, k, v.Latency, status, v.Method) // Added v.Latency to the output
 		}
 
 		w.Flush()

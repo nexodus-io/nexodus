@@ -50,10 +50,10 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 	peerStatusMap := make(map[string]KeepaliveStatus)
 
 	if !nx.relay {
-		for _, value := range nx.deviceCache {
+		nx.deviceCacheIterRead(func(value deviceCacheEntry) {
 			// skip the node sourcing the probe
 			if nx.wireguardPubKey == value.device.PublicKey {
-				continue
+				return
 			}
 			var nodeAddr string
 			pubKey := value.device.PublicKey
@@ -61,13 +61,13 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 				nodeAddr = value.device.TunnelIpV6
 				if net.ParseIP(value.device.TunnelIpV6) == nil {
 					nx.logger.Debugf("failed parsing an ipv6 address from %s", value.device.TunnelIp)
-					continue
+					return
 				}
 			} else {
 				nodeAddr = value.device.TunnelIp
 				if net.ParseIP(value.device.TunnelIp) == nil {
 					nx.logger.Debugf("failed parsing an ipv4 address from %s", value.device.TunnelIp)
-					continue
+					return
 				}
 			}
 
@@ -76,8 +76,9 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 				WgIP:        nodeAddr,
 				IsReachable: false,
 				Hostname:    hostname,
+				Method:      value.peeringMethod,
 			}
-		}
+		})
 	}
 	connResults := nx.probeConnectivity(peerStatusMap, nx.logger)
 
@@ -125,6 +126,7 @@ func (nx *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *z
 				IsReachable: result.IsReachable,
 				Hostname:    result.Hostname,
 				Latency:     result.Latency,
+				Method:      result.Method,
 			}
 		}
 	}

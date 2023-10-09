@@ -28,6 +28,7 @@ type KeepaliveStatus struct {
 	IsReachable bool   `json:"is_reachable"`
 	Hostname    string `json:"hostname"`
 	Latency     string `json:""`
+	Method      string `json:"method"`
 }
 
 func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
@@ -45,6 +46,7 @@ func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 				WgIP:     peerStatus.WgIP,
 				Hostname: peerStatus.Hostname,
 				Latency:  "-",
+				Method:   peerStatus.Method,
 			},
 			IsReachable: false,
 		}
@@ -57,6 +59,7 @@ func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 				WgIP:     peerStatus.WgIP,
 				Hostname: peerStatus.Hostname,
 				Latency:  latency,
+				Method:   peerStatus.Method,
 			},
 			IsReachable: true,
 		}
