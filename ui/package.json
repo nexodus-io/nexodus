@@ -35,7 +35,7 @@
     ]
   },
   "devDependencies": {
-    "@mui/material": "^5.14.11",
+    "@mui/material": "^5.14.12",
     "@types/jest": "^29.5.5",
     "@types/react": "^18.2.24",
     "@types/react-dom": "^18.2.7",
