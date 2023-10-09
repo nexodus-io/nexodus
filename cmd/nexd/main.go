@@ -274,23 +274,21 @@ func main() {
 						if runtime.GOOS != nexodus.Linux.String() {
 							return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
 						}
-					}
-					if cCtx.Bool("exit-node") {
-						// Check if a default route was specified in the child-prefix
-						childPrefixes := cCtx.StringSlice("child-prefix")
+						advertiseCidrs := cCtx.StringSlice("advertise-cidr")
+						// Check if "0.0.0.0/0" already exists in advertise-cidr
 						found := false
-						for _, prefix := range childPrefixes {
+						for _, prefix := range advertiseCidrs {
 							if prefix == "0.0.0.0/0" {
 								found = true
 								break
 							}
 						}
+						// If not found, add it to advertise-cidr
 						if !found {
-							// Update the child-prefixes to originate a default route if one was not specified
-							childPrefixes = append(childPrefixes, "0.0.0.0/0")
-							err := cCtx.Set("child-prefix", strings.Join(childPrefixes, ","))
+							advertiseCidrs = append(advertiseCidrs, "0.0.0.0/0")
+							err := cCtx.Set("advertise-cidr", strings.Join(advertiseCidrs, ","))
 							if err != nil {
-								return fmt.Errorf("failed to set child-prefix: %w", err)
+								return fmt.Errorf("failed to set advertise-cidr: %w", err)
 							}
 						}
 					}
