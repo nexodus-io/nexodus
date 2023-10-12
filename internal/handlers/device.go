@@ -33,7 +33,7 @@ func (e errDuplicateDevice) Error() string {
 	return "device already exists"
 }
 
-// ListDevices lists all devices
+// ListDevices lists all devices (change to trigger e2e in ci)
 // @Summary      List Devices
 // @Description  Lists all devices
 // @Id  		 ListDevices
