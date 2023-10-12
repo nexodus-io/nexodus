@@ -248,6 +248,11 @@ jobs:
         overlay: ["dev"]
 
     steps:
+      - name: Remove unnecessary files on the runner for additional space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
