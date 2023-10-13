@@ -133,8 +133,8 @@ jobs:
           file: ./Containerfile.${{ matrix.name }}
           tags: ${{ matrix.tags }}
           outputs: type=docker,dest=/tmp/${{ matrix.name }}.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
 
       - name: Upload ${{ matrix.name }} artifact
         uses: actions/upload-artifact@v3
@@ -252,6 +252,9 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /opt/ghc
+          sudo apt-get clean
+          sudo apt-get autoremove
+          docker system prune -a -f
 
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -325,6 +328,10 @@ jobs:
         with:
           name: e2e-${{ matrix.overlay }}-logs
           path: logs.txt
+
+      - name: Check Disk Space
+        if: always()
+        run: df -h
 
   build-rpm:
     needs: [ go-lint-linux, generate ]
