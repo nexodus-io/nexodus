@@ -154,6 +154,7 @@ type Nexodus struct {
 	securityGroup            *public.ModelsSecurityGroup
 	symmetricNat             bool
 	ipv6Supported            bool
+	deviceReconciled         bool
 	os                       string
 	exitNode                 exitNode
 	logger                   *zap.SugaredLogger
@@ -738,6 +739,10 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option) {
 	var err error
 	if err = nx.reconcileDeviceCache(); err == nil {
+		if !nx.deviceReconciled {
+			nx.deviceReconciled = true
+			nx.logger.Info("Nexodus agent has reconciled state with API server")
+		}
 		return
 	}
 
@@ -749,6 +754,7 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	}
 
 	nx.logger.Errorf("Failed to reconcile state with the nexodus API server: %v", err)
+	nx.deviceReconciled = false
 
 	// if the token grant becomes invalid expires refresh or exit depending on the onboard method
 	if !strings.Contains(err.Error(), invalidTokenGrant.Error()) {
