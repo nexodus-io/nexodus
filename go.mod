@@ -56,7 +56,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.3
-	gorm.io/gorm v1.25.4
+	gorm.io/gorm v1.25.5
 	gvisor.dev/gvisor v0.0.0-20221203005347-703fd9b7fbc0
 	k8s.io/api v0.27.4
 	k8s.io/apimachinery v0.27.4
