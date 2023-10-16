@@ -38,7 +38,7 @@
     "@mui/material": "^5.14.13",
     "@types/jest": "^29.5.5",
     "@types/react": "^18.2.28",
-    "@types/react-dom": "^18.2.11",
+    "@types/react-dom": "^18.2.13",
     "@vitejs/plugin-react": "^4.1.0",
     "cross-env": "^7.0.3",
     "ip-cidr": "^3.1.0",
