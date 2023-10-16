@@ -331,10 +331,8 @@ func (api *API) ListDevicesInOrganization(c *gin.Context) {
 			return nil, result.Error
 		}
 
-		for i, device := range items {
-			if hideDeviceBearerToken(device, tokenClaims) {
-				items[i].BearerToken = ""
-			}
+		for i := range items {
+			hideDeviceBearerToken(items[i], tokenClaims)
 		}
 		return items, nil
 	})
@@ -420,9 +418,7 @@ func (api *API) GetDeviceInOrganization(c *gin.Context) {
 	}
 
 	// only show the device token when using the reg token that created the device.
-	if hideDeviceBearerToken(&device, tokenClaims) {
-		device.BearerToken = ""
-	}
+	hideDeviceBearerToken(&device, tokenClaims)
 
 	c.JSON(http.StatusOK, device)
 }

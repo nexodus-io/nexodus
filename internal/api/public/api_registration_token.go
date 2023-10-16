@@ -440,7 +440,7 @@ type ApiGetRegistrationTokenRequest struct {
 	tokenId    string
 }
 
-func (r ApiGetRegistrationTokenRequest) Execute() (*ModelsOrganization, *http.Response, error) {
+func (r ApiGetRegistrationTokenRequest) Execute() (*ModelsRegistrationToken, *http.Response, error) {
 	return r.ApiService.GetRegistrationTokenExecute(r)
 }
 
@@ -463,13 +463,13 @@ func (a *RegistrationTokenApiService) GetRegistrationToken(ctx context.Context, 
 
 // Execute executes the request
 //
-//	@return ModelsOrganization
-func (a *RegistrationTokenApiService) GetRegistrationTokenExecute(r ApiGetRegistrationTokenRequest) (*ModelsOrganization, *http.Response, error) {
+//	@return ModelsRegistrationToken
+func (a *RegistrationTokenApiService) GetRegistrationTokenExecute(r ApiGetRegistrationTokenRequest) (*ModelsRegistrationToken, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsOrganization
+		localVarReturnValue *ModelsRegistrationToken
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegistrationTokenApiService.GetRegistrationToken")

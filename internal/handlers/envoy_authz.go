@@ -2,14 +2,21 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	v3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
+	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 )
 
 const SESSION_ID_COOKIE_NAME = "sid"
@@ -28,7 +35,18 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 		},
 	}
 
-	if checkReq.Attributes.Request.Http.Headers["authorization"] != "" {
+	// is there already an authorization header?
+	authorizationHeader := checkReq.Attributes.Request.Http.Headers["authorization"]
+	if authorizationHeader != "" {
+
+		// Does it look like a registration token?
+		if strings.HasPrefix(authorizationHeader, "Bearer RT:") {
+			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
+			return checkRegistrationToken(ctx, api, token)
+		} else if strings.HasPrefix(authorizationHeader, "Bearer DT:") {
+			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
+			return checkDeviceToken(ctx, api, token)
+		}
 		return okResponse, nil
 	}
 
@@ -72,6 +90,122 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 						},
 					},
 				},
+			},
+		},
+	}, nil
+}
+
+func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.CheckResponse, error) {
+	var regToken models.RegistrationToken
+	db := api.db.WithContext(ctx)
+	result := db.First(&regToken, "bearer_token = ?", token)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid registration token"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
+	// replace it with a JWT token...
+	claims := models.NexodusClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:  api.URL,
+			ID:      regToken.ID.String(),
+			Subject: regToken.UserID,
+		},
+		OrganizationID: regToken.OrganizationID,
+		Scope:          "reg-token",
+	}
+	if regToken.DeviceId != nil {
+		claims.DeviceID = *regToken.DeviceId
+	}
+	if regToken.Expiration != nil {
+		claims.ExpiresAt = jwt.NewNumericDate(*regToken.Expiration)
+	}
+
+	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)
+	if err != nil {
+		return denyCheckResponse(401, models.NewBaseError("internal server error"))
+	}
+
+	return &auth.CheckResponse{
+		Status: &status.Status{Code: int32(codes.OK)},
+		HttpResponse: &auth.CheckResponse_OkResponse{
+			OkResponse: &auth.OkHttpResponse{
+				Headers: []*core.HeaderValueOption{
+					{
+						AppendAction: core.HeaderValueOption_OVERWRITE_IF_EXISTS_OR_ADD,
+						Header: &core.HeaderValue{
+							Key:   "authorization",
+							Value: "Bearer " + jwttoken,
+						},
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckResponse, error) {
+	var device models.Device
+	db := api.db.WithContext(ctx)
+	result := db.First(&device, "bearer_token = ?", token)
+	if result.Error != nil {
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid device token"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
+	// replace it with a JWT token...
+	claims := models.NexodusClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:  api.URL,
+			ID:      device.ID.String(),
+			Subject: device.UserID,
+		},
+		OrganizationID: device.OrganizationID,
+		Scope:          "device-token",
+	}
+
+	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)
+	if err != nil {
+		return denyCheckResponse(401, models.NewBaseError("internal server error"))
+	}
+
+	return &auth.CheckResponse{
+		Status: &status.Status{Code: int32(codes.OK)},
+		HttpResponse: &auth.CheckResponse_OkResponse{
+			OkResponse: &auth.OkHttpResponse{
+				Headers: []*core.HeaderValueOption{
+					{
+						AppendAction: core.HeaderValueOption_OVERWRITE_IF_EXISTS_OR_ADD,
+						Header: &core.HeaderValue{
+							Key:   "authorization",
+							Value: "Bearer " + jwttoken,
+						},
+					},
+				},
+			},
+		},
+	}, nil
+
+}
+
+func denyCheckResponse(statusCode int, baseError models.BaseError) (*auth.CheckResponse, error) {
+	data, err := json.Marshal(baseError)
+	if err != nil {
+		return nil, err
+	}
+	return &auth.CheckResponse{
+		Status: &status.Status{Code: int32(codes.PermissionDenied)},
+		HttpResponse: &auth.CheckResponse_DeniedResponse{
+			DeniedResponse: &auth.DeniedHttpResponse{
+				Status: &v3.HttpStatus{Code: v3.StatusCode(statusCode)},
+				Body:   string(data),
 			},
 		},
 	}, nil

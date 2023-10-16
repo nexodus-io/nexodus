@@ -12,6 +12,7 @@ package public
 
 // ModelsRegistrationToken struct for ModelsRegistrationToken
 type ModelsRegistrationToken struct {
+	// BearerToken is the token the client should use to authenticate the device registration request.
 	BearerToken    string `json:"bearer_token,omitempty"`
 	Description    string `json:"description,omitempty"`
 	DeviceId       string `json:"device_id,omitempty"`

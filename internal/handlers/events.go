@@ -123,9 +123,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 				}
 
 				for i := range items {
-					if hideDeviceBearerToken(items[i], tokenClaims) {
-						items[i].BearerToken = ""
-					}
+					hideDeviceBearerToken(items[i], tokenClaims)
 				}
 
 				return items, nil

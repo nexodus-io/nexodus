@@ -106,7 +106,7 @@ Feature: Device API
     #
     Given I set the "Authorization" header to "Bearer ${reg_bearer_token}"
 
-    Given I generate a new public key as ${public_key}
+    Given I generate a new key pair as ${private_key}/${public_key}
     When I POST path "/api/devices" with json body:
       """
       {
@@ -138,9 +138,12 @@ Feature: Device API
     Given I store the ".bearer_token" selection from the response as ${device_bearer_token}
     Given I store the ${response} as ${device}
 
+    # bearer_token field will be different every you get the device, so remove it from the comparison
+    Given I delete the ${device} "bearer_token" key
+
     When I GET path "/api/devices/${device_id}"
     Then the response code should be 200
-    And the response should match json:
+    And the response should contain json:
       """
       ${device}
       """
@@ -148,32 +151,33 @@ Feature: Device API
     #
     # Use the device bearer_token to call apis nexd uses to reconcile it's state.
     #
+    Given I decrypt the sealed "${device_bearer_token}" with "${private_key}" and store the result as ${device_bearer_token}
     Given I set the "Authorization" header to "Bearer ${device_bearer_token}"
 
     When I GET path "/api/devices"
     Then the response code should be 200
-    And the response should match json:
+    And the ${response[0]} should contain json:
       """
-      [${device}]
+      ${device}
       """
 
     When I GET path "/api/devices/${device_id}"
     Then the response code should be 200
-    And the response should match json:
+    And the response should contain json:
       """
       ${device}
       """
 
     When I GET path "/api/organizations/${organization_id}/devices"
     Then the response code should be 200
-    And the response should match json:
+    And the ${response[0]} should contain json:
       """
-      [${device}]
+      ${device}
       """
 
     When I GET path "/api/organizations/${organization_id}/devices/${device_id}"
     Then the response code should be 200
-    And the response should match json:
+    And the response should contain json:
       """
       ${device}
       """
@@ -191,7 +195,7 @@ Feature: Device API
     And the response header "Content-Type" should match "application/json;stream=watch"
 
     Given I wait up to "3" seconds for a response event
-    Then the response should match json:
+    Then the response should contain json:
       """
       {
         "kind": "device",
@@ -234,9 +238,9 @@ Feature: Device API
 
     When I GET path "/api/devices"
     Then the response code should be 200
-    And the response should match json:
+    And the ${response[0]} should contain json:
       """
-      [${device}]
+      ${device}
       """
 
     #

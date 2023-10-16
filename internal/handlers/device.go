@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"github.com/nexodus-io/nexodus/internal/wgcrypto"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"net/http"
@@ -67,24 +68,42 @@ func (api *API) ListDevices(c *gin.Context) {
 
 	// only show the device token when using the reg token that created the device.
 	for i := range devices {
-		if hideDeviceBearerToken(&devices[i], tokenClaims) {
-			devices[i].BearerToken = ""
-		}
+		hideDeviceBearerToken(&devices[i], tokenClaims)
 	}
 	c.JSON(http.StatusOK, devices)
 }
 
-func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) bool {
+func encryptDeviceBearerToken(token string, publicKey string) string {
+	key, err := wgtypes.ParseKey(publicKey)
+	if err != nil {
+		return ""
+	}
+	sealed, err := wgcrypto.SealV1(key[:], []byte(token))
+	if err != nil {
+		return ""
+	}
+
+	return sealed.String()
+}
+
+func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) {
 	if claims == nil {
-		return true
+		device.BearerToken = ""
+		return
 	}
 	switch claims.Scope {
 	case "reg-token":
-		return claims.ID != device.RegistrationTokenID.String()
+		if claims.ID == device.RegistrationTokenID.String() {
+			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
+			return
+		}
 	case "device-token":
-		return claims.ID != device.ID.String()
+		if claims.ID == device.ID.String() {
+			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
+			return
+		}
 	}
-	return true
+	device.BearerToken = ""
 }
 
 func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
@@ -142,9 +161,7 @@ func (api *API) GetDevice(c *gin.Context) {
 	}
 
 	// only show the device token when using the reg token that created the device.
-	if hideDeviceBearerToken(&device, tokenClaims) {
-		device.BearerToken = ""
-	}
+	hideDeviceBearerToken(&device, tokenClaims)
 
 	c.JSON(http.StatusOK, device)
 }
@@ -210,10 +227,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 				if tokenClaims.ID != device.ID.String() {
 					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
 				}
-			default:
-				return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
 			}
-			// we can only update tokens that were created by us.
 		}
 
 		var org models.Organization
@@ -341,9 +355,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		return
 	}
 
-	if hideDeviceBearerToken(&device, tokenClaims) {
-		device.BearerToken = ""
-	}
+	hideDeviceBearerToken(&device, tokenClaims)
 
 	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 	c.JSON(http.StatusOK, device)
@@ -522,27 +534,10 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return err
 		}
 
-		deviceClaims := models.NexodusClaims{
-			RegisteredClaims: jwt.RegisteredClaims{
-				Issuer:  api.URL,
-				ID:      deviceId.String(),
-				Subject: userId,
-			},
-			OrganizationID: org.ID,
-			Scope:          "device-token",
-		}
-
-		// TODO: should device tokens expire?
-		//if request.Expiration != nil {
-		//	claims.ExpiresAt = jwt.NewNumericDate(*request.Expiration)
-		//}
-
-		deviceToken := ""
-		if api.PrivateKey != nil { // unit tests will not have the private key set
-			deviceToken, err = jwt.NewWithClaims(jwt.SigningMethodRS256, deviceClaims).SignedString(api.PrivateKey)
-			if err != nil {
-				return err
-			}
+		// lets use a wg private key as the token, since it should be hard to guess.
+		deviceToken, err := wgtypes.GeneratePrivateKey()
+		if err != nil {
+			return err
 		}
 
 		device = models.Device{
@@ -567,7 +562,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Os:                       request.Os,
 			SecurityGroupId:          org.SecurityGroupId,
 			RegistrationTokenID:      registrationTokenID,
-			BearerToken:              deviceToken,
+			BearerToken:              "DT:" + deviceToken.String(),
 		}
 
 		if res := tx.
@@ -596,10 +591,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		return
 	}
 
-	// only display the device token if request was done with a reg token.
-	if hideDeviceBearerToken(&device, tokenClaims) {
-		device.BearerToken = ""
-	}
+	hideDeviceBearerToken(&device, tokenClaims)
 
 	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
 	c.JSON(http.StatusCreated, device)

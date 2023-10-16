@@ -12,6 +12,12 @@ func NewApiError(err error) BaseError {
 	}
 }
 
+func NewBaseError(error string) BaseError {
+	return BaseError{
+		Error: error,
+	}
+}
+
 // ValidationError is returned in the body of an HTTP 400
 type ValidationError struct {
 	BaseError

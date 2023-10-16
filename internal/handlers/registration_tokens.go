@@ -7,16 +7,15 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v3"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
 	"net/http"
-	"time"
 )
 
 // CreateRegistrationToken creates a RegistrationToken
@@ -65,22 +64,8 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 
 	userId := c.Value(gin.AuthUserKey).(string)
 
-	tokenId := uuid.New()
-
-	claims := models.NexodusClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:  api.URL,
-			ID:      tokenId.String(),
-			Subject: userId,
-		},
-		OrganizationID: org.ID,
-		Scope:          "reg-token",
-	}
-	if request.Expiration != nil {
-		claims.ExpiresAt = jwt.NewNumericDate(*request.Expiration)
-	}
-
-	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)
+	// lets use a wg private key as the token, since it should be hard to guess.
+	token, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		api.sendInternalServerError(c, err)
 		return
@@ -88,100 +73,34 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 
 	// Let store the reg token... without the client id yet... to avoid creating
 	// clients in KC that are not correlated with our DB.
-	record := models.RegistrationTokenRecord{
-		Base: models.Base{
-			ID: tokenId,
-		},
+	record := models.RegistrationToken{
 		UserID:         userId,
-		Description:    request.Description,
 		OrganizationID: request.OrganizationID,
-		BearerToken:    token,
+		BearerToken:    "RT:" + token.String(),
+		Description:    request.Description,
+		Expiration:     request.Expiration,
 	}
+	if request.SingleUse {
+		deviceID := uuid.New()
+		record.DeviceId = &deviceID
+	}
+
 	if res := db.Create(&record); res.Error != nil {
 		api.sendInternalServerError(c, res.Error)
 		return
 	}
-
-	result, err := api.asRegistrationToken(record)
-	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	c.JSON(http.StatusCreated, result)
+	c.JSON(http.StatusCreated, record)
 }
 
 func NxodusClaims(c *gin.Context, tx *gorm.DB) (*models.NexodusClaims, *ApiResponseError) {
-
 	claims := models.NexodusClaims{}
 	err := util.JsonUnmarshal(c.GetStringMap("_nexodus.Claims"), &claims)
 	if err != nil {
 		return nil, NewApiResponseError(http.StatusUnauthorized, models.BaseError{
-			Error: "invalid registration token",
+			Error: "invalid authorization token",
 		})
 	}
-
-	switch claims.Scope {
-	case "reg-token":
-
-		record := models.RegistrationTokenRecord{}
-		err = tx.First(&record, "id=?", claims.ID).Error
-		if err != nil {
-			return nil, NewApiResponseError(http.StatusUnauthorized, models.BaseError{
-				Error: "invalid registration token",
-			})
-		}
-
-	case "device-token":
-
-		record := models.Device{}
-		err = tx.First(&record, "id=?", claims.ID).Error
-		if err != nil {
-			return nil, NewApiResponseError(http.StatusUnauthorized, models.BaseError{
-				Error: "invalid device token",
-			})
-		}
-
-	default:
-		return nil, nil
-	}
-
 	return &claims, nil
-}
-
-func (api *API) asRegistrationToken(record models.RegistrationTokenRecord) (models.RegistrationToken, error) {
-	claims := models.NexodusClaims{}
-	tkn, err := jwt.ParseWithClaims(record.BearerToken, &claims, func(token *jwt.Token) (any, error) {
-		return &api.PrivateKey.PublicKey, nil
-	})
-	if err != nil {
-		return models.RegistrationToken{}, err
-	}
-	if !tkn.Valid {
-		return models.RegistrationToken{}, errors.New("registration token is not valid")
-	}
-	if record.OrganizationID != claims.OrganizationID {
-		return models.RegistrationToken{}, errors.New("registration token is not valid, org id mismatch")
-	}
-
-	var expiration *time.Time
-	if claims.ExpiresAt != nil {
-		expiration = &claims.ExpiresAt.Time
-	}
-
-	deviceId := &claims.DeviceID
-	if claims.DeviceID == uuid.Nil {
-		deviceId = nil
-	}
-
-	return models.RegistrationToken{
-		Base:           record.Base,
-		UserID:         record.UserID,
-		OrganizationID: record.OrganizationID,
-		BearerToken:    record.BearerToken,
-		Description:    record.Description,
-		Expiration:     expiration,
-		DeviceID:       deviceId,
-	}, nil
 }
 
 // ListRegistrationTokens lists registration tokens
@@ -199,25 +118,16 @@ func (api *API) asRegistrationToken(record models.RegistrationTokenRecord) (mode
 func (api *API) ListRegistrationTokens(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListRegistrationTokens")
 	defer span.End()
-	records := []models.RegistrationTokenRecord{}
+	records := []models.RegistrationToken{}
 	db := api.db.WithContext(ctx)
 	db = api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, db)
-	db = FilterAndPaginate(db, &models.RegistrationTokenRecord{}, c, "id")
+	db = FilterAndPaginate(db, &models.RegistrationToken{}, c, "id")
 	result := db.Find(&records)
 	if result.Error != nil {
 		api.sendInternalServerError(c, fmt.Errorf("error fetching keys from db: %w", result.Error))
 		return
 	}
-	results := []models.RegistrationToken{}
-	for _, record := range records {
-		token, err := api.asRegistrationToken(record)
-		if err != nil {
-			api.sendInternalServerError(c, err)
-			return
-		}
-		results = append(results, token)
-	}
-	c.JSON(http.StatusOK, results)
+	c.JSON(http.StatusOK, records)
 }
 
 // GetRegistrationToken gets a specific RegistrationToken
@@ -228,7 +138,7 @@ func (api *API) ListRegistrationTokens(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param		 token-id   path      string true "RegistrationToken ID"
-// @Success      200  {object}  models.Organization
+// @Success      200  {object}  models.RegistrationToken
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
@@ -236,22 +146,38 @@ func (api *API) ListRegistrationTokens(c *gin.Context) {
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/registration-tokens/{token-id} [get]
 func (api *API) GetRegistrationToken(c *gin.Context) {
+	tokenId := c.Param("token-id")
 	ctx, span := tracer.Start(c.Request.Context(), "GetRegistrationToken",
 		trace.WithAttributes(
-			attribute.String("token-id", c.Param("token-id")),
+			attribute.String("token-id", tokenId),
 		))
 	defer span.End()
-	id, err := uuid.Parse(c.Param("token-id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+
+	tokenClaims, apierr := NxodusClaims(c, api.db.WithContext(ctx))
+	if apierr != nil {
+		c.JSON(apierr.Status, apierr.Body)
 		return
 	}
 
-	var record models.RegistrationTokenRecord
+	var record models.RegistrationToken
 	db := api.db.WithContext(ctx)
 	db = api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, db)
-	result := db.First(&record, "id = ?", id.String())
 
+	if tokenClaims != nil && tokenClaims.Scope == "reg-token" {
+		db = db.Where("id = ?", tokenClaims.ID)
+		if tokenId != "me" {
+			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+		}
+	} else {
+		id, err := uuid.Parse(tokenId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+			return
+		}
+		db = db.Where("id = ?", id.String())
+	}
+
+	result := db.First(&record)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("registration token"))
@@ -260,13 +186,7 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 		}
 		return
 	}
-
-	token, err := api.asRegistrationToken(record)
-	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, token)
+	c.JSON(http.StatusOK, record)
 }
 
 func (api *API) RegistrationTokenIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
@@ -313,7 +233,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 		return
 	}
 
-	var record models.RegistrationTokenRecord
+	var record models.RegistrationToken
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 		res := api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, tx).
 			First(&record, "id = ?", id)
@@ -336,12 +256,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 		return
 	}
 
-	token, err := api.asRegistrationToken(record)
-	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, token)
+	c.JSON(http.StatusOK, record)
 }
 
 // Certs gets the jwks that can be used to verify JWTs created by this server.
@@ -366,9 +281,10 @@ func (api *API) Certs(c *gin.Context) {
 func (api *API) JSONWebKeySet() ([]byte, error) {
 	return json.Marshal(jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{{
-			Algorithm: "RS256",
-			Use:       "sig",
-			Key:       &api.PrivateKey.PublicKey,
+			Algorithm:    "RS256",
+			Use:          "sig",
+			Key:          &api.PrivateKey.PublicKey,
+			Certificates: api.Certificates,
 		}},
 	})
 }

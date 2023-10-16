@@ -30,6 +30,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	jsonpatch "github.com/evanphx/json-patch"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 	"net/http"
@@ -131,7 +132,7 @@ func (s *TestScenario) JsonMustMatch(actual, expected string, expand bool) error
 	var expectedParsed interface{}
 	expanded := expected
 	if expand {
-		expanded, err = s.Expand(expected, []string{"defs", "ref"})
+		expanded, err = s.Expand(expected, "defs", "ref")
 		if err != nil {
 			return err
 		}
@@ -166,8 +167,59 @@ func (s *TestScenario) JsonMustMatch(actual, expected string, expand bool) error
 	return nil
 }
 
+func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) error {
+
+	var actualParsed interface{}
+	err := json.Unmarshal([]byte(actual), &actualParsed)
+	if err != nil {
+		return fmt.Errorf("error parsing actual json: %w\njson was:\n%s", err, actual)
+	}
+
+	if expand {
+		expected, err = s.Expand(expected, "defs", "ref")
+		if err != nil {
+			return err
+		}
+	}
+
+	// When you first set up a test step, you might not know what JSON you are expecting.
+	if strings.TrimSpace(expected) == "" {
+		actual, _ := json.MarshalIndent(actualParsed, "", "  ")
+		return fmt.Errorf("expected json not specified, actual json was:\n%s", actual)
+	}
+
+	actualIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+
+	merged, err := jsonpatch.MergeMergePatches(actualIndented, []byte(expected))
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(merged, &actualParsed)
+	if err != nil {
+		return fmt.Errorf("error parsing merged json: %w\njson was:\n%s", err, actual)
+	}
+	mergedIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+
+	if string(actualIndented) != string(mergedIndented) {
+
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(mergedIndented)),
+			B:        difflib.SplitLines(string(actualIndented)),
+			FromFile: "Expected",
+			FromDate: "",
+			ToFile:   "Actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		return fmt.Errorf("actual does not match expected, diff:\n%s", diff)
+	}
+
+	return nil
+}
+
 // Expand replaces ${var} or $var in the string based on saved Variables in the session/test scenario.
-func (s *TestScenario) Expand(value string, skippedVars []string) (result string, rerr error) {
+func (s *TestScenario) Expand(value string, skippedVars ...string) (result string, rerr error) {
 	return os.Expand(value, func(name string) string {
 		if contains(skippedVars, name) {
 			return "$" + name

@@ -125,6 +125,15 @@ allow if {
 	contains(token_payload.scope, "write:organizations")
 }
 
+# reg token can get its own token
+allow if {
+	valid_nexodus_token
+	contains(token_payload.scope, "reg-token")
+	action_is_read
+	"registration-tokens" = input.path[1]
+	"me" = input.path[2]
+}
+
 # reg token can create a device
 allow if {
 	valid_nexodus_token
