@@ -19,6 +19,7 @@ import { useTheme } from "@mui/material/styles";
 
 import CardImage from "../wordmark.png";
 import CardImageDark from "../wordmark_dark.png";
+import { backend } from "../common/Api";
 
 const Dashboard = () => {
   const theme = useTheme();
@@ -50,6 +51,10 @@ const Dashboard = () => {
             See the{" "}
             <a href="https://docs.nexodus.io/quickstart/">quick start</a> guide
             for instructions on how to get started.
+          </Typography>
+          <Typography variant="body1">
+            See the <a href={backend + "/openapi/index.html"}>openapi</a>{" "}
+            documentation to view the developer APIs.
           </Typography>
         </CardContent>
       </Card>

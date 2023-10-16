@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/pkg/ginsession"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/otel/propagation"
 	"net/http"
 	"strings"
@@ -17,8 +19,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/handlers"
 	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
 	"github.com/open-policy-agent/opa/storage"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
@@ -52,6 +52,8 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	r.Use(ginzap.RecoveryWithZap(o.Logger.Desugar(), true))
 
 	newPrometheus().Use(r)
+
+	r.GET("/openapi/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
 	device := r.Group("/device", loggerMiddleware)
 	{
@@ -140,8 +142,6 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.GET("fflags", api.ListFeatureFlags)
 		private.GET("fflags/:name", api.GetFeatureFlag)
 	}
-
-	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
 	// Don't log the health/readiness checks.
 	r.GET("/ready", func(c *gin.Context) {

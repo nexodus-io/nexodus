@@ -364,6 +364,17 @@ static_resources:
                                   - generic_key:
                                       descriptor_key: resource_group
                                       descriptor_value: device-auth
+                        - name: openapi
+                          match: {prefix: "/openapi/"}
+                          route:
+                            priority: DEFAULT
+                            timeout: 30s
+                            cluster: apiserver
+                            rate_limits:
+                              - actions:
+                                  - generic_key:
+                                      descriptor_key: resource_group
+                                      descriptor_value: openapi
                         - name: events
                           match:
                             safe_regex:
