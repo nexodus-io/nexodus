@@ -380,7 +380,7 @@ e2e-podman: ## Run e2e tests on podman
 
 .PHONY: test
 test: gotestsum-prereqs ## Run unit tests
-	gotestsum --format standard-quiet -- \
+	gotestsum --format $(GOTESTSUM_FMT) -- \
 		./...
 
 .PHONY: telepresence-connect-f
