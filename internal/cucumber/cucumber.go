@@ -189,6 +189,9 @@ func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) err
 	}
 
 	actualIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+	if err != nil {
+		return err
+	}
 
 	merged, err := jsonpatch.MergeMergePatches(actualIndented, []byte(expected))
 	if err != nil {
@@ -200,6 +203,9 @@ func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) err
 		return fmt.Errorf("error parsing merged json: %w\njson was:\n%s", err, actual)
 	}
 	mergedIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+	if err != nil {
+		return err
+	}
 
 	if string(actualIndented) != string(mergedIndented) {
 

@@ -64,6 +64,7 @@ require (
 )
 
 require (
+	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
@@ -91,7 +92,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.0.2 // indirect
-	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect

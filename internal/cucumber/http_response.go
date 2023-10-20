@@ -206,21 +206,6 @@ func (s *TestScenario) iStoreTheSelectionFromTheResponseAs(selector string, as s
 	return fmt.Errorf("expected JSON does not have node that matches selector: %s", selector)
 }
 
-func (s *TestScenario) iStoreJsonAsInput(as string, value *godog.DocString) error {
-	content, err := s.Expand(value.Content, "defs", "ref")
-	if err != nil {
-		return err
-	}
-	m := map[string]interface{}{}
-	err = json.Unmarshal([]byte(content), &m)
-	if err != nil {
-		return err
-	}
-
-	s.Variables[as] = m
-	return nil
-}
-
 func (s *TestScenario) theSelectionFromTheResponseShouldMatch(selector string, expected string) error {
 	session := s.Session()
 	doc, err := session.RespJson()
