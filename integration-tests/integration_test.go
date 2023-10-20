@@ -31,14 +31,28 @@ func TestBasicConnectivity(t *testing.T) {
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
+	// get the device id for node3
+	commandOut, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json",
+		"registration-token", "create",
+	)
+	require.NoErrorf(err, "nexctl registration-token create error: %v\n", err)
+	var regToken struct {
+		BearerToken string `json:"bearer_token"`
+	}
+	err = json.Unmarshal([]byte(commandOut), &regToken)
+	require.NoErrorf(err, "nexctl registration-token create error: %v\n", err)
+
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
+	helper.runNexd(ctx, node1, "--registration-token", regToken.BearerToken, "--password", password, "relay")
 
 	// validate nexd has started on the relay node
-	err := helper.nexdStatus(ctx, node1)
+	err = helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password)
+	helper.runNexd(ctx, node2, "--registration-token", regToken.BearerToken)
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -81,8 +95,8 @@ func TestBasicConnectivity(t *testing.T) {
 	require.NoError(err)
 
 	// start nexodus on the nodes
-	go helper.runNexd(ctx, node1, "--username", username, "--password", password)
-	go helper.runNexd(ctx, node2, "--username", username, "--password", password)
+	go helper.runNexd(ctx, node1, "--registration-token", regToken.BearerToken)
+	go helper.runNexd(ctx, node2, "--registration-token", regToken.BearerToken)
 
 	var newNode1IP string
 	var newNode1IPv6 string

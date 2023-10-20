@@ -15,6 +15,12 @@ import (
 
 type APIClient = public.APIClient
 
+type RoundTripperFunc func(req *http.Request) (*http.Response, error)
+
+func (fn RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
 func NewAPIClient(ctx context.Context, addr string, authcb func(string), options ...Option) (*APIClient, error) {
 	opts, err := newOptions(options...)
 	if err != nil {
@@ -40,13 +46,29 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 			TLSClientConfig:       opts.tlsConfig,
 		},
 	}
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, clientConfig.HTTPClient)
-
 	clientConfig.Host = baseURL.Host
 	clientConfig.Scheme = baseURL.Scheme
+	if opts.userAgent != "" {
+		clientConfig.UserAgent = opts.userAgent
+	}
+	if opts.bearerToken != "" {
+		nextTransport := clientConfig.HTTPClient.Transport
+		clientConfig.HTTPClient.Transport = RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", opts.bearerToken))
+			return nextTransport.RoundTrip(req)
+		})
+	} else {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, clientConfig.HTTPClient)
+		apiClient := public.NewAPIClient(clientConfig)
+		clientConfig.HTTPClient, err = createOAuthHttpClient(ctx, apiClient, opts, authcb)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return public.NewAPIClient(clientConfig), nil
+}
 
-	apiClient := public.NewAPIClient(clientConfig)
-
+func createOAuthHttpClient(ctx context.Context, apiClient *public.APIClient, opts *options, authcb func(string)) (*http.Client, error) {
 	resp, _, err := apiClient.AuthApi.DeviceStart(ctx).Execute()
 	if err != nil {
 		return nil, err
@@ -114,8 +136,7 @@ func NewAPIClient(ctx context.Context, addr string, authcb func(string), options
 		})
 	}
 
-	clientConfig.HTTPClient = oauth2.NewClient(ctx, source)
-	return public.NewAPIClient(clientConfig), nil
+	return oauth2.NewClient(ctx, source), nil
 }
 
 type storeOnChangeSource struct {

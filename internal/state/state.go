@@ -7,6 +7,7 @@ import (
 )
 
 type State struct {
+	DeviceToken      string           `json:"bearer-token,omitempty"`
 	AuthToken        *oauth2.Token    `json:"auth-token,omitempty"`
 	PublicKey        string           `json:"public-key"`
 	PrivateKey       string           `json:"private-key"`

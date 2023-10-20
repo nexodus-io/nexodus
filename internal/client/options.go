@@ -12,6 +12,8 @@ type options struct {
 	password     string
 	tokenStore   TokenStore
 	tlsConfig    *tls.Config
+	bearerToken  string
+	userAgent    string
 }
 
 type TokenStore interface {
@@ -43,6 +45,23 @@ func WithPasswordGrant(
 	}
 }
 
+func WithUserAgent(
+	userAgent string,
+) Option {
+	return func(o *options) error {
+		o.userAgent = userAgent
+		return nil
+	}
+}
+
+func WithBearerToken(
+	bearerToken string,
+) Option {
+	return func(o *options) error {
+		o.bearerToken = bearerToken
+		return nil
+	}
+}
 func WithTLSConfig(
 	config *tls.Config,
 ) Option {

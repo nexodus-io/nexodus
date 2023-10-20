@@ -23,23 +23,10 @@ func regTokenTableFields() []TableField {
 		}
 	}})
 	fields = append(fields, TableField{Header: "EXPIRATION", Field: "Expiration"})
-	fields = append(fields, TableField{Header: "BEARER TOKEN", Formatter: func(item interface{}) string {
-		token := item.(public.ModelsRegistrationToken).BearerToken
-		return wrapLongLines(token, 40)
-	}})
+	fields = append(fields, TableField{Header: "BEARER TOKEN", Field: "BearerToken"})
 	return fields
 }
 
-func wrapLongLines(value string, len int) string {
-	res := ""
-	for i, r := range value {
-		if i > 0 && i%len == 0 {
-			res += "\n"
-		}
-		res += string(r)
-	}
-	return res
-}
 func listRegistrationTokens(cCtx *cli.Context, c *client.APIClient) error {
 	rows, _, err := c.RegistrationTokenApi.ListRegistrationTokens(cCtx.Context).Execute()
 	if err != nil {

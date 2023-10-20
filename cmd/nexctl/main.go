@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"runtime"
 	"sort"
 	"text/tabwriter"
 	"time"
@@ -584,10 +585,13 @@ func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
 }
 
 func createClientOptions(cCtx *cli.Context) []client.Option {
-	options := []client.Option{client.WithPasswordGrant(
-		cCtx.String("username"),
-		cCtx.String("password"),
-	)}
+	options := []client.Option{
+		client.WithPasswordGrant(
+			cCtx.String("username"),
+			cCtx.String("password"),
+		),
+		client.WithUserAgent(fmt.Sprintf("nexctl/%s (%s; %s)", Version, runtime.GOOS, runtime.GOARCH)),
+	}
 	if cCtx.Bool("insecure-skip-tls-verify") { // #nosec G402
 		options = append(options, client.WithTLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
