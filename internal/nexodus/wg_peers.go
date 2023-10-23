@@ -147,9 +147,9 @@ func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wg
 		nx.org.CidrV6,
 	}
 
-	peer := wgPeerConfig{}
-	chosenMethod := ""
-	chosenMethodIndex := -1
+	peer := nx.wgConfig.Peers[d.device.PublicKey]
+	chosenMethod := d.peeringMethod
+	chosenMethodIndex := d.peeringMethodIndex
 	for i, method := range wgPeerMethods {
 		if i < d.peeringMethodIndex {
 			// A peering method was previously chosen and we haven't reached it yet
@@ -210,9 +210,8 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 		peerConfig, chosenMethod, chosenMethodIndex := nx.rebuildPeerConfig(&d, healthyRelay)
 
-		if chosenMethodIndex < 0 || !nx.peerConfigUpdated(d.device, peerConfig) {
-			// We either didn't choose a peering method at all,
-			// or the resulting peer configuration hasn't changed.
+		if !nx.peerConfigUpdated(d.device, peerConfig) {
+			// The resulting peer configuration hasn't changed.
 			continue
 		}
 
