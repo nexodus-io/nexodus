@@ -256,7 +256,7 @@ func (nx *Nexodus) peeringFailed(d deviceCacheEntry, healthyRelay bool) bool {
 		return false
 	}
 
-	if !d.peerHealthyTime.IsZero() && time.Since(d.peeringTime) < peeringRestoreTimeout {
+	if !d.peerHealthyTime.IsZero() && time.Since(d.peerHealthyTime) < peeringRestoreTimeout {
 		// Peering worked, but went down, so give it a few minutes to come back up.
 		return false
 	}

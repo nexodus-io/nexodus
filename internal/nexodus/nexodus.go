@@ -82,8 +82,6 @@ type userspaceWG struct {
 const ()
 
 type peerHealth struct {
-	// the time we started tracking this data
-	startTime time.Time
 	// the last tx bytes value for this peer
 	lastTxBytes int64
 	// the time of the last tx bytes update
@@ -1010,7 +1008,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		existing.endpoint = curStats.Endpoint
 		existing.peerHealthy = nx.peerIsHealthy(existing)
 		if existing.peerHealthy {
-			existing.startTime = now
+			existing.peerHealthyTime = now
 		}
 		nx.deviceCache[p.PublicKey] = existing
 	}
@@ -1024,7 +1022,6 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if !ok {
 				continue
 			}
-			existing.startTime = now
 			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}
