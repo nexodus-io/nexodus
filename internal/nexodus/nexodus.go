@@ -387,8 +387,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("CtlServerStart(): %w", err)
 	}
 
-	if runtime.GOOS != Linux.String() {
-		nx.logger.Info("Security Groups are currently only supported on Linux")
+	if runtime.GOOS != Linux.String() && runtime.GOOS != Darwin.String() {
+		nx.logger.Info("Security Groups are currently only supported on Linux and macOS")
 	} else if nx.userspaceMode {
 		nx.logger.Info("Security Groups are not supported in userspace proxy mode")
 	}
@@ -663,7 +663,7 @@ func (nx *Nexodus) Stop() {
 
 // reconcileSecurityGroups will check the security group and update it if necessary.
 func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
-	if runtime.GOOS != Linux.String() || nx.userspaceMode {
+	if runtime.GOOS != Linux.String() && runtime.GOOS != Darwin.String() || nx.userspaceMode {
 		return
 	}
 

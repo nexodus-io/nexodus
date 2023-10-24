@@ -46,7 +46,7 @@ func addExitSrcDefaultRouteTable() error {
 
 // nfAddExitSrcMangleTable create a nftables table for mangle
 func nfAddExitSrcMangleTable(logger *zap.SugaredLogger) error {
-	if _, err := runNftCmd(logger, []string{"add", "table", "inet", nfOobMangleTable}); err != nil {
+	if _, err := policyCmd(logger, []string{"add", "table", "inet", nfOobMangleTable}); err != nil {
 		return fmt.Errorf("failed to add nftables table nexodus-stun-mangle: %w", err)
 	}
 
@@ -55,7 +55,7 @@ func nfAddExitSrcMangleTable(logger *zap.SugaredLogger) error {
 
 // nfAddExitSrcMangleOutputChain creates a nftables chain OUTPUT within the nftables mangle (alter) table.
 func nfAddExitSrcMangleOutputChain(logger *zap.SugaredLogger) error {
-	if _, err := runNftCmd(logger, []string{"add", "chain", "inet", nfOobMangleTable,
+	if _, err := policyCmd(logger, []string{"add", "chain", "inet", nfOobMangleTable,
 		"OUTPUT", "{", "type", "route", "hook", "output", "priority", "mangle", ";", "policy", "accept", ";", "}"}); err != nil {
 		return fmt.Errorf("failed to add nftables OUTPUT chain: %w", err)
 	}
@@ -66,7 +66,7 @@ func nfAddExitSrcMangleOutputChain(logger *zap.SugaredLogger) error {
 // nfAddExitSrcDestPortMangleRule adds a rule to the nftables mangle (alter) table that
 // sets the mark 0x4B66 for OOB (out of band) packets sent to a specific port.
 func nfAddExitSrcDestPortMangleRule(logger *zap.SugaredLogger, proto string, port int) error {
-	if _, err := runNftCmd(logger, []string{"add", "rule", "inet", nfOobMangleTable, "OUTPUT", "meta", "l4proto", proto,
+	if _, err := policyCmd(logger, []string{"add", "rule", "inet", nfOobMangleTable, "OUTPUT", "meta", "l4proto", proto,
 		proto, "dport", fmt.Sprintf("%d", port), "counter", "mark", "set", oobFwdMarkHex}); err != nil {
 		return fmt.Errorf("failed to add nftables OUTPUT rule: %w", err)
 	}
@@ -77,7 +77,7 @@ func nfAddExitSrcDestPortMangleRule(logger *zap.SugaredLogger, proto string, por
 // nfAddExitSrcDestPortMangleRule adds a rule to the nftables mangle (alter) table that
 // sets the mark 0x4B66 for OOB (out of band) packets sent to a specific port.
 func nfAddExitSrcApiServerOOBMangleRule(logger *zap.SugaredLogger, proto, apiServer string, port int) error {
-	if _, err := runNftCmd(logger, []string{"add", "rule", "inet", nfOobMangleTable, "OUTPUT", "ip", "daddr", apiServer,
+	if _, err := policyCmd(logger, []string{"add", "rule", "inet", nfOobMangleTable, "OUTPUT", "ip", "daddr", apiServer,
 		proto, "dport", fmt.Sprintf("%d", port), "counter", "mark", "set", oobFwdMarkHex}); err != nil {
 		return fmt.Errorf("failed to add nftables OUTPUT rule: %w", err)
 	}
@@ -87,7 +87,7 @@ func nfAddExitSrcApiServerOOBMangleRule(logger *zap.SugaredLogger, proto, apiSer
 
 // nfAddExitSrcSnatTable create a nftables table for OOB SNAT
 func nfAddExitSrcSnatTable(logger *zap.SugaredLogger) error {
-	if _, err := runNftCmd(logger, []string{"add", "table", "inet", nfOobSnatTable}); err != nil {
+	if _, err := policyCmd(logger, []string{"add", "table", "inet", nfOobSnatTable}); err != nil {
 		return fmt.Errorf("failed to add nftables table nexodus-stun-mangle: %w", err)
 
 	}
@@ -97,7 +97,7 @@ func nfAddExitSrcSnatTable(logger *zap.SugaredLogger) error {
 
 // nfAddExitSrcSnatOutputChain the purpose of this chain is to perform source NAT (SNAT) for outgoing packets
 func nfAddExitSrcSnatOutputChain(logger *zap.SugaredLogger) error {
-	if _, err := runNftCmd(logger, []string{"add", "chain", "inet", nfOobSnatTable, "POSTROUTING", "{", "type", "nat", "hook", "postrouting", "priority", "srcnat", ";", "policy", "accept", ";", "}"}); err != nil {
+	if _, err := policyCmd(logger, []string{"add", "chain", "inet", nfOobSnatTable, "POSTROUTING", "{", "type", "nat", "hook", "postrouting", "priority", "srcnat", ";", "policy", "accept", ";", "}"}); err != nil {
 		return fmt.Errorf("failed to add nftables snat chain POSTROUTING: %w", err)
 	}
 
@@ -106,7 +106,7 @@ func nfAddExitSrcSnatOutputChain(logger *zap.SugaredLogger) error {
 
 // nfAddExitSrcSnatRule adds a rule to the nexodus oob snat table that applies masquerading to postrouting
 func nfAddExitSrcSnatRule(logger *zap.SugaredLogger, phyIface string) error {
-	if _, err := runNftCmd(logger, []string{"add", "rule", "inet", nfOobSnatTable, "POSTROUTING", "oifname", phyIface, "counter", "masquerade"}); err != nil {
+	if _, err := policyCmd(logger, []string{"add", "rule", "inet", nfOobSnatTable, "POSTROUTING", "oifname", phyIface, "counter", "masquerade"}); err != nil {
 		return fmt.Errorf("failed to add nftables rule SNAT POSTROUTING: %w", err)
 	}
 

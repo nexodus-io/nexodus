@@ -2,7 +2,7 @@
 
 ## Overview
 
-Nexodus Security Groups are virtual firewalls for your Nexodus instances to control inbound and outbound traffic. They act as a white list, only allowing through the traffic that you specify is allowed. Each security group includes a set of rules that filter traffic coming into and out of the instance.
+Nexodus Security Groups are virtual firewalls for your Nexodus instances to control inbound and outbound traffic. They act as a white list, only allowing through the traffic that you specify is allowed. Each security group includes a set of rules that filter traffic coming into and out of the instance. Current OS support is Linux via NetFilter and macOS via PacketFilter.
 
 ![no-alt-text](../images/security-groups-multi-cloud-1.png)
 
