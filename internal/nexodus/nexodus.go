@@ -82,8 +82,6 @@ type userspaceWG struct {
 const ()
 
 type peerHealth struct {
-	// the time we started tracking this data
-	startTime time.Time
 	// the last tx bytes value for this peer
 	lastTxBytes int64
 	// the time of the last tx bytes update
@@ -935,12 +933,12 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 }
 
 // assumes deviceCacheLock is held with a write-lock
-func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice, reset bool) {
+func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
 	d := deviceCacheEntry{
 		device:      p,
 		lastUpdated: time.Now(),
 	}
-	nx.peeringReset(&d, reset)
+	nx.peeringReset(&d)
 	nx.deviceCache[p.PublicKey] = d
 }
 
@@ -977,7 +975,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if p.PublicKey == nx.wireguardPubKey {
 				newLocalConfig = true
 			}
-			nx.addToDeviceCache(p, ok)
+			nx.addToDeviceCache(p)
 			existing = nx.deviceCache[p.PublicKey]
 			delete(peerStats, p.PublicKey)
 		}
@@ -1010,7 +1008,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		existing.endpoint = curStats.Endpoint
 		existing.peerHealthy = nx.peerIsHealthy(existing)
 		if existing.peerHealthy {
-			existing.startTime = now
+			existing.peerHealthyTime = now
 		}
 		nx.deviceCache[p.PublicKey] = existing
 	}
@@ -1024,7 +1022,6 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if !ok {
 				continue
 			}
-			existing.startTime = now
 			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}

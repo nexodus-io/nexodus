@@ -23,6 +23,7 @@ const (
 	peeringMethodDirectLocal          = "direct-local"
 	peeringMethodReflexive            = "reflexive"
 	peeringMethodViaRelay             = "via-relay"
+	peeringMethodNone                 = "none"
 )
 
 type wgPeerMethod struct {
@@ -105,14 +106,11 @@ func init() {
 	}
 }
 
-func (nx *Nexodus) peeringReset(d *deviceCacheEntry, reset bool) {
-	if reset {
-		nx.logger.Debugf("Resetting peer configuration - Peer AllowedIps [ %s ] Peer Public Key [ %s ]",
-			strings.Join(d.device.AllowedIps, ", "), d.device.PublicKey)
-	}
+func (nx *Nexodus) peeringReset(d *deviceCacheEntry) {
+	nx.logger.Debugf("Resetting peer configuration - Peer AllowedIps [ %s ] Peer Public Key [ %s ]",
+		strings.Join(d.device.AllowedIps, ", "), d.device.PublicKey)
 
-	// By default, the only connectivity that may be availabe is via a relay.
-	d.peeringMethod = peeringMethodViaRelay
+	d.peeringMethod = peeringMethodNone
 	// By setting the peering method index to -1, we will consider all other
 	// methods that may be available.
 	d.peeringMethodIndex = -1
@@ -128,28 +126,52 @@ func (nx *Nexodus) peeringReset(d *deviceCacheEntry, reset bool) {
 	d.lastRefresh = time.Time{}
 }
 
-func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wgPeerConfig, string, int) {
-	tryNextMethod := nx.peeringFailed(*d, healthyRelay)
-	if tryNextMethod {
-		nx.logger.Debugf("Peering with peer [ %s ] using method [ %s ] has failed, trying next method", d.device.PublicKey, d.peeringMethod)
-		if d.peeringMethod == peeringMethodViaRelay {
-			// We failed to connect via a relay, which is the last resort, so start over at the beginning
-			nx.peeringReset(d, true)
-			tryNextMethod = false
+// shouldResetPeering() determines if we should reset peering to start over at the
+// beginning of the peering list.
+func (nx *Nexodus) shouldResetPeering(d *deviceCacheEntry, reflexiveIP4 string, healthyRelay bool) bool {
+	if d.peeringMethodIndex == -1 {
+		// Already in a reset state
+		return false
+	}
+
+	if d.peeringMethodIndex == len(wgPeerMethods)-1 {
+		// We've reached the end of the peering method list, time to reset
+		return true
+	}
+
+	// If not at the end, check to see if the prerequisites pass for any of the following methods
+	for i := d.peeringMethodIndex + 1; i < len(wgPeerMethods); i++ {
+		if wgPeerMethods[i].checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay) {
+			// Prequisites pass for this method, so don't reset
+			return false
 		}
 	}
 
+	// There are no methods remaining that have passed the prerequisites, so reset
+	return true
+}
+
+func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wgPeerConfig, string, int) {
 	localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
 	peerPort := nx.extractPeerPort(localIP)
-
 	relayAllowedIP := []string{
 		nx.org.Cidr,
 		nx.org.CidrV6,
 	}
 
-	peer := wgPeerConfig{}
-	chosenMethod := ""
-	chosenMethodIndex := -1
+	tryNextMethod := nx.peeringFailed(*d, healthyRelay)
+	if tryNextMethod {
+		nx.logger.Debugf("Peering with peer [ %s ] using method [ %s ] has failed, trying next method", d.device.PublicKey, d.peeringMethod)
+		if nx.shouldResetPeering(d, reflexiveIP4, healthyRelay) {
+			// We failed to connect via a relay, which is the last resort, so start over at the beginning
+			nx.peeringReset(d)
+			tryNextMethod = false
+		}
+	}
+
+	peer := nx.wgConfig.Peers[d.device.PublicKey]
+	chosenMethod := d.peeringMethod
+	chosenMethodIndex := d.peeringMethodIndex
 	for i, method := range wgPeerMethods {
 		if i < d.peeringMethodIndex {
 			// A peering method was previously chosen and we haven't reached it yet
@@ -210,9 +232,8 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 		peerConfig, chosenMethod, chosenMethodIndex := nx.rebuildPeerConfig(&d, healthyRelay)
 
-		if chosenMethodIndex < 0 || !nx.peerConfigUpdated(d.device, peerConfig) {
-			// We either didn't choose a peering method at all,
-			// or the resulting peer configuration hasn't changed.
+		if !nx.peerConfigUpdated(d.device, peerConfig) {
+			// The resulting peer configuration hasn't changed.
 			continue
 		}
 
@@ -256,7 +277,7 @@ func (nx *Nexodus) peeringFailed(d deviceCacheEntry, healthyRelay bool) bool {
 		return false
 	}
 
-	if !d.peerHealthyTime.IsZero() && time.Since(d.peeringTime) < peeringRestoreTimeout {
+	if !d.peerHealthyTime.IsZero() && time.Since(d.peerHealthyTime) < peeringRestoreTimeout {
 		// Peering worked, but went down, so give it a few minutes to come back up.
 		return false
 	}
