@@ -1,6 +1,8 @@
 package wgcrypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -79,15 +81,25 @@ func SealV1(pubKey []byte, data []byte) (Sealed, error) {
 		return Sealed{}, err
 	}
 
-	aead, err := chacha20poly1305.New(encryptionKey)
+	aesCipher, err := aes.NewCipher(encryptionKey)
 	if err != nil {
 		return Sealed{}, err
 	}
-
+	aesGCM, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		return Sealed{}, err
+	}
 	// since we generate a new ephemeral sender key, we don't need a nonce
-	nonce := make([]byte, chacha20poly1305.NonceSize)
-	encryptedData := aead.Seal(nil, nonce, data, nil)
+	nonce := make([]byte, aesGCM.NonceSize())
+	encryptedData := aesGCM.Seal(nil, nonce, data, nil)
 
+	// aead, err := chacha20poly1305.New(encryptionKey)
+	//if err != nil {
+	//	return Sealed{}, err
+	//}
+	// since we generate a new ephemeral sender key, we don't need a nonce
+	//nonce := make([]byte, chacha20poly1305.NonceSize)
+	//encryptedData := aead.Seal(nil, nonce, data, nil)
 	return Sealed{
 		Kind: []byte("v1"),
 		Key:  ephermeralPK[:],
@@ -120,10 +132,21 @@ func OpenV1(privateKey []byte, sealed Sealed) ([]byte, error) {
 		return nil, err
 	}
 
-	aead, err := chacha20poly1305.New(encryptionKey)
+	aesCipher, err := aes.NewCipher(encryptionKey)
 	if err != nil {
 		return nil, err
 	}
-	nonce := make([]byte, chacha20poly1305.NonceSize)
-	return aead.Open(nil, nonce, sealed.Data, nil)
+	aesGCM, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, aesGCM.NonceSize())
+	return aesGCM.Open(nil, nonce, sealed.Data, nil)
+
+	//aead, err := chacha20poly1305.New(encryptionKey)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//nonce := make([]byte, chacha20poly1305.NonceSize)
+	//return aead.Open(nil, nonce, sealed.Data, nil)
 }
