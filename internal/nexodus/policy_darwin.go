@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
@@ -17,13 +18,13 @@ import (
 const (
 	basePFFile         = "/etc/pf.conf"
 	pfAnchorFile       = "/etc/pf.anchors/io.nexodus"
-	tempPFFile         = "/tmp/pf_temp.conf"
 	appleSharingAnchor = "com.apple.internet-sharing"
 )
 
 type pfRuleBuilder struct {
-	sb    strings.Builder
-	iface string
+	sb     strings.Builder
+	iface  string
+	pfFile string
 }
 
 func (nx *Nexodus) processSecurityGroupRules() error {
@@ -51,9 +52,14 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 		return fmt.Errorf("failed to ensure pfctl is enabled: %w", err)
 	}
 
+	prb := &pfRuleBuilder{
+		iface:  nx.tunnelIface,
+		pfFile: filepath.Join(nx.stateDir, "pf.conf"),
+	}
+
 	// Copy the main PacketForwarding configuration file /etc/pf.conf to tmp. Nexodus does
 	// not alter the original system file to avoid any issues with OS upgrades etc.
-	if err := copyFile(basePFFile, tempPFFile); err != nil {
+	if err := copyFile(basePFFile, prb.pfFile); err != nil {
 		return fmt.Errorf("failed to copy pf.conf: %w", err)
 	}
 
@@ -61,18 +67,15 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	// bridge mode sharing outside of anchor files. This checks if that anchor is loaded and if it
 	// is it adds it to the copy of the main pf entry.
 	if isAppleSharingEnabled, err := checkAppleInternetSharing(); err == nil && isAppleSharingEnabled {
-		if err := appendAppleSharingAnchor(tempPFFile); err != nil {
+		if err := appendAppleSharingAnchor(prb.pfFile); err != nil {
 			return fmt.Errorf("failed to append Apple Internet Sharing anchor: %w", err)
 		}
 	}
 
 	// Add io.nexodus anchor entry to the copy of pf.conf
-	if err := appendNexodusAnchor(tempPFFile); err != nil {
+	if err := appendNexodusAnchor(prb.pfFile); err != nil {
 		return fmt.Errorf("failed to append io.nexodus anchor: %w", err)
 	}
-
-	prb := &pfRuleBuilder{}
-	prb.iface = nx.tunnelIface
 
 	// Explicit drop if rules are defined
 	if len(nx.securityGroup.InboundRules) > 0 {
@@ -148,7 +151,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	}
 
 	// Load the pf rules from anchor file
-	if _, err := policyCmd(nx.logger, []string{"-f", tempPFFile}); err != nil {
+	if _, err := policyCmd(nx.logger, []string{"-f", prb.pfFile}); err != nil {
 		return fmt.Errorf("failed to load pf rules: %w", err)
 	}
 
@@ -256,8 +259,8 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAnyAddr(rule public.ModelsSecurityRul
 	case "icmp6", "icmpv6":
 		prb.sb.WriteString(fmt.Sprintf("%s quick on %s %s proto icmp6 %s\n", directionToken, prb.iface, inetType, ipDirection))
 	case "icmp":
-		prb.sb.WriteString(fmt.Sprintf("%s quick on %s %s proto icmp %s\n", directionToken, prb.iface, inetType, ipDirection))
-		prb.sb.WriteString(fmt.Sprintf("%s quick on %s %s proto icmp6 %s\n", directionToken, prb.iface, inetType, ipDirection))
+		prb.sb.WriteString(fmt.Sprintf("%s quick on %s inet proto icmp %s\n", directionToken, prb.iface, ipDirection))
+		prb.sb.WriteString(fmt.Sprintf("%s quick on %s inet6 proto icmp6 %s\n", directionToken, prb.iface, ipDirection))
 	default:
 		return fmt.Errorf("no policy PF match for permit proto port any address rule: %v", rule)
 	}

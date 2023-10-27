@@ -107,7 +107,8 @@ func TestDarwinRuleBuilder(t *testing.T) {
 		{"ip_protocol": "ipv4", "from_port": 123, "to_port": 456},
 		{"ip_protocol": "ipv6", "from_port": 41000, "to_port": 41500},
 		{"ip_protocol": "ipv4", "from_port": 52000, "to_port": 53000, "ip_ranges": ["192.168.0.1", "10.130.0.2"]},
-		{"ip_protocol": "ipv6", "from_port": 78, "to_port": 89, "ip_ranges": ["2001:db9::2/64", "3001:da9::2-3001:da9::6"]}
+		{"ip_protocol": "ipv6", "from_port": 78, "to_port": 89, "ip_ranges": ["2001:db9::2/64", "3001:da9::2-3001:da9::6"]},
+		{"ip_protocol": "icmp", "from_port": 0, "to_port": 0, "ip_ranges": [""]}
 	]
 }
 `
@@ -154,6 +155,8 @@ func TestDarwinRuleBuilder(t *testing.T) {
 		"pass out quick on utun8 inet proto udp to { 192.168.0.1, 10.130.0.2 } port 52000:53000",
 		"pass out quick on utun8 inet6 proto tcp to { 2001:db9::2/64, 3001:da9::2 - 3001:da9::6 } port 78:89",
 		"pass out quick on utun8 inet6 proto udp to { 2001:db9::2/64, 3001:da9::2 - 3001:da9::6 } port 78:89",
+		"pass in quick on utun8 inet proto icmp from any to any",
+		"pass in quick on utun8 inet6 proto icmp6 from any to any",
 	}
 
 	t.Run("Test with mockSecurityGroup1", func(t *testing.T) {

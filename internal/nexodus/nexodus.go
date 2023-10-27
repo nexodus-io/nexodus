@@ -165,6 +165,7 @@ type Nexodus struct {
 	password      string
 	skipTlsVerify bool
 	stateStore    state.Store
+	stateDir      string
 	userspaceWG
 	securityGroupsInformer *public.Informer[public.ModelsSecurityGroup]
 	devicesInformer        *public.Informer[public.ModelsDevice]
@@ -253,6 +254,7 @@ func NewNexodus(
 		password:                password,
 		skipTlsVerify:           insecureSkipTlsVerify,
 		stateStore:              stateStore,
+		stateDir:                stateDir,
 		orgId:                   orgId,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
