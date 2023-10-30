@@ -16,8 +16,7 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
 		// if the peer is advertising a default route, append it as an exit origin node, but don't add the route
 		if util.IsDefaultIPv4Route(allowedIP) || util.IsDefaultIPv6Route(allowedIP) {
-			nx.exitNode.exitNodeExists = true
-			nx.exitNode.exitNodeOrigins = append(nx.exitNode.exitNodeOrigins, wgPeerConfig)
+			nx.updateExitNodeOrigins(wgPeerConfig)
 			continue
 		}
 

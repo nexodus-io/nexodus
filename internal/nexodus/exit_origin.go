@@ -61,3 +61,21 @@ func addExitOriginForwardRule(logger *zap.SugaredLogger) error {
 
 	return nil
 }
+
+func (nx *Nexodus) updateExitNodeOrigins(newPeer wgPeerConfig) {
+	nx.exitNode.exitNodeExists = true
+	// check if the exit node already exists and update its details
+	found := false
+	for i, existingPeerConfig := range nx.exitNode.exitNodeOrigins {
+		if existingPeerConfig.PublicKey == newPeer.PublicKey {
+			nx.exitNode.exitNodeOrigins[i].Endpoint = newPeer.Endpoint
+			found = true
+			break
+		}
+	}
+
+	// If no existing entry with the same public key was found, append the new exit node
+	if !found {
+		nx.exitNode.exitNodeOrigins = append(nx.exitNode.exitNodeOrigins, newPeer)
+	}
+}
