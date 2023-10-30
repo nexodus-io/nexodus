@@ -3,7 +3,7 @@ module github.com/nexodus-io/nexodus
 go 1.20
 
 require (
-	github.com/Nerzal/gocloak/v13 v13.5.0
+	github.com/Nerzal/gocloak/v13 v13.8.0
 	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/briandowns/spinner v1.23.0
 	github.com/bufbuild/connect-go v1.8.0
