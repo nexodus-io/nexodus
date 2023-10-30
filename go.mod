@@ -11,7 +11,7 @@ require (
 	github.com/cockroachdb/cockroach-go/v2 v2.3.5
 	github.com/coreos/go-oidc/v3 v3.6.0
 	github.com/cucumber/godog v0.12.6
-	github.com/docker/docker v24.0.6+incompatible // 24.0 branch
+	github.com/docker/docker v24.0.7+incompatible // 24.0 branch
 	github.com/envoyproxy/go-control-plane v0.11.1
 	github.com/fatih/color v1.15.0
 	github.com/gin-contrib/cors v1.4.0
