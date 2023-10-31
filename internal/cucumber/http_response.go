@@ -54,6 +54,7 @@ package cucumber
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/cucumber/godog"
 	"github.com/itchyny/gojq"
@@ -64,11 +65,14 @@ func init() {
 	StepModules = append(StepModules, func(ctx *godog.ScenarioContext, s *TestScenario) {
 		ctx.Step(`^the response code should be (\d+)$`, s.theResponseCodeShouldBe)
 		ctx.Step(`^the response should match json:$`, s.TheResponseShouldMatchJsonDoc)
+		ctx.Step(`^the response should contain json:$`, s.TheResponseShouldContainJsonDoc)
+		ctx.Step(`^the \${([^"]*)} should contain json:$`, s.theVariableShouldContainJson)
 		ctx.Step(`^the response should match:$`, s.theResponseShouldMatchText)
 		ctx.Step(`^the response should match "([^"]*)"$`, s.theResponseShouldMatchText)
 		ctx.Step(`^I store the "([^"]*)" selection from the response as \${([^"]*)}$`, s.iStoreTheSelectionFromTheResponseAs)
 		ctx.Step(`^I store the \${([^"]*)} as \${([^"]*)}$`, s.iStoreVariableAsVariable)
-		ctx.Step(`^I store json as \${([^"]*)}:$`, s.iStoreJsonAsInput)
+		ctx.Step(`^I store the \${([^"]*)} as \${([^"]*)}$`, s.iStoreVariableAsVariable)
+		ctx.Step(`^I delete the \${([^"]*)} "([^"]*)" key$`, s.iDeleteTheMapKey)
 		ctx.Step(`^the "(.*)" selection from the response should match "([^"]*)"$`, s.theSelectionFromTheResponseShouldMatch)
 		ctx.Step(`^the response header "([^"]*)" should match "([^"]*)"$`, s.theResponseHeaderShouldMatch)
 		ctx.Step(`^the "([^"]*)" selection from the response should match json:$`, s.theSelectionFromTheResponseShouldMatchJson)
@@ -87,7 +91,6 @@ func (s *TestScenario) theResponseCodeShouldBe(expected int) error {
 func (s *TestScenario) TheResponseShouldMatchJsonDoc(expected *godog.DocString) error {
 	return s.theResponseShouldMatchJson(expected.Content)
 }
-
 func (s *TestScenario) theResponseShouldMatchJson(expected string) error {
 	session := s.Session()
 
@@ -98,10 +101,32 @@ func (s *TestScenario) theResponseShouldMatchJson(expected string) error {
 	return s.JsonMustMatch(string(session.RespBytes), expected, true)
 }
 
+func (s *TestScenario) TheResponseShouldContainJsonDoc(expected *godog.DocString) error {
+	return s.theResponseShouldContainJson(expected.Content)
+}
+
+func (s *TestScenario) theResponseShouldContainJson(expected string) error {
+	session := s.Session()
+
+	if len(session.RespBytes) == 0 {
+		return fmt.Errorf("got an empty response from server, expected a json body")
+	}
+
+	return s.JsonMustContain(string(session.RespBytes), expected, true)
+}
+
+func (s *TestScenario) theVariableShouldContainJson(variableName, expected string) error {
+	expanded, err := s.Expand(fmt.Sprintf("${%s}", variableName))
+	if err != nil {
+		return err
+	}
+	return s.JsonMustContain(expanded, expected, true)
+}
+
 func (s *TestScenario) theResponseShouldMatchText(expected string) error {
 	session := s.Session()
 
-	expanded, err := s.Expand(expected, []string{"defs", "ref"})
+	expanded, err := s.Expand(expected, "defs", "ref")
 	if err != nil {
 		return err
 	}
@@ -124,7 +149,7 @@ func (s *TestScenario) theResponseShouldMatchText(expected string) error {
 
 func (s *TestScenario) theResponseHeaderShouldMatch(header, expected string) error {
 	session := s.Session()
-	expanded, err := s.Expand(expected, []string{"defs", "ref"})
+	expanded, err := s.Expand(expected, "defs", "ref")
 	if err != nil {
 		return err
 	}
@@ -142,6 +167,21 @@ func (s *TestScenario) iStoreVariableAsVariable(name string, as string) error {
 		return err
 	}
 	s.Variables[as] = value
+	return nil
+}
+
+func (s *TestScenario) iDeleteTheMapKey(mapName string, key string) error {
+	value, err := s.Resolve(mapName)
+	if err != nil {
+		return err
+	}
+
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Map {
+		return fmt.Errorf("variable %s is not a map", mapName)
+	}
+
+	v.SetMapIndex(reflect.ValueOf(key), reflect.Value{})
 	return nil
 }
 
@@ -166,21 +206,6 @@ func (s *TestScenario) iStoreTheSelectionFromTheResponseAs(selector string, as s
 	return fmt.Errorf("expected JSON does not have node that matches selector: %s", selector)
 }
 
-func (s *TestScenario) iStoreJsonAsInput(as string, value *godog.DocString) error {
-	content, err := s.Expand(value.Content, []string{"defs", "ref"})
-	if err != nil {
-		return err
-	}
-	m := map[string]interface{}{}
-	err = json.Unmarshal([]byte(content), &m)
-	if err != nil {
-		return err
-	}
-
-	s.Variables[as] = m
-	return nil
-}
-
 func (s *TestScenario) theSelectionFromTheResponseShouldMatch(selector string, expected string) error {
 	session := s.Session()
 	doc, err := session.RespJson()
@@ -193,7 +218,7 @@ func (s *TestScenario) theSelectionFromTheResponseShouldMatch(selector string, e
 		return err
 	}
 
-	expected, err = s.Expand(expected, []string{"defs", "ref"})
+	expected, err = s.Expand(expected, "defs", "ref")
 	if err != nil {
 		return err
 	}

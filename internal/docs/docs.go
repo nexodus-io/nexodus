@@ -1856,7 +1856,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Organization"
+                            "$ref": "#/definitions/models.RegistrationToken"
                         }
                     },
                     "400": {
@@ -2841,6 +2841,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bearer_token": {
+                    "description": "BearerToken is the token the client should use to authenticate the device registration request.",
                     "type": "string"
                 },
                 "description": {

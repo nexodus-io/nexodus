@@ -8,17 +8,15 @@ import (
 )
 
 // RegistrationToken is used to register devices without an interactive login.
-type RegistrationTokenRecord struct {
+type RegistrationToken struct {
 	Base
-	UserID         string
-	OrganizationID uuid.UUID
+	UserID         string    `json:"user_id,omitempty"`
+	OrganizationID uuid.UUID `json:"organization_id,omitempty"`
 	// BearerToken is the token the client should use to authenticate the device registration request.
-	BearerToken string
-	Description string
-}
-
-func (RegistrationTokenRecord) TableName() string {
-	return "registration_tokens"
+	BearerToken string     `json:"bearer_token,omitempty"`
+	Description string     `json:"description,omitempty"`
+	DeviceId    *uuid.UUID `json:"device_id,omitempty"`
+	Expiration  *time.Time `json:"expiration,omitempty"`
 }
 
 type NexodusClaims struct {
@@ -35,14 +33,4 @@ type AddRegistrationToken struct {
 	SingleUse bool `json:"single_use,omitempty"`
 	// Expiration is optional, if set the registration token is only valid until the Expiration time.
 	Expiration *time.Time `json:"expiration,omitempty"`
-}
-
-type RegistrationToken struct {
-	Base
-	UserID         string     `json:"user_id"`
-	OrganizationID uuid.UUID  `json:"organization_id"`
-	Expiration     *time.Time `json:"expiration,omitempty"`
-	BearerToken    string     `json:"bearer_token,omitempty"`
-	Description    string     `json:"description,omitempty"`
-	DeviceID       *uuid.UUID `json:"device_id,omitempty"`
 }

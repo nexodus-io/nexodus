@@ -64,6 +64,7 @@ require (
 )
 
 require (
+	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
@@ -229,7 +230,7 @@ require (
 	go.mongodb.org/mongo-driver v1.11.2 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect

@@ -231,7 +231,13 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:     "tls-key",
-				Usage:    "the server tls private key",
+				Usage:    "the server jwks private key",
+				Required: true,
+				EnvVars:  []string{"NEXAPI_TLS_KEY"},
+			},
+			&cli.StringFlag{
+				Name:     "tls-cert",
+				Usage:    "the server jwks cert key",
 				Required: true,
 				EnvVars:  []string{"NEXAPI_TLS_KEY"},
 			},

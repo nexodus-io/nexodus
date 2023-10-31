@@ -437,7 +437,7 @@ debug-frontend: telepresence_frontend_3000 dist/.npm-install ## Use telepresence
 
 .PHONY: debug-frontend-stop
 debug-frontend-stop: telepresence-prereqs ## Stop using telepresence to debug the frontend deployment
-	$(CMD_PREFIX) telepresence leave frontend-nexodus
+	$(CMD_PREFIX) telepresence leave frontend
 
 NEXODUS_LOCAL_IP:=`go run ./hack/localip`
 .PHONY: run-nexd-container

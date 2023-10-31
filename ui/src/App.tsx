@@ -9,6 +9,7 @@ import DeviceIcon from "@mui/icons-material/Devices";
 import OrganizationIcon from "@mui/icons-material/VpnLock";
 import UserIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
+import RegistrationTokenIcon from "@mui/icons-material/Rsvp";
 
 // pages
 import { UserShow, UserList } from "./pages/Users";
@@ -30,6 +31,11 @@ import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
 
 // components
 import { CustomMenu } from "./layout/Menus";
+import {
+  RegistrationTokenCreate,
+  RegistrationTokenList,
+  RegistrationTokenShow,
+} from "./pages/RegistrationTokens";
 
 const fetchJson = (url: URL, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
@@ -97,6 +103,14 @@ const App = () => {
         icon={InvitationIcon}
         create={InvitationCreate}
         recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="registration-tokens"
+        list={RegistrationTokenList}
+        show={RegistrationTokenShow}
+        icon={RegistrationTokenIcon}
+        create={RegistrationTokenCreate}
+        recordRepresentation={(record) => `${record.id}`}
       />
     </Admin>
   );

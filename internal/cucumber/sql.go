@@ -30,7 +30,7 @@ func init() {
 func (s *TestScenario) iRunSQLExpectRowToBeAffected(sql string, expected int64) error {
 
 	var err error
-	sql, err = s.Expand(sql, []string{})
+	sql, err = s.Expand(sql)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (s *TestScenario) iRunSQLExpectRowToBeAffected(sql string, expected int64) 
 func (s *TestScenario) iRunSQLGivesResults(sql string, expected *godog.Table) error {
 
 	var err error
-	sql, err = s.Expand(sql, []string{})
+	sql, err = s.Expand(sql)
 	if err != nil {
 		return err
 	}

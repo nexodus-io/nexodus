@@ -301,6 +301,8 @@ definitions:
   models.RegistrationToken:
     properties:
       bearer_token:
+        description: BearerToken is the token the client should use to authenticate
+          the device registration request.
         type: string
       description:
         type: string
@@ -1727,7 +1729,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Organization'
+            $ref: '#/definitions/models.RegistrationToken'
         "400":
           description: Bad Request
           schema:

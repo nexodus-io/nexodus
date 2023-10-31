@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/nexodus-io/nexodus/internal/wgcrypto"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"net/http"
 	"net/netip"
@@ -171,6 +174,8 @@ type Nexodus struct {
 	informerStop           context.CancelFunc
 	nexCtx                 context.Context
 	nexWg                  *sync.WaitGroup
+	registrationToken      string
+	clientOptions          []client.Option
 }
 
 type wgConfig struct {
@@ -190,31 +195,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(
-	logger *zap.SugaredLogger,
-	logLevel *zap.AtomicLevel,
-	apiURL *url.URL,
-	username string,
-	password string,
-	wgListenPort int,
-	requestedIP string,
-	userProvidedLocalIP string,
-	childPrefix []string,
-	stun bool,
-	relay bool,
-	relayOnly bool,
-	networkRouterNode bool,
-	networkRouterDisableNAT bool,
-	exitNodeClientEnabled bool,
-	exitNodeOriginEnabled bool,
-	insecureSkipTlsVerify bool,
-	version string,
-	userspaceMode bool,
-	stateStore state.Store,
-	stateDir string,
-	ctx context.Context,
-	orgId string,
-) (*Nexodus, error) {
+func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, childPrefix []string, stun bool, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, orgId string) (*Nexodus, error) {
 	public.Logger = logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
@@ -249,6 +230,7 @@ func NewNexodus(
 		logLevel:                logLevel,
 		status:                  NexdStatusStarting,
 		version:                 version,
+		registrationToken:       registrationToken,
 		username:                username,
 		password:                password,
 		skipTlsVerify:           insecureSkipTlsVerify,
@@ -362,11 +344,11 @@ func (nx *Nexodus) migrateLegacyState(stateDir string) error {
 	return nx.stateStore.Store()
 }
 
-func (nx *Nexodus) resetApiClient(ctx context.Context, options []client.Option) error {
+func (nx *Nexodus) resetApiClient(ctx context.Context) error {
 	var err error
 	nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
 		nx.SetStatus(NexdStatusAuth, msg)
-	}, options...)
+	}, nx.clientOptions...)
 	if err != nil {
 		nx.logger.Warnf("client api error - retrying: %v", err)
 		return err
@@ -393,33 +375,45 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		nx.logger.Info("Security Groups are not supported in userspace proxy mode")
 	}
 
-	var options []client.Option
-	if nx.stateStore != nil {
-		options = append(options, client.WithTokenStore(StateTokenStore{store: nx.stateStore}))
+	options := []client.Option{
+		client.WithUserAgent(fmt.Sprintf("nexd/%s (%s; %s)", nx.version, runtime.GOOS, runtime.GOARCH)),
 	}
-	if nx.username == "" {
-		options = append(options, client.WithDeviceFlow())
-	} else if nx.username != "" && nx.password == "" {
-		fmt.Print("Enter nexodus account password: ")
-		passwdInput, err := term.ReadPassword(int(syscall.Stdin))
-		println()
-		if err != nil {
-			return fmt.Errorf("login aborted: %w", err)
-		}
-		nx.password = string(passwdInput)
-		options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+	if nx.stateStore.State().DeviceToken != "" {
+		// prefer doing api calls with the device token if it exists..
+		options = append(options, client.WithBearerToken(nx.stateStore.State().DeviceToken))
+	} else if nx.registrationToken != "" {
+		// the reg token can be used to get the device token
+		options = append(options, client.WithBearerToken(nx.registrationToken))
 	} else {
-		options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+		// fallback to using oauth flows to get the device token... these are either interactive or
+		if nx.stateStore != nil {
+			options = append(options, client.WithTokenStore(StateTokenStore{store: nx.stateStore}))
+		}
+		if nx.username == "" {
+			options = append(options, client.WithDeviceFlow())
+		} else if nx.username != "" && nx.password == "" {
+			fmt.Print("Enter nexodus account password: ")
+			passwdInput, err := term.ReadPassword(int(syscall.Stdin))
+			println()
+			if err != nil {
+				return fmt.Errorf("login aborted: %w", err)
+			}
+			nx.password = string(passwdInput)
+			options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+		} else {
+			options = append(options, client.WithPasswordGrant(nx.username, nx.password))
+		}
 	}
 	if nx.skipTlsVerify { // #nosec G402
 		options = append(options, client.WithTLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		}))
 	}
+	nx.clientOptions = options
 
 	var err error
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		return nx.resetApiClient(ctx, options)
+		return nx.resetApiClient(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("client api error: %w", err)
@@ -430,67 +424,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := nx.handleKeys(); err != nil {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
-
-	var user *public.ModelsUser
-	var resp *http.Response
-	err = util.RetryOperationExpBackoff(ctx, retryInterval, func() error {
-		user, resp, err = nx.client.UsersApi.GetUser(ctx, "me").Execute()
-		if err != nil {
-			if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) ||
-				strings.Contains(resp.Header.Get("Www-Authenticate"), invalidToken.Error()) {
-				nx.logger.Debug("invalid auth token, removing and retrying")
-				s := nx.stateStore.State()
-				s.AuthToken = nil
-				_ = nx.stateStore.Store()
-				_ = nx.resetApiClient(ctx, options)
-				nx.SetStatus(NexdStatusRunning, "")
-				return err
-			} else if resp != nil {
-				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
-				return err
-			} else {
-				nx.logger.Warnf("get user error - retrying error: %v", err)
-				return err
-			}
-		}
-		return nil
-	})
+	userId, org, err := nx.fetchUserIdAndOrg(ctx)
 	if err != nil {
-		return fmt.Errorf("get user error: %w", err)
+		return err
 	}
 
-	var organizations []public.ModelsOrganization
-	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		organizations, resp, err = nx.client.OrganizationsApi.ListOrganizations(ctx).Execute()
-		if err != nil {
-			if resp != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
-				return err
-			}
-			if err != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v", err)
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("get organizations error: %w", err)
-	}
-
-	nx.org, err = nx.chooseOrganization(organizations, *user)
-	if err != nil {
-		return fmt.Errorf("failed to choose an organization: %w", err)
-	}
-
-	informerCtx, informerCancel := context.WithCancel(ctx)
-	nx.informerStop = informerCancel
-
-	// event stream sharing occurs due to the informers sharing the context created in following line:
-	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
-	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
-	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	nx.org = org
 
 	var localIP string
 	var localEndpointPort int
@@ -499,21 +438,6 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if nx.userProvidedLocalIP != "" {
 		localIP = nx.userProvidedLocalIP
 		localEndpointPort = nx.listenPort
-	}
-
-	if nx.relay {
-		peerMap, _, err := nx.devicesInformer.Execute()
-		if err != nil {
-			return err
-		}
-
-		existingRelay, err := nx.orgRelayCheck(peerMap)
-		if err != nil {
-			return err
-		}
-		if existingRelay != "" {
-			return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
-		}
 	}
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
@@ -571,7 +495,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	var modelsDevice public.ModelsDevice
 	var deviceOperationLogMsg string
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		modelsDevice, deviceOperationLogMsg, err = nx.createOrUpdateDeviceOperation(user.Id, endpoints)
+		modelsDevice, deviceOperationLogMsg, err = nx.createOrUpdateDeviceOperation(userId, endpoints)
 		if err != nil {
 			nx.logger.Warnf("device join error - retrying: %v", err)
 			return err
@@ -584,6 +508,60 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
 	nx.logger.Infof("%s with UUID: [ %+v ] into organization: [ %s (%s) ]",
 		deviceOperationLogMsg, modelsDevice.Id, nx.org.Name, nx.org.Id)
+
+	// Use the device token to auth with the apiserver...
+	if modelsDevice.BearerToken != "" {
+
+		key, err := wgtypes.ParseKey(nx.wireguardPvtKey)
+		if err != nil {
+			return err
+		}
+
+		sealed, err := wgcrypto.ParseSealed(modelsDevice.BearerToken)
+		if err != nil {
+			return err
+		}
+
+		data, err := sealed.Open(key[:])
+		if err != nil {
+			return err
+		}
+
+		nx.stateStore.State().DeviceToken = string(data)
+		err = nx.stateStore.Store()
+		if err != nil {
+			return err
+		}
+
+		options = append(options, client.WithBearerToken(nx.stateStore.State().DeviceToken))
+		nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {}, options...)
+		if err != nil {
+			return err
+		}
+	}
+
+	informerCtx, informerCancel := context.WithCancel(ctx)
+	nx.informerStop = informerCancel
+
+	// event stream sharing occurs due to the informers sharing the context created in following line:
+	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
+	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+
+	if nx.relay {
+		peerMap, _, err := nx.devicesInformer.Execute()
+		if err != nil {
+			return err
+		}
+
+		existingRelay, err := nx.orgRelayCheck(peerMap)
+		if err != nil {
+			return err
+		}
+		if existingRelay != "" {
+			return fmt.Errorf("the organization already contains a relay node, device %s needs to be deleted before adding a new relay", existingRelay)
+		}
+	}
 
 	// a relay node requires ip forwarding and nftable rules, OS type has already been checked
 	if nx.relay {
@@ -638,6 +616,96 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	})
 
 	return nil
+}
+
+type NexodusClaims struct {
+	jwt.RegisteredClaims
+	Scope          string    `json:"scope,omitempty"`
+	OrganizationID uuid.UUID `json:"org,omitempty"`
+	DeviceID       uuid.UUID `json:"device,omitempty"`
+}
+
+func (nx *Nexodus) fetchUserIdAndOrg(ctx context.Context) (string, *public.ModelsOrganization, error) {
+	if nx.registrationToken != "" {
+		// the userid and orgid are part of the registration token.
+		return nx.fetchRegistrationTokenUserIdAndOrg(ctx)
+	} else {
+		// Use the API to figure out the user's id and org
+		return nx.fetchUserIdAndOrgFromAPI(ctx)
+	}
+}
+
+func (nx *Nexodus) fetchRegistrationTokenUserIdAndOrg(ctx context.Context) (string, *public.ModelsOrganization, error) {
+
+	// get the certs used to validate the JWT.
+	regToken, _, err := nx.client.RegistrationTokenApi.GetRegistrationToken(ctx, "me").Execute()
+	if err != nil {
+		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
+	}
+
+	org, _, err := nx.client.OrganizationsApi.GetOrganizations(ctx, regToken.OrganizationId).Execute()
+	if err != nil {
+		return "", nil, err
+	}
+	return regToken.UserId, org, nil
+}
+
+func (nx *Nexodus) fetchUserIdAndOrgFromAPI(ctx context.Context) (string, *public.ModelsOrganization, error) {
+
+	var err error
+	var user *public.ModelsUser
+	var resp *http.Response
+	err = util.RetryOperationExpBackoff(ctx, retryInterval, func() error {
+		user, resp, err = nx.client.UsersApi.GetUser(ctx, "me").Execute()
+		if err != nil {
+			if strings.Contains(err.Error(), invalidTokenGrant.Error()) || strings.Contains(err.Error(), invalidToken.Error()) ||
+				strings.Contains(resp.Header.Get("Www-Authenticate"), invalidToken.Error()) {
+				nx.logger.Debug("invalid auth token, removing and retrying")
+				s := nx.stateStore.State()
+				s.AuthToken = nil
+				_ = nx.stateStore.Store()
+				_ = nx.resetApiClient(ctx)
+				nx.SetStatus(NexdStatusRunning, "")
+				return err
+			} else if resp != nil {
+				nx.logger.Warnf("get user error - retrying error: %v header: %+v", err, resp.Header)
+				return err
+			} else {
+				nx.logger.Warnf("get user error - retrying error: %v", err)
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", nil, fmt.Errorf("get user error: %w", err)
+	}
+	var organizations []public.ModelsOrganization
+	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
+		organizations, resp, err = nx.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+		if err != nil {
+			if resp != nil {
+				nx.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
+				return err
+			}
+			if err != nil {
+				nx.logger.Warnf("get organizations error - retrying error: %v", err)
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("get organizations error: %w", err)
+	}
+
+	org, err := nx.chooseOrganization(organizations, *user)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to choose an organization: %w", err)
+	}
+	return user.Id, org, nil
 }
 
 func (nx *Nexodus) Stop() {

@@ -145,6 +145,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		logger.Sugar(),
 		logLevel,
 		apiURL,
+		cCtx.String("registration-token"),
 		cCtx.String("username"),
 		cCtx.String("password"),
 		cCtx.Int("listen-port"),
@@ -476,6 +477,13 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_EXIT_NODE_CLIENT"},
 				Required: false,
+			},
+			&cli.StringFlag{
+				Name:     "registration-token",
+				Usage:    "A registration token used to connect the device your nexodus organizatino",
+				EnvVars:  []string{"NEXD_REGISTRATION_TOKEN"},
+				Required: false,
+				Hidden:   true,
 			},
 		},
 		Before: func(c *cli.Context) error {

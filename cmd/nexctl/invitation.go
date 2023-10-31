@@ -33,6 +33,9 @@ func deleteInvitation(c *client.APIClient, id string) error {
 }
 
 func createInvitation(c *client.APIClient, encodeOut, userID string, orgID string) error {
+	if orgID == "" {
+		orgID = getDefaultOwnedOrgId(context.Background(), c)
+	}
 	orgUUID, err := uuid.Parse(orgID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", orgID, err)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/x509"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
@@ -49,6 +50,7 @@ type API struct {
 	onlineTracker  *DeviceTracker
 	URL            string
 	PrivateKey     *rsa.PrivateKey
+	Certificates   []*x509.Certificate
 }
 
 func NewAPI(

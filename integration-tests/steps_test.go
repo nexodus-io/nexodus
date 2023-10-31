@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
+	"github.com/nexodus-io/nexodus/internal/wgcrypto"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -31,6 +32,8 @@ func init() {
 		ctx.Step(`^I set the "([^"]*)" header to "([^"]*)"$`, e.iSetTheHeaderTo)
 		ctx.Step(`^I store userid for "([^"]+)" as \${([^}]*)}$`, e.storeUserId)
 		ctx.Step(`^I generate a new public key as \${([^}]*)}$`, e.iGenerateANewPublicKeyAsVariable)
+		ctx.Step(`^I generate a new key pair as \${([^}]*)}/\${([^}]*)}$`, e.iGenerateANewPublicKeyPairAsVariable)
+		ctx.Step(`^I decrypt the sealed "([^"]*)" with "([^"]*)" and store the result as \${([^}]*)}$`, e.iDeycryptTheSealedWithAndStoreTheResultAsDevice_bearer_token)
 
 		ctx.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
 			if err == nil {
@@ -104,7 +107,7 @@ func (s *extender) iAmNotLoggedIn() {
 }
 
 func (s *extender) iSetTheHeaderTo(name string, value string) error {
-	expanded, err := s.Expand(value, []string{})
+	expanded, err := s.Expand(value)
 	if err != nil {
 		return err
 	}
@@ -119,5 +122,42 @@ func (s *extender) iGenerateANewPublicKeyAsVariable(name string) error {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 	s.Variables[name] = privateKey.PublicKey().String()
+	return nil
+}
+
+func (s *extender) iGenerateANewPublicKeyPairAsVariable(privateKeyName string, publicKeyName string) error {
+	privateKey, err := wgtypes.GeneratePrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate private key: %w", err)
+	}
+	s.Variables[privateKeyName] = privateKey.String()
+	s.Variables[publicKeyName] = privateKey.PublicKey().String()
+	return nil
+}
+
+func (s *extender) iDeycryptTheSealedWithAndStoreTheResultAsDevice_bearer_token(sealedStr, privateKey, storeAs string) error {
+
+	expanded, err := s.Expand(privateKey)
+	if err != nil {
+		return err
+	}
+	key, err := wgtypes.ParseKey(expanded)
+	if err != nil {
+		return err
+	}
+
+	expanded, err = s.Expand(sealedStr)
+	if err != nil {
+		return err
+	}
+	sealed, err := wgcrypto.ParseSealed(expanded)
+	if err != nil {
+		return err
+	}
+	value, err := sealed.Open(key[:])
+	if err != nil {
+		return err
+	}
+	s.Variables[storeAs] = string(value)
 	return nil
 }
