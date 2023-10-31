@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"math"
 	"net/url"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/state/fstore"
 	"github.com/nexodus-io/nexodus/internal/state/kstore"
 	log "github.com/sirupsen/logrus"
+	"tailscale.com/tsweb"
 
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/stun"
@@ -29,6 +31,7 @@ import (
 const (
 	nexodusLogEnv     = "NEXD_LOGLEVEL"
 	wireguardOptions  = "Wireguard Options"
+	derpOptions       = "Derp Options"
 	agentOptions      = "Agent Options"
 	nexServiceOptions = "Nexodus Service Options"
 )
@@ -40,6 +43,7 @@ const (
 	nexdModeProxy
 	nexdModeRouter
 	nexdModeRelay
+	nexdModeRelayDerp
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
@@ -131,6 +135,7 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 
 	userspaceMode := false
 	relayNode := false
+	relayDerpNode := false
 	var advertiseCidr []string
 	switch mode {
 	case nexdModeAgent:
@@ -146,6 +151,9 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 	case nexdModeRelay:
 		relayNode = true
 		logger.Info("Starting relay agent with wireguard driver")
+	case nexdModeRelayDerp:
+		relayDerpNode = true
+		logger.Info("Starting relay agent with DERP server")
 	case nexdModeProxy:
 		userspaceMode = true
 		logger.Info("Starting in L4 proxy mode")
@@ -182,6 +190,7 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 		UserProvidedLocalIP:     command.String("local-endpoint-ip"),
 		AdvertiseCidrs:          advertiseCidr,
 		Relay:                   relayNode,
+		RelayDerp:               relayDerpNode
 		RelayOnly:               command.Bool("relay-only"),
 		NetworkRouter:           command.Bool("network-router"),
 		NetworkRouterDisableNAT: command.Bool("disable-nat"),
@@ -229,7 +238,7 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 		logger.Fatal(fmt.Sprintf("Failed to load the stored proxy rules: %v", err))
 	}
 
-	if err := nex.Start(ctx, wg); err != nil {
+	if err := nex.Start(ctx, wg, cCtx); err != nil {
 		logger.Fatal(err.Error())
 	}
 	<-ctx.Done()
@@ -399,6 +408,128 @@ func main() {
 					}
 
 					return nexdRun(ctx, command, logger, logLevel, nexdModeRelay)
+				},
+			},
+			{
+				Name:  "relayderp",
+				Usage: "Enable DERP relay to relay traffic between nexd nodes.",
+				Action: func(cCtx *cli.Context) error {
+					return nexdRun(cCtx, logger, logLevel, nexdModeRelayDerp)
+				},
+
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:     "dev",
+						Usage:    "Run in localhost development mode (overrides -a)",
+						EnvVars:  []string{"NEXD_DERP_DEV_MODE"},
+						Value:    false,
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "a",
+						Value:    ":443",
+						Usage:    "Server HTTP/HTTPS listen address, in form \":port\", \"ip:port\", or for IPv6 \"[ip]:port\". If the IP is omitted, it defaults to all interfaces. Serves HTTPS if the port is 443 and/or -certmode is manual, otherwise HTTP.",
+						EnvVars:  []string{"NEXD_DERP_LISTEN_ADDR"},
+						Required: false,
+					},
+					&cli.IntFlag{
+						Name:     "http-port",
+						Value:    80,
+						Usage:    "The port on which to serve HTTP. Set to -1 to disable. The listener is bound to the same IP (if any) as specified in the -a flag.",
+						EnvVars:  []string{"NEXD_DERP_HTTP_PORT"},
+						Required: false,
+					},
+					&cli.IntFlag{
+						Name:     "stun-port",
+						Value:    3478,
+						Usage:    "The UDP port on which to serve STUN. The listener is bound to the same IP (if any) as specified in the -a flag.",
+						EnvVars:  []string{"NEXD_DERP_STUN_PORT"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "c",
+						Value:    "",
+						Usage:    "Config file path",
+						EnvVars:  []string{"NEXD_DERP_CONFIG_PATH"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "certmode",
+						Value:    "letsencrypt",
+						Usage:    "Mode for getting a cert. possible options: manual, letsencrypt",
+						EnvVars:  []string{"NEXD_DERP_CERT_MODE"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "certdir",
+						Value:    tsweb.DefaultCertDir("derper-certs"),
+						Usage:    "Directory to store LetsEncrypt certs, if addr's port is :443",
+						EnvVars:  []string{"NEXD_DERP_CERT_DIR"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "hostname",
+						Value:    "relay.nexodus.io",
+						Usage:    "LetsEncrypt host name, if addr's port is :443",
+						EnvVars:  []string{"NEXD_DERP_HOSTNAME"},
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:     "stun",
+						Usage:    "Run a STUN server. It will bind to the same IP (if any) as the --addr flag value.",
+						EnvVars:  []string{"NEXD_DERP_RUN_STUN"},
+						Value:    true,
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "mesh-psk-file",
+						Value:    nexodus.DefaultMeshPSKFile(),
+						Usage:    "If non-empty, path to file containing the mesh pre-shared key file. It should contain some hex string; whitespace is trimmed.",
+						EnvVars:  []string{"NEXD_DERP_MESH_PSK_FILE"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "mesh-with",
+						Value:    "",
+						Usage:    "Optional comma-separated list of hostnames to mesh with; the server's own hostname can be in the list",
+						EnvVars:  []string{"NEXD_DERP_MESH_WITH"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "bootstrap-dns-names",
+						Value:    "",
+						Usage:    "Optional comma-separated list of hostnames to make available at /bootstrap-dns",
+						EnvVars:  []string{"NEXD_DERP_BOOTSTRAP_DNS_NAMES"},
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "unpublished-bootstrap-dns-names",
+						Value:    "",
+						Usage:    "Optional comma-separated list of hostnames to make available at /bootstrap-dns and not publish in the list",
+						EnvVars:  []string{"NEXD_DERP_UNPUBLISHED_BOOTSTRAP_DNS_NAMES"},
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:     "verify-clients",
+						Usage:    "Verify clients to this DERP server through nexodus control plane.",
+						EnvVars:  []string{"NEXD_DERP_VERIFY_CLIENTS"},
+						Value:    false,
+						Required: false,
+					},
+					&cli.Float64Flag{
+						Name:     "accept-connection-limit",
+						Usage:    "Rate limit for accepting new connection",
+						EnvVars:  []string{"NEXD_DERP_ACCEPT_CONN_LIMIT"},
+						Value:    math.Inf(+1),
+						Required: false,
+					},
+					&cli.IntFlag{
+						Name:     "accept-connection-burst",
+						Value:    math.MaxInt,
+						Usage:    "Burst limit for accepting new connection.",
+						EnvVars:  []string{"NEXD_DERP_ACCEPT_CONN_BURST"},
+						Required: false,
+					},
 				},
 			},
 		},

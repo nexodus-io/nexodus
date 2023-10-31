@@ -18,7 +18,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 		AdvertiseCidrs:  nx.advertiseCidrs,
 		SymmetricNat:    nx.symmetricNat,
 		Hostname:        nx.hostname,
-		Relay:           nx.relay,
+		Relay:           nx.relay || nx.relayDerp,
 		Os:              nx.os,
 		Endpoints:       endpoints,
 	}

@@ -24,6 +24,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/nexodus-io/nexodus/internal/state"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/oauth2"
 
 	"github.com/google/uuid"
@@ -80,6 +81,11 @@ type userspaceWG struct {
 	userspaceLastAddress string
 	proxyLock            sync.RWMutex
 	proxies              map[ProxyKey]*UsProxy
+}
+
+type nexRelay struct {
+	httptlssrv *http.Server
+	httpsrv   *http.Server
 }
 
 // Threasholds for determining peer connection health
@@ -174,8 +180,10 @@ type Nexodus struct {
 	securityGroupId         string
 
 	userspaceWG
+	nexRelay
 	TunnelIP                 string
 	TunnelIpV6               string
+	relayDerp                bool
 	client                   *client.APIClient
 	clientOptions            []client.Option
 	deviceCache              map[string]deviceCacheEntry
@@ -242,6 +250,7 @@ func New(o Options) (*Nexodus, error) {
 		userProvidedLocalIP:     o.UserProvidedLocalIP,
 		advertiseCidrs:          o.AdvertiseCidrs,
 		relay:                   o.Relay,
+		relayDerp:               o.RelayDerp,
 		networkRouter:           o.NetworkRouter,
 		networkRouterDisableNAT: o.NetworkRouterDisableNAT,
 		apiURL:                  o.ApiURL,
@@ -264,6 +273,7 @@ func New(o Options) (*Nexodus, error) {
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
+		nexRelay: nexRelay{},
 		exitNode: exitNode{
 			exitNodeClientEnabled: o.ExitNodeClientEnabled,
 			exitNodeOriginEnabled: o.ExitNodeOriginEnabled,
@@ -427,7 +437,7 @@ func (nx *Nexodus) resetApiClient(ctx context.Context) error {
 	return nil
 }
 
-func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
+func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup, cCtx *cli.Context) error {
 	nx.nexCtx = ctx
 	nx.nexWg = wg
 
@@ -618,6 +628,10 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
+	if nx.relayDerp {
+		nx.startDerp(cCtx, wg)
+	}
+
 	util.GoWithWaitGroup(wg, func() {
 		// kick it off with an immediate reconcile
 		nx.reconcileDevices(ctx, options)
@@ -780,6 +794,27 @@ func (nx *Nexodus) Stop() {
 		if err := nx.exitNodeOriginTeardown(); err != nil {
 			nx.logger.Errorf("failed to remove the exit node configuration %v", err)
 		}
+	}
+
+	if nx.nexRelay.httpsrv != nil {
+		shutdownHttpCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		util.GoWithWaitGroup(nx.nexWg, func() {
+			nx.logger.Info("Stopping HTTP Derp relay server")
+			if err := nx.nexRelay.httpsrv.Shutdown(shutdownHttpCtx); err != nil {
+				nx.logger.Errorf("failed to shutdown HTTP Derp relay server %v", err)
+			}
+		})
+	}
+	if nx.nexRelay.httptlssrv != nil {
+		shutdownHttptlsCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		util.GoWithWaitGroup(nx.nexWg, func() {
+			nx.logger.Info("Stopping HTTPS/TLS Derp relay server")
+			if err := nx.nexRelay.httptlssrv.Shutdown(shutdownHttptlsCtx); err != nil {
+				nx.logger.Errorf("failed to shutdown HTTPS/TLS Derp relay server %v", err)
+			}
+		})
 	}
 }
 
