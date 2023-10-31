@@ -42,7 +42,7 @@ func (nx *Nexodus) setupNetworkRouterNode() error {
 	if err := nx.enableForwardingIP(); err != nil {
 		return err
 	}
-	if err := nx.nfNetworkRouterSetup(); err != nil {
+	if err := nx.networkRouterSetup(); err != nil {
 		return err
 	}
 

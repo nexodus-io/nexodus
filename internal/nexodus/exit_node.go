@@ -202,7 +202,7 @@ func (nx *Nexodus) exitNodeClientTeardown() error {
 
 	exitNodeNFTables := []string{nfOobMangleTable, nfOobSnatTable}
 	for _, nfTable := range exitNodeNFTables {
-		if err2 = nx.nfTableDrop(nfTable); err2 != nil {
+		if err2 = nx.policyTableDrop(nfTable); err2 != nil {
 			nx.logger.Debug(err2)
 		}
 	}
@@ -227,7 +227,7 @@ func (nx *Nexodus) exitNodeClientTeardown() error {
 
 // exitNodeOriginTeardown removes the exit node origin where traffic is originated when it exits the wireguard network
 func (nx *Nexodus) exitNodeOriginTeardown() error {
-	if err := nx.nfTableDrop(nfExitNodeTable); err != nil {
+	if err := nx.policyTableDrop(nfExitNodeTable); err != nil {
 		return err
 	}
 
