@@ -92,18 +92,12 @@ var wgPeerMethods = []wgPeerMethod{
 		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
 			return !nx.relay && !device.Relay && healthyRelay
 		},
-		buildPeerConfig: func(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, _, _, _ string) wgPeerConfig {
-			return wgPeerConfig{}
+		buildPeerConfig: func(nx *Nexodus, device public.ModelsDevice, _ []string, _, _, _ string) wgPeerConfig {
+			return wgPeerConfig{
+				AllowedIPsForRelay: device.ChildPrefix,
+			}
 		},
 	},
-}
-
-var wgPeerMethodsMap = map[string]wgPeerMethod{}
-
-func init() {
-	for _, method := range wgPeerMethods {
-		wgPeerMethodsMap[method.name] = method
-	}
 }
 
 func (nx *Nexodus) peeringReset(d *deviceCacheEntry) {
@@ -208,6 +202,7 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	}
 
 	updatedPeers := map[string]public.ModelsDevice{}
+	allowedIPsForRelay := []string{}
 
 	_, nx.wireguardPubKeyInConfig = nx.deviceCache[nx.wireguardPubKey]
 
@@ -215,9 +210,11 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 	// do we have a healthy relay available?
 	healthyRelay := false
+	relayDevice := public.ModelsDevice{}
 	for _, d := range nx.deviceCache {
 		if d.device.Relay && d.peerHealthy {
 			healthyRelay = true
+			relayDevice = d.device
 			break
 		}
 	}
@@ -231,6 +228,9 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 		}
 
 		peerConfig, chosenMethod, chosenMethodIndex := nx.rebuildPeerConfig(&d, healthyRelay)
+		if len(peerConfig.AllowedIPsForRelay) > 0 {
+			allowedIPsForRelay = append(allowedIPsForRelay, peerConfig.AllowedIPsForRelay...)
+		}
 
 		if !nx.peerConfigUpdated(d.device, peerConfig) {
 			// The resulting peer configuration hasn't changed.
@@ -252,6 +252,13 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 		d.peeringTime = now
 		nx.deviceCache[d.device.PublicKey] = d
 		nx.logPeerInfo(d.device, peerConfig.Endpoint, chosenMethod)
+	}
+
+	if healthyRelay && len(allowedIPsForRelay) > 0 {
+		// Add child prefix CIDRs to the relay for peers that we can only reach via the relay
+		relayConfig := nx.wgConfig.Peers[relayDevice.PublicKey]
+		relayConfig.AllowedIPs = append([]string{nx.org.Cidr, nx.org.CidrV6}, allowedIPsForRelay...)
+		nx.wgConfig.Peers[relayDevice.PublicKey] = relayConfig
 	}
 
 	return updatedPeers

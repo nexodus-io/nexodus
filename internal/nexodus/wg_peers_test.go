@@ -245,3 +245,107 @@ func TestRebuildPeerConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildPeersConfig(t *testing.T) {
+	zLogger, _ := zap.NewDevelopment()
+	testLogger := zLogger.Sugar()
+	require := require.New(t)
+
+	//
+	// The test scenario is encoded in this Nexodus instance.
+	//
+	// We have 3 devices we are peered with:
+	// - directPeerWithChildPrefix: a peer we can reach directly, and it has a child prefix.
+	//		In this case, we should see the child prefix in the peer config.
+	//		This child prefix should NOT be present in the relay configuration.
+	// - peerViaRelayWithChildPrefix: a peer we can reach via a relay, and it has a child prefix.
+	//		In this case, since we are unable to peer with this device directly,
+	//		the child prefix should be reachable via the relay.
+	// - theRelay: a relay we can reach directly.
+	//
+	nx := &Nexodus{
+		org: &public.ModelsOrganization{
+			Cidr:   "100.64.0.0/10",
+			CidrV6: "200::/64",
+		},
+		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
+		logger:                   testLogger,
+		deviceCache: map[string]deviceCacheEntry{
+			"directPeerWithChildPrefix": {
+				device: public.ModelsDevice{
+					Endpoints: []public.ModelsEndpoint{
+						{
+							Address: "192.168.50.2:5678",
+							Source:  "local",
+						},
+						{
+							Address: "2.2.2.2:4321",
+							Source:  "stun",
+						},
+					},
+					PublicKey: "directPeerWithChildPrefix",
+					ChildPrefix: []string{
+						"192.168.50.0/24",
+					},
+				},
+			},
+			"peerViaRelayWithChildPrefix": {
+				device: public.ModelsDevice{
+					Endpoints: []public.ModelsEndpoint{
+						{
+							Address: "192.168.40.2:5678",
+							Source:  "local",
+						},
+						{
+							Address: "2.2.2.2:4321",
+							Source:  "stun",
+						},
+					},
+					PublicKey:    "peerViaRelayWithChildPrefix",
+					SymmetricNat: true,
+					ChildPrefix: []string{
+						"192.168.40.0/24",
+					},
+				},
+			},
+			"theRelay": {
+				device: public.ModelsDevice{
+					Endpoints: []public.ModelsEndpoint{
+						{
+							Address: "192.168.30.5:5678",
+							Source:  "local",
+						},
+						{
+							Address: "3.3.3.3:4321",
+							Source:  "stun",
+						},
+					},
+					PublicKey: "theRelay",
+					Relay:     true,
+				},
+			},
+		},
+	}
+
+	for _, dIter := range nx.deviceCache {
+		d := dIter
+		nx.peeringReset(&d)
+		d.peerHealthy = true
+		nx.deviceCache[d.device.PublicKey] = d
+	}
+
+	updatedDevices := nx.buildPeersConfig()
+	require.Equal(len(updatedDevices), 3)
+
+	// Since one peer is reached via a relay, we should have 2 peers in the wireguard config.
+	require.Equal(len(nx.wgConfig.Peers), 2)
+
+	// The child prefix for the peer we can reach directly is in the config for that peer and not the relay.
+	require.Contains(nx.wgConfig.Peers["directPeerWithChildPrefix"].AllowedIPs, "192.168.50.0/24")
+	require.NotContains(nx.wgConfig.Peers["theRelay"].AllowedIPs, "192.168.50.0/24")
+
+	// The child prefix for the peer we can reach via the relay is in the config for the relay.
+	// We should have no config for the peer itself.
+	require.NotContains(nx.wgConfig.Peers, "peerViaRelayWithChildPrefix")
+	require.Contains(nx.wgConfig.Peers["theRelay"].AllowedIPs, "192.168.40.0/24")
+}

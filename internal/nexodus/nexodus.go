@@ -190,6 +190,7 @@ type wgPeerConfig struct {
 	Endpoint            string
 	AllowedIPs          []string
 	PersistentKeepAlive string
+	AllowedIPsForRelay  []string
 }
 
 type wgLocalConfig struct {
