@@ -57,7 +57,7 @@ require (
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
-	gvisor.dev/gvisor v0.0.0-20221203005347-703fd9b7fbc0
+	gvisor.dev/gvisor v0.0.0-20230927004350-cbd86285d259
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
@@ -67,7 +67,7 @@ require (
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb
 )
 
@@ -159,7 +159,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	golang.org/x/arch v0.5.0 // indirect
-	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -233,7 +233,7 @@ require (
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/tools v0.10.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5 // indirect
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0 // indirect
@@ -242,4 +242,4 @@ require (
 
 replace github.com/metal-stack/go-ipam => github.com/dave-tucker/go-ipam v0.0.0-20230220173413-c25c56b2408b
 
-replace golang.zx2c4.com/wireguard => github.com/nexodus-io/wireguard-go v0.0.0-20230407202523-3eab17a590b0 // 0.0.20230420 tag
+replace golang.zx2c4.com/wireguard => github.com/nexodus-io/wireguard-go v0.0.0-20231101061211-f8033f989d14 // 0.0.20231101 tag
