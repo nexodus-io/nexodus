@@ -16,6 +16,7 @@ type ModelsUpdateDevice struct {
 	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname        string           `json:"hostname,omitempty"`
 	Revision        int32            `json:"revision,omitempty"`
+	Relay           bool             `json:"relay,omitempty"`
 	SecurityGroupId string           `json:"security_group_id,omitempty"`
 	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
 	VpcId           string           `json:"vpc_id,omitempty"`

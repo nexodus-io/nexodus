@@ -3290,6 +3290,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "myhost"
                 },
+                "relay": {
+                    "type": "boolean"
+                },
                 "revision": {
                     "type": "integer"
                 },

@@ -315,6 +315,9 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		if request.SymmetricNat != nil {
 			device.SymmetricNat = *request.SymmetricNat
 		}
+		if request.Relay != nil {
+			device.Relay = *request.Relay
+		}
 
 		if request.SecurityGroupId != nil {
 			var sg models.SecurityGroup
