@@ -10,42 +10,42 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
-func (suite *HandlerTestSuite) TestListOrganizations() {
+func (suite *HandlerTestSuite) TestListVPCs() {
 	assert := suite.Assert()
 	require := suite.Require()
-	organizations := []models.AddOrganization{
+	vpcs := []models.AddVPC{
 		{
-			Name:        "organization-a",
+			Description: "vpc-a",
 			PrivateCidr: true,
 			IpCidr:      "10.1.1.0/24",
 			IpCidrV6:    "fc00::/20",
 		},
 		{
-			Name:        "organization-b",
+			Description: "vpc-b",
 			PrivateCidr: true,
 			IpCidr:      "10.1.2.0/24",
 			IpCidrV6:    "fc00:1000::/20",
 		},
 		{
-			Name:        "organization-c",
+			Description: "vpc-c",
 			PrivateCidr: true,
 			IpCidr:      "10.1.3.0/24",
 			IpCidrV6:    "fc00:2000::/20",
 		},
 	}
-	organizationDenied := models.AddOrganization{
-		Name:     "organization-denied-multi-organization-off",
-		IpCidr:   "10.1.3.0/24",
-		IpCidrV6: "fc00:3000::/20",
+	vpcDenied := models.AddVPC{
+		Description: "vpc-denied-multi-vpc-off",
+		IpCidr:      "10.1.3.0/24",
+		IpCidrV6:    "fc00:3000::/20",
 	}
 
-	for _, organization := range organizations {
-		reqBody, err := json.Marshal(organization)
+	for _, vpc := range vpcs {
+		reqBody, err := json.Marshal(vpc)
 		assert.NoError(err)
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateOrganization,
+			suite.api.CreateVPC,
 			bytes.NewBuffer(reqBody),
 		)
 		require.NoError(err)
@@ -53,20 +53,20 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		require.NoError(err)
 		require.Equal(http.StatusCreated, res.Code, string(body))
 
-		var o models.OrganizationJSON
+		var o models.VPC
 		err = json.Unmarshal(body, &o)
 		require.NoError(err)
 	}
 
 	{
-		resBody, err := json.Marshal(organizationDenied)
+		resBody, err := json.Marshal(vpcDenied)
 		assert.NoError(err)
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
 			func(c *gin.Context) {
-				c.Set("nexodus.testCreateOrganization", "false")
-				suite.api.CreateOrganization(c)
+				c.Set("nexodus.testCreateVPC", "false")
+				suite.api.CreateVPC(c)
 			},
 
 			bytes.NewBuffer(resBody),
@@ -79,7 +79,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", "/",
-			suite.api.ListOrganizations, nil,
+			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
 
@@ -87,7 +87,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.OrganizationJSON
+		var actual []models.VPC
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 		assert.Len(actual, 4)
@@ -97,7 +97,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?sort=["name","DESC"]`,
-			suite.api.ListOrganizations, nil,
+			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
 
@@ -105,31 +105,31 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.OrganizationJSON
+		var actual []models.VPC
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
 		assert.Len(actual, 4)
 		seen := map[string]bool{
-			"testuser":       false,
-			"organization-a": false,
-			"organization-b": false,
-			"organization-c": false,
+			"testuser": false,
+			"vpc-a":    false,
+			"vpc-b":    false,
+			"vpc-c":    false,
 		}
 		for _, org := range actual {
-			if _, ok := seen[org.Name]; ok {
-				seen[org.Name] = true
+			if _, ok := seen[org.Description]; ok {
+				seen[org.Description] = true
 			}
 		}
 		for k, v := range seen {
-			assert.Equal(v, true, "organization %s was not seen", k)
+			assert.Equal(v, true, "vpc %s was not seen", k)
 		}
 	}
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?filter={"name":"default"}`,
-			suite.api.ListOrganizations, nil,
+			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
 
@@ -137,7 +137,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.Organization
+		var actual []models.VPC
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 
@@ -148,7 +148,7 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
 			"/", `/?range=[3,4]`,
-			suite.api.ListOrganizations, nil,
+			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
 
@@ -156,23 +156,23 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		assert.NoError(err)
 		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-		var actual []models.OrganizationJSON
+		var actual []models.VPC
 		err = json.Unmarshal(body, &actual)
 		assert.NoError(err)
 		// The orgs are sorted by name..
 		assert.Len(actual, 1)
 		assert.Equal("4", res.Header().Get(TotalCountHeader))
-		assert.Equal("testuser", actual[0].Name)
+		assert.Equal("testuser", actual[0].Description)
 	}
 
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateOrganization,
-			bytes.NewBuffer(suite.jsonMarshal(models.AddOrganization{
-				Name:   "bad-ipv4-cidr",
-				IpCidr: "10.1.3.0/24",
+			suite.api.CreateVPC,
+			bytes.NewBuffer(suite.jsonMarshal(models.AddVPC{
+				Description: "bad-ipv4-cidr",
+				IpCidr:      "10.1.3.0/24",
 			})),
 		)
 		assert.NoError(err)
@@ -185,10 +185,10 @@ func (suite *HandlerTestSuite) TestListOrganizations() {
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
 			"/", "/",
-			suite.api.CreateOrganization,
-			bytes.NewBuffer(suite.jsonMarshal(models.AddOrganization{
-				Name:     "bad-ipv4-cidr",
-				IpCidrV6: "fc00::/20",
+			suite.api.CreateVPC,
+			bytes.NewBuffer(suite.jsonMarshal(models.AddVPC{
+				Description: "bad-ipv4-cidr",
+				IpCidrV6:    "fc00::/20",
 			})),
 		)
 		assert.NoError(err)

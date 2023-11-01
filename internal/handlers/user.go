@@ -146,17 +146,30 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		return noUUID, res.Error
 	}
 
+	orgId := uuid.New()
 	org = models.Organization{
-		Name:        userName,
+		Base: models.Base{
+			ID: orgId,
+		},
 		OwnerID:     userId,
+		Name:        userName,
 		Description: fmt.Sprintf("%s's organization", userName),
-		PrivateCidr: false,
-		IpCidr:      defaultIPAMv4Cidr,
-		IpCidrV6:    defaultIPAMv6Cidr,
-		HubZone:     true,
 		Users: []*models.User{&models.User{
 			ID: userId,
 		}},
+		VPCs: []*models.VPC{
+			&models.VPC{
+				Base: models.Base{
+					ID: orgId,
+				},
+				OrganizationID: orgId,
+				Description:    "default vpc",
+				PrivateCidr:    false,
+				IpCidr:         defaultIPAMv4Cidr,
+				IpCidrV6:       defaultIPAMv6Cidr,
+				HubZone:        false,
+			},
+		},
 	}
 
 	// Create the organization

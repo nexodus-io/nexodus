@@ -10,6 +10,66 @@ import (
 	"log"
 )
 
+func createOrganizationCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "organization",
+		Usage: "Commands relating to organizations",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List organizations",
+				Action: func(cCtx *cli.Context) error {
+					return listOrganizations(cCtx, mustCreateAPIClient(cCtx))
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create a organizations",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "description",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "cidr",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "cidr-v6",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					organizationName := cCtx.String("name")
+					organizationDescrip := cCtx.String("description")
+					organizationCIDR := cCtx.String("cidr")
+					organizationCIDRv6 := cCtx.String("cidr-v6")
+					return createOrganization(cCtx, mustCreateAPIClient(cCtx), organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete a organization",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "organization-id",
+						Required: true,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					encodeOut := cCtx.String("output")
+					organizationID := cCtx.String("organization-id")
+					return deleteOrganization(cCtx, mustCreateAPIClient(cCtx), encodeOut, organizationID)
+				},
+			},
+		},
+	}
+}
+
 func orgTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
@@ -34,10 +94,6 @@ func createOrganization(cCtx *cli.Context, c *client.APIClient, name, descriptio
 	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
 		Name:        name,
 		Description: description,
-		Cidr:        cidr,
-		CidrV6:      cidrV6,
-		HubZone:     false,
-		PrivateCidr: !(cidr == "" && cidrV6 == ""),
 	}).Execute()
 	if err != nil {
 		log.Fatal(err)

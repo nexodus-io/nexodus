@@ -23,10 +23,10 @@ type ModelsDevice struct {
 	Id                      string           `json:"id,omitempty"`
 	Online                  bool             `json:"online,omitempty"`
 	OnlineAt                string           `json:"online_at,omitempty"`
-	OrganizationId          string           `json:"organization_id,omitempty"`
 	OrganizationPrefix      string           `json:"organization_prefix,omitempty"`
 	OrganizationPrefixV6    string           `json:"organization_prefix_v6,omitempty"`
 	Os                      string           `json:"os,omitempty"`
+	OwnerId                 string           `json:"owner_id,omitempty"`
 	PublicKey               string           `json:"public_key,omitempty"`
 	Relay                   bool             `json:"relay,omitempty"`
 	Revision                int32            `json:"revision,omitempty"`
@@ -34,5 +34,5 @@ type ModelsDevice struct {
 	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
 	TunnelIp                string           `json:"tunnel_ip,omitempty"`
 	TunnelIpV6              string           `json:"tunnel_ip_v6,omitempty"`
-	UserId                  string           `json:"user_id,omitempty"`
+	VpcId                   string           `json:"vpc_id,omitempty"`
 }

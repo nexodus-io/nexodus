@@ -113,10 +113,10 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      regToken.ID.String(),
-			Subject: regToken.UserID,
+			Subject: regToken.OwnerID,
 		},
-		OrganizationID: regToken.OrganizationID,
-		Scope:          "reg-token",
+		VpcID: regToken.VpcID,
+		Scope: "reg-token",
 	}
 	if regToken.DeviceId != nil {
 		claims.DeviceID = *regToken.DeviceId
@@ -165,10 +165,10 @@ func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckR
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      device.ID.String(),
-			Subject: device.UserID,
+			Subject: device.OwnerID,
 		},
-		OrganizationID: device.OrganizationID,
-		Scope:          "device-token",
+		VpcID: device.VpcID,
+		Scope: "device-token",
 	}
 
 	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)

@@ -43,22 +43,22 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 	}
 
 	// org field is required...
-	if request.OrganizationID == noUUID {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
+	if request.VpcID == noUUID {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
 
-	// The org has to be owned by the user.
-	var org models.Organization
+	// The vpc has to be owned by the user.
+	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	if res := api.OrganizationIsOwnedByCurrentUser(c, db).
-		First(&org, "id = ?", request.OrganizationID); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+	if res := api.VPCIsOwnedByCurrentUser(c, db).
+		First(&vpc, "id = ?", request.VpcID); res.Error != nil {
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		return
 	}
 
-	if request.OrganizationID == noUUID {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
+	if request.VpcID == noUUID {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
 
@@ -74,8 +74,9 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 	// Let store the reg token... without the client id yet... to avoid creating
 	// clients in KC that are not correlated with our DB.
 	record := models.RegistrationToken{
-		UserID:         userId,
-		OrganizationID: request.OrganizationID,
+		OwnerID:        userId,
+		VpcID:          vpc.ID,
+		OrganizationID: vpc.OrganizationID,
 		BearerToken:    "RT:" + token.String(),
 		Description:    request.Description,
 		Expiration:     request.Expiration,
@@ -194,7 +195,7 @@ func (api *API) RegistrationTokenIsForCurrentUser(c *gin.Context) func(db *gorm.
 		userId := c.Value(gin.AuthUserKey).(string)
 
 		// this could potentially be driven by rego output
-		return db.Where("user_id = ?", userId)
+		return db.Where("owner_id = ?", userId)
 	}
 }
 
@@ -203,9 +204,9 @@ func (api *API) RegistrationTokenIsForCurrentUserOrOrgOwner(c *gin.Context, db *
 
 	// this could potentially be driven by rego output
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("user_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
+		return db.Where("owner_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
 	} else {
-		return db.Where("user_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
+		return db.Where("owner_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
 	}
 }
 

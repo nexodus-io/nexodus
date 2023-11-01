@@ -17,7 +17,6 @@ type ModelsAddDevice struct {
 	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`
 	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname                string           `json:"hostname,omitempty"`
-	OrganizationId          string           `json:"organization_id,omitempty"`
 	Os                      string           `json:"os,omitempty"`
 	PublicKey               string           `json:"public_key,omitempty"`
 	Relay                   bool             `json:"relay,omitempty"`
@@ -25,5 +24,5 @@ type ModelsAddDevice struct {
 	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
 	TunnelIp                string           `json:"tunnel_ip,omitempty"`
 	TunnelIpV6              string           `json:"tunnel_ip_v6,omitempty"`
-	UserId                  string           `json:"user_id,omitempty"`
+	VpcId                   string           `json:"vpc_id,omitempty"`
 }

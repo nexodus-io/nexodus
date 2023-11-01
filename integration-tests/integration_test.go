@@ -825,7 +825,7 @@ func TestNexctl(t *testing.T) {
 		"organization", "list",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var organizations []models.OrganizationJSON
+	var organizations []models.Organization
 	err = json.Unmarshal([]byte(commandOut), &organizations)
 	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 	require.Equal(1, len(organizations))
@@ -833,8 +833,6 @@ func TestNexctl(t *testing.T) {
 	// validate no org fields are empty
 	require.NotEmpty(organizations[0].ID)
 	require.NotEmpty(organizations[0].Name)
-	require.NotEmpty(organizations[0].IpCidr)
-	require.NotEmpty(organizations[0].IpCidrV6)
 	require.NotEmpty(organizations[0].Description)
 
 	// validate nexctl nexd peers list does not throw any errors with no peers present

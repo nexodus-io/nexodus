@@ -776,6 +776,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/invitations/{id}": {
+            "get": {
+                "description": "Gets an Invitation by Invitation ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Get Invitation",
+                "operationId": "GetInvitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Invitation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/invitations/{invitation}": {
             "delete": {
                 "description": "Deletes an existing invitation",
@@ -1065,668 +1128,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/organizations/{id}/devices": {
-            "get": {
-                "description": "Lists all users for this Organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "List Users",
-                "operationId": "ListUsersInOrganization",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.User"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/devices": {
-            "get": {
-                "description": "Lists all devices for this Organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Devices"
-                ],
-                "summary": "List Devices",
-                "operationId": "ListDevicesInOrganization",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "greater than revision",
-                        "name": "gt_revision",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Device"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/devices/{device_id}": {
-            "get": {
-                "description": "Gets a device in a organization by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Devices"
-                ],
-                "summary": "Get Device",
-                "operationId": "GetDeviceInOrganization",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Device"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/events": {
-            "post": {
-                "description": "Watches events occurring in the organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Watch events occurring in the organization",
-                "operationId": "WatchEvents",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "connect as the device with the given public key, device will be considered to be online for the duration of this request",
-                        "name": "public_key",
-                        "in": "query"
-                    },
-                    {
-                        "description": "List of events to watch",
-                        "name": "Watches",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Watch"
-                            }
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.WatchEvent"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/security_group/{id}": {
-            "get": {
-                "description": "Gets a security group in an organization by ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "Get SecurityGroup",
-                "operationId": "GetSecurityGroup",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Security Group ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.SecurityGroup"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/security_groups": {
-            "get": {
-                "description": "Lists all Security Groups",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "List Security Groups",
-                "operationId": "ListSecurityGroups",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "greater than revision",
-                        "name": "gt_revision",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.SecurityGroup"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Adds a new Security Group",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "Add SecurityGroup",
-                "operationId": "CreateSecurityGroup",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Add SecurityGroup",
-                        "name": "SecurityGroup",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.AddSecurityGroup"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.SecurityGroup"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/models.ConflictsError"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/models.ValidationError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization_id}/security_groups/{security_group_id}": {
-            "delete": {
-                "description": "Deletes an existing SecurityGroup",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "Delete SecurityGroup",
-                "operationId": "DeleteSecurityGroup",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Security Group ID",
-                        "name": "security_group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content",
-                        "schema": {
-                            "$ref": "#/definitions/models.SecurityGroup"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Updates a Security Group by ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SecurityGroup"
-                ],
-                "summary": "Update Security Group",
-                "operationId": "UpdateSecurityGroup",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Security Group ID",
-                        "name": "security_group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Security Group Update",
-                        "name": "update",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.UpdateSecurityGroup"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.SecurityGroup"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/models.ValidationError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/organizations/{organization}/metadata": {
-            "get": {
-                "description": "Lists metadata for a device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Devices"
-                ],
-                "summary": "List Device Metadata",
-                "operationId": "ListOrganizationMetadata",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "organization",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "greater than revision",
-                        "name": "gt_revision",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "used to filter down to the specified key prefixes",
-                        "name": "prefix",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.DeviceMetadata"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/registration-tokens": {
             "get": {
                 "description": "Lists all registration tokens",
@@ -1947,6 +1348,301 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/security_groups": {
+            "get": {
+                "description": "Lists all Security Groups",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "List Security Groups",
+                "operationId": "ListSecurityGroups",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SecurityGroup"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adds a new Security Group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Add SecurityGroup",
+                "operationId": "CreateSecurityGroup",
+                "parameters": [
+                    {
+                        "description": "Add SecurityGroup",
+                        "name": "SecurityGroup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddSecurityGroup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/security_groups/{id}": {
+            "get": {
+                "description": "Gets a security group by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Get SecurityGroup",
+                "operationId": "GetSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing SecurityGroup",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Delete SecurityGroup",
+                "operationId": "DeleteSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a Security Group by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SecurityGroup"
+                ],
+                "summary": "Update Security Group",
+                "operationId": "UpdateSecurityGroup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Security Group ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Security Group Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSecurityGroup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecurityGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -2143,6 +1839,565 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpc/{id}/events": {
+            "post": {
+                "description": "Watches events occurring in the vpc",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "Watch events occurring in the vpc",
+                "operationId": "WatchEvents",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "connect as the device with the given public key, device will be considered to be online for the duration of this request",
+                        "name": "public_key",
+                        "in": "query"
+                    },
+                    {
+                        "description": "List of events to watch",
+                        "name": "Watches",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Watch"
+                            }
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WatchEvent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs": {
+            "get": {
+                "description": "Lists all VPCs",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List VPCs",
+                "operationId": "ListVPCs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.VPC"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a named vpc with the given CIDR",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "Create an VPC",
+                "operationId": "CreateVPC",
+                "parameters": [
+                    {
+                        "description": "Add VPC",
+                        "name": "VPC",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddVPC"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.VPC"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs/{id}": {
+            "get": {
+                "description": "Gets a VPC by VPC ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "Get VPCs",
+                "operationId": "GetVPC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.VPC"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing vpc and associated IPAM prefix",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "Delete VPC",
+                "operationId": "DeleteVPC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.VPC"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs/{id}/devices": {
+            "get": {
+                "description": "Lists all devices for this VPC",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List Devices",
+                "operationId": "ListDevicesInVPC",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Device"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs/{id}/metadata": {
+            "get": {
+                "description": "Lists metadata for a device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List Device Metadata",
+                "operationId": "ListMetadataInVPC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "used to filter down to the specified key prefixes",
+                        "name": "prefix",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DeviceMetadata"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs/{id}/security_groups": {
+            "get": {
+                "description": "Lists all Security Groups in a VPC",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List Security Groups in a VPC",
+                "operationId": "ListSecurityGroupsInVPC",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SecurityGroup"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vpcs/{vpc_id}/devices/{device_id}": {
+            "get": {
+                "description": "Gets a device in a vpc by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Get Device",
+                "operationId": "GetDeviceInVPC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "vpc_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Device"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
@@ -2429,10 +2684,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "myhost"
                 },
-                "organization_id": {
-                    "type": "string",
-                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
-                },
                 "os": {
                     "type": "string"
                 },
@@ -2456,7 +2707,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "200::1"
                 },
-                "user_id": {
+                "vpc_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
@@ -2481,27 +2732,13 @@ const docTemplate = `{
         "models.AddOrganization": {
             "type": "object",
             "properties": {
-                "cidr": {
-                    "type": "string",
-                    "example": "172.16.42.0/24"
-                },
-                "cidr_v6": {
-                    "type": "string",
-                    "example": "0200::/8"
-                },
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
                 },
-                "hub_zone": {
-                    "type": "boolean"
-                },
                 "name": {
                     "type": "string",
                     "example": "zone-red"
-                },
-                "private_cidr": {
-                    "type": "boolean"
                 },
                 "security_group_id": {
                     "type": "string"
@@ -2544,7 +2781,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "org_id": {
+                "organization_id": {
                     "type": "string"
                 },
                 "outbound_rules": {
@@ -2552,6 +2789,32 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                }
+            }
+        },
+        "models.AddVPC": {
+            "type": "object",
+            "properties": {
+                "cidr": {
+                    "type": "string",
+                    "example": "172.16.42.0/24"
+                },
+                "cidr_v6": {
+                    "type": "string",
+                    "example": "0200::/8"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "The Red Zone"
+                },
+                "hub_zone": {
+                    "type": "boolean"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "private_cidr": {
+                    "type": "boolean"
                 }
             }
         },
@@ -2621,9 +2884,6 @@ const docTemplate = `{
                 "online_at": {
                     "type": "string"
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "organization_prefix": {
                     "type": "string"
                 },
@@ -2631,6 +2891,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "os": {
+                    "type": "string"
+                },
+                "owner_id": {
                     "type": "string"
                 },
                 "public_key": {
@@ -2654,8 +2917,9 @@ const docTemplate = `{
                 "tunnel_ip_v6": {
                     "type": "string"
                 },
-                "user_id": {
-                    "type": "string"
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
             }
         },
@@ -2782,36 +3046,21 @@ const docTemplate = `{
         "models.Organization": {
             "type": "object",
             "properties": {
-                "cidr": {
-                    "type": "string"
-                },
-                "cidr_v6": {
-                    "type": "string"
-                },
                 "description": {
-                    "type": "string"
-                },
-                "hub_zone": {
-                    "type": "boolean"
+                    "type": "string",
+                    "example": "Team A"
                 },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
-                "invitations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Invitation"
-                    }
-                },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "zone-red"
                 },
                 "owner_id": {
-                    "type": "string"
-                },
-                "private_cidr": {
-                    "type": "boolean"
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
                 "security_group_id": {
                     "type": "string"
@@ -2857,10 +3106,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
-                "organization_id": {
+                "owner_id": {
                     "type": "string"
                 },
-                "user_id": {
+                "vpc_id": {
                     "type": "string"
                 }
             }
@@ -2884,7 +3133,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "org_id": {
+                "organization_id": {
                     "type": "string"
                 },
                 "outbound_rules": {
@@ -2943,10 +3192,6 @@ const docTemplate = `{
                 "hostname": {
                     "type": "string",
                     "example": "myhost"
-                },
-                "organization_id": {
-                    "type": "string",
-                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 },
                 "revision": {
                     "type": "integer"
@@ -3021,6 +3266,33 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.VPC": {
+            "type": "object",
+            "properties": {
+                "cidr": {
+                    "type": "string"
+                },
+                "cidr_v6": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "hub_zone": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "private_cidr": {
+                    "type": "boolean"
                 }
             }
         },

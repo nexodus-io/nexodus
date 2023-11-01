@@ -7,11 +7,11 @@ import (
 // Informer creates a *ApiListDevicesInOrganizationInformer which provides a simpler
 // API to list devices but which is implemented with the Watch api.  The *ApiListDevicesInOrganizationInformer
 // maintains a local device cache which gets updated with the Watch events.
-func (r ApiListDevicesInOrganizationRequest) Informer() *Informer[ModelsDevice] {
+func (r ApiListDevicesInVPCRequest) Informer() *Informer[ModelsDevice] {
 	informer := NewInformer[ModelsDevice](&DeviceAdaptor{}, r.gtRevision, ApiWatchEventsRequest{
-		ctx:            r.ctx,
-		ApiService:     r.ApiService.client.OrganizationsApi,
-		organizationId: r.organizationId,
+		ctx:        r.ctx,
+		ApiService: r.ApiService.client.VPCApi,
+		id:         r.id,
 	})
 	return informer
 }

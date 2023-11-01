@@ -9,7 +9,7 @@ type SecurityGroup struct {
 	Base
 	GroupName        string         `json:"group_name"`
 	GroupDescription string         `json:"group_description"`
-	OrganizationId   uuid.UUID      `json:"org_id"`
+	OrganizationId   uuid.UUID      `json:"organization_id"`
 	InboundRules     []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	OutboundRules    []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	Revision         uint64         `json:"revision"  gorm:"type:bigserial;index:"`
@@ -19,7 +19,7 @@ type SecurityGroup struct {
 type AddSecurityGroup struct {
 	GroupName        string         `json:"group_name" example:"group_name"`
 	GroupDescription string         `json:"group_description" example:"group_description"`
-	OrganizationId   uuid.UUID      `json:"org_id"`
+	OrganizationId   uuid.UUID      `json:"organization_id"`
 	InboundRules     []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	OutboundRules    []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 }

@@ -16,8 +16,8 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	require := suite.Require()
 	assert := suite.Assert()
 	newDevice := models.AddDevice{
-		OrganizationID: suite.testOrganizationID,
-		PublicKey:      "atestpubkey",
+		VpcID:     suite.testOrganizationID,
+		PublicKey: "atestpubkey",
 	}
 
 	resBody, err := json.Marshal(newDevice)
@@ -40,7 +40,7 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	require.NoError(err)
 
 	require.Equal(newDevice.PublicKey, actual.PublicKey)
-	require.Equal(TestUserID, actual.UserID)
+	require.Equal(TestUserID, actual.OwnerID)
 
 	_, res, err = suite.ServeRequest(
 		http.MethodGet, "/:id", fmt.Sprintf("/%s", actual.ID),

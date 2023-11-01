@@ -132,8 +132,8 @@ type Nexodus struct {
 	wireguardPubKeyInConfig  bool
 	tunnelIface              string
 	listenPort               int
-	orgId                    string
-	org                      *public.ModelsOrganization
+	vpcId                    string
+	vpc                      *public.ModelsVPC
 	requestedIP              string
 	userProvidedLocalIP      string
 	TunnelIP                 string
@@ -237,7 +237,7 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		skipTlsVerify:           insecureSkipTlsVerify,
 		stateStore:              stateStore,
 		stateDir:                stateDir,
-		orgId:                   orgId,
+		vpcId:                   orgId,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
@@ -426,12 +426,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := nx.handleKeys(); err != nil {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
-	userId, org, err := nx.fetchUserIdAndOrg(ctx)
+	userId, org, err := nx.fetchUserIdAndVpc(ctx)
 	if err != nil {
 		return err
 	}
 
-	nx.org = org
+	nx.vpc = org
 
 	// User requested ip --request-ip takes precedent
 	if nx.userProvidedLocalIP != "" {
@@ -487,8 +487,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("join error %w", err)
 	}
 	nx.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
-	nx.logger.Infof("%s with UUID: [ %+v ] into organization: [ %s (%s) ]",
-		deviceOperationLogMsg, modelsDevice.Id, nx.org.Name, nx.org.Id)
+	nx.logger.Infof("%s with UUID: [ %+v ] into vpc: [ %s (%s) ]",
+		deviceOperationLogMsg, modelsDevice.Id, nx.vpc.Id, nx.vpc.Description)
 
 	// Use the device token to auth with the apiserver...
 	if modelsDevice.BearerToken != "" {
@@ -525,9 +525,9 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.informerStop = informerCancel
 
 	// event stream sharing occurs due to the informers sharing the context created in following line:
-	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
-	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
-	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	informerCtx = nx.client.VPCApi.WatchEvents(informerCtx, nx.vpc.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.Id).Informer()
+	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.Id).Informer()
 
 	if nx.relay {
 		peerMap, _, err := nx.devicesInformer.Execute()
@@ -606,17 +606,17 @@ type NexodusClaims struct {
 	DeviceID       uuid.UUID `json:"device,omitempty"`
 }
 
-func (nx *Nexodus) fetchUserIdAndOrg(ctx context.Context) (string, *public.ModelsOrganization, error) {
+func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.ModelsVPC, error) {
 	if nx.registrationToken != "" {
 		// the userid and orgid are part of the registration token.
-		return nx.fetchRegistrationTokenUserIdAndOrg(ctx)
+		return nx.fetchRegistrationTokenUserIdAndVPC(ctx)
 	} else {
 		// Use the API to figure out the user's id and org
-		return nx.fetchUserIdAndOrgFromAPI(ctx)
+		return nx.fetchUserIdAndVpcFromAPI(ctx)
 	}
 }
 
-func (nx *Nexodus) fetchRegistrationTokenUserIdAndOrg(ctx context.Context) (string, *public.ModelsOrganization, error) {
+func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (string, *public.ModelsVPC, error) {
 
 	// get the certs used to validate the JWT.
 	regToken, _, err := nx.client.RegistrationTokenApi.GetRegistrationToken(ctx, "me").Execute()
@@ -624,14 +624,14 @@ func (nx *Nexodus) fetchRegistrationTokenUserIdAndOrg(ctx context.Context) (stri
 		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
 	}
 
-	org, _, err := nx.client.OrganizationsApi.GetOrganizations(ctx, regToken.OrganizationId).Execute()
+	org, _, err := nx.client.VPCApi.GetVPC(ctx, regToken.VpcId).Execute()
 	if err != nil {
 		return "", nil, err
 	}
-	return regToken.UserId, org, nil
+	return regToken.OwnerId, org, nil
 }
 
-func (nx *Nexodus) fetchUserIdAndOrgFromAPI(ctx context.Context) (string, *public.ModelsOrganization, error) {
+func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *public.ModelsVPC, error) {
 
 	var err error
 	var user *public.ModelsUser
@@ -662,9 +662,9 @@ func (nx *Nexodus) fetchUserIdAndOrgFromAPI(ctx context.Context) (string, *publi
 	if err != nil {
 		return "", nil, fmt.Errorf("get user error: %w", err)
 	}
-	var organizations []public.ModelsOrganization
+	var vpcs []public.ModelsVPC
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		organizations, resp, err = nx.client.OrganizationsApi.ListOrganizations(ctx).Execute()
+		vpcs, resp, err = nx.client.VPCApi.ListVPCs(ctx).Execute()
 		if err != nil {
 			if resp != nil {
 				nx.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
@@ -682,7 +682,7 @@ func (nx *Nexodus) fetchUserIdAndOrgFromAPI(ctx context.Context) (string, *publi
 		return "", nil, fmt.Errorf("get organizations error: %w", err)
 	}
 
-	org, err := nx.chooseOrganization(organizations, *user)
+	org, err := nx.chooseVpc(vpcs)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to choose an organization: %w", err)
 	}
@@ -834,9 +834,9 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	nx.informerStop = informerCancel
 
-	informerCtx = nx.client.OrganizationsApi.WatchEvents(informerCtx, nx.org.Id).NewSharedInformerContext()
-	nx.securityGroupsInformer = nx.client.SecurityGroupApi.ListSecurityGroups(informerCtx, nx.org.Id).Informer()
-	nx.devicesInformer = nx.client.DevicesApi.ListDevicesInOrganization(informerCtx, nx.org.Id).Informer()
+	informerCtx = nx.client.VPCApi.WatchEvents(informerCtx, nx.vpc.Id).NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.Id).Informer()
+	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.Id).Informer()
 
 	nx.SetStatus(NexdStatusRunning, "")
 	nx.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
@@ -886,32 +886,22 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 	return nil
 }
 
-func (nx *Nexodus) chooseOrganization(organizations []public.ModelsOrganization, user public.ModelsUser) (*public.ModelsOrganization, error) {
-	if len(organizations) == 0 {
-		return nil, fmt.Errorf("user does not belong to any organizations")
+func (nx *Nexodus) chooseVpc(vpcs []public.ModelsVPC) (*public.ModelsVPC, error) {
+	if len(vpcs) == 0 {
+		return nil, fmt.Errorf("user does not belong to any vpcs")
 	}
-	if nx.orgId == "" {
-		if len(organizations) > 1 {
-			// default to the org that matches the user name, the one created for a new user by default
-			for i, org := range organizations {
-				if org.Name == user.UserName {
-					return &organizations[i], nil
-				}
-			}
-			// Log all org names + Ids for convenience before returning the error
-			for _, org := range organizations {
-				nx.logger.Infof("organization name: '%s'  Id: %s", org.Name, org.Id)
-			}
-			return nil, fmt.Errorf("user belongs to multiple organizations, please specify one with --organization-id")
+	if nx.vpcId == "" {
+		if len(vpcs) != 1 {
+			return nil, fmt.Errorf("please specify vpc with --vpc-id")
 		}
-		return &organizations[0], nil
+		return &vpcs[0], nil
 	}
-	for i, org := range organizations {
-		if org.Id == nx.orgId {
-			return &organizations[i], nil
+	for i, org := range vpcs {
+		if org.Id == nx.vpcId {
+			return &vpcs[i], nil
 		}
 	}
-	return nil, fmt.Errorf("user does not belong to organization %s", nx.orgId)
+	return nil, fmt.Errorf("user does not belong to organization %s", nx.vpcId)
 }
 
 func (nx *Nexodus) deviceCacheIterRead(f func(deviceCacheEntry)) {

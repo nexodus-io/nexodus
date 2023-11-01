@@ -7,11 +7,11 @@ import (
 // Informer creates a *ApiListSecurityGroupsInformer which provides a simpler
 // API to list devices but which is implemented with the Watch api.  The *ApiListSecurityGroupsInformer
 // maintains a local device cache which gets updated with the Watch events.
-func (r ApiListSecurityGroupsRequest) Informer() *Informer[ModelsSecurityGroup] {
+func (r ApiListSecurityGroupsInVPCRequest) Informer() *Informer[ModelsSecurityGroup] {
 	informer := NewInformer[ModelsSecurityGroup](&SecurityGroupAdaptor{}, r.gtRevision, ApiWatchEventsRequest{
-		ctx:            r.ctx,
-		ApiService:     r.ApiService.client.OrganizationsApi,
-		organizationId: r.organizationId,
+		ctx:        r.ctx,
+		ApiService: r.ApiService.client.VPCApi,
+		id:         r.id,
 	})
 	return informer
 }

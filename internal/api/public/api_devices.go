@@ -690,40 +690,40 @@ func (a *DevicesApiService) GetDeviceExecute(r ApiGetDeviceRequest) (*ModelsDevi
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiGetDeviceInOrganizationRequest struct {
-	ctx            context.Context
-	ApiService     *DevicesApiService
-	organizationId string
-	deviceId       string
+type ApiGetDeviceInVPCRequest struct {
+	ctx        context.Context
+	ApiService *DevicesApiService
+	vpcId      string
+	deviceId   string
 }
 
-func (r ApiGetDeviceInOrganizationRequest) Execute() (*ModelsDevice, *http.Response, error) {
-	return r.ApiService.GetDeviceInOrganizationExecute(r)
+func (r ApiGetDeviceInVPCRequest) Execute() (*ModelsDevice, *http.Response, error) {
+	return r.ApiService.GetDeviceInVPCExecute(r)
 }
 
 /*
-GetDeviceInOrganization Get Device
+GetDeviceInVPC Get Device
 
-Gets a device in a organization by ID
+Gets a device in a vpc by ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
+	@param vpcId VPC ID
 	@param deviceId Device ID
-	@return ApiGetDeviceInOrganizationRequest
+	@return ApiGetDeviceInVPCRequest
 */
-func (a *DevicesApiService) GetDeviceInOrganization(ctx context.Context, organizationId string, deviceId string) ApiGetDeviceInOrganizationRequest {
-	return ApiGetDeviceInOrganizationRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		organizationId: organizationId,
-		deviceId:       deviceId,
+func (a *DevicesApiService) GetDeviceInVPC(ctx context.Context, vpcId string, deviceId string) ApiGetDeviceInVPCRequest {
+	return ApiGetDeviceInVPCRequest{
+		ApiService: a,
+		ctx:        ctx,
+		vpcId:      vpcId,
+		deviceId:   deviceId,
 	}
 }
 
 // Execute executes the request
 //
 //	@return ModelsDevice
-func (a *DevicesApiService) GetDeviceInOrganizationExecute(r ApiGetDeviceInOrganizationRequest) (*ModelsDevice, *http.Response, error) {
+func (a *DevicesApiService) GetDeviceInVPCExecute(r ApiGetDeviceInVPCRequest) (*ModelsDevice, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
@@ -731,13 +731,13 @@ func (a *DevicesApiService) GetDeviceInOrganizationExecute(r ApiGetDeviceInOrgan
 		localVarReturnValue *ModelsDevice
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DevicesApiService.GetDeviceInOrganization")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DevicesApiService.GetDeviceInVPC")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/devices/{device_id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
+	localVarPath := localBasePath + "/api/vpcs/{vpc_id}/devices/{device_id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"vpc_id"+"}", url.PathEscape(parameterValueToString(r.vpcId, "vpcId")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"device_id"+"}", url.PathEscape(parameterValueToString(r.deviceId, "deviceId")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1200,291 +1200,6 @@ func (a *DevicesApiService) ListDevicesExecute(r ApiListDevicesRequest) ([]Model
 			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
 			newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiListDevicesInOrganizationRequest struct {
-	ctx            context.Context
-	ApiService     *DevicesApiService
-	organizationId string
-	gtRevision     *int32
-}
-
-// greater than revision
-func (r ApiListDevicesInOrganizationRequest) GtRevision(gtRevision int32) ApiListDevicesInOrganizationRequest {
-	r.gtRevision = &gtRevision
-	return r
-}
-
-func (r ApiListDevicesInOrganizationRequest) Execute() ([]ModelsDevice, *http.Response, error) {
-	return r.ApiService.ListDevicesInOrganizationExecute(r)
-}
-
-/*
-ListDevicesInOrganization List Devices
-
-Lists all devices for this Organization
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
-	@return ApiListDevicesInOrganizationRequest
-*/
-func (a *DevicesApiService) ListDevicesInOrganization(ctx context.Context, organizationId string) ApiListDevicesInOrganizationRequest {
-	return ApiListDevicesInOrganizationRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		organizationId: organizationId,
-	}
-}
-
-// Execute executes the request
-//
-//	@return []ModelsDevice
-func (a *DevicesApiService) ListDevicesInOrganizationExecute(r ApiListDevicesInOrganizationRequest) ([]ModelsDevice, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ModelsDevice
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DevicesApiService.ListDevicesInOrganization")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/devices"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	if r.gtRevision != nil {
-		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
-	}
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
-		}
-		if localVarHTTPResponse.StatusCode == 400 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 401 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 429 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiListOrganizationMetadataRequest struct {
-	ctx          context.Context
-	ApiService   *DevicesApiService
-	organization string
-	prefix       []string
-	gtRevision   *int32
-}
-
-// greater than revision
-func (r ApiListOrganizationMetadataRequest) GtRevision(gtRevision int32) ApiListOrganizationMetadataRequest {
-	r.gtRevision = &gtRevision
-	return r
-}
-
-func (r ApiListOrganizationMetadataRequest) Execute() ([]ModelsDeviceMetadata, *http.Response, error) {
-	return r.ApiService.ListOrganizationMetadataExecute(r)
-}
-
-/*
-ListOrganizationMetadata List Device Metadata
-
-Lists metadata for a device
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organization Organization ID
-	@param prefix used to filter down to the specified key prefixes
-	@return ApiListOrganizationMetadataRequest
-*/
-func (a *DevicesApiService) ListOrganizationMetadata(ctx context.Context, organization string, prefix []string) ApiListOrganizationMetadataRequest {
-	return ApiListOrganizationMetadataRequest{
-		ApiService:   a,
-		ctx:          ctx,
-		organization: organization,
-		prefix:       prefix,
-	}
-}
-
-// Execute executes the request
-//
-//	@return []ModelsDeviceMetadata
-func (a *DevicesApiService) ListOrganizationMetadataExecute(r ApiListOrganizationMetadataRequest) ([]ModelsDeviceMetadata, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ModelsDeviceMetadata
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DevicesApiService.ListOrganizationMetadata")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/organizations/{organization}/metadata"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization"+"}", url.PathEscape(parameterValueToString(r.organization, "organization")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"prefix"+"}", url.PathEscape(parameterValueToString(r.prefix, "prefix")), -1)
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	if r.gtRevision != nil {
-		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
-	}
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
 		}
 		if localVarHTTPResponse.StatusCode == 500 {
 			var v ModelsInternalServerError

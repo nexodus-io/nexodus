@@ -15,7 +15,6 @@ type User struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       gorm.DeletedAt  `gorm:"index" json:"-"`
-	Devices         []*Device       `json:"-"`
 	Organizations   []*Organization `gorm:"many2many:user_organizations" json:"-"`
 	UserName        string
 	Invitations     []*Invitation `json:"-"`
@@ -36,9 +35,6 @@ func (u User) MarshalJSON() ([]byte, error) {
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
-	if u.Devices == nil {
-		u.Devices = make([]*Device, 0)
-	}
 	if u.Organizations == nil {
 		u.Organizations = make([]*Organization, 0)
 	}

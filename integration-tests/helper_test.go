@@ -590,7 +590,7 @@ func (helper *Helper) createOrganization(username string, password string, args 
 		"--description", "Test: " + helper.T.Name(),
 	}, args...)...)
 	helper.require.NoError(err)
-	var org models.OrganizationJSON
+	var org models.Organization
 	err = json.Unmarshal([]byte(orgOut), &org)
 	helper.require.NoError(err)
 	return org.ID.String(), org.Name

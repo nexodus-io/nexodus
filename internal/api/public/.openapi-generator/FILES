@@ -6,6 +6,7 @@ api_organizations.go
 api_registration_token.go
 api_security_group.go
 api_users.go
+api_vpc.go
 client.go
 configuration.go
 model_models_add_device.go
@@ -13,6 +14,7 @@ model_models_add_invitation.go
 model_models_add_organization.go
 model_models_add_registration_token.go
 model_models_add_security_group.go
+model_models_add_vpc.go
 model_models_base_error.go
 model_models_conflicts_error.go
 model_models_device.go
@@ -36,6 +38,7 @@ model_models_update_security_group.go
 model_models_user.go
 model_models_user_info_response.go
 model_models_validation_error.go
+model_models_vpc.go
 model_models_watch.go
 model_models_watch_event.go
 response.go

@@ -12,8 +12,7 @@ import (
 
 func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
 	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		UserId:                  userID,
-		OrganizationId:          nx.org.Id,
+		VpcId:                   nx.vpc.Id,
 		PublicKey:               nx.wireguardPubKey,
 		TunnelIp:                nx.requestedIP,
 		ChildPrefix:             nx.childPrefix,
@@ -37,7 +36,6 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 					SymmetricNat:            nx.symmetricNat,
 					Hostname:                nx.hostname,
 					Endpoints:               endpoints,
-					OrganizationId:          nx.org.Id,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {

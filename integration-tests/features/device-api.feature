@@ -40,7 +40,7 @@ Feature: Device API
     When I POST path "/api/devices" with json body:
       """
       {
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "organization_id": "${organization_id}",
         "public_key": "${public_key}",
         "endpoints": [{
@@ -98,7 +98,7 @@ Feature: Device API
         "symmetric_nat": true,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """
@@ -144,7 +144,7 @@ Feature: Device API
         "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """
@@ -187,7 +187,7 @@ Feature: Device API
           "security_group_id": "${response[0].security_group_id}",
           "tunnel_ip": "${response[0].tunnel_ip}",
           "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
-          "user_id": "${user_id}"
+          "owner_id": "${user_id}"
         }
       ]
       """
@@ -265,7 +265,7 @@ Feature: Device API
         "symmetric_nat": false,
         "tunnel_ip": "${response.tunnel_ip}",
         "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """

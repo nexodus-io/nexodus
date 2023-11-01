@@ -28,8 +28,6 @@ func TestApiClientConflictError(t *testing.T) {
 		password,
 	))
 	require.NoError(err)
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	require.NoError(err)
 	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
 	require.NoError(err)
 
@@ -40,9 +38,8 @@ func TestApiClientConflictError(t *testing.T) {
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
 		EndpointLocalAddressIp4: "172.17.0.3",
 		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
+		VpcId:                   orgs[0].Id,
 		PublicKey:               publicKey,
-		UserId:                  user.Id,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",
@@ -61,9 +58,8 @@ func TestApiClientConflictError(t *testing.T) {
 	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
 		EndpointLocalAddressIp4: "172.17.0.3",
 		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
+		VpcId:                   orgs[0].Id,
 		PublicKey:               publicKey,
-		UserId:                  user.Id,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",
@@ -141,8 +137,6 @@ func TestDevicesInformer(t *testing.T) {
 		password,
 	))
 	require.NoError(err)
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	require.NoError(err)
 	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
 	require.NoError(err)
 
@@ -150,9 +144,9 @@ func TestDevicesInformer(t *testing.T) {
 	require.NoError(err)
 	publicKey := privateKey.PublicKey().String()
 
-	ctx = c.OrganizationsApi.WatchEvents(ctx, orgs[0].Id).NewSharedInformerContext()
-	sgInformer := c.SecurityGroupApi.ListSecurityGroups(ctx, orgs[0].Id).Informer()
-	devicesInformer := c.DevicesApi.ListDevicesInOrganization(ctx, orgs[0].Id).Informer()
+	ctx = c.VPCApi.WatchEvents(ctx, orgs[0].Id).NewSharedInformerContext()
+	sgInformer := c.VPCApi.ListSecurityGroupsInVPC(ctx, orgs[0].Id).Informer()
+	devicesInformer := c.VPCApi.ListDevicesInVPC(ctx, orgs[0].Id).Informer()
 	devicesChanged := func() bool {
 		select {
 		case <-devicesInformer.Changed():
@@ -176,9 +170,8 @@ func TestDevicesInformer(t *testing.T) {
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
 		EndpointLocalAddressIp4: "172.17.0.3",
 		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
+		VpcId:                   orgs[0].Id,
 		PublicKey:               publicKey,
-		UserId:                  user.Id,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",

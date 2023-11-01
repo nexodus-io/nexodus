@@ -22,7 +22,7 @@ func (r ApiWatchEventsRequest) WatchEventsStream() (*WatchEventsStream, *http.Re
 	return r.ApiService.WatchEventsStream(r)
 }
 
-func (a *OrganizationsApiService) WatchEventsStream(r ApiWatchEventsRequest) (*WatchEventsStream, *http.Response, error) {
+func (a *VPCApiService) WatchEventsStream(r ApiWatchEventsRequest) (*WatchEventsStream, *http.Response, error) {
 	// this is a stream friendly version of WatchEventsExecute
 	var (
 		localVarHTTPMethod  = http.MethodPost
@@ -31,13 +31,13 @@ func (a *OrganizationsApiService) WatchEventsStream(r ApiWatchEventsRequest) (*W
 		localVarReturnValue *WatchEventsStream // different from WatchEventsExecute
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OrganizationsApiService.WatchEvents")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.WatchEvents")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/events"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
+	localVarPath := localBasePath + "/api/vpc/{id}/events"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

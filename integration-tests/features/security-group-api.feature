@@ -50,7 +50,7 @@ Feature: Security Group API
         "group_description": "default organization security group",
         "group_name": "default",
         "id": "${oscar_security_group_id}",
-        "org_id": "${oscar_organization_id}",
+        "organization_id": "${oscar_organization_id}",
         "revision": ${current_revision}
       }
   """

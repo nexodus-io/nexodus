@@ -92,29 +92,29 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 	})
 }
 
-// ListOrganizationMetadata lists metadata for all devices in an organization
+// ListMetadataInVPC lists metadata for all devices in the vpc
 // @Summary      List Device Metadata
-// @Id  		 ListOrganizationMetadata
-// @Tags         Devices
+// @Id  		 ListMetadataInVPC
+// @Tags         VPC
 // @Description  Lists metadata for a device
-// @Param        organization    path   string   true  "Organization ID"
+// @Param        id              path   string   true  "VPC ID"
 // @Param		 gt_revision     query  uint64   false "greater than revision"
 // @Param        prefix          path   []string true  "used to filter down to the specified key prefixes"
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  []models.DeviceMetadata
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization}/metadata [get]
-func (api *API) ListOrganizationMetadata(c *gin.Context) {
-	orgIdParam := c.Param("organization")
-	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizationMetadata", trace.WithAttributes(
-		attribute.String("organization", orgIdParam),
-	))
+// @Router       /api/vpcs/{id}/metadata [get]
+func (api *API) ListMetadataInVPC(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListMetadataInVPC",
+		trace.WithAttributes(
+			attribute.String("vpc_id", c.Param("id")),
+		))
 	defer span.End()
 
-	orgId, err := uuid.Parse(orgIdParam)
+	vpcId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
@@ -127,10 +127,10 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		return
 	}
 
-	var org models.Organization
+	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	result := api.OrganizationIsReadableByCurrentUser(c, db).
-		First(&org, "id = ?", orgId.String())
+	result := api.VPCIsReadableByCurrentUser(c, db).
+		First(&vpc, "id = ?", vpcId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -146,7 +146,7 @@ func (api *API) ListOrganizationMetadata(c *gin.Context) {
 		tempDB := db.Model(&models.DeviceMetadata{}).
 			Joins("inner join devices on devices.id=device_metadata.device_id").
 			Where( // extra wrapping Where needed to group the SQL expressions
-				db.Where("devices.organization_id = ?", orgId.String()),
+				db.Where("devices.vpc_id = ?", vpcId.String()),
 			)
 
 		// Building OR expressions with gorm is tricky...
@@ -302,7 +302,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	signalChannel := fmt.Sprintf("/metadata/vpc=%s", device.VpcID.String())
 	api.signalBus.Notify(signalChannel)
 	c.JSON(http.StatusOK, metadataInstance)
 
@@ -349,7 +349,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
-	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	signalChannel := fmt.Sprintf("/metadata/vpc=%s", device.VpcID.String())
 	api.signalBus.Notify(signalChannel)
 	c.Status(http.StatusNoContent)
 }
@@ -400,7 +400,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
-	signalChannel := fmt.Sprintf("/metadata/org=%s", device.OrganizationID.String())
+	signalChannel := fmt.Sprintf("/metadata/vpc=%s", device.VpcID.String())
 	api.signalBus.Notify(signalChannel)
 	c.Status(http.StatusNoContent)
 }

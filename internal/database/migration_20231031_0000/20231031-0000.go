@@ -16,15 +16,42 @@ type Base struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" `
 }
 
-type Endpoint struct {
-	Source   string
-	Address  string
-	Distance int
+type User struct {
+	// Since the ID comes from the IDP, we have no control over the format...
+	ID              string `gorm:"primary_key"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       gorm.DeletedAt  `gorm:"index" `
+	Organizations   []*Organization `gorm:"many2many:user_organizations" `
+	UserName        string          `gorm:"index"`
+	Invitations     []*Invitation
+	SecurityGroupId uuid.UUID
+}
+type Organization struct {
+	Base
+	OwnerID         string
+	Name            string `gorm:"uniqueIndex" sql:"index"`
+	Description     string
+	SecurityGroupId uuid.UUID
+
+	Users       []*User `gorm:"many2many:user_organizations;"`
+	Invitations []*Invitation
+}
+
+type VPC struct {
+	Base
+	OrganizationID uuid.UUID
+	Description    string
+	PrivateCidr    bool
+	IpCidr         string
+	IpCidrV6       string
+	HubZone        bool
 }
 
 type Device struct {
 	Base
-	UserID                   string    `gorm:"index"`
+	OwnerID                  string    `gorm:"index"`
+	VpcID                    uuid.UUID `gorm:"index"`
 	OrganizationID           uuid.UUID `gorm:"index"`
 	PublicKey                string
 	AllowedIPs               pq.StringArray `gorm:"type:text[]" `
@@ -50,6 +77,12 @@ type Device struct {
 	BearerToken string
 }
 
+type Endpoint struct {
+	Source   string
+	Address  string
+	Distance int
+}
+
 type DeviceMetadata struct {
 	DeviceID  uuid.UUID      `gorm:"type:uuid;primary_key"`
 	Key       string         `gorm:"primary_key"`
@@ -67,30 +100,15 @@ type Invitation struct {
 	Expiry         time.Time
 }
 
-type Organization struct {
-	Base
-	OwnerID         string  `gorm:"owner_id;index"`
-	Users           []*User `gorm:"many2many:user_organizations;"`
-	Devices         []*Device
-	Name            string
-	Description     string
-	PrivateCidr     bool
-	IpCidr          string
-	IpCidrV6        string
-	HubZone         bool
-	Invitations     []*Invitation
-	SecurityGroupId uuid.UUID
-}
-
 type RegistrationToken struct {
 	Base
-	UserID         string    `gorm:"index"`
-	OrganizationID uuid.UUID `gorm:"index"`
-	// BearerToken is the token the client should use to authenticate the device registration request.
-	BearerToken string
-	Description string
-	DeviceId    *uuid.UUID
-	Expiration  *time.Time
+	OwnerID        string    `gorm:"index"`
+	VpcID          uuid.UUID `gorm:"index"`
+	OrganizationID uuid.UUID `gorm:"index"` // OrganizationID is denormalized from the VPC record for performance
+	BearerToken    string
+	Description    string
+	DeviceId       *uuid.UUID
+	Expiration     *time.Time
 }
 
 type SecurityGroup struct {
@@ -110,19 +128,6 @@ type SecurityRule struct {
 	IpRanges   []string
 }
 
-type User struct {
-	// Since the ID comes from the IDP, we have no control over the format...
-	ID              string `gorm:"primary_key"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       gorm.DeletedAt `gorm:"index" `
-	Devices         []*Device
-	Organizations   []*Organization `gorm:"many2many:user_organizations" `
-	UserName        string          `gorm:"index"`
-	Invitations     []*Invitation
-	SecurityGroupId uuid.UUID
-}
-
 func Migrate() *gormigrate.Migration {
 	migrationId := "20231031-0000"
 	return CreateMigrationFromActions(migrationId,
@@ -139,6 +144,7 @@ func Migrate() *gormigrate.Migration {
 		CreateTableAction(&User{}),
 		CreateTableAction(&Organization{}),
 		CreateTableAction(&Invitation{}),
+		CreateTableAction(&VPC{}),
 		CreateTableAction(&Device{}),
 		ExecActionIf(`
 			CREATE OR REPLACE FUNCTION devices_revision_trigger() RETURNS TRIGGER LANGUAGE plpgsql AS '
@@ -204,11 +210,11 @@ func Migrate() *gormigrate.Migration {
 		),
 		ExecAction(
 			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_devices_bearer_token" ON "devices" ("bearer_token")`,
-			`DROP INDEX idx_devices_bearer_token`,
+			`DROP INDEX IF EXISTS idx_devices_bearer_token`,
 		),
 		ExecAction(
 			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_registration_tokens_bearer_token" ON "registration_tokens" ("bearer_token")`,
-			`DROP INDEX idx_registration_tokens_bearer_token`,
+			`DROP INDEX IF EXISTS idx_registration_tokens_bearer_token`,
 		),
 	)
 }

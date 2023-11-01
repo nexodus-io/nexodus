@@ -152,13 +152,13 @@ func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB
 // @Accept       json
 // @Produce      json
 // @Param		 id   path      string true "Invitation ID"
-// @Success      200  {object}  models.Organization
+// @Success      200  {object}  models.Invitation
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{id} [get]
+// @Router       /api/invitations/{id} [get]
 func (api *API) GetInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
 		trace.WithAttributes(

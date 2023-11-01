@@ -35,7 +35,7 @@ Feature: Device API
     When I POST path "/api/registration-tokens" with json body:
       """
       {
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "organization_id": "${organization_id}"
       }
       """
@@ -47,7 +47,7 @@ Feature: Device API
       {
         "id": "${reg_token_id}",
         "bearer_token": "${reg_bearer_token}",
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "organization_id": "${organization_id}"
       }
       """
@@ -61,7 +61,7 @@ Feature: Device API
         {
           "id": "${reg_token_id}",
           "bearer_token": "${reg_bearer_token}",
-          "user_id": "${user_id}",
+          "owner_id": "${user_id}",
           "organization_id": "${organization_id}"
         }
       ]
@@ -110,7 +110,7 @@ Feature: Device API
     When I POST path "/api/devices" with json body:
       """
       {
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "organization_id": "${organization_id}",
         "public_key": "${public_key}",
         "endpoints": [{
@@ -215,7 +215,7 @@ Feature: Device API
       {
         "id": "${reg_token_id}",
         "bearer_token": "${reg_bearer_token}",
-        "user_id": "${user_id}",
+        "owner_id": "${user_id}",
         "organization_id": "${organization_id}"
       }
       """

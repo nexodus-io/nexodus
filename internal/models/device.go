@@ -10,8 +10,9 @@ import (
 // Devices belong to one User and may be onboarded into an organization
 type Device struct {
 	Base
-	UserID                   string         `json:"user_id"`
-	OrganizationID           uuid.UUID      `json:"organization_id"`
+	OwnerID                  string         `json:"owner_id"`
+	VpcID                    uuid.UUID      `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
+	OrganizationID           uuid.UUID      `json:"-"` // Denormalized from the VPC record for performance
 	PublicKey                string         `json:"public_key"`
 	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
 	TunnelIP                 string         `json:"tunnel_ip"`
@@ -38,8 +39,7 @@ type Device struct {
 
 // AddDevice is the information needed to add a new Device.
 type AddDevice struct {
-	UserID                   string     `json:"user_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
-	OrganizationID           uuid.UUID  `json:"organization_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
+	VpcID                    uuid.UUID  `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	PublicKey                string     `json:"public_key"`
 	TunnelIP                 string     `json:"tunnel_ip" example:"1.2.3.4"`
 	TunnelIpV6               string     `json:"tunnel_ip_v6" example:"200::1"`
@@ -56,7 +56,6 @@ type AddDevice struct {
 
 // UpdateDevice is the information needed to update a Device.
 type UpdateDevice struct {
-	OrganizationID           uuid.UUID  `json:"organization_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	ChildPrefix              []string   `json:"child_prefix" example:"172.16.42.0/24"`
 	EndpointLocalAddressIPv4 string     `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
 	SymmetricNat             bool       `json:"symmetric_nat"`
