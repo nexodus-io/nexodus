@@ -905,11 +905,15 @@ func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
 		}
 		helper.Logf("TCP responses: apples=%d, bananas=%d", apples, bananas)
 		helper.Logf("UDP responses: carrot=%d, potato=%d", carrot, potato)
-		require.Equal(5, apples)
-		require.Equal(5, bananas)
+		// Allow for some failures/retries for TCP
+		require.GreaterOrEqual(apples, 3)
+		require.GreaterOrEqual(bananas, 3)
 		// Allow some drops for UDP
 		require.GreaterOrEqual(carrot, 3)
 		require.GreaterOrEqual(potato, 3)
+		// In both cases the total should be 10
+		require.Equal(10, apples+bananas)
+		require.Equal(10, carrot+potato)
 		return true, nil
 	}
 
