@@ -101,10 +101,10 @@ func TestSecurityGroups(t *testing.T) {
 	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
-	node1IPv4 := deviceMap[node1Hostname].TunnelIPsV4[0].Address
-	node1IPv6 := deviceMap[node1Hostname].TunnelIPsV6[0].Address
-	node2IPv4 := deviceMap[node2Hostname].TunnelIPsV4[0].Address
-	node2IPv6 := deviceMap[node2Hostname].TunnelIPsV6[0].Address
+	node1IPv4 := deviceMap[node1Hostname].IPv4TunnelIPs[0].Address
+	node1IPv6 := deviceMap[node1Hostname].IPv6TunnelIPs[0].Address
+	node2IPv4 := deviceMap[node2Hostname].IPv4TunnelIPs[0].Address
+	node2IPv6 := deviceMap[node2Hostname].IPv6TunnelIPs[0].Address
 
 	// v4 TCP port 11114 should succeed
 	err = helper.startPortListener(ctx, node1, node1IPv4, protoTCP, "11114")
@@ -389,10 +389,10 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
 	// register the v4 and v6 addresses for both devices
-	node1IPv4 := deviceMap[node1Hostname].TunnelIPsV4[0].Address
-	node1IPv6 := deviceMap[node1Hostname].TunnelIPsV6[0].Address
-	node2IPv4 := deviceMap[node2Hostname].TunnelIPsV4[0].Address
-	node2IPv6 := deviceMap[node2Hostname].TunnelIPsV6[0].Address
+	node1IPv4 := deviceMap[node1Hostname].IPv4TunnelIPs[0].Address
+	node1IPv6 := deviceMap[node1Hostname].IPv6TunnelIPs[0].Address
+	node2IPv4 := deviceMap[node2Hostname].IPv4TunnelIPs[0].Address
+	node2IPv6 := deviceMap[node2Hostname].IPv6TunnelIPs[0].Address
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
 	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})

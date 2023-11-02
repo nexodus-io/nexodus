@@ -15,6 +15,10 @@ definitions:
       hostname:
         example: myhost
         type: string
+      ipv4_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       os:
         type: string
       public_key:
@@ -25,10 +29,6 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ips_v4:
-        items:
-          $ref: '#/definitions/models.TunnelIP'
-        type: array
       vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
@@ -141,6 +141,14 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      ipv4_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
+      ipv6_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       online:
         type: boolean
       online_at:
@@ -159,14 +167,6 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ips_v4:
-        items:
-          $ref: '#/definitions/models.TunnelIP'
-        type: array
-      tunnel_ips_v6:
-        items:
-          $ref: '#/definitions/models.TunnelIP'
-        type: array
       vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string

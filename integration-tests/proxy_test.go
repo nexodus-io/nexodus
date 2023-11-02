@@ -496,7 +496,7 @@ func TestProxyIngressAndEgress(t *testing.T) {
 	// start nexodus on the nodes
 	helper.runNexd(ctx, node1, "--username", username, "--password", password, "relay")
 
-	// validate nexd has started on the discovery node
+	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 

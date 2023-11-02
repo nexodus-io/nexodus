@@ -126,7 +126,6 @@ Feature: Device API
         "tunnel_ip_v6": "",
         "advertise_cidrs": null,
         "relay": false,
-        "discovery": false,
         "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
         "hostname": "bbac3081d5e8",

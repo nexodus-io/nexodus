@@ -19,6 +19,8 @@ type ModelsDevice struct {
 	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname        string           `json:"hostname,omitempty"`
 	Id              string           `json:"id,omitempty"`
+	Ipv4TunnelIps   []ModelsTunnelIP `json:"ipv4_tunnel_ips,omitempty"`
+	Ipv6TunnelIps   []ModelsTunnelIP `json:"ipv6_tunnel_ips,omitempty"`
 	Online          bool             `json:"online,omitempty"`
 	OnlineAt        string           `json:"online_at,omitempty"`
 	Os              string           `json:"os,omitempty"`
@@ -28,7 +30,5 @@ type ModelsDevice struct {
 	Revision        int32            `json:"revision,omitempty"`
 	SecurityGroupId string           `json:"security_group_id,omitempty"`
 	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
-	TunnelIpsV4     []ModelsTunnelIP `json:"tunnel_ips_v4,omitempty"`
-	TunnelIpsV6     []ModelsTunnelIP `json:"tunnel_ips_v6,omitempty"`
 	VpcId           string           `json:"vpc_id,omitempty"`
 }

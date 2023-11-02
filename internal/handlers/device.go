@@ -479,10 +479,10 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
-		if len(request.TunnelIPsV4) > 1 {
+		if len(request.IPv4TunnelIPs) > 1 {
 			return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("tunnel_ips_v4", "can only specify a single IPv4 address request"))
-		} else if len(request.TunnelIPsV4) == 1 {
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.TunnelIPsV4[0].Address)
+		} else if len(request.IPv4TunnelIPs) == 1 {
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.IPv4TunnelIPs[0].Address)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
@@ -533,13 +533,13 @@ func (api *API) CreateDevice(c *gin.Context) {
 			PublicKey:      request.PublicKey,
 			Endpoints:      request.Endpoints,
 			AllowedIPs:     allowedIPs,
-			TunnelIPsV4: []models.TunnelIP{
+			IPv4TunnelIPs: []models.TunnelIP{
 				{
 					Address: ipamIP,
 					CIDR:    vpc.Ipv4Cidr,
 				},
 			},
-			TunnelIPsV6: []models.TunnelIP{
+			IPv6TunnelIPs: []models.TunnelIP{
 				{
 					Address: ipamIPv6,
 					CIDR:    vpc.Ipv6Cidr,
@@ -629,8 +629,8 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		ipamNamespace = vpc.ID
 	}
 
-	ipamAddress := device.TunnelIPsV4[0].Address
-	orgPrefix := device.TunnelIPsV4[0].CIDR
+	ipamAddress := device.IPv4TunnelIPs[0].Address
+	orgPrefix := device.IPv4TunnelIPs[0].CIDR
 	advertiseCidrs := device.AdvertiseCidrs
 
 	if res := api.db.WithContext(ctx).
@@ -656,8 +656,8 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		}
 	}
 
-	ipamAddressV6 := device.TunnelIPsV6[0].Address
-	orgPrefixV6 := device.TunnelIPsV6[0].CIDR
+	ipamAddressV6 := device.IPv6TunnelIPs[0].Address
+	orgPrefixV6 := device.IPv6TunnelIPs[0].CIDR
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {

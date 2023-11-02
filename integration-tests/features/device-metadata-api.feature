@@ -35,12 +35,10 @@ Feature: Device Metadata API
           "address": "172.17.0.3:58664",
           "distance": 0
         }],
-        "tunnel_ip": "",
-        "tunnel_ip_v6": "",
+        "ipv4_tunnel_ips": null,
+        "ipv6_tunnel_ips": null,
         "advertise_cidrs": null,
         "relay": false,
-        "discovery": false,
-        "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
         "hostname": "bbac3081d5e8",
         "os": "linux"

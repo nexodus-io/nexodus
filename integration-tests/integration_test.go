@@ -514,7 +514,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 	for _, p := range devices {
 		if p.Hostname == node3Hostname {
-			node3IP = p.TunnelIPsV4[0].Address
+			node3IP = p.IPv4TunnelIPs[0].Address
 			device3ID = p.ID.String()
 		}
 	}
@@ -893,10 +893,10 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(devices[0].Endpoints)
 	require.NotEmpty(devices[0].Hostname)
 	require.NotEmpty(devices[0].PublicKey)
-	require.NotEmpty(devices[0].TunnelIPsV4[0].Address)
-	require.NotEmpty(devices[0].TunnelIPsV4[0].CIDR)
-	require.NotEmpty(devices[0].TunnelIPsV6[0].Address)
-	require.NotEmpty(devices[0].TunnelIPsV6[0].CIDR)
+	require.NotEmpty(devices[0].IPv4TunnelIPs[0].Address)
+	require.NotEmpty(devices[0].IPv4TunnelIPs[0].CIDR)
+	require.NotEmpty(devices[0].IPv6TunnelIPs[0].Address)
+	require.NotEmpty(devices[0].IPv6TunnelIPs[0].CIDR)
 	require.NotEmpty(devices[0].AllowedIPs)
 	require.NotEmpty(devices[0].OrganizationID)
 	// TODO: add assert.NotEmpty(devices[0].ReflexiveIPv4) with #739

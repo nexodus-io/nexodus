@@ -15,11 +15,11 @@ type ModelsAddDevice struct {
 	AdvertiseCidrs  []string         `json:"advertise_cidrs,omitempty"`
 	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname        string           `json:"hostname,omitempty"`
+	Ipv4TunnelIps   []ModelsTunnelIP `json:"ipv4_tunnel_ips,omitempty"`
 	Os              string           `json:"os,omitempty"`
 	PublicKey       string           `json:"public_key,omitempty"`
 	Relay           bool             `json:"relay,omitempty"`
 	SecurityGroupId string           `json:"security_group_id,omitempty"`
 	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
-	TunnelIpsV4     []ModelsTunnelIP `json:"tunnel_ips_v4,omitempty"`
 	VpcId           string           `json:"vpc_id,omitempty"`
 }

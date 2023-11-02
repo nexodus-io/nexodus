@@ -52,8 +52,8 @@ type Device struct {
 	OrganizationID           uuid.UUID `gorm:"index"`
 	PublicKey                string
 	AllowedIPs               pq.StringArray `gorm:"type:text[]" `
-	TunnelIPsV4              []TunnelIP     `gorm:"type:JSONB; serializer:json"`
-	TunnelIPsV6              []TunnelIP     `gorm:"type:JSONB; serializer:json"`
+	IPv4TunnelIPs            []TunnelIP     `gorm:"type:JSONB; serializer:json"`
+	IPv6TunnelIPs            []TunnelIP     `gorm:"type:JSONB; serializer:json"`
 	AdvertiseCidrs           pq.StringArray `gorm:"type:text[]" `
 	Relay                    bool
 	EndpointLocalAddressIPv4 string

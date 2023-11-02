@@ -14,7 +14,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
 		VpcId:     nx.vpc.Id,
 		PublicKey: nx.wireguardPubKey,
-		TunnelIpsV4: []public.ModelsTunnelIP{
+		Ipv4TunnelIps: []public.ModelsTunnelIP{
 			{
 				Address: nx.requestedIP,
 				Cidr:    nx.vpc.Ipv4Cidr,

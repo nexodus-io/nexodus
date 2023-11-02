@@ -55,7 +55,6 @@ Feature: Device API
         }],
         "advertise_cidrs": null,
         "relay": false,
-        "discovery": false,
         "symmetric_nat": true,
         "hostname": "bbac3081d5e8",
         "os": "linux"
@@ -73,7 +72,6 @@ Feature: Device API
         "online": false,
         "online_at": null,
         "advertise_cidrs": null,
-        "discovery": false,
         "endpoints": [{
           "source": "local",
           "address": "172.17.0.3:58664",
@@ -91,16 +89,16 @@ Feature: Device API
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": true,
-        "tunnel_ips_v4": [
+        "ipv4_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v4[0].address}",
-            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
           }
         ],
-        "tunnel_ips_v6": [
+        "ipv6_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v6[0].address}",
-            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
           }
         ],
         "owner_id": "${user_id}",
@@ -126,7 +124,6 @@ Feature: Device API
         "online": false,
         "online_at": null,
         "advertise_cidrs": null,
-        "discovery": false,
         "endpoints": [{
           "source": "local",
           "address": "172.17.0.3:58664",
@@ -144,16 +141,16 @@ Feature: Device API
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ips_v4": [
+        "ipv4_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v4[0].address}",
-            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
           }
         ],
-        "tunnel_ips_v6": [
+        "ipv6_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v6[0].address}",
-            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
           }
         ],        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
@@ -174,7 +171,6 @@ Feature: Device API
           "online": false,
           "online_at": null,
           "advertise_cidrs": null,
-          "discovery": false,
           "endpoints": [{
             "source": "local",
             "address": "172.17.0.3:58664",
@@ -193,16 +189,16 @@ Feature: Device API
           "revision": ${response[0].revision},
           "symmetric_nat": false,
           "security_group_id": "${response[0].security_group_id}",
-          "tunnel_ips_v4": [
+          "ipv4_tunnel_ips": [
             {
-              "address": "${response[0].tunnel_ips_v4[0].address}",
-              "cidr": "${response[0].tunnel_ips_v4[0].cidr}"
+              "address": "${response[0].ipv4_tunnel_ips[0].address}",
+              "cidr": "${response[0].ipv4_tunnel_ips[0].cidr}"
             }
           ],
-          "tunnel_ips_v6": [
+          "ipv6_tunnel_ips": [
             {
-              "address": "${response[0].tunnel_ips_v6[0].address}",
-              "cidr": "${response[0].tunnel_ips_v6[0].cidr}"
+              "address": "${response[0].ipv6_tunnel_ips[0].address}",
+              "cidr": "${response[0].ipv6_tunnel_ips[0].cidr}"
             }
           ],
           "owner_id": "${user_id}"
@@ -260,7 +256,6 @@ Feature: Device API
         "online": false,
         "online_at": null,
         "advertise_cidrs": null,
-        "discovery": false,
         "endpoints": [{
           "source": "local",
           "address": "172.17.0.3:58664",
@@ -278,16 +273,16 @@ Feature: Device API
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ips_v4": [
+        "ipv4_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v4[0].address}",
-            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
           }
         ],
-        "tunnel_ips_v6": [
+        "ipv6_tunnel_ips": [
           {
-            "address": "${response.tunnel_ips_v6[0].address}",
-            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
           }
         ],
         "owner_id": "${user_id}",

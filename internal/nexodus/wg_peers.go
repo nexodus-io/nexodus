@@ -411,16 +411,16 @@ func (nx *Nexodus) buildLocalConfig() {
 	}
 
 	// if the local node address changed replace it on wg0
-	if nx.TunnelIP != d.device.TunnelIpsV4[0].Address {
-		nx.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIpsV4[0].Address, d.device.TunnelIpsV6[0].Address)
+	if nx.TunnelIP != d.device.Ipv4TunnelIps[0].Address {
+		nx.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.Ipv4TunnelIps[0].Address, d.device.Ipv6TunnelIps[0].Address)
 		if runtime.GOOS == Linux.String() && linkExists(nx.tunnelIface) {
 			if err := delLink(nx.tunnelIface); err != nil {
 				nx.logger.Infof("Failed to delete %s: %v", nx.tunnelIface, err)
 			}
 		}
 	}
-	nx.TunnelIP = d.device.TunnelIpsV4[0].Address
-	nx.TunnelIpV6 = d.device.TunnelIpsV6[0].Address
+	nx.TunnelIP = d.device.Ipv4TunnelIps[0].Address
+	nx.TunnelIpV6 = d.device.Ipv6TunnelIps[0].Address
 	localInterface = wgLocalConfig{
 		nx.wireguardPvtKey,
 		nx.listenPort,

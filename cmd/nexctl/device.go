@@ -93,7 +93,7 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 		fields = append(fields, TableField{Header: "TUNNEL IPS",
 			Formatter: func(item interface{}) string {
 				dev := item.(public.ModelsDevice)
-				return fmt.Sprintf("%s, %s", dev.TunnelIpsV4[0].Address, dev.TunnelIpsV6[0].Address)
+				return fmt.Sprintf("%s, %s", dev.Ipv4TunnelIps[0].Address, dev.Ipv6TunnelIps[0].Address)
 			},
 		})
 	}

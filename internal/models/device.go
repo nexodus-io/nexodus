@@ -16,8 +16,8 @@ type Device struct {
 	OrganizationID  uuid.UUID      `json:"-"` // Denormalized from the VPC record for performance
 	PublicKey       string         `json:"public_key"`
 	AllowedIPs      pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
-	TunnelIPsV4     []TunnelIP     `json:"tunnel_ips_v4" gorm:"type:JSONB; serializer:json"`
-	TunnelIPsV6     []TunnelIP     `json:"tunnel_ips_v6" gorm:"type:JSONB; serializer:json"`
+	IPv4TunnelIPs   []TunnelIP     `json:"ipv4_tunnel_ips" gorm:"type:JSONB; serializer:json"`
+	IPv6TunnelIPs   []TunnelIP     `json:"ipv6_tunnel_ips" gorm:"type:JSONB; serializer:json"`
 	AdvertiseCidrs  pq.StringArray `json:"advertise_cidrs" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay           bool           `json:"relay"`
 	SymmetricNat    bool           `json:"symmetric_nat"`
@@ -39,7 +39,7 @@ type AddDevice struct {
 	VpcID           uuid.UUID  `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	PublicKey       string     `json:"public_key"`
 	AdvertiseCidrs  []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
-	TunnelIPsV4     []TunnelIP `json:"tunnel_ips_v4" gorm:"type:JSONB; serializer:json"`
+	IPv4TunnelIPs   []TunnelIP `json:"ipv4_tunnel_ips" gorm:"type:JSONB; serializer:json"`
 	Relay           bool       `json:"relay"`
 	SymmetricNat    bool       `json:"symmetric_nat"`
 	Hostname        string     `json:"hostname" example:"myhost"`

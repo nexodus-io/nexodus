@@ -2677,6 +2677,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "myhost"
                 },
+                "ipv4_tunnel_ips": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
+                },
                 "os": {
                     "type": "string"
                 },
@@ -2691,12 +2697,6 @@ const docTemplate = `{
                 },
                 "symmetric_nat": {
                     "type": "boolean"
-                },
-                "tunnel_ips_v4": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.TunnelIP"
-                    }
                 },
                 "vpc_id": {
                     "type": "string",
@@ -2860,6 +2860,18 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
+                "ipv4_tunnel_ips": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
+                },
+                "ipv6_tunnel_ips": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
+                },
                 "online": {
                     "type": "boolean"
                 },
@@ -2886,18 +2898,6 @@ const docTemplate = `{
                 },
                 "symmetric_nat": {
                     "type": "boolean"
-                },
-                "tunnel_ips_v4": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.TunnelIP"
-                    }
-                },
-                "tunnel_ips_v6": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.TunnelIP"
-                    }
                 },
                 "vpc_id": {
                     "type": "string",
