@@ -28,7 +28,6 @@ GLOBAL OPTIONS:
    Agent Options
 
    --relay-only  Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]
-   --stun        Discover the public address for this host using STUN (default: false) [$NEXD_STUN]
 
    Nexodus Service Options
 

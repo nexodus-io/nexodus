@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/nexodus-io/nexodus/internal/wgcrypto"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"net/http"
 	"net/netip"
@@ -21,6 +18,10 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/nexodus-io/nexodus/internal/wgcrypto"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/nexodus-io/nexodus/internal/state"
 	"golang.org/x/oauth2"
@@ -138,7 +139,6 @@ type Nexodus struct {
 	TunnelIP                 string
 	TunnelIpV6               string
 	childPrefix              []string
-	stun                     bool
 	relay                    bool
 	networkRouter            bool
 	networkRouterDisableNAT  bool
@@ -151,6 +151,7 @@ type Nexodus struct {
 	deviceCache              map[string]deviceCacheEntry
 	endpointLocalAddress     string
 	nodeReflexiveAddressIPv4 netip.AddrPort
+	reflexiveAddrStunSrc     string
 	hostname                 string
 	securityGroup            *public.ModelsSecurityGroup
 	symmetricNat             bool
@@ -196,7 +197,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, childPrefix []string, stun bool, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, orgId string) (*Nexodus, error) {
+func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, childPrefix []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, orgId string) (*Nexodus, error) {
 	public.Logger = logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
@@ -219,7 +220,6 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		requestedIP:             requestedIP,
 		userProvidedLocalIP:     userProvidedLocalIP,
 		childPrefix:             childPrefix,
-		stun:                    stun,
 		relay:                   relay,
 		networkRouter:           networkRouterNode,
 		networkRouterDisableNAT: networkRouterDisableNAT,
@@ -433,38 +433,17 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	nx.org = org
 
-	var localIP string
-	var localEndpointPort int
-
 	// User requested ip --request-ip takes precedent
 	if nx.userProvidedLocalIP != "" {
-		localIP = nx.userProvidedLocalIP
-		localEndpointPort = nx.listenPort
-	}
-
-	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
-	stunServer1 := stun.NextServer()
-	if !nx.symmetricNat && nx.stun && localIP == "" {
-		ipPort, err := stun.Request(nx.logger, stunServer1, nx.listenPort)
-		if err != nil {
-			nx.logger.Warn("Unable to determine the public facing address, falling back to the local address")
-		} else {
-			localIP = ipPort.Addr().String()
-			localEndpointPort = int(ipPort.Port())
-		}
-	}
-	if localIP == "" {
-		ip, err := nx.findLocalIP()
+		nx.endpointLocalAddress = nx.userProvidedLocalIP
+	} else {
+		nx.endpointLocalAddress, err = nx.findLocalIP()
 		if err != nil {
 			return fmt.Errorf("unable to determine the ip address of the host, please specify using --local-endpoint-ip: %w", err)
 		}
-		localIP = ip
-		localEndpointPort = nx.listenPort
 	}
 
 	nx.os = runtime.GOOS
-
-	nx.endpointLocalAddress = localIP
 
 	// if this device is a network router node, enable ip forwarding and set up the network router netfilter policy
 	if nx.networkRouter {
@@ -480,7 +459,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}
 
-	endpointSocket := net.JoinHostPort(localIP, fmt.Sprintf("%d", localEndpointPort))
+	endpointSocket := net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort))
 	endpoints := []public.ModelsEndpoint{
 		{
 			Source:   "local",
@@ -488,7 +467,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			Distance: 0,
 		},
 		{
-			Source:   "stun:" + stunServer1,
+			Source:   "stun:" + nx.reflexiveAddrStunSrc,
 			Address:  nx.nodeReflexiveAddressIPv4.String(),
 			Distance: 0,
 		},
