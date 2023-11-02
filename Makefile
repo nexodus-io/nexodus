@@ -665,7 +665,7 @@ deploy: wait-for-readiness ## Deploy a development nexodus stack onto a kubernet
 
 .PHONY: undeploy
 undeploy: ## Remove the nexodus stack from a kubernetes cluster
-	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) elete namespace nexodus
+	$(CMD_PREFIX) kubectl --context=$(NEXODUS_KUBE_CONTEXT) delete namespace nexodus
 
 .PHONY: deploy-monitoring-stack ## Deploy the monitoring stack in the kind cluster
 deploy-monitoring-stack:
@@ -679,6 +679,8 @@ load-images: ## Load images onto kind
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/go-ipam:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/envsubst:latest
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
+	$(CMD_PREFIX) docker pull docker.io/library/redis:6.0
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image docker.io/library/redis:6.0
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes
