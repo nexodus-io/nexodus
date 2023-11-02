@@ -224,10 +224,6 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			originalIpamNamespace = vpc.ID
 		}
 
-		if request.EndpointLocalAddressIPv4 != "" {
-			device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
-		}
-
 		if request.Hostname != "" {
 			device.Hostname = request.Hostname
 		}
@@ -532,26 +528,25 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Base: models.Base{
 				ID: deviceId,
 			},
-			OwnerID:                  userId,
-			VpcID:                    vpc.ID,
-			OrganizationID:           vpc.OrganizationID,
-			PublicKey:                request.PublicKey,
-			Endpoints:                request.Endpoints,
-			AllowedIPs:               allowedIPs,
-			TunnelIP:                 ipamIP,
-			TunnelIpV6:               ipamIPv6,
-			AdvertiseCidrs:           request.AdvertiseCidrs,
-			Relay:                    request.Relay,
-			Discovery:                request.Discovery,
-			OrganizationPrefix:       vpc.IpCidr,
-			OrganizationPrefixV6:     vpc.IpCidrV6,
-			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
-			SymmetricNat:             request.SymmetricNat,
-			Hostname:                 request.Hostname,
-			Os:                       request.Os,
-			SecurityGroupId:          vpc.Organization.SecurityGroupId,
-			RegistrationTokenID:      registrationTokenID,
-			BearerToken:              "DT:" + deviceToken.String(),
+			OwnerID:              userId,
+			VpcID:                vpc.ID,
+			OrganizationID:       vpc.OrganizationID,
+			PublicKey:            request.PublicKey,
+			Endpoints:            request.Endpoints,
+			AllowedIPs:           allowedIPs,
+			TunnelIP:             ipamIP,
+			TunnelIpV6:           ipamIPv6,
+			AdvertiseCidrs:       request.AdvertiseCidrs,
+			Relay:                request.Relay,
+			Discovery:            request.Discovery,
+			OrganizationPrefix:   vpc.IpCidr,
+			OrganizationPrefixV6: vpc.IpCidrV6,
+			SymmetricNat:         request.SymmetricNat,
+			Hostname:             request.Hostname,
+			Os:                   request.Os,
+			SecurityGroupId:      vpc.Organization.SecurityGroupId,
+			RegistrationTokenID:  registrationTokenID,
+			BearerToken:          "DT:" + deviceToken.String(),
 		}
 
 		if res := tx.

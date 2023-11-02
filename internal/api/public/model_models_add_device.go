@@ -12,17 +12,16 @@ package public
 
 // ModelsAddDevice struct for ModelsAddDevice
 type ModelsAddDevice struct {
-	AdvertiseCidrs          []string         `json:"advertise_cidrs,omitempty"`
-	Discovery               bool             `json:"discovery,omitempty"`
-	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`
-	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
-	Hostname                string           `json:"hostname,omitempty"`
-	Os                      string           `json:"os,omitempty"`
-	PublicKey               string           `json:"public_key,omitempty"`
-	Relay                   bool             `json:"relay,omitempty"`
-	SecurityGroupId         string           `json:"security_group_id,omitempty"`
-	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
-	TunnelIp                string           `json:"tunnel_ip,omitempty"`
-	TunnelIpV6              string           `json:"tunnel_ip_v6,omitempty"`
-	VpcId                   string           `json:"vpc_id,omitempty"`
+	AdvertiseCidrs  []string         `json:"advertise_cidrs,omitempty"`
+	Discovery       bool             `json:"discovery,omitempty"`
+	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
+	Hostname        string           `json:"hostname,omitempty"`
+	Os              string           `json:"os,omitempty"`
+	PublicKey       string           `json:"public_key,omitempty"`
+	Relay           bool             `json:"relay,omitempty"`
+	SecurityGroupId string           `json:"security_group_id,omitempty"`
+	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
+	TunnelIp        string           `json:"tunnel_ip,omitempty"`
+	TunnelIpV6      string           `json:"tunnel_ip_v6,omitempty"`
+	VpcId           string           `json:"vpc_id,omitempty"`
 }

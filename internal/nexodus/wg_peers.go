@@ -370,12 +370,11 @@ func buildRelayPeer(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []st
 
 // buildDirectLocalPeer If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 // The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-func buildDirectLocalPeer(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, peerPort, _ string) wgPeerConfig {
-	directLocalPeerEndpointSocket := net.JoinHostPort(device.EndpointLocalAddressIp4, peerPort)
+func buildDirectLocalPeer(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, _, _ string) wgPeerConfig {
 	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
-		Endpoint:            directLocalPeerEndpointSocket,
+		Endpoint:            localIP,
 		AllowedIPs:          device.AllowedIps,
 		PersistentKeepAlive: persistentKeepalive,
 	}

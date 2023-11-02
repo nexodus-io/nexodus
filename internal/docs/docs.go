@@ -2670,10 +2670,6 @@ const docTemplate = `{
                 "discovery": {
                     "type": "boolean"
                 },
-                "endpoint_local_address_ip4": {
-                    "type": "string",
-                    "example": "1.2.3.4"
-                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -2861,9 +2857,6 @@ const docTemplate = `{
                 },
                 "discovery": {
                     "type": "boolean"
-                },
-                "endpoint_local_address_ip4": {
-                    "type": "string"
                 },
                 "endpoints": {
                     "type": "array",
@@ -3178,10 +3171,6 @@ const docTemplate = `{
                     "example": [
                         "172.16.42.0/24"
                     ]
-                },
-                "endpoint_local_address_ip4": {
-                    "type": "string",
-                    "example": "1.2.3.4"
                 },
                 "endpoints": {
                     "type": "array",

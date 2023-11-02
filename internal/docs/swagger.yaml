@@ -10,9 +10,6 @@ definitions:
         type: array
       discovery:
         type: boolean
-      endpoint_local_address_ip4:
-        example: 1.2.3.4
-        type: string
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
@@ -143,8 +140,6 @@ definitions:
         type: string
       discovery:
         type: boolean
-      endpoint_local_address_ip4:
-        type: string
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
@@ -358,9 +353,6 @@ definitions:
         items:
           type: string
         type: array
-      endpoint_local_address_ip4:
-        example: 1.2.3.4
-        type: string
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'

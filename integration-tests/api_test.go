@@ -5,11 +5,12 @@ package integration_tests
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"testing"
-	"time"
 )
 
 func TestApiClientConflictError(t *testing.T) {
@@ -36,10 +37,9 @@ func TestApiClientConflictError(t *testing.T) {
 	publicKey := privateKey.PublicKey().String()
 
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		VpcId:                   orgs[0].Id,
-		PublicKey:               publicKey,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",
@@ -56,10 +56,9 @@ func TestApiClientConflictError(t *testing.T) {
 	require.NoError(err)
 
 	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		VpcId:                   orgs[0].Id,
-		PublicKey:               publicKey,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",
@@ -168,10 +167,9 @@ func TestDevicesInformer(t *testing.T) {
 	require.True(devicesChanged())
 
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		VpcId:                   orgs[0].Id,
-		PublicKey:               publicKey,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
 				Source:   "local",

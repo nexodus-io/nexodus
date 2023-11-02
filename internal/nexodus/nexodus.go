@@ -1052,7 +1052,6 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	// Refresh wireguard peer configuration, getting any new peers or changes to existing peers
 	updatePeers := nx.buildPeersConfig()
 	if newLocalConfig || len(updatePeers) > 0 {
-		// Reset connection health tracking data for any peers that have changed
 		for _, peer := range updatePeers {
 			existing, ok := nx.deviceCache[peer.PublicKey]
 			if !ok {

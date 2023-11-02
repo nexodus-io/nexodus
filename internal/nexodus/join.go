@@ -16,7 +16,6 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 		PublicKey:               nx.wireguardPubKey,
 		TunnelIp:                nx.requestedIP,
 		AdvertiseCidrs:          nx.advertiseCidrs,
-		EndpointLocalAddressIp4: nx.endpointLocalAddress,
 		SymmetricNat:            nx.symmetricNat,
 		Hostname:                nx.hostname,
 		Relay:                   nx.relay,
@@ -32,7 +31,6 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 				var resp *http.Response
 				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
 					AdvertiseCidrs:          nx.advertiseCidrs,
-					EndpointLocalAddressIp4: nx.endpointLocalAddress,
 					SymmetricNat:            nx.symmetricNat,
 					Hostname:                nx.hostname,
 					Endpoints:               endpoints,
