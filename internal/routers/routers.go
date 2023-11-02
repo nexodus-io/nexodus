@@ -139,17 +139,17 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 
 		// Security Groups
-		private.GET("/security_groups", api.ListSecurityGroups)
-		private.GET("/security_group/:id", api.GetSecurityGroup)
-		private.POST("/security_groups", api.CreateSecurityGroup)
-		private.PATCH("/security_groups/:id", api.UpdateSecurityGroup)
-		private.DELETE("/security_groups/:id", api.DeleteSecurityGroup)
+		private.GET("/security-groups", api.ListSecurityGroups)
+		private.GET("/security-groups/:id", api.GetSecurityGroup)
+		private.POST("/security-groups", api.CreateSecurityGroup)
+		private.PATCH("/security-groups/:id", api.UpdateSecurityGroup)
+		private.DELETE("/security-groups/:id", api.DeleteSecurityGroup)
 
 		// List / Watch Event API used by nexd
 		private.POST("/vpcs/:id/events", api.WatchEvents)
 		private.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
 		private.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
-		private.GET("/vpcs/:id/security_groups", api.ListSecurityGroupsInVPC)
+		private.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
 
 	}
 

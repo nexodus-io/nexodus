@@ -70,11 +70,11 @@ definitions:
         description: Expiration is optional, if set the registration token is only
           valid until the Expiration time.
         type: string
-      organization_id:
-        type: string
       single_use:
         description: SingleUse only allows the registration token to be used once.
         type: boolean
+      vpc_id:
+        type: string
     type: object
   models.AddSecurityGroup:
     properties:
@@ -1362,7 +1362,7 @@ paths:
       summary: Get a RegistrationToken
       tags:
       - RegistrationToken
-  /api/security_groups:
+  /api/security-groups:
     get:
       description: Lists all Security Groups
       operationId: ListSecurityGroups
@@ -1439,7 +1439,7 @@ paths:
       summary: Add SecurityGroup
       tags:
       - SecurityGroup
-  /api/security_groups/{id}:
+  /api/security-groups/{id}:
     delete:
       description: Deletes an existing SecurityGroup
       operationId: DeleteSecurityGroup
@@ -1989,7 +1989,7 @@ paths:
       summary: List Device Metadata
       tags:
       - VPC
-  /api/vpcs/{id}/security_groups:
+  /api/vpcs/{id}/security-groups:
     get:
       description: Lists all Security Groups in a VPC
       operationId: ListSecurityGroupsInVPC

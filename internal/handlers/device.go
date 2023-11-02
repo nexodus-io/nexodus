@@ -328,7 +328,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
-		var apiResponseError ApiResponseError
+		var apiResponseError *ApiResponseError
 		if errors.Is(err, errDeviceNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else if errors.As(err, &apiResponseError) {
@@ -401,6 +401,10 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 	if request.PublicKey == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("public_key"))
+		return
+	}
+	if request.VpcID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
 
@@ -561,7 +565,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
-		var apiResponseError ApiResponseError
+		var apiResponseError *ApiResponseError
 		if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {

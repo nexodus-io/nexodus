@@ -1348,7 +1348,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/security_groups": {
+        "/api/security-groups": {
             "get": {
                 "description": "Lists all Security Groups",
                 "produces": [
@@ -1464,7 +1464,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/security_groups/{id}": {
+        "/api/security-groups/{id}": {
             "get": {
                 "description": "Gets a security group by ID",
                 "produces": [
@@ -2284,7 +2284,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/vpcs/{id}/security_groups": {
+        "/api/vpcs/{id}/security-groups": {
             "get": {
                 "description": "Lists all Security Groups in a VPC",
                 "produces": [
@@ -2755,12 +2755,12 @@ const docTemplate = `{
                     "description": "Expiration is optional, if set the registration token is only valid until the Expiration time.",
                     "type": "string"
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "single_use": {
                     "description": "SingleUse only allows the registration token to be used once.",
                     "type": "boolean"
+                },
+                "vpc_id": {
+                    "type": "string"
                 }
             }
         },

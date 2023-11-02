@@ -27,7 +27,7 @@ type NexodusClaims struct {
 }
 
 type AddRegistrationToken struct {
-	VpcID       uuid.UUID  `json:"organization_id,omitempty"`
+	VpcID       uuid.UUID  `json:"vpc_id,omitempty"`
 	Description string     `json:"description,omitempty"`
 	SingleUse   bool       `json:"single_use,omitempty"` // SingleUse only allows the registration token to be used once.
 	Expiration  *time.Time `json:"expiration,omitempty"` // Expiration is optional, if set the registration token is only valid until the Expiration time.

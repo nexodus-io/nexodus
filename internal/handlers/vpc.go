@@ -147,7 +147,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 
 	if err != nil {
 		var duplicate errDuplicateVPC
-		var apiResponseError ApiResponseError
+		var apiResponseError *ApiResponseError
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewApiError(err))
 		} else if errors.As(err, &apiResponseError) {
@@ -166,16 +166,19 @@ func (api *API) CreateVPC(c *gin.Context) {
 func (api *API) VPCIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := c.Value(gin.AuthUserKey).(string)
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId)
 	} else {
-		return db.Where("organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+		return db.Where("organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId)
 	}
 }
 
 func (api *API) VPCIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := c.Value(gin.AuthUserKey).(string)
-	// this could potentially be driven by rego output
-	return db.Where("owner_id = ?", userId)
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
+	} else {
+		return db.Where("organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId)
+	}
 }
 
 // ListVPCs lists all VPCs
@@ -197,7 +200,7 @@ func (api *API) ListVPCs(c *gin.Context) {
 
 	db := api.db.WithContext(ctx)
 	db = api.VPCIsReadableByCurrentUser(c, db)
-	db = FilterAndPaginate(db, &models.VPC{}, c, "name")
+	db = FilterAndPaginate(db, &models.VPC{}, c, "id")
 	result := db.Find(&vpcs)
 
 	if result.Error != nil {

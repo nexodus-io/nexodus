@@ -164,7 +164,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stateStore,
 		stateDir,
 		ctx,
-		cCtx.String("organization-id"),
+		cCtx.String("vpc-id"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -448,8 +448,8 @@ func main() {
 				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
-				Name:     "organization-id",
-				Usage:    "Organization ID to use when registering with the nexodus service",
+				Name:     "vpc-id",
+				Usage:    "VPC ID to use when registering with the nexodus service",
 				EnvVars:  []string{"NEXD_ORG_ID"},
 				Required: false,
 				Category: nexServiceOptions,

@@ -81,7 +81,7 @@ func (api *API) SecurityGroupIsWriteableByCurrentUser(c *gin.Context, db *gorm.D
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/security_groups [get]
+// @Router       /api/security-groups [get]
 func (api *API) ListSecurityGroups(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListSecurityGroups")
 	defer span.End()
@@ -117,7 +117,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/vpcs/{id}/security_groups [get]
+// @Router       /api/vpcs/{id}/security-groups [get]
 func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListSecurityGroupsInVPC",
 		trace.WithAttributes(
@@ -181,7 +181,7 @@ func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/security_groups/{id} [get]
+// @Router       /api/security-groups/{id} [get]
 func (api *API) GetSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -234,7 +234,7 @@ func (api *API) secGroupsEnabled(c *gin.Context) bool {
 // @Failure      422  {object}  models.ValidationError
 // @Failure      429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/security_groups [post]
+// @Router       /api/security-groups [post]
 func (api *API) CreateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup")
 	defer span.End()
@@ -346,7 +346,7 @@ func (api *API) notifySecurityGroupChange(c *gin.Context, orgId uuid.UUID) {
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/security_groups/{id} [delete]
+// @Router       /api/security-groups/{id} [delete]
 func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -393,7 +393,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	})
 
 	if err != nil {
-		var apiResponseError ApiResponseError
+		var apiResponseError *ApiResponseError
 		if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -425,7 +425,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 // @Failure      422  {object}     models.ValidationError
 // @Failure      429  {object}     models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/security_groups/{id} [patch]
+// @Router       /api/security-groups/{id} [patch]
 func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),

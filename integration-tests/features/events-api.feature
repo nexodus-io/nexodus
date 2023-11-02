@@ -17,6 +17,10 @@ Feature: Events API
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${oscar_user_id}
 
+    When I GET path "/api/vpcs"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${vpc_id}
+
     When I GET path "/api/organizations"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${organization_id}
@@ -43,7 +47,7 @@ Feature: Events API
       """
       {
         "user_id": "${oscar_user_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "local_ip": "172.17.0.3:58664",
         "tunnel_ip": "",
@@ -62,7 +66,7 @@ Feature: Events API
 
     Given I am logged in as "Oliver"
 
-    When I POST path "/api/organizations/${organization_id}/events" with json body expecting a json event stream:
+    When I POST path "/api/vpcs/${vpc_id}/events" with json body expecting a json event stream:
       """
       [
         {
@@ -114,7 +118,7 @@ Feature: Events API
       """
       {
         "user_id": "${oscar_user_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "local_ip": "172.17.0.4:58664",
         "tunnel_ip": "",

@@ -18,10 +18,10 @@ Feature: Device API
         "username": "${response.username}"
       }
       """
-
-    When I GET path "/api/organizations"
+    
+    When I GET path "/api/vpcs"
     Then the response code should be 200
-    Given I store the ${response[0].id} as ${organization_id}
+    Given I store the ${response[0].id} as ${vpc_id}
 
     # Bob gets an empty list of registration-tokens.
     When I GET path "/api/registration-tokens"
@@ -36,7 +36,7 @@ Feature: Device API
       """
       {
         "owner_id": "${user_id}",
-        "organization_id": "${organization_id}"
+        "vpc_id": "${vpc_id}"
       }
       """
     Then the response code should be 201
@@ -48,7 +48,7 @@ Feature: Device API
         "id": "${reg_token_id}",
         "bearer_token": "${reg_bearer_token}",
         "owner_id": "${user_id}",
-        "organization_id": "${organization_id}"
+        "vpc_id": "${vpc_id}"
       }
       """
 
@@ -62,7 +62,7 @@ Feature: Device API
           "id": "${reg_token_id}",
           "bearer_token": "${reg_bearer_token}",
           "owner_id": "${user_id}",
-          "organization_id": "${organization_id}"
+          "vpc_id": "${vpc_id}"
         }
       ]
       """
@@ -111,7 +111,7 @@ Feature: Device API
       """
       {
         "owner_id": "${user_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
@@ -168,21 +168,14 @@ Feature: Device API
       ${device}
       """
 
-    When I GET path "/api/organizations/${organization_id}/devices"
+    When I GET path "/api/vpcs/${vpc_id}/devices"
     Then the response code should be 200
     And the ${response[0]} should contain json:
       """
       ${device}
       """
 
-    When I GET path "/api/organizations/${organization_id}/devices/${device_id}"
-    Then the response code should be 200
-    And the response should contain json:
-      """
-      ${device}
-      """
-
-    When I POST path "/api/organizations/${organization_id}/events" with json body expecting a json event stream:
+    When I POST path "/api/vpcs/${vpc_id}/events" with json body expecting a json event stream:
       """
       [
         {
@@ -216,7 +209,7 @@ Feature: Device API
         "id": "${reg_token_id}",
         "bearer_token": "${reg_bearer_token}",
         "owner_id": "${user_id}",
-        "organization_id": "${organization_id}"
+        "vpc_id": "${vpc_id}"
       }
       """
 

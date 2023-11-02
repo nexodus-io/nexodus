@@ -63,7 +63,7 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
-			"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+			"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 			func(c *gin.Context) {
 				c.Set("nexodus.secGroupsEnabled", "true")
 				suite.api.CreateSecurityGroup(c)
@@ -86,7 +86,7 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 		require.Equal(newGroup.OrganizationId, actual.OrganizationId)
 
 		_, res, err = suite.ServeRequest(
-			http.MethodGet, "/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actual.ID),
+			http.MethodGet, "/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actual.ID),
 			suite.api.GetSecurityGroup, nil,
 		)
 
@@ -121,7 +121,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -142,7 +142,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 	// Now delete the security group we just created
 	_, res, err = suite.ServeRequest(
 		http.MethodDelete,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actual.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actual.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.DeleteSecurityGroup(c)
@@ -155,7 +155,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	// Verify that the security group has been deleted by trying to get it
 	_, res, err = suite.ServeRequest(
-		http.MethodGet, "/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actual.ID),
+		http.MethodGet, "/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actual.ID),
 		suite.api.GetSecurityGroup, nil,
 	)
 
@@ -191,7 +191,7 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
-			"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+			"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 			func(c *gin.Context) {
 				c.Set("nexodus.secGroupsEnabled", "true")
 				suite.api.CreateSecurityGroup(c)
@@ -204,7 +204,7 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 
 	// List all the security groups
 	_, res, err := suite.ServeRequest(
-		http.MethodGet, "/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+		http.MethodGet, "/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 		suite.api.ListSecurityGroups, nil,
 	)
 
@@ -241,7 +241,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -271,7 +271,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -313,7 +313,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security_groups", fmt.Sprintf("/organizations/%s/security_groups", suite.testOrganizationID.String()),
+		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testOrganizationID.String()),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -345,7 +345,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -372,7 +372,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -399,7 +399,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -426,7 +426,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security_groups/:id", fmt.Sprintf("/organizations/%s/security_groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
+		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testOrganizationID.String(), actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)

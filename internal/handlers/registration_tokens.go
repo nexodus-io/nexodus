@@ -52,7 +52,7 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 	var vpc models.VPC
 	db := api.db.WithContext(ctx)
 	if res := api.VPCIsOwnedByCurrentUser(c, db).
-		First(&vpc, "id = ?", request.VpcID); res.Error != nil {
+		First(&vpc, "id = ?", request.VpcID.String()); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		return
 	}

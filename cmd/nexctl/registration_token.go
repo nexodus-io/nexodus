@@ -27,7 +27,7 @@ func createRegistrationTokenCommand() *cli.Command {
 				Usage: "Create a registration token",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "organization-id",
+						Name:     "vpc-id",
 						Required: false,
 					},
 					&cli.StringFlag{
@@ -45,10 +45,10 @@ func createRegistrationTokenCommand() *cli.Command {
 				},
 				Action: func(cCtx *cli.Context) error {
 					return createRegistrationToken(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegistrationToken{
-						OrganizationId: cCtx.String("organization-id"),
-						Description:    cCtx.String("description"),
-						Expiration:     toExpiration(cCtx.Duration("expiration")),
-						SingleUse:      cCtx.Bool("single-use"),
+						VpcId:       cCtx.String("vpc-id"),
+						Description: cCtx.String("description"),
+						Expiration:  toExpiration(cCtx.Duration("expiration")),
+						SingleUse:   cCtx.Bool("single-use"),
 					})
 				},
 			},
@@ -100,8 +100,8 @@ func listRegistrationTokens(cCtx *cli.Context, c *client.APIClient) error {
 
 func createRegistrationToken(cCtx *cli.Context, c *client.APIClient, token public.ModelsAddRegistrationToken) error {
 
-	if token.OrganizationId == "" {
-		token.OrganizationId = getDefaultOwnedOrgId(cCtx.Context, c)
+	if token.VpcId == "" {
+		token.VpcId = getDefaultVpcId(cCtx.Context, c)
 	}
 
 	res, _, err := c.RegistrationTokenApi.CreateRegistrationToken(cCtx.Context).RegistrationToken(token).Execute()
@@ -126,6 +126,20 @@ func getDefaultOwnedOrgId(ctx context.Context, c *client.APIClient) string {
 	return orgIds[0]
 }
 
+func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
+	orgIds, err := getVpcIds(ctx, c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(orgIds) == 0 {
+		log.Fatal("user does not own any vpcs, please use the --vpc-id flag to specify the vpc")
+	}
+	if len(orgIds) > 1 {
+		log.Fatal("user has multiple vpcs, please use the --vpc-id flag to specify the vpc")
+	}
+	return orgIds[0]
+}
+
 func getOwnedOrgIds(ctx context.Context, c *client.APIClient) ([]string, error) {
 	result := []string{}
 	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
@@ -145,6 +159,17 @@ func getOwnedOrgIds(ctx context.Context, c *client.APIClient) ([]string, error) 
 	return result, nil
 }
 
+func getVpcIds(ctx context.Context, c *client.APIClient) ([]string, error) {
+	result := []string{}
+	vpcs, _, err := c.VPCApi.ListVPCs(ctx).Execute()
+	if err != nil {
+		return result, err
+	}
+	for _, vpc := range vpcs {
+		result = append(result, vpc.Id)
+	}
+	return result, nil
+}
 func deleteRegistrationToken(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) error {
 	tokenId, err := uuid.Parse(id)
 	if err != nil {

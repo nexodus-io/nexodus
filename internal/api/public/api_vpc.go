@@ -839,7 +839,7 @@ func (a *VPCApiService) ListSecurityGroupsInVPCExecute(r ApiListSecurityGroupsIn
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs/{id}/security_groups"
+	localVarPath := localBasePath + "/api/vpcs/{id}/security-groups"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)

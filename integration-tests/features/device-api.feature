@@ -19,9 +19,9 @@ Feature: Device API
       }
       """
 
-    When I GET path "/api/organizations"
+    When I GET path "/api/vpcs"
     Then the response code should be 200
-    Given I store the ${response[0].id} as ${organization_id}
+    Given I store the ${response[0].id} as ${vpc_id}
 
     When I GET path "/api/organizations"
     Then the response code should be 200
@@ -41,7 +41,7 @@ Feature: Device API
       """
       {
         "owner_id": "${user_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
@@ -88,7 +88,7 @@ Feature: Device API
         "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",
@@ -134,7 +134,7 @@ Feature: Device API
         "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",
@@ -176,7 +176,7 @@ Feature: Device API
           "endpoint_local_address_ip4": "172.17.0.3",
           "hostname": "kittenhome",
           "id": "${device_id}",
-          "organization_id": "${organization_id}",
+          "vpc_id": "${vpc_id}",
           "organization_prefix":"${response[0].organization_prefix}",
           "organization_prefix_v6":"${response[0].organization_prefix_v6}",
           "os": "linux",
@@ -255,7 +255,7 @@ Feature: Device API
         "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "organization_prefix":"${response.organization_prefix}",
         "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",

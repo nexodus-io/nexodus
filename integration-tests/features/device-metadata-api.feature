@@ -14,9 +14,9 @@ Feature: Device Metadata API
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${user_id}
 
-    When I GET path "/api/organizations"
+    When I GET path "/api/vpcs"
     Then the response code should be 200
-    Given I store the ${response[0].id} as ${organization_id}
+    Given I store the ${response[0].id} as ${vpc_id}
 
     # Bob creates a device
     Given I generate a new public key as ${public_key}
@@ -24,7 +24,7 @@ Feature: Device Metadata API
       """
       {
         "user_id": "${user_id}",
-        "organization_id": "${organization_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",

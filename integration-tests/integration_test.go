@@ -193,7 +193,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	}()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--vpc-id", orgID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
@@ -201,7 +201,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -228,7 +228,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	helper.Log("Restarting nexodus on two spoke nodes and re-joining")
 
 	helper.runNexd(ctx, node1, "--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node1IP), "relay")
 
 	// validate nexd has started on the relay node
@@ -237,7 +237,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", orgID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -310,7 +310,7 @@ func TestChooseOrganization(t *testing.T) {
 	for _, orgID := range useOrgs {
 		args := []string{"--username", username, "--password", password}
 		if orgID != "" {
-			args = append(args, "--organization-id", orgID)
+			args = append(args, "--vpc-id", orgID)
 		}
 
 		// start nexd on node1
@@ -401,14 +401,14 @@ func TestHubOrganization(t *testing.T) {
 	}()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--vpc-id", orgID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--organization-id", orgID)
-	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--organization-id", orgID)
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--vpc-id", orgID)
+	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--vpc-id", orgID)
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -447,7 +447,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", orgID,
 		"router", fmt.Sprintf("--advertise-cidr=%s", hubOrganizationAdvertiseCidr),
 	)
 
@@ -498,7 +498,7 @@ func TestHubOrganization(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"--output", "json",
-		"device", "list", "--organization-id", orgID,
+		"device", "list", "--vpc-id", orgID,
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
 	var devices []models.Device
@@ -985,7 +985,7 @@ func TestNexctl(t *testing.T) {
 		"--password", password,
 		"--output", "json-raw",
 		"device", "list",
-		"--organization-id", organizations[0].ID.String(),
+		"--vpc-id", organizations[0].ID.String(),
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
 
