@@ -27,12 +27,10 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ip:
-        example: 1.2.3.4
-        type: string
-      tunnel_ip_v6:
-        example: 200::1
-        type: string
+      tunnel_ips_v4:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
@@ -151,10 +149,6 @@ definitions:
         type: boolean
       online_at:
         type: string
-      organization_prefix:
-        type: string
-      organization_prefix_v6:
-        type: string
       os:
         type: string
       owner_id:
@@ -169,10 +163,14 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ip:
-        type: string
-      tunnel_ip_v6:
-        type: string
+      tunnel_ips_v4:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
+      tunnel_ips_v6:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
@@ -342,6 +340,17 @@ definitions:
         type: array
       to_port:
         type: integer
+    type: object
+  models.TunnelIP:
+    properties:
+      address:
+        description: IP address and port of the endpoint.
+        example: 10.1.1.1:51820
+        type: string
+      cidr:
+        description: VPC CIDR this address was allocated from
+        example: 10.0.0.0/24
+        type: string
     type: object
   models.UpdateDevice:
     properties:

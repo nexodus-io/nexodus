@@ -2695,13 +2695,11 @@ const docTemplate = `{
                 "symmetric_nat": {
                     "type": "boolean"
                 },
-                "tunnel_ip": {
-                    "type": "string",
-                    "example": "1.2.3.4"
-                },
-                "tunnel_ip_v6": {
-                    "type": "string",
-                    "example": "200::1"
+                "tunnel_ips_v4": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
                 },
                 "vpc_id": {
                     "type": "string",
@@ -2874,12 +2872,6 @@ const docTemplate = `{
                 "online_at": {
                     "type": "string"
                 },
-                "organization_prefix": {
-                    "type": "string"
-                },
-                "organization_prefix_v6": {
-                    "type": "string"
-                },
                 "os": {
                     "type": "string"
                 },
@@ -2901,11 +2893,17 @@ const docTemplate = `{
                 "symmetric_nat": {
                     "type": "boolean"
                 },
-                "tunnel_ip": {
-                    "type": "string"
+                "tunnel_ips_v4": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
                 },
-                "tunnel_ip_v6": {
-                    "type": "string"
+                "tunnel_ips_v6": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TunnelIP"
+                    }
                 },
                 "vpc_id": {
                     "type": "string",
@@ -3154,6 +3152,21 @@ const docTemplate = `{
                 },
                 "to_port": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.TunnelIP": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "description": "IP address and port of the endpoint.",
+                    "type": "string",
+                    "example": "10.1.1.1:51820"
+                },
+                "cidr": {
+                    "description": "VPC CIDR this address was allocated from",
+                    "type": "string",
+                    "example": "10.0.0.0/24"
                 }
             }
         },

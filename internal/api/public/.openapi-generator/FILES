@@ -33,6 +33,7 @@ model_models_refresh_token_response.go
 model_models_registration_token.go
 model_models_security_group.go
 model_models_security_rule.go
+model_models_tunnel_ip.go
 model_models_update_device.go
 model_models_update_security_group.go
 model_models_user.go

@@ -15,23 +15,21 @@ type ModelsDevice struct {
 	AdvertiseCidrs []string `json:"advertise_cidrs,omitempty"`
 	AllowedIps     []string `json:"allowed_ips,omitempty"`
 	// the token nexd should use to reconcile device state.
-	BearerToken          string           `json:"bearer_token,omitempty"`
-	Discovery            bool             `json:"discovery,omitempty"`
-	Endpoints            []ModelsEndpoint `json:"endpoints,omitempty"`
-	Hostname             string           `json:"hostname,omitempty"`
-	Id                   string           `json:"id,omitempty"`
-	Online               bool             `json:"online,omitempty"`
-	OnlineAt             string           `json:"online_at,omitempty"`
-	OrganizationPrefix   string           `json:"organization_prefix,omitempty"`
-	OrganizationPrefixV6 string           `json:"organization_prefix_v6,omitempty"`
-	Os                   string           `json:"os,omitempty"`
-	OwnerId              string           `json:"owner_id,omitempty"`
-	PublicKey            string           `json:"public_key,omitempty"`
-	Relay                bool             `json:"relay,omitempty"`
-	Revision             int32            `json:"revision,omitempty"`
-	SecurityGroupId      string           `json:"security_group_id,omitempty"`
-	SymmetricNat         bool             `json:"symmetric_nat,omitempty"`
-	TunnelIp             string           `json:"tunnel_ip,omitempty"`
-	TunnelIpV6           string           `json:"tunnel_ip_v6,omitempty"`
-	VpcId                string           `json:"vpc_id,omitempty"`
+	BearerToken     string           `json:"bearer_token,omitempty"`
+	Discovery       bool             `json:"discovery,omitempty"`
+	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
+	Hostname        string           `json:"hostname,omitempty"`
+	Id              string           `json:"id,omitempty"`
+	Online          bool             `json:"online,omitempty"`
+	OnlineAt        string           `json:"online_at,omitempty"`
+	Os              string           `json:"os,omitempty"`
+	OwnerId         string           `json:"owner_id,omitempty"`
+	PublicKey       string           `json:"public_key,omitempty"`
+	Relay           bool             `json:"relay,omitempty"`
+	Revision        int32            `json:"revision,omitempty"`
+	SecurityGroupId string           `json:"security_group_id,omitempty"`
+	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
+	TunnelIpsV4     []ModelsTunnelIP `json:"tunnel_ips_v4,omitempty"`
+	TunnelIpsV6     []ModelsTunnelIP `json:"tunnel_ips_v6,omitempty"`
+	VpcId           string           `json:"vpc_id,omitempty"`
 }

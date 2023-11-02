@@ -6,10 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -513,7 +514,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 	for _, p := range devices {
 		if p.Hostname == node3Hostname {
-			node3IP = p.TunnelIP
+			node3IP = p.TunnelIPsV4[0].Address
 			device3ID = p.ID.String()
 		}
 	}
@@ -892,12 +893,12 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(devices[0].Endpoints)
 	require.NotEmpty(devices[0].Hostname)
 	require.NotEmpty(devices[0].PublicKey)
-	require.NotEmpty(devices[0].TunnelIP)
-	require.NotEmpty(devices[0].TunnelIpV6)
+	require.NotEmpty(devices[0].TunnelIPsV4[0].Address)
+	require.NotEmpty(devices[0].TunnelIPsV4[0].CIDR)
+	require.NotEmpty(devices[0].TunnelIPsV6[0].Address)
+	require.NotEmpty(devices[0].TunnelIPsV6[0].CIDR)
 	require.NotEmpty(devices[0].AllowedIPs)
 	require.NotEmpty(devices[0].OrganizationID)
-	require.NotEmpty(devices[0].OrganizationPrefix)
-	require.NotEmpty(devices[0].OrganizationPrefixV6)
 	// TODO: add assert.NotEmpty(devices[0].ReflexiveIPv4) with #739
 
 	// register the device IDs for node1 and node2 for deletion

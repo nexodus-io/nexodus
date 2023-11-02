@@ -21,7 +21,6 @@ type ModelsAddDevice struct {
 	Relay           bool             `json:"relay,omitempty"`
 	SecurityGroupId string           `json:"security_group_id,omitempty"`
 	SymmetricNat    bool             `json:"symmetric_nat,omitempty"`
-	TunnelIp        string           `json:"tunnel_ip,omitempty"`
-	TunnelIpV6      string           `json:"tunnel_ip_v6,omitempty"`
+	TunnelIpsV4     []ModelsTunnelIP `json:"tunnel_ips_v4,omitempty"`
 	VpcId           string           `json:"vpc_id,omitempty"`
 }

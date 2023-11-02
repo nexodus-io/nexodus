@@ -58,17 +58,13 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 			var nodeAddr string
 			pubKey := value.device.PublicKey
 			if family == v6 {
-				nodeAddr = value.device.TunnelIpV6
-				if net.ParseIP(value.device.TunnelIpV6) == nil {
-					nx.logger.Debugf("failed parsing an ipv6 address from %s", value.device.TunnelIp)
-					return
-				}
+				nodeAddr = value.device.TunnelIpsV6[0].Address
 			} else {
-				nodeAddr = value.device.TunnelIp
-				if net.ParseIP(value.device.TunnelIp) == nil {
-					nx.logger.Debugf("failed parsing an ipv4 address from %s", value.device.TunnelIp)
-					return
-				}
+				nodeAddr = value.device.TunnelIpsV4[0].Address
+			}
+			if net.ParseIP(nodeAddr) == nil {
+				nx.logger.Debugf("failed parsing an ip address from %s", nodeAddr)
+				return
 			}
 
 			hostname := value.device.Hostname

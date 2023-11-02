@@ -483,8 +483,10 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
-		if request.TunnelIP != "" {
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.TunnelIP)
+		if len(request.TunnelIPsV4) > 1 {
+			return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("tunnel_ips_v4", "can only specify a single IPv4 address request"))
+		} else if len(request.TunnelIPsV4) == 1 {
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.TunnelIPsV4[0].Address)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
@@ -494,6 +496,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
 		}
+
 		// Currently only support v4 requesting of specific addresses
 		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.Ipv6Cidr)
 		if err != nil {
@@ -528,25 +531,33 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Base: models.Base{
 				ID: deviceId,
 			},
-			OwnerID:              userId,
-			VpcID:                vpc.ID,
-			OrganizationID:       vpc.OrganizationID,
-			PublicKey:            request.PublicKey,
-			Endpoints:            request.Endpoints,
-			AllowedIPs:           allowedIPs,
-			TunnelIP:             ipamIP,
-			TunnelIpV6:           ipamIPv6,
-			AdvertiseCidrs:       request.AdvertiseCidrs,
-			Relay:                request.Relay,
-			Discovery:            request.Discovery,
-			OrganizationPrefix:   vpc.Ipv4Cidr,
-			OrganizationPrefixV6: vpc.Ipv6Cidr,
-			SymmetricNat:         request.SymmetricNat,
-			Hostname:             request.Hostname,
-			Os:                   request.Os,
-			SecurityGroupId:      vpc.Organization.SecurityGroupId,
-			RegistrationTokenID:  registrationTokenID,
-			BearerToken:          "DT:" + deviceToken.String(),
+			OwnerID:        userId,
+			VpcID:          vpc.ID,
+			OrganizationID: vpc.OrganizationID,
+			PublicKey:      request.PublicKey,
+			Endpoints:      request.Endpoints,
+			AllowedIPs:     allowedIPs,
+			TunnelIPsV4: []models.TunnelIP{
+				{
+					Address: ipamIP,
+					CIDR:    vpc.Ipv4Cidr,
+				},
+			},
+			TunnelIPsV6: []models.TunnelIP{
+				{
+					Address: ipamIPv6,
+					CIDR:    vpc.Ipv6Cidr,
+				},
+			},
+			AdvertiseCidrs:      request.AdvertiseCidrs,
+			Relay:               request.Relay,
+			Discovery:           request.Discovery,
+			SymmetricNat:        request.SymmetricNat,
+			Hostname:            request.Hostname,
+			Os:                  request.Os,
+			SecurityGroupId:     vpc.Organization.SecurityGroupId,
+			RegistrationTokenID: registrationTokenID,
+			BearerToken:         "DT:" + deviceToken.String(),
 		}
 
 		if res := tx.
@@ -623,8 +634,8 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		ipamNamespace = vpc.ID
 	}
 
-	ipamAddress := device.TunnelIP
-	orgPrefix := device.OrganizationPrefix
+	ipamAddress := device.TunnelIPsV4[0].Address
+	orgPrefix := device.TunnelIPsV4[0].CIDR
 	advertiseCidrs := device.AdvertiseCidrs
 
 	if res := api.db.WithContext(ctx).
@@ -650,8 +661,8 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		}
 	}
 
-	ipamAddressV6 := device.TunnelIpV6
-	orgPrefixV6 := device.OrganizationPrefixV6
+	ipamAddressV6 := device.TunnelIPsV6[0].Address
+	orgPrefixV6 := device.TunnelIPsV6[0].CIDR
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {

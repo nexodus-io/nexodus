@@ -12,9 +12,15 @@ import (
 
 func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
 	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		VpcId:          nx.vpc.Id,
-		PublicKey:      nx.wireguardPubKey,
-		TunnelIp:       nx.requestedIP,
+		VpcId:     nx.vpc.Id,
+		PublicKey: nx.wireguardPubKey,
+		TunnelIpsV4: []public.ModelsTunnelIP{
+			{
+				Address: nx.requestedIP,
+				Cidr:    nx.vpc.Ipv4Cidr,
+			},
+		},
+
 		AdvertiseCidrs: nx.advertiseCidrs,
 		SymmetricNat:   nx.symmetricNat,
 		Hostname:       nx.hostname,
