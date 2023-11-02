@@ -11,23 +11,25 @@ import (
 )
 
 func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
-	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		VpcId:     nx.vpc.Id,
-		PublicKey: nx.wireguardPubKey,
-		Ipv4TunnelIps: []public.ModelsTunnelIP{
-			{
-				Address: nx.requestedIP,
-				Cidr:    nx.vpc.Ipv4Cidr,
-			},
-		},
-
+	newDev := public.ModelsAddDevice{
+		VpcId:          nx.vpc.Id,
+		PublicKey:      nx.wireguardPubKey,
 		AdvertiseCidrs: nx.advertiseCidrs,
 		SymmetricNat:   nx.symmetricNat,
 		Hostname:       nx.hostname,
 		Relay:          nx.relay,
 		Os:             nx.os,
 		Endpoints:      endpoints,
-	}).Execute()
+	}
+	if len(nx.requestedIP) > 0 {
+		newDev.Ipv4TunnelIps = []public.ModelsTunnelIP{
+			{
+				Address: nx.requestedIP,
+				Cidr:    nx.vpc.Ipv4Cidr,
+			},
+		}
+	}
+	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(newDev).Execute()
 	deviceOperationMsg := "Successfully registered device"
 	if err != nil {
 		var apiError *public.GenericOpenAPIError
