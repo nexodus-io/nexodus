@@ -98,7 +98,7 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 		})
 	}
 
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "RELAY", Field: "Relay"})
 	if full {
 		fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})

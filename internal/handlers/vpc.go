@@ -236,7 +236,7 @@ func (api *API) GetVPC(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	k, err := uuid.Parse(c.Param("vpc"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("vpc"))
 		return
@@ -244,7 +244,7 @@ func (api *API) GetVPC(c *gin.Context) {
 	var vpc models.VPC
 	db := api.db.WithContext(ctx)
 	result := api.VPCIsReadableByCurrentUser(c, db).
-		First(&vpc, "id = ?", k.String())
+		First(&vpc, "id = ?", id.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

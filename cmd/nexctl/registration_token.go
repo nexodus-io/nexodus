@@ -74,7 +74,7 @@ func createRegistrationTokenCommand() *cli.Command {
 func regTokenTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "TOKEN ID", Field: "Id"})
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "SINGLE USE", Formatter: func(item interface{}) string {
 		if item.(public.ModelsRegistrationToken).DeviceId == "" {

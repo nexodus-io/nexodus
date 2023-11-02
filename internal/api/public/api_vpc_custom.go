@@ -36,7 +36,7 @@ func (a *VPCApiService) WatchEventsStream(r ApiWatchEventsRequest) (*WatchEvents
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpc/{id}/events"
+	localVarPath := localBasePath + "/api/vpcs/{id}/events"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)

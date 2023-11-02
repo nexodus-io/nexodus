@@ -34,21 +34,11 @@ func createOrganizationCommand() *cli.Command {
 						Name:     "description",
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:     "cidr",
-						Required: false,
-					},
-					&cli.StringFlag{
-						Name:     "cidr-v6",
-						Required: false,
-					},
 				},
 				Action: func(cCtx *cli.Context) error {
 					organizationName := cCtx.String("name")
 					organizationDescrip := cCtx.String("description")
-					organizationCIDR := cCtx.String("cidr")
-					organizationCIDRv6 := cCtx.String("cidr-v6")
-					return createOrganization(cCtx, mustCreateAPIClient(cCtx), organizationName, organizationDescrip, organizationCIDR, organizationCIDRv6)
+					return createOrganization(cCtx, mustCreateAPIClient(cCtx), organizationName, organizationDescrip)
 				},
 			},
 			{
@@ -74,8 +64,6 @@ func orgTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "NAME", Field: "Name"})
-	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Cidr"})
-	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "CidrV6"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	return fields
@@ -90,7 +78,7 @@ func listOrganizations(cCtx *cli.Context, c *client.APIClient) error {
 	return nil
 }
 
-func createOrganization(cCtx *cli.Context, c *client.APIClient, name, description, cidr string, cidrV6 string) error {
+func createOrganization(cCtx *cli.Context, c *client.APIClient, name, description string) error {
 	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
 		Name:        name,
 		Description: description,

@@ -380,10 +380,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	options := []client.Option{
 		client.WithUserAgent(fmt.Sprintf("nexd/%s (%s; %s)", nx.version, runtime.GOOS, runtime.GOARCH)),
 	}
-	if nx.stateStore.State().DeviceToken != "" {
-		// prefer doing api calls with the device token if it exists..
-		options = append(options, client.WithBearerToken(nx.stateStore.State().DeviceToken))
-	} else if nx.registrationToken != "" {
+	if nx.registrationToken != "" {
 		// the reg token can be used to get the device token
 		options = append(options, client.WithBearerToken(nx.registrationToken))
 	} else {
@@ -508,13 +505,13 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			return err
 		}
 
-		nx.stateStore.State().DeviceToken = string(data)
-		err = nx.stateStore.Store()
-		if err != nil {
-			return err
-		}
+		//nx.stateStore.State().DeviceToken = string(data)
+		//err = nx.stateStore.Store()
+		//if err != nil {
+		//	return err
+		//}
 
-		options = append(options, client.WithBearerToken(nx.stateStore.State().DeviceToken))
+		options = append(options, client.WithBearerToken(string(data)))
 		nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {}, options...)
 		if err != nil {
 			return err
@@ -624,11 +621,11 @@ func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (stri
 		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
 	}
 
-	org, _, err := nx.client.VPCApi.GetVPC(ctx, regToken.VpcId).Execute()
+	vpc, _, err := nx.client.VPCApi.GetVPC(ctx, regToken.VpcId).Execute()
 	if err != nil {
 		return "", nil, err
 	}
-	return regToken.OwnerId, org, nil
+	return regToken.OwnerId, vpc, nil
 }
 
 func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *public.ModelsVPC, error) {
