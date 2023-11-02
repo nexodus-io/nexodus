@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
@@ -156,11 +155,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 					if gtRevision != 0 {
 						db = db.Where("revision > ?", gtRevision)
 					}
-					if api.dialect == database.DialectSqlLite {
-						db = db.Where("organization_id in (SELECT DISTINCT organization_id FROM devices where vpc_id=?)", vpcId.String())
-					} else {
-						db = db.Where("organization_id::text in (SELECT DISTINCT organization_id::text FROM devices where vpc_id=?)", vpcId.String())
-					}
+					db = db.Where("organization_id = ?", vpc.OrganizationID.String())
 					result := db.Find(&items)
 					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 						return nil, result.Error
