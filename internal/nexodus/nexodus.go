@@ -444,7 +444,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 
 	// If we are behind a symmetricNat, the endpoint ip discovered by a stun server is useless
 	stunServer1 := stun.NextServer()
-	if !nx.symmetricNat && nx.stun && localIP == "" {
+	if !nx.symmetricNat && nx.stun && !nx.exitNode.exitNodeOriginEnabled && localIP == "" {
 		ipPort, err := stun.Request(nx.logger, stunServer1, nx.listenPort)
 		if err != nil {
 			nx.logger.Warn("Unable to determine the public facing address, falling back to the local address")
