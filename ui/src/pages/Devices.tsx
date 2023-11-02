@@ -38,7 +38,16 @@ export const DeviceList = () => (
       bulkActionButtons={<DeviceListBulkActions />}
     >
       <TextField label="Hostname" source="hostname" />
-      <TextField label="Tunnel IP" source="tunnel_ip" />
+      <ArrayField label="v4 Tunnel IP" source="ipv4_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+        </Datagrid>
+      </ArrayField>
+      <ArrayField label="v6 Tunnel IP" source="ipv6_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+        </Datagrid>
+      </ArrayField>
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Address" source="address" />
@@ -141,8 +150,18 @@ const DeviceShowLayout: FC = () => {
       <TextField label="ID" source="id" />
       <TextField label="Hostname" source="hostname" />
       <TextField label="Public Key" source="public_key" />
-      <TextField label="Tunnel IP" source="tunnel_ip" />
-      <TextField label="Organization Prefix" source="organization_prefix" />
+      <ArrayField label="v4 Tunnel IP" source="ipv4_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="CIDR" source="cidr" />
+        </Datagrid>
+      </ArrayField>
+      <ArrayField label="v6 Tunnel IP" source="ipv6_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="CIDR" source="cidr" />
+        </Datagrid>
+      </ArrayField>      <TextField label="Organization Prefix" source="organization_prefix" />
       <TextField label="Allowed IPs" source="allowed_ips" />
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
