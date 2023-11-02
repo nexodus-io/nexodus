@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -12,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
 )
 
 var defaultIPAMNamespace = uuid.UUID{}
@@ -130,12 +131,12 @@ func (api *API) CreateVPC(c *gin.Context) {
 			return err
 		}
 
-		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidr); err != nil {
+		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.IpCidr); err != nil {
 			api.logger.Error("Failed to assign IPv4 prefix: ", err)
 			return err
 		}
 
-		if err := api.ipam.AssignPrefix(ctx, ipamNamespace, request.IpCidrV6); err != nil {
+		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.IpCidrV6); err != nil {
 			api.logger.Error("Failed to assign IPv6 prefix: ", err)
 			return err
 		}
@@ -489,12 +490,12 @@ func (api *API) DeleteVPC(c *gin.Context) {
 	vpcCIDRV6 := vpc.IpCidrV6
 
 	if vpc.PrivateCidr {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, vpcCIDR); err != nil {
+		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDR); err != nil {
 			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
 			return
 		}
 
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, vpcCIDRV6); err != nil {
+		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDRV6); err != nil {
 			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
 			return
 		}

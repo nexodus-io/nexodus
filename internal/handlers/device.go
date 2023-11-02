@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -13,7 +15,6 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
 )
 
 var (
@@ -287,34 +288,34 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		//}
 		device.SymmetricNat = request.SymmetricNat
 
-		// check if the updated device child prefix matches the existing device prefix
-		if request.ChildPrefix != nil && !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
-			prefixAllocated := make(map[string]struct{})
-			for _, prefix := range device.ChildPrefix {
-				if !util.IsValidPrefix(prefix) {
-					return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+		// check if the updated device advertised CIDRs match the existing device advertised CIDRs
+		if request.AdvertiseCidrs != nil && !advertiseCidrEquals(device.AdvertiseCidrs, request.AdvertiseCidrs) {
+			cidrAllocated := make(map[string]struct{})
+			for _, cidr := range device.AdvertiseCidrs {
+				if !util.IsValidPrefix(cidr) {
+					return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
 				}
-				prefixAllocated[prefix] = struct{}{}
+				cidrAllocated[cidr] = struct{}{}
 			}
-			for _, prefix := range request.ChildPrefix {
-				isDefaultRoute := util.IsDefaultIPRoute(prefix)
+			for _, cidr := range request.AdvertiseCidrs {
+				isDefaultRoute := util.IsDefaultIPRoute(cidr)
 				// If the prefix is not a default route, process IPAM allocation/release
 				if isDefaultRoute {
 					continue
 				}
 				// lookup miss of prefix means we need to release it
-				if _, ok := prefixAllocated[prefix]; ok {
-					if err := api.ipam.ReleasePrefix(ctx, originalIpamNamespace, prefix); err != nil {
+				if _, ok := cidrAllocated[cidr]; ok {
+					if err := api.ipam.ReleaseCIDR(ctx, originalIpamNamespace, cidr); err != nil {
 						return err
 					}
 				} else {
 					// otherwise we need to allocate it
-					if err := api.ipam.AssignPrefix(ctx, originalIpamNamespace, prefix); err != nil {
+					if err := api.ipam.AssignCIDR(ctx, originalIpamNamespace, cidr); err != nil {
 						return err
 					}
 				}
 			}
-			device.ChildPrefix = request.ChildPrefix
+			device.AdvertiseCidrs = request.AdvertiseCidrs
 
 		}
 
@@ -503,15 +504,15 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return fmt.Errorf("failed to request ipam v6 address: %w", err)
 		}
 
-		// allocate a child prefix if requested
-		for _, prefix := range request.ChildPrefix {
-			if !util.IsValidPrefix(prefix) {
-				return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+		// allocate a CIDR if requested
+		for _, cidr := range request.AdvertiseCidrs {
+			if !util.IsValidPrefix(cidr) {
+				return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
 			}
 			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
-			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
-				if err := api.ipam.AssignPrefix(ctx, ipamNamespace, prefix); err != nil {
-					return fmt.Errorf("failed to assign child prefix: %w", err)
+			if !util.IsDefaultIPv4Route(cidr) && !util.IsDefaultIPv6Route(cidr) {
+				if err := api.ipam.AssignCIDR(ctx, ipamNamespace, cidr); err != nil {
+					return fmt.Errorf("failed to assign cidr: %w", err)
 				}
 			}
 		}
@@ -539,7 +540,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			AllowedIPs:               allowedIPs,
 			TunnelIP:                 ipamIP,
 			TunnelIpV6:               ipamIPv6,
-			ChildPrefix:              request.ChildPrefix,
+			AdvertiseCidrs:           request.AdvertiseCidrs,
 			Relay:                    request.Relay,
 			Discovery:                request.Discovery,
 			OrganizationPrefix:       vpc.IpCidr,
@@ -629,7 +630,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	ipamAddress := device.TunnelIP
 	orgPrefix := device.OrganizationPrefix
-	childPrefix := device.ChildPrefix
+	advertiseCidrs := device.AdvertiseCidrs
 
 	if res := api.db.WithContext(ctx).
 		Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
@@ -647,9 +648,9 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		}
 	}
 
-	for _, prefix := range childPrefix {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, prefix); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release child prefix: %w", err))
+	for _, cidr := range advertiseCidrs {
+		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, cidr); err != nil {
+			api.sendInternalServerError(c, fmt.Errorf("failed to release cidr: %w", err))
 			return
 		}
 	}
@@ -668,7 +669,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
-func childPrefixEquals(existingPrefix, newPrefix []string) bool {
+func advertiseCidrEquals(existingPrefix, newPrefix []string) bool {
 	if len(existingPrefix) != len(newPrefix) {
 		return false
 	}

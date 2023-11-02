@@ -124,7 +124,7 @@ Feature: Device API
         }],
         "tunnel_ip": "",
         "tunnel_ip_v6": "",
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "relay": false,
         "discovery": false,
         "endpoint_local_address_ip4": "172.17.0.3",

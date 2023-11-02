@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/database"
-	"github.com/redis/go-redis/v9"
 	"net/http"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/database"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -192,10 +193,10 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 	if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
 		return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
 	}
-	if err := api.ipam.AssignPrefix(ctx, ipamNamespace, defaultIPAMv4Cidr); err != nil {
+	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv4Cidr); err != nil {
 		return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
 	}
-	if err := api.ipam.AssignPrefix(ctx, ipamNamespace, defaultIPAMv6Cidr); err != nil {
+	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv6Cidr); err != nil {
 		return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 	}
 	// Create a default security group for the organization

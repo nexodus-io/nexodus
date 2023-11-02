@@ -1,12 +1,13 @@
 package migration_20231031_0000
 
 import (
+	"time"
+
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	. "github.com/nexodus-io/nexodus/internal/database/migrations"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Base struct {
@@ -57,7 +58,7 @@ type Device struct {
 	AllowedIPs               pq.StringArray `gorm:"type:text[]" `
 	TunnelIP                 string
 	TunnelIpV6               string
-	ChildPrefix              pq.StringArray `gorm:"type:text[]" `
+	AdvertiseCidrs           pq.StringArray `gorm:"type:text[]" `
 	Relay                    bool
 	Discovery                bool
 	OrganizationPrefix       string

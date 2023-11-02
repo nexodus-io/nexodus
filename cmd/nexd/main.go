@@ -325,7 +325,7 @@ func main() {
 					},
 					&cli.BoolFlag{
 						Name:     "network-router",
-						Usage:    "Make the node a network router node that will forward traffic specified by --child-prefix through the physical interface that contains the default gateway",
+						Usage:    "Make the node a network router node that will forward traffic specified by --advertise-cidr through the physical interface that contains the default gateway",
 						Value:    false,
 						EnvVars:  []string{"NEXD_NET_ROUTER_NODE"},
 						Required: false,

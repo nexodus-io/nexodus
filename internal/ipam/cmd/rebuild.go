@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/nexodus-io/nexodus/internal/ipam"
@@ -20,14 +21,14 @@ func Rebuild(ctx context.Context, log *zap.Logger, db *gorm.DB, ipam ipam.IPAM) 
 		ID             uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 		TunnelIP       string         `json:"tunnel_ip"`
 		TunnelIpV6     string         `json:"tunnel_ip_v6"`
-		ChildPrefix    pq.StringArray `json:"child_prefix" gorm:"type:text[]" swaggertype:"array,string"`
+		AdvertiseCidrs pq.StringArray `json:"advertise_cidrs" gorm:"type:text[]" swaggertype:"array,string"`
 		OrganizationID uuid.UUID      `json:"organization_id"`
 		PrivateCidr    bool           `json:"private_cidr"`
 		IpCidr         string         `json:"ip_cidr"`
 		IpCidrV6       string         `json:"ip_cidr_v6"`
 	}
 	rows, err := db.Model(&models.Device{}).
-		Select("devices.id, organization_id, tunnel_ip, tunnel_ip_v6, child_prefix, private_cidr, ip_cidr, ip_cidr_v6").
+		Select("devices.id, organization_id, tunnel_ip, tunnel_ip_v6, advertise_cidrs, private_cidr, ip_cidr, ip_cidr_v6").
 		Joins("inner join organizations on organizations.id::text = devices.organization_id").
 		Rows()
 	if err != nil {
@@ -53,10 +54,10 @@ func Rebuild(ctx context.Context, log *zap.Logger, db *gorm.DB, ipam ipam.IPAM) 
 			return fmt.Errorf("failed to create ipam namespace: %w", err)
 		}
 
-		if err := ipam.AssignPrefix(ctx, ipamNamespace, device.IpCidr); err != nil {
+		if err := ipam.AssignCIDR(ctx, ipamNamespace, device.IpCidr); err != nil {
 			return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
 		}
-		if err := ipam.AssignPrefix(ctx, ipamNamespace, device.IpCidrV6); err != nil {
+		if err := ipam.AssignCIDR(ctx, ipamNamespace, device.IpCidrV6); err != nil {
 			return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 		}
 
@@ -74,15 +75,15 @@ func Rebuild(ctx context.Context, log *zap.Logger, db *gorm.DB, ipam ipam.IPAM) 
 			}
 		}
 
-		// allocate a child prefix if requested
-		for _, prefix := range device.ChildPrefix {
-			if !util.IsValidPrefix(prefix) {
-				return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+		// allocate a cidr if requested
+		for _, cidr := range device.AdvertiseCidrs {
+			if !util.IsValidPrefix(cidr) {
+				return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
 			}
 			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
-			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
-				if err := ipam.AssignPrefix(ctx, ipamNamespace, prefix); err != nil {
-					return fmt.Errorf("failed to assign child prefix: %w", err)
+			if !util.IsDefaultIPv4Route(cidr) && !util.IsDefaultIPv6Route(cidr) {
+				if err := ipam.AssignCIDR(ctx, ipamNamespace, cidr); err != nil {
+					return fmt.Errorf("failed to assign cidr: %w", err)
 				}
 			}
 		}

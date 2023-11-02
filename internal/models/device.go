@@ -1,9 +1,10 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"time"
 )
 
 // Device is a unique, end-user device.
@@ -17,7 +18,7 @@ type Device struct {
 	AllowedIPs               pq.StringArray `json:"allowed_ips" gorm:"type:text[]" swaggertype:"array,string"`
 	TunnelIP                 string         `json:"tunnel_ip"`
 	TunnelIpV6               string         `json:"tunnel_ip_v6"`
-	ChildPrefix              pq.StringArray `json:"child_prefix" gorm:"type:text[]" swaggertype:"array,string"`
+	AdvertiseCidrs           pq.StringArray `json:"advertise_cidrs" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay                    bool           `json:"relay"`
 	Discovery                bool           `json:"discovery"`
 	OrganizationPrefix       string         `json:"organization_prefix"`
@@ -43,7 +44,7 @@ type AddDevice struct {
 	PublicKey                string     `json:"public_key"`
 	TunnelIP                 string     `json:"tunnel_ip" example:"1.2.3.4"`
 	TunnelIpV6               string     `json:"tunnel_ip_v6" example:"200::1"`
-	ChildPrefix              []string   `json:"child_prefix" example:"172.16.42.0/24"`
+	AdvertiseCidrs           []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
 	Relay                    bool       `json:"relay"`
 	Discovery                bool       `json:"discovery"`
 	EndpointLocalAddressIPv4 string     `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
@@ -56,7 +57,7 @@ type AddDevice struct {
 
 // UpdateDevice is the information needed to update a Device.
 type UpdateDevice struct {
-	ChildPrefix              []string   `json:"child_prefix" example:"172.16.42.0/24"`
+	AdvertiseCidrs           []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
 	EndpointLocalAddressIPv4 string     `json:"endpoint_local_address_ip4" example:"1.2.3.4"`
 	SymmetricNat             bool       `json:"symmetric_nat"`
 	Hostname                 string     `json:"hostname" example:"myhost"`

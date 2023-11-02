@@ -60,42 +60,42 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	assert.Equal(actual, device)
 }
 
-func TestChildPrefixEquals(t *testing.T) {
+func TestAdvertiseCidrEquals(t *testing.T) {
 	tests := []struct {
-		name         string
-		childPrefixA []string
-		childPrefixB []string
-		expected     bool
+		name           string
+		advertiseCidrA []string
+		advertiseCidrB []string
+		expected       bool
 	}{
 		{
-			name:         "identical slices",
-			childPrefixA: []string{"192.168.1.0/24", "2001:db8::/32"},
-			childPrefixB: []string{"192.168.1.0/24", "2001:db8::/32"},
-			expected:     true,
+			name:           "identical slices",
+			advertiseCidrA: []string{"192.168.1.0/24", "2001:db8::/32"},
+			advertiseCidrB: []string{"192.168.1.0/24", "2001:db8::/32"},
+			expected:       true,
 		},
 		{
-			name:         "different length slices",
-			childPrefixA: []string{"192.168.1.0/24", "2001:db8::/32"},
-			childPrefixB: []string{"192.168.1.0/24"},
-			expected:     false,
+			name:           "different length slices",
+			advertiseCidrA: []string{"192.168.1.0/24", "2001:db8::/32"},
+			advertiseCidrB: []string{"192.168.1.0/24"},
+			expected:       false,
 		},
 		{
-			name:         "different CIDR ranges",
-			childPrefixA: []string{"192.168.1.0/24", "2001:db8::/32"},
-			childPrefixB: []string{"192.168.2.0/24", "2001:db8::/32"},
-			expected:     false,
+			name:           "different CIDR ranges",
+			advertiseCidrA: []string{"192.168.1.0/24", "2001:db8::/32"},
+			advertiseCidrB: []string{"192.168.2.0/24", "2001:db8::/32"},
+			expected:       false,
 		},
 		{
-			name:         "same CIDR ranges, different order",
-			childPrefixA: []string{"192.168.1.0/24", "2001:db8::/32"},
-			childPrefixB: []string{"2001:db8::/32", "192.168.1.0/24"},
-			expected:     true,
+			name:           "same CIDR ranges, different order",
+			advertiseCidrA: []string{"192.168.1.0/24", "2001:db8::/32"},
+			advertiseCidrB: []string{"2001:db8::/32", "192.168.1.0/24"},
+			expected:       true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := childPrefixEquals(tt.childPrefixA, tt.childPrefixB)
+			actual := advertiseCidrEquals(tt.advertiseCidrA, tt.advertiseCidrB)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}

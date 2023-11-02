@@ -12,7 +12,7 @@ package public
 
 // ModelsAddDevice struct for ModelsAddDevice
 type ModelsAddDevice struct {
-	ChildPrefix             []string         `json:"child_prefix,omitempty"`
+	AdvertiseCidrs          []string         `json:"advertise_cidrs,omitempty"`
 	Discovery               bool             `json:"discovery,omitempty"`
 	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`
 	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`

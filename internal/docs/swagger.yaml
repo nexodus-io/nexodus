@@ -2,7 +2,7 @@ basePath: /
 definitions:
   models.AddDevice:
     properties:
-      child_prefix:
+      advertise_cidrs:
         example:
         - 172.16.42.0/24
         items:
@@ -130,6 +130,10 @@ definitions:
     type: object
   models.Device:
     properties:
+      advertise_cidrs:
+        items:
+          type: string
+        type: array
       allowed_ips:
         items:
           type: string
@@ -137,10 +141,6 @@ definitions:
       bearer_token:
         description: the token nexd should use to reconcile device state.
         type: string
-      child_prefix:
-        items:
-          type: string
-        type: array
       discovery:
         type: boolean
       endpoint_local_address_ip4:
@@ -352,7 +352,7 @@ definitions:
     type: object
   models.UpdateDevice:
     properties:
-      child_prefix:
+      advertise_cidrs:
         example:
         - 172.16.42.0/24
         items:

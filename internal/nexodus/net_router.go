@@ -18,25 +18,25 @@ func (nx *Nexodus) setupNetworkRouterNode() error {
 
 	nx.netRouterInterfaceMap = make(map[string]*net.Interface)
 
-	// iterate over childPrefixes and find the best matching interface for each prefix based on the device's
+	// iterate over advertiseCidrs and find the best matching interface for each cidr based on the device's
 	// default namespace routing table. If no match is found, use the interface containing the default gateway.
-	for _, prefix := range nx.childPrefix {
-		if util.IsIPv6Prefix(prefix) {
-			nx.logger.Warnf("IPv6 is not currently supported for --net-router: %s", prefix)
+	for _, cidr := range nx.advertiseCidrs {
+		if util.IsIPv6Prefix(cidr) {
+			nx.logger.Warnf("IPv6 is not currently supported for --net-router: %s", cidr)
 			continue
 		}
 
-		ip, _, err := net.ParseCIDR(prefix)
+		ip, _, err := net.ParseCIDR(cidr)
 		if err != nil {
-			nx.logger.Errorf("Invalid prefix: %s", prefix)
+			nx.logger.Errorf("Invalid prefix: %s", cidr)
 			continue
 		}
 		iface, err := findInterfaceForIPRoute(ip.String())
 		if err != nil {
-			nx.logger.Debugf("No matching interface found for prefix %s, using default interface", prefix)
+			nx.logger.Debugf("No matching interface found for prefix %s, using default interface", cidr)
 			iface = defaultIface
 		}
-		nx.netRouterInterfaceMap[prefix] = iface
+		nx.netRouterInterfaceMap[cidr] = iface
 	}
 
 	if err := nx.enableForwardingIP(); err != nil {

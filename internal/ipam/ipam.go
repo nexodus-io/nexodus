@@ -107,7 +107,7 @@ func (i *IPAM) AssignFromPool(parent context.Context, namespace uuid.UUID, ipamP
 	return res.Msg.Ip.Ip, nil
 }
 
-func (i *IPAM) AssignPrefix(parent context.Context, namespace uuid.UUID, cidr string) error {
+func (i *IPAM) AssignCIDR(parent context.Context, namespace uuid.UUID, cidr string) error {
 	println()
 	ctx, span := tracer.Start(parent, "AssignPrefix")
 	defer span.End()
@@ -145,8 +145,8 @@ func (i *IPAM) ReleaseToPool(ctx context.Context, namespace uuid.UUID, address, 
 	return nil
 }
 
-// ReleasePrefix release the ipam address back to the specified prefix
-func (i *IPAM) ReleasePrefix(ctx context.Context, namespace uuid.UUID, cidr string) error {
+// ReleaseCIDR release the ipam address back to the specified prefix
+func (i *IPAM) ReleaseCIDR(ctx context.Context, namespace uuid.UUID, cidr string) error {
 	ns := uuidToNamespace(namespace)
 	_, err := i.client.DeletePrefix(ctx, connect.NewRequest(&apiv1.DeletePrefixRequest{
 		Cidr:      cidr,

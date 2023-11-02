@@ -66,7 +66,7 @@ ping the container started on Node1:
 ping 172.28.0.x
 ```
 
-If you don't want to create docker containers, you can create a loopback on each node's child prefix range and ping them from all nodes in the mesh like so:
+If you don't want to create docker containers, you can create a loopback on each node's advertised CIDR range and ping them from all nodes in the mesh like so:
 
 *On Node1:*
 

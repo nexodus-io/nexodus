@@ -54,7 +54,7 @@ Feature: Device API
         }],
         "tunnel_ip": "",
         "tunnel_ip_v6": "",
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "relay": false,
         "discovery": false,
         "endpoint_local_address_ip4": "172.17.0.3",
@@ -74,7 +74,7 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "discovery": false,
         "endpoints": [{
           "source": "local",
@@ -120,7 +120,7 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "discovery": false,
         "endpoints": [{
           "source": "local",
@@ -162,7 +162,7 @@ Feature: Device API
           ],
           "online": false,
           "online_at": null,
-          "child_prefix": null,
+          "advertise_cidrs": null,
           "discovery": false,
           "endpoints": [{
             "source": "local",
@@ -241,7 +241,7 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "discovery": false,
         "endpoints": [{
           "source": "local",

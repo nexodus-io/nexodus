@@ -2658,7 +2658,7 @@ const docTemplate = `{
         "models.AddDevice": {
             "type": "object",
             "properties": {
-                "child_prefix": {
+                "advertise_cidrs": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -2843,6 +2843,12 @@ const docTemplate = `{
         "models.Device": {
             "type": "object",
             "properties": {
+                "advertise_cidrs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "allowed_ips": {
                     "type": "array",
                     "items": {
@@ -2852,12 +2858,6 @@ const docTemplate = `{
                 "bearer_token": {
                     "description": "the token nexd should use to reconcile device state.",
                     "type": "string"
-                },
-                "child_prefix": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "discovery": {
                     "type": "boolean"
@@ -3170,7 +3170,7 @@ const docTemplate = `{
         "models.UpdateDevice": {
             "type": "object",
             "properties": {
-                "child_prefix": {
+                "advertise_cidrs": {
                     "type": "array",
                     "items": {
                         "type": "string"

@@ -138,7 +138,7 @@ type Nexodus struct {
 	userProvidedLocalIP      string
 	TunnelIP                 string
 	TunnelIpV6               string
-	childPrefix              []string
+	advertiseCidrs           []string
 	relay                    bool
 	networkRouter            bool
 	networkRouterDisableNAT  bool
@@ -197,7 +197,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, childPrefix []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, vpcId string) (*Nexodus, error) {
+func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, advertiseCidrs []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, vpcId string) (*Nexodus, error) {
 	public.Logger = logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		listenPort:              wgListenPort,
 		requestedIP:             requestedIP,
 		userProvidedLocalIP:     userProvidedLocalIP,
-		childPrefix:             childPrefix,
+		advertiseCidrs:          advertiseCidrs,
 		relay:                   relay,
 		networkRouter:           networkRouterNode,
 		networkRouterDisableNAT: networkRouterDisableNAT,
@@ -1088,7 +1088,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 // between d1 and d2.
 func (nx *Nexodus) deviceUpdated(d1, d2 public.ModelsDevice) bool {
 	return !reflect.DeepEqual(d1.AllowedIps, d2.AllowedIps) ||
-		!reflect.DeepEqual(d1.ChildPrefix, d2.ChildPrefix) ||
+		!reflect.DeepEqual(d1.AdvertiseCidrs, d2.AdvertiseCidrs) ||
 		!reflect.DeepEqual(d1.Endpoints, d2.Endpoints) ||
 		d1.Relay != d2.Relay ||
 		d1.SymmetricNat != d2.SymmetricNat
