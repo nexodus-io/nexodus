@@ -58,7 +58,6 @@ Feature: Device API
         "advertise_cidrs": null,
         "relay": false,
         "discovery": false,
-        "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
         "hostname": "bbac3081d5e8",
         "os": "linux"
@@ -86,7 +85,6 @@ Feature: Device API
           "address": "172.17.0.3:58664",
           "distance": 0
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
@@ -132,7 +130,6 @@ Feature: Device API
           "address": "172.17.0.3:58664",
           "distance": 0
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
@@ -174,7 +171,6 @@ Feature: Device API
             "address": "172.17.0.3:58664",
             "distance": 0
           }],
-          "endpoint_local_address_ip4": "172.17.0.3",
           "hostname": "kittenhome",
           "id": "${device_id}",
           "vpc_id": "${vpc_id}",
@@ -253,7 +249,6 @@ Feature: Device API
           "address": "172.17.0.3:58664",
           "distance": 0
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",

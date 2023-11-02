@@ -94,14 +94,14 @@ definitions:
     type: object
   models.AddVPC:
     properties:
-      cidr:
-        example: 172.16.42.0/24
-        type: string
-      cidr_v6:
-        example: 0200::/8
-        type: string
       description:
         example: The Red Zone
+        type: string
+      ipv4_cidr:
+        example: 172.16.42.0/24
+        type: string
+      ipv6_cidr:
+        example: 0200::/8
         type: string
       organization_id:
         type: string
@@ -403,14 +403,14 @@ definitions:
     type: object
   models.VPC:
     properties:
-      cidr:
-        type: string
-      cidr_v6:
-        type: string
       description:
         type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      ipv4_cidr:
+        type: string
+      ipv6_cidr:
         type: string
       organization_id:
         type: string

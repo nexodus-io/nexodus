@@ -150,8 +150,8 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 			OrganizationID: userId,
 			Description:    "default vpc",
 			PrivateCidr:    false,
-			IpCidr:         defaultIPAMv4Cidr,
-			IpCidrV6:       defaultIPAMv6Cidr,
+			Ipv4Cidr:       defaultIPAMv4Cidr,
+			Ipv6Cidr:       defaultIPAMv6Cidr,
 		}},
 	}
 

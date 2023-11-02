@@ -155,8 +155,8 @@ func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wg
 	localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
 	peerPort := nx.extractPeerPort(localIP)
 	relayAllowedIP := []string{
-		nx.vpc.Cidr,
-		nx.vpc.CidrV6,
+		nx.vpc.Ipv4Cidr,
+		nx.vpc.Ipv6Cidr,
 	}
 
 	tryNextMethod := nx.peeringFailed(*d, healthyRelay)

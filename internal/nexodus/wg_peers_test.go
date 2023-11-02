@@ -16,8 +16,8 @@ func TestRebuildPeerConfig(t *testing.T) {
 	testLogger := zLogger.Sugar()
 	nxBase := &Nexodus{
 		vpc: &public.ModelsVPC{
-			Cidr:   "100.64.0.0/10",
-			CidrV6: "200::/64",
+			Ipv4Cidr: "100.64.0.0/10",
+			Ipv6Cidr: "200::/64",
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,

@@ -45,8 +45,8 @@ func createVpcCommand() *cli.Command {
 				},
 				Action: func(cCtx *cli.Context) error {
 					return createVPC(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddVPC{
-						Cidr:           cCtx.String("cidr"),
-						CidrV6:         cCtx.String("cidr-v6"),
+						Ipv4Cidr:       cCtx.String("ipv4-cidr"),
+						Ipv6Cidr:       cCtx.String("ipv6-cidr"),
 						Description:    cCtx.String("description"),
 						OrganizationId: cCtx.String("organization-id"),
 						PrivateCidr:    !(cCtx.String("cidr") == "" && cCtx.String("cidr-v6") == ""),
@@ -81,8 +81,8 @@ func vpcTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "NAME", Field: "Name"})
-	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Cidr"})
-	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "CidrV6"})
+	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Ipv4Cidr"})
+	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "Ipv6Cidr"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	return fields

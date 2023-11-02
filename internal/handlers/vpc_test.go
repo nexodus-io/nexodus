@@ -17,26 +17,26 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 		{
 			Description: "vpc-a",
 			PrivateCidr: true,
-			IpCidr:      "10.1.1.0/24",
-			IpCidrV6:    "fc00::/20",
+			Ipv4Cidr:    "10.1.1.0/24",
+			Ipv6Cidr:    "fc00::/20",
 		},
 		{
 			Description: "vpc-b",
 			PrivateCidr: true,
-			IpCidr:      "10.1.2.0/24",
-			IpCidrV6:    "fc00:1000::/20",
+			Ipv4Cidr:    "10.1.2.0/24",
+			Ipv6Cidr:    "fc00:1000::/20",
 		},
 		{
 			Description: "vpc-c",
 			PrivateCidr: true,
-			IpCidr:      "10.1.3.0/24",
-			IpCidrV6:    "fc00:2000::/20",
+			Ipv4Cidr:    "10.1.3.0/24",
+			Ipv6Cidr:    "fc00:2000::/20",
 		},
 	}
 	vpcDenied := models.AddVPC{
 		Description: "vpc-denied-multi-vpc-off",
-		IpCidr:      "10.1.3.0/24",
-		IpCidrV6:    "fc00:3000::/20",
+		Ipv4Cidr:    "10.1.3.0/24",
+		Ipv6Cidr:    "fc00:3000::/20",
 	}
 
 	for _, vpc := range vpcs {
@@ -172,7 +172,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 			suite.api.CreateVPC,
 			bytes.NewBuffer(suite.jsonMarshal(models.AddVPC{
 				Description: "bad-ipv4-cidr",
-				IpCidr:      "10.1.3.0/24",
+				Ipv4Cidr:    "10.1.3.0/24",
 			})),
 		)
 		assert.NoError(err)
@@ -188,7 +188,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 			suite.api.CreateVPC,
 			bytes.NewBuffer(suite.jsonMarshal(models.AddVPC{
 				Description: "bad-ipv4-cidr",
-				IpCidrV6:    "fc00::/20",
+				Ipv6Cidr:    "fc00::/20",
 			})),
 		)
 		assert.NoError(err)

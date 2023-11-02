@@ -484,18 +484,18 @@ func (api *API) CreateDevice(c *gin.Context) {
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
 		if request.TunnelIP != "" {
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.IpCidr, request.TunnelIP)
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.TunnelIP)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
 		} else {
-			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.IpCidr)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.Ipv4Cidr)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
 		}
 		// Currently only support v4 requesting of specific addresses
-		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.IpCidrV6)
+		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.Ipv6Cidr)
 		if err != nil {
 			return fmt.Errorf("failed to request ipam v6 address: %w", err)
 		}
@@ -539,8 +539,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 			AdvertiseCidrs:       request.AdvertiseCidrs,
 			Relay:                request.Relay,
 			Discovery:            request.Discovery,
-			OrganizationPrefix:   vpc.IpCidr,
-			OrganizationPrefixV6: vpc.IpCidrV6,
+			OrganizationPrefix:   vpc.Ipv4Cidr,
+			OrganizationPrefixV6: vpc.Ipv6Cidr,
 			SymmetricNat:         request.SymmetricNat,
 			Hostname:             request.Hostname,
 			Os:                   request.Os,

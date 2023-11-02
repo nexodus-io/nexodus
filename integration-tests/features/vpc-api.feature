@@ -65,10 +65,9 @@ Feature: Organization API
       """
       [
         {
-          "cidr": "100.64.0.0/10",
-          "cidr_v6": "200::/64",
+          "ipv4_cidr": "100.64.0.0/10",
+          "ipv6_cidr": "200::/64",
           "description": "default vpc",
-          "hub_zone": true,
           "id": "${oscar_organization_id}",
           "organization_id": "${oscar_organization_id}",
           "private_cidr": false

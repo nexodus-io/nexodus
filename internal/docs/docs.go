@@ -2791,17 +2791,17 @@ const docTemplate = `{
         "models.AddVPC": {
             "type": "object",
             "properties": {
-                "cidr": {
-                    "type": "string",
-                    "example": "172.16.42.0/24"
-                },
-                "cidr_v6": {
-                    "type": "string",
-                    "example": "0200::/8"
-                },
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
+                },
+                "ipv4_cidr": {
+                    "type": "string",
+                    "example": "172.16.42.0/24"
+                },
+                "ipv6_cidr": {
+                    "type": "string",
+                    "example": "0200::/8"
                 },
                 "organization_id": {
                     "type": "string"
@@ -3248,18 +3248,18 @@ const docTemplate = `{
         "models.VPC": {
             "type": "object",
             "properties": {
-                "cidr": {
-                    "type": "string"
-                },
-                "cidr_v6": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "ipv4_cidr": {
+                    "type": "string"
+                },
+                "ipv6_cidr": {
+                    "type": "string"
                 },
                 "organization_id": {
                     "type": "string"

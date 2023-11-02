@@ -41,8 +41,8 @@ type VPC struct {
 	OrganizationID uuid.UUID `gorm:"index"`
 	Description    string
 	PrivateCidr    bool
-	IpCidr         string
-	IpCidrV6       string
+	Ipv4Cidr       string
+	Ipv6Cidr       string
 }
 
 type Device struct {

@@ -69,25 +69,25 @@ func (api *API) CreateVPC(c *gin.Context) {
 	}
 
 	if !request.PrivateCidr {
-		if request.IpCidr == "" {
-			request.IpCidr = defaultIPAMv4Cidr
-		} else if request.IpCidr != defaultIPAMv4Cidr {
+		if request.Ipv4Cidr == "" {
+			request.Ipv4Cidr = defaultIPAMv4Cidr
+		} else if request.Ipv4Cidr != defaultIPAMv4Cidr {
 			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr", fmt.Sprintf("must be '%s' or not set when private_cidr is not enabled", defaultIPAMv4Cidr)))
 			return
 		}
-		if request.IpCidrV6 == "" {
-			request.IpCidrV6 = defaultIPAMv4Cidr
-		} else if request.IpCidrV6 != defaultIPAMv6Cidr {
+		if request.Ipv6Cidr == "" {
+			request.Ipv6Cidr = defaultIPAMv4Cidr
+		} else if request.Ipv6Cidr != defaultIPAMv6Cidr {
 			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr_v6", fmt.Sprintf("must be '%s' or not set when private_cidr is not enabled", defaultIPAMv6Cidr)))
 			return
 		}
 	}
 
-	if request.IpCidr == "" {
+	if request.Ipv4Cidr == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr"))
 		return
 	}
-	if request.IpCidrV6 == "" {
+	if request.Ipv6Cidr == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr_v6"))
 		return
 	}
@@ -109,8 +109,8 @@ func (api *API) CreateVPC(c *gin.Context) {
 			OrganizationID: request.OrganizationID,
 			Description:    request.Description,
 			PrivateCidr:    request.PrivateCidr,
-			IpCidr:         request.IpCidr,
-			IpCidrV6:       request.IpCidrV6,
+			Ipv4Cidr:       request.Ipv4Cidr,
+			Ipv6Cidr:       request.Ipv6Cidr,
 		}
 
 		if res := tx.Create(&vpc); res.Error != nil {
@@ -130,18 +130,18 @@ func (api *API) CreateVPC(c *gin.Context) {
 			return err
 		}
 
-		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.IpCidr); err != nil {
+		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.Ipv4Cidr); err != nil {
 			api.logger.Error("Failed to assign IPv4 prefix: ", err)
 			return err
 		}
 
-		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.IpCidrV6); err != nil {
+		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.Ipv6Cidr); err != nil {
 			api.logger.Error("Failed to assign IPv6 prefix: ", err)
 			return err
 		}
 
 		span.SetAttributes(attribute.String("id", vpc.ID.String()))
-		api.logger.Infof("New vpc request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", vpc.ID.String(), vpc.IpCidr, vpc.IpCidrV6)
+		api.logger.Infof("New vpc request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", vpc.ID.String(), vpc.Ipv4Cidr, vpc.Ipv6Cidr)
 		return nil
 	})
 
@@ -485,8 +485,8 @@ func (api *API) DeleteVPC(c *gin.Context) {
 		return
 	}
 
-	vpcCIDR := vpc.IpCidr
-	vpcCIDRV6 := vpc.IpCidrV6
+	vpcCIDR := vpc.Ipv4Cidr
+	vpcCIDRV6 := vpc.Ipv6Cidr
 
 	if vpc.PrivateCidr {
 		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDR); err != nil {
