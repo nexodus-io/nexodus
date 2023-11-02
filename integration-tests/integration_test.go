@@ -409,8 +409,8 @@ func TestHubVPC(t *testing.T) {
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--vpc-id", vpcID)
-	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--vpc-id", vpcID)
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--vpc-id", vpcID, "--relay-only")
+	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--vpc-id", vpcID, "--relay-only")
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -449,7 +449,7 @@ func TestHubVPC(t *testing.T) {
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
-		"--vpc-id", vpcID,
+		"--vpc-id", vpcID, "--relay-only",
 		"router", fmt.Sprintf("--advertise-cidr=%s", hubVPCAdvertiseCidr),
 	)
 
@@ -469,7 +469,7 @@ func TestHubVPC(t *testing.T) {
 	node2LoopbackIP, _, _ := net.ParseCIDR(node2AdvertiseCidrLoopbackNet)
 
 	t.Logf("Pinging loopback on node2 %s from node3 wg0", node2LoopbackIP.String())
-	err = ping(ctx, node2, inetV4, node2LoopbackIP.String())
+	err = ping(ctx, node3, inetV4, node2LoopbackIP.String())
 	require.NoError(err)
 
 	helper.Logf("Pinging %s from node1", node3IP)
