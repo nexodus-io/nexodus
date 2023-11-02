@@ -22,7 +22,7 @@ func (suite *HandlerTestSuite) TestGetUser() {
 	require.NoError(err)
 	require.Equal(http.StatusOK, res.Code, string(body))
 
-	var actual models.UserJSON
+	var actual models.User
 	err = json.Unmarshal(body, &actual)
 	require.NoError(err, string(body))
 

@@ -65,7 +65,7 @@ func TestSecurityGroups(t *testing.T) {
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl security-groups list error: %v\n", err)
-	var user models.UserJSON
+	var user models.User
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl Security Groups unmarshal error: %v\n", err)
 

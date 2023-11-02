@@ -20,11 +20,11 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 
 	tt := []struct {
 		name   string
-		userID string
+		userID uuid.UUID
 		orgID  uuid.UUID
 		code   int
 		action string
-		login  string
+		login  uuid.UUID
 	}{
 		{
 			name:   "invite to existing org fails",
@@ -86,7 +86,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 		switch c.action {
 		case "invite":
 			request := models.AddInvitation{
-				UserID:         c.userID,
+				UserID:         &c.userID,
 				OrganizationID: c.orgID,
 			}
 			reqBody, err := json.Marshal(request)
@@ -96,7 +96,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 				"/", "/",
 				func(ctx *gin.Context) {
 					ctx.Set("_apex.testCreateOrganization", "true")
-					if c.login != "" {
+					if c.userID != uuid.Nil {
 						ctx.Set(gin.AuthUserKey, c.login)
 					}
 					suite.api.CreateInvitation(ctx)

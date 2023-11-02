@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"net"
 	"testing"
 	"time"
@@ -490,7 +491,7 @@ func TestHubOrganization(t *testing.T) {
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
-	var user models.UserJSON
+	var user models.User
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
 
@@ -811,7 +812,7 @@ func TestNexctl(t *testing.T) {
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var user models.UserJSON
+	var user models.User
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 
@@ -1003,7 +1004,7 @@ func TestNexctl(t *testing.T) {
 	err = json.Unmarshal([]byte(userList), &users)
 	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 
-	var deleteUserID string
+	var deleteUserID uuid.UUID
 	for _, u := range users {
 		if u.UserName == username {
 			deleteUserID = u.ID
@@ -1013,7 +1014,7 @@ func TestNexctl(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"user", "delete",
-		"--user-id", deleteUserID,
+		"--user-id", deleteUserID.String(),
 	)
 	require.NoError(err)
 

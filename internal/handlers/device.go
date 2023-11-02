@@ -48,7 +48,7 @@ func (api *API) ListDevices(c *gin.Context) {
 	db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
 	result := db.Find(&devices)
 	if result.Error != nil {
-		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 
@@ -99,7 +99,7 @@ func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) 
 }
 
 func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	return db.Where("owner_id = ?", userId)
 }
 
@@ -235,7 +235,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		// TODO: re-enable this when we are ready to support changing a device's VPC.
 
 		//if request.OrganizationID != uuid.Nil && request.OrganizationID != device.OrganizationID {
-		//	userId := c.GetString(gin.AuthUserKey)
+		//	userId := api.GetCurrentUser(c)
 		//
 		//	var org models.Organization
 		//	if res := tx.Model(&org).
@@ -331,7 +331,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		} else if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -405,7 +405,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		return
 	}
 
-	userId := c.GetString(gin.AuthUserKey)
+	userId := api.GetCurrentUserID(c)
 	var tokenClaims *models.NexodusClaims
 	var device models.Device
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
@@ -565,7 +565,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -615,7 +615,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	result := db.
 		First(&vpc, "id = ?", device.VpcID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		api.sendInternalServerError(c, result.Error)
+		api.SendInternalServerError(c, result.Error)
 	}
 
 	ipamNamespace := defaultIPAMNamespace
@@ -638,14 +638,14 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddress, orgPrefix); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
 			return
 		}
 	}
 
 	for _, cidr := range advertiseCidrs {
 		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, cidr); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release cidr: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release cidr: %w", err))
 			return
 		}
 	}
@@ -655,7 +655,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
 			return
 		}
 	}

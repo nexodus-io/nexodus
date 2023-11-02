@@ -43,7 +43,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("nexodus.testCreateOrganization")
@@ -51,7 +51,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
 		return
 	}
-	userId := c.GetString(gin.AuthUserKey)
+	userId := api.GetCurrentUserID(c)
 
 	var request models.AddOrganization
 	// Call BindJSON to bind the received JSON
@@ -76,7 +76,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			Name:        request.Name,
 			OwnerID:     userId,
 			Description: request.Description,
-			Users:       []*models.User{&user},
 		}
 
 		if res := tx.Create(&org); res.Error != nil {
@@ -112,7 +111,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -121,7 +120,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 }
 
 func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	if api.dialect == database.DialectSqlLite {
@@ -132,7 +131,7 @@ func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB)
 }
 
 func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	// this could potentially be driven by rego output
 	return db.Where("owner_id = ?", userId)
 }
@@ -163,7 +162,7 @@ func (api *API) ListOrganizations(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -206,7 +205,7 @@ func (api *API) GetOrganizations(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -237,7 +236,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	if !multiOrganizationEnabled {
@@ -260,7 +259,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -271,12 +270,12 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 	var usersInOrg []userOrgMapping
 	if res := db.Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
-		api.sendInternalServerError(c, res.Error)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
-		api.sendInternalServerError(c, fmt.Errorf("failed to delete the organization: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("failed to delete the organization: %w", err))
 		return
 	}
 

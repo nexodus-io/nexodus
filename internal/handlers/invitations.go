@@ -33,7 +33,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("_apex.testCreateOrganization")
@@ -57,19 +57,19 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	}
 
 	var user models.User
-	if request.UserID != "" {
+	if request.UserID != nil && *request.UserID != uuid.Nil {
 		if res := db.
 			Preload("Organizations").
 			Preload("Invitations").
-			First(&user, "id = ?", request.UserID); res.Error != nil {
+			First(&user, "id = ?", *request.UserID); res.Error != nil {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 			return
 		}
-	} else if request.UserName != "" {
+	} else if request.UserName != nil && *request.UserName != "" {
 		if res := db.Debug().
 			Preload("Organizations").
 			Preload("Invitations").
-			First(&user, "user_name = ?", request.UserName); res.Error != nil {
+			First(&user, "user_name = ?", *request.UserName); res.Error != nil {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 			return
 		}
@@ -93,7 +93,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	invite := models.NewInvitation(user.ID, request.OrganizationID)
 	if res := db.Create(&invite); res.Error != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, invite)
@@ -120,21 +120,21 @@ func (api *API) ListInvitations(c *gin.Context) {
 	db = FilterAndPaginate(db, &models.Invitation{}, c, "id")
 	result := db.Find(&invitations)
 	if result.Error != nil {
-		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 	c.JSON(http.StatusOK, invitations)
 }
 
 func (api *API) InvitationIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	return db.Where("user_id = ?", userId)
 }
 
 func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	if api.dialect == database.DialectSqlLite {
@@ -179,7 +179,7 @@ func (api *API) GetInvitation(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("invitation"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -206,7 +206,7 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("_apex.testCreateOrganization")
@@ -253,7 +253,7 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 		} else if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -280,7 +280,7 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 	defer span.End()
 	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("_apex.testCreateOrganization")
@@ -303,7 +303,7 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 	}
 
 	if res := db.Delete(&models.Invitation{}, k); res.Error != nil {
-		api.sendInternalServerError(c, res.Error)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 	c.Status(http.StatusNoContent)

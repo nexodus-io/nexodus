@@ -7,11 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/database"
-	"github.com/redis/go-redis/v9"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,79 +21,62 @@ import (
 // key for username in gin.Context
 const AuthUserName string = "_nexodus.UserName"
 
-var noUUID = uuid.UUID{}
-
 // CacheExp Zero expiration means the key has no expiration time.
 const CacheExp time.Duration = 0
 const CachePrefix = "user:"
 
-func (api *API) CreateUserIfNotExists() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.GetString(gin.AuthUserKey)
-		username := c.GetString(AuthUserName)
-		prefixId := fmt.Sprintf("%s:%s", CachePrefix, id)
-		cachedUsername, err := api.redis.Get(c.Request.Context(), prefixId).Result()
-		if err != nil {
-			if errors.Is(err, redis.Nil) {
-				api.logger.Debugf("user id doesn't exits in the cache:%s", err)
-			} else {
-				api.logger.Warnf("failed to find user in the cache:%s", err)
-			}
-		}
-		if cachedUsername == "" {
-			_, err := api.createUserIfNotExists(c.Request.Context(), id, username)
-			if err != nil {
-				api.sendInternalServerError(c, err)
-				c.Abort()
-				return
-			}
-			api.redis.Set(c.Request.Context(), prefixId, username, CacheExp)
-		}
-		c.Next()
-	}
-}
-
 func (api *API) UserIsCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	return db.Where("id = ?", userId)
 }
 
-func (api *API) createUserIfNotExists(ctx context.Context, id string, userName string) (uuid.UUID, error) {
+func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, idpUsername string) (uuid.UUID, error) {
 	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("user-id", id),
-		attribute.String("username", userName),
+		attribute.String("ipd_id", idpId),
+		attribute.String("username", idpUsername),
 	)
 	var user models.User
-	var uuid uuid.UUID
+	var userID uuid.UUID
 
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
 		return api.transaction(ctx, func(tx *gorm.DB) error {
+
 			// First lets check if the user has ever existed in the database
-			res := tx.Unscoped().First(&user, "id = ?", id)
+			res := tx.Unscoped().First(&user, "idp_id = ?", idpId)
 
 			// If the user exists, then lets restore their status in the database
 			if res.Error == nil {
-				if user.DeletedAt.Valid {
-					user.DeletedAt = gorm.DeletedAt{}
-					if res := tx.Unscoped().Model(&user).Update("DeletedAt", user.DeletedAt); res.Error != nil {
-						return res.Error
-					}
-				}
+
+				fieldsToUpdate := []interface{}{}
 
 				// Check if the UserName has changed since the last time we saw this user
-				if user.UserName != userName {
-					if res := tx.Model(&user).Update("UserName", userName); res.Error != nil {
+				if user.UserName != idpUsername {
+					user.UserName = idpUsername
+					fieldsToUpdate = append(fieldsToUpdate, "UserName")
+				}
+
+				// do we need to undelete it?
+				if user.DeletedAt.Valid {
+					user.DeletedAt = gorm.DeletedAt{}
+					fieldsToUpdate = append(fieldsToUpdate, "DeletedAt")
+				}
+
+				if len(fieldsToUpdate) > 0 {
+					if res := tx.Unscoped().
+						Model(&user).
+						Select(fieldsToUpdate[0], fieldsToUpdate[1:]...).
+						Updates(&user); res.Error != nil {
 						return res.Error
 					}
 				}
 
-				var err error
-				uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+				userID = user.ID
+				err := api.createUserOrgIfNotExists(ctx, tx, userID, idpUsername)
 				if err != nil {
 					return err
 				}
@@ -104,19 +85,19 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 			}
 
 			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("can't find record for user id %s: %w", id, res.Error)
+				return fmt.Errorf("find failed record for idp_id %s: %w", idpId, res.Error)
 			}
-
-			user.ID = id
-			user.UserName = userName
+			userID = uuid.New()
+			user.ID = userID
+			user.IdpID = idpId
+			user.UserName = idpUsername
 			if res = tx.Create(&user); res.Error != nil {
 				if database.IsDuplicateError(res.Error) {
 					res.Error = gorm.ErrDuplicatedKey
 				}
 				return res.Error
 			}
-			var err error
-			uuid, err = api.createUserOrgIfNotExists(ctx, tx, id, userName)
+			err := api.createUserOrgIfNotExists(ctx, tx, userID, idpUsername)
 			if err != nil {
 				return err
 			}
@@ -126,91 +107,93 @@ func (api *API) createUserIfNotExists(ctx context.Context, id string, userName s
 	})
 
 	if err != nil {
-		return noUUID, fmt.Errorf("can't create user record: %w", err)
+		return uuid.Nil, fmt.Errorf("can't create user record: %w", err)
 	}
 
-	if uuid != noUUID {
-		return uuid, nil
+	if userID != uuid.Nil {
+		return userID, nil
 	}
 
-	return noUUID, fmt.Errorf("can't create user record")
+	return uuid.Nil, fmt.Errorf("can't create user record")
 }
 
-func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userId string, userName string) (uuid.UUID, error) {
+func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userID uuid.UUID, userName string) error {
+
 	// Get the first org the use owns.
 	org := models.Organization{}
-	res := api.db.Where("owner_id = ?", userId).First(&org)
+	res := api.db.Where("owner_id = ?", userID.String()).First(&org)
 	if res.Error == nil {
-		return org.ID, nil
-	}
-	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return noUUID, res.Error
+		return nil
 	}
 
-	orgId := uuid.New()
+	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return res.Error
+	}
+
+	userId := uuid.New()
 	org = models.Organization{
 		Base: models.Base{
-			ID: orgId,
+			ID: userId,
 		},
-		OwnerID:     userId,
+		OwnerID:     userID,
 		Name:        userName,
 		Description: fmt.Sprintf("%s's organization", userName),
-		Users: []*models.User{&models.User{
-			ID: userId,
-		}},
-		VPCs: []*models.VPC{
-			&models.VPC{
-				Base: models.Base{
-					ID: orgId,
-				},
-				OrganizationID: orgId,
-				Description:    "default vpc",
-				PrivateCidr:    false,
-				IpCidr:         defaultIPAMv4Cidr,
-				IpCidrV6:       defaultIPAMv6Cidr,
-				HubZone:        true,
+		Users: []*models.User{{
+			Base: models.Base{
+				ID: userID,
 			},
-		},
+		}},
+		VPCs: []*models.VPC{{
+			Base: models.Base{
+				ID: userId,
+			},
+			OrganizationID: userId,
+			Description:    "default vpc",
+			PrivateCidr:    false,
+			IpCidr:         defaultIPAMv4Cidr,
+			IpCidrV6:       defaultIPAMv6Cidr,
+			HubZone:        true,
+		}},
 	}
 
 	// Create the organization
 	if res := tx.Create(&org); res.Error != nil {
 		if database.IsDuplicateError(res.Error) {
-			return noUUID, res.Error
+			return res.Error
 		}
 
 		// If we already have an existing organisation then lets just use that one
-		if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
-			return org.ID, nil
+		if tx.Where("owner_id = ?", userID).First(&org).Error == nil {
+			return nil
 		}
 
-		return noUUID, fmt.Errorf("can't create organization record: %w", res.Error)
+		return fmt.Errorf("can't create organization record: %w", res.Error)
 	}
 
 	ipamNamespace := defaultIPAMNamespace
 
 	// Create namespaces and prefixes
 	if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
-		return noUUID, fmt.Errorf("failed to create ipam namespace: %w", err)
+		return fmt.Errorf("failed to create ipam namespace: %w", err)
 	}
 	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv4Cidr); err != nil {
-		return noUUID, fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+		return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
 	}
 	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv6Cidr); err != nil {
-		return noUUID, fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+		return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 	}
 	// Create a default security group for the organization
 	sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
 	if err != nil {
-		return noUUID, fmt.Errorf("failed to create the default security group: %w", res.Error)
+		return fmt.Errorf("failed to create the default security group: %w", res.Error)
 	}
 
 	// Update the default org with the new security group id
 	if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
-		return noUUID, fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
+		return fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
 	}
 
-	return org.ID, nil
+	return nil
 }
 
 // GetUser gets a user
@@ -234,17 +217,20 @@ func (api *API) GetUser(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	userId := c.Param("id")
-	if userId == "" {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
-		return
+
+	var userId uuid.UUID
+	var err error
+	if c.Param("id") == "me" {
+		userId = api.GetCurrentUserID(c)
+	} else {
+		userId, err = uuid.Parse(c.Param("id"))
+		if err != nil || userId == uuid.Nil {
+			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+			return
+		}
 	}
 
 	var user models.User
-	if userId == "me" {
-		userId = c.GetString(gin.AuthUserKey)
-	}
-
 	db := api.db.WithContext(ctx)
 	if res := api.UserIsCurrentUser(c, db).
 		First(&user, "id = ?", userId); res.Error != nil {
@@ -276,7 +262,7 @@ func (api *API) ListUsers(c *gin.Context) {
 	result := db.Find(&users)
 
 	if result.Error != nil {
-		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -312,7 +298,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 			return errUserNotFound
 		}
 		if res := api.db.Select(clause.Associations).Delete(&user); res.Error != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to delete user: %w", res.Error))
+			api.SendInternalServerError(c, fmt.Errorf("failed to delete user: %w", res.Error))
 		}
 
 		return nil
@@ -322,14 +308,14 @@ func (api *API) DeleteUser(c *gin.Context) {
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
 	// delete the cached user
-	prefixId := fmt.Sprintf("%s:%s", CachePrefix, userID)
-	_, err = api.redis.Del(c.Request.Context(), prefixId).Result()
+	prefixId := fmt.Sprintf("%s:%s", CachePrefix, user.IdpID)
+	_, err = api.Redis.Del(c.Request.Context(), prefixId).Result()
 	if err != nil {
 		api.logger.Warnf("failed to delete the cache user:%s", err)
 	}
@@ -385,7 +371,7 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 			Where("user_id = ?", userID).
 			Where("organization_id = ?", orgID).
 			Delete(&UserOrganization{}); res.Error != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error))
+			api.SendInternalServerError(c, fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error))
 		}
 		return nil
 	})
@@ -397,13 +383,13 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 		if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 	// delete the cached user
-	prefixId := fmt.Sprintf("%s:%s", CachePrefix, userID)
-	_, err = api.redis.Del(c.Request.Context(), prefixId).Result()
+	prefixId := fmt.Sprintf("%s:%s", CachePrefix, user.IdpID)
+	_, err = api.Redis.Del(c.Request.Context(), prefixId).Result()
 	if err != nil {
 		api.logger.Warnf("failed to delete the cache user:%s", err)
 	}

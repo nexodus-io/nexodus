@@ -76,7 +76,19 @@ func init() {
 		ctx.Step(`^the "(.*)" selection from the response should match "([^"]*)"$`, s.theSelectionFromTheResponseShouldMatch)
 		ctx.Step(`^the response header "([^"]*)" should match "([^"]*)"$`, s.theResponseHeaderShouldMatch)
 		ctx.Step(`^the "([^"]*)" selection from the response should match json:$`, s.theSelectionFromTheResponseShouldMatchJson)
+		ctx.Step(`^\${([^"]*)} is not empty$`, s.vpc_idIsNotEmpty)
 	})
+}
+
+func (s *TestScenario) vpc_idIsNotEmpty(name string) error {
+	value, err := s.Resolve(name)
+	if err != nil {
+		return err
+	}
+	if value == nil || value == "" {
+		return fmt.Errorf("variable ${%s} is empty", name)
+	}
+	return nil
 }
 
 func (s *TestScenario) theResponseCodeShouldBe(expected int) error {

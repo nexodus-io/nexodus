@@ -56,7 +56,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.sendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", result.Error))
+		api.SendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", result.Error))
 		return
 	}
 
@@ -136,7 +136,7 @@ func (api *API) ListMetadataInVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -234,7 +234,7 @@ func (api *API) GetDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.sendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("error fetching metadata: %w", err))
 	}
 
 	c.JSON(http.StatusOK, metadataInstance)
@@ -298,7 +298,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.sendInternalServerError(c, fmt.Errorf("error updating metadata: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("error updating metadata: %w", err))
 		return
 	}
 
@@ -346,7 +346,7 @@ func (api *API) DeleteDeviceMetadata(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
 	signalChannel := fmt.Sprintf("/metadata/vpc=%s", device.VpcID.String())
@@ -397,7 +397,7 @@ func (api *API) DeleteDeviceMetadataKey(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		api.sendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("error deleting metadata: %w", err))
 	}
 
 	signalChannel := fmt.Sprintf("/metadata/vpc=%s", device.VpcID.String())

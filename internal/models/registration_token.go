@@ -10,7 +10,7 @@ import (
 // RegistrationToken is used to register devices without an interactive login.
 type RegistrationToken struct {
 	Base
-	OwnerID        string     `json:"owner_id,omitempty"`
+	OwnerID        uuid.UUID  `json:"owner_id,omitempty"`
 	VpcID          uuid.UUID  `json:"vpc_id,omitempty"`
 	OrganizationID uuid.UUID  `json:"-"`                      // OrganizationID is denormalized from the VPC record for performance
 	BearerToken    string     `json:"bearer_token,omitempty"` // BearerToken is the token the client should use to authenticate the device registration request.

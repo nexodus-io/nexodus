@@ -8,7 +8,7 @@ import (
 // Organization contains Users and VPCs
 type Organization struct {
 	Base
-	OwnerID         string    `json:"owner_id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
+	OwnerID         uuid.UUID `json:"owner_id" example:"aa22666c-0f57-45cb-a449-16efecc04f2e"`
 	Name            string    `json:"name" gorm:"uniqueIndex" sql:"index" example:"zone-red"`
 	Description     string    `json:"description" example:"Team A"`
 	SecurityGroupId uuid.UUID `json:"security_group_id"`

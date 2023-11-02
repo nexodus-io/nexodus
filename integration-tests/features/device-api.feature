@@ -22,6 +22,7 @@ Feature: Device API
     When I GET path "/api/vpcs"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${vpc_id}
+    And ${vpc_id} is not empty
 
     When I GET path "/api/organizations"
     Then the response code should be 200

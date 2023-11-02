@@ -108,12 +108,23 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 		return denyCheckResponse(401, models.NewBaseError(message))
 	}
 
+	var user models.User
+	result = db.First(&user, "id = ?", regToken.OwnerID)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid registration token user"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
 	// replace it with a JWT token...
 	claims := models.NexodusClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      regToken.ID.String(),
-			Subject: regToken.OwnerID,
+			Subject: user.IdpID,
 		},
 		VpcID: regToken.VpcID,
 		Scope: "reg-token",
@@ -160,12 +171,23 @@ func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckR
 		return denyCheckResponse(401, models.NewBaseError(message))
 	}
 
+	var user models.User
+	result = db.First(&user, "id = ?", device.OwnerID)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid registration token user"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
 	// replace it with a JWT token...
 	claims := models.NexodusClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      device.ID.String(),
-			Subject: device.OwnerID,
+			Subject: user.IdpID,
 		},
 		VpcID: device.VpcID,
 		Scope: "device-token",

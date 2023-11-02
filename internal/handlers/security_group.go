@@ -52,7 +52,7 @@ func (d securityGroupList) Len() int {
 }
 
 func (api *API) SecurityGroupIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	if api.dialect == database.DialectSqlLite {
 		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?) OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
 	} else {
@@ -61,7 +61,7 @@ func (api *API) SecurityGroupIsReadableByCurrentUser(c *gin.Context, db *gorm.DB
 }
 
 func (api *API) SecurityGroupIsWriteableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	if api.dialect == database.DialectSqlLite {
 		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
 	} else {
@@ -138,7 +138,7 @@ func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -208,7 +208,7 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 func (api *API) secGroupsEnabled(c *gin.Context) bool {
 	secGroupsEnabled, err := api.fflags.GetFlag("security-groups")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return false
 	}
 	allowForTests := c.GetString("nexodus.secGroupsEnabled")
@@ -309,7 +309,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewApiError(err))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -399,7 +399,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -492,7 +492,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		} else if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}

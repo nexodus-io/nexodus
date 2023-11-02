@@ -43,7 +43,7 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 	}
 
 	// org field is required...
-	if request.VpcID == noUUID {
+	if request.VpcID == uuid.Nil {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
@@ -57,17 +57,17 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 		return
 	}
 
-	if request.VpcID == noUUID {
+	if request.VpcID == uuid.Nil {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
 
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// lets use a wg private key as the token, since it should be hard to guess.
 	token, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 	}
 
 	if res := db.Create(&record); res.Error != nil {
-		api.sendInternalServerError(c, res.Error)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 	c.JSON(http.StatusCreated, record)
@@ -125,7 +125,7 @@ func (api *API) ListRegistrationTokens(c *gin.Context) {
 	db = FilterAndPaginate(db, &models.RegistrationToken{}, c, "id")
 	result := db.Find(&records)
 	if result.Error != nil {
-		api.sendInternalServerError(c, fmt.Errorf("error fetching keys from db: %w", result.Error))
+		api.SendInternalServerError(c, fmt.Errorf("error fetching keys from db: %w", result.Error))
 		return
 	}
 	c.JSON(http.StatusOK, records)
@@ -183,7 +183,7 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("registration token"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -192,7 +192,7 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 
 func (api *API) RegistrationTokenIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		userId := c.Value(gin.AuthUserKey).(string)
+		userId := api.GetCurrentUserID(c)
 
 		// this could potentially be driven by rego output
 		return db.Where("owner_id = ?", userId)
@@ -200,7 +200,7 @@ func (api *API) RegistrationTokenIsForCurrentUser(c *gin.Context) func(db *gorm.
 }
 
 func (api *API) RegistrationTokenIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	if api.dialect == database.DialectSqlLite {
@@ -253,7 +253,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("registration token"))
 		return
 	} else if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 func (api *API) Certs(c *gin.Context) {
 	data, err := api.JSONWebKeySet()
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	c.Data(200, "application/json", data)

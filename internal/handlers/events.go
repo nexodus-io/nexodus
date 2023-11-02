@@ -91,7 +91,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -371,7 +371,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 func (api *API) stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
-		api.sendInternalServerError(c, fmt.Errorf("streaming unsupported"))
+		api.SendInternalServerError(c, fmt.Errorf("streaming unsupported"))
 		return
 	}
 	c.Writer.WriteHeader(200)

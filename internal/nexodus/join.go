@@ -12,15 +12,15 @@ import (
 
 func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
 	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		VpcId:                   nx.vpc.Id,
-		PublicKey:               nx.wireguardPubKey,
-		TunnelIp:                nx.requestedIP,
-		AdvertiseCidrs:          nx.advertiseCidrs,
-		SymmetricNat:            nx.symmetricNat,
-		Hostname:                nx.hostname,
-		Relay:                   nx.relay,
-		Os:                      nx.os,
-		Endpoints:               endpoints,
+		VpcId:          nx.vpc.Id,
+		PublicKey:      nx.wireguardPubKey,
+		TunnelIp:       nx.requestedIP,
+		AdvertiseCidrs: nx.advertiseCidrs,
+		SymmetricNat:   nx.symmetricNat,
+		Hostname:       nx.hostname,
+		Relay:          nx.relay,
+		Os:             nx.os,
+		Endpoints:      endpoints,
 	}).Execute()
 	deviceOperationMsg := "Successfully registered device"
 	if err != nil {
@@ -30,10 +30,10 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 			case public.ModelsConflictsError:
 				var resp *http.Response
 				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					AdvertiseCidrs:          nx.advertiseCidrs,
-					SymmetricNat:            nx.symmetricNat,
-					Hostname:                nx.hostname,
-					Endpoints:               endpoints,
+					AdvertiseCidrs: nx.advertiseCidrs,
+					SymmetricNat:   nx.symmetricNat,
+					Hostname:       nx.hostname,
+					Endpoints:      endpoints,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {

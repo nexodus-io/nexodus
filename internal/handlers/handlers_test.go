@@ -26,9 +26,10 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+var TestUserID = uuid.New()
+var TestUser2ID = uuid.New()
+
 const (
-	TestUserID     = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
-	TestUser2ID    = "3381dcaf-f61e-4671-8787-3e53490894ae"
 	ipamClientAddr = "http://localhost:49090"
 )
 
@@ -84,9 +85,9 @@ func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
 	suite.api.db.Exec("DELETE FROM user_organizations")
 	suite.api.db.Exec("DELETE FROM devices")
 	var err error
-	suite.testOrganizationID, err = suite.api.createUserIfNotExists(context.Background(), TestUserID, "testuser")
+	suite.testOrganizationID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserID.String(), "testuser")
 	suite.Require().NoError(err)
-	suite.testUser2OrgID, err = suite.api.createUserIfNotExists(context.Background(), TestUser2ID, "testuser2")
+	suite.testUser2OrgID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2ID.String(), "testuser2")
 	suite.Require().NoError(err)
 }
 
@@ -94,10 +95,16 @@ func (suite *HandlerTestSuite) ServeRequest(method, path string, uri string, han
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
-		c.Set(gin.AuthUserKey, TestUserID)
+		userId, err := suite.api.CreateUserIfNotExists(c.Request.Context(), TestUserID.String(), TestUserID.String())
+		if err != nil {
+			suite.api.SendInternalServerError(c, err)
+			c.Abort()
+			return
+		}
+		c.Set(gin.AuthUserKey, userId)
 		c.Next()
 	})
-	r.Use(suite.api.CreateUserIfNotExists())
+
 	r.Any(path, handler)
 	req, err := http.NewRequest(method, uri, body)
 	if err != nil {

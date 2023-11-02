@@ -52,7 +52,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 	defer span.End()
 	multiVPCEnabled, err := api.fflags.GetFlag("multi-vpc")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	allowForTests := c.GetString("nexodus.testCreateVPC")
@@ -156,7 +156,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 		} else if errors.As(err, &duplicate) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -165,7 +165,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 }
 
 func (api *API) VPCIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	if api.dialect == database.DialectSqlLite {
 		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId)
 	} else {
@@ -174,7 +174,7 @@ func (api *API) VPCIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB
 }
 
 func (api *API) VPCIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 	if api.dialect == database.DialectSqlLite {
 		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
 	} else {
@@ -208,7 +208,7 @@ func (api *API) ListVPCs(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -251,7 +251,7 @@ func (api *API) GetVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -296,7 +296,7 @@ func (api *API) ListDevicesInVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -379,7 +379,7 @@ func (api *API) GetDeviceInVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -398,7 +398,7 @@ func (api *API) GetDeviceInVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -438,7 +438,7 @@ func (api *API) DeleteVPC(c *gin.Context) {
 	defer span.End()
 	multiVPCEnabled, err := api.fflags.GetFlag("multi-vpc")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 	if !multiVPCEnabled {
@@ -461,7 +461,7 @@ func (api *API) DeleteVPC(c *gin.Context) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -477,12 +477,12 @@ func (api *API) DeleteVPC(c *gin.Context) {
 	}
 	var usersInOrg []userOrgMapping
 	if res := db.Table("user_vpcs").Select("user_id", "vpc_id").Where("vpc_id = ?", vpc.ID).Scan(&usersInOrg); res.Error != nil {
-		api.sendInternalServerError(c, res.Error)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 
 	if res := api.db.Select(clause.Associations).Delete(&vpc); res.Error != nil {
-		api.sendInternalServerError(c, fmt.Errorf("failed to delete the vpc: %w", err))
+		api.SendInternalServerError(c, fmt.Errorf("failed to delete the vpc: %w", err))
 		return
 	}
 
@@ -491,12 +491,12 @@ func (api *API) DeleteVPC(c *gin.Context) {
 
 	if vpc.PrivateCidr {
 		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDR); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
 			return
 		}
 
 		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDRV6); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
 			return
 		}
 	}

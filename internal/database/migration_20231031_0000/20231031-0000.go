@@ -18,20 +18,17 @@ type Base struct {
 }
 
 type User struct {
-	// Since the ID comes from the IDP, we have no control over the format...
-	ID              string `gorm:"primary_key"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       gorm.DeletedAt  `gorm:"index" `
+	Base
 	Organizations   []*Organization `gorm:"many2many:user_organizations" `
 	UserName        string          `gorm:"index"`
+	IdpID           string
 	Invitations     []*Invitation
 	SecurityGroupId uuid.UUID
 }
 type Organization struct {
 	Base
-	OwnerID         string
-	Name            string `gorm:"uniqueIndex" sql:"index"`
+	OwnerID         uuid.UUID `gorm:"index"`
+	Name            string
 	Description     string
 	SecurityGroupId uuid.UUID
 
@@ -41,7 +38,7 @@ type Organization struct {
 
 type VPC struct {
 	Base
-	OrganizationID uuid.UUID
+	OrganizationID uuid.UUID `gorm:"index"`
 	Description    string
 	PrivateCidr    bool
 	IpCidr         string
@@ -51,7 +48,7 @@ type VPC struct {
 
 type Device struct {
 	Base
-	OwnerID                  string    `gorm:"index"`
+	OwnerID                  uuid.UUID `gorm:"index"`
 	VpcID                    uuid.UUID `gorm:"index"`
 	OrganizationID           uuid.UUID `gorm:"index"`
 	PublicKey                string
@@ -72,10 +69,8 @@ type Device struct {
 	SecurityGroupId          uuid.UUID
 	Online                   bool
 	OnlineAt                 *time.Time
-	// the registration token id that created the device (if it was created with a registration token)
-	RegistrationTokenID uuid.UUID
-	// the token nexd should use to reconcile device state.
-	BearerToken string
+	RegistrationTokenID      uuid.UUID
+	BearerToken              string `gorm:"index"`
 }
 
 type Endpoint struct {
@@ -96,17 +91,17 @@ type DeviceMetadata struct {
 
 type Invitation struct {
 	Base
-	UserID         string
-	OrganizationID uuid.UUID
+	UserID         uuid.UUID `gorm:"index"`
+	OrganizationID uuid.UUID `gorm:"index"`
 	Expiry         time.Time
 }
 
 type RegistrationToken struct {
 	Base
-	OwnerID        string    `gorm:"index"`
+	OwnerID        uuid.UUID `gorm:"index"`
 	VpcID          uuid.UUID `gorm:"index"`
 	OrganizationID uuid.UUID `gorm:"index"` // OrganizationID is denormalized from the VPC record for performance
-	BearerToken    string
+	BearerToken    string    `gorm:"index"`
 	Description    string
 	DeviceId       *uuid.UUID
 	Expiration     *time.Time
@@ -216,6 +211,10 @@ func Migrate() *gormigrate.Migration {
 		ExecAction(
 			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_registration_tokens_bearer_token" ON "registration_tokens" ("bearer_token")`,
 			`DROP INDEX IF EXISTS idx_registration_tokens_bearer_token`,
+		),
+		ExecAction(
+			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_idp_id" ON "users" ("idp_id")`,
+			`DROP INDEX IF EXISTS idx_users_idp_id`,
 		),
 	)
 }

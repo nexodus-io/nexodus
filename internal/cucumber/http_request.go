@@ -98,6 +98,7 @@ func (s *TestScenario) SendHttpRequestWithJsonBodyAndStyle(method, path string, 
 				return err
 			}
 		}
+		fmt.Printf("body is:\n%s\n", expanded)
 		body.WriteString(expanded)
 	}
 	expandedPath, err := s.Expand(path)

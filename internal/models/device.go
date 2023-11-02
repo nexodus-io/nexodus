@@ -11,7 +11,7 @@ import (
 // Devices belong to one User and may be onboarded into an organization
 type Device struct {
 	Base
-	OwnerID              string         `json:"owner_id"`
+	OwnerID              uuid.UUID      `json:"owner_id"`
 	VpcID                uuid.UUID      `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
 	OrganizationID       uuid.UUID      `json:"-"` // Denormalized from the VPC record for performance
 	PublicKey            string         `json:"public_key"`
