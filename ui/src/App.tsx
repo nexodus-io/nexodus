@@ -10,6 +10,7 @@ import OrganizationIcon from "@mui/icons-material/VpnLock";
 import UserIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegistrationTokenIcon from "@mui/icons-material/Rsvp";
+import VPCIcon from "@mui/icons-material/Cloud";
 
 // pages
 import { UserShow, UserList } from "./pages/Users";
@@ -19,6 +20,7 @@ import {
   OrganizationShow,
   OrganizationCreate,
 } from "./pages/Organizations";
+import { VPCList, VPCShow, VPCCreate } from "./pages/VPCs";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
@@ -87,6 +89,14 @@ const App = () => {
         show={OrganizationShow}
         icon={OrganizationIcon}
         create={OrganizationCreate}
+        recordRepresentation={(record) => `${record.name}`}
+      />
+      <Resource
+        name="vpcs"
+        list={VPCList}
+        show={VPCShow}
+        icon={VPCIcon}
+        create={VPCCreate}
         recordRepresentation={(record) => `${record.name}`}
       />
       <Resource
