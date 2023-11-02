@@ -56,9 +56,6 @@ type Device struct {
 	TunnelIPsV6              []TunnelIP     `gorm:"type:JSONB; serializer:json"`
 	AdvertiseCidrs           pq.StringArray `gorm:"type:text[]" `
 	Relay                    bool
-	Discovery                bool
-	OrganizationPrefix       string
-	OrganizationPrefixV6     string
 	EndpointLocalAddressIPv4 string
 	SymmetricNat             bool
 	Hostname                 string `gorm:"index"`

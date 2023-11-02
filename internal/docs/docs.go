@@ -2667,9 +2667,6 @@ const docTemplate = `{
                         "172.16.42.0/24"
                     ]
                 },
-                "discovery": {
-                    "type": "boolean"
-                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -2849,9 +2846,6 @@ const docTemplate = `{
                 "bearer_token": {
                     "description": "the token nexd should use to reconcile device state.",
                     "type": "string"
-                },
-                "discovery": {
-                    "type": "boolean"
                 },
                 "endpoints": {
                     "type": "array",

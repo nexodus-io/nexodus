@@ -20,7 +20,6 @@ type Device struct {
 	TunnelIPsV6     []TunnelIP     `json:"tunnel_ips_v6" gorm:"type:JSONB; serializer:json"`
 	AdvertiseCidrs  pq.StringArray `json:"advertise_cidrs" gorm:"type:text[]" swaggertype:"array,string"`
 	Relay           bool           `json:"relay"`
-	Discovery       bool           `json:"discovery"`
 	SymmetricNat    bool           `json:"symmetric_nat"`
 	Hostname        string         `json:"hostname"`
 	Os              string         `json:"os"`
@@ -42,7 +41,6 @@ type AddDevice struct {
 	AdvertiseCidrs  []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
 	TunnelIPsV4     []TunnelIP `json:"tunnel_ips_v4" gorm:"type:JSONB; serializer:json"`
 	Relay           bool       `json:"relay"`
-	Discovery       bool       `json:"discovery"`
 	SymmetricNat    bool       `json:"symmetric_nat"`
 	Hostname        string     `json:"hostname" example:"myhost"`
 	Endpoints       []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`

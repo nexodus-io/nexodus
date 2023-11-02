@@ -13,7 +13,6 @@ package public
 // ModelsAddDevice struct for ModelsAddDevice
 type ModelsAddDevice struct {
 	AdvertiseCidrs  []string         `json:"advertise_cidrs,omitempty"`
-	Discovery       bool             `json:"discovery,omitempty"`
 	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname        string           `json:"hostname,omitempty"`
 	Os              string           `json:"os,omitempty"`

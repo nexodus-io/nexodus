@@ -16,7 +16,6 @@ type ModelsDevice struct {
 	AllowedIps     []string `json:"allowed_ips,omitempty"`
 	// the token nexd should use to reconcile device state.
 	BearerToken     string           `json:"bearer_token,omitempty"`
-	Discovery       bool             `json:"discovery,omitempty"`
 	Endpoints       []ModelsEndpoint `json:"endpoints,omitempty"`
 	Hostname        string           `json:"hostname,omitempty"`
 	Id              string           `json:"id,omitempty"`

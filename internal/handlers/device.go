@@ -547,7 +547,6 @@ func (api *API) CreateDevice(c *gin.Context) {
 			},
 			AdvertiseCidrs:      request.AdvertiseCidrs,
 			Relay:               request.Relay,
-			Discovery:           request.Discovery,
 			SymmetricNat:        request.SymmetricNat,
 			Hostname:            request.Hostname,
 			Os:                  request.Os,

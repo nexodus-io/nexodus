@@ -8,8 +8,6 @@ definitions:
         items:
           type: string
         type: array
-      discovery:
-        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
@@ -134,8 +132,6 @@ definitions:
       bearer_token:
         description: the token nexd should use to reconcile device state.
         type: string
-      discovery:
-        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
