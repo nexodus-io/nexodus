@@ -54,14 +54,14 @@ export const DeviceList = () => (
         </Datagrid>
       </ArrayField>
       <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
+        label="VPC"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <ReferenceField
         label="Owner"
-        source="user_id"
+        source="owner_id"
         reference="users"
         link="show"
       />
@@ -172,14 +172,14 @@ const DeviceShowLayout: FC = () => {
       </ArrayField>
       <TextField label="Relay Node" source="relay" />
       <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
+        label="VPC"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <ReferenceField
         label="Owner"
-        source="user_id"
+        source="owner_id"
         reference="users"
         link="show"
       />
