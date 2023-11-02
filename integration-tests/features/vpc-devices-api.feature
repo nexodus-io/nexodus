@@ -60,7 +60,6 @@ Feature: Organization Devices API
         "tunnel_ip": "",
         "advertise_cidrs": null,
         "relay": false,
-        "reflexive_ip4": "47.196.141.165",
         "symmetric_nat": true,
         "hostname": "oliver-laptop"
       }
@@ -80,7 +79,6 @@ Feature: Organization Devices API
         "tunnel_ip": "",
         "advertise_cidrs": null,
         "relay": false,
-        "reflexive_ip4": "47.196.141.164",
         "symmetric_nat": true,
         "hostname": "oscar-pc"
       }
@@ -101,7 +99,6 @@ Feature: Organization Devices API
         "tunnel_ip": "",
         "advertise_cidrs": null,
         "relay": false,
-        "reflexive_ip4": "47.196.141.124",
         "symmetric_nat": true,
         "hostname": "bob-pc"
       }

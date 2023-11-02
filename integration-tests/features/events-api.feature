@@ -53,8 +53,6 @@ Feature: Events API
         "tunnel_ip": "",
         "advertise_cidrs": null,
         "relay": false,
-        "reflexive_ip4": "47.196.141.165",
-        "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
         "hostname": "device1"
       }
@@ -123,8 +121,6 @@ Feature: Events API
         "tunnel_ip": "",
         "advertise_cidrs": null,
         "relay": false,
-        "reflexive_ip4": "47.196.141.166",
-        "endpoint_local_address_ip4": "172.17.0.4",
         "symmetric_nat": true,
         "hostname": "device2"
       }
