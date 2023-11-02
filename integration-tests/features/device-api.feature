@@ -53,8 +53,6 @@ Feature: Device API
           "address": "172.17.0.3:58664",
           "distance": 0
         }],
-        "tunnel_ip": "",
-        "tunnel_ip_v6": "",
         "advertise_cidrs": null,
         "relay": false,
         "discovery": false,
@@ -88,15 +86,23 @@ Feature: Device API
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": true,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
+        "tunnel_ips_v4": [
+          {
+            "address": "${response.tunnel_ips_v4[0].address}",
+            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+          }
+        ],
+        "tunnel_ips_v6": [
+          {
+            "address": "${response.tunnel_ips_v6[0].address}",
+            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+          }
+        ],
         "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
@@ -133,16 +139,23 @@ Feature: Device API
         "hostname": "kittenhome",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "owner_id": "${user_id}",
+        "tunnel_ips_v4": [
+          {
+            "address": "${response.tunnel_ips_v4[0].address}",
+            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+          }
+        ],
+        "tunnel_ips_v6": [
+          {
+            "address": "${response.tunnel_ips_v6[0].address}",
+            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+          }
+        ],        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """
@@ -174,16 +187,24 @@ Feature: Device API
           "hostname": "kittenhome",
           "id": "${device_id}",
           "vpc_id": "${vpc_id}",
-          "organization_prefix":"${response[0].organization_prefix}",
-          "organization_prefix_v6":"${response[0].organization_prefix_v6}",
           "os": "linux",
           "public_key": "${public_key}",
           "relay": false,
           "revision": ${response[0].revision},
           "symmetric_nat": false,
           "security_group_id": "${response[0].security_group_id}",
-          "tunnel_ip": "${response[0].tunnel_ip}",
-          "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
+          "tunnel_ips_v4": [
+            {
+              "address": "${response[0].tunnel_ips_v4[0].address}",
+              "cidr": "${response[0].tunnel_ips_v4[0].cidr}"
+            }
+          ],
+          "tunnel_ips_v6": [
+            {
+              "address": "${response[0].tunnel_ips_v6[0].address}",
+              "cidr": "${response[0].tunnel_ips_v6[0].cidr}"
+            }
+          ],
           "owner_id": "${user_id}"
         }
       ]
@@ -252,15 +273,23 @@ Feature: Device API
         "hostname": "kittenhome",
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
+        "tunnel_ips_v4": [
+          {
+            "address": "${response.tunnel_ips_v4[0].address}",
+            "cidr": "${response.tunnel_ips_v4[0].cidr}"
+          }
+        ],
+        "tunnel_ips_v6": [
+          {
+            "address": "${response.tunnel_ips_v6[0].address}",
+            "cidr": "${response.tunnel_ips_v6[0].cidr}"
+          }
+        ],
         "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }

@@ -444,7 +444,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			}
 
 			// is the user token restricted to operating on a single device?
-			if tokenClaims.DeviceID == uuid.Nil {
+			if tokenClaims.DeviceID != uuid.Nil {
 				err = tx.Where("id = ?", tokenClaims.DeviceID).First(&device).Error
 				if err == nil {
 					// If we get here the device exists but has a different public key, so assume
@@ -453,10 +453,6 @@ func (api *API) CreateDevice(c *gin.Context) {
 				}
 
 				deviceId = tokenClaims.DeviceID
-				//deviceId, err = uuid.Parse(claims.DeviceID)
-				//if err != nil {
-				//	return fmt.Errorf("invalid registration token device id: %w", err)
-				//}
 			}
 
 			if tokenClaims.VpcID != request.VpcID {

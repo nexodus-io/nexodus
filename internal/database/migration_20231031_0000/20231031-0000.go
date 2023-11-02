@@ -52,8 +52,8 @@ type Device struct {
 	OrganizationID           uuid.UUID `gorm:"index"`
 	PublicKey                string
 	AllowedIPs               pq.StringArray `gorm:"type:text[]" `
-	TunnelIP                 string
-	TunnelIpV6               string
+	TunnelIPsV4              []TunnelIP     `gorm:"type:JSONB; serializer:json"`
+	TunnelIPsV6              []TunnelIP     `gorm:"type:JSONB; serializer:json"`
 	AdvertiseCidrs           pq.StringArray `gorm:"type:text[]" `
 	Relay                    bool
 	Discovery                bool
@@ -70,6 +70,11 @@ type Device struct {
 	OnlineAt                 *time.Time
 	RegistrationTokenID      uuid.UUID
 	BearerToken              string `gorm:"index"`
+}
+
+type TunnelIP struct {
+	Address string
+	CIDR    string
 }
 
 type Endpoint struct {
