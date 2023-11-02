@@ -77,14 +77,13 @@
 
 - name: Running The following nexd command
   debug:
-    msg: "nexd --stun --username '{{ nexodus_auth_uid }}' --password '{{ nexodus_auth_password }}' relay {{ nexodus_url }}"
+    msg: "nexd --username '{{ nexodus_auth_uid }}' --password '{{ nexodus_auth_password }}' relay {{ nexodus_url }}"
 
 - name: Attach the Relay Node to the Controller
   become: yes
   shell: |
-    echo "Running command: nexd --stun --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} relay {{ nexodus_url }}" > nexodus-logs.txt
+    echo "Running command: nexd --username {{ nexodus_auth_uid }} --password {{ nexodus_auth_password }} relay {{ nexodus_url }}" > nexodus-logs.txt
     NEXD_LOGLEVEL=debug nexd \
-    --stun \
     --username '{{ nexodus_auth_uid }}' \
     --password '{{ nexodus_auth_password }}' \
     relay \

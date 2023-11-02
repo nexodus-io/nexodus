@@ -11,7 +11,7 @@ A relay node needs to be reachable on a predictable Wireguard port such as the d
 Unlike normal peering, the Nexodus relay node needs to be reachable from all the nodes that want peer to the relay node. The default port in the following command is `51820` but a custom port can be specified using the `--listen-port` flag. Follow the instruction in [Deploying the Nexodus Agent](agent.md) instructions to set up the `nexd` binary.
 
 ```sh
-sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io --stun relay
+sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io relay
 ```
 
 You can list the available organizations using the following command
@@ -25,13 +25,13 @@ faa76939-3226-4d09-b695-e981585ab156     kitteh1   100.64.0.0/10     200::/64   
 ### Interactive OnBoarding
 
 ```sh
-sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io --stun relay
+sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io relay
 ```
 
 It will print a URL on stdout to onboard the relay node
 
 ```sh
-$ sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io --stun relay 
+$ sudo nexd --service-url https://try.nexodus.127.0.0.1.nip.io relay
 Your device must be registered with Nexodus.
 Your one-time code is: GTLN-RGKP
 Please open the following URL in your browser to sign in:
@@ -45,5 +45,5 @@ Open the URL in your browser and provide the username and password that you used
 To OnBoard devices without any browser involvement, you need to provide a username and password in the CLI command
 
 ```sh
-nexd --stun --username=kitteh1 --password=floofykittens --service-url https://try.nexodus.127.0.0.1.nip.io relay
+nexd --username=kitteh1 --password=floofykittens --service-url https://try.nexodus.127.0.0.1.nip.io relay
 ```

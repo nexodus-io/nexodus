@@ -152,7 +152,6 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		cCtx.String("request-ip"),
 		cCtx.String("local-endpoint-ip"),
 		advertiseCidr,
-		cCtx.Bool("stun"),
 		relayNode,
 		cCtx.Bool("relay-only"),
 		cCtx.Bool("network-router"),
@@ -402,14 +401,6 @@ func main() {
 					}
 					return nil
 				},
-			},
-			&cli.BoolFlag{
-				Name:     "stun",
-				Usage:    "Discover the public address for this host using STUN",
-				Value:    false,
-				EnvVars:  []string{"NEXD_STUN"},
-				Required: false,
-				Category: agentOptions,
 			},
 			&cli.BoolFlag{
 				Name:     "relay-only",
