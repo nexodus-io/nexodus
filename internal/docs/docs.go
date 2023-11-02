@@ -2803,9 +2803,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "The Red Zone"
                 },
-                "hub_zone": {
-                    "type": "boolean"
-                },
                 "organization_id": {
                     "type": "string"
                 },
@@ -3259,9 +3256,6 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
-                },
-                "hub_zone": {
-                    "type": "boolean"
                 },
                 "id": {
                     "type": "string",

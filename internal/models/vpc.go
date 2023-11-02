@@ -12,7 +12,6 @@ type VPC struct {
 	PrivateCidr    bool      `json:"private_cidr"`
 	IpCidr         string    `json:"cidr"`
 	IpCidrV6       string    `json:"cidr_v6"`
-	HubZone        bool      `json:"hub_zone"`
 
 	Organization *Organization `json:"-"`
 }
@@ -23,5 +22,4 @@ type AddVPC struct {
 	PrivateCidr    bool      `json:"private_cidr"`
 	IpCidr         string    `json:"cidr" example:"172.16.42.0/24"`
 	IpCidrV6       string    `json:"cidr_v6" example:"0200::/8"`
-	HubZone        bool      `json:"hub_zone"`
 }

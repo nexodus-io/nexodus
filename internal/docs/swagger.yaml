@@ -103,8 +103,6 @@ definitions:
       description:
         example: The Red Zone
         type: string
-      hub_zone:
-        type: boolean
       organization_id:
         type: string
       private_cidr:
@@ -411,8 +409,6 @@ definitions:
         type: string
       description:
         type: string
-      hub_zone:
-        type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string

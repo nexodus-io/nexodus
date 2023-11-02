@@ -43,7 +43,6 @@ type VPC struct {
 	PrivateCidr    bool
 	IpCidr         string
 	IpCidrV6       string
-	HubZone        bool
 }
 
 type Device struct {

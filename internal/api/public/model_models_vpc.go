@@ -15,7 +15,6 @@ type ModelsVPC struct {
 	Cidr           string `json:"cidr,omitempty"`
 	CidrV6         string `json:"cidr_v6,omitempty"`
 	Description    string `json:"description,omitempty"`
-	HubZone        bool   `json:"hub_zone,omitempty"`
 	Id             string `json:"id,omitempty"`
 	OrganizationId string `json:"organization_id,omitempty"`
 	PrivateCidr    bool   `json:"private_cidr,omitempty"`

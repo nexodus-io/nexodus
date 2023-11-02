@@ -49,7 +49,6 @@ func createVpcCommand() *cli.Command {
 						CidrV6:         cCtx.String("cidr-v6"),
 						Description:    cCtx.String("description"),
 						OrganizationId: cCtx.String("organization-id"),
-						HubZone:        false,
 						PrivateCidr:    !(cCtx.String("cidr") == "" && cCtx.String("cidr-v6") == ""),
 					})
 				},

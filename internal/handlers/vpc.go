@@ -111,7 +111,6 @@ func (api *API) CreateVPC(c *gin.Context) {
 			PrivateCidr:    request.PrivateCidr,
 			IpCidr:         request.IpCidr,
 			IpCidrV6:       request.IpCidrV6,
-			HubZone:        request.HubZone,
 		}
 
 		if res := tx.Create(&vpc); res.Error != nil {
