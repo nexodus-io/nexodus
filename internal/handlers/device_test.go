@@ -40,7 +40,7 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	require.NoError(err)
 
 	require.Equal(newDevice.PublicKey, actual.PublicKey)
-	require.Equal(TestUserIdpID, actual.OwnerID)
+	require.Equal(suite.testUserID, actual.OwnerID)
 
 	_, res, err = suite.ServeRequest(
 		http.MethodGet, "/:id", fmt.Sprintf("/%s", actual.ID),

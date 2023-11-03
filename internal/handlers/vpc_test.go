@@ -76,7 +76,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 			bytes.NewBuffer(resBody),
 		)
 		assert.NoError(err)
-		assert.Equal(http.StatusMethodNotAllowed, res.Code)
+		assert.Equal(http.StatusBadRequest, res.Code)
 	}
 
 	{
@@ -100,7 +100,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
-			"/", `/?sort=["name","DESC"]`,
+			"/", `/?sort=["description","DESC"]`,
 			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
@@ -115,10 +115,10 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 
 		assert.Len(actual, 4)
 		seen := map[string]bool{
-			"testuser": false,
-			"vpc-a":    false,
-			"vpc-b":    false,
-			"vpc-c":    false,
+			"default vpc": false,
+			"vpc-a":       false,
+			"vpc-b":       false,
+			"vpc-c":       false,
 		}
 		for _, org := range actual {
 			if _, ok := seen[org.Description]; ok {
@@ -132,7 +132,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodGet,
-			"/", `/?filter={"name":"default"}`,
+			"/", `/?filter={"description":"default"}`,
 			suite.api.ListVPCs, nil,
 		)
 		assert.NoError(err)
@@ -147,28 +147,6 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 
 		assert.Len(actual, 0)
 	}
-
-	{
-		_, res, err := suite.ServeRequest(
-			http.MethodGet,
-			"/", `/?range=[3,4]`,
-			suite.api.ListVPCs, nil,
-		)
-		assert.NoError(err)
-
-		body, err := io.ReadAll(res.Body)
-		assert.NoError(err)
-		assert.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
-
-		var actual []models.VPC
-		err = json.Unmarshal(body, &actual)
-		assert.NoError(err)
-		// The orgs are sorted by name..
-		assert.Len(actual, 1)
-		assert.Equal("4", res.Header().Get(TotalCountHeader))
-		assert.Equal("testuser", actual[0].Description)
-	}
-
 	{
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,

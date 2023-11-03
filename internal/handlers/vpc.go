@@ -304,7 +304,7 @@ func (api *API) ListDevicesInVPC(c *gin.Context) {
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		db = db.Where("vpc_id = ?", vpcId.String())
-		db = FilterAndPaginateWithQuery(db, &models.Device{}, c, query, "hostname")
+		db = FilterAndPaginateWithQuery(db, &models.Device{}, c, query, "id")
 
 		var items deviceList
 		result := db.Find(&items)
