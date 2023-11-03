@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"io"
 	"os/exec"
@@ -579,26 +578,25 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 	return nil
 }
 
-func (helper *Helper) createOrganization(username string, password string, args ...string) (string, string) {
+func (helper *Helper) createVPC(username string, password string, args ...string) string {
 	orgOut, err := helper.runCommand(append([]string{
 		nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
-		"organization", "create",
-		"--name", uuid.New().String(),
+		"vpc", "create",
 		"--description", "Test: " + helper.T.Name(),
 	}, args...)...)
 	helper.require.NoError(err)
-	var org models.Organization
+	var org models.VPC
 	err = json.Unmarshal([]byte(orgOut), &org)
 	helper.require.NoError(err)
-	return org.ID.String(), org.Name
+	return org.ID.String()
 }
 
-func (helper *Helper) deleteOrganization(username string, password string, orgID string) error {
+func (helper *Helper) deleteVPC(username string, password string, orgID string) error {
 	_, err := helper.runCommand(nexctl,
 		"--username", username, "--password", password,
-		"organization", "delete", "--organization-id", orgID)
+		"vpc", "delete", "--vpc-id", orgID)
 	return err
 }
 func (helper *Helper) peerListNexdDevices(ctx context.Context, ctr testcontainers.Container) error {

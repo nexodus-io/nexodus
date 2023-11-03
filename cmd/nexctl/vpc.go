@@ -28,18 +28,18 @@ func createVpcCommand() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "organization-id",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "description",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "cidr",
 						Required: false,
 					},
 					&cli.StringFlag{
-						Name:     "cidr-v6",
+						Name:     "description",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "ipv4-cidr",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "ipv6-cidr",
 						Required: false,
 					},
 				},
@@ -49,7 +49,7 @@ func createVpcCommand() *cli.Command {
 						Ipv6Cidr:       cCtx.String("ipv6-cidr"),
 						Description:    cCtx.String("description"),
 						OrganizationId: cCtx.String("organization-id"),
-						PrivateCidr:    !(cCtx.String("cidr") == "" && cCtx.String("cidr-v6") == ""),
+						PrivateCidr:    !(cCtx.String("ipv4-cidr") == "" && cCtx.String("ipv6-cidr") == ""),
 					})
 				},
 			},
@@ -79,12 +79,11 @@ func createVpcCommand() *cli.Command {
 
 func vpcTableFields() []TableField {
 	var fields []TableField
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
-	fields = append(fields, TableField{Header: "NAME", Field: "Name"})
+	fields = append(fields, TableField{Header: "VPC ID", Field: "Id"})
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
 	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Ipv4Cidr"})
 	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "Ipv6Cidr"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	return fields
 }
 func listVPCs(cCtx *cli.Context, c *client.APIClient) error {
@@ -98,8 +97,12 @@ func listVPCs(cCtx *cli.Context, c *client.APIClient) error {
 }
 
 func createVPC(cCtx *cli.Context, c *client.APIClient, resource public.ModelsAddVPC) error {
-	res, _, err := c.VPCApi.CreateVPC(context.Background()).VPC(resource).Execute()
+	if resource.OrganizationId == "" {
+		resource.OrganizationId = getDefaultOwnedOrgId(cCtx.Context, c)
+	}
+	res, httpResp, err := c.VPCApi.CreateVPC(context.Background()).VPC(resource).Execute()
 	if err != nil {
+		fmt.Println(httpResp)
 		log.Fatal(err)
 	}
 	showOutput(cCtx, vpcTableFields(), res)

@@ -25,10 +25,10 @@ const (
 	encodeColumn     = "column"
 )
 
-// This variable is set using ldflags at build time. See Makefile for details.
+// Version is set using ldflags at build time. See Makefile for details.
 var Version = "dev"
 
-// Optionally set at build time using ldflags
+// DefaultServiceURL is optionally set at build time using ldflags
 var DefaultServiceURL = "https://try.nexodus.io"
 
 var additionalPlatformCommands []*cli.Command = nil

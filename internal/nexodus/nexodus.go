@@ -659,16 +659,21 @@ func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *publi
 	if err != nil {
 		return "", nil, fmt.Errorf("get user error: %w", err)
 	}
-	var vpcs []public.ModelsVPC
+
+	var vpc *public.ModelsVPC
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
-		vpcs, resp, err = nx.client.VPCApi.ListVPCs(ctx).Execute()
+		if nx.vpcId == "" {
+			nx.vpcId = user.Id
+		}
+
+		vpc, resp, err = nx.client.VPCApi.GetVPC(ctx, nx.vpcId).Execute()
 		if err != nil {
 			if resp != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v header: %+v", err, resp.Header)
+				nx.logger.Warnf("get vpc error - retrying error: %v header: %+v", err, resp.Header)
 				return err
 			}
 			if err != nil {
-				nx.logger.Warnf("get organizations error - retrying error: %v", err)
+				nx.logger.Warnf("get vpc error - retrying error: %v", err)
 				return err
 			}
 		}
@@ -676,14 +681,10 @@ func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *publi
 		return nil
 	})
 	if err != nil {
-		return "", nil, fmt.Errorf("get organizations error: %w", err)
+		return "", nil, fmt.Errorf("get vpc error: %w", err)
 	}
 
-	org, err := nx.chooseVpc(vpcs)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to choose an organization: %w", err)
-	}
-	return user.Id, org, nil
+	return user.Id, vpc, nil
 }
 
 func (nx *Nexodus) Stop() {
@@ -881,24 +882,6 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 	}
 
 	return nil
-}
-
-func (nx *Nexodus) chooseVpc(vpcs []public.ModelsVPC) (*public.ModelsVPC, error) {
-	if len(vpcs) == 0 {
-		return nil, fmt.Errorf("user does not belong to any vpcs")
-	}
-	if nx.vpcId == "" {
-		if len(vpcs) != 1 {
-			return nil, fmt.Errorf("please specify vpc with --vpc-id")
-		}
-		return &vpcs[0], nil
-	}
-	for i, org := range vpcs {
-		if org.Id == nx.vpcId {
-			return &vpcs[i], nil
-		}
-	}
-	return nil, fmt.Errorf("user does not belong to organization %s", nx.vpcId)
 }
 
 func (nx *Nexodus) deviceCacheIterRead(f func(deviceCacheEntry)) {

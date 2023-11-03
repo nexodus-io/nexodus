@@ -113,63 +113,21 @@ func createRegistrationToken(cCtx *cli.Context, c *client.APIClient, token publi
 }
 
 func getDefaultOwnedOrgId(ctx context.Context, c *client.APIClient) string {
-	orgIds, err := getOwnedOrgIds(ctx, c)
+	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(orgIds) == 0 {
-		log.Fatal("user does not own any organizations, please use the --organization-id flag to specify the organization")
-	}
-	if len(orgIds) > 1 {
-		log.Fatal("user owns multiple organizations, please use the --organization-id flag to specify the organization")
-	}
-	return orgIds[0]
+	return user.Id
 }
 
 func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
-	orgIds, err := getVpcIds(ctx, c)
+	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(orgIds) == 0 {
-		log.Fatal("user does not own any vpcs, please use the --vpc-id flag to specify the vpc")
-	}
-	if len(orgIds) > 1 {
-		log.Fatal("user has multiple vpcs, please use the --vpc-id flag to specify the vpc")
-	}
-	return orgIds[0]
+	return user.Id
 }
 
-func getOwnedOrgIds(ctx context.Context, c *client.APIClient) ([]string, error) {
-	result := []string{}
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	if err != nil {
-		return result, err
-	}
-	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
-	if err != nil {
-		return result, err
-	}
-	for _, org := range orgs {
-		if org.OwnerId != user.Id {
-			continue
-		}
-		result = append(result, org.Id)
-	}
-	return result, nil
-}
-
-func getVpcIds(ctx context.Context, c *client.APIClient) ([]string, error) {
-	result := []string{}
-	vpcs, _, err := c.VPCApi.ListVPCs(ctx).Execute()
-	if err != nil {
-		return result, err
-	}
-	for _, vpc := range vpcs {
-		result = append(result, vpc.Id)
-	}
-	return result, nil
-}
 func deleteRegistrationToken(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) error {
 	tokenId, err := uuid.Parse(id)
 	if err != nil {

@@ -50,16 +50,6 @@ func (e errDuplicateVPC) Error() string {
 func (api *API) CreateVPC(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateVPC")
 	defer span.End()
-	multiVPCEnabled, err := api.fflags.GetFlag("multi-vpc")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("nexodus.testCreateVPC")
-	if (!multiVPCEnabled && allowForTests != "true") || allowForTests == "false" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-vpc support is disabled"))
-		return
-	}
 
 	var request models.AddVPC
 	// Call BindJSON to bind the received JSON
@@ -97,7 +87,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 	}
 
 	var vpc models.VPC
-	err = api.transaction(ctx, func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 
 		var org models.Organization
 		if res := api.OrganizationIsReadableByCurrentUser(c, tx).
@@ -435,15 +425,6 @@ func (api *API) DeleteVPC(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	multiVPCEnabled, err := api.fflags.GetFlag("multi-vpc")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	if !multiVPCEnabled {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-vpc support is disabled"))
-		return
-	}
 
 	vpcID, err := uuid.Parse(c.Param("vpc"))
 	if err != nil {

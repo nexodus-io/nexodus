@@ -130,10 +130,9 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		return res.Error
 	}
 
-	userId := uuid.New()
 	org = models.Organization{
 		Base: models.Base{
-			ID: userId,
+			ID: userID,
 		},
 		OwnerID:     userID,
 		Name:        userName,
@@ -145,9 +144,9 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		}},
 		VPCs: []*models.VPC{{
 			Base: models.Base{
-				ID: userId,
+				ID: userID,
 			},
-			OrganizationID: userId,
+			OrganizationID: userID,
 			Description:    "default vpc",
 			PrivateCidr:    false,
 			Ipv4Cidr:       defaultIPAMv4Cidr,
