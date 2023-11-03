@@ -14,7 +14,7 @@ func (suite *HandlerTestSuite) TestGetUser() {
 	assert := suite.Assert()
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/:id", fmt.Sprintf("/%s", TestUserIdpID),
+		"/:id", fmt.Sprintf("/%s", suite.testUserID),
 		suite.api.GetUser, nil,
 	)
 	require.NoError(err)
