@@ -1289,9 +1289,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/reg-keys/{key-id}": {
+            },
             "delete": {
                 "description": "Deletes an existing RegKey",
                 "consumes": [
@@ -1309,7 +1307,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "RegKey ID",
-                        "name": "key-id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }

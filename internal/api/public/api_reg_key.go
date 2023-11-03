@@ -290,7 +290,7 @@ func (a *RegKeyApiService) CreateRegKeyExecute(r ApiCreateRegKeyRequest) (*Model
 type ApiDeleteRegKeyRequest struct {
 	ctx        context.Context
 	ApiService *RegKeyApiService
-	keyId      string
+	id         string
 }
 
 func (r ApiDeleteRegKeyRequest) Execute() (*ModelsRegKey, *http.Response, error) {
@@ -303,14 +303,14 @@ DeleteRegKey Delete RegKey
 Deletes an existing RegKey
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param keyId RegKey ID
+	@param id RegKey ID
 	@return ApiDeleteRegKeyRequest
 */
-func (a *RegKeyApiService) DeleteRegKey(ctx context.Context, keyId string) ApiDeleteRegKeyRequest {
+func (a *RegKeyApiService) DeleteRegKey(ctx context.Context, id string) ApiDeleteRegKeyRequest {
 	return ApiDeleteRegKeyRequest{
 		ApiService: a,
 		ctx:        ctx,
-		keyId:      keyId,
+		id:         id,
 	}
 }
 
@@ -330,8 +330,8 @@ func (a *RegKeyApiService) DeleteRegKeyExecute(r ApiDeleteRegKeyRequest) (*Model
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/reg-keys/{key-id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"key-id"+"}", url.PathEscape(parameterValueToString(r.keyId, "keyId")), -1)
+	localVarPath := localBasePath + "/api/reg-keys/{id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

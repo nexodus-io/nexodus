@@ -215,13 +215,13 @@ func (api *API) RegKeyIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *g
 // @Tags         RegKey
 // @Accept		 json
 // @Produce      json
-// @Param		 key-id   path      string true "RegKey ID"
+// @Param		 id   path      string true "RegKey ID"
 // @Success      204  {object}  models.RegKey
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/reg-keys/{key-id} [delete]
+// @Router       /api/reg-keys/{id} [delete]
 func (api *API) DeleteRegKey(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteRegKey",
 		trace.WithAttributes(

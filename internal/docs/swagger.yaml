@@ -1267,6 +1267,43 @@ paths:
       tags:
       - RegKey
   /api/reg-keys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing RegKey
+      operationId: DeleteRegKey
+      parameters:
+      - description: RegKey ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.RegKey'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete RegKey
+      tags:
+      - RegKey
     get:
       consumes:
       - application/json
@@ -1306,44 +1343,6 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Get a RegKey
-      tags:
-      - RegKey
-  /api/reg-keys/{key-id}:
-    delete:
-      consumes:
-      - application/json
-      description: Deletes an existing RegKey
-      operationId: DeleteRegKey
-      parameters:
-      - description: RegKey ID
-        in: path
-        name: key-id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            $ref: '#/definitions/models.RegKey'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Delete RegKey
       tags:
       - RegKey
   /api/security-groups:
