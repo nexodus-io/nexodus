@@ -545,7 +545,7 @@ func (helper *Helper) connectToPort(ctx context.Context, ctr testcontainers.Cont
 }
 
 // securityGroupRulesUpdate update security group rule
-func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string, orgID string) error {
+func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string) error {
 	// Marshal rules to JSON
 	inboundJSON, err := json.Marshal(inboundRules)
 	if err != nil {
@@ -567,7 +567,6 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 		"--security-group-id", secGroupID,
-		"--organization-id", orgID,
 	}
 
 	out, err := helper.runCommand(command...)

@@ -152,7 +152,7 @@ func securityGroupTableFields(cCtx *cli.Context) []TableField {
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP NAME", Field: "GroupName"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP DESCRIPTION", Field: "GroupDescription"})
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrgId"})
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP RULES INBOUND", Field: "InboundRules"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP RULES OUTBOUND", Field: "OutboundRules"})
 	return fields

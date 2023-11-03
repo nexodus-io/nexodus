@@ -98,7 +98,6 @@ func TestSecurityGroups(t *testing.T) {
 	}
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
-	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
 	node1IPv4 := deviceMap[node1Hostname].IPv4TunnelIPs[0].Address
@@ -148,7 +147,7 @@ func TestSecurityGroups(t *testing.T) {
 		helper.createSecurityRule("tcp", "0", "0", []string{""}),
 	}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
@@ -196,7 +195,7 @@ func TestSecurityGroups(t *testing.T) {
 	}
 
 	// update the security group with the new inbound and outbound rules
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
@@ -241,7 +240,7 @@ func TestSecurityGroups(t *testing.T) {
 	}
 
 	// update the security group with the new inbound and outbound rules
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
@@ -281,7 +280,7 @@ func TestSecurityGroups(t *testing.T) {
 	}
 
 	// update the security group with the new inbound and outbound rules
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
@@ -415,7 +414,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// Verify an empty rule will apply a permit all
 	outboundRules := []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
@@ -486,7 +485,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	// Verify an empty rule will apply a permit all
 	outboundRules = []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
@@ -514,7 +513,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 
 	// update the security group with the new inbound and outbound rules
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
 	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
@@ -643,7 +642,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 	outboundRules = []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where the from_port is 0 and not a valid 1-65535
@@ -660,7 +659,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 	outboundRules = []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where there is an invalid address in ip_ranges
@@ -678,7 +677,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 	outboundRules = []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where there is an invalid protocol specified
@@ -696,7 +695,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 	outboundRules = []public.ModelsSecurityRule{}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 }
 
@@ -756,7 +755,6 @@ func TestSecurityGroupProtocolsOnly(t *testing.T) {
 	}
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
-	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
@@ -781,7 +779,7 @@ func TestSecurityGroupProtocolsOnly(t *testing.T) {
 		helper.createSecurityRule("icmp", "0", "0", []string{""}),
 	}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 }
 
@@ -841,7 +839,6 @@ func TestSecurityGroupProtocolsPortsOnly(t *testing.T) {
 	}
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
-	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
@@ -863,7 +860,7 @@ func TestSecurityGroupProtocolsPortsOnly(t *testing.T) {
 		helper.createSecurityRule("udp", "4300", "4300", []string{}),
 	}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 }
 
@@ -923,7 +920,6 @@ func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
 	}
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
-	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
@@ -945,6 +941,6 @@ func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
 		helper.createSecurityRule("udp", "4400", "4403", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff", "2002:0db8::/64"}),
 	}
 
-	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID, orgID)
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 }
