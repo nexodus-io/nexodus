@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-var TestUserID = uuid.New()
-var TestUser2ID = uuid.New()
+var TestUserIdpID = "testuser"
+var TestUser2IdpID = "testuser2"
 
 const (
 	ipamClientAddr = "http://localhost:49090"
@@ -35,12 +35,12 @@ const (
 
 type HandlerTestSuite struct {
 	suite.Suite
-	logger             *zap.SugaredLogger
-	ipam               *http.Server
-	wg                 *sync.WaitGroup
-	api                *API
-	testOrganizationID uuid.UUID
-	testUser2OrgID     uuid.UUID
+	logger      *zap.SugaredLogger
+	ipam        *http.Server
+	wg          *sync.WaitGroup
+	api         *API
+	testUserID  uuid.UUID
+	testUser2ID uuid.UUID
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
@@ -80,14 +80,15 @@ func (suite *HandlerTestSuite) SetupSuite() {
 }
 
 func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
-	suite.api.db.Exec("DELETE FROM users")
-	suite.api.db.Exec("DELETE FROM organizations")
-	suite.api.db.Exec("DELETE FROM user_organizations")
 	suite.api.db.Exec("DELETE FROM devices")
+	suite.api.db.Exec("DELETE FROM vpcs")
+	suite.api.db.Exec("DELETE FROM user_organizations")
+	suite.api.db.Exec("DELETE FROM organizations")
+	suite.api.db.Exec("DELETE FROM users")
 	var err error
-	suite.testOrganizationID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserID.String(), "testuser")
+	suite.testUserID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserIdpID, "testuser")
 	suite.Require().NoError(err)
-	suite.testUser2OrgID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2ID.String(), "testuser2")
+	suite.testUser2ID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2IdpID, "testuser2")
 	suite.Require().NoError(err)
 }
 
@@ -95,13 +96,7 @@ func (suite *HandlerTestSuite) ServeRequest(method, path string, uri string, han
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
-		userId, err := suite.api.CreateUserIfNotExists(c.Request.Context(), TestUserID.String(), TestUserID.String())
-		if err != nil {
-			suite.api.SendInternalServerError(c, err)
-			c.Abort()
-			return
-		}
-		c.Set(gin.AuthUserKey, userId)
+		c.Set(gin.AuthUserKey, suite.testUserID)
 		c.Next()
 	})
 

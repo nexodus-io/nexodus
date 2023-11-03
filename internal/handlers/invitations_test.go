@@ -29,53 +29,53 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 		{
 			name:   "invite to existing org fails",
 			code:   http.StatusBadRequest,
-			userID: TestUserID,
-			orgID:  suite.testOrganizationID,
+			userID: suite.testUserID,
+			orgID:  suite.testUserID,
 			action: "invite",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "invite to new org succeeds",
 			code:   http.StatusCreated,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "re-invite to same org fails",
 			code:   http.StatusConflict,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
 			name:   "refuse invite succeeds",
 			code:   http.StatusNoContent,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "refuse",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "re-invite to same org succeeds",
 			code:   http.StatusCreated,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
 			name:   "accept org succeeds",
 			code:   http.StatusNoContent,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "accept",
 		},
 		{
 			name:   "invite to existing org fails",
 			code:   http.StatusBadRequest,
-			userID: TestUserID,
-			orgID:  suite.testOrganizationID,
+			userID: suite.testUserID,
+			orgID:  suite.testUserID,
 			action: "invite",
 		},
 	}
@@ -96,7 +96,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 				"/", "/",
 				func(ctx *gin.Context) {
 					ctx.Set("_apex.testCreateOrganization", "true")
-					if c.userID != uuid.Nil {
+					if c.login != uuid.Nil {
 						ctx.Set(gin.AuthUserKey, c.login)
 					}
 					suite.api.CreateInvitation(ctx)

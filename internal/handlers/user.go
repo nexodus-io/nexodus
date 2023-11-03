@@ -117,11 +117,11 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, idpUser
 	return uuid.Nil, fmt.Errorf("can't create user record")
 }
 
-func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userID uuid.UUID, userName string) error {
+func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userId uuid.UUID, userName string) error {
 
 	// Get the first org the use owns.
 	org := models.Organization{}
-	res := api.db.Where("owner_id = ?", userID.String()).First(&org)
+	res := api.db.Where("owner_id = ?", userId.String()).First(&org)
 	if res.Error == nil {
 		return nil
 	}
@@ -132,21 +132,21 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 
 	org = models.Organization{
 		Base: models.Base{
-			ID: userID,
+			ID: userId,
 		},
-		OwnerID:     userID,
+		OwnerID:     userId,
 		Name:        userName,
 		Description: fmt.Sprintf("%s's organization", userName),
 		Users: []*models.User{{
 			Base: models.Base{
-				ID: userID,
+				ID: userId,
 			},
 		}},
 		VPCs: []*models.VPC{{
 			Base: models.Base{
-				ID: userID,
+				ID: userId,
 			},
-			OrganizationID: userID,
+			OrganizationID: userId,
 			Description:    "default vpc",
 			PrivateCidr:    false,
 			Ipv4Cidr:       defaultIPAMv4Cidr,
@@ -161,7 +161,7 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		}
 
 		// If we already have an existing organisation then lets just use that one
-		if tx.Where("owner_id = ?", userID).First(&org).Error == nil {
+		if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
 			return nil
 		}
 

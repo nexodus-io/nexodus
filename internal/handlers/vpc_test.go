@@ -15,28 +15,32 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 	require := suite.Require()
 	vpcs := []models.AddVPC{
 		{
-			Description: "vpc-a",
-			PrivateCidr: true,
-			Ipv4Cidr:    "10.1.1.0/24",
-			Ipv6Cidr:    "fc00::/20",
+			Description:    "vpc-a",
+			PrivateCidr:    true,
+			Ipv4Cidr:       "10.1.1.0/24",
+			Ipv6Cidr:       "fc00::/20",
+			OrganizationID: suite.testUserID,
 		},
 		{
-			Description: "vpc-b",
-			PrivateCidr: true,
-			Ipv4Cidr:    "10.1.2.0/24",
-			Ipv6Cidr:    "fc00:1000::/20",
+			Description:    "vpc-b",
+			PrivateCidr:    true,
+			Ipv4Cidr:       "10.1.2.0/24",
+			Ipv6Cidr:       "fc00:1000::/20",
+			OrganizationID: suite.testUserID,
 		},
 		{
-			Description: "vpc-c",
-			PrivateCidr: true,
-			Ipv4Cidr:    "10.1.3.0/24",
-			Ipv6Cidr:    "fc00:2000::/20",
+			Description:    "vpc-c",
+			PrivateCidr:    true,
+			Ipv4Cidr:       "10.1.3.0/24",
+			Ipv6Cidr:       "fc00:2000::/20",
+			OrganizationID: suite.testUserID,
 		},
 	}
 	vpcDenied := models.AddVPC{
-		Description: "vpc-denied-multi-vpc-off",
-		Ipv4Cidr:    "10.1.3.0/24",
-		Ipv6Cidr:    "fc00:3000::/20",
+		Description:    "vpc-denied-multi-vpc-off",
+		Ipv4Cidr:       "10.1.3.0/24",
+		Ipv6Cidr:       "fc00:3000::/20",
+		OrganizationID: suite.testUserID,
 	}
 
 	for _, vpc := range vpcs {

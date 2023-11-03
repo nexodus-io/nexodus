@@ -31,16 +31,7 @@ import (
 func (api *API) CreateInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
+
 	var request models.AddInvitation
 	if err := c.BindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
@@ -93,7 +84,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	invite := models.NewInvitation(user.ID, request.OrganizationID)
 	if res := db.Create(&invite); res.Error != nil {
-		api.SendInternalServerError(c, err)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 	c.JSON(http.StatusCreated, invite)
@@ -204,16 +195,7 @@ func (api *API) GetInvitation(c *gin.Context) {
 func (api *API) AcceptInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
+
 	k, err := uuid.Parse(c.Param("invitation"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
@@ -278,16 +260,18 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 func (api *API) DeleteInvitation(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation")
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
+
+	//multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
+	//if err != nil {
+	//	api.SendInternalServerError(c, err)
+	//	return
+	//}
+	//allowForTests := c.GetString("_apex.testCreateOrganization")
+	//if !multiOrganizationEnabled && allowForTests != "true" {
+	//	c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
+	//	return
+	//}
+
 	k, err := uuid.Parse(c.Param("invitation"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
