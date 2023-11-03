@@ -2,7 +2,7 @@
 
 Imagine a user wants to not only communicate between the node address each member of the mesh but also want to advertise
 some additional IP prefixes for additional services running on a node. This can be accomplished with the `--advertise-cidr` flag
-of `router` subcommand. Prefixes have to be unique within an organization but can overlap between separate organizations.
+of `router` subcommand. Prefixes have to be unique within a VPC but can overlap between separate VPCs.
 
 The following example allows a user to connect Docker container directly to one another without exposing a port on the node.
 These nodes could be in different data centers or CSPs. This example uses the `router --advertise-cidr` option to advertise the private
@@ -10,10 +10,10 @@ container networks to the mesh and enable connectivity.
 
 **Node1 setup:**
 
-Join node1 to the user's default assigned organization
+Join node1 to the user's default assigned VPC
 
 ```shell
-sudo nexd router --advertise-cidr=172.24.0.0/24 <SERVICE_URL>
+sudo nexd --service-url <SERVICE_URL> router --advertise-cidr=172.24.0.0/24
 ```
 
 Create the container network:
@@ -36,10 +36,10 @@ docker run -it --rm --network=net1 busybox bash
 
 **Node2 setup**
 
-Join node2 to the user's default assigned organization
+Join node2 to the user's default assigned VPC
 
 ```shell
-sudo nexd router --advertise-cidr=172.28.0.0/24 <SERVICE_URL>
+sudo nexd router --service-url <SERVICE_URL> --advertise-cidr=172.28.0.0/24
 ```
 
 Setup a docker network and start a node on it:
@@ -100,4 +100,4 @@ ping 172.24.0.x
 - once you allocate a prefix, it is fixed in IPAM. We do not currently support removing the prefix.
 
 - Containers need to have unique private addresses on the docker network as exemplified above. Overlapping addresses
-within an organization is not supported. However, IPAM is namespaced to support overlapping addresses between organizations similar to for example, VPCs on EC2.
+within a VPC is not supported. However, IPAM is namespaced to support overlapping addresses between different Nexodus VPCs similar to for example, VPCs on EC2.

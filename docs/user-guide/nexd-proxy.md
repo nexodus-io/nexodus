@@ -1,6 +1,6 @@
 # Proxy Mode for `nexd`
 
-The normal mode of operation for `nexd` is to create a tunneled network interface on the device with an IP address within a Nexodus organization. Creating this network interface requires elevated privileges, so it is not usable in all environments.
+The normal mode of operation for `nexd` is to create a tunneled network interface on the device with an IP address within a Nexodus VPC. Creating this network interface requires elevated privileges, so it is not usable in all environments.
 
 Containers are a common example of an environment where `nexd` cannot be run in its normal mode. In these cases, `nexd` can be run in `proxy` mode. In proxy mode, `nexd` will not create a tunneled network interface, but will instead operate as a layer 4 proxy.
 
@@ -26,8 +26,8 @@ Ingress proxy rules are specified with the `--ingress` flag. This flag can be sp
 
 * `protocol` - may be `tcp` or `udp`
 * `port` - the port on the host that the proxy will listen on for connections made from a network able to access this device.
-* `destination_ip` - the IP address of the destination within a Nexodus organization that the proxy will forward traffic to.
-* `destination_port` - the port on the destination within a Nexodus organization that the proxy will forward traffic to.
+* `destination_ip` - the IP address of the destination within a Nexodus VPC that the proxy will forward traffic to.
+* `destination_port` - the port on the destination within a Nexodus VPC that the proxy will forward traffic to.
 
 Here is an example showing an ingress proxy rule:
 
@@ -55,7 +55,7 @@ Egress proxy rules are specified with the `--egress` flag. This flag can be spec
 ```
 
 * `protocol` - may be `tcp` or `udp`
-* `port` - the port that `nexd` will accept connections to made to its IP address within the Nexodus organization this device is a member of.
+* `port` - the port that `nexd` will accept connections to made to its IP address within the Nexodus VPC this device is a member of.
 * `destination` - the IP address or hostname of the destination on a network accessible to the device that the proxy will forward traffic to.
 * `destination_port` - the port on the destination on a network accessible to the device that the proxy will forward traffic to.
 

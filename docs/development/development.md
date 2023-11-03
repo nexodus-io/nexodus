@@ -19,9 +19,9 @@ Security is critical for Nexodus to be a viable service. This document discusses
 3. **Continuous monitoring and validation** -- Devices check in to the service regularly for peer updates. User logins are managed via OIDC which allows the use of short-lived access tokens that can be periodically refreshed. In effect, both Devices and Users check in regularly and their Peers or Tokens can be quickly revoked if needed.
 4. **Device Authorization** -- Our device onboarding process associates devices with authenticated users. This provides real-time network identity to NetOps and SecOps.
 5. **Least Privilege** -- Users are assigned only the privileges they require[^2].
-6. **Microsegmentation** -- Users are broken into smaller segments using Organizations and currently, may only communicate within the same organization.
+6. **Microsegmentation** -- Users are broken into smaller segments using Organizations and VPCs and currently, may only communicate within the same VPC.
 
-[^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal Nexodus node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required. In the meantime, security is maintained by having organizations operate their own relays instead of the service running them on their behalf.  
+[^1]: See [Issue #169](https://github.com/nexodus-io/nexodus/issues/169). Our first forwarding implementation is by using a normal Nexodus node on the network which decrypts, makes an IP routing decision, and sends it back out over another encrypted tunnel. This was based on convenience, but we know an alternative is required. In the meantime, security is maintained by having organizations operate their own relays within VPCs instead of the service running them on their behalf.
 [^2]: See [Issue #142](https://github.com/nexodus-io/nexodus/issues/142) for tracking the use of oauth scopes to limit actions available to users.
 
 ### Reporting Vulnerabilities

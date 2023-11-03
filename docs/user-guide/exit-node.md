@@ -10,7 +10,7 @@ An exit node refers to the final server or gateway through which your encrypted 
 
 ### Exit Node Server
 
-To enable a node to be the exit node for an organization's network, use the following command. This command will advertise a default network of `0.0.0.0/0` to the organization's peers, but only if those peers are enabled to be `--exit-node-client`s. It is important to note, that if the exit node becomes unavailable, it will also affect connectivity outside the Nexodus mesh. To return connectivity, a user can disable the `exit-node-client` with the `nexctl`` utility or restart the agent without specifying to be an exit node client.
+To enable a node to be the exit node for a VPC, use the following command. This command will advertise a default network of `0.0.0.0/0` to the VPC's peers, but only if those peers are enabled to be `--exit-node-client`s. It is important to note, that if the exit node becomes unavailable, it will also affect connectivity outside the Nexodus mesh. To return connectivity, a user can disable the `exit-node-client` with the `nexctl`` utility or restart the agent without specifying to be an exit node client.
 
 ```text
 nexd router --exit-node
