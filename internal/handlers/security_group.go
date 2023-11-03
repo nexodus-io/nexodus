@@ -505,19 +505,18 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, orgId string) (models.SecurityGroup, error) {
-	orgIdUUID, err := uuid.Parse(orgId)
-	if err != nil {
-		return models.SecurityGroup{}, err
-	}
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, orgId uuid.UUID) (models.SecurityGroup, error) {
 
 	var inboundRules []models.SecurityRule
 	var outboundRules []models.SecurityRule
 
 	// Create the default security group
 	sg := models.SecurityGroup{
+		Base: models.Base{
+			ID: orgId,
+		},
 		GroupName:        "default",
-		OrganizationId:   orgIdUUID,
+		OrganizationId:   orgId,
 		GroupDescription: "default organization security group",
 		InboundRules:     inboundRules,
 		OutboundRules:    outboundRules,
