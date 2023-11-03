@@ -42,14 +42,12 @@ func TestApiClientConflictError(t *testing.T) {
 		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()
@@ -61,14 +59,12 @@ func TestApiClientConflictError(t *testing.T) {
 		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()
@@ -172,14 +168,12 @@ func TestDevicesInformer(t *testing.T) {
 		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()

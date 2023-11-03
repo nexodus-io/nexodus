@@ -75,9 +75,8 @@ type TunnelIP struct {
 }
 
 type Endpoint struct {
-	Source   string
-	Address  string
-	Distance int
+	Source  string
+	Address string
 }
 
 type DeviceMetadata struct {

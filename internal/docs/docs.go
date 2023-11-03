@@ -2943,11 +2943,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "10.1.1.1:51820"
                 },
-                "distance": {
-                    "description": "Distance in milliseconds from the node to the ip address",
-                    "type": "integer",
-                    "example": 12
-                },
                 "source": {
                     "description": "How the endpoint was discovered",
                     "type": "string"

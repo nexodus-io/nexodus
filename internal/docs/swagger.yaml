@@ -199,10 +199,6 @@ definitions:
         description: IP address and port of the endpoint.
         example: 10.1.1.1:51820
         type: string
-      distance:
-        description: Distance in milliseconds from the node to the ip address
-        example: 12
-        type: integer
       source:
         description: How the endpoint was discovered
         type: string

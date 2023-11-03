@@ -46,12 +46,10 @@ Feature: Device API
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "advertise_cidrs": null,
         "relay": false,
@@ -74,12 +72,10 @@ Feature: Device API
         "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
@@ -126,12 +122,10 @@ Feature: Device API
         "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "hostname": "kittenhome",
         "id": "${device_id}",
@@ -173,12 +167,10 @@ Feature: Device API
           "advertise_cidrs": null,
           "endpoints": [{
             "source": "local",
-            "address": "172.17.0.3:58664",
-            "distance": 0
+            "address": "172.17.0.3:58664"
           }, {
             "source": "stun:stun1.l.google.com:19302",
-            "address": "172.17.0.3:58664",
-            "distance": 0
+            "address": "172.17.0.3:58664"
           }],
           "hostname": "kittenhome",
           "id": "${device_id}",
@@ -258,12 +250,10 @@ Feature: Device API
         "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "hostname": "kittenhome",
         "id": "${device_id}",

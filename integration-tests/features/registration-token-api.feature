@@ -115,12 +115,10 @@ Feature: Device API
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "tunnel_ip": "",
         "tunnel_ip_v6": "",

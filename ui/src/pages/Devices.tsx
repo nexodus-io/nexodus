@@ -166,7 +166,6 @@ const DeviceShowLayout: FC = () => {
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Address" source="address" />
-          <TextField label="Distance" source="distance" />
           <TextField label="Source" source="source" />
         </Datagrid>
       </ArrayField>

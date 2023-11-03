@@ -28,12 +28,10 @@ Feature: Device Metadata API
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
         "ipv4_tunnel_ips": null,
         "ipv6_tunnel_ips": null,

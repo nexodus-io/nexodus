@@ -459,14 +459,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	endpointSocket := net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort))
 	endpoints := []public.ModelsEndpoint{
 		{
-			Source:   "local",
-			Address:  endpointSocket,
-			Distance: 0,
+			Source:  "local",
+			Address: endpointSocket,
 		},
 		{
-			Source:   "stun:" + nx.reflexiveAddrStunSrc,
-			Address:  nx.nodeReflexiveAddressIPv4.String(),
-			Distance: 0,
+			Source:  "stun:" + nx.reflexiveAddrStunSrc,
+			Address: nx.nodeReflexiveAddressIPv4.String(),
 		},
 	}
 
@@ -858,14 +856,12 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 		res, _, err := nx.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
 			Endpoints: []public.ModelsEndpoint{
 				{
-					Source:   "local",
-					Address:  net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort)),
-					Distance: 0,
+					Source:  "local",
+					Address: net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort)),
 				},
 				{
-					Source:   "stun:" + stunServer1,
-					Address:  reflexiveIP.String(),
-					Distance: 0,
+					Source:  "stun:" + stunServer1,
+					Address: reflexiveIP.String(),
 				},
 			},
 		}).Execute()
