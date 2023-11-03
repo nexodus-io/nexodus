@@ -928,16 +928,16 @@ paths:
       summary: Create an invitation
       tags:
       - Invitation
-  /api/invitations/:invitation/accept:
-    post:
+  /api/invitations/{id}:
+    delete:
       consumes:
       - application/json
-      description: Accept an invitation to an organization
-      operationId: AcceptInvitation
+      description: Deletes an existing invitation
+      operationId: DeleteInvitation
       parameters:
       - description: Invitation ID
         in: path
-        name: invitation
+        name: id
         required: true
         type: string
       produces:
@@ -945,12 +945,14 @@ paths:
       responses:
         "204":
           description: No Content
+          schema:
+            $ref: '#/definitions/models.Organization'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
+        "405":
+          description: Method Not Allowed
           schema:
             $ref: '#/definitions/models.BaseError'
         "429":
@@ -961,10 +963,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: Accept an invitation
+      summary: Delete Invitation
       tags:
       - Invitation
-  /api/invitations/{id}:
     get:
       consumes:
       - application/json
@@ -1006,16 +1007,16 @@ paths:
       summary: Get Invitation
       tags:
       - Invitation
-  /api/invitations/{invitation}:
-    delete:
+  /api/invitations/{id}/accept:
+    post:
       consumes:
       - application/json
-      description: Deletes an existing invitation
-      operationId: DeleteInvitation
+      description: Accept an invitation to an organization
+      operationId: AcceptInvitation
       parameters:
       - description: Invitation ID
         in: path
-        name: invitation
+        name: id
         required: true
         type: string
       produces:
@@ -1023,14 +1024,12 @@ paths:
       responses:
         "204":
           description: No Content
-          schema:
-            $ref: '#/definitions/models.Organization'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/models.BaseError'
-        "405":
-          description: Method Not Allowed
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
         "429":
@@ -1041,7 +1040,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: Delete Invitation
+      summary: Accept an invitation
       tags:
       - Invitation
   /api/organizations:
@@ -1267,6 +1266,48 @@ paths:
       summary: Create a RegKey
       tags:
       - RegKey
+  /api/reg-keys/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Gets a RegKey by RegKey ID
+      operationId: GetRegKey
+      parameters:
+      - description: RegKey ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RegKey'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get a RegKey
+      tags:
+      - RegKey
   /api/reg-keys/{key-id}:
     delete:
       consumes:
@@ -1303,47 +1344,6 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Delete RegKey
-      tags:
-      - RegKey
-    get:
-      consumes:
-      - application/json
-      description: Gets a RegKey by RegKey ID
-      operationId: GetRegKey
-      parameters:
-      - description: RegKey ID
-        in: path
-        name: key-id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.RegKey'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Get a RegKey
       tags:
       - RegKey
   /api/security-groups:
@@ -2011,53 +2011,6 @@ paths:
       summary: List Security Groups in a VPC
       tags:
       - VPC
-  /api/vpcs/{vpc_id}/devices/{device_id}:
-    get:
-      consumes:
-      - application/json
-      description: Gets a device in a vpc by ID
-      operationId: GetDeviceInVPC
-      parameters:
-      - description: VPC ID
-        in: path
-        name: vpc_id
-        required: true
-        type: string
-      - description: Device ID
-        in: path
-        name: device_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Device'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Get Device
-      tags:
-      - Devices
   /check/auth:
     get:
       consumes:

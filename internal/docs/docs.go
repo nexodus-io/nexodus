@@ -722,60 +722,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/invitations/:invitation/accept": {
-            "post": {
-                "description": "Accept an invitation to an organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Invitation"
-                ],
-                "summary": "Accept an invitation",
-                "operationId": "AcceptInvitation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation ID",
-                        "name": "invitation",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/invitations/{id}": {
             "get": {
                 "description": "Gets an Invitation by Invitation ID",
@@ -837,9 +783,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/invitations/{invitation}": {
+            },
             "delete": {
                 "description": "Deletes an existing invitation",
                 "consumes": [
@@ -857,7 +801,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Invitation ID",
-                        "name": "invitation",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -877,6 +821,60 @@ const docTemplate = `{
                     },
                     "405": {
                         "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invitations/{id}/accept": {
+            "post": {
+                "description": "Accept an invitation to an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitation"
+                ],
+                "summary": "Accept an invitation",
+                "operationId": "AcceptInvitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }
@@ -1230,7 +1228,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/reg-keys/{key-id}": {
+        "/api/reg-keys/{id}": {
             "get": {
                 "description": "Gets a RegKey by RegKey ID",
                 "consumes": [
@@ -1248,7 +1246,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "RegKey ID",
-                        "name": "key-id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1291,7 +1289,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/reg-keys/{key-id}": {
             "delete": {
                 "description": "Deletes an existing RegKey",
                 "consumes": [
@@ -2322,76 +2322,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/vpcs/{vpc_id}/devices/{device_id}": {
-            "get": {
-                "description": "Gets a device in a vpc by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Devices"
-                ],
-                "summary": "Get Device",
-                "operationId": "GetDeviceInVPC",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "VPC ID",
-                        "name": "vpc_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Device"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.BaseError"
                         }

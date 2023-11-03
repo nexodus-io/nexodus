@@ -138,19 +138,19 @@ func (api *API) ListRegKeys(c *gin.Context) {
 // @Tags         RegKey
 // @Accept       json
 // @Produce      json
-// @Param		 key-id   path      string true "RegKey ID"
+// @Param		 id   path      string true "RegKey ID"
 // @Success      200  {object}  models.RegKey
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/reg-keys/{key-id} [get]
+// @Router       /api/reg-keys/{id} [get]
 func (api *API) GetRegKey(c *gin.Context) {
-	tokenId := c.Param("key-id")
+	tokenId := c.Param("id")
 	ctx, span := tracer.Start(c.Request.Context(), "GetRegKey",
 		trace.WithAttributes(
-			attribute.String("key-id", tokenId),
+			attribute.String("id", tokenId),
 		))
 	defer span.End()
 
@@ -223,10 +223,13 @@ func (api *API) RegKeyIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *g
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/reg-keys/{key-id} [delete]
 func (api *API) DeleteRegKey(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "DeleteRegKey")
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteRegKey",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
 	defer span.End()
 
-	id, err := uuid.Parse(c.Param("key-id"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("key-id"))
 		return

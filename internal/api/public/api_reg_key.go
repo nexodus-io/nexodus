@@ -19,51 +19,50 @@ import (
 	"strings"
 )
 
-// InvitationApiService InvitationApi service
-type InvitationApiService service
+// RegKeyApiService RegKeyApi service
+type RegKeyApiService service
 
-type ApiAcceptInvitationRequest struct {
+type ApiCertsRequest struct {
 	ctx        context.Context
-	ApiService *InvitationApiService
-	id         string
+	ApiService *RegKeyApiService
 }
 
-func (r ApiAcceptInvitationRequest) Execute() (*http.Response, error) {
-	return r.ApiService.AcceptInvitationExecute(r)
+func (r ApiCertsRequest) Execute() (map[string]interface{}, *http.Response, error) {
+	return r.ApiService.CertsExecute(r)
 }
 
 /*
-AcceptInvitation Accept an invitation
+Certs gets the jwks
 
-Accept an invitation to an organization
+gets the jwks that can be used to verify JWTs created by this server.
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id Invitation ID
-	@return ApiAcceptInvitationRequest
+	@return ApiCertsRequest
 */
-func (a *InvitationApiService) AcceptInvitation(ctx context.Context, id string) ApiAcceptInvitationRequest {
-	return ApiAcceptInvitationRequest{
+func (a *RegKeyApiService) Certs(ctx context.Context) ApiCertsRequest {
+	return ApiCertsRequest{
 		ApiService: a,
 		ctx:        ctx,
-		id:         id,
 	}
 }
 
 // Execute executes the request
-func (a *InvitationApiService) AcceptInvitationExecute(r ApiAcceptInvitationRequest) (*http.Response, error) {
+//
+//	@return map[string]interface{}
+func (a *RegKeyApiService) CertsExecute(r ApiCertsRequest) (map[string]interface{}, *http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue map[string]interface{}
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvitationApiService.AcceptInvitation")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegKeyApiService.Certs")
 	if err != nil {
-		return nil, &GenericOpenAPIError{error: err.Error()}
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/invitations/{id}/accept"
-	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
+	localVarPath := localBasePath + "/device/certs"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -88,19 +87,19 @@ func (a *InvitationApiService) AcceptInvitationExecute(r ApiAcceptInvitationRequ
 	}
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
-		return nil, err
+		return localVarReturnValue, nil, err
 	}
 
 	localVarHTTPResponse, err := a.client.callAPI(req)
 	if err != nil || localVarHTTPResponse == nil {
-		return localVarHTTPResponse, err
+		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
 	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
 	localVarHTTPResponse.Body.Close()
 	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
 	if err != nil {
-		return localVarHTTPResponse, err
+		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
 	if localVarHTTPResponse.StatusCode >= 300 {
@@ -108,81 +107,57 @@ func (a *InvitationApiService) AcceptInvitationExecute(r ApiAcceptInvitationRequ
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		if localVarHTTPResponse.StatusCode == 400 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 404 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 429 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarHTTPResponse, newErr
-		}
 		if localVarHTTPResponse.StatusCode == 500 {
 			var v ModelsInternalServerError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()
-				return localVarHTTPResponse, newErr
+				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
 			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
 			newErr.model = v
 		}
-		return localVarHTTPResponse, newErr
+		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
 
-	return localVarHTTPResponse, nil
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiCreateInvitationRequest struct {
+type ApiCreateRegKeyRequest struct {
 	ctx        context.Context
-	ApiService *InvitationApiService
-	invitation *ModelsAddInvitation
+	ApiService *RegKeyApiService
+	regKey     *ModelsAddRegKey
 }
 
-// Add Invitation
-func (r ApiCreateInvitationRequest) Invitation(invitation ModelsAddInvitation) ApiCreateInvitationRequest {
-	r.invitation = &invitation
+// Add RegKey
+func (r ApiCreateRegKeyRequest) RegKey(regKey ModelsAddRegKey) ApiCreateRegKeyRequest {
+	r.regKey = &regKey
 	return r
 }
 
-func (r ApiCreateInvitationRequest) Execute() (*ModelsInvitation, *http.Response, error) {
-	return r.ApiService.CreateInvitationExecute(r)
+func (r ApiCreateRegKeyRequest) Execute() (*ModelsRegKey, *http.Response, error) {
+	return r.ApiService.CreateRegKeyExecute(r)
 }
 
 /*
-CreateInvitation Create an invitation
+CreateRegKey Create a RegKey
 
-Create an invitation to an organization
+Create a RegKey for a vpc
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateInvitationRequest
+	@return ApiCreateRegKeyRequest
 */
-func (a *InvitationApiService) CreateInvitation(ctx context.Context) ApiCreateInvitationRequest {
-	return ApiCreateInvitationRequest{
+func (a *RegKeyApiService) CreateRegKey(ctx context.Context) ApiCreateRegKeyRequest {
+	return ApiCreateRegKeyRequest{
 		ApiService: a,
 		ctx:        ctx,
 	}
@@ -190,27 +165,27 @@ func (a *InvitationApiService) CreateInvitation(ctx context.Context) ApiCreateIn
 
 // Execute executes the request
 //
-//	@return ModelsInvitation
-func (a *InvitationApiService) CreateInvitationExecute(r ApiCreateInvitationRequest) (*ModelsInvitation, *http.Response, error) {
+//	@return ModelsRegKey
+func (a *RegKeyApiService) CreateRegKeyExecute(r ApiCreateRegKeyRequest) (*ModelsRegKey, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodPost
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsInvitation
+		localVarReturnValue *ModelsRegKey
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvitationApiService.CreateInvitation")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegKeyApiService.CreateRegKey")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/invitations"
+	localVarPath := localBasePath + "/api/reg-keys"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
-	if r.invitation == nil {
-		return localVarReturnValue, nil, reportError("invitation is required and must be specified")
+	if r.regKey == nil {
+		return localVarReturnValue, nil, reportError("regKey is required and must be specified")
 	}
 
 	// to determine the Content-Type header
@@ -231,7 +206,7 @@ func (a *InvitationApiService) CreateInvitationExecute(r ApiCreateInvitationRequ
 		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
 	}
 	// body params
-	localVarPostBody = r.invitation
+	localVarPostBody = r.regKey
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
 		return localVarReturnValue, nil, err
@@ -312,51 +287,51 @@ func (a *InvitationApiService) CreateInvitationExecute(r ApiCreateInvitationRequ
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiDeleteInvitationRequest struct {
+type ApiDeleteRegKeyRequest struct {
 	ctx        context.Context
-	ApiService *InvitationApiService
-	id         string
+	ApiService *RegKeyApiService
+	keyId      string
 }
 
-func (r ApiDeleteInvitationRequest) Execute() (*ModelsOrganization, *http.Response, error) {
-	return r.ApiService.DeleteInvitationExecute(r)
+func (r ApiDeleteRegKeyRequest) Execute() (*ModelsRegKey, *http.Response, error) {
+	return r.ApiService.DeleteRegKeyExecute(r)
 }
 
 /*
-DeleteInvitation Delete Invitation
+DeleteRegKey Delete RegKey
 
-Deletes an existing invitation
+Deletes an existing RegKey
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id Invitation ID
-	@return ApiDeleteInvitationRequest
+	@param keyId RegKey ID
+	@return ApiDeleteRegKeyRequest
 */
-func (a *InvitationApiService) DeleteInvitation(ctx context.Context, id string) ApiDeleteInvitationRequest {
-	return ApiDeleteInvitationRequest{
+func (a *RegKeyApiService) DeleteRegKey(ctx context.Context, keyId string) ApiDeleteRegKeyRequest {
+	return ApiDeleteRegKeyRequest{
 		ApiService: a,
 		ctx:        ctx,
-		id:         id,
+		keyId:      keyId,
 	}
 }
 
 // Execute executes the request
 //
-//	@return ModelsOrganization
-func (a *InvitationApiService) DeleteInvitationExecute(r ApiDeleteInvitationRequest) (*ModelsOrganization, *http.Response, error) {
+//	@return ModelsRegKey
+func (a *RegKeyApiService) DeleteRegKeyExecute(r ApiDeleteRegKeyRequest) (*ModelsRegKey, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodDelete
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsOrganization
+		localVarReturnValue *ModelsRegKey
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvitationApiService.DeleteInvitation")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegKeyApiService.DeleteRegKey")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/invitations/{id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
+	localVarPath := localBasePath + "/api/reg-keys/{key-id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"key-id"+"}", url.PathEscape(parameterValueToString(r.keyId, "keyId")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -459,27 +434,27 @@ func (a *InvitationApiService) DeleteInvitationExecute(r ApiDeleteInvitationRequ
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiGetInvitationRequest struct {
+type ApiGetRegKeyRequest struct {
 	ctx        context.Context
-	ApiService *InvitationApiService
+	ApiService *RegKeyApiService
 	id         string
 }
 
-func (r ApiGetInvitationRequest) Execute() (*ModelsInvitation, *http.Response, error) {
-	return r.ApiService.GetInvitationExecute(r)
+func (r ApiGetRegKeyRequest) Execute() (*ModelsRegKey, *http.Response, error) {
+	return r.ApiService.GetRegKeyExecute(r)
 }
 
 /*
-GetInvitation Get Invitation
+GetRegKey Get a RegKey
 
-Gets an Invitation by Invitation ID
+Gets a RegKey by RegKey ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id Invitation ID
-	@return ApiGetInvitationRequest
+	@param id RegKey ID
+	@return ApiGetRegKeyRequest
 */
-func (a *InvitationApiService) GetInvitation(ctx context.Context, id string) ApiGetInvitationRequest {
-	return ApiGetInvitationRequest{
+func (a *RegKeyApiService) GetRegKey(ctx context.Context, id string) ApiGetRegKeyRequest {
+	return ApiGetRegKeyRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
@@ -488,21 +463,21 @@ func (a *InvitationApiService) GetInvitation(ctx context.Context, id string) Api
 
 // Execute executes the request
 //
-//	@return ModelsInvitation
-func (a *InvitationApiService) GetInvitationExecute(r ApiGetInvitationRequest) (*ModelsInvitation, *http.Response, error) {
+//	@return ModelsRegKey
+func (a *RegKeyApiService) GetRegKeyExecute(r ApiGetRegKeyRequest) (*ModelsRegKey, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsInvitation
+		localVarReturnValue *ModelsRegKey
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvitationApiService.GetInvitation")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegKeyApiService.GetRegKey")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/invitations/{id}"
+	localVarPath := localBasePath + "/api/reg-keys/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -617,25 +592,25 @@ func (a *InvitationApiService) GetInvitationExecute(r ApiGetInvitationRequest) (
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiListInvitationsRequest struct {
+type ApiListRegKeysRequest struct {
 	ctx        context.Context
-	ApiService *InvitationApiService
+	ApiService *RegKeyApiService
 }
 
-func (r ApiListInvitationsRequest) Execute() ([]ModelsInvitation, *http.Response, error) {
-	return r.ApiService.ListInvitationsExecute(r)
+func (r ApiListRegKeysRequest) Execute() ([]ModelsRegKey, *http.Response, error) {
+	return r.ApiService.ListRegKeysExecute(r)
 }
 
 /*
-ListInvitations List Invitations
+ListRegKeys List reg keys
 
-Lists all invitations
+Lists all reg keys
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiListInvitationsRequest
+	@return ApiListRegKeysRequest
 */
-func (a *InvitationApiService) ListInvitations(ctx context.Context) ApiListInvitationsRequest {
-	return ApiListInvitationsRequest{
+func (a *RegKeyApiService) ListRegKeys(ctx context.Context) ApiListRegKeysRequest {
+	return ApiListRegKeysRequest{
 		ApiService: a,
 		ctx:        ctx,
 	}
@@ -643,21 +618,21 @@ func (a *InvitationApiService) ListInvitations(ctx context.Context) ApiListInvit
 
 // Execute executes the request
 //
-//	@return []ModelsInvitation
-func (a *InvitationApiService) ListInvitationsExecute(r ApiListInvitationsRequest) ([]ModelsInvitation, *http.Response, error) {
+//	@return []ModelsRegKey
+func (a *RegKeyApiService) ListRegKeysExecute(r ApiListRegKeysRequest) ([]ModelsRegKey, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue []ModelsInvitation
+		localVarReturnValue []ModelsRegKey
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvitationApiService.ListInvitations")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RegKeyApiService.ListRegKeys")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/invitations"
+	localVarPath := localBasePath + "/api/reg-keys"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

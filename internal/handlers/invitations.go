@@ -29,7 +29,7 @@ import (
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/invitations [post]
 func (api *API) CreateInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
+	ctx, span := tracer.Start(c.Request.Context(), "CreateInvitation")
 	defer span.End()
 
 	var request models.AddInvitation
@@ -151,20 +151,20 @@ func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/invitations/{id} [get]
 func (api *API) GetInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
+	ctx, span := tracer.Start(c.Request.Context(), "GetInvitation",
 		trace.WithAttributes(
-			attribute.String("invitation", c.Param("invitation")),
+			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	k, err := uuid.Parse(c.Param("invitation"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var org models.Invitation
 	db := api.db.WithContext(ctx)
 	result := api.InvitationIsForCurrentUserOrOrgOwner(c, db).
-		First(&org, "id = ?", k.String())
+		First(&org, "id = ?", id.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -185,27 +185,30 @@ func (api *API) GetInvitation(c *gin.Context) {
 // @Tags         Invitation
 // @Accept		 json
 // @Produce      json
-// @Param        invitation   path      string  true "Invitation ID"
+// @Param        id   path      string  true "Invitation ID"
 // @Success      204
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/invitations/:invitation/accept [post]
+// @Router       /api/invitations/{id}/accept [post]
 func (api *API) AcceptInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
+	ctx, span := tracer.Start(c.Request.Context(), "AcceptInvitation",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
 	defer span.End()
 
-	k, err := uuid.Parse(c.Param("invitation"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
 	var invitation models.Invitation
 	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if res := api.InvitationIsForCurrentUser(c, tx).
-			First(&invitation, "id = ?", k); res.Error != nil {
+			First(&invitation, "id = ?", id); res.Error != nil {
 			return errInvitationNotFound
 		}
 		var user models.User
@@ -250,15 +253,18 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 // @Tags         Invitation
 // @Accept		 json
 // @Produce      json
-// @Param        invitation   path      string  true "Invitation ID"
+// @Param        id   path      string  true "Invitation ID"
 // @Success      204  {object}  models.Organization
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/invitations/{invitation} [delete]
+// @Router       /api/invitations/{id} [delete]
 func (api *API) DeleteInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation")
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
 	defer span.End()
 
 	//multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
@@ -272,9 +278,9 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 	//	return
 	//}
 
-	k, err := uuid.Parse(c.Param("invitation"))
+	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 

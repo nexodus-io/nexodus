@@ -107,10 +107,10 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 
 		// Invitations
 		private.GET("/invitations", api.ListInvitations)
-		private.GET("/invitations/:invitation", api.GetInvitation)
+		private.GET("/invitations/:id", api.GetInvitation)
 		private.POST("/invitations", api.CreateInvitation)
-		private.POST("/invitations/:invitation/accept", api.AcceptInvitation)
-		private.DELETE("/invitations/:invitation", api.DeleteInvitation)
+		private.POST("/invitations/:id/accept", api.AcceptInvitation)
+		private.DELETE("/invitations/:id", api.DeleteInvitation)
 
 		private.GET("/vpcs", api.ListVPCs)
 		private.POST("/vpcs", api.CreateVPC)
@@ -119,9 +119,9 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 
 		// Registration Tokens
 		private.GET("/reg-keys", api.ListRegKeys)
-		private.GET("/reg-keys/:key-id", api.GetRegKey)
+		private.GET("/reg-keys/:id", api.GetRegKey)
 		private.POST("/reg-keys", api.CreateRegKey)
-		private.DELETE("/reg-keys/:key-id", api.DeleteRegKey)
+		private.DELETE("/reg-keys/:id", api.DeleteRegKey)
 
 		// Devices
 		private.GET("/devices", api.ListDevices)
