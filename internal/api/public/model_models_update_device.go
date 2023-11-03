@@ -17,4 +17,5 @@ type ModelsUpdateDevice struct {
 	Hostname       string           `json:"hostname,omitempty"`
 	Revision       int32            `json:"revision,omitempty"`
 	SymmetricNat   bool             `json:"symmetric_nat,omitempty"`
+	VpcId          string           `json:"vpc_id,omitempty"`
 }

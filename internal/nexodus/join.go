@@ -38,6 +38,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 			case public.ModelsConflictsError:
 				var resp *http.Response
 				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
+					VpcId:          nx.vpc.Id,
 					AdvertiseCidrs: nx.advertiseCidrs,
 					SymmetricNat:   nx.symmetricNat,
 					Hostname:       nx.hostname,

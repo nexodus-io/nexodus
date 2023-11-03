@@ -3186,6 +3186,10 @@ const docTemplate = `{
                 },
                 "symmetric_nat": {
                     "type": "boolean"
+                },
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
             }
         },

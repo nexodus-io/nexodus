@@ -234,54 +234,71 @@ func (api *API) UpdateDevice(c *gin.Context) {
 
 		// TODO: re-enable this when we are ready to support changing a device's VPC.
 
-		//if request.OrganizationID != uuid.Nil && request.OrganizationID != device.OrganizationID {
-		//	userId := api.GetCurrentUser(c)
-		//
-		//	var org models.Organization
-		//	if res := tx.Model(&org).
-		//		Joins("inner join user_organizations on user_organizations.organization_id=organizations.id").
-		//		Where("user_organizations.user_id=? AND organizations.id=?", userId, request.OrganizationID).
-		//		First(&org); res.Error != nil {
-		//		return errUserOrOrgNotFound
-		//	}
-		//
-		//	newIpamNamespace := defaultIPAMNamespace
-		//	if org.PrivateCidr {
-		//		newIpamNamespace = org.ID
-		//	}
-		//
-		//	// We can reuse the ip address if the ipam namespace is not changing.
-		//	if originalIpamNamespace != newIpamNamespace {
-		//		if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIP, device.OrganizationPrefix); err != nil {
-		//			api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
-		//			return err
-		//		}
-		//
-		//		if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
-		//			api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
-		//			return err
-		//		}
-		//
-		//		device.TunnelIP, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidr)
-		//		if err != nil {
-		//			return fmt.Errorf("failed to request ipam address: %w", err)
-		//		}
-		//		device.OrganizationPrefix = org.IpCidr
-		//
-		//		device.TunnelIpV6, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidrV6)
-		//		if err != nil {
-		//			return fmt.Errorf("failed to request ipam v6 address: %w", err)
-		//		}
-		//		device.OrganizationPrefixV6 = org.IpCidrV6
-		//	}
-		//
-		//	device.AllowedIPs, err = getAllowedIPs(device.TunnelIP, device.TunnelIpV6, device.Relay)
-		//	if err != nil {
-		//		return err
-		//	}
-		//
-		//	device.OrganizationID = request.OrganizationID
-		//}
+		if request.VpcID != uuid.Nil && request.VpcID != device.OrganizationID {
+
+			var newVpc models.VPC
+			if result := api.VPCIsReadableByCurrentUser(c, tx).
+				Preload("Organization").
+				First(&newVpc, "id = ?", request.VpcID); result.Error != nil {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("newVpc"))
+			}
+
+			newIpamNamespace := defaultIPAMNamespace
+			if newVpc.PrivateCidr {
+				newIpamNamespace = newVpc.ID
+			}
+
+			// We can reuse the ip address if the ipam namespace is not changing.
+			if originalIpamNamespace != newIpamNamespace {
+
+				for _, t := range append(device.IPv4TunnelIPs, device.IPv6TunnelIPs...) {
+					address := t.Address
+					cidr := t.CIDR
+					if address != "" && cidr != "" {
+						if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, address, cidr); err != nil {
+							return fmt.Errorf("failed to release the ip address to pool: %w", err)
+						}
+					}
+				}
+				for _, cidr := range device.AdvertiseCidrs {
+					if err := api.ipam.ReleaseCIDR(c.Request.Context(), originalIpamNamespace, cidr); err != nil {
+						return fmt.Errorf("failed to release cidr: %w", err)
+					}
+				}
+
+				device.IPv4TunnelIPs[0].CIDR = newVpc.Ipv4Cidr
+				device.IPv4TunnelIPs[0].Address, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, newVpc.Ipv4Cidr)
+				if err != nil {
+					return fmt.Errorf("failed to request ipam address: %w", err)
+				}
+
+				device.IPv6TunnelIPs[0].CIDR = newVpc.Ipv6Cidr
+				device.IPv6TunnelIPs[0].Address, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, newVpc.Ipv6Cidr)
+				if err != nil {
+					return fmt.Errorf("failed to request ipam address: %w", err)
+				}
+
+				// allocate a CIDR if requested
+				for _, cidr := range request.AdvertiseCidrs {
+					if !util.IsValidPrefix(cidr) {
+						return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
+					}
+					// Skip the prefix assignment if it's an IPv4 or IPv6 default route
+					if !util.IsDefaultIPv4Route(cidr) && !util.IsDefaultIPv6Route(cidr) {
+						if err := api.ipam.AssignCIDR(ctx, newIpamNamespace, cidr); err != nil {
+							return fmt.Errorf("failed to assign cidr: %w", err)
+						}
+					}
+				}
+			}
+
+			device.AllowedIPs, err = getAllowedIPs(device.IPv4TunnelIPs[0].Address, device.IPv6TunnelIPs[0].Address, device.Relay)
+			if err != nil {
+				return err
+			}
+
+			device.VpcID = request.VpcID
+		}
 		device.SymmetricNat = request.SymmetricNat
 
 		// check if the updated device advertised CIDRs match the existing device advertised CIDRs

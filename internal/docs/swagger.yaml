@@ -363,6 +363,9 @@ definitions:
         type: integer
       symmetric_nat:
         type: boolean
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
     type: object
   models.UpdateSecurityGroup:
     properties:
