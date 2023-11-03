@@ -384,8 +384,20 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	}
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
-	orgID := deviceMap[node1Hostname].OrganizationID.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
+
+	currentUser, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json-raw",
+		"user", "get-current",
+	)
+	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
+	var user models.User
+	err = json.Unmarshal([]byte(currentUser), &user)
+	require.NoErrorf(err, "nexctl ser get-current Unmarshal error: %v\n", err)
+
+	orgID := user.ID
 
 	// register the v4 and v6 addresses for both devices
 	node1IPv4 := deviceMap[node1Hostname].IPv4TunnelIPs[0].Address
@@ -549,17 +561,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	_, err = helper.runCommand(nexctl,
 		"--username", username2,
 		"--password", password,
-		"security-group", "list",
-		"--organization-id", orgID,
-	)
-	require.Error(err)
-	require.ErrorContains(err, "404")
-
-	_, err = helper.runCommand(nexctl,
-		"--username", username2,
-		"--password", password,
 		"security-group", "delete",
-		"--organization-id", orgID,
 		"--security-group-id", secGroupID,
 	)
 	require.Error(err)
@@ -573,7 +575,6 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"security-group", "delete",
-		"--organization-id", orgID,
 		"--security-group-id", secGroupID,
 	)
 	require.NoError(err)
@@ -609,7 +610,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"security-group", "create",
 		"--name", "test-create-group",
 		"--description", "test create group sg_e2e_extended",
-		"--organization-id", orgID,
+		"--organization-id", orgID.String(),
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 	)
@@ -621,7 +622,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"security-group", "create",
 		"--name", "test-create-group",
 		"--description", "test create group sg_e2e_extended",
-		"--organization-id", orgID,
+		"--organization-id", orgID.String(),
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 	)
