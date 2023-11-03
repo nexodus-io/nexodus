@@ -62,7 +62,7 @@ func TestExitNode(t *testing.T) {
 	require.NoError(err)
 
 	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s", nexRouterSite1IP)
-	curlOut, err := helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
+	curlOut, err := helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "https://8.8.8.8"})
 	require.NoError(err)
 	helper.Logf("exit node client curl output: %s", curlOut)
 
@@ -72,7 +72,7 @@ func TestExitNode(t *testing.T) {
 
 	// Negative test since the exit node client is now orphaned, the curl should fail since the exit node is no longer available
 	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s (should fail)", nexRouterSite1IP)
-	_, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
+	_, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "https://8.8.8.8"})
 	require.Error(err)
 
 	// Disable the exit node client on the node to return the normal traffic flow
@@ -83,7 +83,7 @@ func TestExitNode(t *testing.T) {
 	// Sleep for 1s to ensure the routing and nftable rules are removed before the next test (likely unnecessary but there to avoid a race condition/flake)
 	time.Sleep(time.Second * 1)
 	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s (should succeed)", nexRouterSite1IP)
-	curlOut, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
+	curlOut, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "https://8.8.8.8"})
 	helper.Logf("exit node client curl output: %s", curlOut)
 	require.NoError(err)
 }
