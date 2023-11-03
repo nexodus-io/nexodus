@@ -118,10 +118,10 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.DELETE("/vpcs/:id", api.DeleteVPC)
 
 		// Registration Tokens
-		private.GET("/registration-tokens", api.ListRegistrationTokens)
-		private.GET("/registration-tokens/:token-id", api.GetRegistrationToken)
-		private.POST("/registration-tokens", api.CreateRegistrationToken)
-		private.DELETE("/registration-tokens/:token-id", api.DeleteRegistrationToken)
+		private.GET("/reg-keys", api.ListRegKeys)
+		private.GET("/reg-keys/:key-id", api.GetRegKey)
+		private.POST("/reg-keys", api.CreateRegKey)
+		private.DELETE("/reg-keys/:key-id", api.DeleteRegKey)
 
 		// Devices
 		private.GET("/devices", api.ListDevices)

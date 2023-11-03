@@ -176,7 +176,7 @@ type Nexodus struct {
 	informerStop           context.CancelFunc
 	nexCtx                 context.Context
 	nexWg                  *sync.WaitGroup
-	registrationToken      string
+	regKey                 string
 	clientOptions          []client.Option
 }
 
@@ -197,7 +197,7 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, registrationToken string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, advertiseCidrs []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, vpcId string) (*Nexodus, error) {
+func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, regKey string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, advertiseCidrs []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, vpcId string) (*Nexodus, error) {
 	public.Logger = logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
@@ -231,7 +231,7 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		logLevel:                logLevel,
 		status:                  NexdStatusStarting,
 		version:                 version,
-		registrationToken:       registrationToken,
+		regKey:                  regKey,
 		username:                username,
 		password:                password,
 		skipTlsVerify:           insecureSkipTlsVerify,
@@ -380,9 +380,9 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	options := []client.Option{
 		client.WithUserAgent(fmt.Sprintf("nexd/%s (%s; %s)", nx.version, runtime.GOOS, runtime.GOARCH)),
 	}
-	if nx.registrationToken != "" {
+	if nx.regKey != "" {
 		// the reg token can be used to get the device token
-		options = append(options, client.WithBearerToken(nx.registrationToken))
+		options = append(options, client.WithBearerToken(nx.regKey))
 	} else {
 		// fallback to using oauth flows to get the device token... these are either interactive or
 		if nx.stateStore != nil {
@@ -602,7 +602,7 @@ type NexodusClaims struct {
 }
 
 func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.ModelsVPC, error) {
-	if nx.registrationToken != "" {
+	if nx.regKey != "" {
 		// the userid and orgid are part of the registration token.
 		return nx.fetchRegistrationTokenUserIdAndVPC(ctx)
 	} else {
@@ -614,7 +614,7 @@ func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.Model
 func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (string, *public.ModelsVPC, error) {
 
 	// get the certs used to validate the JWT.
-	regToken, _, err := nx.client.RegistrationTokenApi.GetRegistrationToken(ctx, "me").Execute()
+	regToken, _, err := nx.client.RegKeyApi.GetRegKey(ctx, "me").Execute()
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
 	}

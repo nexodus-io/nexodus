@@ -65,7 +65,7 @@ type Device struct {
 	SecurityGroupId          uuid.UUID
 	Online                   bool
 	OnlineAt                 *time.Time
-	RegistrationTokenID      uuid.UUID
+	RegKeyID                 uuid.UUID
 	BearerToken              string `gorm:"index"`
 }
 
@@ -96,7 +96,7 @@ type Invitation struct {
 	Expiry         time.Time
 }
 
-type RegistrationToken struct {
+type RegKey struct {
 	Base
 	OwnerID        uuid.UUID `gorm:"index"`
 	VpcID          uuid.UUID `gorm:"index"`
@@ -192,7 +192,7 @@ func Migrate() *gormigrate.Migration {
 			DROP TRIGGER IF EXISTS device_metadata_revision_trigger ON device_metadata
 		`, NotOnSqlLite),
 
-		CreateTableAction(&RegistrationToken{}),
+		CreateTableAction(&RegKey{}),
 
 		// manually create the unique indexes for now so that migrations work on cockroach see issue:
 		// https://github.com/go-gorm/gorm/issues/5752
@@ -209,8 +209,8 @@ func Migrate() *gormigrate.Migration {
 			`DROP INDEX IF EXISTS idx_devices_bearer_token`,
 		),
 		ExecAction(
-			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_registration_tokens_bearer_token" ON "registration_tokens" ("bearer_token")`,
-			`DROP INDEX IF EXISTS idx_registration_tokens_bearer_token`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_reg_keys_bearer_token" ON "reg_keys" ("bearer_token")`,
+			`DROP INDEX IF EXISTS idx_reg_keys_bearer_token`,
 		),
 		ExecAction(
 			`CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_idp_id" ON "users" ("idp_id")`,

@@ -10,21 +10,21 @@ import (
 	"log"
 )
 
-func createRegistrationTokenCommand() *cli.Command {
+func createRegKeyCommand() *cli.Command {
 	return &cli.Command{
-		Name:  "registration-token",
-		Usage: "Commands relating to registration tokens",
+		Name:  "reg-key",
+		Usage: "Commands relating to registration keys",
 		Subcommands: []*cli.Command{
 			{
 				Name:  "list",
-				Usage: "List registration tokens",
+				Usage: "List registration keys",
 				Action: func(cCtx *cli.Context) error {
-					return listRegistrationTokens(cCtx, mustCreateAPIClient(cCtx))
+					return listRegKeys(cCtx, mustCreateAPIClient(cCtx))
 				},
 			},
 			{
 				Name:  "create",
-				Usage: "Create a registration token",
+				Usage: "Create a registration key",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "vpc-id",
@@ -44,7 +44,7 @@ func createRegistrationTokenCommand() *cli.Command {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return createRegistrationToken(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegistrationToken{
+					return createRegKey(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegKey{
 						VpcId:       cCtx.String("vpc-id"),
 						Description: cCtx.String("description"),
 						Expiration:  toExpiration(cCtx.Duration("expiration")),
@@ -54,7 +54,7 @@ func createRegistrationTokenCommand() *cli.Command {
 			},
 			{
 				Name:  "delete",
-				Usage: "Delete a registration token",
+				Usage: "Delete a registration key",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "id",
@@ -64,7 +64,7 @@ func createRegistrationTokenCommand() *cli.Command {
 				Action: func(cCtx *cli.Context) error {
 					encodeOut := cCtx.String("output")
 					id := cCtx.String("id")
-					return deleteRegistrationToken(cCtx, mustCreateAPIClient(cCtx), encodeOut, id)
+					return deleteRegKey(cCtx, mustCreateAPIClient(cCtx), encodeOut, id)
 				},
 			},
 		},
@@ -77,7 +77,7 @@ func regTokenTableFields() []TableField {
 	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "SINGLE USE", Formatter: func(item interface{}) string {
-		if item.(public.ModelsRegistrationToken).DeviceId == "" {
+		if item.(public.ModelsRegKey).DeviceId == "" {
 			return "false"
 		} else {
 			return "true"
@@ -88,8 +88,8 @@ func regTokenTableFields() []TableField {
 	return fields
 }
 
-func listRegistrationTokens(cCtx *cli.Context, c *client.APIClient) error {
-	rows, _, err := c.RegistrationTokenApi.ListRegistrationTokens(cCtx.Context).Execute()
+func listRegKeys(cCtx *cli.Context, c *client.APIClient) error {
+	rows, _, err := c.RegKeyApi.ListRegKeys(cCtx.Context).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,13 +98,13 @@ func listRegistrationTokens(cCtx *cli.Context, c *client.APIClient) error {
 	return nil
 }
 
-func createRegistrationToken(cCtx *cli.Context, c *client.APIClient, token public.ModelsAddRegistrationToken) error {
+func createRegKey(cCtx *cli.Context, c *client.APIClient, token public.ModelsAddRegKey) error {
 
 	if token.VpcId == "" {
 		token.VpcId = getDefaultVpcId(cCtx.Context, c)
 	}
 
-	res, _, err := c.RegistrationTokenApi.CreateRegistrationToken(cCtx.Context).RegistrationToken(token).Execute()
+	res, _, err := c.RegKeyApi.CreateRegKey(cCtx.Context).RegKey(token).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,13 +128,13 @@ func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
 	return user.Id
 }
 
-func deleteRegistrationToken(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) error {
+func deleteRegKey(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) error {
 	tokenId, err := uuid.Parse(id)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s: %v", id, err)
 	}
 
-	res, _, err := c.RegistrationTokenApi.DeleteRegistrationToken(cCtx.Context, tokenId.String()).Execute()
+	res, _, err := c.RegKeyApi.DeleteRegKey(cCtx.Context, tokenId.String()).Execute()
 	if err != nil {
 		log.Fatalf("Registration token delete failed: %v\n", err)
 	}

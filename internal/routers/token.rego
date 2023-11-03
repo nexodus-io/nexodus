@@ -126,14 +126,14 @@ allow if {
 }
 
 allow if {
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:organizations")
 }
 
 allow if {
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:organizations")
@@ -144,7 +144,7 @@ allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	action_is_read
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	"me" = input.path[2]
 }
 

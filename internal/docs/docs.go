@@ -1128,9 +1128,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/registration-tokens": {
+        "/api/reg-keys": {
             "get": {
-                "description": "Lists all registration tokens",
+                "description": "Lists all reg keys",
                 "consumes": [
                     "application/json"
                 ],
@@ -1138,17 +1138,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegistrationToken"
+                    "RegKey"
                 ],
-                "summary": "List RegistrationTokens",
-                "operationId": "ListRegistrationTokens",
+                "summary": "List reg keys",
+                "operationId": "ListRegKeys",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.RegistrationToken"
+                                "$ref": "#/definitions/models.RegKey"
                             }
                         }
                     },
@@ -1173,7 +1173,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Create a RegistrationToken to an organization",
+                "description": "Create a RegKey for a vpc",
                 "consumes": [
                     "application/json"
                 ],
@@ -1181,18 +1181,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegistrationToken"
+                    "RegKey"
                 ],
-                "summary": "Create a RegistrationToken",
-                "operationId": "CreateRegistrationToken",
+                "summary": "Create a RegKey",
+                "operationId": "CreateRegKey",
                 "parameters": [
                     {
-                        "description": "Add RegistrationToken",
-                        "name": "RegistrationToken",
+                        "description": "Add RegKey",
+                        "name": "RegKey",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.AddRegistrationToken"
+                            "$ref": "#/definitions/models.AddRegKey"
                         }
                     }
                 ],
@@ -1200,7 +1200,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.RegistrationToken"
+                            "$ref": "#/definitions/models.RegKey"
                         }
                     },
                     "400": {
@@ -1230,9 +1230,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/registration-tokens/{token-id}": {
+        "/api/reg-keys/{key-id}": {
             "get": {
-                "description": "Gets a RegistrationToken by RegistrationToken ID",
+                "description": "Gets a RegKey by RegKey ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -1240,15 +1240,15 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegistrationToken"
+                    "RegKey"
                 ],
-                "summary": "Get a RegistrationToken",
-                "operationId": "GetRegistrationToken",
+                "summary": "Get a RegKey",
+                "operationId": "GetRegKey",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "RegistrationToken ID",
-                        "name": "token-id",
+                        "description": "RegKey ID",
+                        "name": "key-id",
                         "in": "path",
                         "required": true
                     }
@@ -1257,7 +1257,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.RegistrationToken"
+                            "$ref": "#/definitions/models.RegKey"
                         }
                     },
                     "400": {
@@ -1293,7 +1293,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes an existing RegistrationToken",
+                "description": "Deletes an existing RegKey",
                 "consumes": [
                     "application/json"
                 ],
@@ -1301,15 +1301,15 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegistrationToken"
+                    "RegKey"
                 ],
-                "summary": "Delete RegistrationToken",
-                "operationId": "DeleteRegistrationToken",
+                "summary": "Delete RegKey",
+                "operationId": "DeleteRegKey",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "RegistrationToken ID",
-                        "name": "token-id",
+                        "description": "RegKey ID",
+                        "name": "key-id",
                         "in": "path",
                         "required": true
                     }
@@ -1318,7 +1318,7 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content",
                         "schema": {
-                            "$ref": "#/definitions/models.RegistrationToken"
+                            "$ref": "#/definitions/models.RegKey"
                         }
                     },
                     "400": {
@@ -2448,7 +2448,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegistrationToken"
+                    "RegKey"
                 ],
                 "summary": "gets the jwks",
                 "operationId": "Certs",
@@ -2736,18 +2736,18 @@ const docTemplate = `{
                 }
             }
         },
-        "models.AddRegistrationToken": {
+        "models.AddRegKey": {
             "type": "object",
             "properties": {
                 "description": {
                     "type": "string"
                 },
                 "expiration": {
-                    "description": "Expiration is optional, if set the registration token is only valid until the Expiration time.",
+                    "description": "Expiration is optional, if set the registration key is only valid until the Expiration time.",
                     "type": "string"
                 },
                 "single_use": {
-                    "description": "SingleUse only allows the registration token to be used once.",
+                    "description": "SingleUse only allows the registration key to be used once.",
                     "type": "boolean"
                 },
                 "vpc_id": {
@@ -3063,11 +3063,11 @@ const docTemplate = `{
                 }
             }
         },
-        "models.RegistrationToken": {
+        "models.RegKey": {
             "type": "object",
             "properties": {
                 "bearer_token": {
-                    "description": "BearerToken is the token the client should use to authenticate the device registration request.",
+                    "description": "BearerToken is the bearer token the client should use to authenticate the device registration request.",
                     "type": "string"
                 },
                 "description": {

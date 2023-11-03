@@ -3,7 +3,7 @@ api_devices.go
 api_f_flag.go
 api_invitation.go
 api_organizations.go
-api_registration_token.go
+api_reg_key.go
 api_security_group.go
 api_users.go
 api_vpc.go
@@ -12,7 +12,7 @@ configuration.go
 model_models_add_device.go
 model_models_add_invitation.go
 model_models_add_organization.go
-model_models_add_registration_token.go
+model_models_add_reg_key.go
 model_models_add_security_group.go
 model_models_add_vpc.go
 model_models_base_error.go
@@ -30,7 +30,7 @@ model_models_logout_response.go
 model_models_organization.go
 model_models_refresh_token_request.go
 model_models_refresh_token_response.go
-model_models_registration_token.go
+model_models_reg_key.go
 model_models_security_group.go
 model_models_security_rule.go
 model_models_tunnel_ip.go

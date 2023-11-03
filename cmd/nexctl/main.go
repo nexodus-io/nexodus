@@ -88,7 +88,7 @@ func main() {
 					return nil
 				},
 			},
-			createRegistrationTokenCommand(),
+			createRegKeyCommand(),
 			createOrganizationCommand(),
 			createVpcCommand(),
 			createDeviceCommand(),

@@ -18,12 +18,12 @@ import (
 )
 
 var (
-	errOrgNotFound                = errors.New("organization not found")
-	errUserNotFound               = errors.New("user not found")
-	errDeviceNotFound             = errors.New("device not found")
-	errInvitationNotFound         = errors.New("invitation not found")
-	errSecurityGroupNotFound      = errors.New("security group not found")
-	errRegistrationTokenExhausted = errors.New("single use registration token exhausted")
+	errOrgNotFound           = errors.New("organization not found")
+	errUserNotFound          = errors.New("user not found")
+	errDeviceNotFound        = errors.New("device not found")
+	errInvitationNotFound    = errors.New("invitation not found")
+	errSecurityGroupNotFound = errors.New("security group not found")
+	errRegKeyExhausted       = errors.New("single use reg key exhausted")
 )
 
 // ListDevices lists all devices
@@ -85,7 +85,7 @@ func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) 
 	}
 	switch claims.Scope {
 	case "reg-token":
-		if claims.ID == device.RegistrationTokenID.String() {
+		if claims.ID == device.RegKeyID.String() {
 			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
 			return
 		}
@@ -204,12 +204,12 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		if tokenClaims != nil {
 			switch tokenClaims.Scope {
 			case "reg-token":
-				if tokenClaims.ID != device.RegistrationTokenID.String() {
-					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+				if tokenClaims.ID != device.RegKeyID.String() {
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("reg key does not have access")))
 				}
 			case "device-token":
 				if tokenClaims.ID != device.ID.String() {
-					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("reg key does not have access")))
 				}
 			}
 		}
@@ -452,12 +452,12 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 
 		deviceId := uuid.Nil
-		registrationTokenID := uuid.Nil
+		regKeyID := uuid.Nil
 		var err error
 		if tokenClaims != nil {
-			registrationTokenID, err = uuid.Parse(tokenClaims.ID)
+			regKeyID, err = uuid.Parse(tokenClaims.ID)
 			if err != nil {
-				return NewApiResponseError(http.StatusBadRequest, fmt.Errorf("invalid registration token id"))
+				return NewApiResponseError(http.StatusBadRequest, fmt.Errorf("invalid reg key id"))
 			}
 
 			// is the user token restricted to operating on a single device?
@@ -466,14 +466,14 @@ func (api *API) CreateDevice(c *gin.Context) {
 				if err == nil {
 					// If we get here the device exists but has a different public key, so assume
 					// the reg toke has been previously used.
-					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegistrationTokenExhausted))
+					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegKeyExhausted))
 				}
 
 				deviceId = tokenClaims.DeviceID
 			}
 
 			if tokenClaims.VpcID != request.VpcID {
-				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("vpc_id", "does not match the registration token vpc_id"))
+				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("vpc_id", "does not match the reg key vpc_id"))
 			}
 		}
 		if deviceId == uuid.Nil {
@@ -562,14 +562,14 @@ func (api *API) CreateDevice(c *gin.Context) {
 					CIDR:    vpc.Ipv6Cidr,
 				},
 			},
-			AdvertiseCidrs:      request.AdvertiseCidrs,
-			Relay:               request.Relay,
-			SymmetricNat:        request.SymmetricNat,
-			Hostname:            request.Hostname,
-			Os:                  request.Os,
-			SecurityGroupId:     vpc.Organization.SecurityGroupId,
-			RegistrationTokenID: registrationTokenID,
-			BearerToken:         "DT:" + deviceToken.String(),
+			AdvertiseCidrs:  request.AdvertiseCidrs,
+			Relay:           request.Relay,
+			SymmetricNat:    request.SymmetricNat,
+			Hostname:        request.Hostname,
+			Os:              request.Os,
+			SecurityGroupId: vpc.Organization.SecurityGroupId,
+			RegKeyID:        regKeyID,
+			BearerToken:     "DT:" + deviceToken.String(),
 		}
 
 		if res := tx.

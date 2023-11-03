@@ -4,7 +4,7 @@ Feature: Device API
     Given a user named "Bob" with password "testpass"
     Given a user named "Alice" with password "testpass"
 
-  Scenario: Bob creates and uses a registration-token.
+  Scenario: Bob creates and uses a reg-key.
 
     Given I am logged in as "Bob"
 
@@ -23,16 +23,16 @@ Feature: Device API
     Then the response code should be 200
     Given I store the ${response[0].id} as ${vpc_id}
 
-    # Bob gets an empty list of registration-tokens.
-    When I GET path "/api/registration-tokens"
+    # Bob gets an empty list of reg-keys.
+    When I GET path "/api/reg-keys"
     Then the response code should be 200
     And the response should match json:
       """
       []
       """
 
-    # Bob creates a registration-token
-    When I POST path "/api/registration-tokens" with json body:
+    # Bob creates a reg-key
+    When I POST path "/api/reg-keys" with json body:
       """
       {
         "owner_id": "${user_id}",
@@ -53,7 +53,7 @@ Feature: Device API
       """
 
     # Bob gets an should see 1 device in the device listing..
-    When I GET path "/api/registration-tokens"
+    When I GET path "/api/reg-keys"
     Then the response code should be 200
     And the response should match json:
       """
@@ -73,17 +73,17 @@ Feature: Device API
     Given I am logged in as "Alice"
 
     # Alice gets an empty list of devices..
-    When I GET path "/api/registration-tokens"
+    When I GET path "/api/reg-keys"
     Then the response code should be 200
     And the response should match json:
       """
       []
       """
 
-    When I GET path "/api/registration-tokens/${reg_token_id}"
+    When I GET path "/api/reg-keys/${reg_token_id}"
     Then the response code should be 404
 
-    When I PATCH path "/api/registration-tokens/${reg_token_id}" with json body:
+    When I PATCH path "/api/reg-keys/${reg_token_id}" with json body:
       """
       {
         "description": "evilkitten"
@@ -91,13 +91,13 @@ Feature: Device API
       """
     Then the response code should be 404
 
-    When I DELETE path "/api/registration-tokens/${reg_token_id}"
+    When I DELETE path "/api/reg-keys/${reg_token_id}"
     Then the response code should be 404
     And the response should match json:
       """
       {
         "error": "not found",
-        "resource": "registration token"
+        "resource": "reg key"
       }
       """
 
@@ -194,10 +194,10 @@ Feature: Device API
       """
 
     #
-    # Switch back to Bob, and make sure he can delete his registration-token.
+    # Switch back to Bob, and make sure he can delete his reg-key.
     #
     Given I am logged in as "Bob"
-    When I DELETE path "/api/registration-tokens/${reg_token_id}"
+    When I DELETE path "/api/reg-keys/${reg_token_id}"
     Then the response code should be 200
     And the response should match json:
       """
@@ -217,7 +217,7 @@ Feature: Device API
     And the response should match json:
       """
       {
-        "error": "invalid registration token"
+        "error": "invalid reg key"
       }
       """
 

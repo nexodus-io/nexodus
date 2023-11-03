@@ -18,25 +18,25 @@ import (
 	"net/http"
 )
 
-// CreateRegistrationToken creates a RegistrationToken
-// @Summary      Create a RegistrationToken
-// @Description  Create a RegistrationToken to an organization
-// @Id           CreateRegistrationToken
-// @Tags         RegistrationToken
+// CreateRegKey creates a RegKey
+// @Summary      Create a RegKey
+// @Description  Create a RegKey for a vpc
+// @Id           CreateRegKey
+// @Tags         RegKey
 // @Accept       json
 // @Produce      json
-// @Param        RegistrationToken  body     models.AddRegistrationToken  true  "Add RegistrationToken"
-// @Success      201  {object}  models.RegistrationToken
+// @Param        RegKey  body     models.AddRegKey  true  "Add RegKey"
+// @Success      201  {object}  models.RegKey
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/registration-tokens [post]
-func (api *API) CreateRegistrationToken(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "CreateRegistrationToken")
+// @Router       /api/reg-keys [post]
+func (api *API) CreateRegKey(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "CreateRegKey")
 	defer span.End()
 
-	var request models.AddRegistrationToken
+	var request models.AddRegKey
 	if err := c.BindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
@@ -73,7 +73,7 @@ func (api *API) CreateRegistrationToken(c *gin.Context) {
 
 	// Let store the reg token... without the client id yet... to avoid creating
 	// clients in KC that are not correlated with our DB.
-	record := models.RegistrationToken{
+	record := models.RegKey{
 		OwnerID:        userId,
 		VpcID:          vpc.ID,
 		OrganizationID: vpc.OrganizationID,
@@ -104,25 +104,25 @@ func NxodusClaims(c *gin.Context, tx *gorm.DB) (*models.NexodusClaims, *ApiRespo
 	return &claims, nil
 }
 
-// ListRegistrationTokens lists registration tokens
-// @Summary      List RegistrationTokens
-// @Description  Lists all registration tokens
-// @Id           ListRegistrationTokens
-// @Tags         RegistrationToken
+// ListRegKeys lists reg keys
+// @Summary      List reg keys
+// @Description  Lists all reg keys
+// @Id           ListRegKeys
+// @Tags         RegKey
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  []models.RegistrationToken
+// @Success      200  {object}  []models.RegKey
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/registration-tokens [get]
-func (api *API) ListRegistrationTokens(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "ListRegistrationTokens")
+// @Router       /api/reg-keys [get]
+func (api *API) ListRegKeys(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListRegKeys")
 	defer span.End()
-	records := []models.RegistrationToken{}
+	records := []models.RegKey{}
 	db := api.db.WithContext(ctx)
-	db = api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, db)
-	db = FilterAndPaginate(db, &models.RegistrationToken{}, c, "id")
+	db = api.RegKeyIsForCurrentUserOrOrgOwner(c, db)
+	db = FilterAndPaginate(db, &models.RegKey{}, c, "id")
 	result := db.Find(&records)
 	if result.Error != nil {
 		api.SendInternalServerError(c, fmt.Errorf("error fetching keys from db: %w", result.Error))
@@ -131,26 +131,26 @@ func (api *API) ListRegistrationTokens(c *gin.Context) {
 	c.JSON(http.StatusOK, records)
 }
 
-// GetRegistrationToken gets a specific RegistrationToken
-// @Summary      Get a RegistrationToken
-// @Description  Gets a RegistrationToken by RegistrationToken ID
-// @Id 			 GetRegistrationToken
-// @Tags         RegistrationToken
+// GetRegKey gets a specific RegKey
+// @Summary      Get a RegKey
+// @Description  Gets a RegKey by RegKey ID
+// @Id 			 GetRegKey
+// @Tags         RegKey
 // @Accept       json
 // @Produce      json
-// @Param		 token-id   path      string true "RegistrationToken ID"
-// @Success      200  {object}  models.RegistrationToken
+// @Param		 key-id   path      string true "RegKey ID"
+// @Success      200  {object}  models.RegKey
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/registration-tokens/{token-id} [get]
-func (api *API) GetRegistrationToken(c *gin.Context) {
-	tokenId := c.Param("token-id")
-	ctx, span := tracer.Start(c.Request.Context(), "GetRegistrationToken",
+// @Router       /api/reg-keys/{key-id} [get]
+func (api *API) GetRegKey(c *gin.Context) {
+	tokenId := c.Param("key-id")
+	ctx, span := tracer.Start(c.Request.Context(), "GetRegKey",
 		trace.WithAttributes(
-			attribute.String("token-id", tokenId),
+			attribute.String("key-id", tokenId),
 		))
 	defer span.End()
 
@@ -160,19 +160,19 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 		return
 	}
 
-	var record models.RegistrationToken
+	var record models.RegKey
 	db := api.db.WithContext(ctx)
-	db = api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, db)
+	db = api.RegKeyIsForCurrentUserOrOrgOwner(c, db)
 
 	if tokenClaims != nil && tokenClaims.Scope == "reg-token" {
 		db = db.Where("id = ?", tokenClaims.ID)
 		if tokenId != "me" {
-			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("key-id"))
 		}
 	} else {
 		id, err := uuid.Parse(tokenId)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+			c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("key-id"))
 			return
 		}
 		db = db.Where("id = ?", id.String())
@@ -181,7 +181,7 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 	result := db.First(&record)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("registration token"))
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("reg key"))
 		} else {
 			api.SendInternalServerError(c, result.Error)
 		}
@@ -190,16 +190,14 @@ func (api *API) GetRegistrationToken(c *gin.Context) {
 	c.JSON(http.StatusOK, record)
 }
 
-func (api *API) RegistrationTokenIsForCurrentUser(c *gin.Context) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		userId := api.GetCurrentUserID(c)
+func (api *API) RegKeyIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := api.GetCurrentUserID(c)
 
-		// this could potentially be driven by rego output
-		return db.Where("owner_id = ?", userId)
-	}
+	// this could potentially be driven by rego output
+	return db.Where("owner_id = ?", userId)
 }
 
-func (api *API) RegistrationTokenIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
+func (api *API) RegKeyIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
@@ -210,39 +208,39 @@ func (api *API) RegistrationTokenIsForCurrentUserOrOrgOwner(c *gin.Context, db *
 	}
 }
 
-// DeleteRegistrationToken handles deleting a RegistrationToken
-// @Summary      Delete RegistrationToken
-// @Description  Deletes an existing RegistrationToken
-// @Id 			 DeleteRegistrationToken
-// @Tags         RegistrationToken
+// DeleteRegKey handles deleting a RegKey
+// @Summary      Delete RegKey
+// @Description  Deletes an existing RegKey
+// @Id 			 DeleteRegKey
+// @Tags         RegKey
 // @Accept		 json
 // @Produce      json
-// @Param		 token-id   path      string true "RegistrationToken ID"
-// @Success      204  {object}  models.RegistrationToken
+// @Param		 key-id   path      string true "RegKey ID"
+// @Success      204  {object}  models.RegKey
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/registration-tokens/{token-id} [delete]
-func (api *API) DeleteRegistrationToken(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "DeleteRegistrationToken")
+// @Router       /api/reg-keys/{key-id} [delete]
+func (api *API) DeleteRegKey(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteRegKey")
 	defer span.End()
 
-	id, err := uuid.Parse(c.Param("token-id"))
+	id, err := uuid.Parse(c.Param("key-id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("token-id"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("key-id"))
 		return
 	}
 
-	var record models.RegistrationToken
+	var record models.RegKey
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		res := api.RegistrationTokenIsForCurrentUserOrOrgOwner(c, tx).
+		res := api.RegKeyIsForCurrentUser(c, tx).
 			First(&record, "id = ?", id)
 		if res.Error != nil {
 			return res.Error
 		}
 
-		res = tx.Delete(&models.RegistrationToken{}, id)
+		res = tx.Delete(&models.RegKey{}, id)
 		if res.Error != nil {
 			return res.Error
 		}
@@ -250,7 +248,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 	})
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("registration token"))
+		c.JSON(http.StatusNotFound, models.NewNotFoundError("reg key"))
 		return
 	} else if err != nil {
 		api.SendInternalServerError(c, err)
@@ -264,7 +262,7 @@ func (api *API) DeleteRegistrationToken(c *gin.Context) {
 // @Summary      gets the jwks
 // @Description  gets the jwks that can be used to verify JWTs created by this server.
 // @Id           Certs
-// @Tags         RegistrationToken
+// @Tags         RegKey
 // @Accept		 json
 // @Produce      json
 // @Success      200  {object} interface{}
