@@ -134,9 +134,12 @@ func TestSecurityGroups(t *testing.T) {
 	require.Equal(node2Hostname, connectResults)
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
-	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err := helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
@@ -151,7 +154,8 @@ func TestSecurityGroups(t *testing.T) {
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	allSucceeded, err := helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err := helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -182,9 +186,12 @@ func TestSecurityGroups(t *testing.T) {
 	require.Empty(connectResults)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -198,7 +205,8 @@ func TestSecurityGroups(t *testing.T) {
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -225,9 +233,12 @@ func TestSecurityGroups(t *testing.T) {
 	require.Error(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -243,7 +254,8 @@ func TestSecurityGroups(t *testing.T) {
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -265,9 +277,12 @@ func TestSecurityGroups(t *testing.T) {
 	require.NoError(err)
 
 	// Test Proto: ipv4/ipv6 Port: x-y Range: 100.64.0.0/10 & 0200::/8
-	nfOutBefore, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -283,7 +298,8 @@ func TestSecurityGroups(t *testing.T) {
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -350,12 +366,8 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	helper.runNexd(ctx, node1, "--username", username, "--password", password)
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
-	err = helper.nexdStatus(ctx, node1)
-	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password)
-	err = helper.nexdStatus(ctx, node2)
-	require.NoError(err)
 	err = helper.nexdStatus(ctx, node2)
 	require.NoError(err)
 
@@ -385,6 +397,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.Equal(len(deviceMap), 2)
 	secGroupID := deviceMap[node1Hostname].SecurityGroupId.String()
 	require.Equal(secGroupID, deviceMap[node2Hostname].SecurityGroupId.String())
+	helper.Logf("Security group ID: %s", secGroupID)
 
 	currentUser, err := helper.runCommand(nexctl,
 		"--username", username,
@@ -406,9 +419,12 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	node2IPv6 := deviceMap[node2Hostname].IPv6TunnelIPs[0].Address
 
 	// gather the nftables before the new rules are applied to check against the new rules created next
-	nfOutBefore, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err := helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err := helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules := []public.ModelsSecurityRule{
@@ -430,7 +446,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	allSucceeded, err := helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err := helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -477,9 +493,12 @@ func TestSecurityGroupsExtended(t *testing.T) {
 
 	// Only change one octet of one address in the inbound prefix field and ensure nftables update (s/172.28.100.100/172.28.100.101/)
 	// gather the nftables before the new rules are applied to check against the new rules created next
-	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.NotEmpty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -501,7 +520,8 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 
@@ -510,9 +530,12 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NoError(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
-	require.Empty(nfOutBefore)
+	require.NotEmpty(nfOutBefore1)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	require.Empty(nfOutBefore2) // this got flushed
 
 	// create the new inbound and outbound rules
 	inboundRules = []public.ModelsSecurityRule{
@@ -524,13 +547,24 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
 	}
 
+	nfOut, _ := helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
+	helper.logf("nft list ruleset before update on node1: %s", nfOut)
+	nfOut, _ = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	helper.logf("nft list ruleset before update on node2: %s", nfOut)
+
 	// update the security group with the new inbound and outbound rules
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
 
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
+
+	nfOut, _ = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
+	helper.logf("nft list ruleset after update on node1: %s", nfOut)
+	nfOut, _ = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	helper.logf("nft list ruleset after update on node2: %s", nfOut)
 
 	// v6 tcp 8080 should succeed
 	err = helper.startPortListener(ctx, node1, node1IPv6, protoTCP, "8080")
@@ -567,7 +601,9 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.Error(err)
 
 	// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	nfOutBefore, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
+	nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
+	require.NoError(err)
+	nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
 	require.NoError(err)
 
 	// delete the security group and ensure the device updates it's netfilter rules to fall back to a default where no group is defined
@@ -580,7 +616,8 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NoError(err)
 	require.Contains(sgDel, secGroupID)
 
-	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2}, []string{"nft", "list", "ruleset"}, nfOutBefore)
+	allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
+		[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
 	require.NoError(err)
 	require.True(allSucceeded)
 

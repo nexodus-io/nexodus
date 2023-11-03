@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/models"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +14,8 @@ import (
 	"testing"
 	"time"
 	"unicode"
+
+	"github.com/nexodus-io/nexodus/internal/models"
 
 	"github.com/ahmetb/dlog"
 	"github.com/cenkalti/backoff/v4"
@@ -457,10 +458,10 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 
 // retryNftCmdOnAllNodes is a wrapper for retryNftCmdUntilNotEqual that takes the nftables from before a
 // security group is updated and diffs them for all the nodes passed until it detects a change or times out.
-func (helper *Helper) retryNftCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+func (helper *Helper) retryNftCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore []string) (bool, error) {
 	helper.Logf("waiting for the security group change to converge")
-	for _, node := range nodes {
-		success, err := helper.retryNftCmdUntilNotEqual(ctx, node, command, cmdOutputBefore)
+	for i, node := range nodes {
+		success, err := helper.retryNftCmdUntilNotEqual(ctx, node, command, cmdOutputBefore[i])
 		if err != nil {
 			return false, err
 		}
