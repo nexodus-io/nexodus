@@ -898,7 +898,7 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(devices[0].IPv6TunnelIPs[0].Address)
 	require.NotEmpty(devices[0].IPv6TunnelIPs[0].CIDR)
 	require.NotEmpty(devices[0].AllowedIPs)
-	require.NotEmpty(devices[0].OrganizationID)
+	require.NotEmpty(devices[0].VpcID)
 	// TODO: add assert.NotEmpty(devices[0].ReflexiveIPv4) with #739
 
 	// register the device IDs for node1 and node2 for deletion

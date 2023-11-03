@@ -70,7 +70,7 @@ func createUserSubCommand() *cli.Command {
 func userTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "USER ID", Field: "Id"})
-	fields = append(fields, TableField{Header: "USER NAME", Field: "UserName"})
+	fields = append(fields, TableField{Header: "USER NAME", Field: "Username"})
 	return fields
 }
 func listUsers(cCtx *cli.Context, c *client.APIClient) error {

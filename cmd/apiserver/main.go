@@ -73,7 +73,7 @@ func main() {
 	// Override to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	app := &cli.App{
-		Name: "nexodus-controller",
+		Name: "apiserver",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
