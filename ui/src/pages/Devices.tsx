@@ -38,21 +38,30 @@ export const DeviceList = () => (
       bulkActionButtons={<DeviceListBulkActions />}
     >
       <TextField label="Hostname" source="hostname" />
-      <TextField label="Tunnel IP" source="tunnel_ip" />
+      <ArrayField label="v4 Tunnel IP" source="ipv4_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+        </Datagrid>
+      </ArrayField>
+      <ArrayField label="v6 Tunnel IP" source="ipv6_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+        </Datagrid>
+      </ArrayField>
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Address" source="address" />
         </Datagrid>
       </ArrayField>
       <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
+        label="VPC"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <ReferenceField
         label="Owner"
-        source="user_id"
+        source="owner_id"
         reference="users"
         link="show"
       />
@@ -141,26 +150,35 @@ const DeviceShowLayout: FC = () => {
       <TextField label="ID" source="id" />
       <TextField label="Hostname" source="hostname" />
       <TextField label="Public Key" source="public_key" />
-      <TextField label="Tunnel IP" source="tunnel_ip" />
-      <TextField label="Organization Prefix" source="organization_prefix" />
+      <ArrayField label="v4 Tunnel IP" source="ipv4_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="CIDR" source="cidr" />
+        </Datagrid>
+      </ArrayField>
+      <ArrayField label="v6 Tunnel IP" source="ipv6_tunnel_ips">
+        <Datagrid rowClick="show" bulkActionButtons={false}>
+          <TextField label="Address" source="address" />
+          <TextField label="CIDR" source="cidr" />
+        </Datagrid>
+      </ArrayField>
       <TextField label="Allowed IPs" source="allowed_ips" />
       <ArrayField label="Endpoints" source="endpoints">
         <Datagrid rowClick="show" bulkActionButtons={false}>
           <TextField label="Address" source="address" />
-          <TextField label="Distance" source="distance" />
           <TextField label="Source" source="source" />
         </Datagrid>
       </ArrayField>
       <TextField label="Relay Node" source="relay" />
       <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
+        label="VPC"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <ReferenceField
         label="Owner"
-        source="user_id"
+        source="owner_id"
         reference="users"
         link="show"
       />

@@ -9,7 +9,8 @@ import DeviceIcon from "@mui/icons-material/Devices";
 import OrganizationIcon from "@mui/icons-material/VpnLock";
 import UserIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
-import RegistrationTokenIcon from "@mui/icons-material/Rsvp";
+import RegKeyIcon from "@mui/icons-material/Key";
+import VPCIcon from "@mui/icons-material/Cloud";
 
 // pages
 import { UserShow, UserList } from "./pages/Users";
@@ -19,6 +20,7 @@ import {
   OrganizationShow,
   OrganizationCreate,
 } from "./pages/Organizations";
+import { VPCList, VPCShow, VPCCreate } from "./pages/VPCs";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
@@ -31,11 +33,7 @@ import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
 
 // components
 import { CustomMenu } from "./layout/Menus";
-import {
-  RegistrationTokenCreate,
-  RegistrationTokenList,
-  RegistrationTokenShow,
-} from "./pages/RegistrationTokens";
+import { RegKeyCreate, RegKeyList, RegKeyShow } from "./pages/RegKeys";
 
 const fetchJson = (url: URL, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
@@ -90,6 +88,14 @@ const App = () => {
         recordRepresentation={(record) => `${record.name}`}
       />
       <Resource
+        name="vpcs"
+        list={VPCList}
+        show={VPCShow}
+        icon={VPCIcon}
+        create={VPCCreate}
+        recordRepresentation={(record) => `${record.description}`}
+      />
+      <Resource
         name="devices"
         list={DeviceList}
         show={DeviceShow}
@@ -105,11 +111,11 @@ const App = () => {
         recordRepresentation={(record) => `${record.hostname}`}
       />
       <Resource
-        name="registration-tokens"
-        list={RegistrationTokenList}
-        show={RegistrationTokenShow}
-        icon={RegistrationTokenIcon}
-        create={RegistrationTokenCreate}
+        name="reg-keys"
+        list={RegKeyList}
+        show={RegKeyShow}
+        icon={RegKeyIcon}
+        create={RegKeyCreate}
         recordRepresentation={(record) => `${record.id}`}
       />
     </Admin>

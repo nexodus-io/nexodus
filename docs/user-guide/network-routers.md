@@ -1,6 +1,6 @@
 # Network Routers
 
-There may be scenarios where you do not want to run a Nexodus agent on every host that you intend to have connectivity to a Nexodus Organization. It is possible to have a host act as a Network Router to provide connectivity between a Nexodus network and a subnet a Nexodus agent node can access.
+There may be scenarios where you do not want to run a Nexodus agent on every host that you intend to have connectivity to a Nexodus VPC. It is possible to have a host act as a Network Router to provide connectivity between a Nexodus network and a subnet a Nexodus agent node can access.
 
 ## Connect any nodes on your network or connect sites
 
@@ -33,6 +33,6 @@ By default, Nexodus network routers perform NAT, specifically, source NAT for de
 
 You have the option to disable NAT with `--disable-nat` which will cause the remote non-Nexodus devices to receive traffic from the Nexodus agent devices without any address translations. This mode requires routes to be added (or redistributed in your network IGP) for hosts in `192.168.1.0/24` to reach Nexodus nodes `100.100.0.0/16` via the `Nexodus Network Router` eth0 ip of `192.168.1.10`.
 
-The subnet exposed to the Nexodus organization may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
+The subnet exposed to the Nexodus VPC may be a physical network the host is connected to, but it can also be a network local to the host. This works well for exposing a local subnet used for containers running on that host. A demo of this use case for containers can be found in [scenarios/containers-on-nodes.md](scenarios/containers-on-nodes.md).
 
 _Additional details and diagrams are located in the network router design documentation_ [docs/development/design/network-router](../development/design/network-router.md)

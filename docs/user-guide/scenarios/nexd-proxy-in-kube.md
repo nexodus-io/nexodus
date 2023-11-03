@@ -15,11 +15,11 @@ Later, we will provide an example of an application that automates these
 scenarios. For a more complete discussion of these plans, see the [nexlink
 design document](../../development/design/nexlink.md).
 
-## Demo 1 - Exposing a Kubernetes Service to a Nexodus Organization
+## Demo 1 - Exposing a Kubernetes Service to a Nexodus VPC
 
 In this demo, we will run `nexd proxy` in a Pod that will forward
 connections to a Service inside of a cluster. This will allow any device within
-a Nexodus organization to reach this service, no matter where they are.
+a Nexodus VPC to reach this service, no matter where they are.
 
 The Pod running `nexd proxy` is using a single ingress proxy rule:
 
@@ -199,7 +199,7 @@ spec:
           secretName: wireguard-keys
 ```
 
-Finally, you can validate that the Service is reachable from another device connected to the same Nexodus organization. You will need the Nexodus IP address associated with the proxy. You can get this by either looking in the `nexd proxy` container log or through the Nexodus Service web UI.
+Finally, you can validate that the Service is reachable from another device connected to the same Nexodus VPC. You will need the Nexodus IP address associated with the proxy. You can get this by either looking in the `nexd proxy` container log or through the Nexodus Service web UI.
 
 If you check the log, here is what you should see:
 
@@ -209,7 +209,7 @@ If you check the log, here is what you should see:
 
 In this case, the Nexodus IP address is `100.100.0.1` or `200::1`.
 
-From another device in the Nexodus organization, you should now be able to reach the nginx Service using these IP addresses.
+From another device in the Nexodus VPC, you should now be able to reach the nginx Service using these IP addresses.
 
 ```console
 ## curl http://100.100.0.1
@@ -229,7 +229,7 @@ Hello from nginx-deployment-d76648567-8fmtv
 
 This demo is similar to the first but in the reverse direction. It may be
 desirable for an application inside Kubernetes to reach a resource that is
-accessible within a Nexodus organization. An example here could be an
+accessible within a Nexodus VPC. An example here could be an
 application running in a public cloud that needs to reach a database running in
 a corporate data center.
 
@@ -254,7 +254,7 @@ flowchart TD
 To implement this scenario you will need a Kubernetes cluster and a Nexodus
 Service that allows user/password authentication.
 
-Prior to setting up the Kubernetes portion of this demo, you will need to set up an http server that listens on port 80 within this Nexodus organization. During development of the demo, I ran `nexd` in a container and then ran these additional commands in that container. Note that the rest of demo2 assumes that this Nexodus device has the Nexodus IP of 100.100.0.1.
+Prior to setting up the Kubernetes portion of this demo, you will need to set up an http server that listens on port 80 within this Nexodus VPC. During development of the demo, I ran `nexd` in a container and then ran these additional commands in that container. Note that the rest of demo2 assumes that this Nexodus device has the Nexodus IP of 100.100.0.1.
 
 ```console
 echo "Hello from ${HOSTNAME}" > index.html
@@ -353,7 +353,7 @@ spec:
 
 Next, we need a Service that will be used by other applications in the cluster
 that desire to reach the HTTP server we are exposing from the Nexodus
-organization.
+VPC.
 
 ```yaml
 apiVersion: v1

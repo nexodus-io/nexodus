@@ -28,20 +28,16 @@ Feature: Security Group API
       """
       [
         {
-          "cidr": "100.64.0.0/10",
-          "cidr_v6": "200::/64",
           "description": "${oscar_username}'s organization",
-          "hub_zone": true,
           "id": "${oscar_organization_id}",
           "name": "${oscar_username}",
           "owner_id": "${oscar_user_id}",
-          "security_group_id": "${oscar_security_group_id}",
-          "private_cidr": false
+          "security_group_id": "${oscar_security_group_id}"
         }
       ]
       """
 
-    When I GET path "/api/organizations/${oscar_organization_id}/security_group/${oscar_security_group_id}"
+    When I GET path "/api/security-groups/${oscar_security_group_id}"
     Then the response code should be 200
     Given I store the ".revision" selection from the response as ${current_revision}
     And the response should match json:
@@ -50,7 +46,7 @@ Feature: Security Group API
         "group_description": "default organization security group",
         "group_name": "default",
         "id": "${oscar_security_group_id}",
-        "org_id": "${oscar_organization_id}",
+        "organization_id": "${oscar_organization_id}",
         "revision": ${current_revision}
       }
   """

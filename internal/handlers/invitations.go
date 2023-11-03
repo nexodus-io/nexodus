@@ -29,18 +29,9 @@ import (
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/invitations [post]
 func (api *API) CreateInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
+	ctx, span := tracer.Start(c.Request.Context(), "CreateInvitation")
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
+
 	var request models.AddInvitation
 	if err := c.BindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
@@ -57,19 +48,19 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	}
 
 	var user models.User
-	if request.UserID != "" {
+	if request.UserID != nil && *request.UserID != uuid.Nil {
 		if res := db.
 			Preload("Organizations").
 			Preload("Invitations").
-			First(&user, "id = ?", request.UserID); res.Error != nil {
+			First(&user, "id = ?", *request.UserID); res.Error != nil {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 			return
 		}
-	} else if request.UserName != "" {
+	} else if request.UserName != nil && *request.UserName != "" {
 		if res := db.Debug().
 			Preload("Organizations").
 			Preload("Invitations").
-			First(&user, "user_name = ?", request.UserName); res.Error != nil {
+			First(&user, "user_name = ?", *request.UserName); res.Error != nil {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
 			return
 		}
@@ -93,7 +84,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	invite := models.NewInvitation(user.ID, request.OrganizationID)
 	if res := db.Create(&invite); res.Error != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 	c.JSON(http.StatusCreated, invite)
@@ -120,21 +111,21 @@ func (api *API) ListInvitations(c *gin.Context) {
 	db = FilterAndPaginate(db, &models.Invitation{}, c, "id")
 	result := db.Find(&invitations)
 	if result.Error != nil {
-		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 	c.JSON(http.StatusOK, invitations)
 }
 
 func (api *API) InvitationIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	return db.Where("user_id = ?", userId)
 }
 
 func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
+	userId := api.GetCurrentUserID(c)
 
 	// this could potentially be driven by rego output
 	if api.dialect == database.DialectSqlLite {
@@ -152,34 +143,34 @@ func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB
 // @Accept       json
 // @Produce      json
 // @Param		 id   path      string true "Invitation ID"
-// @Success      200  {object}  models.Organization
+// @Success      200  {object}  models.Invitation
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{id} [get]
+// @Router       /api/invitations/{id} [get]
 func (api *API) GetInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "GetOrganizations",
+	ctx, span := tracer.Start(c.Request.Context(), "GetInvitation",
 		trace.WithAttributes(
-			attribute.String("invitation", c.Param("invitation")),
+			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	k, err := uuid.Parse(c.Param("invitation"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 	var org models.Invitation
 	db := api.db.WithContext(ctx)
 	result := api.InvitationIsForCurrentUserOrOrgOwner(c, db).
-		First(&org, "id = ?", k.String())
+		First(&org, "id = ?", id.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("invitation"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -194,36 +185,30 @@ func (api *API) GetInvitation(c *gin.Context) {
 // @Tags         Invitation
 // @Accept		 json
 // @Produce      json
-// @Param        invitation   path      string  true "Invitation ID"
+// @Param        id   path      string  true "Invitation ID"
 // @Success      204
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/invitations/:invitation/accept [post]
+// @Router       /api/invitations/{id}/accept [post]
 func (api *API) AcceptInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "InviteUserToOrganization")
+	ctx, span := tracer.Start(c.Request.Context(), "AcceptInvitation",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
+
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
-	k, err := uuid.Parse(c.Param("invitation"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
 	var invitation models.Invitation
 	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if res := api.InvitationIsForCurrentUser(c, tx).
-			First(&invitation, "id = ?", k); res.Error != nil {
+			First(&invitation, "id = ?", id); res.Error != nil {
 			return errInvitationNotFound
 		}
 		var user models.User
@@ -253,7 +238,7 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 		} else if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
@@ -268,29 +253,34 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 // @Tags         Invitation
 // @Accept		 json
 // @Produce      json
-// @Param        invitation   path      string  true "Invitation ID"
+// @Param        id   path      string  true "Invitation ID"
 // @Success      204  {object}  models.Organization
 // @Failure      400  {object}  models.BaseError
 // @Failure      405  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/invitations/{invitation} [delete]
+// @Router       /api/invitations/{id} [delete]
 func (api *API) DeleteInvitation(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation")
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteInvitation",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
+
+	//multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
+	//if err != nil {
+	//	api.SendInternalServerError(c, err)
+	//	return
+	//}
+	//allowForTests := c.GetString("_apex.testCreateOrganization")
+	//if !multiOrganizationEnabled && allowForTests != "true" {
+	//	c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
+	//	return
+	//}
+
+	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		api.sendInternalServerError(c, err)
-		return
-	}
-	allowForTests := c.GetString("_apex.testCreateOrganization")
-	if !multiOrganizationEnabled && allowForTests != "true" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
-	k, err := uuid.Parse(c.Param("invitation"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("invitation"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
@@ -303,7 +293,7 @@ func (api *API) DeleteInvitation(c *gin.Context) {
 	}
 
 	if res := db.Delete(&models.Invitation{}, k); res.Error != nil {
-		api.sendInternalServerError(c, res.Error)
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 	c.Status(http.StatusNoContent)

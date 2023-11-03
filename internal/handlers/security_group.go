@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"gorm.io/gorm/clause"
@@ -50,6 +51,24 @@ func (d securityGroupList) Len() int {
 	return len(d)
 }
 
+func (api *API) SecurityGroupIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := api.GetCurrentUserID(c)
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?) OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
+	} else {
+		return db.Where("organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?) OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
+	}
+}
+
+func (api *API) SecurityGroupIsWriteableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := api.GetCurrentUserID(c)
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
+	} else {
+		return db.Where("organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId)
+	}
+}
+
 // ListSecurityGroups lists all Security Groups
 // @Summary      List Security Groups
 // @Description  Lists all Security Groups
@@ -58,27 +77,69 @@ func (d securityGroupList) Len() int {
 // @Accepts		 json
 // @Produce      json
 // @Param		 gt_revision       query     uint64 false "greater than revision"
-// @Param        organization_id   path      string  true "Organization ID"
 // @Success      200  {object}  []models.SecurityGroup
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/security_groups [get]
+// @Router       /api/security-groups [get]
 func (api *API) ListSecurityGroups(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListSecurityGroups")
 	defer span.End()
 
-	orgId, err := uuid.Parse(c.Param("organization"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+	var query Query
+	if err := c.BindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
-	var org models.Organization
+	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
+		var items securityGroupList
+		db = api.SecurityGroupIsReadableByCurrentUser(c, db)
+		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "id")
+		result := db.Find(&items)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return items, nil
+	})
+}
+
+// ListSecurityGroupsInVPC lists all Security Groups in a VPC
+// @Summary      List Security Groups in a VPC
+// @Description  Lists all Security Groups in a VPC
+// @Id  		 ListSecurityGroupsInVPC
+// @Tags         VPC
+// @Accepts		 json
+// @Produce      json
+// @Param		 gt_revision       query     uint64 false "greater than revision"
+// @Param        id                path      string  true "VPC ID"
+// @Success      200  {object}  []models.SecurityGroup
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/vpcs/{id}/security-groups [get]
+func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListSecurityGroupsInVPC",
+		trace.WithAttributes(
+			attribute.String("vpc_id", c.Param("id")),
+		))
+	defer span.End()
+
+	vpcId, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+		return
+	}
+	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	if res := api.OrganizationIsReadableByCurrentUser(c, db).
-		First(&org, "id = ?", orgId); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+	result := api.VPCIsReadableByCurrentUser(c, db).
+		First(&vpc, "id = ?", vpcId.String())
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
+		} else {
+			api.SendInternalServerError(c, result.Error)
+		}
 		return
 	}
 
@@ -90,7 +151,13 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
-		db = db.Where("organization_id = ?", orgId)
+
+		if api.dialect == database.DialectSqlLite {
+			db = db.Where("organization_id in (SELECT DISTINCT organization_id FROM devices where vpc_id=?)", vpcId.String())
+		} else {
+			db = db.Where("organization_id::text in (SELECT DISTINCT organization_id::text FROM devices where vpc_id=?)", vpcId.String())
+		}
+
 		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "id")
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -102,12 +169,11 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 
 // GetSecurityGroup gets a Security Group by ID
 // @Summary      Get SecurityGroup
-// @Description  Gets a security group in an organization by ID
+// @Description  Gets a security group by ID
 // @Id  		 GetSecurityGroup
 // @Tags         SecurityGroup
 // @Accepts		 json
 // @Produce      json
-// @Param        organization_id   path      string  true "Organization ID"
 // @Param        id   path      string  true "Security Group ID"
 // @Success      200  {object}  models.SecurityGroup
 // @Failure		 401  {object}  models.BaseError
@@ -115,11 +181,10 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 // @Failure      404  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/security_group/{id} [get]
+// @Router       /api/security-groups/{id} [get]
 func (api *API) GetSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "GetSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
-		attribute.String("organization", c.Param("organization")),
 	))
 	defer span.End()
 	k, err := uuid.Parse(c.Param("id"))
@@ -128,20 +193,8 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	orgId, err := uuid.Parse(c.Param("organization"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
-		return
-	}
-
-	var org models.Organization
 	db := api.db.WithContext(ctx)
-	if res := api.OrganizationIsReadableByCurrentUser(c, db).
-		First(&org, "id = ?", orgId); res.Error != nil {
-		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
-		return
-	}
-
+	db = api.SecurityGroupIsReadableByCurrentUser(c, db)
 	var securityGroup models.SecurityGroup
 	result := db.
 		First(&securityGroup, "id = ?", k)
@@ -155,7 +208,7 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 func (api *API) secGroupsEnabled(c *gin.Context) bool {
 	secGroupsEnabled, err := api.fflags.GetFlag("security-groups")
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return false
 	}
 	allowForTests := c.GetString("nexodus.secGroupsEnabled")
@@ -173,7 +226,6 @@ func (api *API) secGroupsEnabled(c *gin.Context) bool {
 // @Description  Adds a new Security Group
 // @Accepts		 json
 // @Produce      json
-// @Param        organization_id   path      string  true "Organization ID"
 // @Param        SecurityGroup   body   models.AddSecurityGroup  true "Add SecurityGroup"
 // @Success      201  {object}  models.SecurityGroup
 // @Failure      400  {object}  models.BaseError
@@ -182,12 +234,9 @@ func (api *API) secGroupsEnabled(c *gin.Context) bool {
 // @Failure      422  {object}  models.ValidationError
 // @Failure      429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/security_groups [post]
+// @Router       /api/security-groups [post]
 func (api *API) CreateSecurityGroup(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup", trace.WithAttributes(
-		attribute.String("id", c.Param("id")),
-		attribute.String("organization", c.Param("organization")),
-	))
+	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup")
 	defer span.End()
 
 	if !api.secGroupsEnabled(c) {
@@ -217,7 +266,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 	}
 
 	if request.OrganizationId == uuid.Nil {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("org_id"))
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
 		return
 	}
 
@@ -260,15 +309,29 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		if errors.Is(err, errUserNotFound) {
 			c.JSON(http.StatusNotFound, models.NewApiError(err))
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
-	api.signalBus.Notify(signalChannel)
-
+	api.notifySecurityGroupChange(c, sg.OrganizationId)
 	c.JSON(http.StatusCreated, sg)
+}
+
+func (api *API) notifySecurityGroupChange(c *gin.Context, orgId uuid.UUID) {
+	vpcIds := []uuid.UUID{}
+	db := api.db.WithContext(c)
+	err := db.Where("organization_id = ?", orgId).Distinct().Pluck("id", &vpcIds).Error
+	if err != nil {
+		api.logger.Errorf("Failed to fetch vpc ids for organization %s: %s", orgId, err)
+		return
+	}
+
+	for _, id := range vpcIds {
+		signalChannel := fmt.Sprintf("/security-groups/vpc=%s", id.String())
+		api.signalBus.Notify(signalChannel)
+
+	}
 }
 
 // DeleteSecurityGroup handles deleting an existing security group
@@ -278,17 +341,15 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 // @Tags         SecurityGroup
 // @Accepts		 json
 // @Produce      json
-// @Param        organization_id   path      string  true "Organization ID"
-// @Param        security_group_id   path      string  true "Security Group ID"
+// @Param        id   path      string  true "Security Group ID"
 // @Success      204  {object}  models.SecurityGroup
 // @Failure      400  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/security_groups/{security_group_id} [delete]
+// @Router       /api/security-groups/{id} [delete]
 func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
-		attribute.String("organization", c.Param("organization")),
 	))
 
 	defer span.End()
@@ -302,58 +363,48 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
-	orgId, err := uuid.Parse(c.Param("organization"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
-		return
-	}
 
 	sg := models.SecurityGroup{}
 
-	err = api.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var organization models.Organization
-		result := api.OrganizationIsOwnedByCurrentUser(c, tx).
-			First(&organization, "id = ?", orgId.String())
-		if result.Error != nil {
-			return result.Error
-		}
+	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
-		if res := tx.First(&sg, "id = ?", secGroupID); res.Error != nil {
-			if result.Error != nil {
-				return result.Error
-			}
+		if res := api.SecurityGroupIsWriteableByCurrentUser(c, tx).
+			First(&sg, "id = ?", secGroupID); res.Error != nil {
+			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		}
 
 		if res := tx.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
-			return result.Error
+			return res.Error
 		}
 
 		if res := tx.Model(&models.Organization{}).
 			Where("security_group_id = ?", sg.ID).
 			Update("security_group_id", nil); res.Error != nil {
-			return result.Error
+			return res.Error
 		}
 
 		if res := tx.Model(&models.Device{}).
 			Where("organization_id = ? AND security_group_id = ?", sg.OrganizationId, sg.ID).
 			Update("security_group_id", nil); res.Error != nil {
-			return result.Error
+			return res.Error
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		var apiResponseError *ApiResponseError
+		if errors.As(err, &apiResponseError) {
+			c.JSON(apiResponseError.Status, apiResponseError.Body)
+		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/security-groups/org=%s", sg.OrganizationId.String())
-	api.signalBus.Notify(signalChannel)
+	api.notifySecurityGroupChange(c, sg.OrganizationId)
 
 	c.JSON(http.StatusOK, sg)
 }
@@ -365,8 +416,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 // @Tags         SecurityGroup
 // @Accepts      json
 // @Produce      json
-// @Param        organization_id   path      string  true "Organization ID"
-// @Param        security_group_id path      string  true "Security Group ID"
+// @Param        id path      string  true "Security Group ID"
 // @Param        update body       models.UpdateSecurityGroup true "Security Group Update"
 // @Success      200  {object}     models.SecurityGroup
 // @Failure      400  {object}     models.BaseError
@@ -375,7 +425,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 // @Failure      422  {object}     models.ValidationError
 // @Failure      429  {object}     models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/security_groups/{security_group_id} [patch]
+// @Router       /api/security-groups/{id} [patch]
 func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateSecurityGroup", trace.WithAttributes(
 		attribute.String("id", c.Param("id")),
@@ -389,12 +439,6 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
-		return
-	}
-
-	orgId, err := uuid.Parse(c.Param("organization"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
 		return
 	}
 
@@ -421,14 +465,8 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 
 	var securityGroup models.SecurityGroup
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
-		var org models.Organization
-		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
-			First(&org, "id = ?", orgId); res.Error != nil {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("security_group"))
-			return res.Error
-		}
 
-		result := tx.
+		result := api.SecurityGroupIsWriteableByCurrentUser(c, tx).
 			First(&securityGroup, "id = ?", k)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return errSecurityGroupNotFound
@@ -454,13 +492,12 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		} else if errors.Is(err, errOrgNotFound) {
 			c.JSON(http.StatusNotFound, err)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
-	signalChannel := fmt.Sprintf("/security-groups/org=%s", securityGroup.OrganizationId.String())
-	api.signalBus.Notify(signalChannel)
+	api.notifySecurityGroupChange(c, securityGroup.OrganizationId)
 
 	c.JSON(http.StatusOK, securityGroup)
 }

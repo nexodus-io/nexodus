@@ -40,9 +40,11 @@ COMMANDS:
    invitation      commands relating to invitations
    nexd            Commands for interacting with the local instance of nexd
    organization    Commands relating to organizations
+   reg-key         Commands relating to registration keys
    security-group  commands relating to security groups
    user            Commands relating to users
    version         Get the version of nexctl
+   vpc             Commands relating to vpcs
    help, h         Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -103,16 +105,17 @@ USAGE:
    nexctl nexd command [command options] [arguments...]
 
 COMMANDS:
-   version  Display the nexd version
-   status   Display the nexd status
-   get      Get a value from the local nexd instance
-   set      Set a value on the local nexd instance
-   proxy    Commands for interacting nexd's proxy configuration
-   peers    Commands for interacting with nexd peer connectivity
-   help, h  Shows a list of commands or help for one command
+   version    Display the nexd version
+   status     Display the nexd status
+   get        Get a value from the local nexd instance
+   set        Set a value on the local nexd instance
+   proxy      Commands for interacting nexd's proxy configuration
+   peers      Commands for interacting with nexd peer connectivity
+   exit-node  Commands for interacting nexd exit node configuration
+   help, h    Shows a list of commands or help for one command
 
 OPTIONS:
-   --unix-socket value  Path to the unix socket nexd is listening against (default: "/var/run/nexd.sock")
+   --unix-socket value  Path to the unix socket nexd is listening against (default: "/run/nexd.sock")
    --help, -h           Show help
 ```
 
@@ -126,11 +129,10 @@ USAGE:
    nexctl organization command [command options] [arguments...]
 
 COMMANDS:
-   list      List organizations
-   create    Create a organizations
-   delete    Delete a organization
-   metadata  Commands relating to device metadata across the organization
-   help, h   Shows a list of commands or help for one command
+   list     List organizations
+   create   Create a organizations
+   delete   Delete a organization
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  Show help

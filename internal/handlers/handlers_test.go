@@ -26,20 +26,21 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+var TestUserIdpID = "testuser"
+var TestUser2IdpID = "testuser2"
+
 const (
-	TestUserID     = "f606de8d-092d-4606-b981-80ce9f5a3b2a"
-	TestUser2ID    = "3381dcaf-f61e-4671-8787-3e53490894ae"
 	ipamClientAddr = "http://localhost:49090"
 )
 
 type HandlerTestSuite struct {
 	suite.Suite
-	logger             *zap.SugaredLogger
-	ipam               *http.Server
-	wg                 *sync.WaitGroup
-	api                *API
-	testOrganizationID uuid.UUID
-	testUser2OrgID     uuid.UUID
+	logger      *zap.SugaredLogger
+	ipam        *http.Server
+	wg          *sync.WaitGroup
+	api         *API
+	testUserID  uuid.UUID
+	testUser2ID uuid.UUID
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
@@ -79,14 +80,15 @@ func (suite *HandlerTestSuite) SetupSuite() {
 }
 
 func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
-	suite.api.db.Exec("DELETE FROM users")
-	suite.api.db.Exec("DELETE FROM organizations")
-	suite.api.db.Exec("DELETE FROM user_organizations")
 	suite.api.db.Exec("DELETE FROM devices")
+	suite.api.db.Exec("DELETE FROM vpcs")
+	suite.api.db.Exec("DELETE FROM user_organizations")
+	suite.api.db.Exec("DELETE FROM organizations")
+	suite.api.db.Exec("DELETE FROM users")
 	var err error
-	suite.testOrganizationID, err = suite.api.createUserIfNotExists(context.Background(), TestUserID, "testuser")
+	suite.testUserID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserIdpID, "testuser")
 	suite.Require().NoError(err)
-	suite.testUser2OrgID, err = suite.api.createUserIfNotExists(context.Background(), TestUser2ID, "testuser2")
+	suite.testUser2ID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2IdpID, "testuser2")
 	suite.Require().NoError(err)
 }
 
@@ -94,10 +96,10 @@ func (suite *HandlerTestSuite) ServeRequest(method, path string, uri string, han
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
-		c.Set(gin.AuthUserKey, TestUserID)
+		c.Set(gin.AuthUserKey, suite.testUserID)
 		c.Next()
 	})
-	r.Use(suite.api.CreateUserIfNotExists())
+
 	r.Any(path, handler)
 	req, err := http.NewRequest(method, uri, body)
 	if err != nil {

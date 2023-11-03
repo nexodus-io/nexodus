@@ -11,6 +11,8 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"net/http"
@@ -36,24 +38,27 @@ func init() {
 }
 
 // WatchEvents lets you watch for resource change events
-// @Summary      Watch events occurring in the organization
-// @Description  Watches events occurring in the organization
+// @Summary      Watch events occurring in the vpc
+// @Description  Watches events occurring in the vpc
 // @Id           WatchEvents
-// @Tags         Organizations
+// @Tags         VPC
 // @Accept       json
 // @Produce      json
 // @Param		 public_key      query  string          false "connect as the device with the given public key, device will be considered to be online for the duration of this request"
 // @Param        Watches         body   []models.Watch  true  "List of events to watch"
-// @Param		 organization_id path   string          true  "Organization ID"
+// @Param		 id              path   string          true  "VPC ID"
 // @Success      200  {object}  models.WatchEvent
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/organizations/{organization_id}/events [post]
+// @Router       /api/vpc/{id}/events [post]
 func (api *API) WatchEvents(c *gin.Context) {
 
-	ctx, span := tracer.Start(c.Request.Context(), "WatchEventsInOrganization")
+	ctx, span := tracer.Start(c.Request.Context(), "WatchEvents",
+		trace.WithAttributes(
+			attribute.String("vpc_id", c.Param("id")),
+		))
 	defer span.End()
 
 	var query struct {
@@ -71,22 +76,22 @@ func (api *API) WatchEvents(c *gin.Context) {
 		return
 	}
 
-	orgId, err := uuid.Parse(c.Param("organization"))
+	vpcId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("organization"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
-	var org models.Organization
+	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	db = api.OrganizationIsReadableByCurrentUser(c, db)
-	result := db.First(&org, "id = ?", orgId.String())
+	db = api.VPCIsReadableByCurrentUser(c, db)
+	result := db.First(&vpc, "id = ?", vpcId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		} else {
-			api.sendInternalServerError(c, result.Error)
+			api.SendInternalServerError(c, result.Error)
 		}
 		return
 	}
@@ -110,13 +115,13 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 		case "device":
 
-			fetcher := api.fetchManager.Open("org-devices:"+orgId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+			fetcher := api.fetchManager.Open("org-devices:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 				var items deviceList
 				db = db.Unscoped().Limit(100).Order("revision")
 				if gtRevision != 0 {
 					db = db.Where("revision > ?", gtRevision)
 				}
-				db = db.Where("organization_id = ?", orgId.String())
+				db = db.Where("vpc_id = ?", vpcId.String())
 				result := db.Find(&items)
 				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					return nil, result.Error
@@ -134,7 +139,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
-				signal:     fmt.Sprintf("/devices/org=%s", orgId.String()),
+				signal:     fmt.Sprintf("/devices/vpc=%s", vpcId.String()),
 				fetch:      fetcher.Fetch,
 			})
 
@@ -143,14 +148,14 @@ func (api *API) WatchEvents(c *gin.Context) {
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
-				signal:     fmt.Sprintf("/security-groups/org=%s", orgId.String()),
+				signal:     fmt.Sprintf("/security-groups/vpc=%s", vpcId.String()),
 				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 					var items securityGroupList
 					db = db.Unscoped().Limit(100).Order("revision")
 					if gtRevision != 0 {
 						db = db.Where("revision > ?", gtRevision)
 					}
-					db = db.Where("organization_id = ?", orgId.String())
+					db = db.Where("organization_id = ?", vpc.OrganizationID.String())
 					result := db.Find(&items)
 					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 						return nil, result.Error
@@ -180,13 +185,13 @@ func (api *API) WatchEvents(c *gin.Context) {
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
-				signal:     fmt.Sprintf("/metadata/org=%s", orgId.String()),
+				signal:     fmt.Sprintf("/metadata/vpc=%s", vpcId.String()),
 				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 
 					tempDB := db.Model(&models.DeviceMetadata{}).
 						Joins("inner join devices on devices.id=device_metadata.device_id").
 						Where( // extra wrapping Where needed to group the SQL expressions
-							db.Where("devices.organization_id = ?", orgId.String()),
+							db.Where("devices.vpc_id = ?", vpcId.String()),
 						)
 
 					// Building OR expressions with gorm is tricky...
@@ -256,7 +261,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 			Watch: w,
 		}
 
-		// fmt.Sprintf("/devices/org=%s", k.String())
+		// fmt.Sprintf("/devices/vpc=%s", k.String())
 		state.sub = api.signalBus.Subscribe(w.signal)
 
 		state.idx = 1
@@ -366,7 +371,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 func (api *API) stream(c *gin.Context, nextEvent func() models.WatchEvent) {
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
-		api.sendInternalServerError(c, fmt.Errorf("streaming unsupported"))
+		api.SendInternalServerError(c, fmt.Errorf("streaming unsupported"))
 		return
 	}
 	c.Writer.WriteHeader(200)

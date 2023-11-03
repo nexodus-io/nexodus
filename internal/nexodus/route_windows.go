@@ -12,7 +12,7 @@ import (
 
 // handlePeerRoute when a new configuration is deployed, delete/add the peer allowedIPs
 func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
-	// If child prefix split the two prefixes (host /32) and child prefix
+	// If advertised CIDR, split the two prefixes (host /32) and advertised CIDR
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
 		// if the peer is advertising a default route, append it as an exit origin node, but don't add the route
 		if util.IsDefaultIPv4Route(allowedIP) || util.IsDefaultIPv6Route(allowedIP) {

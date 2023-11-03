@@ -4,7 +4,10 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/handlers"
+	"github.com/redis/go-redis/v9"
 	"io"
 	"net/http"
 	"strings"
@@ -122,21 +125,21 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 			return
 		}
 
-		userID, ok := result["user_id"].(string)
+		idpUserID, ok := result["user_id"].(string)
 		if !ok {
 			handlers.SendInternalServerError(c, o.Logger, errors.New("user_id is not a string"))
 			c.Abort()
 			return
 		}
 
-		username, ok := result["user_name"].(string)
+		idpUserName, ok := result["user_name"].(string)
 		if !ok {
 			handlers.SendInternalServerError(c, o.Logger, errors.New("user_name is not a string"))
 			c.Abort()
 			return
 		}
 
-		fullName, ok := result["full_name"].(string)
+		idpFullName, ok := result["full_name"].(string)
 		if !ok {
 			handlers.SendInternalServerError(c, o.Logger, errors.New("full_name is not a string"))
 			c.Abort()
@@ -146,16 +149,41 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 		claims := result["token_payload"].(map[string]interface{})
 		c.Set("_nexodus.Claims", claims)
 
-		c.Set(gin.AuthUserKey, userID)
-		if len(username) > 0 {
-			c.Set(AuthUserName, username)
-		} else if len(fullName) > 0 {
-			c.Set(AuthUserName, fullName)
-		} else {
-			logger.Debugf("Not able to determine a name for this user -- %s", userID)
+		if len(idpUserName) == 0 {
+			idpUserName = idpFullName
 		}
 
-		logger.Debugf("user-id is %s", userID)
+		prefixId := fmt.Sprintf("%s:%s", handlers.CachePrefix, idpUserID)
+		cachedUserId, err := o.Api.Redis.Get(c.Request.Context(), prefixId).Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				o.Logger.Debugf("user id doesn't exits in the cache:%s", err)
+			} else {
+				o.Logger.Warnf("failed to find user in the cache:%s", err)
+			}
+		}
+
+		if cachedUserId == "" {
+			userId, err := o.Api.CreateUserIfNotExists(c.Request.Context(), idpUserID, idpUserName)
+			if err != nil {
+				o.Api.SendInternalServerError(c, err)
+				c.Abort()
+				return
+			}
+			cachedUserId = userId.String()
+			o.Api.Redis.Set(c.Request.Context(), prefixId, userId.String(), handlers.CacheExp)
+		}
+
+		userID, err := uuid.Parse(cachedUserId)
+		if err != nil {
+			o.Api.SendInternalServerError(c, fmt.Errorf("invalid redis entry for '%s': %w", prefixId, err))
+			c.Abort()
+			return
+		}
+		c.Set(gin.AuthUserKey, userID)
+		c.Set(AuthUserName, idpUserName)
+
+		logger.Debugf("user-id is %s", idpUserID)
 		c.Next()
 	}, nil
 }

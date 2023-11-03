@@ -12,12 +12,147 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func createSecurityGroupCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "security-group",
+		Usage: "commands relating to security groups",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all security groups",
+				Action: func(cCtx *cli.Context) error {
+					return listSecurityGroups(cCtx, mustCreateAPIClient(cCtx))
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete a security group",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: true,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					encodeOut := cCtx.String("output")
+					sgID := cCtx.String("security-group-id")
+					return deleteSecurityGroup(cCtx, mustCreateAPIClient(cCtx), encodeOut, sgID)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "create a security group",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "organization-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "description",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "inbound-rules",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "outbound-rules",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					name := cCtx.String("name")
+					description := cCtx.String("description")
+					orgID := cCtx.String("organization-id")
+					inboundRulesStr := cCtx.String("inbound-rules")
+					outboundRulesStr := cCtx.String("outbound-rules")
+
+					var inboundRules, outboundRules []public.ModelsSecurityRule
+					var err error
+
+					if inboundRulesStr != "" {
+						inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
+						if err != nil {
+							return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
+						}
+					}
+
+					if outboundRulesStr != "" {
+						outboundRules, err = jsonStringToSecurityRules(outboundRulesStr)
+						if err != nil {
+							return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
+						}
+					}
+
+					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), name, description, orgID, inboundRules, outboundRules)
+				},
+			},
+			{
+				Name:  "update",
+				Usage: "update a security group",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "description",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "inbound-rules",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "outbound-rules",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					name := cCtx.String("name")
+					sgID := cCtx.String("security-group-id")
+					description := cCtx.String("description")
+					inboundRulesStr := cCtx.String("inbound-rules")
+					outboundRulesStr := cCtx.String("outbound-rules")
+
+					var inboundRules, outboundRules []public.ModelsSecurityRule
+					var err error
+
+					if inboundRulesStr != "" {
+						inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
+						if err != nil {
+							return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
+						}
+					}
+
+					if outboundRulesStr != "" {
+						outboundRules, err = jsonStringToSecurityRules(outboundRulesStr)
+						if err != nil {
+							return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
+						}
+					}
+
+					return updateSecurityGroup(cCtx, mustCreateAPIClient(cCtx), sgID, name, description, inboundRules, outboundRules)
+				},
+			},
+		},
+	}
+}
+
 func securityGroupTableFields(cCtx *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP NAME", Field: "GroupName"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP DESCRIPTION", Field: "GroupDescription"})
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrgId"})
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP RULES INBOUND", Field: "InboundRules"})
 	fields = append(fields, TableField{Header: "SECURITY GROUP RULES OUTBOUND", Field: "OutboundRules"})
 	return fields
@@ -35,10 +170,10 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 		return fmt.Errorf("create security group failed: %w", err)
 	}
 
-	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background(), orgID.String()).SecurityGroup(public.ModelsAddSecurityGroup{
+	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background()).SecurityGroup(public.ModelsAddSecurityGroup{
 		GroupName:        name,
 		GroupDescription: description,
-		OrgId:            orgID.String(),
+		OrganizationId:   orgID.String(),
 		InboundRules:     inboundRules,
 		OutboundRules:    outboundRules,
 	}).Execute()
@@ -60,18 +195,14 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID, organizationID, name, description string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
-	orgID, err := uuid.Parse(organizationID)
-	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
+func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID, name, description string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 
-	err = checkICMPRules(inboundRules, outboundRules)
+	err := checkICMPRules(inboundRules, outboundRules)
 	if err != nil {
 		return fmt.Errorf("create security group failed: %w", err)
 	}
 
-	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), orgID.String(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
+	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
 		GroupName:        name,
 		GroupDescription: description,
 		InboundRules:     inboundRules,
@@ -95,12 +226,8 @@ func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID, org
 }
 
 // listSecurityGroups lists all security groups.
-func listSecurityGroups(cCtx *cli.Context, c *client.APIClient, encodeOut string, organizationID string) error {
-	orgID, err := uuid.Parse(organizationID)
-	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
-	securityGroups, _, err := c.SecurityGroupApi.ListSecurityGroups(context.Background(), orgID.String()).Execute()
+func listSecurityGroups(cCtx *cli.Context, c *client.APIClient) error {
+	securityGroups, _, err := c.SecurityGroupApi.ListSecurityGroups(context.Background()).Execute()
 	if err != nil {
 		return fmt.Errorf("list security groups failed: %w", err)
 	}
@@ -110,12 +237,8 @@ func listSecurityGroups(cCtx *cli.Context, c *client.APIClient, encodeOut string
 }
 
 // deleteSecurityGroup deletes an existing security group.
-func deleteSecurityGroup(cCtx *cli.Context, c *client.APIClient, encodeOut, secGroupID, organizationID string) error {
-	orgID, err := uuid.Parse(organizationID)
-	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
-	}
-	res, _, err := c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), orgID.String(), secGroupID).Execute()
+func deleteSecurityGroup(cCtx *cli.Context, c *client.APIClient, encodeOut, secGroupID string) error {
+	res, _, err := c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), secGroupID).Execute()
 	if err != nil {
 		return fmt.Errorf("security group delete failed: %w", err)
 	}

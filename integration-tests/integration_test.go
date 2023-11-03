@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/nexodus-io/nexodus/internal/models"
 )
@@ -36,23 +38,23 @@ func TestBasicConnectivity(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"--output", "json",
-		"registration-token", "create",
+		"reg-key", "create",
 	)
-	require.NoErrorf(err, "nexctl registration-token create error: %v\n", err)
+	require.NoErrorf(err, "nexctl reg-key create error: %v\n", err)
 	var regToken struct {
 		BearerToken string `json:"bearer_token"`
 	}
 	err = json.Unmarshal([]byte(commandOut), &regToken)
-	require.NoErrorf(err, "nexctl registration-token create error: %v\n", err)
+	require.NoErrorf(err, "nexctl reg-key create error: %v\n", err)
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--registration-token", regToken.BearerToken, "--password", password, "relay")
+	helper.runNexd(ctx, node1, "--reg-key", regToken.BearerToken, "--password", password, "relay")
 
 	// validate nexd has started on the relay node
 	err = helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--registration-token", regToken.BearerToken)
+	helper.runNexd(ctx, node2, "--reg-key", regToken.BearerToken)
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -95,8 +97,8 @@ func TestBasicConnectivity(t *testing.T) {
 	require.NoError(err)
 
 	// start nexodus on the nodes
-	go helper.runNexd(ctx, node1, "--registration-token", regToken.BearerToken)
-	go helper.runNexd(ctx, node2, "--registration-token", regToken.BearerToken)
+	go helper.runNexd(ctx, node1, "--reg-key", regToken.BearerToken)
+	go helper.runNexd(ctx, node2, "--reg-key", regToken.BearerToken)
 
 	var newNode1IP string
 	var newNode1IPv6 string
@@ -165,8 +167,8 @@ func TestBasicConnectivity(t *testing.T) {
 	require.NoError(err)
 }
 
-// TestRequestIPOrganization tests requesting a specific address in a newly created organization
-func TestRequestIPOrganization(t *testing.T) {
+// TestRequestIPVPC tests requesting a specific address in a newly created vpc
+func TestRequestIPVPC(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
@@ -183,17 +185,17 @@ func TestRequestIPOrganization(t *testing.T) {
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
-	orgID, orgName := helper.createOrganization(username, password,
-		"--cidr", "100.100.0.0/16",
-		"--cidr-v6", "200::/32",
+	vpcID := helper.createVPC(username, password,
+		"--ipv4-cidr", "100.100.0.0/16",
+		"--ipv6-cidr", "200::/32",
 	)
-	helper.Logf("created org id:%s, name:%s", orgID, orgName)
+	helper.Logf("created vpc id:%s", vpcID)
 	defer func() {
-		_ = helper.deleteOrganization(username, password, orgID)
+		_ = helper.deleteVPC(username, password, vpcID)
 	}()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--vpc-id", vpcID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
@@ -201,7 +203,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", vpcID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -228,7 +230,7 @@ func TestRequestIPOrganization(t *testing.T) {
 	helper.Log("Restarting nexodus on two spoke nodes and re-joining")
 
 	helper.runNexd(ctx, node1, "--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", vpcID,
 		fmt.Sprintf("--request-ip=%s", node1IP), "relay")
 
 	// validate nexd has started on the relay node
@@ -237,7 +239,7 @@ func TestRequestIPOrganization(t *testing.T) {
 
 	helper.runNexd(ctx, node2,
 		"--username", username, "--password", password,
-		"--organization-id", orgID,
+		"--vpc-id", vpcID,
 		fmt.Sprintf("--request-ip=%s", node2IP),
 	)
 
@@ -251,8 +253,8 @@ func TestRequestIPOrganization(t *testing.T) {
 	require.NoError(err)
 }
 
-// TestChooseOrganization tests choosing an organization when creating a new node
-func TestChooseOrganization(t *testing.T) {
+// TestChooseVPC tests choosing a vpc when creating a new node
+func TestChooseVPC(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
@@ -262,7 +264,7 @@ func TestChooseOrganization(t *testing.T) {
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
 
-	orgs := []struct {
+	vpcs := []struct {
 		id     string
 		cidr   string
 		cidrV6 string
@@ -277,25 +279,25 @@ func TestChooseOrganization(t *testing.T) {
 		},
 	}
 
-	for i, org := range orgs {
-		orgs[i].id, _ = helper.createOrganization(username, password,
-			"--cidr", org.cidr,
-			"--cidr-v6", org.cidrV6,
+	for i, vpc := range vpcs {
+		vpcs[i].id = helper.createVPC(username, password,
+			"--ipv4-cidr", vpc.cidr,
+			"--ipv6-cidr", vpc.cidrV6,
 		)
-		defer func(orgID string) {
-			_ = helper.deleteOrganization(username, password, orgID)
-		}(orgs[i].id)
+		defer func(vpcID string) {
+			_ = helper.deleteVPC(username, password, vpcID)
+		}(vpcs[i].id)
 	}
 
-	useOrgs := []string{
-		"",         // default org
-		orgs[0].id, // change to a custom org
-		orgs[1].id, // change to another customer org
-		orgs[0].id, // change back to a previous org
+	useVpcs := []string{
+		"",         // default vpc
+		vpcs[0].id, // change to a custom vpc
+		vpcs[1].id, // change to another customer vpc
+		vpcs[0].id, // change back to a previous vpc
 	}
 
 	// Re-use the same 2 nodes for each test case. We want to keep the
-	// same keys so we're moving the same device around between orgs.
+	// same keys so we're moving the same device around between vpcs.
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
@@ -307,10 +309,10 @@ func TestChooseOrganization(t *testing.T) {
 		"node1IPv6": "",
 		"node2IPv6": "",
 	}
-	for _, orgID := range useOrgs {
+	for _, vpcID := range useVpcs {
 		args := []string{"--username", username, "--password", password}
-		if orgID != "" {
-			args = append(args, "--organization-id", orgID)
+		if vpcID != "" {
+			args = append(args, "--vpc-id", vpcID)
 		}
 
 		// start nexd on node1
@@ -323,7 +325,7 @@ func TestChooseOrganization(t *testing.T) {
 		err = helper.nexdStatus(ctx, node2)
 		require.NoError(err)
 
-		// get tunnel IPs for node1, validate that they changed from the last org used
+		// get tunnel IPs for node1, validate that they changed from the last vpc used
 		node1IP, err := getTunnelIP(ctx, helper, inetV4, node1)
 		require.NoError(err)
 		require.NotEqual(lastIPs["node1IP"], node1IP)
@@ -333,7 +335,7 @@ func TestChooseOrganization(t *testing.T) {
 		require.NotEqual(lastIPs["node1IPv6"], node1IPv6)
 		lastIPs["node1IPv6"] = node1IPv6
 
-		// get tunnel IPs for node2, validate that they changed from the last org used
+		// get tunnel IPs for node2, validate that they changed from the last vpc used
 		node2IP, err := getTunnelIP(ctx, helper, inetV4, node2)
 		require.NoError(err)
 		require.NotEqual(lastIPs["node2IP"], node2IP)
@@ -371,8 +373,8 @@ func TestChooseOrganization(t *testing.T) {
 	}
 }
 
-// TestHubOrganization test a hub organization with 3 nodes, the first being a relay node
-func TestHubOrganization(t *testing.T) {
+// TestHubVPC test a hub vpc with 3 nodes, the first being a relay node
+func TestHubVPC(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
@@ -391,24 +393,24 @@ func TestHubOrganization(t *testing.T) {
 	node3, stop := helper.CreateNode(ctx, "node3", []string{defaultNetwork}, enableV6)
 	defer stop()
 
-	orgID, orgName := helper.createOrganization(username, password,
-		"--cidr", "100.100.0.0/16",
-		"--cidr-v6", "200::/32",
+	vpcID := helper.createVPC(username, password,
+		"--ipv4-cidr", "100.100.0.0/16",
+		"--ipv6-cidr", "200::/32",
 	)
-	helper.Logf("created org id:%s, name:%s", orgID, orgName)
+	helper.Logf("created vpc id:%s", vpcID)
 	defer func() {
-		_ = helper.deleteOrganization(username, password, orgID)
+		_ = helper.deleteVPC(username, password, vpcID)
 	}()
 
 	// start nexodus on the nodes
-	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--organization-id", orgID, "relay")
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--vpc-id", vpcID, "relay")
 
 	// validate nexd has started on the relay node
 	err := helper.nexdStatus(ctx, node1)
 	require.NoError(err)
 
-	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--organization-id", orgID)
-	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--organization-id", orgID)
+	helper.runNexd(ctx, node2, "--username", username, "--password", password, "--vpc-id", vpcID)
+	helper.runNexd(ctx, node3, "--username", username, "--password", password, "--vpc-id", vpcID)
 
 	node1IP, err := getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.NoError(err)
@@ -433,22 +435,22 @@ func TestHubOrganization(t *testing.T) {
 	err = ping(ctx, node2, inetV4, node3IP)
 	require.NoError(err)
 
-	hubOrganizationAdvertiseCidr := "10.188.100.0/24"
+	hubVPCAdvertiseCidr := "10.188.100.0/24"
 	node2AdvertiseCidrLoopbackNet := "10.188.100.1/32"
 
 	t.Logf("killing nexodus on node2")
 
 	_, err = helper.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
-	t.Logf("rejoining on node2 with --advertise-cidr=%s", hubOrganizationAdvertiseCidr)
+	t.Logf("rejoining on node2 with --advertise-cidr=%s", hubVPCAdvertiseCidr)
 
 	// add a loopback that are contained in the node's advertise cidr
 	_, err = helper.containerExec(ctx, node2, []string{"ip", "addr", "add", node2AdvertiseCidrLoopbackNet, "dev", "lo"})
 	require.NoError(err)
 
 	helper.runNexd(ctx, node2, "--username", username, "--password", password,
-		"--organization-id", orgID,
-		"router", fmt.Sprintf("--advertise-cidr=%s", hubOrganizationAdvertiseCidr),
+		"--vpc-id", vpcID,
+		"router", fmt.Sprintf("--advertise-cidr=%s", hubVPCAdvertiseCidr),
 	)
 
 	// validate nexd has started on the relay node
@@ -490,7 +492,7 @@ func TestHubOrganization(t *testing.T) {
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
-	var user models.UserJSON
+	var user models.User
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl user get-current error: %v\n", err)
 
@@ -498,7 +500,7 @@ func TestHubOrganization(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"--output", "json",
-		"device", "list", "--organization-id", orgID,
+		"device", "list", "--vpc-id", vpcID,
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
 	var devices []models.Device
@@ -512,7 +514,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NoError(err)
 	for _, p := range devices {
 		if p.Hostname == node3Hostname {
-			node3IP = p.TunnelIP
+			node3IP = p.IPv4TunnelIPs[0].Address
 			device3ID = p.ID.String()
 		}
 	}
@@ -535,7 +537,7 @@ func TestHubOrganization(t *testing.T) {
 	require.NotContainsf(node2routes, node3IP, "found deleted device node still in routing tables of a device")
 }
 
-// TestAdvertiseCidr tests requesting a specific address in a newly created organization for v4 and v6. This will start nexd three
+// TestAdvertiseCidr tests requesting a specific address in a newly created vpc for v4 and v6. This will start nexd three
 // different times. The first makes sure the prefix is created and routes are added. The second is started and then killed.
 // The third start of nexd is to validate the advertise-cidr was not deleted from the ipam database. TODO: test changing the advertise-cidr
 func TestAdvertiseCidr(t *testing.T) {
@@ -811,7 +813,7 @@ func TestNexctl(t *testing.T) {
 		"user", "get-current",
 	)
 	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var user models.UserJSON
+	var user models.User
 	err = json.Unmarshal([]byte(commandOut), &user)
 	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 
@@ -822,20 +824,17 @@ func TestNexctl(t *testing.T) {
 	commandOut, err = helper.runCommand(nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
-		"organization", "list",
+		"vpc", "list",
 	)
-	require.NoErrorf(err, "nexctl user list error: %v\n", err)
-	var organizations []models.OrganizationJSON
-	err = json.Unmarshal([]byte(commandOut), &organizations)
-	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
-	require.Equal(1, len(organizations))
+	require.NoErrorf(err, "nexctl vpc list error: %v\n", err)
+	var vpcs []models.VPC
+	err = json.Unmarshal([]byte(commandOut), &vpcs)
+	require.NoErrorf(err, "nexctl vpc Unmarshal error: %v\n", err)
+	require.Equal(1, len(vpcs))
 
-	// validate no org fields are empty
-	require.NotEmpty(organizations[0].ID)
-	require.NotEmpty(organizations[0].Name)
-	require.NotEmpty(organizations[0].IpCidr)
-	require.NotEmpty(organizations[0].IpCidrV6)
-	require.NotEmpty(organizations[0].Description)
+	// validate no vpc fields are empty
+	require.NotEmpty(vpcs[0].ID)
+	require.NotEmpty(vpcs[0].Description)
 
 	// validate nexctl nexd peers list does not throw any errors with no peers present
 	err = helper.peerListNexdDevices(ctx, node1)
@@ -893,13 +892,12 @@ func TestNexctl(t *testing.T) {
 	require.NotEmpty(devices[0].Endpoints)
 	require.NotEmpty(devices[0].Hostname)
 	require.NotEmpty(devices[0].PublicKey)
-	require.NotEmpty(devices[0].TunnelIP)
-	require.NotEmpty(devices[0].TunnelIpV6)
+	require.NotEmpty(devices[0].IPv4TunnelIPs[0].Address)
+	require.NotEmpty(devices[0].IPv4TunnelIPs[0].CIDR)
+	require.NotEmpty(devices[0].IPv6TunnelIPs[0].Address)
+	require.NotEmpty(devices[0].IPv6TunnelIPs[0].CIDR)
 	require.NotEmpty(devices[0].AllowedIPs)
-	require.NotEmpty(devices[0].OrganizationID)
-	require.NotEmpty(devices[0].OrganizationPrefix)
-	require.NotEmpty(devices[0].OrganizationPrefixV6)
-	require.NotEmpty(devices[0].EndpointLocalAddressIPv4)
+	require.NotEmpty(devices[0].VpcID)
 	// TODO: add assert.NotEmpty(devices[0].ReflexiveIPv4) with #739
 
 	// register the device IDs for node1 and node2 for deletion
@@ -981,17 +979,17 @@ func TestNexctl(t *testing.T) {
 	err = ping(ctx, node2, inetV6, newNode1IPv6)
 	require.NoError(err)
 
-	// validate list devices in a organization
-	devicesInOrganization, err := helper.runCommand(nexctl,
+	// validate list devices in a vpc
+	devicesInVPC, err := helper.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
 		"--output", "json-raw",
 		"device", "list",
-		"--organization-id", organizations[0].ID.String(),
+		"--vpc-id", vpcs[0].ID.String(),
 	)
 	require.NoErrorf(err, "nexctl device list error: %v\n", err)
 
-	err = json.Unmarshal([]byte(devicesInOrganization), &devices)
+	err = json.Unmarshal([]byte(devicesInVPC), &devices)
 	require.NoErrorf(err, "nexctl device Unmarshal error: %v\n", err)
 
 	// List users and register the current user's ID for deletion
@@ -1006,7 +1004,7 @@ func TestNexctl(t *testing.T) {
 	err = json.Unmarshal([]byte(userList), &users)
 	require.NoErrorf(err, "nexctl user Unmarshal error: %v\n", err)
 
-	var deleteUserID string
+	var deleteUserID uuid.UUID
 	for _, u := range users {
 		if u.UserName == username {
 			deleteUserID = u.ID
@@ -1016,7 +1014,7 @@ func TestNexctl(t *testing.T) {
 		"--username", username,
 		"--password", password,
 		"user", "delete",
-		"--user-id", deleteUserID,
+		"--user-id", deleteUserID.String(),
 	)
 	require.NoError(err)
 

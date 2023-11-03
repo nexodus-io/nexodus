@@ -11,19 +11,25 @@ import (
 )
 
 func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
-	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(public.ModelsAddDevice{
-		UserId:                  userID,
-		OrganizationId:          nx.org.Id,
-		PublicKey:               nx.wireguardPubKey,
-		TunnelIp:                nx.requestedIP,
-		ChildPrefix:             nx.childPrefix,
-		EndpointLocalAddressIp4: nx.endpointLocalAddress,
-		SymmetricNat:            nx.symmetricNat,
-		Hostname:                nx.hostname,
-		Relay:                   nx.relay,
-		Os:                      nx.os,
-		Endpoints:               endpoints,
-	}).Execute()
+	newDev := public.ModelsAddDevice{
+		VpcId:          nx.vpc.Id,
+		PublicKey:      nx.wireguardPubKey,
+		AdvertiseCidrs: nx.advertiseCidrs,
+		SymmetricNat:   nx.symmetricNat,
+		Hostname:       nx.hostname,
+		Relay:          nx.relay,
+		Os:             nx.os,
+		Endpoints:      endpoints,
+	}
+	if len(nx.requestedIP) > 0 {
+		newDev.Ipv4TunnelIps = []public.ModelsTunnelIP{
+			{
+				Address: nx.requestedIP,
+				Cidr:    nx.vpc.Ipv4Cidr,
+			},
+		}
+	}
+	d, _, err := nx.client.DevicesApi.CreateDevice(context.Background()).Device(newDev).Execute()
 	deviceOperationMsg := "Successfully registered device"
 	if err != nil {
 		var apiError *public.GenericOpenAPIError
@@ -32,12 +38,11 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 			case public.ModelsConflictsError:
 				var resp *http.Response
 				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					ChildPrefix:             nx.childPrefix,
-					EndpointLocalAddressIp4: nx.endpointLocalAddress,
-					SymmetricNat:            nx.symmetricNat,
-					Hostname:                nx.hostname,
-					Endpoints:               endpoints,
-					OrganizationId:          nx.org.Id,
+					VpcId:          nx.vpc.Id,
+					AdvertiseCidrs: nx.advertiseCidrs,
+					SymmetricNat:   nx.symmetricNat,
+					Hostname:       nx.hostname,
+					Endpoints:      endpoints,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {

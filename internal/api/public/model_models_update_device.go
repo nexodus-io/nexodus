@@ -12,11 +12,10 @@ package public
 
 // ModelsUpdateDevice struct for ModelsUpdateDevice
 type ModelsUpdateDevice struct {
-	ChildPrefix             []string         `json:"child_prefix,omitempty"`
-	EndpointLocalAddressIp4 string           `json:"endpoint_local_address_ip4,omitempty"`
-	Endpoints               []ModelsEndpoint `json:"endpoints,omitempty"`
-	Hostname                string           `json:"hostname,omitempty"`
-	OrganizationId          string           `json:"organization_id,omitempty"`
-	Revision                int32            `json:"revision,omitempty"`
-	SymmetricNat            bool             `json:"symmetric_nat,omitempty"`
+	AdvertiseCidrs []string         `json:"advertise_cidrs,omitempty"`
+	Endpoints      []ModelsEndpoint `json:"endpoints,omitempty"`
+	Hostname       string           `json:"hostname,omitempty"`
+	Revision       int32            `json:"revision,omitempty"`
+	SymmetricNat   bool             `json:"symmetric_nat,omitempty"`
+	VpcId          string           `json:"vpc_id,omitempty"`
 }

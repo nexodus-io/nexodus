@@ -37,7 +37,7 @@ func (ac *NexdCtl) ListExitNodes(_ string, result *string) error {
 	isExitNode := false
 
 	// Check if the local node is an exit node
-	for _, prefix := range ac.nx.childPrefix {
+	for _, prefix := range ac.nx.advertiseCidrs {
 		if prefix == "0.0.0.0/0" {
 			isExitNode = true
 			break

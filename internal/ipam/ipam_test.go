@@ -55,7 +55,7 @@ func (suite *IpamTestSuite) TestAllocateTunnelIP() {
 		suite.T().Fatal(err)
 	}
 
-	if err := suite.ipam.AssignPrefix(ctx, namespace, prefix); err != nil {
+	if err := suite.ipam.AssignCIDR(ctx, namespace, prefix); err != nil {
 		suite.T().Fatal(err)
 	}
 

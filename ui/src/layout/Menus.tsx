@@ -5,7 +5,8 @@ import DeviceIcon from "@mui/icons-material/Devices";
 import OrganizationIcon from "@mui/icons-material/VpnLock";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import { MenuProps } from "react-admin";
-import RegistrationTokenIcon from "@mui/icons-material/VpnLockRounded";
+import RegKeyIcon from "@mui/icons-material/Key";
+import VPCIcon from "@mui/icons-material/Cloud";
 
 export const CustomMenu = (props: MenuProps) => {
   return (
@@ -17,6 +18,7 @@ export const CustomMenu = (props: MenuProps) => {
         primaryText="Organizations"
         leftIcon={<OrganizationIcon />}
       />
+      <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
       <MenuItemLink
         to="/devices"
         primaryText="Devices"
@@ -33,9 +35,9 @@ export const CustomMenu = (props: MenuProps) => {
         leftIcon={<SecurityIcon />}
       />
       <MenuItemLink
-        to="/registration-tokens"
-        primaryText="Registration Tokens"
-        leftIcon={<RegistrationTokenIcon />}
+        to="/reg-keys"
+        primaryText="Registration Keys"
+        leftIcon={<RegKeyIcon />}
       />
     </Menu>
   );

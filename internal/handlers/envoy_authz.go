@@ -39,7 +39,7 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 	authorizationHeader := checkReq.Attributes.Request.Http.Headers["authorization"]
 	if authorizationHeader != "" {
 
-		// Does it look like a registration token?
+		// Does it look like a reg key?
 		if strings.HasPrefix(authorizationHeader, "Bearer RT:") {
 			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
 			return checkRegistrationToken(ctx, api, token)
@@ -96,14 +96,25 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 }
 
 func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.CheckResponse, error) {
-	var regToken models.RegistrationToken
+	var regToken models.RegKey
 	db := api.db.WithContext(ctx)
 	result := db.First(&regToken, "bearer_token = ?", token)
 	if result.Error != nil {
 
 		message := "internal server error"
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			message = "invalid registration token"
+			message = "invalid reg key"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
+	var user models.User
+	result = db.First(&user, "id = ?", regToken.OwnerID)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid reg key user"
 		}
 		return denyCheckResponse(401, models.NewBaseError(message))
 	}
@@ -113,10 +124,10 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      regToken.ID.String(),
-			Subject: regToken.UserID,
+			Subject: user.IdpID,
 		},
-		OrganizationID: regToken.OrganizationID,
-		Scope:          "reg-token",
+		VpcID: regToken.VpcID,
+		Scope: "reg-token",
 	}
 	if regToken.DeviceId != nil {
 		claims.DeviceID = *regToken.DeviceId
@@ -160,15 +171,26 @@ func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckR
 		return denyCheckResponse(401, models.NewBaseError(message))
 	}
 
+	var user models.User
+	result = db.First(&user, "id = ?", device.OwnerID)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid reg key user"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
 	// replace it with a JWT token...
 	claims := models.NexodusClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  api.URL,
 			ID:      device.ID.String(),
-			Subject: device.UserID,
+			Subject: user.IdpID,
 		},
-		OrganizationID: device.OrganizationID,
-		Scope:          "device-token",
+		VpcID: device.VpcID,
+		Scope: "device-token",
 	}
 
 	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)

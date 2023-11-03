@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
@@ -44,7 +45,7 @@ type API struct {
 	dialect        database.Dialect
 	store          storage.Store
 	signalBus      signalbus.SignalBus
-	redis          *redis.Client
+	Redis          *redis.Client
 	sessionManager *session.Manager
 	fetchManager   fetchmgr.FetchManager
 	onlineTracker  *DeviceTracker
@@ -93,7 +94,7 @@ func NewAPI(
 		dialect:        dialect,
 		store:          store,
 		signalBus:      signalBus,
-		redis:          redis,
+		Redis:          redis,
 		sessionManager: sessionManager,
 		fetchManager:   fetchManager,
 		onlineTracker:  onlineTracker,
@@ -115,7 +116,7 @@ func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *g
 
 	items, err := getList(db)
 	if err != nil {
-		api.sendInternalServerError(c, err)
+		api.SendInternalServerError(c, err)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *g
 	c.JSON(http.StatusOK, items)
 }
 
-func (api *API) sendInternalServerError(c *gin.Context, err error) {
+func (api *API) SendInternalServerError(c *gin.Context, err error) {
 	SendInternalServerError(c, api.logger, err)
 }
 
@@ -143,4 +144,12 @@ func SendInternalServerError(c *gin.Context, logger *zap.SugaredLogger, err erro
 		result.TraceId = sc.TraceID().String()
 	}
 	c.JSON(http.StatusInternalServerError, result)
+}
+func (api *API) GetCurrentUserID(c *gin.Context) uuid.UUID {
+	userId, found := c.Get(gin.AuthUserKey)
+	if !found {
+		api.SendInternalServerError(c, fmt.Errorf("no current user found"))
+		panic("no current user found")
+	}
+	return userId.(uuid.UUID)
 }

@@ -155,8 +155,8 @@ func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wg
 	localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
 	peerPort := nx.extractPeerPort(localIP)
 	relayAllowedIP := []string{
-		nx.org.Cidr,
-		nx.org.CidrV6,
+		nx.vpc.Ipv4Cidr,
+		nx.vpc.Ipv6Cidr,
 	}
 
 	tryNextMethod := nx.peeringFailed(*d, healthyRelay)
@@ -325,7 +325,7 @@ func (nx *Nexodus) extractPeerPort(localIP string) string {
 }
 
 func buildDirectLocalPeerForRelayNode(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, _, reflexiveIP4 string) wgPeerConfig {
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            localIP,
@@ -337,7 +337,7 @@ func buildDirectLocalPeerForRelayNode(nx *Nexodus, device public.ModelsDevice, _
 // buildPeerForRelayNode build a config for all peers if this node is the organization's relay node.
 // The peer for a relay node is currently left blank and assumed to be exposed to all peers, we still build its peer config for flexibility.
 func buildPeerForRelayNode(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, _, reflexiveIP4 string) wgPeerConfig {
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
@@ -347,7 +347,7 @@ func buildPeerForRelayNode(nx *Nexodus, device public.ModelsDevice, _ []string, 
 }
 
 func buildDirectLocalRelayPeer(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, localIP, _, reflexiveIP4 string) wgPeerConfig {
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            localIP,
@@ -359,7 +359,7 @@ func buildDirectLocalRelayPeer(nx *Nexodus, device public.ModelsDevice, relayAll
 // buildRelayPeer Build the relay peer entry that will be a CIDR block as opposed to a /32 host route. All nodes get this peer.
 // This is the only peer a symmetric NAT node will get unless it also has a direct peering
 func buildRelayPeer(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, localIP, _, reflexiveIP4 string) wgPeerConfig {
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
@@ -370,12 +370,11 @@ func buildRelayPeer(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []st
 
 // buildDirectLocalPeer If both nodes are local, peer them directly to one another via their local addresses (includes symmetric nat nodes)
 // The exception is if the peer is a relay node since that will get a peering with the org prefix supernet
-func buildDirectLocalPeer(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, peerPort, _ string) wgPeerConfig {
-	directLocalPeerEndpointSocket := net.JoinHostPort(device.EndpointLocalAddressIp4, peerPort)
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+func buildDirectLocalPeer(nx *Nexodus, device public.ModelsDevice, _ []string, localIP, _, _ string) wgPeerConfig {
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
-		Endpoint:            directLocalPeerEndpointSocket,
+		Endpoint:            localIP,
 		AllowedIPs:          device.AllowedIps,
 		PersistentKeepAlive: persistentKeepalive,
 	}
@@ -384,7 +383,7 @@ func buildDirectLocalPeer(nx *Nexodus, device public.ModelsDevice, _ []string, l
 // buildReflexive Peer the bulk of the peers will be added here except for local address peers or
 // symmetric NAT peers or if this device is itself a symmetric nat node, that require relaying.
 func buildReflexivePeer(nx *Nexodus, device public.ModelsDevice, _ []string, _, _, reflexiveIP4 string) wgPeerConfig {
-	device.AllowedIps = append(device.AllowedIps, device.ChildPrefix...)
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
@@ -412,16 +411,16 @@ func (nx *Nexodus) buildLocalConfig() {
 	}
 
 	// if the local node address changed replace it on wg0
-	if nx.TunnelIP != d.device.TunnelIp {
-		nx.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.TunnelIp, d.device.TunnelIpV6)
+	if nx.TunnelIP != d.device.Ipv4TunnelIps[0].Address {
+		nx.logger.Infof("New local Wireguard interface addresses assigned IPv4 [ %s ] IPv6 [ %s ]", d.device.Ipv4TunnelIps[0].Address, d.device.Ipv6TunnelIps[0].Address)
 		if runtime.GOOS == Linux.String() && linkExists(nx.tunnelIface) {
 			if err := delLink(nx.tunnelIface); err != nil {
 				nx.logger.Infof("Failed to delete %s: %v", nx.tunnelIface, err)
 			}
 		}
 	}
-	nx.TunnelIP = d.device.TunnelIp
-	nx.TunnelIpV6 = d.device.TunnelIpV6
+	nx.TunnelIP = d.device.Ipv4TunnelIps[0].Address
+	nx.TunnelIpV6 = d.device.Ipv6TunnelIps[0].Address
 	localInterface = wgLocalConfig{
 		nx.wireguardPvtKey,
 		nx.listenPort,

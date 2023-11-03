@@ -14,8 +14,65 @@ import (
 
 const LocalTimeFormat = "2006-01-02 15:04:05 MST"
 
-func listOrgDevices(cCtx *cli.Context, c *public.APIClient, organizationID uuid.UUID) error {
-	devices, _, err := c.DevicesApi.ListDevicesInOrganization(context.Background(), organizationID.String()).Execute()
+func createDeviceCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "device",
+		Usage: "Commands relating to devices",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all devices",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "vpc-id",
+						Value:    "",
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:    "full",
+						Aliases: []string{"f"},
+						Usage:   "display the full set of device details",
+						Value:   false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					orgID := cCtx.String("vpc-id")
+					if orgID != "" {
+						id, err := uuid.Parse(orgID)
+						if err != nil {
+							log.Fatal(err)
+						}
+						return listVpcDevices(cCtx, mustCreateAPIClient(cCtx), id)
+					}
+					return listAllDevices(cCtx, mustCreateAPIClient(cCtx))
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete a device",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "device-id",
+						Required: true,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					encodeOut := cCtx.String("output")
+					devID := cCtx.String("device-id")
+					return deleteDevice(mustCreateAPIClient(cCtx), encodeOut, devID)
+				},
+			},
+			{
+				Name:        "metadata",
+				Usage:       "Commands relating to device metadata",
+				Subcommands: deviceMetadataSubcommands,
+			},
+		},
+	}
+}
+
+func listVpcDevices(cCtx *cli.Context, c *public.APIClient, vpcId uuid.UUID) error {
+	devices, _, err := c.VPCApi.ListDevicesInVPC(context.Background(), vpcId.String()).Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,12 +93,12 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 		fields = append(fields, TableField{Header: "TUNNEL IPS",
 			Formatter: func(item interface{}) string {
 				dev := item.(public.ModelsDevice)
-				return fmt.Sprintf("%s, %s", dev.TunnelIp, dev.TunnelIpV6)
+				return fmt.Sprintf("%s, %s", dev.Ipv4TunnelIps[0].Address, dev.Ipv6TunnelIps[0].Address)
 			},
 		})
 	}
 
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "RELAY", Field: "Relay"})
 	if full {
 		fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})

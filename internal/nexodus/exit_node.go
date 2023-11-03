@@ -2,6 +2,7 @@ package nexodus
 
 import (
 	"fmt"
+
 	"github.com/nexodus-io/nexodus/internal/util"
 )
 
@@ -26,17 +27,30 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 	nx.deviceCacheLock.RLock()
 	defer nx.deviceCacheLock.RUnlock()
 
+	exitNodeFound := false
 	for _, deviceEntry := range nx.deviceCache {
 		for _, allowedIp := range deviceEntry.device.AllowedIps {
 			if util.IsDefaultIPv4Route(allowedIp) {
 				// assign the device advertising a default route as the exit node server/origin node
+				localEndpoint := ""
+				for _, endpoint := range deviceEntry.device.Endpoints {
+					if endpoint.Source == "local" {
+						localEndpoint = endpoint.Address
+						break
+					}
+				}
 				nx.exitNode.exitNodeOrigins[0] = wgPeerConfig{
 					PublicKey:           deviceEntry.device.PublicKey,
-					Endpoint:            deviceEntry.device.EndpointLocalAddressIp4,
+					Endpoint:            localEndpoint,
 					AllowedIPs:          deviceEntry.device.AllowedIps,
 					PersistentKeepAlive: persistentKeepalive,
 				}
+				exitNodeFound = true
+				break
 			}
+		}
+		if exitNodeFound {
+			break
 		}
 	}
 

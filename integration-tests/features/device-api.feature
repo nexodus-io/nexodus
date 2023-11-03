@@ -19,9 +19,10 @@ Feature: Device API
       }
       """
 
-    When I GET path "/api/organizations"
+    When I GET path "/api/vpcs"
     Then the response code should be 200
-    Given I store the ${response[0].id} as ${organization_id}
+    Given I store the ${response[0].id} as ${vpc_id}
+    And ${vpc_id} is not empty
 
     When I GET path "/api/organizations"
     Then the response code should be 200
@@ -40,24 +41,18 @@ Feature: Device API
     When I POST path "/api/devices" with json body:
       """
       {
-        "user_id": "${user_id}",
-        "organization_id": "${organization_id}",
+        "owner_id": "${user_id}",
+        "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
-        "tunnel_ip": "",
-        "tunnel_ip_v6": "",
-        "child_prefix": null,
+        "advertise_cidrs": null,
         "relay": false,
-        "discovery": false,
-        "endpoint_local_address_ip4": "172.17.0.3",
         "symmetric_nat": true,
         "hostname": "bbac3081d5e8",
         "os": "linux"
@@ -74,31 +69,35 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
-        "discovery": false,
+        "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "bbac3081d5e8",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "vpc_id": "${vpc_id}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": true,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "ipv4_tunnel_ips": [
+          {
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
+          }
+        ],
+        "ipv6_tunnel_ips": [
+          {
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
+          }
+        ],
+        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """
@@ -120,31 +119,34 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
-        "discovery": false,
+        "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "vpc_id": "${vpc_id}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "ipv4_tunnel_ips": [
+          {
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
+          }
+        ],
+        "ipv6_tunnel_ips": [
+          {
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
+          }
+        ],        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """
@@ -162,32 +164,36 @@ Feature: Device API
           ],
           "online": false,
           "online_at": null,
-          "child_prefix": null,
-          "discovery": false,
+          "advertise_cidrs": null,
           "endpoints": [{
             "source": "local",
-            "address": "172.17.0.3:58664",
-            "distance": 0
+            "address": "172.17.0.3:58664"
           }, {
             "source": "stun:stun1.l.google.com:19302",
-            "address": "172.17.0.3:58664",
-            "distance": 0
+            "address": "172.17.0.3:58664"
           }],
-          "endpoint_local_address_ip4": "172.17.0.3",
           "hostname": "kittenhome",
           "id": "${device_id}",
-          "organization_id": "${organization_id}",
-          "organization_prefix":"${response[0].organization_prefix}",
-          "organization_prefix_v6":"${response[0].organization_prefix_v6}",
+          "vpc_id": "${vpc_id}",
           "os": "linux",
           "public_key": "${public_key}",
           "relay": false,
           "revision": ${response[0].revision},
           "symmetric_nat": false,
           "security_group_id": "${response[0].security_group_id}",
-          "tunnel_ip": "${response[0].tunnel_ip}",
-          "tunnel_ip_v6": "${response[0].tunnel_ip_v6}",
-          "user_id": "${user_id}"
+          "ipv4_tunnel_ips": [
+            {
+              "address": "${response[0].ipv4_tunnel_ips[0].address}",
+              "cidr": "${response[0].ipv4_tunnel_ips[0].cidr}"
+            }
+          ],
+          "ipv6_tunnel_ips": [
+            {
+              "address": "${response[0].ipv6_tunnel_ips[0].address}",
+              "cidr": "${response[0].ipv6_tunnel_ips[0].cidr}"
+            }
+          ],
+          "owner_id": "${user_id}"
         }
       ]
       """
@@ -241,31 +247,35 @@ Feature: Device API
         ],
         "online": false,
         "online_at": null,
-        "child_prefix": null,
-        "discovery": false,
+        "advertise_cidrs": null,
         "endpoints": [{
           "source": "local",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }, {
           "source": "stun:stun1.l.google.com:19302",
-          "address": "172.17.0.3:58664",
-          "distance": 0
+          "address": "172.17.0.3:58664"
         }],
-        "endpoint_local_address_ip4": "172.17.0.3",
         "hostname": "kittenhome",
         "id": "${device_id}",
-        "organization_id": "${organization_id}",
-        "organization_prefix":"${response.organization_prefix}",
-        "organization_prefix_v6":"${response.organization_prefix_v6}",
+        "vpc_id": "${vpc_id}",
         "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
         "symmetric_nat": false,
-        "tunnel_ip": "${response.tunnel_ip}",
-        "tunnel_ip_v6": "${response.tunnel_ip_v6}",
-        "user_id": "${user_id}",
+        "ipv4_tunnel_ips": [
+          {
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
+          }
+        ],
+        "ipv6_tunnel_ips": [
+          {
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
+          }
+        ],
+        "owner_id": "${user_id}",
         "security_group_id": "${response.security_group_id}"
       }
       """

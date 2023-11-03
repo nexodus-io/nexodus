@@ -126,7 +126,7 @@ Please open the following URL in your browser to sign in:
 https://auth.try.nexodus.io/realms/nexodus/device?user_code=LYNW-HKGO
 ```
 
-- You will now have an IP address on an interface named `wg0` and be peered with other Nexodus devices in the organization, which can be viewed by running `nexctl nexd peers list` in another window.
+- You will now have an IP address on an interface named `wg0` and be peered with other Nexodus devices in the VPC, which can be viewed by running `nexctl nexd peers list` in another window.
 
 ### Docker or Podman
 

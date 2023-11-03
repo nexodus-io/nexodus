@@ -145,7 +145,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		logger.Sugar(),
 		logLevel,
 		apiURL,
-		cCtx.String("registration-token"),
+		cCtx.String("reg-key"),
 		cCtx.String("username"),
 		cCtx.String("password"),
 		cCtx.Int("listen-port"),
@@ -164,7 +164,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		stateStore,
 		stateDir,
 		ctx,
-		cCtx.String("organization-id"),
+		cCtx.String("vpc-id"),
 	)
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -325,7 +325,7 @@ func main() {
 					},
 					&cli.BoolFlag{
 						Name:     "network-router",
-						Usage:    "Make the node a network router node that will forward traffic specified by --child-prefix through the physical interface that contains the default gateway",
+						Usage:    "Make the node a network router node that will forward traffic specified by --advertise-cidr through the physical interface that contains the default gateway",
 						Value:    false,
 						EnvVars:  []string{"NEXD_NET_ROUTER_NODE"},
 						Required: false,
@@ -448,8 +448,8 @@ func main() {
 				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
-				Name:     "organization-id",
-				Usage:    "Organization ID to use when registering with the nexodus service",
+				Name:     "vpc-id",
+				Usage:    "VPC ID to use when registering with the nexodus service",
 				EnvVars:  []string{"NEXD_ORG_ID"},
 				Required: false,
 				Category: nexServiceOptions,
@@ -470,9 +470,9 @@ func main() {
 				Required: false,
 			},
 			&cli.StringFlag{
-				Name:     "registration-token",
-				Usage:    "A registration token used to connect the device your nexodus organizatino",
-				EnvVars:  []string{"NEXD_REGISTRATION_TOKEN"},
+				Name:     "reg-key",
+				Usage:    "A registration key used to connect the device to the vpc",
+				EnvVars:  []string{"NEXD_REG_KEY"},
 				Required: false,
 				Hidden:   true,
 			},

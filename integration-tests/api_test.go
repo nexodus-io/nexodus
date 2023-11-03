@@ -5,11 +5,12 @@ package integration_tests
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"testing"
-	"time"
 )
 
 func TestApiClientConflictError(t *testing.T) {
@@ -28,8 +29,6 @@ func TestApiClientConflictError(t *testing.T) {
 		password,
 	))
 	require.NoError(err)
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	require.NoError(err)
 	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
 	require.NoError(err)
 
@@ -38,42 +37,34 @@ func TestApiClientConflictError(t *testing.T) {
 	publicKey := privateKey.PublicKey().String()
 
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
-		PublicKey:               publicKey,
-		UserId:                  user.Id,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()
 	require.NoError(err)
 
 	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
-		PublicKey:               publicKey,
-		UserId:                  user.Id,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()
@@ -141,8 +132,6 @@ func TestDevicesInformer(t *testing.T) {
 		password,
 	))
 	require.NoError(err)
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	require.NoError(err)
 	orgs, _, err := c.OrganizationsApi.ListOrganizations(ctx).Execute()
 	require.NoError(err)
 
@@ -150,9 +139,9 @@ func TestDevicesInformer(t *testing.T) {
 	require.NoError(err)
 	publicKey := privateKey.PublicKey().String()
 
-	ctx = c.OrganizationsApi.WatchEvents(ctx, orgs[0].Id).NewSharedInformerContext()
-	sgInformer := c.SecurityGroupApi.ListSecurityGroups(ctx, orgs[0].Id).Informer()
-	devicesInformer := c.DevicesApi.ListDevicesInOrganization(ctx, orgs[0].Id).Informer()
+	ctx = c.VPCApi.WatchEvents(ctx, orgs[0].Id).NewSharedInformerContext()
+	sgInformer := c.VPCApi.ListSecurityGroupsInVPC(ctx, orgs[0].Id).Informer()
+	devicesInformer := c.VPCApi.ListDevicesInVPC(ctx, orgs[0].Id).Informer()
 	devicesChanged := func() bool {
 		select {
 		case <-devicesInformer.Changed():
@@ -174,21 +163,17 @@ func TestDevicesInformer(t *testing.T) {
 	require.True(devicesChanged())
 
 	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		EndpointLocalAddressIp4: "172.17.0.3",
-		Hostname:                "bbac3081d5e8",
-		OrganizationId:          orgs[0].Id,
-		PublicKey:               publicKey,
-		UserId:                  user.Id,
+		Hostname:  "bbac3081d5e8",
+		VpcId:     orgs[0].Id,
+		PublicKey: publicKey,
 		Endpoints: []public.ModelsEndpoint{
 			{
-				Source:   "local",
-				Address:  "172.17.0.3:58664",
-				Distance: 0,
+				Source:  "local",
+				Address: "172.17.0.3:58664",
 			},
 			{
-				Source:   "stun:",
-				Address:  "47.196.141.165",
-				Distance: 12,
+				Source:  "stun:",
+				Address: "47.196.141.165",
 			},
 		},
 	}).Execute()

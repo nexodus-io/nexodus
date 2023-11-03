@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/models"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +14,8 @@ import (
 	"testing"
 	"time"
 	"unicode"
+
+	"github.com/nexodus-io/nexodus/internal/models"
 
 	"github.com/ahmetb/dlog"
 	"github.com/cenkalti/backoff/v4"
@@ -458,10 +458,10 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 
 // retryNftCmdOnAllNodes is a wrapper for retryNftCmdUntilNotEqual that takes the nftables from before a
 // security group is updated and diffs them for all the nodes passed until it detects a change or times out.
-func (helper *Helper) retryNftCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore string) (bool, error) {
+func (helper *Helper) retryNftCmdOnAllNodes(ctx context.Context, nodes []testcontainers.Container, command []string, cmdOutputBefore []string) (bool, error) {
 	helper.Logf("waiting for the security group change to converge")
-	for _, node := range nodes {
-		success, err := helper.retryNftCmdUntilNotEqual(ctx, node, command, cmdOutputBefore)
+	for i, node := range nodes {
+		success, err := helper.retryNftCmdUntilNotEqual(ctx, node, command, cmdOutputBefore[i])
 		if err != nil {
 			return false, err
 		}
@@ -545,7 +545,7 @@ func (helper *Helper) connectToPort(ctx context.Context, ctr testcontainers.Cont
 }
 
 // securityGroupRulesUpdate update security group rule
-func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string, orgID string) error {
+func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string) error {
 	// Marshal rules to JSON
 	inboundJSON, err := json.Marshal(inboundRules)
 	if err != nil {
@@ -567,7 +567,6 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 		"--security-group-id", secGroupID,
-		"--organization-id", orgID,
 	}
 
 	out, err := helper.runCommand(command...)
@@ -580,26 +579,25 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 	return nil
 }
 
-func (helper *Helper) createOrganization(username string, password string, args ...string) (string, string) {
+func (helper *Helper) createVPC(username string, password string, args ...string) string {
 	orgOut, err := helper.runCommand(append([]string{
 		nexctl,
 		"--username", username, "--password", password,
 		"--output", "json",
-		"organization", "create",
-		"--name", uuid.New().String(),
+		"vpc", "create",
 		"--description", "Test: " + helper.T.Name(),
 	}, args...)...)
 	helper.require.NoError(err)
-	var org models.OrganizationJSON
+	var org models.VPC
 	err = json.Unmarshal([]byte(orgOut), &org)
 	helper.require.NoError(err)
-	return org.ID.String(), org.Name
+	return org.ID.String()
 }
 
-func (helper *Helper) deleteOrganization(username string, password string, orgID string) error {
+func (helper *Helper) deleteVPC(username string, password string, orgID string) error {
 	_, err := helper.runCommand(nexctl,
 		"--username", username, "--password", password,
-		"organization", "delete", "--organization-id", orgID)
+		"vpc", "delete", "--vpc-id", orgID)
 	return err
 }
 func (helper *Helper) peerListNexdDevices(ctx context.Context, ctr testcontainers.Container) error {

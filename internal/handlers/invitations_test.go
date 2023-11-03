@@ -20,62 +20,62 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 
 	tt := []struct {
 		name   string
-		userID string
+		userID uuid.UUID
 		orgID  uuid.UUID
 		code   int
 		action string
-		login  string
+		login  uuid.UUID
 	}{
 		{
 			name:   "invite to existing org fails",
 			code:   http.StatusBadRequest,
-			userID: TestUserID,
-			orgID:  suite.testOrganizationID,
+			userID: suite.testUserID,
+			orgID:  suite.testUserID,
 			action: "invite",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "invite to new org succeeds",
 			code:   http.StatusCreated,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "re-invite to same org fails",
 			code:   http.StatusConflict,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
 			name:   "refuse invite succeeds",
 			code:   http.StatusNoContent,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "refuse",
 		},
 		{
-			login:  TestUser2ID,
+			login:  suite.testUser2ID,
 			name:   "re-invite to same org succeeds",
 			code:   http.StatusCreated,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "invite",
 		},
 		{
 			name:   "accept org succeeds",
 			code:   http.StatusNoContent,
-			userID: TestUserID,
-			orgID:  suite.testUser2OrgID,
+			userID: suite.testUserID,
+			orgID:  suite.testUser2ID,
 			action: "accept",
 		},
 		{
 			name:   "invite to existing org fails",
 			code:   http.StatusBadRequest,
-			userID: TestUserID,
-			orgID:  suite.testOrganizationID,
+			userID: suite.testUserID,
+			orgID:  suite.testUserID,
 			action: "invite",
 		},
 	}
@@ -86,7 +86,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 		switch c.action {
 		case "invite":
 			request := models.AddInvitation{
-				UserID:         c.userID,
+				UserID:         &c.userID,
 				OrganizationID: c.orgID,
 			}
 			reqBody, err := json.Marshal(request)
@@ -96,7 +96,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 				"/", "/",
 				func(ctx *gin.Context) {
 					ctx.Set("_apex.testCreateOrganization", "true")
-					if c.login != "" {
+					if c.login != uuid.Nil {
 						ctx.Set(gin.AuthUserKey, c.login)
 					}
 					suite.api.CreateInvitation(ctx)
@@ -118,7 +118,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			require.NotEqual(uuid.Nil, inviteID)
 			_, res, err = suite.ServeRequest(
 				http.MethodPost,
-				"/:invitation", fmt.Sprintf("/%s", inviteID.String()),
+				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
 					c.Set("_apex.testCreateOrganization", "true")
 					suite.api.AcceptInvitation(c)
@@ -133,7 +133,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			require.NotEqual(uuid.Nil, inviteID)
 			_, res, err = suite.ServeRequest(
 				http.MethodPost,
-				"/:invitation", fmt.Sprintf("/%s", inviteID.String()),
+				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
 					c.Set("_apex.testCreateOrganization", "true")
 					suite.api.DeleteInvitation(c)

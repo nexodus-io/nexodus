@@ -51,6 +51,20 @@ allow if {
 }
 
 allow if {
+	"vpcs" = input.path[1]
+	action_is_read
+	valid_keycloak_token
+	contains(token_payload.scope, "read:organizations")
+}
+
+allow if {
+	"vpcs" = input.path[1]
+	action_is_write
+	valid_keycloak_token
+	contains(token_payload.scope, "write:organizations")
+}
+
+allow if {
 	"invitations" = input.path[1]
 	action_is_read
 	valid_keycloak_token
@@ -93,14 +107,14 @@ allow if {
 }
 
 allow if {
-	"security_groups" = input.path[1]
+	"security-groups" = input.path[1]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:organizations")
 }
 
 allow if {
-	"security_groups" = input.path[1]
+	"security-groups" = input.path[1]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:organizations")
@@ -112,14 +126,14 @@ allow if {
 }
 
 allow if {
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:organizations")
 }
 
 allow if {
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:organizations")
@@ -130,7 +144,7 @@ allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	action_is_read
-	"registration-tokens" = input.path[1]
+	"reg-keys" = input.path[1]
 	"me" = input.path[2]
 }
 
@@ -152,46 +166,31 @@ allow if {
 	"devices" = input.path[1]
 }
 
-# reg token can get a devices/orgs
+# reg token can get a devices/orgs/vpcs
 allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	input.method == "GET"
-	"devices" = input.path[1]
+	input.path[1] in ["organizations", "vpcs", "devices"]
 }
 
-allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	input.method == "GET"
-	"organizations" = input.path[1]
-}
-
-# device tokens
+# device tokens can read/update a device
 allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "device-token")
-	input.method == "GET"
-	"devices" = input.path[1]
-}
-
-# reg token can update a device
-allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "device-token")
-	input.method == "PATCH"
+	input.method in ["GET", "PATCH"]
 	"devices" = input.path[1]
 }
 
 allow if {
-	"organizations" = input.path[1]
+	input.path[1] in ["organizations", "vpcs"]
 	action_is_read
 	valid_nexodus_token
 	contains(token_payload.scope, "device-token")
 }
 
 allow if {
-	"organizations" = input.path[1]
+	input.path[1] in ["organizations", "vpcs"]
 	"events" = input.path[3]
 	input.method == "POST"
 	valid_nexodus_token

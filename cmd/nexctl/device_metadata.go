@@ -9,16 +9,16 @@ import (
 )
 
 var deviceMetadataSubcommands []*cli.Command
-var organizationMetadataSubcommands []*cli.Command
+var vpcMetadataSubcommands []*cli.Command
 
 func init() {
-	organizationMetadataSubcommands = []*cli.Command{
+	vpcMetadataSubcommands = []*cli.Command{
 		{
 			Name:  "get",
 			Usage: "Get device metadata",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
-					Name:     "organization-id",
+					Name:     "vpc-id",
 					Required: true,
 				},
 				&cli.BoolFlag{
@@ -29,11 +29,11 @@ func init() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				orgId, err := uuid.Parse(c.String("organization-id"))
+				orgId, err := uuid.Parse(c.String("vpc-id"))
 				if err != nil {
-					return fmt.Errorf("invalid organization-id: %w", err)
+					return fmt.Errorf("invalid vpc-id: %w", err)
 				}
-				return getOrgMetadata(c, orgId)
+				return getVpcMetadata(c, orgId)
 			},
 		},
 	}
@@ -211,12 +211,12 @@ func getDeviceMetadataKey(c *cli.Context, deviceID uuid.UUID, key string) error 
 	return nil
 }
 
-func getOrgMetadata(c *cli.Context, orgID uuid.UUID) error {
+func getVpcMetadata(c *cli.Context, vpcID uuid.UUID) error {
 	client := mustCreateAPIClient(c)
 
 	prefixes := []string{}
-	metadata, _, err := client.DevicesApi.
-		ListOrganizationMetadata(context.Background(), orgID.String(), prefixes).
+	metadata, _, err := client.VPCApi.
+		ListMetadataInVPC(context.Background(), vpcID.String(), prefixes).
 		Execute()
 	if err != nil {
 		return err

@@ -2,17 +2,12 @@ basePath: /
 definitions:
   models.AddDevice:
     properties:
-      child_prefix:
+      advertise_cidrs:
         example:
         - 172.16.42.0/24
         items:
           type: string
         type: array
-      discovery:
-        type: boolean
-      endpoint_local_address_ip4:
-        example: 1.2.3.4
-        type: string
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
@@ -20,9 +15,10 @@ definitions:
       hostname:
         example: myhost
         type: string
-      organization_id:
-        example: 694aa002-5d19-495e-980b-3d8fd508ea10
-        type: string
+      ipv4_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       os:
         type: string
       public_key:
@@ -33,13 +29,7 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ip:
-        example: 1.2.3.4
-        type: string
-      tunnel_ip_v6:
-        example: 200::1
-        type: string
-      user_id:
+      vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
     type: object
@@ -56,38 +46,28 @@ definitions:
     type: object
   models.AddOrganization:
     properties:
-      cidr:
-        example: 172.16.42.0/24
-        type: string
-      cidr_v6:
-        example: 0200::/8
-        type: string
       description:
         example: The Red Zone
         type: string
-      hub_zone:
-        type: boolean
       name:
         example: zone-red
         type: string
-      private_cidr:
-        type: boolean
       security_group_id:
         type: string
     type: object
-  models.AddRegistrationToken:
+  models.AddRegKey:
     properties:
       description:
         type: string
       expiration:
-        description: Expiration is optional, if set the registration token is only
-          valid until the Expiration time.
-        type: string
-      organization_id:
+        description: Expiration is optional, if set the registration key is only valid
+          until the Expiration time.
         type: string
       single_use:
-        description: SingleUse only allows the registration token to be used once.
+        description: SingleUse only allows the registration key to be used once.
         type: boolean
+      vpc_id:
+        type: string
     type: object
   models.AddSecurityGroup:
     properties:
@@ -101,12 +81,28 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
-      org_id:
+      organization_id:
         type: string
       outbound_rules:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
+    type: object
+  models.AddVPC:
+    properties:
+      description:
+        example: The Red Zone
+        type: string
+      ipv4_cidr:
+        example: 172.16.42.0/24
+        type: string
+      ipv6_cidr:
+        example: 0200::/8
+        type: string
+      organization_id:
+        type: string
+      private_cidr:
+        type: boolean
     type: object
   models.BaseError:
     properties:
@@ -125,20 +121,16 @@ definitions:
     type: object
   models.Device:
     properties:
+      advertise_cidrs:
+        items:
+          type: string
+        type: array
       allowed_ips:
         items:
           type: string
         type: array
       bearer_token:
         description: the token nexd should use to reconcile device state.
-        type: string
-      child_prefix:
-        items:
-          type: string
-        type: array
-      discovery:
-        type: boolean
-      endpoint_local_address_ip4:
         type: string
       endpoints:
         items:
@@ -149,17 +141,21 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      ipv4_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
+      ipv6_tunnel_ips:
+        items:
+          $ref: '#/definitions/models.TunnelIP'
+        type: array
       online:
         type: boolean
       online_at:
         type: string
-      organization_id:
-        type: string
-      organization_prefix:
-        type: string
-      organization_prefix_v6:
-        type: string
       os:
+        type: string
+      owner_id:
         type: string
       public_key:
         type: string
@@ -171,11 +167,8 @@ definitions:
         type: string
       symmetric_nat:
         type: boolean
-      tunnel_ip:
-        type: string
-      tunnel_ip_v6:
-        type: string
-      user_id:
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
     type: object
   models.DeviceMetadata:
@@ -206,10 +199,6 @@ definitions:
         description: IP address and port of the endpoint.
         example: 10.1.1.1:51820
         type: string
-      distance:
-        description: Distance in milliseconds from the node to the ip address
-        example: 12
-        type: integer
       source:
         description: How the endpoint was discovered
         type: string
@@ -262,27 +251,18 @@ definitions:
     type: object
   models.Organization:
     properties:
-      cidr:
-        type: string
-      cidr_v6:
-        type: string
       description:
+        example: Team A
         type: string
-      hub_zone:
-        type: boolean
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      invitations:
-        items:
-          $ref: '#/definitions/models.Invitation'
-        type: array
       name:
+        example: zone-red
         type: string
       owner_id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      private_cidr:
-        type: boolean
       security_group_id:
         type: string
     type: object
@@ -298,10 +278,10 @@ definitions:
       refresh_token:
         type: string
     type: object
-  models.RegistrationToken:
+  models.RegKey:
     properties:
       bearer_token:
-        description: BearerToken is the token the client should use to authenticate
+        description: BearerToken is the bearer token the client should use to authenticate
           the device registration request.
         type: string
       description:
@@ -313,9 +293,9 @@ definitions:
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      organization_id:
+      owner_id:
         type: string
-      user_id:
+      vpc_id:
         type: string
     type: object
   models.SecurityGroup:
@@ -331,7 +311,7 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
-      org_id:
+      organization_id:
         type: string
       outbound_rules:
         items:
@@ -353,17 +333,25 @@ definitions:
       to_port:
         type: integer
     type: object
+  models.TunnelIP:
+    properties:
+      address:
+        description: IP address and port of the endpoint.
+        example: 10.1.1.1:51820
+        type: string
+      cidr:
+        description: VPC CIDR this address was allocated from
+        example: 10.0.0.0/24
+        type: string
+    type: object
   models.UpdateDevice:
     properties:
-      child_prefix:
+      advertise_cidrs:
         example:
         - 172.16.42.0/24
         items:
           type: string
         type: array
-      endpoint_local_address_ip4:
-        example: 1.2.3.4
-        type: string
       endpoints:
         items:
           $ref: '#/definitions/models.Endpoint'
@@ -371,13 +359,13 @@ definitions:
       hostname:
         example: myhost
         type: string
-      organization_id:
-        example: 694aa002-5d19-495e-980b-3d8fd508ea10
-        type: string
       revision:
         type: integer
       symmetric_nat:
         type: boolean
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
     type: object
   models.UpdateSecurityGroup:
     properties:
@@ -396,18 +384,10 @@ definitions:
     type: object
   models.User:
     properties:
-      createdAt:
-        type: string
       id:
-        description: Since the ID comes from the IDP, we have no control over the
-          format...
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      security_group_id:
-        type: string
-      updatedAt:
-        type: string
-      userName:
+      username:
         type: string
     type: object
   models.UserInfoResponse:
@@ -424,6 +404,22 @@ definitions:
         type: string
       updated_at:
         type: integer
+    type: object
+  models.VPC:
+    properties:
+      description:
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      ipv4_cidr:
+        type: string
+      ipv6_cidr:
+        type: string
+      organization_id:
+        type: string
+      private_cidr:
+        type: boolean
     type: object
   models.ValidationError:
     properties:
@@ -932,43 +928,7 @@ paths:
       summary: Create an invitation
       tags:
       - Invitation
-  /api/invitations/:invitation/accept:
-    post:
-      consumes:
-      - application/json
-      description: Accept an invitation to an organization
-      operationId: AcceptInvitation
-      parameters:
-      - description: Invitation ID
-        in: path
-        name: invitation
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Accept an invitation
-      tags:
-      - Invitation
-  /api/invitations/{invitation}:
+  /api/invitations/{id}:
     delete:
       consumes:
       - application/json
@@ -977,7 +937,7 @@ paths:
       parameters:
       - description: Invitation ID
         in: path
-        name: invitation
+        name: id
         required: true
         type: string
       produces:
@@ -1004,6 +964,83 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Delete Invitation
+      tags:
+      - Invitation
+    get:
+      consumes:
+      - application/json
+      description: Gets an Invitation by Invitation ID
+      operationId: GetInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Invitation'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get Invitation
+      tags:
+      - Invitation
+  /api/invitations/{id}/accept:
+    post:
+      consumes:
+      - application/json
+      description: Accept an invitation to an organization
+      operationId: AcceptInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Accept an invitation
       tags:
       - Invitation
   /api/organizations:
@@ -1161,18 +1198,12 @@ paths:
       summary: Get Organizations
       tags:
       - Organizations
-  /api/organizations/{id}/devices:
+  /api/reg-keys:
     get:
       consumes:
       - application/json
-      description: Lists all users for this Organization
-      operationId: ListUsersInOrganization
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: string
+      description: Lists all reg keys
+      operationId: ListRegKeys
       produces:
       - application/json
       responses:
@@ -1180,12 +1211,8 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.User'
+              $ref: '#/definitions/models.RegKey'
             type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
         "401":
           description: Unauthorized
           schema:
@@ -1198,138 +1225,34 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: List Users
+      summary: List reg keys
       tags:
-      - Users
-  /api/organizations/{organization_id}/devices:
-    get:
-      consumes:
-      - application/json
-      description: Lists all devices for this Organization
-      operationId: ListDevicesInOrganization
-      parameters:
-      - description: greater than revision
-        in: query
-        name: gt_revision
-        type: integer
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Device'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: List Devices
-      tags:
-      - Devices
-  /api/organizations/{organization_id}/devices/{device_id}:
-    get:
-      consumes:
-      - application/json
-      description: Gets a device in a organization by ID
-      operationId: GetDeviceInOrganization
-      parameters:
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
-      - description: Device ID
-        in: path
-        name: device_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Device'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Get Device
-      tags:
-      - Devices
-  /api/organizations/{organization_id}/events:
+      - RegKey
     post:
       consumes:
       - application/json
-      description: Watches events occurring in the organization
-      operationId: WatchEvents
+      description: Create a RegKey for a vpc
+      operationId: CreateRegKey
       parameters:
-      - description: connect as the device with the given public key, device will
-          be considered to be online for the duration of this request
-        in: query
-        name: public_key
-        type: string
-      - description: List of events to watch
+      - description: Add RegKey
         in: body
-        name: Watches
+        name: RegKey
         required: true
         schema:
-          items:
-            $ref: '#/definitions/models.Watch'
-          type: array
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
+          $ref: '#/definitions/models.AddRegKey'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/models.WatchEvent'
+            $ref: '#/definitions/models.RegKey'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/models.BaseError'
         "429":
@@ -1340,20 +1263,54 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: Watch events occurring in the organization
+      summary: Create a RegKey
       tags:
-      - Organizations
-  /api/organizations/{organization_id}/security_group/{id}:
-    get:
-      description: Gets a security group in an organization by ID
-      operationId: GetSecurityGroup
+      - RegKey
+  /api/reg-keys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing RegKey
+      operationId: DeleteRegKey
       parameters:
-      - description: Organization ID
+      - description: RegKey ID
         in: path
-        name: organization_id
+        name: id
         required: true
         type: string
-      - description: Security Group ID
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.RegKey'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete RegKey
+      tags:
+      - RegKey
+    get:
+      consumes:
+      - application/json
+      description: Gets a RegKey by RegKey ID
+      operationId: GetRegKey
+      parameters:
+      - description: RegKey ID
         in: path
         name: id
         required: true
@@ -1364,7 +1321,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.SecurityGroup'
+            $ref: '#/definitions/models.RegKey'
         "400":
           description: Bad Request
           schema:
@@ -1385,10 +1342,10 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: Get SecurityGroup
+      summary: Get a RegKey
       tags:
-      - SecurityGroup
-  /api/organizations/{organization_id}/security_groups:
+      - RegKey
+  /api/security-groups:
     get:
       description: Lists all Security Groups
       operationId: ListSecurityGroups
@@ -1397,11 +1354,6 @@ paths:
         in: query
         name: gt_revision
         type: integer
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -1430,11 +1382,6 @@ paths:
       description: Adds a new Security Group
       operationId: CreateSecurityGroup
       parameters:
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
       - description: Add SecurityGroup
         in: body
         name: SecurityGroup
@@ -1475,19 +1422,14 @@ paths:
       summary: Add SecurityGroup
       tags:
       - SecurityGroup
-  /api/organizations/{organization_id}/security_groups/{security_group_id}:
+  /api/security-groups/{id}:
     delete:
       description: Deletes an existing SecurityGroup
       operationId: DeleteSecurityGroup
       parameters:
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
       - description: Security Group ID
         in: path
-        name: security_group_id
+        name: id
         required: true
         type: string
       produces:
@@ -1512,18 +1454,52 @@ paths:
       summary: Delete SecurityGroup
       tags:
       - SecurityGroup
+    get:
+      description: Gets a security group by ID
+      operationId: GetSecurityGroup
+      parameters:
+      - description: Security Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SecurityGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get SecurityGroup
+      tags:
+      - SecurityGroup
     patch:
       description: Updates a Security Group by ID
       operationId: UpdateSecurityGroup
       parameters:
-      - description: Organization ID
-        in: path
-        name: organization_id
-        required: true
-        type: string
       - description: Security Group ID
         in: path
-        name: security_group_id
+        name: id
         required: true
         type: string
       - description: Security Group Update
@@ -1566,193 +1542,6 @@ paths:
       summary: Update Security Group
       tags:
       - SecurityGroup
-  /api/organizations/{organization}/metadata:
-    get:
-      consumes:
-      - application/json
-      description: Lists metadata for a device
-      operationId: ListOrganizationMetadata
-      parameters:
-      - description: Organization ID
-        in: path
-        name: organization
-        required: true
-        type: string
-      - description: greater than revision
-        in: query
-        name: gt_revision
-        type: integer
-      - collectionFormat: csv
-        description: used to filter down to the specified key prefixes
-        in: path
-        items:
-          type: string
-        name: prefix
-        required: true
-        type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.DeviceMetadata'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: List Device Metadata
-      tags:
-      - Devices
-  /api/registration-tokens:
-    get:
-      consumes:
-      - application/json
-      description: Lists all registration tokens
-      operationId: ListRegistrationTokens
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.RegistrationToken'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: List RegistrationTokens
-      tags:
-      - RegistrationToken
-    post:
-      consumes:
-      - application/json
-      description: Create a RegistrationToken to an organization
-      operationId: CreateRegistrationToken
-      parameters:
-      - description: Add RegistrationToken
-        in: body
-        name: RegistrationToken
-        required: true
-        schema:
-          $ref: '#/definitions/models.AddRegistrationToken'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.RegistrationToken'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Create a RegistrationToken
-      tags:
-      - RegistrationToken
-  /api/registration-tokens/{token-id}:
-    delete:
-      consumes:
-      - application/json
-      description: Deletes an existing RegistrationToken
-      operationId: DeleteRegistrationToken
-      parameters:
-      - description: RegistrationToken ID
-        in: path
-        name: token-id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            $ref: '#/definitions/models.RegistrationToken'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Delete RegistrationToken
-      tags:
-      - RegistrationToken
-    get:
-      consumes:
-      - application/json
-      description: Gets a RegistrationToken by RegistrationToken ID
-      operationId: GetRegistrationToken
-      parameters:
-      - description: RegistrationToken ID
-        in: path
-        name: token-id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.RegistrationToken'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: Get a RegistrationToken
-      tags:
-      - RegistrationToken
   /api/users:
     get:
       consumes:
@@ -1893,6 +1682,334 @@ paths:
       summary: Remove a User from an Organization
       tags:
       - Users
+  /api/vpc/{id}/events:
+    post:
+      consumes:
+      - application/json
+      description: Watches events occurring in the vpc
+      operationId: WatchEvents
+      parameters:
+      - description: connect as the device with the given public key, device will
+          be considered to be online for the duration of this request
+        in: query
+        name: public_key
+        type: string
+      - description: List of events to watch
+        in: body
+        name: Watches
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.Watch'
+          type: array
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WatchEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Watch events occurring in the vpc
+      tags:
+      - VPC
+  /api/vpcs:
+    get:
+      consumes:
+      - application/json
+      description: Lists all VPCs
+      operationId: ListVPCs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.VPC'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List VPCs
+      tags:
+      - VPC
+    post:
+      consumes:
+      - application/json
+      description: Creates a named vpc with the given CIDR
+      operationId: CreateVPC
+      parameters:
+      - description: Add VPC
+        in: body
+        name: VPC
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddVPC'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.VPC'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ConflictsError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Create an VPC
+      tags:
+      - VPC
+  /api/vpcs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing vpc and associated IPAM prefix
+      operationId: DeleteVPC
+      parameters:
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.VPC'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete VPC
+      tags:
+      - VPC
+    get:
+      consumes:
+      - application/json
+      description: Gets a VPC by VPC ID
+      operationId: GetVPC
+      parameters:
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.VPC'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get VPCs
+      tags:
+      - VPC
+  /api/vpcs/{id}/devices:
+    get:
+      consumes:
+      - application/json
+      description: Lists all devices for this VPC
+      operationId: ListDevicesInVPC
+      parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Device'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Devices
+      tags:
+      - VPC
+  /api/vpcs/{id}/metadata:
+    get:
+      consumes:
+      - application/json
+      description: Lists metadata for a device
+      operationId: ListMetadataInVPC
+      parameters:
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - collectionFormat: csv
+        description: used to filter down to the specified key prefixes
+        in: path
+        items:
+          type: string
+        name: prefix
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.DeviceMetadata'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Device Metadata
+      tags:
+      - VPC
+  /api/vpcs/{id}/security-groups:
+    get:
+      description: Lists all Security Groups in a VPC
+      operationId: ListSecurityGroupsInVPC
+      parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SecurityGroup'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Security Groups in a VPC
+      tags:
+      - VPC
   /check/auth:
     get:
       consumes:
@@ -1930,7 +2047,7 @@ paths:
             $ref: '#/definitions/models.InternalServerError'
       summary: gets the jwks
       tags:
-      - RegistrationToken
+      - RegKey
   /device/login/start:
     post:
       consumes:

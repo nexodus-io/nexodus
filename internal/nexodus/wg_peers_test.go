@@ -15,21 +15,21 @@ func TestRebuildPeerConfig(t *testing.T) {
 	zLogger, _ := zap.NewDevelopment()
 	testLogger := zLogger.Sugar()
 	nxBase := &Nexodus{
-		org: &public.ModelsOrganization{
-			Cidr:   "100.64.0.0/10",
-			CidrV6: "200::/64",
+		vpc: &public.ModelsVPC{
+			Ipv4Cidr: "100.64.0.0/10",
+			Ipv6Cidr: "200::/64",
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
 	}
 	nxRelay := &Nexodus{
-		org:                      nxBase.org,
+		vpc:                      nxBase.vpc,
 		relay:                    true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
 	}
 	nxSymmetricNAT := &Nexodus{
-		org:                      nxBase.org,
+		vpc:                      nxBase.vpc,
 		symmetricNat:             true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,

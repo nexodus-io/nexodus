@@ -23,10 +23,9 @@ import (
 type SecurityGroupApiService service
 
 type ApiCreateSecurityGroupRequest struct {
-	ctx            context.Context
-	ApiService     *SecurityGroupApiService
-	organizationId string
-	securityGroup  *ModelsAddSecurityGroup
+	ctx           context.Context
+	ApiService    *SecurityGroupApiService
+	securityGroup *ModelsAddSecurityGroup
 }
 
 // Add SecurityGroup
@@ -45,14 +44,12 @@ CreateSecurityGroup Add SecurityGroup
 Adds a new Security Group
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
 	@return ApiCreateSecurityGroupRequest
 */
-func (a *SecurityGroupApiService) CreateSecurityGroup(ctx context.Context, organizationId string) ApiCreateSecurityGroupRequest {
+func (a *SecurityGroupApiService) CreateSecurityGroup(ctx context.Context) ApiCreateSecurityGroupRequest {
 	return ApiCreateSecurityGroupRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		organizationId: organizationId,
+		ApiService: a,
+		ctx:        ctx,
 	}
 }
 
@@ -72,8 +69,7 @@ func (a *SecurityGroupApiService) CreateSecurityGroupExecute(r ApiCreateSecurity
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/security_groups"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
+	localVarPath := localBasePath + "/api/security-groups"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -204,10 +200,9 @@ func (a *SecurityGroupApiService) CreateSecurityGroupExecute(r ApiCreateSecurity
 }
 
 type ApiDeleteSecurityGroupRequest struct {
-	ctx             context.Context
-	ApiService      *SecurityGroupApiService
-	organizationId  string
-	securityGroupId string
+	ctx        context.Context
+	ApiService *SecurityGroupApiService
+	id         string
 }
 
 func (r ApiDeleteSecurityGroupRequest) Execute() (*ModelsSecurityGroup, *http.Response, error) {
@@ -220,16 +215,14 @@ DeleteSecurityGroup Delete SecurityGroup
 Deletes an existing SecurityGroup
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
-	@param securityGroupId Security Group ID
+	@param id Security Group ID
 	@return ApiDeleteSecurityGroupRequest
 */
-func (a *SecurityGroupApiService) DeleteSecurityGroup(ctx context.Context, organizationId string, securityGroupId string) ApiDeleteSecurityGroupRequest {
+func (a *SecurityGroupApiService) DeleteSecurityGroup(ctx context.Context, id string) ApiDeleteSecurityGroupRequest {
 	return ApiDeleteSecurityGroupRequest{
-		ApiService:      a,
-		ctx:             ctx,
-		organizationId:  organizationId,
-		securityGroupId: securityGroupId,
+		ApiService: a,
+		ctx:        ctx,
+		id:         id,
 	}
 }
 
@@ -249,9 +242,8 @@ func (a *SecurityGroupApiService) DeleteSecurityGroupExecute(r ApiDeleteSecurity
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/security_groups/{security_group_id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"security_group_id"+"}", url.PathEscape(parameterValueToString(r.securityGroupId, "securityGroupId")), -1)
+	localVarPath := localBasePath + "/api/security-groups/{id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -344,10 +336,9 @@ func (a *SecurityGroupApiService) DeleteSecurityGroupExecute(r ApiDeleteSecurity
 }
 
 type ApiGetSecurityGroupRequest struct {
-	ctx            context.Context
-	ApiService     *SecurityGroupApiService
-	organizationId string
-	id             string
+	ctx        context.Context
+	ApiService *SecurityGroupApiService
+	id         string
 }
 
 func (r ApiGetSecurityGroupRequest) Execute() (*ModelsSecurityGroup, *http.Response, error) {
@@ -357,19 +348,17 @@ func (r ApiGetSecurityGroupRequest) Execute() (*ModelsSecurityGroup, *http.Respo
 /*
 GetSecurityGroup Get SecurityGroup
 
-Gets a security group in an organization by ID
+Gets a security group by ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
 	@param id Security Group ID
 	@return ApiGetSecurityGroupRequest
 */
-func (a *SecurityGroupApiService) GetSecurityGroup(ctx context.Context, organizationId string, id string) ApiGetSecurityGroupRequest {
+func (a *SecurityGroupApiService) GetSecurityGroup(ctx context.Context, id string) ApiGetSecurityGroupRequest {
 	return ApiGetSecurityGroupRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		organizationId: organizationId,
-		id:             id,
+		ApiService: a,
+		ctx:        ctx,
+		id:         id,
 	}
 }
 
@@ -389,8 +378,7 @@ func (a *SecurityGroupApiService) GetSecurityGroupExecute(r ApiGetSecurityGroupR
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/security_group/{id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
+	localVarPath := localBasePath + "/api/security-groups/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -506,10 +494,9 @@ func (a *SecurityGroupApiService) GetSecurityGroupExecute(r ApiGetSecurityGroupR
 }
 
 type ApiListSecurityGroupsRequest struct {
-	ctx            context.Context
-	ApiService     *SecurityGroupApiService
-	organizationId string
-	gtRevision     *int32
+	ctx        context.Context
+	ApiService *SecurityGroupApiService
+	gtRevision *int32
 }
 
 // greater than revision
@@ -528,14 +515,12 @@ ListSecurityGroups List Security Groups
 Lists all Security Groups
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
 	@return ApiListSecurityGroupsRequest
 */
-func (a *SecurityGroupApiService) ListSecurityGroups(ctx context.Context, organizationId string) ApiListSecurityGroupsRequest {
+func (a *SecurityGroupApiService) ListSecurityGroups(ctx context.Context) ApiListSecurityGroupsRequest {
 	return ApiListSecurityGroupsRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		organizationId: organizationId,
+		ApiService: a,
+		ctx:        ctx,
 	}
 }
 
@@ -555,8 +540,7 @@ func (a *SecurityGroupApiService) ListSecurityGroupsExecute(r ApiListSecurityGro
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/security_groups"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
+	localVarPath := localBasePath + "/api/security-groups"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -652,11 +636,10 @@ func (a *SecurityGroupApiService) ListSecurityGroupsExecute(r ApiListSecurityGro
 }
 
 type ApiUpdateSecurityGroupRequest struct {
-	ctx             context.Context
-	ApiService      *SecurityGroupApiService
-	organizationId  string
-	securityGroupId string
-	update          *ModelsUpdateSecurityGroup
+	ctx        context.Context
+	ApiService *SecurityGroupApiService
+	id         string
+	update     *ModelsUpdateSecurityGroup
 }
 
 // Security Group Update
@@ -675,16 +658,14 @@ UpdateSecurityGroup Update Security Group
 Updates a Security Group by ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param organizationId Organization ID
-	@param securityGroupId Security Group ID
+	@param id Security Group ID
 	@return ApiUpdateSecurityGroupRequest
 */
-func (a *SecurityGroupApiService) UpdateSecurityGroup(ctx context.Context, organizationId string, securityGroupId string) ApiUpdateSecurityGroupRequest {
+func (a *SecurityGroupApiService) UpdateSecurityGroup(ctx context.Context, id string) ApiUpdateSecurityGroupRequest {
 	return ApiUpdateSecurityGroupRequest{
-		ApiService:      a,
-		ctx:             ctx,
-		organizationId:  organizationId,
-		securityGroupId: securityGroupId,
+		ApiService: a,
+		ctx:        ctx,
+		id:         id,
 	}
 }
 
@@ -704,9 +685,8 @@ func (a *SecurityGroupApiService) UpdateSecurityGroupExecute(r ApiUpdateSecurity
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/organizations/{organization_id}/security_groups/{security_group_id}"
-	localVarPath = strings.Replace(localVarPath, "{"+"organization_id"+"}", url.PathEscape(parameterValueToString(r.organizationId, "organizationId")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"security_group_id"+"}", url.PathEscape(parameterValueToString(r.securityGroupId, "securityGroupId")), -1)
+	localVarPath := localBasePath + "/api/security-groups/{id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -13,26 +15,16 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
 )
 
 var (
-	errUserOrOrgNotFound          = errors.New("user or organization not found")
-	errOrgNotFound                = errors.New("organization not found")
-	errUserNotFound               = errors.New("user not found")
-	errDeviceNotFound             = errors.New("device not found")
-	errInvitationNotFound         = errors.New("invitation not found")
-	errSecurityGroupNotFound      = errors.New("security group not found")
-	errRegistrationTokenExhausted = errors.New("single use registration token exhausted")
+	errOrgNotFound           = errors.New("organization not found")
+	errUserNotFound          = errors.New("user not found")
+	errDeviceNotFound        = errors.New("device not found")
+	errInvitationNotFound    = errors.New("invitation not found")
+	errSecurityGroupNotFound = errors.New("security group not found")
+	errRegKeyExhausted       = errors.New("single use reg key exhausted")
 )
-
-type errDuplicateDevice struct {
-	ID string
-}
-
-func (e errDuplicateDevice) Error() string {
-	return "device already exists"
-}
 
 // ListDevices lists all devices
 // @Summary      List Devices
@@ -56,7 +48,7 @@ func (api *API) ListDevices(c *gin.Context) {
 	db = FilterAndPaginate(db, &models.Device{}, c, "hostname")
 	result := db.Find(&devices)
 	if result.Error != nil {
-		api.sendInternalServerError(c, errors.New("error fetching keys from db"))
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
 	}
 
@@ -93,7 +85,7 @@ func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) 
 	}
 	switch claims.Scope {
 	case "reg-token":
-		if claims.ID == device.RegistrationTokenID.String() {
+		if claims.ID == device.RegKeyID.String() {
 			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
 			return
 		}
@@ -107,16 +99,8 @@ func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) 
 }
 
 func (api *API) DeviceIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := c.Value(gin.AuthUserKey).(string)
-
-	// this could potentially be driven by rego output
-
-	return db.Where("user_id = ?", userId)
-	//if api.dialect == database.DialectSqlLite {
-	//	return db.Where("user_id = ? OR organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
-	//} else {
-	//	return db.Where("user_id = ? OR organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
-	//}
+	userId := api.GetCurrentUserID(c)
+	return db.Where("owner_id = ?", userId)
 }
 
 // GetDevice gets a device by ID
@@ -220,28 +204,24 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		if tokenClaims != nil {
 			switch tokenClaims.Scope {
 			case "reg-token":
-				if tokenClaims.ID != device.RegistrationTokenID.String() {
-					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+				if tokenClaims.ID != device.RegKeyID.String() {
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("reg key does not have access")))
 				}
 			case "device-token":
 				if tokenClaims.ID != device.ID.String() {
-					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("registration token does not have access")))
+					return NewApiResponseError(http.StatusForbidden, models.NewApiError(errors.New("reg key does not have access")))
 				}
 			}
 		}
 
-		var org models.Organization
-		if result = tx.First(&org, "id = ?", device.OrganizationID); result.Error != nil {
+		var vpc models.VPC
+		if result = tx.First(&vpc, "id = ?", device.VpcID); result.Error != nil {
 			return result.Error
 		}
 
 		originalIpamNamespace := defaultIPAMNamespace
-		if org.PrivateCidr {
-			originalIpamNamespace = org.ID
-		}
-
-		if request.EndpointLocalAddressIPv4 != "" {
-			device.EndpointLocalAddressIPv4 = request.EndpointLocalAddressIPv4
+		if vpc.PrivateCidr {
+			originalIpamNamespace = vpc.ID
 		}
 
 		if request.Hostname != "" {
@@ -252,85 +232,103 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			device.Endpoints = request.Endpoints
 		}
 
-		if request.OrganizationID != uuid.Nil && request.OrganizationID != device.OrganizationID {
-			userId := c.GetString(gin.AuthUserKey)
+		// TODO: re-enable this when we are ready to support changing a device's VPC.
 
-			var org models.Organization
-			if res := tx.Model(&org).
-				Joins("inner join user_organizations on user_organizations.organization_id=organizations.id").
-				Where("user_organizations.user_id=? AND organizations.id=?", userId, request.OrganizationID).
-				First(&org); res.Error != nil {
-				return errUserOrOrgNotFound
+		if request.VpcID != uuid.Nil && request.VpcID != device.OrganizationID {
+
+			var newVpc models.VPC
+			if result := api.VPCIsReadableByCurrentUser(c, tx).
+				Preload("Organization").
+				First(&newVpc, "id = ?", request.VpcID); result.Error != nil {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("newVpc"))
 			}
 
 			newIpamNamespace := defaultIPAMNamespace
-			if org.PrivateCidr {
-				newIpamNamespace = org.ID
+			if newVpc.PrivateCidr {
+				newIpamNamespace = newVpc.ID
 			}
 
 			// We can reuse the ip address if the ipam namespace is not changing.
 			if originalIpamNamespace != newIpamNamespace {
-				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIP, device.OrganizationPrefix); err != nil {
-					api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
-					return err
+
+				for _, t := range append(device.IPv4TunnelIPs, device.IPv6TunnelIPs...) {
+					address := t.Address
+					cidr := t.CIDR
+					if address != "" && cidr != "" {
+						if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, address, cidr); err != nil {
+							return fmt.Errorf("failed to release the ip address to pool: %w", err)
+						}
+					}
+				}
+				for _, cidr := range device.AdvertiseCidrs {
+					if err := api.ipam.ReleaseCIDR(c.Request.Context(), originalIpamNamespace, cidr); err != nil {
+						return fmt.Errorf("failed to release cidr: %w", err)
+					}
 				}
 
-				if err := api.ipam.ReleaseToPool(c.Request.Context(), originalIpamNamespace, device.TunnelIpV6, device.OrganizationPrefixV6); err != nil {
-					api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
-					return err
-				}
-
-				device.TunnelIP, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidr)
+				device.IPv4TunnelIPs[0].CIDR = newVpc.Ipv4Cidr
+				device.IPv4TunnelIPs[0].Address, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, newVpc.Ipv4Cidr)
 				if err != nil {
 					return fmt.Errorf("failed to request ipam address: %w", err)
 				}
-				device.OrganizationPrefix = org.IpCidr
 
-				device.TunnelIpV6, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, org.IpCidrV6)
+				device.IPv6TunnelIPs[0].CIDR = newVpc.Ipv6Cidr
+				device.IPv6TunnelIPs[0].Address, err = api.ipam.AssignFromPool(ctx, newIpamNamespace, newVpc.Ipv6Cidr)
 				if err != nil {
-					return fmt.Errorf("failed to request ipam v6 address: %w", err)
+					return fmt.Errorf("failed to request ipam address: %w", err)
 				}
-				device.OrganizationPrefixV6 = org.IpCidrV6
+
+				// allocate a CIDR if requested
+				for _, cidr := range request.AdvertiseCidrs {
+					if !util.IsValidPrefix(cidr) {
+						return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
+					}
+					// Skip the prefix assignment if it's an IPv4 or IPv6 default route
+					if !util.IsDefaultIPv4Route(cidr) && !util.IsDefaultIPv6Route(cidr) {
+						if err := api.ipam.AssignCIDR(ctx, newIpamNamespace, cidr); err != nil {
+							return fmt.Errorf("failed to assign cidr: %w", err)
+						}
+					}
+				}
 			}
 
-			device.AllowedIPs, err = getAllowedIPs(device.TunnelIP, device.TunnelIpV6, device.Relay)
+			device.AllowedIPs, err = getAllowedIPs(device.IPv4TunnelIPs[0].Address, device.IPv6TunnelIPs[0].Address, device.Relay)
 			if err != nil {
 				return err
 			}
 
-			device.OrganizationID = request.OrganizationID
+			device.VpcID = request.VpcID
 		}
-
 		device.SymmetricNat = request.SymmetricNat
 
-		// check if the updated device child prefix matches the existing device prefix
-		if request.ChildPrefix != nil && !childPrefixEquals(device.ChildPrefix, request.ChildPrefix) {
-			prefixAllocated := make(map[string]struct{})
-			for _, prefix := range device.ChildPrefix {
-				if !util.IsValidPrefix(prefix) {
-					return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+		// check if the updated device advertised CIDRs match the existing device advertised CIDRs
+		if request.AdvertiseCidrs != nil && !advertiseCidrEquals(device.AdvertiseCidrs, request.AdvertiseCidrs) {
+			cidrAllocated := make(map[string]struct{})
+			for _, cidr := range device.AdvertiseCidrs {
+				if !util.IsValidPrefix(cidr) {
+					return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
 				}
-				prefixAllocated[prefix] = struct{}{}
+				cidrAllocated[cidr] = struct{}{}
 			}
-			for _, prefix := range request.ChildPrefix {
-				isDefaultRoute := util.IsDefaultIPRoute(prefix)
+			for _, cidr := range request.AdvertiseCidrs {
+				isDefaultRoute := util.IsDefaultIPRoute(cidr)
 				// If the prefix is not a default route, process IPAM allocation/release
 				if isDefaultRoute {
 					continue
 				}
 				// lookup miss of prefix means we need to release it
-				if _, ok := prefixAllocated[prefix]; ok {
-					if err := api.ipam.ReleasePrefix(ctx, originalIpamNamespace, prefix); err != nil {
+				if _, ok := cidrAllocated[cidr]; ok {
+					if err := api.ipam.ReleaseCIDR(ctx, originalIpamNamespace, cidr); err != nil {
 						return err
 					}
 				} else {
 					// otherwise we need to allocate it
-					if err := api.ipam.AssignPrefix(ctx, originalIpamNamespace, prefix); err != nil {
+					if err := api.ipam.AssignCIDR(ctx, originalIpamNamespace, cidr); err != nil {
 						return err
 					}
 				}
 			}
-			device.ChildPrefix = request.ChildPrefix
+			device.AdvertiseCidrs = request.AdvertiseCidrs
 
 		}
 
@@ -344,20 +342,20 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
-		var apiResponseError ApiResponseError
+		var apiResponseError *ApiResponseError
 		if errors.Is(err, errDeviceNotFound) {
 			c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
 		} else if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
 	hideDeviceBearerToken(&device, tokenClaims)
 
-	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/devices/vpc=%s", device.VpcID.String()))
 	c.JSON(http.StatusOK, device)
 }
 
@@ -419,23 +417,26 @@ func (api *API) CreateDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("public_key"))
 		return
 	}
+	if request.VpcID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
+		return
+	}
 
-	userId := c.GetString(gin.AuthUserKey)
+	userId := api.GetCurrentUserID(c)
 	var tokenClaims *models.NexodusClaims
 	var device models.Device
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 
-		var org models.Organization
-		if res := tx.Model(&org).
-			Joins("inner join user_organizations on user_organizations.organization_id=organizations.id").
-			Where("user_organizations.user_id=? AND organizations.id=?", userId, request.OrganizationID).
-			First(&org); res.Error != nil {
-			return errUserOrOrgNotFound
+		var vpc models.VPC
+		if result := api.VPCIsReadableByCurrentUser(c, tx).
+			Preload("Organization").
+			First(&vpc, "id = ?", request.VpcID); result.Error != nil {
+			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		}
 
 		res := tx.Where("public_key = ?", request.PublicKey).First(&device)
 		if res.Error == nil {
-			return errDuplicateDevice{ID: device.ID.String()}
+			return NewApiResponseError(http.StatusConflict, models.NewConflictsError(device.ID.String()))
 		}
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return res.Error
@@ -451,32 +452,28 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 
 		deviceId := uuid.Nil
-		registrationTokenID := uuid.Nil
+		regKeyID := uuid.Nil
 		var err error
 		if tokenClaims != nil {
-			registrationTokenID, err = uuid.Parse(tokenClaims.ID)
+			regKeyID, err = uuid.Parse(tokenClaims.ID)
 			if err != nil {
-				return NewApiResponseError(http.StatusBadRequest, fmt.Errorf("invalid registration token id"))
+				return NewApiResponseError(http.StatusBadRequest, fmt.Errorf("invalid reg key id"))
 			}
 
 			// is the user token restricted to operating on a single device?
-			if tokenClaims.DeviceID == uuid.Nil {
+			if tokenClaims.DeviceID != uuid.Nil {
 				err = tx.Where("id = ?", tokenClaims.DeviceID).First(&device).Error
 				if err == nil {
 					// If we get here the device exists but has a different public key, so assume
 					// the reg toke has been previously used.
-					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegistrationTokenExhausted))
+					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegKeyExhausted))
 				}
 
 				deviceId = tokenClaims.DeviceID
-				//deviceId, err = uuid.Parse(claims.DeviceID)
-				//if err != nil {
-				//	return fmt.Errorf("invalid registration token device id: %w", err)
-				//}
 			}
 
-			if tokenClaims.OrganizationID != request.OrganizationID {
-				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("organization_id", "does not match the registration token organization_id"))
+			if tokenClaims.VpcID != request.VpcID {
+				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("vpc_id", "does not match the reg key vpc_id"))
 			}
 		}
 		if deviceId == uuid.Nil {
@@ -484,8 +481,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 		}
 
 		ipamNamespace := defaultIPAMNamespace
-		if org.PrivateCidr {
-			ipamNamespace = org.ID
+		if vpc.PrivateCidr {
+			ipamNamespace = vpc.ID
 		}
 
 		var relay bool
@@ -499,32 +496,35 @@ func (api *API) CreateDevice(c *gin.Context) {
 
 		// If this was a static address request
 		// TODO: handle a user requesting an IP not in the IPAM prefix
-		if request.TunnelIP != "" {
-			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, org.IpCidr, request.TunnelIP)
+		if len(request.IPv4TunnelIPs) > 1 {
+			return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("tunnel_ips_v4", "can only specify a single IPv4 address request"))
+		} else if len(request.IPv4TunnelIPs) == 1 {
+			ipamIP, err = api.ipam.AssignSpecificTunnelIP(ctx, ipamNamespace, vpc.Ipv4Cidr, request.IPv4TunnelIPs[0].Address)
 			if err != nil {
 				return fmt.Errorf("failed to request specific ipam address: %w", err)
 			}
 		} else {
-			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamNamespace, org.IpCidr)
+			ipamIP, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.Ipv4Cidr)
 			if err != nil {
 				return fmt.Errorf("failed to request ipam address: %w", err)
 			}
 		}
+
 		// Currently only support v4 requesting of specific addresses
-		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, org.IpCidrV6)
+		ipamIPv6, err = api.ipam.AssignFromPool(ctx, ipamNamespace, vpc.Ipv6Cidr)
 		if err != nil {
 			return fmt.Errorf("failed to request ipam v6 address: %w", err)
 		}
 
-		// allocate a child prefix if requested
-		for _, prefix := range request.ChildPrefix {
-			if !util.IsValidPrefix(prefix) {
-				return fmt.Errorf("invalid cidr detected in the child prefix field of %s", prefix)
+		// allocate a CIDR if requested
+		for _, cidr := range request.AdvertiseCidrs {
+			if !util.IsValidPrefix(cidr) {
+				return fmt.Errorf("invalid cidr detected in the advertise_cidrs field of %s", cidr)
 			}
 			// Skip the prefix assignment if it's an IPv4 or IPv6 default route
-			if !util.IsDefaultIPv4Route(prefix) && !util.IsDefaultIPv6Route(prefix) {
-				if err := api.ipam.AssignPrefix(ctx, ipamNamespace, prefix); err != nil {
-					return fmt.Errorf("failed to assign child prefix: %w", err)
+			if !util.IsDefaultIPv4Route(cidr) && !util.IsDefaultIPv6Route(cidr) {
+				if err := api.ipam.AssignCIDR(ctx, ipamNamespace, cidr); err != nil {
+					return fmt.Errorf("failed to assign cidr: %w", err)
 				}
 			}
 		}
@@ -544,25 +544,32 @@ func (api *API) CreateDevice(c *gin.Context) {
 			Base: models.Base{
 				ID: deviceId,
 			},
-			UserID:                   userId,
-			OrganizationID:           org.ID,
-			PublicKey:                request.PublicKey,
-			Endpoints:                request.Endpoints,
-			AllowedIPs:               allowedIPs,
-			TunnelIP:                 ipamIP,
-			TunnelIpV6:               ipamIPv6,
-			ChildPrefix:              request.ChildPrefix,
-			Relay:                    request.Relay,
-			Discovery:                request.Discovery,
-			OrganizationPrefix:       org.IpCidr,
-			OrganizationPrefixV6:     org.IpCidrV6,
-			EndpointLocalAddressIPv4: request.EndpointLocalAddressIPv4,
-			SymmetricNat:             request.SymmetricNat,
-			Hostname:                 request.Hostname,
-			Os:                       request.Os,
-			SecurityGroupId:          org.SecurityGroupId,
-			RegistrationTokenID:      registrationTokenID,
-			BearerToken:              "DT:" + deviceToken.String(),
+			OwnerID:        userId,
+			VpcID:          vpc.ID,
+			OrganizationID: vpc.OrganizationID,
+			PublicKey:      request.PublicKey,
+			Endpoints:      request.Endpoints,
+			AllowedIPs:     allowedIPs,
+			IPv4TunnelIPs: []models.TunnelIP{
+				{
+					Address: ipamIP,
+					CIDR:    vpc.Ipv4Cidr,
+				},
+			},
+			IPv6TunnelIPs: []models.TunnelIP{
+				{
+					Address: ipamIPv6,
+					CIDR:    vpc.Ipv6Cidr,
+				},
+			},
+			AdvertiseCidrs:  request.AdvertiseCidrs,
+			Relay:           request.Relay,
+			SymmetricNat:    request.SymmetricNat,
+			Hostname:        request.Hostname,
+			Os:              request.Os,
+			SecurityGroupId: vpc.Organization.SecurityGroupId,
+			RegKeyID:        regKeyID,
+			BearerToken:     "DT:" + deviceToken.String(),
 		}
 
 		if res := tx.
@@ -577,23 +584,18 @@ func (api *API) CreateDevice(c *gin.Context) {
 	})
 
 	if err != nil {
-		var duplicate errDuplicateDevice
-		var apiResponseError ApiResponseError
-		if errors.Is(err, errUserOrOrgNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotAllowedError("user or organization"))
-		} else if errors.As(err, &duplicate) {
-			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
-		} else if errors.As(err, &apiResponseError) {
+		var apiResponseError *ApiResponseError
+		if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
-			api.sendInternalServerError(c, err)
+			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
 	hideDeviceBearerToken(&device, tokenClaims)
 
-	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/devices/vpc=%s", device.VpcID.String()))
 	c.JSON(http.StatusCreated, device)
 }
 
@@ -632,21 +634,21 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	var org models.Organization
+	var vpc models.VPC
 	result := db.
-		First(&org, "id = ?", device.OrganizationID)
+		First(&vpc, "id = ?", device.VpcID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		api.sendInternalServerError(c, result.Error)
+		api.SendInternalServerError(c, result.Error)
 	}
 
 	ipamNamespace := defaultIPAMNamespace
-	if org.PrivateCidr {
-		ipamNamespace = org.ID
+	if vpc.PrivateCidr {
+		ipamNamespace = vpc.ID
 	}
 
-	ipamAddress := device.TunnelIP
-	orgPrefix := device.OrganizationPrefix
-	childPrefix := device.ChildPrefix
+	ipamAddress := device.IPv4TunnelIPs[0].Address
+	orgPrefix := device.IPv4TunnelIPs[0].CIDR
+	advertiseCidrs := device.AdvertiseCidrs
 
 	if res := api.db.WithContext(ctx).
 		Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
@@ -655,28 +657,28 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	api.signalBus.Notify(fmt.Sprintf("/devices/org=%s", device.OrganizationID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/devices/vpc=%s", device.VpcID.String()))
 
 	if ipamAddress != "" && orgPrefix != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddress, orgPrefix); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release the v4 address to pool: %w", err))
 			return
 		}
 	}
 
-	for _, prefix := range childPrefix {
-		if err := api.ipam.ReleasePrefix(c.Request.Context(), ipamNamespace, prefix); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release child prefix: %w", err))
+	for _, cidr := range advertiseCidrs {
+		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, cidr); err != nil {
+			api.SendInternalServerError(c, fmt.Errorf("failed to release cidr: %w", err))
 			return
 		}
 	}
 
-	ipamAddressV6 := device.TunnelIpV6
-	orgPrefixV6 := device.OrganizationPrefixV6
+	ipamAddressV6 := device.IPv6TunnelIPs[0].Address
+	orgPrefixV6 := device.IPv6TunnelIPs[0].CIDR
 
 	if ipamAddressV6 != "" && orgPrefixV6 != "" {
 		if err := api.ipam.ReleaseToPool(c.Request.Context(), ipamNamespace, ipamAddressV6, orgPrefixV6); err != nil {
-			api.sendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
+			api.SendInternalServerError(c, fmt.Errorf("failed to release the v6 address to pool: %w", err))
 			return
 		}
 	}
@@ -685,7 +687,7 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
-func childPrefixEquals(existingPrefix, newPrefix []string) bool {
+func advertiseCidrEquals(existingPrefix, newPrefix []string) bool {
 	if len(existingPrefix) != len(newPrefix) {
 		return false
 	}

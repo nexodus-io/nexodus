@@ -18,7 +18,7 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 		nx.logger.Errorf("failed to find the darwin interface with the address [ %s ] %v", nx.TunnelIP, err)
 		return err
 	}
-	// If child prefix split the two prefixes (host /32) and child prefix
+	// If advertised CIDR, split the two prefixes (host /32) and advertised CIDR
 	for _, allowedIP := range wgPeerConfig.AllowedIPs {
 		// if the peer is advertising a default route, append it as an exit origin node, but don't add the route
 		if util.IsDefaultIPv4Route(allowedIP) || util.IsDefaultIPv6Route(allowedIP) {

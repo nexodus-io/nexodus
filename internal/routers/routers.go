@@ -88,59 +88,68 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		}
 
 		private.Use(validateJWT)
-		private.Use(api.CreateUserIfNotExists())
+
+		// Feature Flags
+		private.GET("fflags", api.ListFeatureFlags)
+		private.GET("fflags/:name", api.GetFeatureFlag)
+
+		// Users
+		private.GET("/users", api.ListUsers)
+		private.GET("/users/:id", api.GetUser)
+		private.DELETE("/users/:id", api.DeleteUser)
+		private.DELETE("/users/:id/organizations/:organization", api.DeleteUserFromOrganization)
+
 		// Organizations
 		private.GET("/organizations", api.ListOrganizations)
 		private.POST("/organizations", api.CreateOrganization)
-		private.GET("/organizations/:organization", api.GetOrganizations)
-		private.DELETE("/organizations/:organization", api.DeleteOrganization)
-		private.GET("/organizations/:organization/devices", api.ListDevicesInOrganization)
-		private.GET("/organizations/:organization/devices/:id", api.GetDeviceInOrganization)
-		private.GET("/organizations/:organization/users", api.ListUsersInOrganization)
+		private.GET("/organizations/:id", api.GetOrganizations)
+		private.DELETE("/organizations/:id", api.DeleteOrganization)
+
 		// Invitations
-		private.POST("/invitations", api.CreateInvitation)
 		private.GET("/invitations", api.ListInvitations)
-		private.GET("/invitations/:invitation", api.GetInvitation)
-		private.POST("/invitations/:invitation/accept", api.AcceptInvitation)
-		private.DELETE("/invitations/:invitation", api.DeleteInvitation)
+		private.GET("/invitations/:id", api.GetInvitation)
+		private.POST("/invitations", api.CreateInvitation)
+		private.POST("/invitations/:id/accept", api.AcceptInvitation)
+		private.DELETE("/invitations/:id", api.DeleteInvitation)
+
+		private.GET("/vpcs", api.ListVPCs)
+		private.POST("/vpcs", api.CreateVPC)
+		private.GET("/vpcs/:id", api.GetVPC)
+		private.DELETE("/vpcs/:id", api.DeleteVPC)
+
 		// Registration Tokens
-		private.GET("/registration-tokens", api.ListRegistrationTokens)
-		private.GET("/registration-tokens/:token-id", api.GetRegistrationToken)
-		private.POST("/registration-tokens", api.CreateRegistrationToken)
-		private.DELETE("/registration-tokens/:token-id", api.DeleteRegistrationToken)
+		private.GET("/reg-keys", api.ListRegKeys)
+		private.GET("/reg-keys/:id", api.GetRegKey)
+		private.POST("/reg-keys", api.CreateRegKey)
+		private.DELETE("/reg-keys/:id", api.DeleteRegKey)
+
 		// Devices
 		private.GET("/devices", api.ListDevices)
 		private.GET("/devices/:id", api.GetDevice)
 		private.PATCH("/devices/:id", api.UpdateDevice)
 		private.POST("/devices", api.CreateDevice)
 		private.DELETE("/devices/:id", api.DeleteDevice)
+
 		// Device Metadata
 		private.GET("/devices/:id/metadata", api.ListDeviceMetadata)
 		private.GET("/devices/:id/metadata/:key", api.GetDeviceMetadataKey)
 		private.PUT("/devices/:id/metadata/:key", api.UpdateDeviceMetadataKey)
-		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 		private.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
-		private.GET("/organizations/:organization/metadata", api.ListOrganizationMetadata)
+		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 
-		// Users
-		private.GET("/users/:id", api.GetUser)
-		private.GET("/users", api.ListUsers)
-		// private.PATCH("/users/:id", api.PatchUser)
-		private.DELETE("/users/:id", api.DeleteUser)
-		private.DELETE("/users/:id/organizations/:organization", api.DeleteUserFromOrganization)
 		// Security Groups
-		private.POST("/organizations/:organization/security_groups", api.CreateSecurityGroup)
-		private.GET("/organizations/:organization/security_groups", api.ListSecurityGroups)
-		private.DELETE("/organizations/:organization/security_groups/:id", api.DeleteSecurityGroup)
-		private.GET("/organizations/:organization/security_group/:id", api.GetSecurityGroup)
-		private.PATCH("/organizations/:organization/security_groups/:id", api.UpdateSecurityGroup)
+		private.GET("/security-groups", api.ListSecurityGroups)
+		private.GET("/security-groups/:id", api.GetSecurityGroup)
+		private.POST("/security-groups", api.CreateSecurityGroup)
+		private.PATCH("/security-groups/:id", api.UpdateSecurityGroup)
+		private.DELETE("/security-groups/:id", api.DeleteSecurityGroup)
 
-		// Event APIs
-		private.POST("/organizations/:organization/events", api.WatchEvents)
+		// List / Watch Event API used by nexd
+		private.POST("/vpcs/:id/events", api.WatchEvents)
+		private.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
+		private.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
+		private.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
 
-		// Feature Flags
-		private.GET("fflags", api.ListFeatureFlags)
-		private.GET("fflags/:name", api.GetFeatureFlag)
 	}
 
 	// Don't log the health/readiness checks.

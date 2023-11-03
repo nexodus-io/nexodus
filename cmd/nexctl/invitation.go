@@ -4,11 +4,69 @@ import (
 	"context"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/urfave/cli/v2"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/client"
 )
+
+func createInvitationCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "invitation",
+		Usage: "commands relating to invitations",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "create",
+				Usage: "create an invitation",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "user-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "organization-id",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					encodeOut := cCtx.String("output")
+					userID := cCtx.String("user-id")
+					orgID := cCtx.String("organization-id")
+					return createInvitation(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "delete an invitation",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "inv-id",
+						Required: true,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					userID := cCtx.String("inv-id")
+					return deleteInvitation(mustCreateAPIClient(cCtx), userID)
+				},
+			},
+			{
+				Name:  "accept",
+				Usage: "accept an invitation",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "inv-id",
+						Required: true,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					userID := cCtx.String("inv-id")
+					return acceptInvitation(mustCreateAPIClient(cCtx), userID)
+				},
+			},
+		},
+	}
+}
 
 func acceptInvitation(c *client.APIClient, id string) error {
 	invID, err := uuid.Parse(id)
