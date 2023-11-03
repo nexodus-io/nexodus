@@ -89,7 +89,7 @@ sudo nexd --service-url https://try.nexodus.io
 
 ### Interactive Enrollment
 
-If the agent can successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus organization. If you ran `nexd` manually, you will see a message like the following in your terminal:
+If the agent can successfully reach the Service API, it will provide a one-time code to provide to the service web UI to complete enrollment of this node into a Nexodus VPC. If you ran `nexd` manually, you will see a message like the following in your terminal:
 
 ```sh
 Your device must be registered with Nexodus.
@@ -127,14 +127,14 @@ sudo nexd --username user --password pw --service-url https://try.nexodus.io
 
 For [try.nexodus.io](https://try.nexodus.io), you may set a password for your account by visiting the [Keycloak user management UI](https://auth.try.nexodus.io/realms/nexodus/account/#/security/signingin).
 
-### Multiple Organizations
+### Multiple VPCs
 
-When `nexd` starts, it will check to see which organizations it has access to. If no organization is specified, it will connect to the user's default organization. The default is the organization that has the same name as the user.
+When `nexd` starts, it will check to see which VPCs it has access to. If no VPC is specified, it will connect to the user's default VPC in its default organization. The default organization is the one that has the same name as the user.
 
-If `nexd` sees that it has access to multiple organizations, it will require you to specify which one to connect to. You can do this by passing the `--organization-id` flag to `nexd`. For example:
+If `nexd` sees that it has access to multiple VPCs, it will require you to specify which one to connect to. You can do this by passing the `--vpc-id` flag to `nexd`. For example:
 
 ```sh
-sudo nexd --organization-id 12345678-1234-1234-1234-123456789012 --service-url https://try.nexodus.io
+sudo nexd --vpc-id 12345678-1234-1234-1234-123456789012 --service-url https://try.nexodus.io
 ```
 
 ### Verifying Agent Setup
@@ -151,9 +151,9 @@ $ ip address show wg0
        valid_lft forever preferred_lft forever
 ```
 
-### Verifying Organization Connectivity
+### Verifying VPC Connectivity
 
-Once more than one node has enrolled in the same Nexodus organization, you will see additional routes populated for reaching other nodes' endpoints in the same organization. For example, we have just added a second node to this organization. The new node's address in the Nexodus organization is `100.100.0.2` and `200::2`. On Linux, we can check the routing table and see:
+Once more than one node has enrolled in the same Nexodus VPC, you will see additional routes populated for reaching other nodes' endpoints in the same VPC. For example, we have just added a second node to this VPC. The new node's address in the Nexodus VPC is `100.100.0.2` and `200::2`. On Linux, we can check the routing table and see:
 
 ```sh
 $ ip route
