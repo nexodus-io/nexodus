@@ -118,7 +118,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			require.NotEqual(uuid.Nil, inviteID)
 			_, res, err = suite.ServeRequest(
 				http.MethodPost,
-				"/:invitation", fmt.Sprintf("/%s", inviteID.String()),
+				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
 					c.Set("_apex.testCreateOrganization", "true")
 					suite.api.AcceptInvitation(c)
@@ -133,7 +133,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 			require.NotEqual(uuid.Nil, inviteID)
 			_, res, err = suite.ServeRequest(
 				http.MethodPost,
-				"/:invitation", fmt.Sprintf("/%s", inviteID.String()),
+				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
 					c.Set("_apex.testCreateOrganization", "true")
 					suite.api.DeleteInvitation(c)
