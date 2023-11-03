@@ -20,24 +20,21 @@ import {
   useGetIdentity,
 } from "react-admin";
 
-const RegistrationTokenListBulkActions = () => (
+const RegKeyListBulkActions = () => (
   <Fragment>
     <BulkExportButton />
     <BulkDeleteButton />
   </Fragment>
 );
 
-export const RegistrationTokenList = () => (
+export const RegKeyList = () => (
   <List>
-    <Datagrid
-      rowClick="show"
-      bulkActionButtons={<RegistrationTokenListBulkActions />}
-    >
+    <Datagrid rowClick="show" bulkActionButtons={<RegKeyListBulkActions />}>
       <TextField label="ID" source="id" />
       <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
+        label="VPC"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <BooleanField label="Single Use" source="device_id" looseValue={true} />
@@ -46,15 +43,15 @@ export const RegistrationTokenList = () => (
   </List>
 );
 
-export const RegistrationTokenShow = () => (
+export const RegKeyShow = () => (
   <Show>
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
       <TextField label="Bearer Token" source="bearer_token" />
       <ReferenceField
         label="Organization"
-        source="organization_id"
-        reference="organizations"
+        source="vpc_id"
+        reference="vpcs"
         link="show"
       />
       <BooleanField label="Single Use" source="device_id" looseValue={true} />
@@ -70,7 +67,7 @@ export const RegistrationTokenShow = () => (
   </Show>
 );
 
-export const RegistrationTokenCreate = () => {
+export const RegKeyCreate = () => {
   const { identity, isLoading, error } = useGetIdentity();
   if (isLoading || error) {
     return <div />;
@@ -84,13 +81,7 @@ export const RegistrationTokenCreate = () => {
           source="description"
           fullWidth
         />
-        <ReferenceInput
-          label="Organization"
-          name="organization_id"
-          source="organization_id"
-          reference="organizations"
-          filter={{ owner_id: identity.id }}
-        />
+        <ReferenceInput name="vpc_id" source="vpc_id" reference="vpcs" />
         <BooleanInput
           label="Single Use"
           name="single_use"
