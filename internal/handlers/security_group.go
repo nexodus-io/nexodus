@@ -321,16 +321,18 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 func (api *API) notifySecurityGroupChange(c *gin.Context, orgId uuid.UUID) {
 	vpcIds := []uuid.UUID{}
 	db := api.db.WithContext(c)
-	err := db.Where("organization_id = ?", orgId).Distinct().Pluck("id", &vpcIds).Error
-	if err != nil {
-		api.logger.Errorf("Failed to fetch vpc ids for organization %s: %s", orgId, err)
+	result := db.Model(&models.VPC{}).
+		Where("organization_id = ?", orgId).
+		Distinct().
+		Pluck("id", &vpcIds)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		api.logger.Errorf("Failed to fetch vpc ids for organization %s: %s", orgId, result.Error)
 		return
 	}
 
 	for _, id := range vpcIds {
 		signalChannel := fmt.Sprintf("/security-groups/vpc=%s", id.String())
 		api.signalBus.Notify(signalChannel)
-
 	}
 }
 

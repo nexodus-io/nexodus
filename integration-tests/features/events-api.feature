@@ -42,6 +42,27 @@ Feature: Events API
 
     # Create a device...
     Given I am logged in as "Oscar"
+
+    When I GET path "/api/organizations"
+    Then the response code should be 200
+    Given I store the ${response[0].id} as ${oscar_organization_id}
+    Given I store the ${response[0].security_group_id} as ${oscar_security_group_id}
+
+    When I GET path "/api/security-groups/${oscar_security_group_id}"
+    Then the response code should be 200
+    Given I store the ".revision" selection from the response as ${current_revision}
+    And the response should match json:
+      """
+      {
+        "group_description": "default organization security group",
+        "group_name": "default",
+        "id": "${oscar_security_group_id}",
+        "organization_id": "${oscar_organization_id}",
+        "revision": ${current_revision}
+      }
+      """
+    Given I store the ${response} as ${security_group}
+
     Given I generate a new public key as ${public_key}
     When I POST path "/api/devices" with json body:
       """
@@ -67,6 +88,10 @@ Feature: Events API
       """
       [
         {
+          "kind": "security-group",
+          "gt_revision": 0
+        },
+        {
           "kind": "device",
           "gt_revision": 0
         },
@@ -84,6 +109,25 @@ Feature: Events API
       """
       {
         "kind": "device-metadata",
+        "type": "tail"
+      }
+      """
+
+    Given I wait up to "3" seconds for a response event
+    Then the response should match json:
+      """
+      {
+        "kind": "security-group",
+        "type": "change",
+        "value": ${security_group}
+      }
+      """
+
+    Given I wait up to "3" seconds for a response event
+    Then the response should match json:
+      """
+      {
+        "kind": "security-group",
         "type": "tail"
       }
       """
@@ -161,6 +205,42 @@ Feature: Events API
         "kind": "device-metadata",
         "type": "change",
         "value": ${metadata1}
+      }
+      """
+
+    # Update the security group
+    Given I am logged in as "Oscar"
+    When I PATCH path "/api/security-groups/${oscar_security_group_id}" with json body:
+      """
+      {
+        "id": "${oscar_security_group_id}",
+        "organization_id": "${oscar_organization_id}",
+        "group_description": "update",
+        "group_name": "test"
+      }
+      """
+    Then the response code should be 200
+    Then the response should match json:
+      """
+      {
+        "id": "${oscar_security_group_id}",
+        "organization_id": "${oscar_organization_id}",
+        "group_description": "update",
+        "group_name": "test",
+        "revision": ${response.revision}
+      }
+      """
+    Given I store the ${response} as ${security_group_update}
+
+    # We should get additional change events...
+    Given I am logged in as "Oliver"
+    Given I wait up to "3" seconds for a response event
+    Then the response should match json:
+      """
+      {
+        "kind": "security-group",
+        "type": "change",
+        "value": ${security_group_update}
       }
       """
 
