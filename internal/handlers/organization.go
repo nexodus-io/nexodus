@@ -87,7 +87,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 		}
 
 		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID.String())
+		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID)
 		if err != nil {
 			api.logger.Error("Failed to create default security group for organization: ", err)
 			return err
