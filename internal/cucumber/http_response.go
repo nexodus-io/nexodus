@@ -77,6 +77,7 @@ func init() {
 		ctx.Step(`^the response header "([^"]*)" should match "([^"]*)"$`, s.theResponseHeaderShouldMatch)
 		ctx.Step(`^the "([^"]*)" selection from the response should match json:$`, s.theSelectionFromTheResponseShouldMatchJson)
 		ctx.Step(`^\${([^"]*)} is not empty$`, s.vpc_idIsNotEmpty)
+		ctx.Step(`^"([^"]*)" should match "([^"]*)"$`, s.textShouldMatchText)
 	})
 }
 
@@ -133,6 +134,33 @@ func (s *TestScenario) theVariableShouldContainJson(variableName, expected strin
 		return err
 	}
 	return s.JsonMustContain(expanded, expected, true)
+}
+
+func (s *TestScenario) textShouldMatchText(actual, expected string) error {
+
+	expanded, err := s.Expand(expected)
+	if err != nil {
+		return err
+	}
+
+	actual, err = s.Expand(actual)
+	if err != nil {
+		return err
+	}
+
+	if expanded != actual {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(expanded),
+			B:        difflib.SplitLines(actual),
+			FromFile: "Expected",
+			FromDate: "",
+			ToFile:   "Actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		return fmt.Errorf("actual does not match expected, diff:\n%s", diff)
+	}
+	return nil
 }
 
 func (s *TestScenario) theResponseShouldMatchText(expected string) error {

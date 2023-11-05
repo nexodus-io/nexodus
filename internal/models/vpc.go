@@ -23,3 +23,7 @@ type AddVPC struct {
 	Ipv4Cidr       string    `json:"ipv4_cidr" example:"172.16.42.0/24"`
 	Ipv6Cidr       string    `json:"ipv6_cidr" example:"0200::/8"`
 }
+
+type UpdateVPC struct {
+	Description *string `json:"description" example:"The Red Zone"`
+}

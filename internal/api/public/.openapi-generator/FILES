@@ -36,6 +36,7 @@ model_models_security_rule.go
 model_models_tunnel_ip.go
 model_models_update_device.go
 model_models_update_security_group.go
+model_models_update_vpc.go
 model_models_user.go
 model_models_user_info_response.go
 model_models_validation_error.go

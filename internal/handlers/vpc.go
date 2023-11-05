@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 var defaultIPAMNamespace = uuid.UUID{}
@@ -66,7 +65,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 			return
 		}
 		if request.Ipv6Cidr == "" {
-			request.Ipv6Cidr = defaultIPAMv4Cidr
+			request.Ipv6Cidr = defaultIPAMv6Cidr
 		} else if request.Ipv6Cidr != defaultIPAMv6Cidr {
 			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr_v6", fmt.Sprintf("must be '%s' or not set when private_cidr is not enabled", defaultIPAMv6Cidr)))
 			return
@@ -190,7 +189,7 @@ func (api *API) ListVPCs(c *gin.Context) {
 
 	db := api.db.WithContext(ctx)
 	db = api.VPCIsReadableByCurrentUser(c, db)
-	db = FilterAndPaginate(db, &models.VPC{}, c, "id")
+	db = FilterAndPaginate(db, &models.VPC{}, c, "description")
 	result := db.Find(&vpcs)
 
 	if result.Error != nil {
@@ -348,21 +347,20 @@ func (d deviceList) Len() int {
 func (api *API) DeleteVPC(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteVPC",
 		trace.WithAttributes(
-			attribute.String("vpc", c.Param("vpc")),
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
 
-	vpcID, err := uuid.Parse(c.Param("vpc"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("vpc"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 
 	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	result := api.VPCIsReadableByCurrentUser(c, db).
-		First(&vpc, "id = ?", vpcID)
+	result := api.VPCIsOwnedByCurrentUser(c, db).
+		First(&vpc, "id = ?", id)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -373,29 +371,35 @@ func (api *API) DeleteVPC(c *gin.Context) {
 		return
 	}
 
+	if vpc.ID == vpc.OrganizationID {
+		c.JSON(http.StatusBadRequest, models.NewNotAllowedError("default vpc cannot be deleted"))
+		return
+	}
+
+	var count int64
+	result = db.Model(&models.Device{}).Where("vpc_id = ?", id).Count(&count)
+	if result.Error != nil {
+		api.SendInternalServerError(c, result.Error)
+		return
+	}
+
+	if count > 0 {
+		c.JSON(http.StatusBadRequest, models.NewNotAllowedError("vpc cannot be delete while devices are still attached"))
+		return
+	}
+
+	result = db.Delete(&vpc)
+	if result.Error != nil {
+		api.SendInternalServerError(c, result.Error)
+		return
+	}
+
 	ipamNamespace := defaultIPAMNamespace
 	if vpc.PrivateCidr {
 		ipamNamespace = vpc.ID
 	}
-
-	type userOrgMapping struct {
-		UserID string
-		VPCID  uuid.UUID
-	}
-	var usersInOrg []userOrgMapping
-	if res := db.Table("user_vpcs").Select("user_id", "vpc_id").Where("vpc_id = ?", vpc.ID).Scan(&usersInOrg); res.Error != nil {
-		api.SendInternalServerError(c, res.Error)
-		return
-	}
-
-	if res := api.db.Select(clause.Associations).Delete(&vpc); res.Error != nil {
-		api.SendInternalServerError(c, fmt.Errorf("failed to delete the vpc: %w", err))
-		return
-	}
-
 	vpcCIDR := vpc.Ipv4Cidr
 	vpcCIDRV6 := vpc.Ipv6Cidr
-
 	if vpc.PrivateCidr {
 		if err := api.ipam.ReleaseCIDR(c.Request.Context(), ipamNamespace, vpcCIDR); err != nil {
 			api.SendInternalServerError(c, fmt.Errorf("failed to release ipam vpc prefix: %w", err))
@@ -408,5 +412,69 @@ func (api *API) DeleteVPC(c *gin.Context) {
 		}
 	}
 
+	c.JSON(http.StatusOK, vpc)
+}
+
+// UpdateVPC updates a VPC
+// @Summary      Update VPCs
+// @Description  Updates a vpc by ID
+// @Id  		 UpdateVPC
+// @Tags         VPC
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true "VPC ID"
+// @Param		 update body models.UpdateVPC true "VPC Update"
+// @Success      200  {object}  models.VPC
+// @Failure		 401  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/vpcs/{id} [patch]
+func (api *API) UpdateVPC(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "UpdateVPC", trace.WithAttributes(
+		attribute.String("id", c.Param("id")),
+	))
+	defer span.End()
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+		return
+	}
+
+	var request models.UpdateVPC
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+		return
+	}
+
+	var vpc models.VPC
+	err = api.transaction(ctx, func(tx *gorm.DB) error {
+
+		result := api.VPCIsOwnedByCurrentUser(c, tx).First(&vpc, "id = ?", id)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
+		}
+
+		if request.Description != nil {
+			vpc.Description = *request.Description
+		}
+
+		if res := tx.Save(&vpc); res.Error != nil {
+			return res.Error
+		}
+		return nil
+	})
+
+	if err != nil {
+		var apiResponseError *ApiResponseError
+		if errors.As(err, &apiResponseError) {
+			c.JSON(apiResponseError.Status, apiResponseError.Body)
+		} else {
+			api.SendInternalServerError(c, err)
+		}
+		return
+	}
 	c.JSON(http.StatusOK, vpc)
 }
