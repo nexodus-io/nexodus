@@ -85,6 +85,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 		var res *httptest.ResponseRecorder
 		switch c.action {
 		case "invite":
+			c := c
 			request := models.AddInvitation{
 				UserID:         &c.userID,
 				OrganizationID: c.orgID,
