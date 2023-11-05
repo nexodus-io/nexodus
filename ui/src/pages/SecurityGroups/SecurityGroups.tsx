@@ -45,10 +45,8 @@ export const SecurityGroups = () => {
     "success" | "error" | "info" | null
   >(null);
 
-  const fetchSecurityGroup = async (orgId: string, securityGroupId: string) => {
-    return await fetchJson(
-      `${backend}/api/organizations/${orgId}/security_group/${securityGroupId}`,
-    );
+  const fetchSecurityGroup = async (securityGroupId: string) => {
+    return await fetchJson(`${backend}/api/security-groups/${securityGroupId}`);
   };
 
   const fetchData = async () => {
@@ -65,7 +63,7 @@ export const SecurityGroups = () => {
       }
       // Fetch security groups data
       const securityGroupPromises = orgs.map((org) =>
-        fetchSecurityGroup(org.id, org.security_group_id),
+        fetchSecurityGroup(org.security_group_id),
       );
 
       const securityGroupsData = await Promise.all(securityGroupPromises);
@@ -95,7 +93,6 @@ export const SecurityGroups = () => {
     if (selectedOrg) {
       try {
         const updatedSecurityGroupData = await fetchSecurityGroup(
-          selectedOrg.id,
           selectedOrg.security_group_id,
         );
         setSelectedSecurityGroup(updatedSecurityGroupData);

@@ -43,15 +43,11 @@ interface EditRulesProps {
   type: "inbound_rules" | "outbound_rules";
 }
 
-const updateSecurityGroup = (
-  organizationId: string,
-  securityGroupId: string,
-  data: any,
-) => {
+const updateSecurityGroup = (securityGroupId: string, data: any) => {
   console.log("Update SecGroup data being sent to the endpoint:", data);
   console.log(
     "Sending PATCH request to:",
-    `${backend}/api/organizations/${organizationId}/security_groups/${securityGroupId}`,
+    `${backend}/api/security-groups/${securityGroupId}`,
   );
   console.log("Data being sent:", JSON.stringify(data, null, 2));
 
@@ -63,7 +59,7 @@ const updateSecurityGroup = (
   };
 
   return fetchJson(
-    `${backend}/api/organizations/${organizationId}/security_groups/${securityGroupId}`,
+    `${backend}/api/security-groups/${securityGroupId}`,
     requestOptions,
   );
 };
@@ -157,7 +153,7 @@ const EditRules: React.FC<EditRulesProps> = ({
           outbound_rules: outboundRules,
         };
 
-        updateSecurityGroup(organizationId, securityGroupId, updateData)
+        updateSecurityGroup(securityGroupId, updateData)
           .then(() => {
             // Handle the response
             setNotificationType("success");
