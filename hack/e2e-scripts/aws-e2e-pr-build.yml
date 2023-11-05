@@ -24,6 +24,11 @@
       delegate_to: "{{ target_host }}"
       ignore_errors: true
 
+    - name: Prune System
+      ansible.builtin.command:
+        cmd: docker system prune -f
+      become: true
+
     - name: Replace the current kind images with this branch
       make:
         chdir: "{{ repo_dir }}"
