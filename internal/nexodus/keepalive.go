@@ -211,7 +211,7 @@ func (nx *Nexodus) pingOS(host string, i uint64, waitFor time.Duration) (string,
 
 	latency := time.Since(start)
 	roundedLatency := float64(latency) / float64(time.Millisecond)
-	nx.logger.Debugf("ping probe results: %d bytes from %v: icmp_seq=%v, time=%dms", amt, host, i, roundedLatency)
+	nx.logger.Debugf("ping probe results: %d bytes from %v: icmp_seq=%v, time=%.2fms", amt, host, i, roundedLatency)
 
 	return fmt.Sprintf("%.2fms", roundedLatency), nil
 }
