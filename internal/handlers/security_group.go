@@ -95,7 +95,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
 		db = api.SecurityGroupIsReadableByCurrentUser(c, db)
-		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "id")
+		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "group_name")
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -290,13 +290,9 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 			OutboundRules:    request.OutboundRules,
 			GroupDescription: request.GroupDescription,
 		}
-		if res := tx.Create(&sg); res.Error != nil {
-			return res.Error
-		}
-
-		// Replace the organization's SecurityGroupId field
-		org.SecurityGroupId = sg.ID
-		if res := tx.Save(&org); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Create(&sg); res.Error != nil {
 			return res.Error
 		}
 
@@ -367,7 +363,6 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 	}
 
 	sg := models.SecurityGroup{}
-
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
 		if res := api.SecurityGroupIsWriteableByCurrentUser(c, tx).
@@ -474,10 +469,18 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 			return errSecurityGroupNotFound
 		}
 
-		securityGroup.GroupName = request.GroupName
-		securityGroup.GroupDescription = request.GroupDescription
-		securityGroup.InboundRules = request.InboundRules
-		securityGroup.OutboundRules = request.OutboundRules
+		if request.GroupName != nil {
+			securityGroup.GroupName = *request.GroupName
+		}
+		if request.GroupDescription != nil {
+			securityGroup.GroupDescription = *request.GroupDescription
+		}
+		if request.InboundRules != nil {
+			securityGroup.InboundRules = request.InboundRules
+		}
+		if request.OutboundRules != nil {
+			securityGroup.OutboundRules = request.OutboundRules
+		}
 
 		if res := tx.
 			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).

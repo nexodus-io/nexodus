@@ -117,30 +117,37 @@ func createSecurityGroupCommand() *cli.Command {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					name := cCtx.String("name")
-					sgID := cCtx.String("security-group-id")
-					description := cCtx.String("description")
-					inboundRulesStr := cCtx.String("inbound-rules")
-					outboundRulesStr := cCtx.String("outbound-rules")
 
-					var inboundRules, outboundRules []public.ModelsSecurityRule
-					var err error
+					update := public.ModelsUpdateSecurityGroup{}
 
-					if inboundRulesStr != "" {
-						inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
+					id := cCtx.String("security-group-id")
+					if cCtx.IsSet("name") {
+						update.GroupName = cCtx.String("name")
+					}
+					if cCtx.IsSet("description") {
+						update.GroupDescription = cCtx.String("description")
+					}
+					if cCtx.IsSet("inbound-rules") {
+						rules, err := jsonStringToSecurityRules(cCtx.String("inbound-rules"))
 						if err != nil {
 							return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 						}
+						update.InboundRules = rules
 					}
-
-					if outboundRulesStr != "" {
-						outboundRules, err = jsonStringToSecurityRules(outboundRulesStr)
+					if cCtx.IsSet("outbound-rules") {
+						rules, err := jsonStringToSecurityRules(cCtx.String("outbound-rules"))
 						if err != nil {
 							return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 						}
+						update.OutboundRules = rules
 					}
 
-					return updateSecurityGroup(cCtx, mustCreateAPIClient(cCtx), sgID, name, description, inboundRules, outboundRules)
+					err := checkICMPRules(update.InboundRules, update.InboundRules)
+					if err != nil {
+						return fmt.Errorf("update security group failed: %w", err)
+					}
+
+					return updateSecurityGroup(cCtx, mustCreateAPIClient(cCtx), id, update)
 				},
 			},
 		},
@@ -195,19 +202,9 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID, name, description string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
 
-	err := checkICMPRules(inboundRules, outboundRules)
-	if err != nil {
-		return fmt.Errorf("create security group failed: %w", err)
-	}
-
-	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), secGroupID).Update(public.ModelsUpdateSecurityGroup{
-		GroupName:        name,
-		GroupDescription: description,
-		InboundRules:     inboundRules,
-		OutboundRules:    outboundRules,
-	}).Execute()
+	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), secGroupID).Update(update).Execute()
 	if err != nil {
 		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks
 		if httpResp != nil && httpResp.StatusCode == http.StatusUnprocessableEntity {

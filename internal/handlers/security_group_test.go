@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"io"
 	"net/http"
 
@@ -260,8 +261,8 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	// Update the security group
 	updateGroup := models.UpdateSecurityGroup{
-		GroupName:        "updatedTestGroup",
-		GroupDescription: "This is an updated test group",
+		GroupName:        util.PtrString("updatedTestGroup"),
+		GroupDescription: util.PtrString("This is an updated test group"),
 		InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 22, IpRanges: []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}}},
 		OutboundRules:    []models.SecurityRule{{IpProtocol: "", FromPort: 0, ToPort: 0, IpRanges: []string{"200::/64", "201::1-201::8"}}},
 	}
@@ -289,8 +290,8 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 	require.NoError(err)
 
 	// Check the updated fields
-	assert.Equal(updateGroup.GroupName, updatedGroup.GroupName)
-	assert.Equal(updateGroup.GroupDescription, updatedGroup.GroupDescription)
+	assert.Equal(*updateGroup.GroupName, updatedGroup.GroupName)
+	assert.Equal(*updateGroup.GroupDescription, updatedGroup.GroupDescription)
 	assert.Equal(updateGroup.InboundRules, updatedGroup.InboundRules)
 	assert.Equal(updateGroup.OutboundRules, updatedGroup.OutboundRules)
 }
@@ -332,8 +333,8 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid rule (FromPort > ToPort)
 	updateGroup := models.UpdateSecurityGroup{
-		GroupName:        "updatedTestGroup",
-		GroupDescription: "This is an updated test group",
+		GroupName:        util.PtrString("updatedTestGroup"),
+		GroupDescription: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8081, ToPort: 8080, IpRanges: []string{"200::/64"}},
 		},
@@ -359,8 +360,8 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid port range with a from_port of 0
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        "updatedTestGroup",
-		GroupDescription: "This is an updated test group",
+		GroupName:        util.PtrString("updatedTestGroup"),
+		GroupDescription: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 0, ToPort: 8080, IpRanges: []string{"10.130.0.1-10.130.0.5,10.20.0.0/28"}},
 		},
@@ -386,8 +387,8 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid ip range
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        "updatedTestGroup",
-		GroupDescription: "This is an updated test group",
+		GroupName:        util.PtrString("updatedTestGroup"),
+		GroupDescription: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8080, ToPort: 8080, IpRanges: []string{"200::/64¯\\_(ツ)_/¯"}},
 		},
@@ -413,8 +414,8 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid ip range
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        "updatedTestGroup",
-		GroupDescription: "This is an updated test group",
+		GroupName:        util.PtrString("updatedTestGroup"),
+		GroupDescription: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8080, ToPort: 8080, IpRanges: []string{""}},
 		},
