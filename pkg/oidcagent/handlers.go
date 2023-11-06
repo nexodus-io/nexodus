@@ -491,10 +491,12 @@ func (o *OidcAgent) CheckAuth(c *gin.Context) {
 // @Success     200 {object} models.DeviceStartResponse
 // @Router      /device/login/start [post]
 func (o *OidcAgent) DeviceStart(c *gin.Context) {
+	now := time.Now()
 	c.JSON(http.StatusOK, models.DeviceStartResponse{
 		DeviceAuthURL: o.deviceAuthURL,
 		Issuer:        o.oidcIssuer,
 		ClientID:      o.clientID,
+		ServerTime:    &now,
 	})
 }
 

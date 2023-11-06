@@ -2922,6 +2922,11 @@
                 },
                 "issuer": {
                     "type": "string"
+                },
+                "server_time": {
+                    "description": "the current time on the server, can be used by a client to get an idea of what the time skew is\nin relation to the server.",
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },

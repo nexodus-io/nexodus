@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type LoginStartResponse struct {
 	AuthorizationRequestURL string `json:"authorization_request_url"`
 }
@@ -43,6 +45,9 @@ type DeviceStartResponse struct {
 	DeviceAuthURL string `json:"device_authorization_endpoint"`
 	Issuer        string `json:"issuer"`
 	ClientID      string `json:"client_id"`
+	// the current time on the server, can be used by a client to get an idea of what the time skew is
+	// in relation to the server.
+	ServerTime *time.Time `json:"server_time" format:"date-time"`
 }
 
 type CheckAuthResponse struct {
