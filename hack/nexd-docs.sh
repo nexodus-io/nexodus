@@ -8,7 +8,6 @@ cat docs/user-guide/nexd.md | sed -n '/## Usage/q;p' > docs/user-guide/nexd.md.t
 printf "### Usage\n\n" >> docs/user-guide/nexd.md.tmp
 
 # generate the usage output
-make dist/nexd
 echo '```text' >> docs/user-guide/nexd.md.tmp
 dist/nexd -h >> docs/user-guide/nexd.md.tmp
 echo '```' >> docs/user-guide/nexd.md.tmp
