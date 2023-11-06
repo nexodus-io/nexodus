@@ -94,14 +94,11 @@ func (nx *Nexodus) setupInterfaceOS() error {
 	}
 	defer util.IgnoreError(c.Close)
 
-	fwMark := wgFwMark
-
 	err = c.ConfigureDevice(nx.tunnelIface, wgtypes.Config{
 		PrivateKey:   &privateKey,
 		ListenPort:   &listenPort,
 		ReplacePeers: true,
 		Peers:        nil,
-		FirewallMark: &fwMark,
 	})
 
 	if err != nil {

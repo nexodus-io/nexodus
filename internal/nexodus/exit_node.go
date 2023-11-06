@@ -2,8 +2,9 @@ package nexodus
 
 import (
 	"fmt"
-
 	"github.com/nexodus-io/nexodus/internal/util"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const (
@@ -61,6 +62,24 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 	// teardown any residual nf tables or routing tables from previous runs
 	if err := nx.exitNodeClientTeardown(); err != nil {
 		nx.logger.Debug(err)
+	}
+
+	// Add a fwMark to the wg interface
+	c, err := wgctrl.New()
+	if err != nil {
+		nx.logger.Errorf("could not connect to wireguard: %v\n", err)
+		return fmt.Errorf("%w", interfaceErr)
+	}
+	defer util.IgnoreError(c.Close)
+
+	fwMark := wgFwMark
+	err = c.ConfigureDevice(nx.tunnelIface, wgtypes.Config{
+		ReplacePeers: false,
+		FirewallMark: &fwMark,
+	})
+
+	if err != nil {
+		return fmt.Errorf("error adding exit node client fwdMark: %w", err)
 	}
 
 	if err := nx.handlePeerTunnel(nx.exitNode.exitNodeOrigins[0]); err != nil {
