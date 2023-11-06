@@ -69,6 +69,7 @@ USAGE:
 COMMANDS:
    list      List all devices
    delete    Delete a device
+   update    Update a device
    metadata  Commands relating to device metadata
    help, h   Shows a list of commands or help for one command
 

@@ -360,7 +360,15 @@ dist/.ui-fmt: $(wildcard ui/*) $(wildcard ui/src/**) | dist
 .PHONY: generate
 generate: dist/.generate ## Run all code generators and formatters
 
-dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt | dist
+docs/user-guide/nexd.md: dist/nexd hack/nexd-docs.sh
+	$(ECHO_PREFIX) printf "  %-12s nexd\n" "[DOCS]"
+	$(CMD_PREFIX) hack/nexd-docs.sh
+
+docs/user-guide/nexctl.md: dist/nexctl hack/nexctl-docs.sh
+	$(ECHO_PREFIX) printf "  %-12s nexctl\n" "[DOCS]"
+	$(CMD_PREFIX) hack/nexctl-docs.sh
+
+dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt docs/user-guide/nexd.md docs/user-guide/nexctl.md | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
