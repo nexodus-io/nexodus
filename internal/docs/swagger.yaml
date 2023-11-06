@@ -382,6 +382,12 @@ definitions:
           $ref: '#/definitions/models.SecurityRule'
         type: array
     type: object
+  models.UpdateVPC:
+    properties:
+      description:
+        example: The Red Zone
+        type: string
+    type: object
   models.User:
     properties:
       id:
@@ -1886,6 +1892,53 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Get VPCs
+      tags:
+      - VPC
+    patch:
+      consumes:
+      - application/json
+      description: Updates a vpc by ID
+      operationId: UpdateVPC
+      parameters:
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: VPC Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateVPC'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.VPC'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Update VPCs
       tags:
       - VPC
   /api/vpcs/{id}/devices:

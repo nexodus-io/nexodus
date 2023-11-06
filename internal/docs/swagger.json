@@ -2147,6 +2147,76 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Updates a vpc by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "Update VPCs",
+                "operationId": "UpdateVPC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "VPC Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateVPC"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.VPC"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
             }
         },
         "/api/vpcs/{id}/devices": {
@@ -3133,6 +3203,15 @@
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                }
+            }
+        },
+        "models.UpdateVPC": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "The Red Zone"
                 }
             }
         },

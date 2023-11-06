@@ -113,8 +113,9 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.DELETE("/invitations/:id", api.DeleteInvitation)
 
 		private.GET("/vpcs", api.ListVPCs)
-		private.POST("/vpcs", api.CreateVPC)
 		private.GET("/vpcs/:id", api.GetVPC)
+		private.PATCH("/vpcs/:id", api.UpdateVPC)
+		private.POST("/vpcs", api.CreateVPC)
 		private.DELETE("/vpcs/:id", api.DeleteVPC)
 
 		// Registration Tokens

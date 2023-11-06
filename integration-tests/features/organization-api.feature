@@ -18,6 +18,7 @@ Feature: Organization API
     When I GET path "/api/organizations"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${oliver_organization_id}
+    Given I store the ${response[0].security_group_id} as ${security_group_id}
 
     Given I am logged in as "Oscar"
     When I GET path "/api/users/me"
@@ -28,10 +29,12 @@ Feature: Organization API
     When I GET path "/api/organizations"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${oscar_organization_id}
-
-    When I GET path "/api/organizations"
-    Then the response code should be 200
+    # validate the default org id is the same as the user id
+    Then "${oscar_organization_id}" should match "${oscar_user_id}"
     Given I store the ${response[0].security_group_id} as ${oscar_security_group_id}
+    # validate the default sg id is the same as the user id
+    Then "${oscar_security_group_id}" should match "${oscar_user_id}"
+
     #
     # Oscar should only be able to see the orgs that he is a part of.
     When I GET path "/api/organizations"
