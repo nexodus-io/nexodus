@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@mui/material": "^5.14.15",
-    "@types/jest": "^29.5.5",
+    "@types/jest": "^29.5.7",
     "@types/react": "^18.2.35",
     "@types/react-dom": "^18.2.14",
     "@vitejs/plugin-react": "^4.1.0",
