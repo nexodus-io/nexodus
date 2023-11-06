@@ -134,7 +134,7 @@ Feature: Device API
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
-        "symmetric_nat": false,
+        "symmetric_nat": true,
         "ipv4_tunnel_ips": [
           {
             "address": "${response.ipv4_tunnel_ips[0].address}",
@@ -179,7 +179,7 @@ Feature: Device API
           "public_key": "${public_key}",
           "relay": false,
           "revision": ${response[0].revision},
-          "symmetric_nat": false,
+          "symmetric_nat": true,
           "security_group_id": "${response[0].security_group_id}",
           "ipv4_tunnel_ips": [
             {
@@ -262,7 +262,7 @@ Feature: Device API
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},
-        "symmetric_nat": false,
+        "symmetric_nat": true,
         "ipv4_tunnel_ips": [
           {
             "address": "${response.ipv4_tunnel_ips[0].address}",

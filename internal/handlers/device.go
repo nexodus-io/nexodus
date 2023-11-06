@@ -234,7 +234,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 
 		// TODO: re-enable this when we are ready to support changing a device's VPC.
 
-		if request.VpcID != uuid.Nil && request.VpcID != device.OrganizationID {
+		if request.VpcID != nil && *request.VpcID != device.OrganizationID {
 
 			var newVpc models.VPC
 			if result := api.VPCIsReadableByCurrentUser(c, tx).
@@ -297,9 +297,20 @@ func (api *API) UpdateDevice(c *gin.Context) {
 				return err
 			}
 
-			device.VpcID = request.VpcID
+			device.VpcID = *request.VpcID
 		}
-		device.SymmetricNat = request.SymmetricNat
+		if request.SymmetricNat != nil {
+			device.SymmetricNat = *request.SymmetricNat
+		}
+
+		if request.SecurityGroupId != nil {
+			var sg models.SecurityGroup
+			if result := api.SecurityGroupIsReadableByCurrentUser(c, tx).
+				First(&sg, "id = ?", *request.SecurityGroupId); result.Error != nil {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("security_group_id"))
+			}
+			device.SecurityGroupId = *request.SecurityGroupId
+		}
 
 		// check if the updated device advertised CIDRs match the existing device advertised CIDRs
 		if request.AdvertiseCidrs != nil && !advertiseCidrEquals(device.AdvertiseCidrs, request.AdvertiseCidrs) {
