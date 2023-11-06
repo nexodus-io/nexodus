@@ -48,10 +48,11 @@ type AddDevice struct {
 
 // UpdateDevice is the information needed to update a Device.
 type UpdateDevice struct {
-	VpcID          uuid.UUID  `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
-	AdvertiseCidrs []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
-	SymmetricNat   bool       `json:"symmetric_nat"`
-	Hostname       string     `json:"hostname" example:"myhost"`
-	Endpoints      []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
-	Revision       *uint64    `json:"revision"`
+	VpcID           *uuid.UUID `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
+	AdvertiseCidrs  []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
+	SymmetricNat    *bool      `json:"symmetric_nat"`
+	Hostname        string     `json:"hostname" example:"myhost"`
+	Endpoints       []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
+	Revision        *uint64    `json:"revision"`
+	SecurityGroupId *uuid.UUID `json:"security_group_id"`
 }

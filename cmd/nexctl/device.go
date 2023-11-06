@@ -63,6 +63,38 @@ func createDeviceCommand() *cli.Command {
 				},
 			},
 			{
+				Name:  "update",
+				Usage: "Update a device",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "device-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "hostname",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					encodeOut := cCtx.String("output")
+					devID := cCtx.String("device-id")
+					update := public.ModelsUpdateDevice{}
+					if cCtx.IsSet("hostname") {
+						value := cCtx.String("hostname")
+						update.Hostname = value
+					}
+					if cCtx.IsSet("security-group-id") {
+						value := cCtx.String("security-group-id")
+						update.SecurityGroupId = value
+					}
+					return updateDevice(mustCreateAPIClient(cCtx), encodeOut, devID, update)
+				},
+			},
+			{
 				Name:        "metadata",
 				Usage:       "Commands relating to device metadata",
 				Subcommands: deviceMetadataSubcommands,
@@ -172,6 +204,33 @@ func deleteDevice(c *public.APIClient, encodeOut, devID string) error {
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("successfully deleted device %s\n", res.Id)
+		return nil
+	}
+
+	err = FormatOutput(encodeOut, res)
+	if err != nil {
+		log.Fatalf("failed to print output: %v", err)
+	}
+
+	return nil
+}
+
+func updateDevice(c *public.APIClient, encodeOut, devID string, update public.ModelsUpdateDevice) error {
+	devUUID, err := uuid.Parse(devID)
+	if err != nil {
+		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
+	}
+
+	res, _, err := c.DevicesApi.
+		UpdateDevice(context.Background(), devUUID.String()).
+		Update(update).
+		Execute()
+	if err != nil {
+		log.Fatalf("device update failed: %v\n", err)
+	}
+
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		fmt.Printf("successfully update device %s\n", res.Id)
 		return nil
 	}
 
