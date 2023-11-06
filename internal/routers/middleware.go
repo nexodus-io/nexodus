@@ -183,6 +183,10 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 		// for now just use the concurrency limiter to serialize the cache lookup and create user if not exists
 		// in the future we can use the concurrency limiter to limit the number of concurrent requests to  other
 		//  requests in the apiserver.  We may need different concurrency levels for things like device requests.
+		// NOTE: This does not prevent concurrent access across the system. It is only enforced on a per
+		// apiserver process basis. With apiserver replicas in place, concurrent access in this code path can
+		// still occur. The change here will still limit the number of db connections from here at a time, but they
+		// will not necessarily be serialized.
 		canceled := limiters.Single.Do(c, func() {
 			cachedUserId, err = o.Api.Redis.Get(c.Request.Context(), prefixId).Result()
 			if err != nil {
