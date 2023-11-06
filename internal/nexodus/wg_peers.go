@@ -94,7 +94,7 @@ var wgPeerMethods = []wgPeerMethod{
 		},
 		buildPeerConfig: func(nx *Nexodus, device public.ModelsDevice, _ []string, _, _, _ string) wgPeerConfig {
 			return wgPeerConfig{
-				AllowedIPsForRelay: device.ChildPrefix,
+				AllowedIPsForRelay: device.AdvertiseCidrs,
 			}
 		},
 	},
@@ -257,7 +257,7 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	if healthyRelay && len(allowedIPsForRelay) > 0 {
 		// Add child prefix CIDRs to the relay for peers that we can only reach via the relay
 		relayConfig := nx.wgConfig.Peers[relayDevice.PublicKey]
-		relayConfig.AllowedIPs = append([]string{nx.org.Cidr, nx.org.CidrV6}, allowedIPsForRelay...)
+		relayConfig.AllowedIPs = append([]string{nx.vpc.Ipv4Cidr, nx.vpc.Ipv4Cidr}, allowedIPsForRelay...)
 		nx.wgConfig.Peers[relayDevice.PublicKey] = relayConfig
 	}
 

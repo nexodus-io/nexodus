@@ -255,23 +255,23 @@ func TestBuildPeersConfig(t *testing.T) {
 	// The test scenario is encoded in this Nexodus instance.
 	//
 	// We have 3 devices we are peered with:
-	// - directPeerWithChildPrefix: a peer we can reach directly, and it has a child prefix.
+	// - directPeerWithAdvertiseCidrs: a peer we can reach directly, and it has a child prefix.
 	//		In this case, we should see the child prefix in the peer config.
 	//		This child prefix should NOT be present in the relay configuration.
-	// - peerViaRelayWithChildPrefix: a peer we can reach via a relay, and it has a child prefix.
+	// - peerViaRelayWithAdvertiseCidrs: a peer we can reach via a relay, and it has a child prefix.
 	//		In this case, since we are unable to peer with this device directly,
 	//		the child prefix should be reachable via the relay.
 	// - theRelay: a relay we can reach directly.
 	//
 	nx := &Nexodus{
-		org: &public.ModelsOrganization{
-			Cidr:   "100.64.0.0/10",
-			CidrV6: "200::/64",
+		vpc: &public.ModelsVPC{
+			Ipv4Cidr: "100.64.0.0/10",
+			Ipv6Cidr: "200::/64",
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
 		deviceCache: map[string]deviceCacheEntry{
-			"directPeerWithChildPrefix": {
+			"directPeerWithAdvertiseCidrs": {
 				device: public.ModelsDevice{
 					Endpoints: []public.ModelsEndpoint{
 						{
@@ -283,13 +283,13 @@ func TestBuildPeersConfig(t *testing.T) {
 							Source:  "stun",
 						},
 					},
-					PublicKey: "directPeerWithChildPrefix",
-					ChildPrefix: []string{
+					PublicKey: "directPeerWithAdvertiseCidrs",
+					AdvertiseCidrs: []string{
 						"192.168.50.0/24",
 					},
 				},
 			},
-			"peerViaRelayWithChildPrefix": {
+			"peerViaRelayWithAdvertiseCidrs": {
 				device: public.ModelsDevice{
 					Endpoints: []public.ModelsEndpoint{
 						{
@@ -301,9 +301,9 @@ func TestBuildPeersConfig(t *testing.T) {
 							Source:  "stun",
 						},
 					},
-					PublicKey:    "peerViaRelayWithChildPrefix",
+					PublicKey:    "peerViaRelayWithAdvertiseCidrs",
 					SymmetricNat: true,
-					ChildPrefix: []string{
+					AdvertiseCidrs: []string{
 						"192.168.40.0/24",
 					},
 				},
@@ -341,11 +341,11 @@ func TestBuildPeersConfig(t *testing.T) {
 	require.Equal(len(nx.wgConfig.Peers), 2)
 
 	// The child prefix for the peer we can reach directly is in the config for that peer and not the relay.
-	require.Contains(nx.wgConfig.Peers["directPeerWithChildPrefix"].AllowedIPs, "192.168.50.0/24")
+	require.Contains(nx.wgConfig.Peers["directPeerWithAdvertiseCidrs"].AllowedIPs, "192.168.50.0/24")
 	require.NotContains(nx.wgConfig.Peers["theRelay"].AllowedIPs, "192.168.50.0/24")
 
 	// The child prefix for the peer we can reach via the relay is in the config for the relay.
 	// We should have no config for the peer itself.
-	require.NotContains(nx.wgConfig.Peers, "peerViaRelayWithChildPrefix")
+	require.NotContains(nx.wgConfig.Peers, "peerViaRelayWithAdvertiseCidrs")
 	require.Contains(nx.wgConfig.Peers["theRelay"].AllowedIPs, "192.168.40.0/24")
 }
