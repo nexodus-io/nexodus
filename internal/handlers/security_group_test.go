@@ -18,9 +18,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 
 	groups := []models.AddSecurityGroup{
 		{
-			GroupName:        "testGroup1",
-			GroupDescription: "This is test group 1",
-			OrganizationId:   suite.testUserID,
+			Description:    "This is test group 1",
+			OrganizationId: suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "tcp", FromPort: 22, ToPort: 22, IpRanges: []string{"192.168.100.0/24", "2001:db8::/32"}},
 				{IpProtocol: "udp", FromPort: 5000, ToPort: 5001, IpRanges: []string{"10.0.0.0/8"}},
@@ -31,9 +30,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 			},
 		},
 		{
-			GroupName:        "testGroup2",
-			GroupDescription: "This is test group 2",
-			OrganizationId:   suite.testUserID,
+			Description:    "This is test group 2",
+			OrganizationId: suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "udp", FromPort: 99, ToPort: 100, IpRanges: []string{"2001:db8:a0b:12f0::/64", "2001:db8::/32"}},
 				{IpProtocol: "icmp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.1.0/24", "10.0.0.0/8"}},
@@ -44,9 +42,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 			},
 		},
 		{
-			GroupName:        "testGroup3",
-			GroupDescription: "This is test group 3",
-			OrganizationId:   suite.testUserID,
+			Description:    "This is test group 3",
+			OrganizationId: suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "icmp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.1.0/24", "2001:db8:a0b:12f0::/64"}},
 				{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"0.0.0.0/0", "::/0"}},
@@ -82,8 +79,7 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 		err = json.Unmarshal(body, &actual)
 		require.NoError(err)
 
-		require.Equal(newGroup.GroupName, actual.GroupName)
-		require.Equal(newGroup.GroupDescription, actual.GroupDescription)
+		require.Equal(newGroup.Description, actual.Description)
 		require.Equal(newGroup.OrganizationId, actual.OrganizationId)
 
 		_, res, err = suite.ServeRequest(
@@ -110,11 +106,10 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	// create a security group that we will delete later
 	newGroup := models.AddSecurityGroup{
-		GroupName:        "testGroupToDelete",
-		GroupDescription: "This is a test group to delete",
-		OrganizationId:   suite.testUserID,
-		InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
-		OutboundRules:    []models.SecurityRule{{IpProtocol: "udp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
+		Description:    "This is a test group to delete",
+		OrganizationId: suite.testUserID,
+		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
+		OutboundRules:  []models.SecurityRule{{IpProtocol: "udp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -171,18 +166,16 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 	// Create a couple of security groups for testing
 	groups := []models.AddSecurityGroup{
 		{
-			GroupName:        "testGroup1",
-			GroupDescription: "This is test group 1",
-			OrganizationId:   suite.testUserID,
-			InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{"100.100.0.0/16"}}},
-			OutboundRules:    []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{}}},
+			Description:    "This is test group 1",
+			OrganizationId: suite.testUserID,
+			InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{"100.100.0.0/16"}}},
+			OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{}}},
 		},
 		{
-			GroupName:        "testGroup2",
-			GroupDescription: "This is test group 2",
-			OrganizationId:   suite.testUserID,
-			InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"200::1-200::5"}}},
-			OutboundRules:    []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 8080, IpRanges: []string{"172.20.0.1-172.20.0.100"}}},
+			Description:    "This is test group 2",
+			OrganizationId: suite.testUserID,
+			InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"200::1-200::5"}}},
+			OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 8080, IpRanges: []string{"172.20.0.1-172.20.0.100"}}},
 		},
 	}
 
@@ -230,11 +223,10 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	// Create a new security group
 	newGroup := models.AddSecurityGroup{
-		GroupName:        "testGroup",
-		GroupDescription: "This is a test group",
-		OrganizationId:   suite.testUserID,
-		InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
-		OutboundRules:    []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
+		Description:    "This is a test group",
+		OrganizationId: suite.testUserID,
+		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
+		OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -261,10 +253,9 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	// Update the security group
 	updateGroup := models.UpdateSecurityGroup{
-		GroupName:        util.PtrString("updatedTestGroup"),
-		GroupDescription: util.PtrString("This is an updated test group"),
-		InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 22, IpRanges: []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}}},
-		OutboundRules:    []models.SecurityRule{{IpProtocol: "", FromPort: 0, ToPort: 0, IpRanges: []string{"200::/64", "201::1-201::8"}}},
+		Description:   util.PtrString("This is an updated test group"),
+		InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 22, IpRanges: []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}}},
+		OutboundRules: []models.SecurityRule{{IpProtocol: "", FromPort: 0, ToPort: 0, IpRanges: []string{"200::/64", "201::1-201::8"}}},
 	}
 
 	updateBody, err := json.Marshal(updateGroup)
@@ -290,8 +281,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 	require.NoError(err)
 
 	// Check the updated fields
-	assert.Equal(*updateGroup.GroupName, updatedGroup.GroupName)
-	assert.Equal(*updateGroup.GroupDescription, updatedGroup.GroupDescription)
+	assert.Equal(*updateGroup.Description, updatedGroup.Description)
 	assert.Equal(updateGroup.InboundRules, updatedGroup.InboundRules)
 	assert.Equal(updateGroup.OutboundRules, updatedGroup.OutboundRules)
 }
@@ -302,11 +292,10 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Create a new security group
 	newGroup := models.AddSecurityGroup{
-		GroupName:        "testGroup",
-		GroupDescription: "This is a test group",
-		OrganizationId:   suite.testUserID,
-		InboundRules:     []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
-		OutboundRules:    []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
+		Description:    "This is a test group",
+		OrganizationId: suite.testUserID,
+		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
+		OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -333,8 +322,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid rule (FromPort > ToPort)
 	updateGroup := models.UpdateSecurityGroup{
-		GroupName:        util.PtrString("updatedTestGroup"),
-		GroupDescription: util.PtrString("This is an updated test group"),
+		Description: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8081, ToPort: 8080, IpRanges: []string{"200::/64"}},
 		},
@@ -360,8 +348,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid port range with a from_port of 0
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        util.PtrString("updatedTestGroup"),
-		GroupDescription: util.PtrString("This is an updated test group"),
+		Description: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 0, ToPort: 8080, IpRanges: []string{"10.130.0.1-10.130.0.5,10.20.0.0/28"}},
 		},
@@ -387,8 +374,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid ip range
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        util.PtrString("updatedTestGroup"),
-		GroupDescription: util.PtrString("This is an updated test group"),
+		Description: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8080, ToPort: 8080, IpRanges: []string{"200::/64¯\\_(ツ)_/¯"}},
 		},
@@ -414,8 +400,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Update the security group with an invalid ip range
 	updateGroup = models.UpdateSecurityGroup{
-		GroupName:        util.PtrString("updatedTestGroup"),
-		GroupDescription: util.PtrString("This is an updated test group"),
+		Description: util.PtrString("This is an updated test group"),
 		InboundRules: []models.SecurityRule{
 			{IpProtocol: "tcp", FromPort: 8080, ToPort: 8080, IpRanges: []string{""}},
 		},

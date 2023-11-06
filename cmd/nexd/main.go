@@ -435,11 +435,12 @@ func main() {
 				Category: nexServiceOptions,
 			},
 			&cli.StringFlag{
-				Name:     "state-dir",
-				Usage:    fmt.Sprintf("Directory to store state in, such as api tokens to reuse after interactive login. Defaults to'%s'", stateDirDefault),
-				Value:    stateDirDefault,
-				EnvVars:  []string{"NEXD_STATE_DIR"},
-				Category: nexServiceOptions,
+				Name:        "state-dir",
+				Usage:       "Directory to store state in, such as api tokens to reuse after interactive login.",
+				Value:       stateDirDefault,
+				EnvVars:     []string{"NEXD_STATE_DIR"},
+				DefaultText: stateDirDefaultExpression,
+				Category:    nexServiceOptions,
 			},
 			&cli.StringSliceFlag{
 				Name:     "stun-server",

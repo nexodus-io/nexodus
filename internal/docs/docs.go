@@ -2740,8 +2740,8 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "expiration": {
-                    "description": "Expiration is optional, if set the registration key is only valid until the Expiration time.",
+                "expires_at": {
+                    "description": "ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.",
                     "type": "string"
                 },
                 "single_use": {
@@ -2756,13 +2756,9 @@ const docTemplate = `{
         "models.AddSecurityGroup": {
             "type": "object",
             "properties": {
-                "group_description": {
+                "description": {
                     "type": "string",
                     "example": "group_description"
-                },
-                "group_name": {
-                    "type": "string",
-                    "example": "group_name"
                 },
                 "inbound_rules": {
                     "type": "array",
@@ -2967,7 +2963,7 @@ const docTemplate = `{
         "models.Invitation": {
             "type": "object",
             "properties": {
-                "expiry": {
+                "expires_at": {
                     "type": "string"
                 },
                 "id": {
@@ -3077,9 +3073,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "device_id": {
+                    "description": "DeviceId is set if the RegKey was created for single use",
                     "type": "string"
                 },
-                "expiration": {
+                "expires_at": {
+                    "description": "ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.",
                     "type": "string"
                 },
                 "id": {
@@ -3097,10 +3095,7 @@ const docTemplate = `{
         "models.SecurityGroup": {
             "type": "object",
             "properties": {
-                "group_description": {
-                    "type": "string"
-                },
-                "group_name": {
+                "description": {
                     "type": "string"
                 },
                 "id": {
@@ -3202,10 +3197,7 @@ const docTemplate = `{
         "models.UpdateSecurityGroup": {
             "type": "object",
             "properties": {
-                "group_description": {
-                    "type": "string"
-                },
-                "group_name": {
+                "description": {
                     "type": "string"
                 },
                 "inbound_rules": {

@@ -44,12 +44,8 @@ func createSecurityGroupCommand() *cli.Command {
 				Usage: "create a security group",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "name",
-						Required: true,
-					},
-					&cli.StringFlag{
 						Name:     "organization-id",
-						Required: true,
+						Required: false,
 					},
 					&cli.StringFlag{
 						Name:     "description",
@@ -65,7 +61,6 @@ func createSecurityGroupCommand() *cli.Command {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					name := cCtx.String("name")
 					description := cCtx.String("description")
 					orgID := cCtx.String("organization-id")
 					inboundRulesStr := cCtx.String("inbound-rules")
@@ -88,17 +83,13 @@ func createSecurityGroupCommand() *cli.Command {
 						}
 					}
 
-					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), name, description, orgID, inboundRules, outboundRules)
+					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), description, orgID, inboundRules, outboundRules)
 				},
 			},
 			{
 				Name:  "update",
 				Usage: "update a security group",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "name",
-						Required: false,
-					},
 					&cli.StringFlag{
 						Name:     "security-group-id",
 						Required: true,
@@ -121,11 +112,8 @@ func createSecurityGroupCommand() *cli.Command {
 					update := public.ModelsUpdateSecurityGroup{}
 
 					id := cCtx.String("security-group-id")
-					if cCtx.IsSet("name") {
-						update.GroupName = cCtx.String("name")
-					}
 					if cCtx.IsSet("description") {
-						update.GroupDescription = cCtx.String("description")
+						update.Description = cCtx.String("description")
 					}
 					if cCtx.IsSet("inbound-rules") {
 						rules, err := jsonStringToSecurityRules(cCtx.String("inbound-rules"))
@@ -157,16 +145,20 @@ func createSecurityGroupCommand() *cli.Command {
 func securityGroupTableFields(cCtx *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP NAME", Field: "GroupName"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP DESCRIPTION", Field: "GroupDescription"})
+	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP RULES INBOUND", Field: "InboundRules"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP RULES OUTBOUND", Field: "OutboundRules"})
+	fields = append(fields, TableField{Header: "INBOUND RULES", Field: "InboundRules"})
+	fields = append(fields, TableField{Header: "OUTBOUND RULES", Field: "OutboundRules"})
 	return fields
 }
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, description, organizationID string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, organizationID string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+
+	if organizationID == "" {
+		organizationID = getDefaultOrgId(cCtx.Context, c)
+	}
+
 	orgID, err := uuid.Parse(organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
@@ -178,11 +170,10 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, name, descripti
 	}
 
 	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background()).SecurityGroup(public.ModelsAddSecurityGroup{
-		GroupName:        name,
-		GroupDescription: description,
-		OrganizationId:   orgID.String(),
-		InboundRules:     inboundRules,
-		OutboundRules:    outboundRules,
+		Description:    description,
+		OrganizationId: orgID.String(),
+		InboundRules:   inboundRules,
+		OutboundRules:  outboundRules,
 	}).Execute()
 	if err != nil {
 		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks

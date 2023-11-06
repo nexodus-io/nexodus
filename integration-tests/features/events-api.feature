@@ -54,8 +54,7 @@ Feature: Events API
     And the response should match json:
       """
       {
-        "group_description": "default organization security group",
-        "group_name": "default",
+        "description": "default organization security group",
         "id": "${oscar_security_group_id}",
         "organization_id": "${oscar_organization_id}",
         "revision": ${current_revision}
@@ -215,8 +214,7 @@ Feature: Events API
       {
         "id": "${oscar_security_group_id}",
         "organization_id": "${oscar_organization_id}",
-        "group_description": "update",
-        "group_name": "test"
+        "description": "update"
       }
       """
     Then the response code should be 200
@@ -225,8 +223,7 @@ Feature: Events API
       {
         "id": "${oscar_security_group_id}",
         "organization_id": "${oscar_organization_id}",
-        "group_description": "update",
-        "group_name": "test",
+        "description": "update",
         "revision": ${response.revision}
       }
       """

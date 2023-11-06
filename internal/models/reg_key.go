@@ -15,8 +15,8 @@ type RegKey struct {
 	OrganizationID uuid.UUID  `json:"-"`                      // OrganizationID is denormalized from the VPC record for performance
 	BearerToken    string     `json:"bearer_token,omitempty"` // BearerToken is the bearer token the client should use to authenticate the device registration request.
 	Description    string     `json:"description,omitempty"`
-	DeviceId       *uuid.UUID `json:"device_id,omitempty"`
-	Expiration     *time.Time `json:"expiration,omitempty"`
+	DeviceId       *uuid.UUID `json:"device_id,omitempty"`  // DeviceId is set if the RegKey was created for single use
+	ExpiresAt      *time.Time `json:"expires_at,omitempty"` // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
 }
 
 type NexodusClaims struct {
@@ -30,5 +30,5 @@ type AddRegKey struct {
 	VpcID       uuid.UUID  `json:"vpc_id,omitempty"`
 	Description string     `json:"description,omitempty"`
 	SingleUse   bool       `json:"single_use,omitempty"` // SingleUse only allows the registration key to be used once.
-	Expiration  *time.Time `json:"expiration,omitempty"` // Expiration is optional, if set the registration key is only valid until the Expiration time.
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"` // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
 }

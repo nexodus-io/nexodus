@@ -12,9 +12,8 @@ package public
 
 // ModelsAddSecurityGroup struct for ModelsAddSecurityGroup
 type ModelsAddSecurityGroup struct {
-	GroupDescription string               `json:"group_description,omitempty"`
-	GroupName        string               `json:"group_name,omitempty"`
-	InboundRules     []ModelsSecurityRule `json:"inbound_rules,omitempty"`
-	OrganizationId   string               `json:"organization_id,omitempty"`
-	OutboundRules    []ModelsSecurityRule `json:"outbound_rules,omitempty"`
+	Description    string               `json:"description,omitempty"`
+	InboundRules   []ModelsSecurityRule `json:"inbound_rules,omitempty"`
+	OrganizationId string               `json:"organization_id,omitempty"`
+	OutboundRules  []ModelsSecurityRule `json:"outbound_rules,omitempty"`
 }

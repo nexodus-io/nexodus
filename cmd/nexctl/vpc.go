@@ -98,7 +98,7 @@ func listVPCs(cCtx *cli.Context, c *client.APIClient) error {
 
 func createVPC(cCtx *cli.Context, c *client.APIClient, resource public.ModelsAddVPC) error {
 	if resource.OrganizationId == "" {
-		resource.OrganizationId = getDefaultOwnedOrgId(cCtx.Context, c)
+		resource.OrganizationId = getDefaultOrgId(cCtx.Context, c)
 	}
 	res, httpResp, err := c.VPCApi.CreateVPC(context.Background()).VPC(resource).Execute()
 	if err != nil {

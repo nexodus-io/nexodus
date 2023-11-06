@@ -17,8 +17,7 @@ Feature: Security Group API
     And the response should match json:
       """
       {
-        "group_description": "default organization security group",
-        "group_name": "default",
+        "description": "default organization security group",
         "id": "${oscar_user_id}",
         "organization_id": "${oscar_user_id}",
         "revision": ${response.revision}
@@ -39,8 +38,7 @@ Feature: Security Group API
       """
       {
         "organization_id": "${oscar_user_id}",
-        "group_description": "extra security group",
-        "group_name": "extra"
+        "description": "extra security group"
       }
       """
     Then the response code should be 201
@@ -50,8 +48,7 @@ Feature: Security Group API
       {
         "id": "${extra_security_group_id}",
         "organization_id": "${oscar_user_id}",
-        "group_description": "extra security group",
-        "group_name": "extra",
+        "description": "extra security group",
         "revision": ${response.revision}
       }
       """

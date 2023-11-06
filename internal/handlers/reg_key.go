@@ -79,7 +79,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 		OrganizationID: vpc.OrganizationID,
 		BearerToken:    "RT:" + token.String(),
 		Description:    request.Description,
-		Expiration:     request.Expiration,
+		ExpiresAt:      request.ExpiresAt,
 	}
 	if request.SingleUse {
 		deviceID := uuid.New()

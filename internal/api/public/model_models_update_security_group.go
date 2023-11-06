@@ -12,8 +12,7 @@ package public
 
 // ModelsUpdateSecurityGroup struct for ModelsUpdateSecurityGroup
 type ModelsUpdateSecurityGroup struct {
-	GroupDescription string               `json:"group_description,omitempty"`
-	GroupName        string               `json:"group_name,omitempty"`
-	InboundRules     []ModelsSecurityRule `json:"inbound_rules,omitempty"`
-	OutboundRules    []ModelsSecurityRule `json:"outbound_rules,omitempty"`
+	Description   string               `json:"description,omitempty"`
+	InboundRules  []ModelsSecurityRule `json:"inbound_rules,omitempty"`
+	OutboundRules []ModelsSecurityRule `json:"outbound_rules,omitempty"`
 }

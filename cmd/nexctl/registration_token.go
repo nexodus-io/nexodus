@@ -47,7 +47,7 @@ func createRegKeyCommand() *cli.Command {
 					return createRegKey(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegKey{
 						VpcId:       cCtx.String("vpc-id"),
 						Description: cCtx.String("description"),
-						Expiration:  toExpiration(cCtx.Duration("expiration")),
+						ExpiresAt:   toExpiration(cCtx.Duration("expiration")),
 						SingleUse:   cCtx.Bool("single-use"),
 					})
 				},
@@ -83,7 +83,7 @@ func regTokenTableFields() []TableField {
 			return "true"
 		}
 	}})
-	fields = append(fields, TableField{Header: "EXPIRATION", Field: "Expiration"})
+	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
 	fields = append(fields, TableField{Header: "BEARER TOKEN", Field: "BearerToken"})
 	return fields
 }
@@ -112,7 +112,7 @@ func createRegKey(cCtx *cli.Context, c *client.APIClient, token public.ModelsAdd
 	return nil
 }
 
-func getDefaultOwnedOrgId(ctx context.Context, c *client.APIClient) string {
+func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
 	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
 	if err != nil {
 		log.Fatal(err)

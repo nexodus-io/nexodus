@@ -60,7 +60,7 @@ Feature: Invitations API
     And the response should match json:
       """
       {
-        "expiry": "${response.expiry}",
+        "expires_at": "${response.expires_at}",
         "id": "${invitation_id}",
         "organization_id": "${thompson_organization_id}",
         "user_id": "${johnson_user_id}"
@@ -75,7 +75,7 @@ Feature: Invitations API
       """
       [
         {
-          "expiry": "${response[0].expiry}",
+          "expires_at": "${response[0].expires_at}",
           "id": "${invitation_id}",
           "organization_id": "${thompson_organization_id}",
           "user_id": "${johnson_user_id}"
@@ -90,7 +90,7 @@ Feature: Invitations API
       """
       [
         {
-          "expiry": "${response[0].expiry}",
+          "expires_at": "${response[0].expires_at}",
           "id": "${invitation_id}",
           "organization_id": "${thompson_organization_id}",
           "user_id": "${johnson_user_id}"

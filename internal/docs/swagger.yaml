@@ -59,9 +59,9 @@ definitions:
     properties:
       description:
         type: string
-      expiration:
-        description: Expiration is optional, if set the registration key is only valid
-          until the Expiration time.
+      expires_at:
+        description: ExpiresAt is optional, if set the registration key is only valid
+          until the ExpiresAt time.
         type: string
       single_use:
         description: SingleUse only allows the registration key to be used once.
@@ -71,11 +71,8 @@ definitions:
     type: object
   models.AddSecurityGroup:
     properties:
-      group_description:
+      description:
         example: group_description
-        type: string
-      group_name:
-        example: group_name
         type: string
       inbound_rules:
         items:
@@ -219,7 +216,7 @@ definitions:
     type: object
   models.Invitation:
     properties:
-      expiry:
+      expires_at:
         type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -293,8 +290,11 @@ definitions:
       description:
         type: string
       device_id:
+        description: DeviceId is set if the RegKey was created for single use
         type: string
-      expiration:
+      expires_at:
+        description: ExpiresAt is optional, if set the registration key is only valid
+          until the ExpiresAt time.
         type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -306,9 +306,7 @@ definitions:
     type: object
   models.SecurityGroup:
     properties:
-      group_description:
-        type: string
-      group_name:
+      description:
         type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
@@ -377,9 +375,7 @@ definitions:
     type: object
   models.UpdateSecurityGroup:
     properties:
-      group_description:
-        type: string
-      group_name:
+      description:
         type: string
       inbound_rules:
         items:

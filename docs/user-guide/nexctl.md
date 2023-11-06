@@ -87,6 +87,7 @@ USAGE:
    nexctl invitation command [command options] [arguments...]
 
 COMMANDS:
+   list     List invitations
    create   create an invitation
    delete   delete an invitation
    accept   accept an invitation
@@ -116,7 +117,7 @@ COMMANDS:
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
-   --unix-socket value  Path to the unix socket nexd is listening against (default: "/run/nexd.sock")
+   --unix-socket value  Path to the unix socket nexd is listening against (default: $HOME/.nexodus/nexd.sock)
    --help, -h           Show help
 ```
 

@@ -526,6 +526,7 @@ clear-db:
 	$(CMD_PREFIX) $(kubectl) rollout status deploy/apiserver --timeout=5m $(PIPE_DEV_NULL)
 	$(ECHO_PREFIX) printf "  %-12s \n" "[DROP TABLES] ..."
 	$(CMD_PREFIX) echo "\
+		DROP TABLE IF EXISTS reg_keys;\
 		DROP TABLE IF EXISTS registration_tokens;\
 		DROP TABLE IF EXISTS invitations;\
 		DROP TABLE IF EXISTS security_groups;\
