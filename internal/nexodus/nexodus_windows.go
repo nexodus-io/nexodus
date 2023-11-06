@@ -3,11 +3,16 @@
 package nexodus
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"text/template"
 	"time"
+)
+
+var (
+	interfaceErr = errors.New("interface setup error")
 )
 
 const (
