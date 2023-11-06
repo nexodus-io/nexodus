@@ -10,10 +10,12 @@ import (
 	"github.com/redis/go-redis/v9"
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/nexodus-io/nexodus/internal/util/cache"
 	"github.com/open-policy-agent/opa/rego"
@@ -45,6 +47,13 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 	if err != nil {
 		return nil, err
 	}
+
+	userLimiters := csmap.Create[string, *UserLimiters](
+		// set the number of map shards to scale with CPUs allocated to the apiserver:
+		csmap.WithShardCount[string, *UserLimiters](2*uint64(runtime.GOMAXPROCS(-1))),
+		// set the total capacity, every shard map has total capacity/shard count capacity. the default value is 0.
+		csmap.WithSize[string, *UserLimiters](1000),
+	)
 
 	return func(c *gin.Context) {
 		logger := util.WithTrace(c.Request.Context(), o.Logger)
@@ -153,25 +162,55 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 			idpUserName = idpFullName
 		}
 
-		prefixId := fmt.Sprintf("%s:%s", handlers.CachePrefix, idpUserID)
-		cachedUserId, err := o.Api.Redis.Get(c.Request.Context(), prefixId).Result()
-		if err != nil {
-			if errors.Is(err, redis.Nil) {
-				o.Logger.Debugf("user id doesn't exits in the cache:%s", err)
-			} else {
-				o.Logger.Warnf("failed to find user in the cache:%s", err)
+		var limiters *UserLimiters
+		userLimiters.SetIf(idpUserID, func(value *UserLimiters, found bool) (*UserLimiters, bool) {
+			if !found {
+				value = NewUserLimiters()
 			}
-		}
+			value.Add()
+			limiters = value
+			return value, !found
+		})
+		defer func() {
+			userLimiters.DeleteIf(idpUserID, func(value *UserLimiters) bool {
+				return value.Done() == 0
+			})
+		}()
 
-		if cachedUserId == "" {
-			userId, err := o.Api.CreateUserIfNotExists(c.Request.Context(), idpUserID, idpUserName)
+		prefixId := fmt.Sprintf("%s:%s", handlers.CachePrefix, idpUserID)
+		cachedUserId := ""
+
+		// for now just use the concurrency limiter to serialize the cache lookup and create user if not exists
+		// in the future we can use the concurrency limiter to limit the number of concurrent requests to  other
+		//  requests in the apiserver.  We may need different concurrency levels for things like device requests.
+		// NOTE: This does not prevent concurrent access across the system. It is only enforced on a per
+		// apiserver process basis. With apiserver replicas in place, concurrent access in this code path can
+		// still occur. The change here will still limit the number of db connections from here at a time, but they
+		// will not necessarily be serialized.
+		canceled := limiters.Single.Do(c, func() {
+			cachedUserId, err = o.Api.Redis.Get(c.Request.Context(), prefixId).Result()
 			if err != nil {
-				o.Api.SendInternalServerError(c, err)
-				c.Abort()
-				return
+				if errors.Is(err, redis.Nil) {
+					o.Logger.Debugf("user id doesn't exits in the cache:%s", err)
+				} else {
+					o.Logger.Warnf("failed to find user in the cache:%s", err)
+				}
 			}
-			cachedUserId = userId.String()
-			o.Api.Redis.Set(c.Request.Context(), prefixId, userId.String(), handlers.CacheExp)
+
+			if cachedUserId == "" {
+				userId, err := o.Api.CreateUserIfNotExists(c.Request.Context(), idpUserID, idpUserName)
+				if err != nil {
+					o.Api.SendInternalServerError(c, err)
+					c.Abort()
+					return
+				}
+				cachedUserId = userId.String()
+				o.Api.Redis.Set(c.Request.Context(), prefixId, userId.String(), handlers.CacheExp)
+			}
+		})
+
+		if canceled {
+			return
 		}
 
 		userID, err := uuid.Parse(cachedUserId)
