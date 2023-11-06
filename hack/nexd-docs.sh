@@ -9,13 +9,13 @@ printf "### Usage\n\n" >> docs/user-guide/nexd.md.tmp
 
 # generate the usage output
 echo '```text' >> docs/user-guide/nexd.md.tmp
-dist/nexd -h >> docs/user-guide/nexd.md.tmp
+dist/nexd -h | sed -e 's/\/home\/.*\//\$HOME\//g' >> docs/user-guide/nexd.md.tmp
 echo '```' >> docs/user-guide/nexd.md.tmp
 
 for subcmd in proxy router relay; do
     printf "\n#### nexd $subcmd\n\n" >> docs/user-guide/nexd.md.tmp
     echo '```text' >> docs/user-guide/nexd.md.tmp
-    dist/nexd ${subcmd} -h >> docs/user-guide/nexd.md.tmp
+    dist/nexd ${subcmd} -h | sed -e 's/\/home\/.*\//\$HOME\//g' >> docs/user-guide/nexd.md.tmp
     echo '```' >> docs/user-guide/nexd.md.tmp
 done
 
