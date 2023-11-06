@@ -26,8 +26,8 @@ type AddSecurityGroup struct {
 
 // UpdateSecurityGroup is the information needed to update an existing Security Group.
 type UpdateSecurityGroup struct {
-	GroupName        string         `json:"group_name,omitempty"`
-	GroupDescription string         `json:"group_description,omitempty"`
+	GroupName        *string        `json:"group_name,omitempty"`
+	GroupDescription *string        `json:"group_description,omitempty"`
 	InboundRules     []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	OutboundRules    []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 }

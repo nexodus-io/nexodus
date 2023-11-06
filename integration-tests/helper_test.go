@@ -562,11 +562,9 @@ func (helper *Helper) securityGroupRulesUpdate(username, password string, inboun
 		"--username", username,
 		"--password", password,
 		"security-group", "update",
-		"--name=default",
-		"--description=security group e2e",
+		"--security-group-id", secGroupID,
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
-		"--security-group-id", secGroupID,
 	}
 
 	out, err := helper.runCommand(command...)
