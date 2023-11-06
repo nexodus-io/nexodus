@@ -6,7 +6,7 @@ require (
 	github.com/Nerzal/gocloak/v13 v13.8.0
 	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/briandowns/spinner v1.23.0
-	github.com/bufbuild/connect-go v1.8.0
+	github.com/bufbuild/connect-go v1.10.0
 	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6
 	github.com/cockroachdb/cockroach-go/v2 v2.3.5
 	github.com/coreos/go-oidc/v3 v3.6.0
