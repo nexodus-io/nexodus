@@ -56,8 +56,6 @@ github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d h1:77cEq6EriyTZ
 github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d/go.mod h1:8EPpVsBuRksnlj1mLy4AWzRNQYxauNi62uWcE3to6eA=
 github.com/chenzhuoyu/iasm v0.9.0 h1:9fhXjVzq5hUy2gkhhgHl95zG2cEAhw9OSGs8toWWAwo=
 github.com/chenzhuoyu/iasm v0.9.0/go.mod h1:Xjy2NpN3h7aUqeqM+woSuuvxmIe6+DDsiNLIrkAmYog=
-github.com/chirino/concurrent-swiss-map v0.0.0-20231105153917-a52b5e30af95 h1:Io80ipbeto/Fu6fkJhdrQ7FZv4NieX9cweYPtUvvs0Q=
-github.com/chirino/concurrent-swiss-map v0.0.0-20231105153917-a52b5e30af95/go.mod h1:F6QETL48Qn7jEJ3ZPt7EqRZjAAZu7lRQeQGIzXuUIDc=
 github.com/cilium/ebpf v0.7.0/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/xds/go v0.0.0-20230607035331-e9ce68804cb4 h1:/inchEIKaYC1Akx+H+gqO04wryn5h75LSazbRlnya1k=
@@ -356,6 +354,8 @@ github.com/mdlayher/netlink v1.6.2/go.mod h1:O1HXX2sIWSMJ3Qn1BYZk1yZM+7iMki/uYGG
 github.com/mdlayher/socket v0.1.1/go.mod h1:mYV5YIZAfHh4dzDVzI8x8tWLWCliuX8Mon5Awbj+qDs=
 github.com/mdlayher/socket v0.2.3 h1:XZA2X2TjdOwNoNPVPclRCURoX/hokBY8nkTmRZFEheM=
 github.com/mdlayher/socket v0.2.3/go.mod h1:bz12/FozYNH/VbvC3q7TRIK/Y6dH1kCKsXaUeXi/FmY=
+github.com/mhmtszr/concurrent-swiss-map v1.0.4 h1:g1Ouq7blePtaXClzrpiGRMgFzF4DAHEHJv9OYxQkLck=
+github.com/mhmtszr/concurrent-swiss-map v1.0.4/go.mod h1:F6QETL48Qn7jEJ3ZPt7EqRZjAAZu7lRQeQGIzXuUIDc=
 github.com/miekg/dns v1.1.43 h1:JKfpVSCB84vrAmHzyrsxB5NAr5kLoMXZArPSw7Qlgyg=
 github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721 h1:RlZweED6sbSArvlE924+mUcZuXKLBHA35U7LN621Bws=
 github.com/moby/patternmatcher v0.5.0 h1:YCZgJOeULcxLw1Q+sVR636pmS7sPEn1Qo2iAN6M7DBo=
