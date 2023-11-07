@@ -1,5 +1,5 @@
 import { JwtDecodeExp, RefreshTokenResponse } from "./AuthTypes";
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 export class RefreshManager {
   static hasStartedRefreshInterval = false;
