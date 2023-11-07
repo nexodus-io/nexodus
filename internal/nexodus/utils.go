@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/nexodus-io/nexodus/internal/stun"
@@ -177,6 +178,12 @@ func WriteToFile(logger *zap.SugaredLogger, s, file string, filePermissions int)
 }
 
 func LocalIPv4Address() net.IP {
+	type Candidate struct {
+		priority int
+		ip       net.IP
+	}
+	candidates := []Candidate{}
+
 	interfaces, _ := net.Interfaces()
 	for _, inter := range interfaces {
 		addrs, err := inter.Addrs()
@@ -192,9 +199,30 @@ func LocalIPv4Address() net.IP {
 				if ip.IP.DefaultMask() == nil {
 					continue
 				}
-				return ip.IP
+				name := strings.ToLower(inter.Name)
+				priority := 100
+				if strings.HasPrefix(name, "bridge") {
+					priority = 10
+				} else if strings.HasPrefix(name, "en") {
+					priority = 20
+				} else if strings.HasPrefix(name, "eth") {
+					priority = 20
+				} else if strings.HasPrefix(name, "utun") {
+					priority = 200
+				}
+				candidates = append(candidates, Candidate{
+					priority: priority,
+					ip:       ip.IP,
+				})
 			}
 		}
+	}
+
+	if len(candidates) > 0 {
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].priority < candidates[j].priority
+		})
+		return candidates[0].ip
 	}
 	return nil
 }
