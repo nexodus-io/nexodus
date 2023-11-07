@@ -15,9 +15,11 @@ type ModelsRegKey struct {
 	// BearerToken is the bearer token the client should use to authenticate the device registration request.
 	BearerToken string `json:"bearer_token,omitempty"`
 	Description string `json:"description,omitempty"`
-	DeviceId    string `json:"device_id,omitempty"`
-	Expiration  string `json:"expiration,omitempty"`
-	Id          string `json:"id,omitempty"`
-	OwnerId     string `json:"owner_id,omitempty"`
-	VpcId       string `json:"vpc_id,omitempty"`
+	// DeviceId is set if the RegKey was created for single use
+	DeviceId string `json:"device_id,omitempty"`
+	// ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
+	ExpiresAt string `json:"expires_at,omitempty"`
+	Id        string `json:"id,omitempty"`
+	OwnerId   string `json:"owner_id,omitempty"`
+	VpcId     string `json:"vpc_id,omitempty"`
 }

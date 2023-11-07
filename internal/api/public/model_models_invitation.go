@@ -12,7 +12,7 @@ package public
 
 // ModelsInvitation struct for ModelsInvitation
 type ModelsInvitation struct {
-	Expiry         string `json:"expiry,omitempty"`
+	ExpiresAt      string `json:"expires_at,omitempty"`
 	Id             string `json:"id,omitempty"`
 	OrganizationId string `json:"organization_id,omitempty"`
 	UserId         string `json:"user_id,omitempty"`

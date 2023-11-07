@@ -12,11 +12,10 @@ package public
 
 // ModelsSecurityGroup struct for ModelsSecurityGroup
 type ModelsSecurityGroup struct {
-	GroupDescription string               `json:"group_description,omitempty"`
-	GroupName        string               `json:"group_name,omitempty"`
-	Id               string               `json:"id,omitempty"`
-	InboundRules     []ModelsSecurityRule `json:"inbound_rules,omitempty"`
-	OrganizationId   string               `json:"organization_id,omitempty"`
-	OutboundRules    []ModelsSecurityRule `json:"outbound_rules,omitempty"`
-	Revision         int32                `json:"revision,omitempty"`
+	Description    string               `json:"description,omitempty"`
+	Id             string               `json:"id,omitempty"`
+	InboundRules   []ModelsSecurityRule `json:"inbound_rules,omitempty"`
+	OrganizationId string               `json:"organization_id,omitempty"`
+	OutboundRules  []ModelsSecurityRule `json:"outbound_rules,omitempty"`
+	Revision       int32                `json:"revision,omitempty"`
 }

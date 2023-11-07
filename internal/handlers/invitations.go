@@ -76,13 +76,20 @@ func (api *API) CreateInvitation(c *gin.Context) {
 		}
 	}
 	for _, inv := range user.Invitations {
-		if inv.OrganizationID == request.OrganizationID && inv.Expiry.After(time.Now()) {
+		if inv.OrganizationID == request.OrganizationID && inv.ExpiresAt.After(time.Now()) {
 			c.JSON(http.StatusConflict, models.NewConflictsError(inv.ID.String()))
 			return
 		}
 	}
 
-	invite := models.NewInvitation(user.ID, request.OrganizationID)
+	// invitation expires after 1 week
+	expiry := time.Now().Add(time.Hour * 24 * 7)
+	invite := models.Invitation{
+		UserID:         user.ID,
+		OrganizationID: request.OrganizationID,
+		ExpiresAt:      expiry,
+	}
+
 	if res := db.Create(&invite); res.Error != nil {
 		api.SendInternalServerError(c, res.Error)
 		return

@@ -95,7 +95,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
 		db = api.SecurityGroupIsReadableByCurrentUser(c, db)
-		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "group_name")
+		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "description")
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -270,11 +270,6 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	if request.GroupName == "" {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("group_name"))
-		return
-	}
-
 	var sg models.SecurityGroup
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		var org models.Organization
@@ -284,11 +279,10 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		}
 
 		sg = models.SecurityGroup{
-			GroupName:        request.GroupName,
-			OrganizationId:   request.OrganizationId,
-			InboundRules:     request.InboundRules,
-			OutboundRules:    request.OutboundRules,
-			GroupDescription: request.GroupDescription,
+			OrganizationId: request.OrganizationId,
+			InboundRules:   request.InboundRules,
+			OutboundRules:  request.OutboundRules,
+			Description:    request.Description,
 		}
 		if res := tx.
 			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
@@ -297,7 +291,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		}
 
 		span.SetAttributes(attribute.String("id", sg.ID.String()))
-		api.logger.Infof("New security group created [ %s ] in organization [ %s ]", sg.GroupName, org.ID)
+		api.logger.Infof("New security group created [ %s ] in organization [ %s ]", sg.ID, org.ID)
 		return nil
 	})
 
@@ -469,11 +463,8 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 			return errSecurityGroupNotFound
 		}
 
-		if request.GroupName != nil {
-			securityGroup.GroupName = *request.GroupName
-		}
-		if request.GroupDescription != nil {
-			securityGroup.GroupDescription = *request.GroupDescription
+		if request.Description != nil {
+			securityGroup.Description = *request.Description
 		}
 		if request.InboundRules != nil {
 			securityGroup.InboundRules = request.InboundRules
@@ -518,11 +509,10 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, org
 		Base: models.Base{
 			ID: orgId,
 		},
-		GroupName:        "default",
-		OrganizationId:   orgId,
-		GroupDescription: "default organization security group",
-		InboundRules:     inboundRules,
-		OutboundRules:    outboundRules,
+		OrganizationId: orgId,
+		Description:    "default organization security group",
+		InboundRules:   inboundRules,
+		OutboundRules:  outboundRules,
 	}
 
 	if db == nil {

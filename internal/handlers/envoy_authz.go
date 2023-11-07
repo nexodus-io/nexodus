@@ -132,8 +132,8 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 	if regToken.DeviceId != nil {
 		claims.DeviceID = *regToken.DeviceId
 	}
-	if regToken.Expiration != nil {
-		claims.ExpiresAt = jwt.NewNumericDate(*regToken.Expiration)
+	if regToken.ExpiresAt != nil {
+		claims.ExpiresAt = jwt.NewNumericDate(*regToken.ExpiresAt)
 	}
 
 	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)

@@ -13,8 +13,8 @@ package public
 // ModelsAddRegKey struct for ModelsAddRegKey
 type ModelsAddRegKey struct {
 	Description string `json:"description,omitempty"`
-	// Expiration is optional, if set the registration key is only valid until the Expiration time.
-	Expiration string `json:"expiration,omitempty"`
+	// ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
+	ExpiresAt string `json:"expires_at,omitempty"`
 	// SingleUse only allows the registration key to be used once.
 	SingleUse bool   `json:"single_use,omitempty"`
 	VpcId     string `json:"vpc_id,omitempty"`

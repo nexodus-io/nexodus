@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
 	"log"
@@ -17,12 +16,23 @@ func createInvitationCommand() *cli.Command {
 		Usage: "commands relating to invitations",
 		Subcommands: []*cli.Command{
 			{
+				Name:  "list",
+				Usage: "List invitations",
+				Action: func(cCtx *cli.Context) error {
+					return listInvitations(cCtx, mustCreateAPIClient(cCtx))
+				},
+			},
+			{
 				Name:  "create",
 				Usage: "create an invitation",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "user-id",
-						Required: true,
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "user-name",
+						Required: false,
 					},
 					&cli.StringFlag{
 						Name:     "organization-id",
@@ -30,10 +40,11 @@ func createInvitationCommand() *cli.Command {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					userID := cCtx.String("user-id")
-					orgID := cCtx.String("organization-id")
-					return createInvitation(mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
+					return createInvitation(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddInvitation{
+						OrganizationId: cCtx.String("organization-id"),
+						UserId:         cCtx.String("user-id"),
+						UserName:       cCtx.String("user-name"),
+					})
 				},
 			},
 			{
@@ -68,6 +79,24 @@ func createInvitationCommand() *cli.Command {
 	}
 }
 
+func invitationsTableFields() []TableField {
+	var fields []TableField
+	fields = append(fields, TableField{Header: "INVITATION ID", Field: "Id"})
+	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "USER ID", Field: "UserId"})
+	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
+	return fields
+}
+
+func listInvitations(cCtx *cli.Context, c *client.APIClient) error {
+	rows, _, err := c.InvitationApi.ListInvitations(cCtx.Context).Execute()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	showOutput(cCtx, invitationsTableFields(), rows)
+	return nil
+}
 func acceptInvitation(c *client.APIClient, id string) error {
 	invID, err := uuid.Parse(id)
 	if err != nil {
@@ -90,31 +119,25 @@ func deleteInvitation(c *client.APIClient, id string) error {
 	return nil
 }
 
-func createInvitation(c *client.APIClient, encodeOut, userID string, orgID string) error {
-	if orgID == "" {
-		orgID = getDefaultOwnedOrgId(context.Background(), c)
+func createInvitation(cCtx *cli.Context, c *client.APIClient, invitation public.ModelsAddInvitation) error {
+
+	if invitation.OrganizationId == "" {
+		invitation.OrganizationId = getDefaultOrgId(context.Background(), c)
 	}
-	orgUUID, err := uuid.Parse(orgID)
+	_, err := uuid.Parse(invitation.OrganizationId)
 	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", orgID, err)
+		log.Fatalf("failed to parse a valid UUID from %s %v", invitation.OrganizationId, err)
 	}
-	res, _, err := c.InvitationApi.CreateInvitation(context.Background()).Invitation(public.ModelsAddInvitation{
-		UserId:         userID,
-		OrganizationId: orgUUID.String(),
-	}).Execute()
+
+	if invitation.UserId == "" && invitation.UserName == "" {
+		log.Fatalf("either --user-id or --user-name must be specified")
+	}
+
+	res, _, err := c.InvitationApi.CreateInvitation(context.Background()).Invitation(invitation).Execute()
 	if err != nil {
 		log.Fatalf("create invitation failed: %v\n", err)
 	}
 
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully created invitation %s\n", res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	showOutput(cCtx, invitationsTableFields(), res)
 	return nil
 }
