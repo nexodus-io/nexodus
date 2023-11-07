@@ -170,10 +170,10 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, or
 	}
 
 	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background()).SecurityGroup(public.ModelsAddSecurityGroup{
-		Description:    description,
-		OrganizationId: orgID.String(),
-		InboundRules:   inboundRules,
-		OutboundRules:  outboundRules,
+		Description:   description,
+		VpcId:         orgID.String(),
+		InboundRules:  inboundRules,
+		OutboundRules: outboundRules,
 	}).Execute()
 	if err != nil {
 		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks

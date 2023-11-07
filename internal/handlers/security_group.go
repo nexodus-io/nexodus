@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"gorm.io/gorm/clause"
-	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -94,6 +95,18 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
+
+		err := api.transaction(ctx, func(tx *gorm.DB) error {
+			vpcs := []models.VPC{}
+			if result := api.VPCIsReadableByCurrentUser(c, tx).
+				Preload("Organization").Find(&vpcs); result.Error != nil {
+				return result.Error
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
 		db = api.SecurityGroupIsReadableByCurrentUser(c, db)
 		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "description")
 		result := db.Find(&items)
@@ -265,8 +278,8 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	if request.OrganizationId == uuid.Nil {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
+	if request.VpcId == uuid.Nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
 		return
 	}
 
@@ -274,15 +287,15 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		var org models.Organization
 		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
-			First(&org, "id = ?", request.OrganizationId); res.Error != nil {
+			First(&org, "id = ?", request.VpcId); res.Error != nil {
 			return res.Error
 		}
 
 		sg = models.SecurityGroup{
-			OrganizationId: request.OrganizationId,
-			InboundRules:   request.InboundRules,
-			OutboundRules:  request.OutboundRules,
-			Description:    request.Description,
+			VpcId:         request.VpcId,
+			InboundRules:  request.InboundRules,
+			OutboundRules: request.OutboundRules,
+			Description:   request.Description,
 		}
 		if res := tx.
 			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
@@ -304,7 +317,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	api.notifySecurityGroupChange(c, sg.OrganizationId)
+	api.notifySecurityGroupChange(c, sg.VpcId)
 	c.JSON(http.StatusCreated, sg)
 }
 
@@ -375,7 +388,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		}
 
 		if res := tx.Model(&models.Device{}).
-			Where("organization_id = ? AND security_group_id = ?", sg.OrganizationId, sg.ID).
+			Where("vpc_id = ? AND security_group_id = ?", sg.VpcId, sg.ID).
 			Update("security_group_id", nil); res.Error != nil {
 			return res.Error
 		}
@@ -395,7 +408,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	api.notifySecurityGroupChange(c, sg.OrganizationId)
+	api.notifySecurityGroupChange(c, sg.VpcId)
 
 	c.JSON(http.StatusOK, sg)
 }
@@ -493,13 +506,13 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 		return
 	}
 
-	api.notifySecurityGroupChange(c, securityGroup.OrganizationId)
+	api.notifySecurityGroupChange(c, securityGroup.VpcId)
 
 	c.JSON(http.StatusOK, securityGroup)
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, orgId uuid.UUID) (models.SecurityGroup, error) {
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID) (models.SecurityGroup, error) {
 
 	var inboundRules []models.SecurityRule
 	var outboundRules []models.SecurityRule
@@ -507,12 +520,12 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, org
 	// Create the default security group
 	sg := models.SecurityGroup{
 		Base: models.Base{
-			ID: orgId,
+			ID: vpcId,
 		},
-		OrganizationId: orgId,
-		Description:    "default organization security group",
-		InboundRules:   inboundRules,
-		OutboundRules:  outboundRules,
+		VpcId:         vpcId,
+		Description:   "default vpc security group",
+		InboundRules:  inboundRules,
+		OutboundRules: outboundRules,
 	}
 
 	if db == nil {
@@ -527,19 +540,19 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, org
 	return sg, nil
 }
 
-// updateOrganizationSecGroupId updates the security group ID in an org entry
-func (api *API) updateOrganizationSecGroupId(ctx context.Context, db *gorm.DB, sgId, orgId uuid.UUID) error {
-	var org models.Organization
+// updateVpcSecGroupId updates the security group ID in an org entry
+func (api *API) updateVpcSecGroupId(ctx context.Context, db *gorm.DB, sgId, vpcId uuid.UUID) error {
+	var vpc models.VPC
 	if db == nil {
 		db = api.db.WithContext(ctx)
 	}
 
-	res := db.WithContext(ctx).First(&org, "id = ?", orgId)
+	res := db.WithContext(ctx).First(&vpc, "id = ?", vpcId)
 	if res.Error != nil {
 		return res.Error
 	}
 
-	return db.WithContext(ctx).Model(&org).Update("SecurityGroupId", sgId).Error
+	return db.WithContext(ctx).Model(&vpc).Update("SecurityGroupId", sgId).Error
 }
 
 // ValidateUpdateSecurityGroupRules validates rules for updating the security group

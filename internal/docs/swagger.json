@@ -2720,9 +2720,6 @@
                 "name": {
                     "type": "string",
                     "example": "zone-red"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -2758,14 +2755,14 @@
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "outbound_rules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                },
+                "vpc_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2789,6 +2786,9 @@
                 },
                 "private_cidr": {
                     "type": "boolean"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3029,9 +3029,6 @@
                 "owner_id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3100,9 +3097,6 @@
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "outbound_rules": {
                     "type": "array",
                     "items": {
@@ -3111,6 +3105,9 @@
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "vpc_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3212,6 +3209,9 @@
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3271,6 +3271,9 @@
                 },
                 "private_cidr": {
                     "type": "boolean"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },
