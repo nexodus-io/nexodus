@@ -268,7 +268,7 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 	key := c.Param("key")
 
 	var request json.RawMessage
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

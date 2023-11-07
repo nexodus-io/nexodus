@@ -52,7 +52,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 
 	var request models.AddVPC
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
@@ -444,7 +444,7 @@ func (api *API) UpdateVPC(c *gin.Context) {
 	}
 
 	var request models.UpdateVPC
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

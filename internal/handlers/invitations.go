@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/nexodus-io/nexodus/internal/database"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	defer span.End()
 
 	var request models.AddInvitation
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

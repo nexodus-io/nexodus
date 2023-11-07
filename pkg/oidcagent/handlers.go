@@ -97,7 +97,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 	var data models.LoginEndRequest
 	var accessToken, refreshToken, rawIDToken string
 
-	err := c.BindJSON(&data)
+	err := c.ShouldBindJSON(&data)
 	if err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
@@ -342,7 +342,7 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 
 	var data models.RefreshTokenRequest
 
-	err := c.BindJSON(&data)
+	err := c.ShouldBindJSON(&data)
 	if err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return

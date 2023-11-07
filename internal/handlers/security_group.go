@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"gorm.io/gorm/clause"
-	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -245,7 +246,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 
 	var request models.AddSecurityGroup
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
@@ -434,7 +435,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	}
 
 	var request models.UpdateSecurityGroup
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

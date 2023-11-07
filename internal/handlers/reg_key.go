@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v3"
 	"github.com/google/uuid"
@@ -15,7 +17,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 // CreateRegKey creates a RegKey
@@ -37,7 +38,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 	defer span.End()
 
 	var request models.AddRegKey
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

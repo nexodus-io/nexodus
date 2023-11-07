@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -11,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"net/http"
 )
 
 type errDuplicateOrganization struct {
@@ -54,8 +55,8 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	userId := api.GetCurrentUserID(c)
 
 	var request models.AddOrganization
-	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
+	// Call ShouldBindJSON to bind the received JSON
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}

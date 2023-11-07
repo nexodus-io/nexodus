@@ -71,7 +71,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 	}
 
 	var request []models.Watch
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
 		return
 	}
