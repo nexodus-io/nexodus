@@ -248,3 +248,25 @@ Feature: Device API
       }
       """
 
+  Scenario: Negative Tests
+
+    Given I am logged in as "Bob"
+
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${user_id}
+
+    When I POST path "/api/reg-keys" with json body:
+      """
+      {
+        "owner_id": "${user_id}",
+        "vpc_id": "test"
+      }
+      """
+    Then the response code should be 400
+    And the response should match json:
+      """
+      {
+          "error": "request json is invalid: invalid UUID length: 4"
+      }
+      """

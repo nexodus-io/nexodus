@@ -89,11 +89,7 @@ func regTokenTableFields() []TableField {
 }
 
 func listRegKeys(cCtx *cli.Context, c *client.APIClient) error {
-	rows, _, err := c.RegKeyApi.ListRegKeys(cCtx.Context).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	rows := processApiResponse(c.RegKeyApi.ListRegKeys(cCtx.Context).Execute())
 	showOutput(cCtx, regTokenTableFields(), rows)
 	return nil
 }
@@ -104,27 +100,18 @@ func createRegKey(cCtx *cli.Context, c *client.APIClient, token public.ModelsAdd
 		token.VpcId = getDefaultVpcId(cCtx.Context, c)
 	}
 
-	res, _, err := c.RegKeyApi.CreateRegKey(cCtx.Context).RegKey(token).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	res := processApiResponse(c.RegKeyApi.CreateRegKey(cCtx.Context).RegKey(token).Execute())
 	showOutput(cCtx, regTokenTableFields(), res)
 	return nil
 }
 
 func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	user := processApiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
 	return user.Id
 }
 
 func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
-	user, _, err := c.UsersApi.GetUser(ctx, "me").Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	user := processApiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
 	return user.Id
 }
 
@@ -134,10 +121,7 @@ func deleteRegKey(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) 
 		log.Fatalf("failed to parse a valid UUID from %s: %v", id, err)
 	}
 
-	res, _, err := c.RegKeyApi.DeleteRegKey(cCtx.Context, tokenId.String()).Execute()
-	if err != nil {
-		log.Fatalf("Registration token delete failed: %v\n", err)
-	}
+	res := processApiResponse(c.RegKeyApi.DeleteRegKey(cCtx.Context, tokenId.String()).Execute())
 
 	showOutput(cCtx, regTokenTableFields(), res)
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {

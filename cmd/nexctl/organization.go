@@ -36,9 +36,9 @@ func createOrganizationCommand() *cli.Command {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					organizationName := cCtx.String("name")
-					organizationDescrip := cCtx.String("description")
-					return createOrganization(cCtx, mustCreateAPIClient(cCtx), organizationName, organizationDescrip)
+					name := cCtx.String("name")
+					description := cCtx.String("description")
+					return createOrganization(cCtx, mustCreateAPIClient(cCtx), name, description)
 				},
 			},
 			{
@@ -69,24 +69,16 @@ func orgTableFields() []TableField {
 	return fields
 }
 func listOrganizations(cCtx *cli.Context, c *client.APIClient) error {
-	orgs, _, err := c.OrganizationsApi.ListOrganizations(context.Background()).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	orgs := processApiResponse(c.OrganizationsApi.ListOrganizations(context.Background()).Execute())
 	showOutput(cCtx, orgTableFields(), orgs)
 	return nil
 }
 
 func createOrganization(cCtx *cli.Context, c *client.APIClient, name, description string) error {
-	res, _, err := c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
+	res := processApiResponse(c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
 		Name:        name,
 		Description: description,
-	}).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	}).Execute())
 	showOutput(cCtx, orgTableFields(), res)
 	return nil
 }
@@ -123,11 +115,7 @@ func deleteOrganization(cCtx *cli.Context, c *client.APIClient, encodeOut, Organ
 		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationUUID, err)
 	}
 
-	res, _, err := c.OrganizationsApi.DeleteOrganization(context.Background(), OrganizationUUID.String()).Execute()
-	if err != nil {
-		log.Fatalf("Organization delete failed: %v\n", err)
-	}
-
+	res := processApiResponse(c.OrganizationsApi.DeleteOrganization(context.Background(), OrganizationUUID.String()).Execute())
 	showOutput(cCtx, orgTableFields(), res)
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Println("\nsuccessfully deleted")

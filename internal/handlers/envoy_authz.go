@@ -226,6 +226,15 @@ func denyCheckResponse(statusCode int, baseError models.BaseError) (*auth.CheckR
 		Status: &status.Status{Code: int32(codes.PermissionDenied)},
 		HttpResponse: &auth.CheckResponse_DeniedResponse{
 			DeniedResponse: &auth.DeniedHttpResponse{
+				Headers: []*core.HeaderValueOption{
+					{
+						AppendAction: core.HeaderValueOption_OVERWRITE_IF_EXISTS_OR_ADD,
+						Header: &core.HeaderValue{
+							Key:   "Content-Type",
+							Value: "application/json",
+						},
+					},
+				},
 				Status: &v3.HttpStatus{Code: v3.StatusCode(statusCode)},
 				Body:   string(data),
 			},

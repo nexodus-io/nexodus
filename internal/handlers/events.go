@@ -65,14 +65,14 @@ func (api *API) WatchEvents(c *gin.Context) {
 		PublicKey string `form:"public_key"`
 	}
 
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
 
 	var request []models.Watch
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

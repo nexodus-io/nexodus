@@ -58,7 +58,7 @@ func createInvitationCommand() *cli.Command {
 				},
 				Action: func(cCtx *cli.Context) error {
 					userID := cCtx.String("inv-id")
-					return deleteInvitation(mustCreateAPIClient(cCtx), userID)
+					return deleteInvitation(cCtx, mustCreateAPIClient(cCtx), userID)
 				},
 			},
 			{
@@ -89,10 +89,7 @@ func invitationsTableFields() []TableField {
 }
 
 func listInvitations(cCtx *cli.Context, c *client.APIClient) error {
-	rows, _, err := c.InvitationApi.ListInvitations(cCtx.Context).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	rows := processApiResponse(c.InvitationApi.ListInvitations(cCtx.Context).Execute())
 
 	showOutput(cCtx, invitationsTableFields(), rows)
 	return nil
@@ -108,14 +105,13 @@ func acceptInvitation(c *client.APIClient, id string) error {
 	return nil
 }
 
-func deleteInvitation(c *client.APIClient, id string) error {
+func deleteInvitation(cCtx *cli.Context, c *client.APIClient, id string) error {
 	invID, err := uuid.Parse(id)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", id, err)
 	}
-	if _, _, err := c.InvitationApi.DeleteInvitation(context.Background(), invID.String()).Execute(); err != nil {
-		log.Fatal(err)
-	}
+	res := processApiResponse(c.InvitationApi.DeleteInvitation(context.Background(), invID.String()).Execute())
+	showOutput(cCtx, invitationsTableFields(), res)
 	return nil
 }
 
@@ -133,11 +129,7 @@ func createInvitation(cCtx *cli.Context, c *client.APIClient, invitation public.
 		log.Fatalf("either --user-id or --user-name must be specified")
 	}
 
-	res, _, err := c.InvitationApi.CreateInvitation(context.Background()).Invitation(invitation).Execute()
-	if err != nil {
-		log.Fatalf("create invitation failed: %v\n", err)
-	}
-
+	res := processApiResponse(c.InvitationApi.CreateInvitation(context.Background()).Invitation(invitation).Execute())
 	showOutput(cCtx, invitationsTableFields(), res)
 	return nil
 }

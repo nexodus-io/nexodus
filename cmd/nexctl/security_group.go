@@ -215,22 +215,14 @@ func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID stri
 
 // listSecurityGroups lists all security groups.
 func listSecurityGroups(cCtx *cli.Context, c *client.APIClient) error {
-	securityGroups, _, err := c.SecurityGroupApi.ListSecurityGroups(context.Background()).Execute()
-	if err != nil {
-		return fmt.Errorf("list security groups failed: %w", err)
-	}
-
+	securityGroups := processApiResponse(c.SecurityGroupApi.ListSecurityGroups(context.Background()).Execute())
 	showOutput(cCtx, securityGroupTableFields(cCtx), securityGroups)
 	return nil
 }
 
 // deleteSecurityGroup deletes an existing security group.
 func deleteSecurityGroup(cCtx *cli.Context, c *client.APIClient, encodeOut, secGroupID string) error {
-	res, _, err := c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), secGroupID).Execute()
-	if err != nil {
-		return fmt.Errorf("security group delete failed: %w", err)
-	}
-
+	res := processApiResponse(c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), secGroupID).Execute())
 	showOutput(cCtx, securityGroupTableFields(cCtx), res)
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Println("\nsuccessfully deleted")

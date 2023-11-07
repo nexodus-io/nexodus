@@ -104,10 +104,7 @@ func createDeviceCommand() *cli.Command {
 }
 
 func listVpcDevices(cCtx *cli.Context, c *public.APIClient, vpcId uuid.UUID) error {
-	devices, _, err := c.VPCApi.ListDevicesInVPC(context.Background(), vpcId.String()).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	devices := processApiResponse(c.VPCApi.ListDevicesInVPC(context.Background(), vpcId.String()).Execute())
 	showOutput(cCtx, deviceTableFields(cCtx), devices)
 	return nil
 }
@@ -175,10 +172,7 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 }
 
 func listAllDevices(cCtx *cli.Context, c *public.APIClient) error {
-	devices, _, err := c.DevicesApi.ListDevices(context.Background()).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
+	devices := processApiResponse(c.DevicesApi.ListDevices(context.Background()).Execute())
 
 	// Only modify the time to a user-friendly value if the nexctl output is in column form
 	if cCtx.String("output") == encodeColumn || cCtx.String("output") == encodeNoHeader {
@@ -197,10 +191,7 @@ func deleteDevice(c *public.APIClient, encodeOut, devID string) error {
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
 	}
 
-	res, _, err := c.DevicesApi.DeleteDevice(context.Background(), devUUID.String()).Execute()
-	if err != nil {
-		log.Fatalf("device delete failed: %v\n", err)
-	}
+	res := processApiResponse(c.DevicesApi.DeleteDevice(context.Background(), devUUID.String()).Execute())
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("successfully deleted device %s\n", res.Id)
@@ -221,13 +212,10 @@ func updateDevice(c *public.APIClient, encodeOut, devID string, update public.Mo
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
 	}
 
-	res, _, err := c.DevicesApi.
+	res := processApiResponse(c.DevicesApi.
 		UpdateDevice(context.Background(), devUUID.String()).
 		Update(update).
-		Execute()
-	if err != nil {
-		log.Fatalf("device update failed: %v\n", err)
-	}
+		Execute())
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("successfully update device %s\n", res.Id)

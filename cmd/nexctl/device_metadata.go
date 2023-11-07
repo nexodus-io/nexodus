@@ -185,27 +185,20 @@ func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
 func getDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
 	client := mustCreateAPIClient(c)
 
-	metadata, _, err := client.DevicesApi.
+	metadata := processApiResponse(client.DevicesApi.
 		ListDeviceMetadata(context.Background(), deviceID.String()).
-		Execute()
-	if err != nil {
-		return err
-	}
+		Execute())
 
 	showOutput(c, metadataTableFields(c, false), metadata)
-
 	return nil
 }
 
 func getDeviceMetadataKey(c *cli.Context, deviceID uuid.UUID, key string) error {
 	client := mustCreateAPIClient(c)
 
-	metadata, _, err := client.DevicesApi.
+	metadata := processApiResponse(client.DevicesApi.
 		GetDeviceMetadataKey(context.Background(), deviceID.String(), key).
-		Execute()
-	if err != nil {
-		return err
-	}
+		Execute())
 
 	showOutput(c, metadataTableFields(c, false), metadata)
 	return nil
@@ -215,12 +208,9 @@ func getVpcMetadata(c *cli.Context, vpcID uuid.UUID) error {
 	client := mustCreateAPIClient(c)
 
 	prefixes := []string{}
-	metadata, _, err := client.VPCApi.
+	metadata := processApiResponse(client.VPCApi.
 		ListMetadataInVPC(context.Background(), vpcID.String(), prefixes).
-		Execute()
-	if err != nil {
-		return err
-	}
+		Execute())
 
 	showOutput(c, metadataTableFields(c, true), metadata)
 
@@ -237,13 +227,10 @@ func updateDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key, value string)
 
 	client := mustCreateAPIClient(c)
 
-	metadata, _, err := client.DevicesApi.
+	metadata := processApiResponse(client.DevicesApi.
 		UpdateDeviceMetadataKey(context.Background(), deviceID.String(), key).
 		Value(valueMap).
-		Execute()
-	if err != nil {
-		return err
-	}
+		Execute())
 
 	showOutput(c, metadataTableFields(c, false), metadata)
 	return nil

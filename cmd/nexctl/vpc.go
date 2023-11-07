@@ -87,11 +87,7 @@ func vpcTableFields() []TableField {
 	return fields
 }
 func listVPCs(cCtx *cli.Context, c *client.APIClient) error {
-	vpcs, _, err := c.VPCApi.ListVPCs(context.Background()).Execute()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	vpcs := processApiResponse(c.VPCApi.ListVPCs(context.Background()).Execute())
 	showOutput(cCtx, vpcTableFields(), vpcs)
 	return nil
 }
@@ -115,11 +111,7 @@ func deleteVPC(cCtx *cli.Context, c *client.APIClient, encodeOut, VPCID string) 
 		log.Fatalf("failed to parse a valid UUID from %s %v", id, err)
 	}
 
-	res, _, err := c.VPCApi.DeleteVPC(context.Background(), id.String()).Execute()
-	if err != nil {
-		log.Fatalf("VPC delete failed: %v\n", err)
-	}
-
+	res := processApiResponse(c.VPCApi.DeleteVPC(context.Background(), id.String()).Execute())
 	showOutput(cCtx, vpcTableFields(), res)
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Println("\nsuccessfully deleted")
