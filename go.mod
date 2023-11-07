@@ -15,7 +15,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.11.1
 	github.com/fatih/color v1.15.0
 	github.com/gin-contrib/cors v1.4.0
-	github.com/gin-contrib/zap v0.1.0
+	github.com/gin-contrib/zap v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-gormigrate/gormigrate/v2 v2.1.1
 	github.com/go-jose/go-jose/v3 v3.0.0
@@ -230,7 +230,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.7 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.7 // indirect
 	go.mongodb.org/mongo-driver v1.11.2 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.4.0 // indirect

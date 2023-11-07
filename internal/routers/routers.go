@@ -8,6 +8,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap/zapcore"
 	"net/http"
 	"strings"
 	"time"
@@ -44,7 +46,15 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{TimeFormat: time.RFC3339, UTC: true, TraceID: true})
+	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{
+		TimeFormat: time.RFC3339,
+		UTC:        true,
+		Context: func(c *gin.Context) []zapcore.Field {
+			return []zapcore.Field{
+				zap.String("traceID", trace.SpanFromContext(c.Request.Context()).SpanContext().TraceID().String()),
+			}
+		},
+	})
 
 	r.Use(otelgin.Middleware(name, otelgin.WithPropagators(
 		propagation.TraceContext{},
