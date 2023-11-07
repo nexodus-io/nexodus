@@ -52,8 +52,8 @@ func (api *API) CreateVPC(c *gin.Context) {
 
 	var request models.AddVPC
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 
@@ -290,7 +290,7 @@ func (api *API) ListDevicesInVPC(c *gin.Context) {
 	}
 
 	var query Query
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
@@ -444,8 +444,8 @@ func (api *API) UpdateVPC(c *gin.Context) {
 	}
 
 	var request models.UpdateVPC
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

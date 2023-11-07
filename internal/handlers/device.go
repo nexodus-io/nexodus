@@ -178,8 +178,8 @@ func (api *API) UpdateDevice(c *gin.Context) {
 	}
 	var request models.UpdateDevice
 
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 
@@ -419,8 +419,8 @@ func (api *API) CreateDevice(c *gin.Context) {
 	defer span.End()
 	var request models.AddDevice
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

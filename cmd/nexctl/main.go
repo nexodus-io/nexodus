@@ -3,9 +3,12 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/olekukonko/tablewriter"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -299,4 +302,34 @@ func fieldFormatter(itemValue reflect.Value) string {
 		}
 		return string(bytes)
 	}
+}
+
+func processApiResponse[T any](resp T, httpResp *http.Response, err error) T {
+	if err != nil {
+		var openAPIError *public.GenericOpenAPIError
+		switch {
+		case errors.As(err, &openAPIError):
+			model := openAPIError.Model()
+			switch err := model.(type) {
+			case public.ModelsBaseError:
+				log.Fatalf("error: %s, status: %d", err.Error, httpResp.StatusCode)
+			case public.ModelsConflictsError:
+				log.Fatalf("error: %s: conflicting id: %s, status: %d", err.Error, err.Id, httpResp.StatusCode)
+			case public.ModelsValidationError:
+				message := fmt.Sprintf("error: %s", err.Error)
+				if err.Field != "" {
+					message += fmt.Sprintf(", field: %s", err.Field)
+				}
+				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
+				log.Fatalf(message)
+			case public.ModelsInternalServerError:
+				log.Fatalf("error: %s: trace id: %s, status: %d", err.Error, err.TraceId, httpResp.StatusCode)
+			default:
+				log.Fatalf("error: %s, status: %d", string(openAPIError.Body()), httpResp.StatusCode)
+			}
+		default:
+			log.Fatalf("error: %+v, status: %d", err, httpResp.StatusCode)
+		}
+	}
+	return resp
 }

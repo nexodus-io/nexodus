@@ -55,7 +55,7 @@ func (q *Query) GetFilter() (map[string]interface{}, error) {
 
 func FilterAndPaginate(db *gorm.DB, model interface{}, c *gin.Context, orderBy string) *gorm.DB {
 	var query Query
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		db.Error = err
 		return db
 	}

@@ -55,6 +55,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/cucumber/godog"
 	"github.com/itchyny/gojq"
@@ -106,6 +107,10 @@ func (s *TestScenario) TheResponseShouldMatchJsonDoc(expected *godog.DocString) 
 }
 func (s *TestScenario) theResponseShouldMatchJson(expected string) error {
 	session := s.Session()
+	ct := session.Resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "application/json") {
+		return fmt.Errorf("Content-Type is not application/json, but: %s", ct)
+	}
 
 	if len(session.RespBytes) == 0 {
 		return fmt.Errorf("got an empty response from server, expected a json body")

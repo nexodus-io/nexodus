@@ -33,8 +33,8 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	defer span.End()
 
 	var request models.AddInvitation
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

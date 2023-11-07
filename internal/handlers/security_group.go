@@ -87,7 +87,7 @@ func (api *API) ListSecurityGroups(c *gin.Context) {
 	defer span.End()
 
 	var query Query
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
@@ -144,7 +144,7 @@ func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
 	}
 
 	var query Query
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
@@ -245,8 +245,8 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 
 	var request models.AddSecurityGroup
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 
@@ -434,8 +434,8 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	}
 
 	var request models.UpdateSecurityGroup
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

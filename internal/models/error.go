@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 // BaseError is the base type for API errors
 type BaseError struct {
 	Error string `json:"error" example:"something bad"`
@@ -29,10 +31,10 @@ type InternalServerError struct {
 	TraceId string `json:"trace_id,omitempty"`
 }
 
-func NewBadPayloadError() ValidationError {
+func NewBadPayloadError(err error) ValidationError {
 	return ValidationError{
 		BaseError: BaseError{
-			Error: "request json is invalid",
+			Error: fmt.Sprintf("request json is invalid: %s", err),
 		},
 	}
 }

@@ -55,8 +55,8 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 	var request models.AddOrganization
 	// Call BindJSON to bind the received JSON
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

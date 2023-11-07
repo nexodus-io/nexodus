@@ -37,8 +37,8 @@ func (api *API) CreateRegKey(c *gin.Context) {
 	defer span.End()
 
 	var request models.AddRegKey
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 

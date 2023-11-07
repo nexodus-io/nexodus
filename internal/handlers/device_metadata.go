@@ -42,7 +42,7 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 		Query
 		Prefixes []string `form:"prefix"`
 	}{}
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
@@ -122,7 +122,7 @@ func (api *API) ListMetadataInVPC(c *gin.Context) {
 		Query
 		Prefixes []string `form:"prefix"`
 	}{}
-	if err := c.BindQuery(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
 		return
 	}
@@ -268,8 +268,8 @@ func (api *API) UpdateDeviceMetadataKey(c *gin.Context) {
 	key := c.Param("key")
 
 	var request json.RawMessage
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPayloadError())
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
 		return
 	}
 
