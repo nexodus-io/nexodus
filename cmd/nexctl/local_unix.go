@@ -22,7 +22,7 @@ func init() {
 				Usage:       "Path to the unix socket nexd is listening against",
 				Value:       api.UnixSocketPath,
 				Destination: &api.UnixSocketPath,
-				DefaultText: "$HOME/.nexodus/nexd.sock",
+				DefaultText: api.UnixSocketPath,
 				Required:    false,
 			},
 		},

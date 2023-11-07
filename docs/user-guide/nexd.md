@@ -24,7 +24,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --exit-node-client   Enable this node to use an available exit node (default: false) [$NEXD_EXIT_NODE_CLIENT]
    --help, -h           Show help
-   --unix-socket value  Path to the unix socket nexd is listening against (default: $HOME/.nexodus/nexd.sock)
+   --unix-socket value  Path to the unix socket nexd is listening against (default: /run/nexd.sock)
 
    Agent Options
 
