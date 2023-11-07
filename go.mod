@@ -66,7 +66,7 @@ require (
 require (
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
-	github.com/mhmtszr/concurrent-swiss-map v1.0.3
+	github.com/mhmtszr/concurrent-swiss-map v1.0.4
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb
@@ -245,5 +245,3 @@ require (
 replace github.com/metal-stack/go-ipam => github.com/dave-tucker/go-ipam v0.0.0-20230220173413-c25c56b2408b
 
 replace golang.zx2c4.com/wireguard => github.com/nexodus-io/wireguard-go v0.0.0-20231101061211-f8033f989d14 // 0.0.20231101 tag
-
-replace github.com/mhmtszr/concurrent-swiss-map => github.com/chirino/concurrent-swiss-map v0.0.0-20231105153917-a52b5e30af95 // add-loadif-methods tag
