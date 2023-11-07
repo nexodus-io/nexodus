@@ -1,9 +1,10 @@
 FROM docker.io/library/golang:1.20-bullseye
 
 # To allow installing kubectl
-RUN mkdir /etc/apt/keyrings &&\
-    curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg &&\
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+#RUN mkdir /etc/apt/keyrings &&\
+#    curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+#    &&\
+#    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
 
 RUN apt-get update -qy && \
     apt-get install --no-install-recommends -qy \
@@ -16,7 +17,6 @@ RUN apt-get update -qy && \
     iproute2 \
     iptables \
     iputils-ping \
-    kubectl \
     libc-dev \
     make \
     net-tools \
@@ -35,7 +35,7 @@ COPY ./hack/install-tools.sh /src/
 COPY go.mod /src/
 COPY go.sum /src/
 RUN cd /src &&\
-    sh -x ./install-tools.sh &&\
+    /bin/bash -x ./install-tools.sh &&\
     go mod download &&\
     cd / &&\
     rm -rf /src
