@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
-	"log"
 )
 
 func createVpcCommand() *cli.Command {
@@ -42,14 +43,19 @@ func createVpcCommand() *cli.Command {
 						Name:     "ipv6-cidr",
 						Required: false,
 					},
+					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: false,
+					},
 				},
 				Action: func(cCtx *cli.Context) error {
 					return createVPC(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddVPC{
-						Ipv4Cidr:       cCtx.String("ipv4-cidr"),
-						Ipv6Cidr:       cCtx.String("ipv6-cidr"),
-						Description:    cCtx.String("description"),
-						OrganizationId: cCtx.String("organization-id"),
-						PrivateCidr:    !(cCtx.String("ipv4-cidr") == "" && cCtx.String("ipv6-cidr") == ""),
+						Ipv4Cidr:        cCtx.String("ipv4-cidr"),
+						Ipv6Cidr:        cCtx.String("ipv6-cidr"),
+						Description:     cCtx.String("description"),
+						OrganizationId:  cCtx.String("organization-id"),
+						PrivateCidr:     !(cCtx.String("ipv4-cidr") == "" && cCtx.String("ipv6-cidr") == ""),
+						SecurityGroupId: cCtx.String("security-group-id"),
 					})
 				},
 			},
