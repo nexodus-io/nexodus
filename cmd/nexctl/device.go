@@ -115,17 +115,19 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 
 	fields = append(fields, TableField{Header: "DEVICE ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
-	if full {
-		fields = append(fields, TableField{Header: "TUNNEL IPV4", Field: "TunnelIp"})
-		fields = append(fields, TableField{Header: "TUNNEL IPV6", Field: "TunnelIpV6"})
-	} else {
-		fields = append(fields, TableField{Header: "TUNNEL IPS",
-			Formatter: func(item interface{}) string {
-				dev := item.(public.ModelsDevice)
-				return fmt.Sprintf("%s, %s", dev.Ipv4TunnelIps[0].Address, dev.Ipv6TunnelIps[0].Address)
-			},
-		})
-	}
+	fields = append(fields, TableField{Header: "TUNNEL IPS",
+		Formatter: func(item interface{}) string {
+			dev := item.(public.ModelsDevice)
+			ips := []string{}
+			for _, ip := range dev.Ipv4TunnelIps {
+				ips = append(ips, ip.Address)
+			}
+			for _, ip := range dev.Ipv6TunnelIps {
+				ips = append(ips, ip.Address)
+			}
+			return strings.Join(ips, ", ")
+		},
+	})
 
 	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "RELAY", Field: "Relay"})
@@ -149,7 +151,6 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 				return strings.Join(dev.AllowedIps, ", ")
 			},
 		})
-		fields = append(fields, TableField{Header: "ORG PREFIX IPV6", Field: "OrganizationPrefixV6"})
 		fields = append(fields, TableField{Header: "REFLEXIVE IPv4",
 			Formatter: func(item interface{}) string {
 				dev := item.(public.ModelsDevice)
@@ -162,7 +163,18 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 				return strings.Join(reflexiveIp4, ", ")
 			},
 		})
-		fields = append(fields, TableField{Header: "ENDPOINT LOCAL IPv4", Field: "EndpointLocalAddressIp4"})
+		fields = append(fields, TableField{Header: "LOCAL IPv4",
+			Formatter: func(item interface{}) string {
+				dev := item.(public.ModelsDevice)
+				var localIp4 []string
+				for _, endpoint := range dev.Endpoints {
+					if endpoint.Source == "local" {
+						localIp4 = append(localIp4, endpoint.Address)
+					}
+				}
+				return strings.Join(localIp4, ", ")
+			},
+		})
 		fields = append(fields, TableField{Header: "OS", Field: "Os"})
 		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 		fields = append(fields, TableField{Header: "ONLINE", Field: "Online"})
