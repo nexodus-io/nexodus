@@ -2,7 +2,10 @@ package nexodus
 
 import (
 	"fmt"
+
+	"go4.org/mem"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"tailscale.com/types/key"
 )
 
 // handleKeys will look for an existing key pair, if a pair is not found this method
@@ -24,6 +27,11 @@ func (nx *Nexodus) handleKeys() error {
 			return fmt.Errorf("failed to generate private key: %w", err)
 		}
 		state.PublicKey = wgKey.PublicKey().String()
+
+		//Use the wg private key for derp http client.
+		nx.nexRelay.privateKey = key.NodePrivateFromRaw32(mem.B(wgKey[:]))
+
+		nx.logger.Debugf("Public key for relay is set to [ %s]", nx.nexRelay.privateKey.Public().WireGuardGoString())
 		state.PrivateKey = wgKey.String()
 
 		err = nx.stateStore.Store()

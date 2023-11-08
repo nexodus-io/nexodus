@@ -48,6 +48,7 @@
         "sdktrace",
         "SNAT",
         "sslmode",
+        "tailcfg",
         "unmarshall",
         "userspace",
         "Warnf",

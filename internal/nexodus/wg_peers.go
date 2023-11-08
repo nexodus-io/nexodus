@@ -4,11 +4,14 @@ import (
 	"net"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
+
+const relayDerpPeeringIp = "127.0.0.1:59000"
 
 const (
 	// How long to wait for successful peering after choosing a new peering method
@@ -23,6 +26,7 @@ const (
 	peeringMethodDirectLocal          = "direct-local"
 	peeringMethodReflexive            = "reflexive"
 	peeringMethodViaRelay             = "via-relay"
+	peeringMethodViaDerpRelay         = "via-derp-relay"
 	peeringMethodNone                 = "none"
 )
 
@@ -87,7 +91,7 @@ var wgPeerMethods = []wgPeerMethod{
 		buildPeerConfig: buildReflexivePeer,
 	},
 	{
-		// Last chance, try connecting to the peer via a relay
+		// try connecting to the peer via a relay
 		name: peeringMethodViaRelay,
 		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
 			return !nx.relay && !device.Relay && healthyRelay
@@ -97,6 +101,14 @@ var wgPeerMethods = []wgPeerMethod{
 				AllowedIPsForRelay: device.AdvertiseCidrs,
 			}
 		},
+	},
+	{
+		// Last chance, try connecting to the peer via a derp relay, in case the legacy relay is not available and non of the peering methods above worked
+		name: peeringMethodViaDerpRelay,
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+			return !nx.relay && !device.Relay && nx.symmetricNat && device.SymmetricNat
+		},
+		buildPeerConfig: buildPeerViaDerpRelay,
 	},
 }
 
@@ -211,12 +223,28 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	// do we have a healthy relay available?
 	healthyRelay := false
 	relayDevice := public.ModelsDevice{}
+	relayAvailable := false
 	for _, d := range nx.deviceCache {
+		if d.device.Relay {
+			relayAvailable = true
+			relayDevice = d.device
+		}
 		if d.device.Relay && d.peerHealthy {
 			healthyRelay = true
 			relayDevice = d.device
 			break
 		}
+	}
+
+	// Configure the derp relay, if it's connected and healthy.
+	// If relay become unhealthy, remove the default map and close
+	// the connection to active relay.
+	if relayAvailable {
+		nx.nexRelay.SetCustomDERPMap(relayDevice)
+		nx.logger.Debugf("Relay is available, use the on-boarded relay %v", nx.nexRelay.derpMap.Regions[901])
+	} else {
+		nx.nexRelay.SetDefaultDERPMap()
+		nx.logger.Debugf("Relay is not available, lets default to hosted relay %v", nx.nexRelay.derpMap.Regions[900])
 	}
 
 	now := time.Now()
@@ -394,6 +422,23 @@ func buildReflexivePeer(nx *Nexodus, device public.ModelsDevice, _ []string, _, 
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
 		Endpoint:            reflexiveIP4,
+		AllowedIPs:          device.AllowedIps,
+		PersistentKeepAlive: persistentKeepalive,
+	}
+}
+
+// buildPeerViaDerpRelay Peer and this node, both are behind symmetric NAT, so the only option is to peer them via the derp relay
+func buildPeerViaDerpRelay(nx *Nexodus, device public.ModelsDevice, _ []string, _, _, reflexiveIP4 string) wgPeerConfig {
+	device.AllowedIps = append(device.AllowedIps, device.AdvertiseCidrs...)
+	ip, err := nx.nexRelay.derpIpMapping.GetLocalIPMappingForPeer(device.PublicKey)
+	if err != nil {
+		nx.logger.Errorf("Failed to get next available ip address from the pool: %v", err)
+		return wgPeerConfig{}
+	}
+	ip = net.JoinHostPort(ip, strconv.Itoa(nx.nexRelay.myDerp))
+	return wgPeerConfig{
+		PublicKey:           device.PublicKey,
+		Endpoint:            ip,
 		AllowedIPs:          device.AllowedIps,
 		PersistentKeepAlive: persistentKeepalive,
 	}
