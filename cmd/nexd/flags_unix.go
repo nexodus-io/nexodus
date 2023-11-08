@@ -3,10 +3,11 @@
 package main
 
 import (
-	"github.com/nexodus-io/nexodus/internal/api"
-	"github.com/urfave/cli/v2"
 	"os/user"
 	"path/filepath"
+
+	"github.com/nexodus-io/nexodus/internal/api"
+	"github.com/urfave/cli/v2"
 )
 
 var stateDirDefault = "/var/lib/nexd"
@@ -19,7 +20,6 @@ func init() {
 		stateDirDefault = filepath.Join(currentUser.HomeDir, ".nexodus")
 		stateDirDefaultExpression = "$HOME/.nexodus"
 		api.UnixSocketPath = filepath.Join(stateDirDefault, "nexd.sock")
-		api.UnixSocketPathExpression = "$HOME/.nexodus/nexd.sock"
 	}
 
 	additionalPlatformFlags = append(additionalPlatformFlags,
