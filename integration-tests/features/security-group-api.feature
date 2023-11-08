@@ -17,9 +17,9 @@ Feature: Security Group API
     And the response should match json:
       """
       {
-        "description": "default organization security group",
+        "description": "default vpc security group",
         "id": "${oscar_user_id}",
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "revision": ${response.revision}
       }
       """
@@ -37,7 +37,7 @@ Feature: Security Group API
     When I POST path "/api/security-groups" with json body:
       """
       {
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "description": "extra security group"
       }
       """
@@ -47,7 +47,7 @@ Feature: Security Group API
       """
       {
         "id": "${extra_security_group_id}",
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "description": "extra security group",
         "revision": ${response.revision}
       }

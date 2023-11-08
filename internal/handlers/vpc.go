@@ -130,7 +130,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 		}
 
 		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID)
+		sg, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
 		if err != nil {
 			api.logger.Error("Failed to create default security group for VPC: ", err)
 			return err

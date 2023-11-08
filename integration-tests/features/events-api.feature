@@ -46,17 +46,16 @@ Feature: Events API
     When I GET path "/api/organizations"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${oscar_organization_id}
-    Given I store the ${response[0].security_group_id} as ${oscar_security_group_id}
 
-    When I GET path "/api/security-groups/${oscar_security_group_id}"
+    When I GET path "/api/security-groups/${oscar_user_id}"
     Then the response code should be 200
     Given I store the ".revision" selection from the response as ${current_revision}
     And the response should match json:
       """
       {
-        "description": "default organization security group",
-        "id": "${oscar_security_group_id}",
-        "organization_id": "${oscar_organization_id}",
+        "description": "default vpc security group",
+        "id": "${oscar_user_id}",
+        "vpc_id": "${oscar_organization_id}",
         "revision": ${current_revision}
       }
       """
@@ -209,10 +208,10 @@ Feature: Events API
 
     # Update the security group
     Given I am logged in as "Oscar"
-    When I PATCH path "/api/security-groups/${oscar_security_group_id}" with json body:
+    When I PATCH path "/api/security-groups/${oscar_user_id}" with json body:
       """
       {
-        "id": "${oscar_security_group_id}",
+        "id": "${oscar_user_id}",
         "organization_id": "${oscar_organization_id}",
         "description": "update"
       }
@@ -221,8 +220,8 @@ Feature: Events API
     Then the response should match json:
       """
       {
-        "id": "${oscar_security_group_id}",
-        "organization_id": "${oscar_organization_id}",
+        "id": "${oscar_user_id}",
+        "vpc_id": "${oscar_organization_id}",
         "description": "update",
         "revision": ${response.revision}
       }

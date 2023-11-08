@@ -31,9 +31,6 @@ Feature: Organization API
     Given I store the ${response[0].id} as ${oscar_organization_id}
     # validate the default org id is the same as the user id
     Then "${oscar_organization_id}" should match "${oscar_user_id}"
-    Given I store the ${response[0].security_group_id} as ${oscar_security_group_id}
-    # validate the default sg id is the same as the user id
-    Then "${oscar_security_group_id}" should match "${oscar_user_id}"
 
     #
     # Oscar should only be able to see the orgs that he is a part of.
@@ -46,8 +43,7 @@ Feature: Organization API
           "description": "${oscar_username}'s organization",
           "id": "${oscar_organization_id}",
           "name": "${oscar_username}",
-          "owner_id": "${oscar_user_id}",
-          "security_group_id": "${oscar_security_group_id}"
+          "owner_id": "${oscar_user_id}"
         }
       ]
       """

@@ -285,17 +285,18 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 
 	var sg models.SecurityGroup
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
-		var org models.Organization
-		if res := api.OrganizationIsOwnedByCurrentUser(c, tx).
-			First(&org, "id = ?", request.VpcId); res.Error != nil {
+		var vpc models.VPC
+		if res := api.VPCIsOwnedByCurrentUser(c, tx).
+			First(&vpc, "id = ?", request.VpcId); res.Error != nil {
 			return res.Error
 		}
 
 		sg = models.SecurityGroup{
-			VpcId:         request.VpcId,
-			InboundRules:  request.InboundRules,
-			OutboundRules: request.OutboundRules,
-			Description:   request.Description,
+			VpcId:          vpc.ID,
+			OrganizationID: vpc.OrganizationID,
+			InboundRules:   request.InboundRules,
+			OutboundRules:  request.OutboundRules,
+			Description:    request.Description,
 		}
 		if res := tx.
 			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
@@ -304,7 +305,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 		}
 
 		span.SetAttributes(attribute.String("id", sg.ID.String()))
-		api.logger.Infof("New security group created [ %s ] in organization [ %s ]", sg.ID, org.ID)
+		api.logger.Infof("New security group created [ %s ] in organization [ %s ]", sg.ID, vpc.ID)
 		return nil
 	})
 
@@ -381,7 +382,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 			return res.Error
 		}
 
-		if res := tx.Model(&models.Organization{}).
+		if res := tx.Model(&models.VPC{}).
 			Where("security_group_id = ?", sg.ID).
 			Update("security_group_id", nil); res.Error != nil {
 			return res.Error
@@ -512,7 +513,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID) (models.SecurityGroup, error) {
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID, orgId uuid.UUID) (models.SecurityGroup, error) {
 
 	var inboundRules []models.SecurityRule
 	var outboundRules []models.SecurityRule
@@ -522,10 +523,11 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpc
 		Base: models.Base{
 			ID: vpcId,
 		},
-		VpcId:         vpcId,
-		Description:   "default vpc security group",
-		InboundRules:  inboundRules,
-		OutboundRules: outboundRules,
+		VpcId:          vpcId,
+		OrganizationID: orgId,
+		Description:    "default vpc security group",
+		InboundRules:   inboundRules,
+		OutboundRules:  outboundRules,
 	}
 
 	if db == nil {
