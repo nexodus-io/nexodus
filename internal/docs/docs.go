@@ -2446,7 +2446,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "RegKey"
+                    "Auth"
                 ],
                 "summary": "gets the jwks",
                 "operationId": "Certs",

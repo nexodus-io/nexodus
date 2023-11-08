@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/internal/docs"
 	"github.com/nexodus-io/nexodus/pkg/ginsession"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -11,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap/zapcore"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -62,6 +64,13 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	r.Use(ginzap.RecoveryWithZap(o.Logger.Desugar(), true))
 
 	newPrometheus().Use(r)
+
+	u, err := url.Parse(o.Api.URL)
+	if err != nil {
+		return nil, err
+	}
+	docs.SwaggerInfo.Schemes = []string{u.Scheme}
+	docs.SwaggerInfo.Host = u.Host
 
 	r.GET("/openapi/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
