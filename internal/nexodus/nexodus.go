@@ -154,6 +154,7 @@ type Nexodus struct {
 	reflexiveAddrStunSrc     string
 	hostname                 string
 	securityGroup            *public.ModelsSecurityGroup
+	needSecGroupReconcile    bool
 	symmetricNat             bool
 	ipv6Supported            bool
 	deviceReconciled         bool
@@ -588,6 +589,11 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-secGroupTicker.C:
 				nx.reconcileSecurityGroups(ctx)
 			}
+			if nx.needSecGroupReconcile {
+				// device reconcile noticed that the security group Id changed
+				nx.reconcileSecurityGroups(ctx)
+				nx.needSecGroupReconcile = false
+			}
 		}
 	})
 
@@ -986,9 +992,12 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	for _, p := range peerMap {
 		// Update the cache if the device is new or has changed
 		existing, ok := nx.deviceCache[p.PublicKey]
-		if !ok || nx.deviceUpdated(existing.device, p) {
+		if !ok || deviceUpdated(existing.device, p) {
 			if p.PublicKey == nx.wireguardPubKey {
 				newLocalConfig = true
+				if nx.securityGroup == nil || !reflect.DeepEqual(p.SecurityGroupId, nx.securityGroup.Id) {
+					nx.needSecGroupReconcile = true
+				}
 			}
 			nx.addToDeviceCache(p)
 			existing = nx.deviceCache[p.PublicKey]
@@ -1064,12 +1073,13 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 
 // deviceUpdated() returns whether fields that impact peering configuration have changed
 // between d1 and d2.
-func (nx *Nexodus) deviceUpdated(d1, d2 public.ModelsDevice) bool {
+func deviceUpdated(d1, d2 public.ModelsDevice) bool {
 	return !reflect.DeepEqual(d1.AllowedIps, d2.AllowedIps) ||
 		!reflect.DeepEqual(d1.AdvertiseCidrs, d2.AdvertiseCidrs) ||
 		!reflect.DeepEqual(d1.Endpoints, d2.Endpoints) ||
 		d1.Relay != d2.Relay ||
-		d1.SymmetricNat != d2.SymmetricNat
+		d1.SymmetricNat != d2.SymmetricNat ||
+		d1.SecurityGroupId != d2.SecurityGroupId
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
