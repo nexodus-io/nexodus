@@ -324,7 +324,7 @@ $(SWAGGER_YAML): $(APISERVER_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
 	$(CMD_PREFIX) docker run \--platform linux/x86_64 --rm \
 		-v $(CURDIR):/workdir -w /workdir \
-		ghcr.io/swaggo/swag:v1.16.1 \
+		ghcr.io/swaggo/swag:v1.16.2 \
 		/root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
 
 .PHONY: gen-openapi-client
