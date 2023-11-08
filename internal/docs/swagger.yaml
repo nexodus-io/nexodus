@@ -52,8 +52,6 @@ definitions:
       name:
         example: zone-red
         type: string
-      security_group_id:
-        type: string
     type: object
   models.AddRegKey:
     properties:
@@ -78,12 +76,12 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
-      organization_id:
-        type: string
       outbound_rules:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
+      vpc_id:
+        type: string
     type: object
   models.AddVPC:
     properties:
@@ -100,6 +98,8 @@ definitions:
         type: string
       private_cidr:
         type: boolean
+      security_group_id:
+        type: string
     type: object
   models.BaseError:
     properties:
@@ -266,8 +266,6 @@ definitions:
       owner_id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
-      security_group_id:
-        type: string
     type: object
   models.RefreshTokenRequest:
     properties:
@@ -315,14 +313,14 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
-      organization_id:
-        type: string
       outbound_rules:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
       revision:
         type: integer
+      vpc_id:
+        type: string
     type: object
   models.SecurityRule:
     properties:
@@ -391,6 +389,8 @@ definitions:
       description:
         example: The Red Zone
         type: string
+      security_group_id:
+        type: string
     type: object
   models.User:
     properties:
@@ -430,6 +430,8 @@ definitions:
         type: string
       private_cidr:
         type: boolean
+      security_group_id:
+        type: string
     type: object
   models.ValidationError:
     properties:

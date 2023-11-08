@@ -8,7 +8,8 @@ import (
 type SecurityGroup struct {
 	Base
 	Description    string         `json:"description"`
-	OrganizationId uuid.UUID      `json:"organization_id"`
+	VpcId          uuid.UUID      `json:"vpc_id"`
+	OrganizationID uuid.UUID      `json:"-"` // Denormalized from the VPC record for performance
 	InboundRules   []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	OutboundRules  []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 	Revision       uint64         `json:"revision"  gorm:"type:bigserial;index:"`
@@ -16,10 +17,10 @@ type SecurityGroup struct {
 
 // AddSecurityGroup is the information needed to add a new Security Group.
 type AddSecurityGroup struct {
-	Description    string         `json:"description" example:"group_description"`
-	OrganizationId uuid.UUID      `json:"organization_id"`
-	InboundRules   []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
-	OutboundRules  []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
+	Description   string         `json:"description" example:"group_description"`
+	VpcId         uuid.UUID      `json:"vpc_id"`
+	InboundRules  []SecurityRule `json:"inbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
+	OutboundRules []SecurityRule `json:"outbound_rules,omitempty" gorm:"type:JSONB; serializer:json"`
 }
 
 // UpdateSecurityGroup is the information needed to update an existing Security Group.

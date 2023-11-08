@@ -65,7 +65,6 @@ func orgTableFields() []TableField {
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "NAME", Field: "Name"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	return fields
 }
 func listOrganizations(cCtx *cli.Context, c *client.APIClient) error {

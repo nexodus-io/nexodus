@@ -129,6 +129,18 @@ func (api *API) CreateVPC(c *gin.Context) {
 			return err
 		}
 
+		// Create a default security group for the organization
+		sg, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
+		if err != nil {
+			api.logger.Error("Failed to create default security group for VPC: ", err)
+			return err
+		}
+
+		if err := api.updateVpcSecGroupId(ctx, tx, sg.ID, vpc.ID); err != nil {
+			return fmt.Errorf("failed to update the default security group with a VPC id: %w", err)
+		}
+		vpc.SecurityGroupId = sg.ID
+
 		span.SetAttributes(attribute.String("id", vpc.ID.String()))
 		api.logger.Infof("New vpc request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", vpc.ID.String(), vpc.Ipv4Cidr, vpc.Ipv6Cidr)
 		return nil

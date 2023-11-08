@@ -81,6 +81,7 @@ func vpcTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "VPC ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Ipv4Cidr"})
 	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "Ipv6Cidr"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})

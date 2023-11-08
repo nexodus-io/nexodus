@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"io"
 	"net/http"
+
+	"github.com/nexodus-io/nexodus/internal/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -18,8 +19,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 
 	groups := []models.AddSecurityGroup{
 		{
-			Description:    "This is test group 1",
-			OrganizationId: suite.testUserID,
+			Description: "This is test group 1",
+			VpcId:       suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "tcp", FromPort: 22, ToPort: 22, IpRanges: []string{"192.168.100.0/24", "2001:db8::/32"}},
 				{IpProtocol: "udp", FromPort: 5000, ToPort: 5001, IpRanges: []string{"10.0.0.0/8"}},
@@ -30,8 +31,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 			},
 		},
 		{
-			Description:    "This is test group 2",
-			OrganizationId: suite.testUserID,
+			Description: "This is test group 2",
+			VpcId:       suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "udp", FromPort: 99, ToPort: 100, IpRanges: []string{"2001:db8:a0b:12f0::/64", "2001:db8::/32"}},
 				{IpProtocol: "icmp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.1.0/24", "10.0.0.0/8"}},
@@ -42,8 +43,8 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 			},
 		},
 		{
-			Description:    "This is test group 3",
-			OrganizationId: suite.testUserID,
+			Description: "This is test group 3",
+			VpcId:       suite.testUserID,
 			InboundRules: []models.SecurityRule{
 				{IpProtocol: "icmp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.1.0/24", "2001:db8:a0b:12f0::/64"}},
 				{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"0.0.0.0/0", "::/0"}},
@@ -61,7 +62,7 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
-			"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testUserID.String()),
+			"/security-groups", "/security-groups",
 			func(c *gin.Context) {
 				c.Set("nexodus.secGroupsEnabled", "true")
 				suite.api.CreateSecurityGroup(c)
@@ -80,10 +81,10 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 		require.NoError(err)
 
 		require.Equal(newGroup.Description, actual.Description)
-		require.Equal(newGroup.OrganizationId, actual.OrganizationId)
+		require.Equal(newGroup.VpcId, actual.VpcId)
 
 		_, res, err = suite.ServeRequest(
-			http.MethodGet, "/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actual.ID),
+			http.MethodGet, "/security-groups/:id", fmt.Sprintf("/security-groups/%s", actual.ID),
 			suite.api.GetSecurityGroup, nil,
 		)
 
@@ -106,10 +107,10 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	// create a security group that we will delete later
 	newGroup := models.AddSecurityGroup{
-		Description:    "This is a test group to delete",
-		OrganizationId: suite.testUserID,
-		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
-		OutboundRules:  []models.SecurityRule{{IpProtocol: "udp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
+		Description:   "This is a test group to delete",
+		VpcId:         suite.testUserID,
+		InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
+		OutboundRules: []models.SecurityRule{{IpProtocol: "udp", FromPort: 0, ToPort: 0, IpRanges: []string{}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -117,7 +118,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testUserID.String()),
+		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -138,7 +139,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 	// Now delete the security group we just created
 	_, res, err = suite.ServeRequest(
 		http.MethodDelete,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actual.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actual.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.DeleteSecurityGroup(c)
@@ -151,7 +152,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 
 	// Verify that the security group has been deleted by trying to get it
 	_, res, err = suite.ServeRequest(
-		http.MethodGet, "/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actual.ID),
+		http.MethodGet, "/security-groups/:id", fmt.Sprintf("/security-groups/%s", actual.ID),
 		suite.api.GetSecurityGroup, nil,
 	)
 
@@ -166,16 +167,16 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 	// Create a couple of security groups for testing
 	groups := []models.AddSecurityGroup{
 		{
-			Description:    "This is test group 1",
-			OrganizationId: suite.testUserID,
-			InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{"100.100.0.0/16"}}},
-			OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{}}},
+			Description:   "This is test group 1",
+			VpcId:         suite.testUserID,
+			InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{"100.100.0.0/16"}}},
+			OutboundRules: []models.SecurityRule{{IpProtocol: "tcp", FromPort: 80, ToPort: 80, IpRanges: []string{}}},
 		},
 		{
-			Description:    "This is test group 2",
-			OrganizationId: suite.testUserID,
-			InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"200::1-200::5"}}},
-			OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 8080, IpRanges: []string{"172.20.0.1-172.20.0.100"}}},
+			Description:   "This is test group 2",
+			VpcId:         suite.testUserID,
+			InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 443, IpRanges: []string{"200::1-200::5"}}},
+			OutboundRules: []models.SecurityRule{{IpProtocol: "tcp", FromPort: 443, ToPort: 8080, IpRanges: []string{"172.20.0.1-172.20.0.100"}}},
 		},
 	}
 
@@ -185,7 +186,7 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 
 		_, res, err := suite.ServeRequest(
 			http.MethodPost,
-			"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testUserID.String()),
+			"/security-groups", "/security-groups",
 			func(c *gin.Context) {
 				c.Set("nexodus.secGroupsEnabled", "true")
 				suite.api.CreateSecurityGroup(c)
@@ -223,10 +224,10 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	// Create a new security group
 	newGroup := models.AddSecurityGroup{
-		Description:    "This is a test group",
-		OrganizationId: suite.testUserID,
-		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
-		OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
+		Description:   "This is a test group",
+		VpcId:         suite.testUserID,
+		InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
+		OutboundRules: []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -234,7 +235,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testUserID.String()),
+		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -263,7 +264,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actualGroup.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -292,10 +293,10 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	// Create a new security group
 	newGroup := models.AddSecurityGroup{
-		Description:    "This is a test group",
-		OrganizationId: suite.testUserID,
-		InboundRules:   []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
-		OutboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
+		Description:   "This is a test group",
+		VpcId:         suite.testUserID,
+		InboundRules:  []models.SecurityRule{{IpProtocol: "tcp", FromPort: 22, ToPort: 80, IpRanges: []string{"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}}},
+		OutboundRules: []models.SecurityRule{{IpProtocol: "tcp", FromPort: 0, ToPort: 0, IpRanges: []string{"192.168.50.1-192.168.50.100"}}},
 	}
 
 	resBody, err := json.Marshal(newGroup)
@@ -303,7 +304,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err := suite.ServeRequest(
 		http.MethodPost,
-		"/organizations/:organization/security-groups", fmt.Sprintf("/organizations/%s/security-groups", suite.testUserID.String()),
+		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.CreateSecurityGroup(c)
@@ -334,7 +335,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actualGroup.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -360,7 +361,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actualGroup.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -386,7 +387,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actualGroup.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)
@@ -412,7 +413,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 
 	_, res, err = suite.ServeRequest(
 		http.MethodPatch,
-		"/organizations/:organization/security-groups/:id", fmt.Sprintf("/organizations/%s/security-groups/%s", suite.testUserID.String(), actualGroup.ID),
+		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
 			c.Set("nexodus.secGroupsEnabled", "true")
 			suite.api.UpdateSecurityGroup(c)

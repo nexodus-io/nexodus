@@ -12,7 +12,6 @@ package public
 
 // ModelsAddOrganization struct for ModelsAddOrganization
 type ModelsAddOrganization struct {
-	Description     string `json:"description,omitempty"`
-	Name            string `json:"name,omitempty"`
-	SecurityGroupId string `json:"security_group_id,omitempty"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
 }

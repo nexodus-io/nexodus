@@ -3,8 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
+
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231031_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231106_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20231107_0000"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -92,6 +94,7 @@ func Migrations() *migrations.Migrations {
 		Migrations: []*gormigrate.Migration{
 			migration_20231031_0000.Migrate(),
 			migration_20231106_0000.Migrate20231106(),
+			migration_20231107_0000.Migrate20231107(),
 		},
 	}
 }

@@ -12,9 +12,8 @@ package public
 
 // ModelsOrganization struct for ModelsOrganization
 type ModelsOrganization struct {
-	Description     string `json:"description,omitempty"`
-	Id              string `json:"id,omitempty"`
-	Name            string `json:"name,omitempty"`
-	OwnerId         string `json:"owner_id,omitempty"`
-	SecurityGroupId string `json:"security_group_id,omitempty"`
+	Description string `json:"description,omitempty"`
+	Id          string `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	OwnerId     string `json:"owner_id,omitempty"`
 }

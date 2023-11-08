@@ -2728,9 +2728,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "zone-red"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -2766,14 +2763,14 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "outbound_rules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                },
+                "vpc_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2797,6 +2794,9 @@ const docTemplate = `{
                 },
                 "private_cidr": {
                     "type": "boolean"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3037,9 +3037,6 @@ const docTemplate = `{
                 "owner_id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3108,9 +3105,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SecurityRule"
                     }
                 },
-                "organization_id": {
-                    "type": "string"
-                },
                 "outbound_rules": {
                     "type": "array",
                     "items": {
@@ -3119,6 +3113,9 @@ const docTemplate = `{
                 },
                 "revision": {
                     "type": "integer"
+                },
+                "vpc_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3220,6 +3217,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3279,6 +3279,9 @@ const docTemplate = `{
                 },
                 "private_cidr": {
                     "type": "boolean"
+                },
+                "security_group_id": {
+                    "type": "string"
                 }
             }
         },

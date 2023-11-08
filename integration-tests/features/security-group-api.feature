@@ -17,9 +17,9 @@ Feature: Security Group API
     And the response should match json:
       """
       {
-        "description": "default organization security group",
+        "description": "default vpc security group",
         "id": "${oscar_user_id}",
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "revision": ${response.revision}
       }
       """
@@ -37,7 +37,7 @@ Feature: Security Group API
     When I POST path "/api/security-groups" with json body:
       """
       {
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "description": "extra security group"
       }
       """
@@ -47,7 +47,7 @@ Feature: Security Group API
       """
       {
         "id": "${extra_security_group_id}",
-        "organization_id": "${oscar_user_id}",
+        "vpc_id": "${oscar_user_id}",
         "description": "extra security group",
         "revision": ${response.revision}
       }
@@ -84,21 +84,23 @@ Feature: Security Group API
       ${extra_security_group}
       """
 
-    # The organization's security-group should be the default security group....
-    When I GET path "/api/organizations/${oscar_user_id}"
+    # The vcs's security-group should be the default security group....
+    When I GET path "/api/vpcs/${oscar_user_id}"
     Then the response code should be 200
     And the response should match json:
       """
       {
         "id": "${oscar_user_id}",
-        "name": "${response.name}",
-        "description": "${response.description}",
-        "owner_id": "${oscar_user_id}",
+        "ipv4_cidr": "100.64.0.0/10",
+        "ipv6_cidr": "200::/64",
+        "organization_id": "${oscar_user_id}",
+        "private_cidr": false,
+        "description": "default vpc",
         "security_group_id": "${oscar_user_id}"
       }
       """
 
-    # If we delete the default security group, it should removed from the organization.
+    # If we delete the default security group, it should removed from the vpc.
     When I DELETE path "/api/security-groups/${oscar_user_id}"
     Then the response code should be 200
     And the response should match json:
@@ -107,15 +109,17 @@ Feature: Security Group API
       """
 
     # verify it gets removed...
-    When I GET path "/api/organizations/${oscar_user_id}"
+    When I GET path "/api/vpcs/${oscar_user_id}"
     Then the response code should be 200
     And the response should match json:
       """
       {
         "id": "${oscar_user_id}",
-        "name": "${response.name}",
-        "description": "${response.description}",
-        "owner_id": "${oscar_user_id}",
+        "ipv4_cidr": "100.64.0.0/10",
+        "ipv6_cidr": "200::/64",
+        "organization_id": "${oscar_user_id}",
+        "private_cidr": false,
+        "description": "default vpc",
         "security_group_id": "00000000-0000-0000-0000-000000000000"
       }
       """

@@ -86,19 +86,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 			return res.Error
 		}
 
-		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID)
-		if err != nil {
-			api.logger.Error("Failed to create default security group for organization: ", err)
-			return err
-		}
-
-		// Update the org with the new security group id
-		if err := api.updateOrganizationSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
-			return fmt.Errorf("failed to update the default security group with an org id: %w", err)
-		}
-		org.SecurityGroupId = sg.ID
-
 		span.SetAttributes(attribute.String("id", org.ID.String()))
 		api.logger.Infof("New organization request [ %s ] request", org.Name)
 		return nil
