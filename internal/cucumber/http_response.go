@@ -39,7 +39,7 @@
 //
 // Assert that a response header matches the provided text:
 //
-//	Then the response header "Content-Type" should match "application/json;stream=watch"
+// Then the response header "Content-Type" should match "application/json;stream=watch"
 //
 // Assert that a json field of the response body is correct matches the provided json:
 //
@@ -76,6 +76,7 @@ func init() {
 		ctx.Step(`^I delete the \${([^"]*)} "([^"]*)" key$`, s.iDeleteTheMapKey)
 		ctx.Step(`^the "(.*)" selection from the response should match "([^"]*)"$`, s.theSelectionFromTheResponseShouldMatch)
 		ctx.Step(`^the response header "([^"]*)" should match "([^"]*)"$`, s.theResponseHeaderShouldMatch)
+		ctx.Step(`^the response header "([^"]*)" should start with "([^"]*)"$`, s.theResponseHeaderShouldStartWith)
 		ctx.Step(`^the "([^"]*)" selection from the response should match json:$`, s.theSelectionFromTheResponseShouldMatchJson)
 		ctx.Step(`^\${([^"]*)} is not empty$`, s.vpc_idIsNotEmpty)
 		ctx.Step(`^"([^"]*)" should match "([^"]*)"$`, s.textShouldMatchText)
@@ -106,12 +107,12 @@ func (s *TestScenario) TheResponseShouldMatchJsonDoc(expected *godog.DocString) 
 	return s.theResponseShouldMatchJson(expected.Content)
 }
 func (s *TestScenario) theResponseShouldMatchJson(expected string) error {
-	session := s.Session()
-	ct := session.Resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "application/json") {
-		return fmt.Errorf("Content-Type is not application/json, but: %s", ct)
+	err := s.theResponseHeaderShouldStartWith("Content-Type", "application/json")
+	if err != nil {
+		return err
 	}
 
+	session := s.Session()
 	if len(session.RespBytes) == 0 {
 		return fmt.Errorf("got an empty response from server, expected a json body")
 	}
@@ -124,6 +125,10 @@ func (s *TestScenario) TheResponseShouldContainJsonDoc(expected *godog.DocString
 }
 
 func (s *TestScenario) theResponseShouldContainJson(expected string) error {
+	err := s.theResponseHeaderShouldStartWith("Content-Type", "application/json")
+	if err != nil {
+		return err
+	}
 	session := s.Session()
 
 	if len(session.RespBytes) == 0 {
@@ -194,14 +199,27 @@ func (s *TestScenario) theResponseShouldMatchText(expected string) error {
 
 func (s *TestScenario) theResponseHeaderShouldMatch(header, expected string) error {
 	session := s.Session()
-	expanded, err := s.Expand(expected, "defs", "ref")
+	expanded, err := s.Expand(expected)
 	if err != nil {
 		return err
 	}
 
 	actual := session.Resp.Header.Get(header)
 	if expanded != actual {
-		return fmt.Errorf("reponse header '%s' does not match expected: %v, actual: %v", header, expanded, actual)
+		return fmt.Errorf("reponse header '%s' does not match expected: %v, actual: %v, body:\n%s", header, expanded, actual, string(session.RespBytes))
+	}
+	return nil
+}
+func (s *TestScenario) theResponseHeaderShouldStartWith(header, prefix string) error {
+	session := s.Session()
+	prefix, err := s.Expand(prefix)
+	if err != nil {
+		return err
+	}
+
+	actual := session.Resp.Header.Get(header)
+	if !strings.HasPrefix(actual, prefix) {
+		return fmt.Errorf("reponse header '%s' does not start with prefix: %v, actual: %v, body:\n%s", header, prefix, actual, string(session.RespBytes))
 	}
 	return nil
 }
