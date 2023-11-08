@@ -2794,9 +2794,6 @@ const docTemplate = `{
                 },
                 "private_cidr": {
                     "type": "boolean"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3217,9 +3214,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3279,9 +3273,6 @@ const docTemplate = `{
                 },
                 "private_cidr": {
                     "type": "boolean"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },

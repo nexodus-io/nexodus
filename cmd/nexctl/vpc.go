@@ -60,6 +60,27 @@ func createVpcCommand() *cli.Command {
 				},
 			},
 			{
+				Name:  "update",
+				Usage: "Update a vpc",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "vpc-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "description",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					id := cCtx.String("vpc-id")
+					update := public.ModelsUpdateVPC{
+						Description: cCtx.String("description"),
+					}
+					return updateVPC(cCtx, id, update)
+				},
+			},
+			{
 				Name:  "delete",
 				Usage: "Delete a vpc",
 				Flags: []cli.Flag{
@@ -83,11 +104,26 @@ func createVpcCommand() *cli.Command {
 	}
 }
 
+func updateVPC(cCtx *cli.Context, idStr string, update public.ModelsUpdateVPC) error {
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		log.Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
+	}
+
+	c := mustCreateAPIClient(cCtx)
+	res := processApiResponse(c.VPCApi.
+		UpdateVPC(context.Background(), id.String()).
+		Update(update).
+		Execute())
+
+	showOutput(cCtx, invitationsTableFields(), res)
+	return nil
+}
+
 func vpcTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "VPC ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
-	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	fields = append(fields, TableField{Header: "IPV4 CIDR", Field: "Ipv4Cidr"})
 	fields = append(fields, TableField{Header: "IPV6 CIDR", Field: "Ipv6Cidr"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})

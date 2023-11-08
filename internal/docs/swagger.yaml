@@ -98,8 +98,6 @@ definitions:
         type: string
       private_cidr:
         type: boolean
-      security_group_id:
-        type: string
     type: object
   models.BaseError:
     properties:
@@ -389,8 +387,6 @@ definitions:
       description:
         example: The Red Zone
         type: string
-      security_group_id:
-        type: string
     type: object
   models.User:
     properties:
@@ -430,8 +426,6 @@ definitions:
         type: string
       private_cidr:
         type: boolean
-      security_group_id:
-        type: string
     type: object
   models.ValidationError:
     properties:

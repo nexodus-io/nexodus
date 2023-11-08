@@ -84,42 +84,14 @@ Feature: Security Group API
       ${extra_security_group}
       """
 
-    # The vcs's security-group should be the default security group....
-    When I GET path "/api/vpcs/${oscar_user_id}"
-    Then the response code should be 200
-    And the response should match json:
-      """
-      {
-        "id": "${oscar_user_id}",
-        "ipv4_cidr": "100.64.0.0/10",
-        "ipv6_cidr": "200::/64",
-        "organization_id": "${oscar_user_id}",
-        "private_cidr": false,
-        "description": "default vpc",
-        "security_group_id": "${oscar_user_id}"
-      }
-      """
-
-    # If we delete the default security group, it should removed from the vpc.
+    # The default security group cannot be deleted.
     When I DELETE path "/api/security-groups/${oscar_user_id}"
-    Then the response code should be 200
-    And the response should match json:
-      """
-      ${default_security_group}
-      """
-
-    # verify it gets removed...
-    When I GET path "/api/vpcs/${oscar_user_id}"
-    Then the response code should be 200
+    Then the response code should be 400
     And the response should match json:
       """
       {
-        "id": "${oscar_user_id}",
-        "ipv4_cidr": "100.64.0.0/10",
-        "ipv6_cidr": "200::/64",
-        "organization_id": "${oscar_user_id}",
-        "private_cidr": false,
-        "description": "default vpc",
-        "security_group_id": "00000000-0000-0000-0000-000000000000"
+        "error": "operation not allowed",
+        "reason": "default security group cannot be deleted"
       }
       """
+

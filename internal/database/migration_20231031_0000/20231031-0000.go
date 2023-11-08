@@ -124,7 +124,7 @@ type SecurityRule struct {
 	IpRanges   []string
 }
 
-func Migrate() *gormigrate.Migration {
+func New() *gormigrate.Migration {
 	migrationId := "20231031-0000"
 	return CreateMigrationFromActions(migrationId,
 

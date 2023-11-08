@@ -165,6 +165,7 @@ dist/packages/%: nexd nexctl $(shell find docs/user-guide/ -iname '*.md')
 
 .PHONY: clean
 clean: ## clean built binaries
+	$(CMD_PREFIX) touch ./cmd/apiserver/main.go # to force apidocs to get rebuilt.
 	$(CMD_PREFIX) rm -rf dist
 
 ##@ Development

@@ -12,6 +12,5 @@ package public
 
 // ModelsUpdateVPC struct for ModelsUpdateVPC
 type ModelsUpdateVPC struct {
-	Description     string `json:"description,omitempty"`
-	SecurityGroupId string `json:"security_group_id,omitempty"`
+	Description string `json:"description,omitempty"`
 }

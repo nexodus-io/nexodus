@@ -39,7 +39,7 @@ if [ -z "$(which golangci-lint)" ] || [ "$1" = "--force" ]; then
 fi
 if [ -z "$(which swag)" ] || [ "$1" = "--force" ]; then
   echo installing swag
-  go install github.com/swaggo/swag/cmd/swag@v1.8.10
+  go install github.com/swaggo/swag/cmd/swag@v1.16.1
 fi
 if [ -z "$(which mkcert)" ] || [ "$1" = "--force" ]; then
   echo installing mkcert
