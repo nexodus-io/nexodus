@@ -44,7 +44,7 @@ func createSecurityGroupCommand() *cli.Command {
 				Usage: "create a security group",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "organization-id",
+						Name:     "vpc-id",
 						Required: false,
 					},
 					&cli.StringFlag{
@@ -62,7 +62,7 @@ func createSecurityGroupCommand() *cli.Command {
 				},
 				Action: func(cCtx *cli.Context) error {
 					description := cCtx.String("description")
-					orgID := cCtx.String("organization-id")
+					vpcId := cCtx.String("vpc-id")
 					inboundRulesStr := cCtx.String("inbound-rules")
 					outboundRulesStr := cCtx.String("outbound-rules")
 
@@ -83,7 +83,7 @@ func createSecurityGroupCommand() *cli.Command {
 						}
 					}
 
-					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), description, orgID, inboundRules, outboundRules)
+					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), description, vpcId, inboundRules, outboundRules)
 				},
 			},
 			{
@@ -146,22 +146,22 @@ func securityGroupTableFields(cCtx *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
+	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "INBOUND RULES", Field: "InboundRules"})
 	fields = append(fields, TableField{Header: "OUTBOUND RULES", Field: "OutboundRules"})
 	return fields
 }
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, organizationID string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, vpcIdStr string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 
-	if organizationID == "" {
-		organizationID = getDefaultOrgId(cCtx.Context, c)
+	if vpcIdStr == "" {
+		vpcIdStr = getDefaultVpcId(cCtx.Context, c)
 	}
 
-	orgID, err := uuid.Parse(organizationID)
+	vpcId, err := uuid.Parse(vpcIdStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", organizationID, err)
+		return fmt.Errorf("failed to parse a valid UUID from %s %w", vpcIdStr, err)
 	}
 
 	err = checkICMPRules(inboundRules, outboundRules)
@@ -171,7 +171,7 @@ func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, or
 
 	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background()).SecurityGroup(public.ModelsAddSecurityGroup{
 		Description:   description,
-		VpcId:         orgID.String(),
+		VpcId:         vpcId.String(),
 		InboundRules:  inboundRules,
 		OutboundRules: outboundRules,
 	}).Execute()

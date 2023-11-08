@@ -410,7 +410,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	err = json.Unmarshal([]byte(currentUser), &user)
 	require.NoErrorf(err, "nexctl ser get-current Unmarshal error: %v\n", err)
 
-	orgID := user.ID
+	vpcID := user.ID
 
 	// register the v4 and v6 addresses for both devices
 	node1IPv4 := deviceMap[node1Hostname].IPv4TunnelIPs[0].Address
@@ -646,7 +646,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"--password", password,
 		"security-group", "create",
 		"--description", "test create group sg_e2e_extended",
-		"--organization-id", orgID.String(),
+		"--vpc-id", vpcID.String(),
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 	)
@@ -657,7 +657,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 		"--password", password,
 		"security-group", "create",
 		"--description", "test create group sg_e2e_extended",
-		"--organization-id", orgID.String(),
+		"--vpc-id", vpcID.String(),
 		"--inbound-rules", string(inboundJSON),
 		"--outbound-rules", string(outboundJSON),
 	)
