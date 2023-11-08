@@ -2104,7 +2104,7 @@ paths:
             $ref: '#/definitions/models.InternalServerError'
       summary: gets the jwks
       tags:
-      - RegKey
+      - Auth
   /device/login/start:
     post:
       consumes:

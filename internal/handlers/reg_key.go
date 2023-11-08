@@ -265,7 +265,7 @@ func (api *API) DeleteRegKey(c *gin.Context) {
 // @Summary      gets the jwks
 // @Description  gets the jwks that can be used to verify JWTs created by this server.
 // @Id           Certs
-// @Tags         RegKey
+// @Tags         Auth
 // @Accept		 json
 // @Produce      json
 // @Success      200  {object} interface{}
