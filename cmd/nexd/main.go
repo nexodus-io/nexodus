@@ -488,8 +488,8 @@ func main() {
 				}
 			}
 			if c.Bool("exit-node-client") {
-				if runtime.GOOS != nexodus.Linux.String() {
-					return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
+				if runtime.GOOS != nexodus.Linux.String() && runtime.GOOS != nexodus.Darwin.String() {
+					return fmt.Errorf("exit-node support is currently only supported for Linux and macOS operating systems")
 				}
 			}
 			return nil

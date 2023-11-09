@@ -62,20 +62,57 @@ func addExitOriginForwardRule(logger *zap.SugaredLogger) error {
 	return nil
 }
 
+//func (nx *Nexodus) updateExitNodeOrigins(newPeer wgPeerConfig) {
+//	nx.exitNode.exitNodeExists = true
+//	// check if the exit node already exists and update its details
+//	found := false
+//	for i, existingPeerConfig := range nx.exitNode.exitNodeOrigins {
+//		if existingPeerConfig.PublicKey == newPeer.PublicKey {
+//			nx.exitNode.exitNodeOrigins[i].Endpoint = newPeer.Endpoint
+//			found = true
+//			break
+//		}
+//	}
+//
+//	// If no existing entry with the same public key was found, append the new exit node
+//	if !found {
+//		nx.exitNode.exitNodeOrigins = append(nx.exitNode.exitNodeOrigins, newPeer)
+//	}
+//}
+
 func (nx *Nexodus) updateExitNodeOrigins(newPeer wgPeerConfig) {
 	nx.exitNode.exitNodeExists = true
-	// check if the exit node already exists and update its details
+
+	// Debug: Print the received newPeer
+	fmt.Printf("Received newPeer: %+v\n", newPeer)
+
+	// Flag to indicate if a peer with the same public key is found
 	found := false
+
+	// Loop through the existing exitNodeOrigins
 	for i, existingPeerConfig := range nx.exitNode.exitNodeOrigins {
+		// Debug: Print existing peer config
+		fmt.Printf("Comparing with existingPeer: %+v\n", existingPeerConfig)
+
 		if existingPeerConfig.PublicKey == newPeer.PublicKey {
+			// Debug: Print match found
+			fmt.Println("Match found, updating Endpoint.")
+
+			// Update the endpoint if the public key already exists
 			nx.exitNode.exitNodeOrigins[i].Endpoint = newPeer.Endpoint
 			found = true
 			break
 		}
 	}
 
-	// If no existing entry with the same public key was found, append the new exit node
+	// If no existing entry with the same public key was found, append the new wgPeerConfig
 	if !found {
+		// Debug: Print appending new peer
+		fmt.Println("No match found, appending new peer.")
+
 		nx.exitNode.exitNodeOrigins = append(nx.exitNode.exitNodeOrigins, newPeer)
 	}
+
+	// Debug: Print the updated list
+	fmt.Printf("Updated list: %+v\n", nx.exitNode.exitNodeOrigins)
 }

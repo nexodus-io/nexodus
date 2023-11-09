@@ -134,9 +134,27 @@ func isIPv6Supported() bool {
 	return true
 }
 
-// getDefaultGatewayIPv4 not currently implemented for darwin
+// getDefaultGatewayIPv4 fetches the default IPv4 gateway on macOS.
 func getDefaultGatewayIPv4() (string, error) {
-	return "", fmt.Errorf("method currently unsupported for darwin")
+	// Execute the `netstat -nr` command
+	out, err := exec.Command("netstat", "-nr").Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute netstat: %w", err)
+	}
+
+	// Convert the output bytes to string and split the lines
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		// Look for the default gateway line
+		if strings.HasPrefix(line, "default") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				return fields[1], nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("default gateway not found")
 }
 
 // isElevatedUnix checks that nexd was started with appropriate permissions for Unix-based OS mode (Linux/macOS)

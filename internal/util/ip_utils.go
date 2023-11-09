@@ -61,6 +61,7 @@ func AppendPrefixMask(ipStr string, maskSize int) (string, error) {
 // IsDefaultIPv4Route checks if the given prefix is the default route for IPv4.
 func IsDefaultIPv4Route(ip string) bool {
 	ipAddr, ipNet, err := net.ParseCIDR(ip)
+
 	if err != nil {
 		ipAddr = net.ParseIP(ip)
 		if ipAddr == nil {
