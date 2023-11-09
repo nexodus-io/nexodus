@@ -38,7 +38,7 @@ jobs:
           check_status() {
             runs=$(curl -s -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{github.repository}}/actions/workflows/deploy-qa-test.yml/runs?per_page=10")
+            "https://api.github.com/repos/${{github.repository}}/actions/workflows/qa-dev.yml/runs?per_page=10")
 
             latest_run=$(echo "$runs" | jq -r --arg timestamp "$current_time" \
             '.workflow_runs[] | select(.created_at >= $timestamp) | .')
@@ -51,7 +51,7 @@ jobs:
             if [[ "$status" == "completed" && "$conclusion" == "success" ]]; then
               return 0
             elif [[ "$status" == "completed" && "$conclusion" != "success" ]]; then
-              echo "qa-dev workflow failed. For details, see https://github.com/nerdalert/apex-qa/actions/workflows/deploy-qa-test.yml"
+              echo "qa-dev workflow failed. For details, see https://github.com/nexodus-io/nexodus/actions/workflows/qa-dev.yml"
               exit 1
             else
               return 1
