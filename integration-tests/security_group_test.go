@@ -598,143 +598,113 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	)
 	require.Error(err)
 
-	//
-	// TODO: we don't support deleting default security groups anymore.. so figure out what parts of the following test are still valid
-	//
+	vpcID := user.ID
+	// create the new inbound and outbound rules
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("tcp", "0", "0", []string{}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
+	}
+	outboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("tcp", "0", "0", []string{}),
+		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
+	}
+	// Marshal rules to JSON
+	inboundJSON, err := json.Marshal(inboundRules)
+	require.NoError(err)
+	outboundJSON, err := json.Marshal(outboundRules)
+	require.NoError(err)
+	_, err = helper.runCommand(nexctl,
+		"--username", username2,
+		"--password", password,
+		"security-group", "create",
+		"--description", "test create group sg_e2e_extended",
+		"--vpc-id", vpcID.String(),
+		"--inbound-rules", string(inboundJSON),
+		"--outbound-rules", string(outboundJSON),
+	)
+	require.Error(err)
 
-	// vpcID := user.ID
-	//// gather the nftables from both nodes to verify the new rules are applied before testing and block until the rules are applied or fail if max attempts is reached
-	//nfOutBefore1, err = helper.containerExec(ctx, node1, []string{"nft", "list", "ruleset"})
-	//require.NoError(err)
-	//nfOutBefore2, err = helper.containerExec(ctx, node2, []string{"nft", "list", "ruleset"})
-	//require.NoError(err)
-	//// delete the security group and ensure the device updates it's netfilter rules to fall back to a default where no group is defined
-	//sgDel, err := helper.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"security-group", "delete",
-	//	"--security-group-id", secGroupID,
-	//)
-	//require.NoError(err)
-	//require.Contains(sgDel, secGroupID)
-	//
-	//allSucceeded, err = helper.retryNftCmdOnAllNodes(ctx, []testcontainers.Container{node1, node2},
-	//	[]string{"nft", "list", "ruleset"}, []string{nfOutBefore1, nfOutBefore2})
-	//require.NoError(err)
-	//require.True(allSucceeded)
-	//
-	//// v4 UDP 9000 should succeed now that the security group has been deleted, the netfilter table should be cleared as a result
-	//err = helper.startPortListener(ctx, node1, node1IPv4, protoUDP, "9000")
-	//require.NoError(err)
-	//connectResults, _ = helper.connectToPort(ctx, node2, node1IPv4, protoUDP, "9000")
-	//require.Equal(node1Hostname, connectResults)
-	//
-	//// create the new inbound and outbound rules
-	//inboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("tcp", "0", "0", []string{}),
-	//	helper.createSecurityRule("icmpv4", "0", "0", []string{}),
-	//}
-	//outboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("tcp", "0", "0", []string{}),
-	//	helper.createSecurityRule("icmpv4", "0", "0", []string{}),
-	//}
-	//// Marshal rules to JSON
-	//inboundJSON, err := json.Marshal(inboundRules)
-	//require.NoError(err)
-	//outboundJSON, err := json.Marshal(outboundRules)
-	//require.NoError(err)
-	//_, err = helper.runCommand(nexctl,
-	//	"--username", username2,
-	//	"--password", password,
-	//	"security-group", "create",
-	//	"--description", "test create group sg_e2e_extended",
-	//	"--vpc-id", vpcID.String(),
-	//	"--inbound-rules", string(inboundJSON),
-	//	"--outbound-rules", string(outboundJSON),
-	//)
-	//require.Error(err)
-	//
-	//_, err = helper.runCommand(nexctl,
-	//	"--username", username,
-	//	"--password", password,
-	//	"security-group", "create",
-	//	"--description", "test create group sg_e2e_extended",
-	//	"--vpc-id", vpcID.String(),
-	//	"--inbound-rules", string(inboundJSON),
-	//	"--outbound-rules", string(outboundJSON),
-	//)
-	//require.NoError(err)
-	//
-	//// Negative test where the from_port is greater than the to_port
-	//inboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("udp", "456", "123",
-	//		[]string{"100.64.0.0/10",
-	//			"172.28.100.1-172.28.100.100",
-	//			"192.168.168.100",
-	//		}),
-	//	helper.createSecurityRule("udp", "0", "0",
-	//		[]string{"200::/64",
-	//			"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
-	//			"2001:0000:0000:0000:0000:0000:0000:0010",
-	//		}),
-	//}
-	//outboundRules = []public.ModelsSecurityRule{}
-	//
-	//err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
-	//require.Error(err)
-	//
-	//// Negative test where the from_port is 0 and not a valid 1-65535
-	//inboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("udp", "0", "123",
-	//		[]string{"100.64.0.0/10",
-	//			"172.58.100.1-172.28.100.100",
-	//		}),
-	//	helper.createSecurityRule("ipv6", "0", "0",
-	//		[]string{"200::/60",
-	//			"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db6:ffff:ffff:ffff:ffff:ffff:ffff",
-	//			"2001:0000:0000:0000:0000:0000:0000:0020",
-	//		}),
-	//}
-	//outboundRules = []public.ModelsSecurityRule{}
-	//
-	//err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
-	//require.Error(err)
-	//
-	//// Negative test where there is an invalid address in ip_ranges
-	//inboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("udp", "123", "456",
-	//		[]string{"100.64.0.0/10",
-	//			"172.28.100.1-172.28.100.100",
-	//			"MEOWDY_PARTNER",
-	//		}),
-	//	helper.createSecurityRule("udp", "0", "0",
-	//		[]string{"200::/64",
-	//			"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
-	//			"2001:0000:0000:0000:0000:0000:0000:0010",
-	//		}),
-	//}
-	//outboundRules = []public.ModelsSecurityRule{}
-	//
-	//err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
-	//require.Error(err)
-	//
-	//// Negative test where there is an invalid protocol specified
-	//inboundRules = []public.ModelsSecurityRule{
-	//	helper.createSecurityRule("udp", "123", "456",
-	//		[]string{"100.64.0.0/10",
-	//			"172.28.100.1-172.28.100.100",
-	//			"192.168.168.100",
-	//		}),
-	//	helper.createSecurityRule("ipv9", "0", "0",
-	//		[]string{"200::/64",
-	//			"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
-	//			"2001:0000:0000:0000:0000:0000:0000:0010",
-	//		}),
-	//}
-	//outboundRules = []public.ModelsSecurityRule{}
-	//
-	//err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
-	//require.Error(err)
+	_, err = helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"security-group", "create",
+		"--description", "test create group sg_e2e_extended",
+		"--vpc-id", vpcID.String(),
+		"--inbound-rules", string(inboundJSON),
+		"--outbound-rules", string(outboundJSON),
+	)
+	require.NoError(err)
+
+	// Negative test where the from_port is greater than the to_port
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "456", "123",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"192.168.168.100",
+			}),
+		helper.createSecurityRule("udp", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
+	require.Error(err)
+
+	// Negative test where the from_port is 0 and not a valid 1-65535
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "0", "123",
+			[]string{"100.64.0.0/10",
+				"172.58.100.1-172.28.100.100",
+			}),
+		helper.createSecurityRule("ipv6", "0", "0",
+			[]string{"200::/60",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db6:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0020",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
+	require.Error(err)
+
+	// Negative test where there is an invalid address in ip_ranges
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "123", "456",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"MEOWDY_PARTNER",
+			}),
+		helper.createSecurityRule("udp", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
+	require.Error(err)
+
+	// Negative test where there is an invalid protocol specified
+	inboundRules = []public.ModelsSecurityRule{
+		helper.createSecurityRule("udp", "123", "456",
+			[]string{"100.64.0.0/10",
+				"172.28.100.1-172.28.100.100",
+				"192.168.168.100",
+			}),
+		helper.createSecurityRule("ipv9", "0", "0",
+			[]string{"200::/64",
+				"2003:0db8:0000:0000:0000:0000:0000:0000-2003:0db8:ffff:ffff:ffff:ffff:ffff:ffff",
+				"2001:0000:0000:0000:0000:0000:0000:0010",
+			}),
+	}
+	outboundRules = []public.ModelsSecurityRule{}
+
+	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
+	require.Error(err)
 }
 
 // TestSecurityGroupProtocolsOnly tests rule entry without error only, for
