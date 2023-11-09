@@ -1,9 +1,0 @@
----
-- namespace: nexodus
-  max_value: 1000
-  seconds: 10
-  conditions:
-    - tier == 'default'
-  variables:
-    - resource_group
-    - sub

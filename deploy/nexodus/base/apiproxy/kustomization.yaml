@@ -13,12 +13,15 @@ configMapGenerator:
     name: apiproxy
   - files:
       - files/envoy.yaml
+      - files/sds_config.yaml
     name: apiproxy-envoy-config
 resources:
   - deployment.yaml
-  - ingress.yaml
+  - ingress-api.yaml
   - ingress-frontend.yaml
   - service.yaml
+  - certificate-api.yaml
+  - certificate-frontend.yaml
 labels:
   - includeSelectors: true
     pairs:

@@ -1,50 +1,27 @@
+# Customize the deployment for OpenShift deployment targets
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../released
   - issuer.yaml
-  - sealed-secret.yaml
   - serviceaccount.yaml
 components:
+  - ../../components/promtail
   - ../../components/limitador
-namespace: nexodus-playground
 configMapGenerator:
-  - behavior: replace
-    literals:
-      - hostname=auth.playground.nexodus.io
-      - frontend-url=https://playground.nexodus.io
-    name: auth-config
-  - behavior: replace
-    files:
-      - files/nexodus.json
-    name: realm
   - behavior: create
     files:
       - files/limits.yaml
     name: limitador-config
-  - behavior: merge
-    literals:
-      - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
-      - APIPROXY_API_DOMAIN=api.playground.nexodus.io
-      - APIPROXY_WEB_DOMAIN=playground.nexodus.io
-      - APIPROXY_WEB_ORIGINS=https://playground.nexodus.io
-      - ENVOY_COMP_LOG_LEVEL=upstream:info,http:info,router:info,jwt:info
-    name: apiproxy
-  - behavior: merge
-    literals:
-      - NEXAPI_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
-      - NEXAPI_DOMAIN=api.playground.nexodus.io
-      - NEXAPI_REDIRECT_URL=https://playground.nexodus.io/#/login
-      - NEXAPI_ORIGINS=https://playground.nexodus.io
-      - NEXAPI_ENVIRONMENT=qa
-      - NEXAPI_FFLAG_SECURITY_GROUPS=true
-      - NEXAPI_DEBUG=0
-    name: apiserver
+  - behavior: create
+    files:
+      - files/promtail.yaml
+    name: promtail-config
 patches:
   - patch: |-
       - op: replace
         path: /spec/dnsNames/0
-        value: auth.playground.nexodus.io
+        value: auth.qa.nexodus.io
       - op: replace
         path: /spec/issuerRef/name
         value: letsencrypt
@@ -52,12 +29,20 @@ patches:
       kind: Certificate
       name: nexodus-auth-cert
   - patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: api.playground.nexodus.io
-      - op: replace
+      - op: add
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.qa.nexodus.io
+      - op: replace
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
+      - op: replace
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
     target:
       kind: Ingress
       name: apiproxy
@@ -69,7 +54,7 @@ patches:
         path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
-        value: auth.playground.nexodus.io
+        value: auth.qa.nexodus.io
       - op: replace
         path: /spec/rules/0/http/paths/0/pathType
         value: ImplementationSpecific
@@ -80,12 +65,20 @@ patches:
       kind: Ingress
       name: auth
   - patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: playground.nexodus.io
-      - op: replace
+      - op: add
         path: /metadata/annotations/cert-manager.io~1issuer
         value: letsencrypt
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      - op: replace
+        path: /spec/rules/0/host
+        value: qa.nexodus.io
+      - op: replace
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
+      - op: replace
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
     target:
       kind: Ingress
       name: frontend
@@ -101,10 +94,10 @@ patches:
   - patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 500m
+        value: 250m
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 1Gi
+        value: 500Mi
     target:
       kind: StatefulSet
       name: redis
@@ -117,16 +110,16 @@ patches:
         value: 6Gi
       - op: replace
         path: /spec/instances/0/resources/limits/cpu
-        value: 8000m
+        value: 2000m
       - op: replace
         path: /spec/instances/0/resources/limits/memory
-        value: 12Gi
+        value: 2Gi
       - op: replace
         path: /spec/proxy/pgBouncer/replicas
-        value: 2
+        value: 1
       - op: replace
         path: /spec/proxy/pgBouncer/resources/limits/cpu
-        value: 1000m
+        value: 500m
       - op: replace
         path: /spec/proxy/pgBouncer/resources/limits/memory
         value: 500Mi
@@ -135,19 +128,19 @@ patches:
         value: "host=database-primary port=5432 pool_size=15 reserve_pool=5 max_db_connections=20"
       - op: replace
         path: /spec/proxy/pgBouncer/config/databases/apiserver
-        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+        value: "host=database-primary port=5432 pool_size=35 reserve_pool=5 max_db_connections=40"
       - op: replace
         path: /spec/proxy/pgBouncer/config/databases/keycloak
-        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+        value: "host=database-primary port=5432 pool_size=35 reserve_pool=5 max_db_connections=40"
       - op: replace
         path: /spec/proxy/pgBouncer/config/global/max_client_conn
-        value: "10000"
+        value: "4000"
       - op: replace
         path: /spec/patroni/dynamicConfiguration/postgresql/parameters/max_connections
-        value: "300"
+        value: "200"
       - op: replace
         path: /spec/patroni/dynamicConfiguration/postgresql/parameters/shared_buffers
-        value: 512MB
+        value: 256MB
     target:
       kind: PostgresCluster
       name: database
@@ -163,7 +156,7 @@ patches:
         value: 1Gi
       - op: replace
         path: /spec/replicas
-        value: 4
+        value: 1
     target:
       kind: Deployment
       name: apiproxy
@@ -176,20 +169,20 @@ patches:
         value: 2000Mi
       - op: replace
         path: /spec/replicas
-        value: 8
+        value: 1
     target:
       kind: Deployment
       name: apiserver
   - patch: |-
       - op: replace
         path: /spec/replicas
-        value: 2
+        value: 1
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 1000m
+        value: 500m
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 2000Mi
+        value: 1000Mi
     target:
       kind: Deployment
       name: auth
