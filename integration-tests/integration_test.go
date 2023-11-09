@@ -979,6 +979,14 @@ func TestNexctl(t *testing.T) {
 	err = ping(ctx, node2, inetV6, newNode1IPv6)
 	require.NoError(err)
 
+	// validate device list --full runs without errors
+	_, err = helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"device", "list", "--full",
+	)
+	require.NoErrorf(err, "nexctl device list --full error: %v\n", err)
+
 	// validate list devices in a vpc
 	devicesInVPC, err := helper.runCommand(nexctl,
 		"--username", username,
