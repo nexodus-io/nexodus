@@ -1,8 +1,7 @@
 import { DashboardMenuItem, MenuItemLink, Menu } from "react-admin";
 import SecurityIcon from "@mui/icons-material/Security";
-import UserIcon from "@mui/icons-material/People";
 import DeviceIcon from "@mui/icons-material/Devices";
-import OrganizationIcon from "@mui/icons-material/VpnLock";
+import OrganizationIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import { MenuProps } from "react-admin";
 import RegKeyIcon from "@mui/icons-material/Key";
@@ -12,7 +11,6 @@ export const CustomMenu = (props: MenuProps) => {
   return (
     <Menu {...props}>
       <DashboardMenuItem />
-      <MenuItemLink to="/users" primaryText="Users" leftIcon={<UserIcon />} />
       <MenuItemLink
         to="/organizations"
         primaryText="Organizations"
