@@ -3,6 +3,7 @@ ui/node_modules
 Containerfile.*
 dist
 *-envs.json
+.git/
 
 # config
 .auth-providers.yaml
@@ -14,6 +15,7 @@ dist
 .gen-*
 .*-lint
 .generate
+.git
 
 #tests
 ./tests/*.json
