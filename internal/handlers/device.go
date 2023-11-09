@@ -578,7 +578,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			SymmetricNat:    request.SymmetricNat,
 			Hostname:        request.Hostname,
 			Os:              request.Os,
-			SecurityGroupId: vpc.SecurityGroupId,
+			SecurityGroupId: vpc.ID,
 			RegKeyID:        regKeyID,
 			BearerToken:     "DT:" + deviceToken.String(),
 		}

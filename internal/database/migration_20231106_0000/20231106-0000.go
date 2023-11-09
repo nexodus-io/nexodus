@@ -15,7 +15,7 @@ type Invitation struct {
 type RegKey struct {
 }
 
-func Migrate20231106() *gormigrate.Migration {
+func New() *gormigrate.Migration {
 	migrationId := "20231106-0000"
 	return CreateMigrationFromActions(migrationId,
 		RenameTableColumnAction(&Invitation{}, "expiry", "expires_at"),

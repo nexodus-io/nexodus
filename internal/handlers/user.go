@@ -181,14 +181,9 @@ func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userI
 		return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 	}
 	// Create a default security group for the default VPC - all have the same ID
-	sg, err := api.createDefaultSecurityGroup(ctx, tx, org.ID, org.ID)
+	_, err := api.createDefaultSecurityGroup(ctx, tx, org.ID, org.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create the default security group: %w", res.Error)
-	}
-
-	// Update the default org with the new security group id
-	if err := api.updateVpcSecGroupId(ctx, tx, sg.ID, org.ID); err != nil {
-		return fmt.Errorf("failed to create the default organization with a security group id: %w", res.Error)
 	}
 
 	return nil

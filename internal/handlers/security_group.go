@@ -378,13 +378,20 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		}
 
-		if res := tx.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
+		var count int64
+		res := tx.Model(&models.Device{}).Where("security_group_id = ?", secGroupID).Count(&count)
+		if res.Error != nil {
 			return res.Error
 		}
+		if count > 0 {
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("security group cannot be delete while devices are still using it"))
+		}
 
-		if res := tx.Model(&models.VPC{}).
-			Where("security_group_id = ?", sg.ID).
-			Update("security_group_id", nil); res.Error != nil {
+		if sg.ID == sg.VpcId {
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default security group cannot be deleted"))
+		}
+
+		if res = tx.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
 			return res.Error
 		}
 
@@ -515,9 +522,6 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 // createDefaultSecurityGroup creates the default security group for the organization
 func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID, orgId uuid.UUID) (models.SecurityGroup, error) {
 
-	var inboundRules []models.SecurityRule
-	var outboundRules []models.SecurityRule
-
 	// Create the default security group
 	sg := models.SecurityGroup{
 		Base: models.Base{
@@ -526,8 +530,8 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpc
 		VpcId:          vpcId,
 		OrganizationID: orgId,
 		Description:    "default vpc security group",
-		InboundRules:   inboundRules,
-		OutboundRules:  outboundRules,
+		InboundRules:   []models.SecurityRule{},
+		OutboundRules:  []models.SecurityRule{},
 	}
 
 	if db == nil {
@@ -540,21 +544,6 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpc
 	}
 
 	return sg, nil
-}
-
-// updateVpcSecGroupId updates the security group ID in an org entry
-func (api *API) updateVpcSecGroupId(ctx context.Context, db *gorm.DB, sgId, vpcId uuid.UUID) error {
-	var vpc models.VPC
-	if db == nil {
-		db = api.db.WithContext(ctx)
-	}
-
-	res := db.WithContext(ctx).First(&vpc, "id = ?", vpcId)
-	if res.Error != nil {
-		return res.Error
-	}
-
-	return db.WithContext(ctx).Model(&vpc).Update("SecurityGroupId", sgId).Error
 }
 
 // ValidateUpdateSecurityGroupRules validates rules for updating the security group

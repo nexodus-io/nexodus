@@ -22,14 +22,6 @@ const (
 	defaultIPAMv6Cidr = "200::/64"
 )
 
-type errDuplicateVPC struct {
-	ID string
-}
-
-func (e errDuplicateVPC) Error() string {
-	return "vpc already exists"
-}
-
 // CreateVPC creates a new VPC
 // @Summary      Create an VPC
 // @Description  Creates a named vpc with the given CIDR
@@ -104,10 +96,9 @@ func (api *API) CreateVPC(c *gin.Context) {
 
 		if res := tx.Create(&vpc); res.Error != nil {
 			if database.IsDuplicateError(res.Error) {
-				return errDuplicateVPC{ID: vpc.ID.String()}
+				return NewApiResponseError(http.StatusConflict, models.NewConflictsError(vpc.ID.String()))
 			}
-			api.logger.Error("Failed to create vpc: ", res.Error)
-			return res.Error
+			return fmt.Errorf("failed to create vpc: %w", res.Error)
 		}
 
 		ipamNamespace := defaultIPAMNamespace
@@ -115,31 +106,22 @@ func (api *API) CreateVPC(c *gin.Context) {
 			ipamNamespace = vpc.ID
 		}
 		if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
-			api.logger.Error("Failed to create namespace: ", err)
-			return err
+			return fmt.Errorf("failed to create namespace: %w", err)
 		}
 
 		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.Ipv4Cidr); err != nil {
-			api.logger.Error("Failed to assign IPv4 prefix: ", err)
-			return err
+			return fmt.Errorf("failed to assign IPv4 prefix: %w", err)
 		}
 
 		if err := api.ipam.AssignCIDR(ctx, ipamNamespace, request.Ipv6Cidr); err != nil {
-			api.logger.Error("Failed to assign IPv6 prefix: ", err)
-			return err
+			return fmt.Errorf("failed to assign IPv6 prefix: %w", err)
 		}
 
 		// Create a default security group for the organization
-		sg, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
+		_, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
 		if err != nil {
-			api.logger.Error("Failed to create default security group for VPC: ", err)
-			return err
+			return fmt.Errorf("failed to create default security group for VPC: %w", err)
 		}
-
-		if err := api.updateVpcSecGroupId(ctx, tx, sg.ID, vpc.ID); err != nil {
-			return fmt.Errorf("failed to update the default security group with a VPC id: %w", err)
-		}
-		vpc.SecurityGroupId = sg.ID
 
 		span.SetAttributes(attribute.String("id", vpc.ID.String()))
 		api.logger.Infof("New vpc request [ %s ] ipam v4 [ %s ] ipam v6 [ %s ] request", vpc.ID.String(), vpc.Ipv4Cidr, vpc.Ipv6Cidr)
@@ -147,14 +129,9 @@ func (api *API) CreateVPC(c *gin.Context) {
 	})
 
 	if err != nil {
-		var duplicate errDuplicateVPC
 		var apiResponseError *ApiResponseError
-		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.NewApiError(err))
-		} else if errors.As(err, &apiResponseError) {
+		if errors.As(err, &apiResponseError) {
 			c.JSON(apiResponseError.Status, apiResponseError.Body)
-		} else if errors.As(err, &duplicate) {
-			c.JSON(http.StatusConflict, models.NewConflictsError(duplicate.ID))
 		} else {
 			api.SendInternalServerError(c, err)
 		}

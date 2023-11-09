@@ -2786,9 +2786,6 @@
                 },
                 "private_cidr": {
                     "type": "boolean"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3209,9 +3206,6 @@
                 "description": {
                     "type": "string",
                     "example": "The Red Zone"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3271,9 +3265,6 @@
                 },
                 "private_cidr": {
                     "type": "boolean"
-                },
-                "security_group_id": {
-                    "type": "string"
                 }
             }
         },
