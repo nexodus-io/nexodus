@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -25,6 +26,30 @@ func IsIPv4Prefix(prefix string) bool {
 		return false
 	}
 	return ipv4Net.IP.To4() != nil
+}
+
+// ValidateIPv6Cidr checks for a valid IPv6 cidr
+func ValidateIPv6Cidr(cidrStr string) error {
+	_, cidr, err := net.ParseCIDR(cidrStr)
+	if err != nil {
+		return err
+	}
+	if cidr.IP.To16() == nil {
+		return errors.New("not an ipv6 cidr")
+	}
+	return nil
+}
+
+// ValidateIPv4Cidr checks for a valid IPv4 cidr
+func ValidateIPv4Cidr(cidrStr string) error {
+	_, cidr, err := net.ParseCIDR(cidrStr)
+	if err != nil {
+		return err
+	}
+	if cidr.IP.To4() == nil {
+		return errors.New("not an ipv4 cidr")
+	}
+	return nil
 }
 
 // IsIPv6Prefix checks if the given IP address is an IPv6 prefix.
