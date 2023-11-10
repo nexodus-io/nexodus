@@ -11,21 +11,13 @@ import {
   Tab,
   Button,
 } from "@mui/material";
-import {
-  Organization,
-  SecurityGroup,
-  SecurityRule,
-} from "./SecurityGroupStructs";
+import { SecurityGroup, SecurityRule } from "./SecurityGroupStructs";
 import EditRules from "./SecurityGroupEditRules";
 import { backend, fetchJson } from "../../common/Api";
 import Notifications from "../../common/Notifications";
 
 export const SecurityGroups = () => {
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [securityGroupId, setSecurityGroupId] = useState<string | null>(null);
-  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [securityGroups, setSecurityGroups] = useState<SecurityGroup[]>([]);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [selectedSecurityGroup, setSelectedSecurityGroup] =
     useState<SecurityGroup | null>(null);
 
@@ -49,24 +41,13 @@ export const SecurityGroups = () => {
     return await fetchJson(`${backend}/api/security-groups/${securityGroupId}`);
   };
 
+  const fetchSecurityGroups = async () => {
+    return await fetchJson(`${backend}/api/security-groups`);
+  };
+
   const fetchData = async () => {
     try {
-      const orgs: Organization[] = await fetchJson(
-        `${backend}/api/organizations`,
-      );
-      setOrgs(orgs);
-      // Set the organizationId and securityGroupId based on the selected organization
-      if (orgs.length > 0) {
-        // TODO: handle an array of security groups
-        setOrganizationId(orgs[0].id);
-        setSecurityGroupId(orgs[0].security_group_id);
-      }
-      // Fetch security groups data
-      const securityGroupPromises = orgs.map((org) =>
-        fetchSecurityGroup(org.security_group_id),
-      );
-
-      const securityGroupsData = await Promise.all(securityGroupPromises);
+      const securityGroupsData: SecurityGroup[] = await fetchSecurityGroups();
       setSecurityGroups(securityGroupsData);
     } catch (error) {
       console.error("Error:", error);
@@ -85,15 +66,17 @@ export const SecurityGroups = () => {
     }
   }, [selectedSecurityGroup]);
 
+  // When the cancel button is clicked to exit rules editing the updated rules need to be re-rendered.
   const handleExitEditMode = async () => {
     // Reset notification states
     setNotificationMessage(null);
     setNotificationType(null);
     setIsEditing(false);
-    if (selectedOrg) {
+
+    if (selectedSecurityGroup && selectedSecurityGroup.id) {
       try {
         const updatedSecurityGroupData = await fetchSecurityGroup(
-          selectedOrg.security_group_id,
+          selectedSecurityGroup.id,
         );
         setSelectedSecurityGroup(updatedSecurityGroupData);
       } catch (error) {
@@ -103,7 +86,15 @@ export const SecurityGroups = () => {
           "Unable to fetch data from the Nexodus api-server.",
         );
       }
+    } else {
+      console.error("Error: Security Group ID is missing.");
+      setNotificationType("error");
+      setNotificationMessage("Security Group ID is missing.");
     }
+  };
+
+  const handleSelectSecurityGroup = (securityGroup: SecurityGroup) => {
+    setSelectedSecurityGroup(securityGroup);
   };
 
   const handleEditClick = () => {
@@ -116,17 +107,6 @@ export const SecurityGroups = () => {
     setEditedRules(rulesToEdit);
   };
 
-  const selectOrganization = (org: Organization) => {
-    setSelectedOrg(org);
-    // Updating state for the selected organization and security group
-    setOrganizationId(org.id);
-    setSecurityGroupId(org.security_group_id);
-
-    const matchingSecurityGroup = securityGroups.find(
-      (sg) => sg.id === org.security_group_id,
-    );
-    setSelectedSecurityGroup(matchingSecurityGroup || null);
-  };
   const handleTabChange = (
     event: React.ChangeEvent<{}>,
     newValue: "inbound_rules" | "outbound_rules",
@@ -152,29 +132,23 @@ export const SecurityGroups = () => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>Security Group Name</TableCell>
             <TableCell>Security Group ID</TableCell>
             <TableCell>Security Group Description</TableCell>
-            <TableCell>Organization Name</TableCell>
+            <TableCell>VPC ID</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {orgs.map((org, index) => {
-            return (
-              <TableRow
-                key={org.id}
-                onClick={() => selectOrganization(org)}
-                style={{ cursor: "pointer" }}
-              >
-                <TableCell>{securityGroups[index]?.group_name}</TableCell>
-                <TableCell>{org.security_group_id}</TableCell>
-                <TableCell>
-                  {securityGroups[index]?.group_description}
-                </TableCell>
-                <TableCell>{org.name}</TableCell>
-              </TableRow>
-            );
-          })}
+          {securityGroups.map((securityGroup) => (
+            <TableRow
+              key={securityGroup.id}
+              onClick={() => handleSelectSecurityGroup(securityGroup)}
+              style={{ cursor: "pointer" }}
+            >
+              <TableCell>{securityGroup.id}</TableCell>
+              <TableCell>{securityGroup.description}</TableCell>
+              <TableCell>{securityGroup.vpc_id}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
       {selectedSecurityGroup ? (
@@ -235,12 +209,10 @@ export const SecurityGroups = () => {
                   });
                 }
               }}
-              groupName={selectedSecurityGroup?.group_name || ""}
-              groupDescription={selectedSecurityGroup?.group_description || ""}
+              groupDescription={selectedSecurityGroup?.description || ""}
               inboundRules={inboundRules}
               outboundRules={outboundRules}
-              organizationId={organizationId}
-              securityGroupId={securityGroupId}
+              securityGroupId={selectedSecurityGroup?.id || null}
               key={activeTab}
               data={selectedSecurityGroup}
               type={activeTab}
