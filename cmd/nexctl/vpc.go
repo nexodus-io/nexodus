@@ -134,12 +134,12 @@ func createVPC(cCtx *cli.Context, c *client.APIClient, resource public.ModelsAdd
 	if resource.OrganizationId == "" {
 		resource.OrganizationId = getDefaultOrgId(cCtx.Context, c)
 	}
-	res, httpResp, err := c.VPCApi.CreateVPC(context.Background()).VPC(resource).Execute()
-	if err != nil {
-		fmt.Println(httpResp)
-		log.Fatal(err)
-	}
-	showOutput(cCtx, vpcTableFields(), res)
+	showOutput(cCtx, vpcTableFields(), processApiResponse(
+		c.VPCApi.
+			CreateVPC(context.Background()).
+			VPC(resource).
+			Execute(),
+	))
 	return nil
 }
 

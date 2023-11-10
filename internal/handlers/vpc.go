@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -65,13 +66,23 @@ func (api *API) CreateVPC(c *gin.Context) {
 	}
 
 	if request.Ipv4Cidr == "" {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr"))
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("ipv4_cidr"))
 		return
 	}
+	if err := util.ValidateIPv4Cidr(request.Ipv4Cidr); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldValidationError("ipv4_cidr", err.Error()))
+		return
+	}
+
 	if request.Ipv6Cidr == "" {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("cidr_v6"))
 		return
 	}
+	if err := util.ValidateIPv6Cidr(request.Ipv6Cidr); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldValidationError("cidr_v6", err.Error()))
+		return
+	}
+
 	if request.OrganizationID == uuid.Nil {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
 		return

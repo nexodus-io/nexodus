@@ -157,3 +157,64 @@ Feature: Organization API
       """
       ${extra_vpc}
       """
+
+  Scenario: Bad Requests
+
+    Given I am logged in as "Oscar"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${oscar_user_id}
+
+    # bad json
+    When I POST path "/api/vpcs" with json body:
+      """
+      {
+        "organization_id": "${oscar_user_id}",
+      }
+      """
+    Then the response code should be 400
+    And the response should match json:
+      """
+      {
+        "error": "request json is invalid: invalid character '}' looking for beginning of object key string"
+      }
+      """
+
+    # bad ipv4_cidr
+    When I POST path "/api/vpcs" with json body:
+      """
+      {
+        "organization_id": "${oscar_user_id}",
+        "private_cidr": true,
+        "ipv4_cidr": "100.64.0.0//10",
+        "ipv6_cidr": "200::/64"
+      }
+      """
+    Then the response code should be 400
+    And the response should match json:
+      """
+      {
+        "error": "invalid CIDR address: 100.64.0.0//10",
+        "field": "ipv4_cidr"
+      }
+      """
+
+    # bad ipv6_cidr
+    When I POST path "/api/vpcs" with json body:
+      """
+      {
+        "organization_id": "${oscar_user_id}",
+        "private_cidr": true,
+        "ipv4_cidr": "100.64.0.0/10",
+        "ipv6_cidr": "200:://64"
+      }
+      """
+
+    Then the response code should be 400
+    And the response should match json:
+      """
+      {
+        "error": "invalid CIDR address: 200:://64",
+        "field": "cidr_v6"
+      }
+      """
