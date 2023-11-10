@@ -27,9 +27,8 @@ interface SecurityRule {
 // Represents a security group containing security rules and a group owner
 interface SecurityGroup {
   id?: string;
-  group_name: string;
-  group_description: string;
-  org_id: string; // UUID is a string
+  description: string;
+  vpc_id: string; // UUID is a string
   inbound_rules: SecurityRule[];
   outbound_rules: SecurityRule[];
   revision: number;
@@ -37,25 +36,17 @@ interface SecurityGroup {
 
 // Represents the information needed to add a new Security Group.
 interface AddSecurityGroup {
-  group_name: string;
-  group_description: string;
-  org_id: string; // UUID is a string
+  description: string;
+  vpc_id: string; // UUID is a string
   inbound_rules: SecurityRule[];
   outbound_rules: SecurityRule[];
 }
 
 // Represents the information needed to update an existing Security Group.
 interface UpdateSecurityGroup {
-  group_name?: string;
-  group_description?: string;
+  description?: string;
   inbound_rules: SecurityRule[];
   outbound_rules: SecurityRule[];
-}
-
-interface Organization {
-  id: string;
-  name: string;
-  security_group_id: string;
 }
 
 export type {
@@ -63,5 +54,4 @@ export type {
   AddSecurityGroup,
   UpdateSecurityGroup,
   SecurityRule,
-  Organization,
 };

@@ -25,7 +25,6 @@ import { fetchJson, backend } from "../../common/Api";
 import Notifications from "../../common/Notifications";
 
 interface EditRulesProps {
-  groupName: string;
   groupDescription: string;
   secRule: SecurityRule[];
   data: SecurityGroup;
@@ -33,7 +32,6 @@ interface EditRulesProps {
   outboundRules: SecurityRule[];
   // Update any rules changes if there are any
   onRuleChange: (index: number, updatedRule: SecurityRule) => void;
-  organizationId: string | null;
   securityGroupId: string | null;
   // Callback to parent to update rules
   updateData?: (
@@ -66,12 +64,10 @@ const updateSecurityGroup = (securityGroupId: string, data: any) => {
 
 const EditRules: React.FC<EditRulesProps> = ({
   onRuleChange,
-  groupName,
   groupDescription,
   inboundRules,
   outboundRules,
   secRule,
-  organizationId,
   securityGroupId,
   updateData,
   type,
@@ -89,6 +85,10 @@ const EditRules: React.FC<EditRulesProps> = ({
 
   const ipRangesColumnLabel =
     type === "inbound_rules" ? "Source IP Ranges" : "Destination IP Ranges";
+
+  useEffect(() => {
+    console.log("Security Group ID in EditRules:", securityGroupId);
+  }, [securityGroupId]);
 
   useEffect(() => {
     // Initialize tempPortValues whenever secRule changes
@@ -145,10 +145,9 @@ const EditRules: React.FC<EditRulesProps> = ({
     });
 
     if (valid) {
-      if (organizationId && securityGroupId) {
+      if (securityGroupId) {
         const updateData: UpdateSecurityGroup = {
-          group_name: groupName,
-          group_description: groupDescription,
+          description: groupDescription,
           inbound_rules: inboundRules,
           outbound_rules: outboundRules,
         };
@@ -165,7 +164,7 @@ const EditRules: React.FC<EditRulesProps> = ({
             console.error("Error updating security group:", error);
           });
       } else {
-        console.error("Organization ID or Security Group ID is missing.");
+        console.error("Security Group ID is missing.");
       }
     } else {
       // update fieldErrors state here?
