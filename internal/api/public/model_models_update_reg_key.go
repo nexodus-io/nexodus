@@ -10,16 +10,12 @@ API version: 1.0
 
 package public
 
-// ModelsAddRegKey struct for ModelsAddRegKey
-type ModelsAddRegKey struct {
+// ModelsUpdateRegKey struct for ModelsUpdateRegKey
+type ModelsUpdateRegKey struct {
 	// Description of the registration key.
 	Description string `json:"description,omitempty"`
 	// ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// SecurityGroupId is the ID of the security group to assign to the device.
 	SecurityGroupId string `json:"security_group_id,omitempty"`
-	// SingleUse only allows the registration key to be used once.
-	SingleUse bool `json:"single_use,omitempty"`
-	// VpcID is the ID of the VPC the device will join.
-	VpcId string `json:"vpc_id,omitempty"`
 }

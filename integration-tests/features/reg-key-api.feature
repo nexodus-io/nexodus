@@ -46,6 +46,7 @@ Feature: Device API
       """
       {
         "id": "${reg_token_id}",
+        "security_group_id": null,
         "bearer_token": "${reg_bearer_token}",
         "owner_id": "${user_id}",
         "vpc_id": "${vpc_id}"
@@ -60,6 +61,7 @@ Feature: Device API
       [
         {
           "id": "${reg_token_id}",
+          "security_group_id": null,
           "bearer_token": "${reg_bearer_token}",
           "owner_id": "${user_id}",
           "vpc_id": "${vpc_id}"
@@ -203,6 +205,7 @@ Feature: Device API
       """
       {
         "id": "${reg_token_id}",
+        "security_group_id": null,
         "bearer_token": "${reg_bearer_token}",
         "owner_id": "${user_id}",
         "vpc_id": "${vpc_id}"

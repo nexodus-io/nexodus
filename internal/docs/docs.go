@@ -1343,6 +1343,79 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Updates a RegKey by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RegKey"
+                ],
+                "summary": "Update RegKey",
+                "operationId": "UpdateRegKey",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RegKey ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "RegKey Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateRegKey"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RegKey"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
             }
         },
         "/api/security-groups": {
@@ -2734,10 +2807,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
+                    "description": "Description of the registration key.",
                     "type": "string"
                 },
                 "expires_at": {
                     "description": "ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.",
+                    "type": "string"
+                },
+                "security_group_id": {
+                    "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
                 "single_use": {
@@ -2745,6 +2823,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vpc_id": {
+                    "description": "VpcID is the ID of the VPC the device will join.",
                     "type": "string"
                 }
             }
@@ -3063,6 +3142,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
+                    "description": "Description of the registration key.",
                     "type": "string"
                 },
                 "device_id": {
@@ -3078,9 +3158,15 @@ const docTemplate = `{
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
                 "owner_id": {
+                    "description": "OwnerID is the ID of the user that created the registration key.",
+                    "type": "string"
+                },
+                "security_group_id": {
+                    "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
                 "vpc_id": {
+                    "description": "VpcID is the ID of the VPC the device will join.",
                     "type": "string"
                 }
             }
@@ -3184,6 +3270,23 @@ const docTemplate = `{
                 "vpc_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
+        "models.UpdateRegKey": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "Description of the registration key.",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.",
+                    "type": "string"
+                },
+                "security_group_id": {
+                    "description": "SecurityGroupId is the ID of the security group to assign to the device.",
+                    "type": "string"
                 }
             }
         },

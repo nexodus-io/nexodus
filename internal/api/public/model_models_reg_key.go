@@ -14,12 +14,17 @@ package public
 type ModelsRegKey struct {
 	// BearerToken is the bearer token the client should use to authenticate the device registration request.
 	BearerToken string `json:"bearer_token,omitempty"`
+	// Description of the registration key.
 	Description string `json:"description,omitempty"`
 	// DeviceId is set if the RegKey was created for single use
 	DeviceId string `json:"device_id,omitempty"`
 	// ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
 	ExpiresAt string `json:"expires_at,omitempty"`
 	Id        string `json:"id,omitempty"`
-	OwnerId   string `json:"owner_id,omitempty"`
-	VpcId     string `json:"vpc_id,omitempty"`
+	// OwnerID is the ID of the user that created the registration key.
+	OwnerId string `json:"owner_id,omitempty"`
+	// SecurityGroupId is the ID of the security group to assign to the device.
+	SecurityGroupId string `json:"security_group_id,omitempty"`
+	// VpcID is the ID of the VPC the device will join.
+	VpcId string `json:"vpc_id,omitempty"`
 }

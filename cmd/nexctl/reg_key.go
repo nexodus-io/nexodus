@@ -31,6 +31,10 @@ func createRegKeyCommand() *cli.Command {
 						Required: false,
 					},
 					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: false,
+					},
+					&cli.StringFlag{
 						Name:     "description",
 						Required: false,
 					},
@@ -45,10 +49,40 @@ func createRegKeyCommand() *cli.Command {
 				},
 				Action: func(cCtx *cli.Context) error {
 					return createRegKey(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegKey{
-						VpcId:       cCtx.String("vpc-id"),
-						Description: cCtx.String("description"),
-						ExpiresAt:   toExpiration(cCtx.Duration("expiration")),
-						SingleUse:   cCtx.Bool("single-use"),
+						VpcId:           cCtx.String("vpc-id"),
+						Description:     cCtx.String("description"),
+						ExpiresAt:       toExpiration(cCtx.Duration("expiration")),
+						SingleUse:       cCtx.Bool("single-use"),
+						SecurityGroupId: cCtx.String("security-group-id"),
+					})
+				},
+			},
+			{
+				Name:  "update",
+				Usage: "Update a registration key",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "reg-key-id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "security-group-id",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "description",
+						Required: false,
+					},
+					&cli.DurationFlag{
+						Name:     "expiration",
+						Required: false,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					return updateRegKey(cCtx, cCtx.String("reg-key-id"), public.ModelsUpdateRegKey{
+						Description:     cCtx.String("description"),
+						ExpiresAt:       toExpiration(cCtx.Duration("expiration")),
+						SecurityGroupId: cCtx.String("security-group-id"),
 					})
 				},
 			},
@@ -57,13 +91,13 @@ func createRegKeyCommand() *cli.Command {
 				Usage: "Delete a registration key",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "id",
+						Name:     "reg-key-id",
 						Required: true,
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
 					encodeOut := cCtx.String("output")
-					id := cCtx.String("id")
+					id := cCtx.String("reg-key-id")
 					return deleteRegKey(cCtx, mustCreateAPIClient(cCtx), encodeOut, id)
 				},
 			},
@@ -75,6 +109,7 @@ func regTokenTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "TOKEN ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
+	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "SINGLE USE", Formatter: func(item interface{}) string {
 		if item.(public.ModelsRegKey).DeviceId == "" {
@@ -105,6 +140,15 @@ func createRegKey(cCtx *cli.Context, c *client.APIClient, token public.ModelsAdd
 	return nil
 }
 
+func updateRegKey(cCtx *cli.Context, id string, update public.ModelsUpdateRegKey) error {
+	showOutput(cCtx, regTokenTableFields(), processApiResponse(
+		mustCreateAPIClient(cCtx).
+			RegKeyApi.UpdateRegKey(cCtx.Context, id).
+			Update(update).
+			Execute(),
+	))
+	return nil
+}
 func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
 	user := processApiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
 	return user.Id

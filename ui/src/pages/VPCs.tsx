@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import React, { Fragment } from "react";
 import {
   Datagrid,
   List,
@@ -14,6 +14,8 @@ import {
   TextInput,
   ArrayField,
   ReferenceManyCount,
+  ReferenceInput,
+  AutocompleteInput,
 } from "react-admin";
 
 const VPCListBulkActions = () => (
@@ -26,7 +28,6 @@ const VPCListBulkActions = () => (
 export const VPCList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<VPCListBulkActions />}>
-      <TextField label="ID" source="id" />
       <TextField label="Description" source="description" />
       <TextField label="v4 CIDR" source="ipv4_cidr" />
       <TextField label="v6 CIDR" source="ipv6_cidr" />
@@ -76,11 +77,17 @@ export const VPCShow = () => (
 export const VPCCreate = () => (
   <Create>
     <SimpleForm>
-      <TextInput label="Name" source="name" />
-      <TextInput label="Description" source="description" />
-      <TextInput label="CIDR v4" source="ipv4_cidr" />
-      <TextInput label="CIDR v6" source="ipv6_cidr" />
-      <TextInput label="Org Id" source="organization_id" />
+      <TextInput label="Name" source="name" fullWidth />
+      <TextInput label="Description" source="description" fullWidth />
+      <TextInput label="CIDR v4" source="ipv4_cidr" fullWidth />
+      <TextInput label="CIDR v6" source="ipv6_cidr" fullWidth />
+      <ReferenceInput
+        name="organization_id"
+        source="organization_id"
+        reference="organizations"
+      >
+        <AutocompleteInput fullWidth />
+      </ReferenceInput>
     </SimpleForm>
   </Create>
 );
