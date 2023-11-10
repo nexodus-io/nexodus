@@ -6,8 +6,8 @@ import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 
 // icons
 import DeviceIcon from "@mui/icons-material/Devices";
-import OrganizationIcon from "@mui/icons-material/VpnLock";
-import UserIcon from "@mui/icons-material/People";
+import OrganizationIcon from "@mui/icons-material/People";
+import UserIcon from "@mui/icons-material/Person";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
