@@ -210,15 +210,7 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		return nil, err
 	}
 
-	if wgListenPort == 0 {
-		wgListenPort, err = getWgListenPort()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	nx := &Nexodus{
-		listenPort:              wgListenPort,
 		requestedIP:             requestedIP,
 		userProvidedLocalIP:     userProvidedLocalIP,
 		advertiseCidrs:          advertiseCidrs,
@@ -249,6 +241,11 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 		},
 	}
 
+	err = nx.setListenPort(wgListenPort)
+	if err != nil {
+		return nil, err
+	}
+
 	nx.userspaceMode = userspaceMode
 
 	if !nx.userspaceMode {
@@ -259,10 +256,6 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 	}
 
 	nx.tunnelIface = nx.defaultTunnelDev()
-
-	if nx.relay {
-		nx.listenPort = WgDefaultPort
-	}
 
 	if err := nx.checkUnsupportedConfigs(); err != nil {
 		return nil, err
@@ -281,6 +274,51 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 	}
 
 	return nx, nil
+}
+
+func (nx *Nexodus) setListenPort(requestedPort int) error {
+	if requestedPort != 0 {
+		// Always use what is specified as a command line argument if provided
+		nx.listenPort = requestedPort
+		return nil
+	} else if nx.relay || nx.userspaceMode {
+		// For a relay or when running in userspace mode, default to the standard wireguard port
+		nx.listenPort = WgDefaultPort
+		return nil
+	}
+
+	// Otherwise, we will default to a random port. We will also store this port
+	// in our state store so that we can reuse it on subsequent runs. Otherwise,
+	// we will interrupt the data path any time nexd restarts if we use a different
+	// port on each restart.
+
+	err := nx.stateStore.Load()
+	if err != nil {
+		return err
+	}
+
+	s := nx.stateStore.State()
+	if s.Port != 0 {
+		if s.Port == nx.currentWgPort() {
+			nx.logger.Debug("Using wireguard port already in use")
+			nx.listenPort = s.Port
+			return nil
+		}
+		if testWgListenPort(s.Port) == nil {
+			nx.logger.Debug("Reusing last used wireguard port")
+			nx.listenPort = s.Port
+			return nil
+		}
+	}
+
+	allocatedPort, err := getWgListenPort()
+	if err != nil {
+		return err
+	}
+	nx.logger.Debugf("New random port allocated: %d", allocatedPort)
+	nx.listenPort = allocatedPort
+	s.Port = allocatedPort
+	return nx.stateStore.Store()
 }
 
 func (nx *Nexodus) SetStatus(status int, msg string) {

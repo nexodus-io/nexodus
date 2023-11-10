@@ -137,3 +137,19 @@ func (nx *Nexodus) DumpPeersOS(iface string) (map[string]WgSessions, error) {
 	}
 	return peers, nil
 }
+
+func (nx *Nexodus) currentWgPort() int {
+	if nx.userspaceMode {
+		return nx.listenPort
+	}
+
+	c, err := wgctrl.New()
+	if err != nil {
+		return 0
+	}
+	device, err := c.Device(nx.defaultTunnelDev())
+	if err != nil {
+		return 0
+	}
+	return device.ListenPort
+}
