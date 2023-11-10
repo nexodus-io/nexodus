@@ -2,6 +2,8 @@ package nexodus
 
 import (
 	"errors"
+	"fmt"
+	"net"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
@@ -50,4 +52,49 @@ func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 
 	nx.logger.Debug("Peer setup complete")
 	return lastErr
+}
+
+func (nx *Nexodus) setupInterface() error {
+	if nx.userspaceMode {
+		return nx.setupInterfaceUS()
+	}
+
+	// Determine if nx.TunnelIP or nx.TunnelIpV6 overlaps with any of the system interfaces
+	// If so, return an error
+	if err := checkIPConflict(nx.TunnelIP); err != nil {
+		return err
+	}
+	if err := checkIPConflict(nx.TunnelIpV6); err != nil {
+		return err
+	}
+
+	return nx.setupInterfaceOS()
+}
+
+func checkIPConflict(ip string) error {
+	// Parse the IP string to net.IP
+	ipNet := net.ParseIP(ip)
+	if ipNet == nil {
+		return fmt.Errorf("invalid IP address: %s", ip)
+	}
+
+	// Get all network interfaces
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return err
+	}
+
+	// Check if the IP is in any subnet
+	for _, addr := range addrs {
+		_, subnet, err := net.ParseCIDR(addr.String())
+		if err != nil {
+			continue
+		}
+
+		if subnet.Contains(ipNet) {
+			return fmt.Errorf("IP address %s conflicts with subnet %s", ip, subnet)
+		}
+	}
+
+	return nil
 }

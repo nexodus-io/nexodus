@@ -1151,13 +1151,6 @@ func (nx *Nexodus) orgRelayCheck(peerMap map[string]public.ModelsDevice) (string
 	return "", nil
 }
 
-func (nx *Nexodus) setupInterface() error {
-	if nx.userspaceMode {
-		return nx.setupInterfaceUS()
-	}
-	return nx.setupInterfaceOS()
-}
-
 func (nx *Nexodus) defaultTunnelDev() string {
 	if nx.userspaceMode {
 		return nx.defaultTunnelDevUS()
