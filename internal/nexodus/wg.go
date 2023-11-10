@@ -245,6 +245,16 @@ func (nx *Nexodus) deletePeerOS(publicKey, dev string) error {
 	return nil
 }
 
+func testWgListenPort(port int) error {
+	l, err := net.ListenUDP("udp", &net.UDPAddr{Port: port})
+	if err != nil {
+		return err
+	}
+	l.Close()
+	return nil
+}
+
+// getWgListenPort() will allocate a random UDP port to use as our wireguard listen port
 func getWgListenPort() (int, error) {
 	l, err := net.ListenUDP("udp", &net.UDPAddr{})
 	if err != nil {

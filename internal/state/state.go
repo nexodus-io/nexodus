@@ -2,8 +2,9 @@ package state
 
 import (
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
+
+	"golang.org/x/oauth2"
 )
 
 type State struct {
@@ -11,6 +12,7 @@ type State struct {
 	PublicKey        string           `json:"public-key"`
 	PrivateKey       string           `json:"private-key"`
 	ProxyRulesConfig ProxyRulesConfig `json:"proxy-rules-config"`
+	Port             int              `json:"port"`
 }
 
 type ProxyRulesConfig struct {
