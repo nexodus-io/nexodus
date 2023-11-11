@@ -23,7 +23,7 @@ func (d DeviceAdaptor) Revision(item ModelsDevice) int32 {
 }
 
 func (d DeviceAdaptor) Key(item ModelsDevice) string {
-	return item.PublicKey
+	return item.Id
 }
 
 func (d DeviceAdaptor) Kind() string {

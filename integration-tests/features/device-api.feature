@@ -259,6 +259,71 @@ Feature: Device API
         "id": "${device_id}",
         "vpc_id": "${vpc_id}",
         "os": "linux",
+        "public_key": "",
+        "relay": false,
+        "revision": ${response.revision},
+        "symmetric_nat": true,
+        "ipv4_tunnel_ips": [
+          {
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
+          }
+        ],
+        "ipv6_tunnel_ips": [
+          {
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
+          }
+        ],
+        "owner_id": "${user_id}",
+        "security_group_id": "${response.security_group_id}"
+      }
+      """
+
+      # We should be able to create a new device with the same public key again.
+    When I POST path "/api/devices" with json body:
+      """
+      {
+        "owner_id": "${user_id}",
+        "vpc_id": "${vpc_id}",
+        "public_key": "${public_key}",
+        "endpoints": [{
+          "source": "local",
+          "address": "172.17.0.3:58664"
+        }, {
+          "source": "stun:stun1.l.google.com:19302",
+          "address": "172.17.0.3:58664"
+        }],
+        "advertise_cidrs": null,
+        "relay": false,
+        "symmetric_nat": true,
+        "hostname": "bbac3081d5e8",
+        "os": "linux"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ".id" selection from the response as ${device_id}
+    And the response should match json:
+      """
+      {
+        "allowed_ips": [
+          "${response.allowed_ips[0]}",
+          "${response.allowed_ips[1]}"
+        ],
+        "online": false,
+        "online_at": null,
+        "advertise_cidrs": null,
+        "endpoints": [{
+          "source": "local",
+          "address": "172.17.0.3:58664"
+        }, {
+          "source": "stun:stun1.l.google.com:19302",
+          "address": "172.17.0.3:58664"
+        }],
+        "hostname": "bbac3081d5e8",
+        "id": "${device_id}",
+        "vpc_id": "${vpc_id}",
+        "os": "linux",
         "public_key": "${public_key}",
         "relay": false,
         "revision": ${response.revision},

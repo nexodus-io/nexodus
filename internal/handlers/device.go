@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -661,10 +662,17 @@ func (api *API) DeleteDevice(c *gin.Context) {
 	orgPrefix := device.IPv4TunnelIPs[0].CIDR
 	advertiseCidrs := device.AdvertiseCidrs
 
+	// Null out unique fields to that a new device can be created later with the same values
 	if res := api.db.WithContext(ctx).
+		Model(&device).
 		Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
-		Delete(&device, "id = ?", device.Base.ID); res.Error != nil {
-		c.JSON(http.StatusBadRequest, models.NewApiError(res.Error))
+		Where("id = ?", device.Base.ID).
+		Updates(map[string]interface{}{
+			"bearer_token": nil,
+			"public_key":   nil,
+			"deleted_at":   gorm.DeletedAt{Time: time.Now(), Valid: true},
+		}); res.Error != nil {
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 
@@ -694,7 +702,6 @@ func (api *API) DeleteDevice(c *gin.Context) {
 		}
 	}
 
-	device.BearerToken = ""
 	c.JSON(http.StatusOK, device)
 }
 

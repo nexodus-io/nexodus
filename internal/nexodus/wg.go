@@ -154,7 +154,7 @@ func (nx *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 func (nx *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range nx.deviceCache {
-		if _, ok := peerMap[p.device.PublicKey]; ok {
+		if _, ok := peerMap[p.device.Id]; ok {
 			continue
 		}
 
