@@ -10,7 +10,7 @@ import (
 )
 
 func callNexd(method string) (string, error) {
-	conn, err := net.Dial("unix", "/run/nexd.sock")
+	conn, err := net.Dial("unix", "/var/run/nexd.sock")
 	if err != nil {
 		return "", fmt.Errorf("Failed to connect to nexd: %w\n", err)
 	}
@@ -29,7 +29,7 @@ func callNexd(method string) (string, error) {
 
 // CtlStatus attempt to retrieve the status of the nexd service
 func CtlStatus(cCtx *cli.Context) (string, error) {
-	if runtime.GOOS != Linux.String() {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		return "", fmt.Errorf("nexd ctl interface not yet supported on %s", runtime.GOOS)
 	}
 
