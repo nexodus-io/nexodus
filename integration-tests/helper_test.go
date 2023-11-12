@@ -384,22 +384,15 @@ func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, cl
 	dbPort := secrets.Get("database-pguser-apiserver", "pgbouncer-port")
 
 	// find a free port to use...
-	l, err := net.Listen("tcp", ":0")
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	helper.require.NoError(err)
-	_, port, err := net.SplitHostPort(l.Addr().String())
+	_, localPort, err := net.SplitHostPort(l.Addr().String())
 	helper.require.NoError(err)
-	l.Close()
+	_ = l.Close()
 
-	//// find the db pod name...
-	//podName := strings.TrimSpace(helper.MustRunCommand("kubectl", "-n", "nexodus", "get", "pods", "-l", "postgres-operator.crunchydata.com/role=master", "-o", "name"))
-	//if podName == "" {
-	//	podName = strings.TrimSpace(helper.MustRunCommand("kubectl", "-n", "nexodus", "get", "pods", "postgres-0", "-o", "name"))
-	//}
-	//
-	//// start the port forward..
-	//cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", podName, port+":5432")
-
-	cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", "service/"+dbHost, port+":"+dbPort)
+	service := fmt.Sprintf("service/%s", dbHost)
+	portMapping := fmt.Sprintf("%s:%s", localPort, dbPort)
+	cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", service, portMapping)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
@@ -418,11 +411,11 @@ func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, cl
 
 	// wait for the port forward to be up and running
 	helper.require.Eventually(func() bool {
-		c, err := net.Dial("tcp", "localhost:"+port)
+		c, err := net.Dial("tcp", "localhost:"+localPort)
 		if err != nil {
 			return false
 		}
-		c.Close()
+		_ = c.Close()
 		return true
 	}, time.Second*10, time.Millisecond*100, "port forward is not up and running yet")
 
@@ -433,13 +426,13 @@ func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, cl
 	// try to connect using TLS...
 	db, err = gorm.Open(postgres.Open(
 		fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-			"localhost", dbUser, dbPassword, "apiserver", port, "require"),
+			"localhost", dbUser, dbPassword, "apiserver", localPort, "require"),
 	), gormConfig)
 	if err != nil && strings.Contains(err.Error(), "tls error") {
 		// fallback to non-TLS
 		db, err = gorm.Open(postgres.Open(
 			fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-				"localhost", dbUser, dbPassword, "apiserver", port, "disable"),
+				"localhost", dbUser, dbPassword, "apiserver", localPort, "disable"),
 		), gormConfig)
 	}
 	helper.require.NoError(err)
