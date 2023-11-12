@@ -1202,3 +1202,42 @@ func TestNetRouterConnectivity(t *testing.T) {
 	err = ping(ctx, nexRouterSite1, inetV4, site2node1IP)
 	require.NoError(err)
 }
+
+// Create a test container, get its IP address, and then create a VPC that uses a subnet that includes that IP.
+// Then try to start nexd on that subnet. It should fail.
+func TestVPCSubnetConflict(t *testing.T) {
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
+	defer stop()
+
+	// get the CIDR of the IP on eth0
+	node1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", node1)
+	require.NoError(err)
+
+	vpcID := helper.createVPC(username, password,
+		"--ipv4-cidr", node1IP+"/24",
+		"--ipv6-cidr", "200::/32",
+	)
+	helper.Logf("created vpc id:%s", vpcID)
+	defer func() {
+		_ = helper.deleteVPC(username, password, vpcID)
+	}()
+
+	// start nexodus on the nodes
+	helper.runNexd(ctx, node1, "--username", username, "--password", password, "--vpc-id", vpcID)
+
+	// nexd should have started, though not create the wg0 interface because of the conflict
+	err = helper.nexdStatus(ctx, node1)
+	require.NoError(err)
+
+	// check that the wg0 interface was not created
+	_, err = getContainerIfaceIP(ctx, inetV4, "wg0", node1)
+	require.Error(err)
+}
