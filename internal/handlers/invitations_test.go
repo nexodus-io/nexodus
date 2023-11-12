@@ -121,7 +121,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 				http.MethodPost,
 				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
-					c.Set("_apex.testCreateOrganization", "true")
+					c.Set("nexodus.fflag.multi-organization", true)
 					suite.api.AcceptInvitation(c)
 				}, nil,
 			)
@@ -136,7 +136,7 @@ func (suite *HandlerTestSuite) TestCreateAcceptRefuseInvitation() {
 				http.MethodPost,
 				"/:id", fmt.Sprintf("/%s", inviteID.String()),
 				func(c *gin.Context) {
-					c.Set("_apex.testCreateOrganization", "true")
+					c.Set("nexodus.fflag.multi-organization", true)
 					suite.api.DeleteInvitation(c)
 				}, nil,
 			)

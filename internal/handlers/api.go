@@ -153,3 +153,16 @@ func (api *API) GetCurrentUserID(c *gin.Context) uuid.UUID {
 	}
 	return userId.(uuid.UUID)
 }
+
+func (api *API) FlagCheck(c *gin.Context, name string) bool {
+	enabled, err := api.fflags.GetFlag(c, name)
+	if err != nil {
+		api.SendInternalServerError(c, err)
+		return false
+	}
+	if !enabled {
+		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError(fmt.Sprintf("%s support is disabled", name)))
+		return false
+	}
+	return enabled
+}

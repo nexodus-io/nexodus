@@ -218,20 +218,6 @@ func (api *API) GetSecurityGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, securityGroup)
 }
 
-func (api *API) secGroupsEnabled(c *gin.Context) bool {
-	secGroupsEnabled, err := api.fflags.GetFlag("security-groups")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return false
-	}
-	allowForTests := c.GetString("nexodus.secGroupsEnabled")
-	if (!secGroupsEnabled && allowForTests != "true") || allowForTests == "false" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("security-groups support is disabled"))
-		return false
-	}
-	return true
-}
-
 // CreateSecurityGroup handles adding a new SecurityGroup
 // @Summary      Add SecurityGroup
 // @Id  		 CreateSecurityGroup
@@ -252,7 +238,7 @@ func (api *API) CreateSecurityGroup(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateSecurityGroup")
 	defer span.End()
 
-	if !api.secGroupsEnabled(c) {
+	if !api.FlagCheck(c, "security-groups") {
 		return
 	}
 
@@ -360,7 +346,7 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 
 	defer span.End()
 
-	if !api.secGroupsEnabled(c) {
+	if !api.FlagCheck(c, "security-groups") {
 		return
 	}
 
@@ -444,7 +430,7 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 	))
 	defer span.End()
 
-	if !api.secGroupsEnabled(c) {
+	if !api.FlagCheck(c, "security-groups") {
 		return
 	}
 

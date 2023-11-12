@@ -69,7 +69,7 @@ func (suite *HandlerTestSuite) TestListVPCs() {
 			http.MethodPost,
 			"/", "/",
 			func(c *gin.Context) {
-				c.Set("nexodus.testCreateVPC", "false")
+				c.Set("nexodus.fflag.multi-organization", false)
 				suite.api.CreateVPC(c)
 			},
 

@@ -19,7 +19,7 @@ import (
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/fflags [get]
 func (api *API) ListFeatureFlags(c *gin.Context) {
-	c.JSON(http.StatusOK, api.fflags.ListFlags())
+	c.JSON(http.StatusOK, api.fflags.ListFlags(c))
 }
 
 // GetFeatureFlag gets a feature flag by name
@@ -43,7 +43,7 @@ func (api *API) GetFeatureFlag(c *gin.Context) {
 		return
 	}
 
-	enabled, err := api.fflags.GetFlag(flagName)
+	enabled, err := api.fflags.GetFlag(c, flagName)
 	if err != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("flag"))
 		return

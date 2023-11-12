@@ -2,6 +2,7 @@ package fflags
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"os"
 	"strconv"
 
@@ -24,7 +25,7 @@ type FFlag struct {
 
 var hardCodedFlags = map[string]FFlag{
 	"multi-organization": {"NEXAPI_FFLAG_MULTI_ORGANIZATION", true},
-	"security-groups":    {"NEXAPI_FFLAG_SECURITY_GROUPS", false},
+	"security-groups":    {"NEXAPI_FFLAG_SECURITY_GROUPS", true},
 }
 
 func NewFFlags(logger *zap.SugaredLogger) *FFlags {
@@ -33,7 +34,11 @@ func NewFFlags(logger *zap.SugaredLogger) *FFlags {
 	}
 }
 
-func (f *FFlags) getFlagValue(fflag FFlag) bool {
+func (f *FFlags) getFlagValue(c *gin.Context, name string, fflag FFlag) bool {
+	ctxName := fmt.Sprintf("nexodus.fflag.%s", name)
+	if _, found := c.Get(ctxName); found {
+		return c.GetBool(ctxName)
+	}
 	if envValue, err := strconv.ParseBool(os.Getenv(fflag.env)); err == nil {
 		return envValue
 	}
@@ -42,10 +47,10 @@ func (f *FFlags) getFlagValue(fflag FFlag) bool {
 
 // ListFlags returns a map of all currently defined feature flags and
 // whether those features are enabled (true) or not (false).
-func (f *FFlags) ListFlags() map[string]bool {
+func (f *FFlags) ListFlags(c *gin.Context) map[string]bool {
 	result := map[string]bool{}
 	for name, fflag := range hardCodedFlags {
-		result[name] = f.getFlagValue(fflag)
+		result[name] = f.getFlagValue(c, name, fflag)
 	}
 	return result
 }
@@ -53,11 +58,12 @@ func (f *FFlags) ListFlags() map[string]bool {
 // GetFlag returns whether the feature named by the string parameter
 // flag is enabled (true) or not (false). An error is returned if
 // the flag name is invalid.
-func (f *FFlags) GetFlag(flag string) (bool, error) {
+func (f *FFlags) GetFlag(c *gin.Context, flag string) (bool, error) {
 	fflag, ok := hardCodedFlags[flag]
+
 	if !ok {
 		f.logger.Errorf("Invalid feature flag name: %s", flag)
 		return false, fmt.Errorf("Invalid feature flag name: %s", flag)
 	}
-	return f.getFlagValue(fflag), nil
+	return f.getFlagValue(c, flag, fflag), nil
 }

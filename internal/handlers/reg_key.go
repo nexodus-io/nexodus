@@ -231,7 +231,7 @@ func (api *API) DeleteRegKey(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("key-id"))
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
 

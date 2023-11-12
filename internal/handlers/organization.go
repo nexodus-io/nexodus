@@ -41,16 +41,11 @@ func (e errDuplicateOrganization) Error() string {
 func (api *API) CreateOrganization(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "CreateOrganization")
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.SendInternalServerError(c, err)
+
+	if !api.FlagCheck(c, "multi-organization") {
 		return
 	}
-	allowForTests := c.GetString("nexodus.testCreateOrganization")
-	if (!multiOrganizationEnabled && allowForTests != "true") || allowForTests == "false" {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
-		return
-	}
+
 	userId := api.GetCurrentUserID(c)
 
 	var request models.AddOrganization
@@ -66,7 +61,7 @@ func (api *API) CreateOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	err = api.transaction(ctx, func(tx *gorm.DB) error {
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		var user models.User
 		if res := tx.First(&user, "id = ?", userId); res.Error != nil {
 			return errUserNotFound
@@ -221,13 +216,8 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 			attribute.String("id", c.Param("id")),
 		))
 	defer span.End()
-	multiOrganizationEnabled, err := api.fflags.GetFlag("multi-organization")
-	if err != nil {
-		api.SendInternalServerError(c, err)
-		return
-	}
-	if !multiOrganizationEnabled {
-		c.JSON(http.StatusMethodNotAllowed, models.NewNotAllowedError("multi-organization support is disabled"))
+
+	if !api.FlagCheck(c, "multi-organization") {
 		return
 	}
 
