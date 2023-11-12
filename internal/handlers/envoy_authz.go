@@ -40,7 +40,7 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 	if authorizationHeader != "" {
 
 		// Does it look like a reg key?
-		if strings.HasPrefix(authorizationHeader, "Bearer RT:") {
+		if strings.HasPrefix(authorizationHeader, "Bearer RK:") {
 			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
 			return checkRegistrationToken(ctx, api, token)
 		} else if strings.HasPrefix(authorizationHeader, "Bearer DT:") {
