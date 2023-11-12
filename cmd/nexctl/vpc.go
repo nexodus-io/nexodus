@@ -1,13 +1,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
 )
 
@@ -19,8 +14,8 @@ func createVpcCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List vpcs",
-				Action: func(cCtx *cli.Context) error {
-					return listVPCs(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listVPCs(ctx)
 				},
 			},
 			{
@@ -44,13 +39,13 @@ func createVpcCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					return createVPC(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddVPC{
-						Ipv4Cidr:       cCtx.String("ipv4-cidr"),
-						Ipv6Cidr:       cCtx.String("ipv6-cidr"),
-						Description:    cCtx.String("description"),
-						OrganizationId: cCtx.String("organization-id"),
-						PrivateCidr:    !(cCtx.String("ipv4-cidr") == "" && cCtx.String("ipv6-cidr") == ""),
+				Action: func(ctx *cli.Context) error {
+					return createVPC(ctx, public.ModelsAddVPC{
+						Ipv4Cidr:       ctx.String("ipv4-cidr"),
+						Ipv6Cidr:       ctx.String("ipv6-cidr"),
+						Description:    ctx.String("description"),
+						OrganizationId: ctx.String("organization-id"),
+						PrivateCidr:    !(ctx.String("ipv4-cidr") == "" && ctx.String("ipv6-cidr") == ""),
 					})
 				},
 			},
@@ -67,12 +62,16 @@ func createVpcCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					id := cCtx.String("vpc-id")
-					update := public.ModelsUpdateVPC{
-						Description: cCtx.String("description"),
+				Action: func(ctx *cli.Context) error {
+					id, err := getUUID(ctx, "vpc-id")
+					if err != nil {
+						return err
 					}
-					return updateVPC(cCtx, id, update)
+
+					update := public.ModelsUpdateVPC{
+						Description: ctx.String("description"),
+					}
+					return updateVPC(ctx, id, update)
 				},
 			},
 			{
@@ -84,10 +83,12 @@ func createVpcCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					vpcID := cCtx.String("vpc-id")
-					return deleteVPC(cCtx, mustCreateAPIClient(cCtx), encodeOut, vpcID)
+				Action: func(ctx *cli.Context) error {
+					vpcID, err := getUUID(ctx, "vpc-id")
+					if err != nil {
+						return err
+					}
+					return deleteVPC(ctx, vpcID)
 				},
 			},
 			{
@@ -99,19 +100,20 @@ func createVpcCommand() *cli.Command {
 	}
 }
 
-func updateVPC(cCtx *cli.Context, idStr string, update public.ModelsUpdateVPC) error {
+func updateVPC(ctx *cli.Context, idStr string, update public.ModelsUpdateVPC) error {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
+		Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
 	}
 
-	c := mustCreateAPIClient(cCtx)
-	res := processApiResponse(c.VPCApi.
-		UpdateVPC(context.Background(), id.String()).
+	c := createClient(ctx)
+	res := apiResponse(c.VPCApi.
+		UpdateVPC(ctx.Context, id.String()).
 		Update(update).
 		Execute())
 
-	showOutput(cCtx, invitationsTableFields(), res)
+	show(ctx, invitationsTableFields(), res)
+	showSuccessfully(ctx, "updated")
 	return nil
 }
 
@@ -124,36 +126,34 @@ func vpcTableFields() []TableField {
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	return fields
 }
-func listVPCs(cCtx *cli.Context, c *client.APIClient) error {
-	vpcs := processApiResponse(c.VPCApi.ListVPCs(context.Background()).Execute())
-	showOutput(cCtx, vpcTableFields(), vpcs)
+func listVPCs(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.VPCApi.
+		ListVPCs(ctx.Context).
+		Execute())
+	show(ctx, vpcTableFields(), res)
 	return nil
 }
 
-func createVPC(cCtx *cli.Context, c *client.APIClient, resource public.ModelsAddVPC) error {
+func createVPC(ctx *cli.Context, resource public.ModelsAddVPC) error {
+	c := createClient(ctx)
 	if resource.OrganizationId == "" {
-		resource.OrganizationId = getDefaultOrgId(cCtx.Context, c)
+		resource.OrganizationId = getDefaultOrgId(ctx.Context, c)
 	}
-	showOutput(cCtx, vpcTableFields(), processApiResponse(
-		c.VPCApi.
-			CreateVPC(context.Background()).
-			VPC(resource).
-			Execute(),
-	))
+	res := apiResponse(c.VPCApi.
+		CreateVPC(ctx.Context).
+		VPC(resource).
+		Execute())
+	show(ctx, vpcTableFields(), res)
 	return nil
 }
 
-func deleteVPC(cCtx *cli.Context, c *client.APIClient, encodeOut, VPCID string) error {
-	id, err := uuid.Parse(VPCID)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", id, err)
-	}
-
-	res := processApiResponse(c.VPCApi.DeleteVPC(context.Background(), id.String()).Execute())
-	showOutput(cCtx, vpcTableFields(), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println("\nsuccessfully deleted")
-	}
-
+func deleteVPC(ctx *cli.Context, id string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.VPCApi.
+		DeleteVPC(ctx.Context, id).
+		Execute())
+	show(ctx, vpcTableFields(), res)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }

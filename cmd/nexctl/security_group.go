@@ -1,14 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,8 +15,8 @@ func createSecurityGroupCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List all security groups",
-				Action: func(cCtx *cli.Context) error {
-					return listSecurityGroups(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listSecurityGroups(ctx)
 				},
 			},
 			{
@@ -33,10 +28,14 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					sgID := cCtx.String("security-group-id")
-					return deleteSecurityGroup(cCtx, mustCreateAPIClient(cCtx), encodeOut, sgID)
+				Action: func(ctx *cli.Context) error {
+					encodeOut := ctx.String("output")
+					sgID, err := getUUID(ctx, "security-group-id")
+					if err != nil {
+						return err
+					}
+
+					return deleteSecurityGroup(ctx, encodeOut, sgID)
 				},
 			},
 			{
@@ -60,15 +59,17 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					description := cCtx.String("description")
-					vpcId := cCtx.String("vpc-id")
-					inboundRulesStr := cCtx.String("inbound-rules")
-					outboundRulesStr := cCtx.String("outbound-rules")
+				Action: func(ctx *cli.Context) error {
+					description := ctx.String("description")
+					vpcId, err := getUUID(ctx, "vpc-id")
+					if err != nil {
+						return err
+					}
+
+					inboundRulesStr := ctx.String("inbound-rules")
+					outboundRulesStr := ctx.String("outbound-rules")
 
 					var inboundRules, outboundRules []public.ModelsSecurityRule
-					var err error
-
 					if inboundRulesStr != "" {
 						inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
 						if err != nil {
@@ -83,7 +84,7 @@ func createSecurityGroupCommand() *cli.Command {
 						}
 					}
 
-					return createSecurityGroup(cCtx, mustCreateAPIClient(cCtx), description, vpcId, inboundRules, outboundRules)
+					return createSecurityGroup(ctx, description, vpcId, inboundRules, outboundRules)
 				},
 			},
 			{
@@ -107,42 +108,46 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
+				Action: func(ctx *cli.Context) error {
 
 					update := public.ModelsUpdateSecurityGroup{}
 
-					id := cCtx.String("security-group-id")
-					if cCtx.IsSet("description") {
-						update.Description = cCtx.String("description")
+					id, err := getUUID(ctx, "security-group-id")
+					if err != nil {
+						return err
 					}
-					if cCtx.IsSet("inbound-rules") {
-						rules, err := jsonStringToSecurityRules(cCtx.String("inbound-rules"))
+
+					if ctx.IsSet("description") {
+						update.Description = ctx.String("description")
+					}
+					if ctx.IsSet("inbound-rules") {
+						rules, err := jsonStringToSecurityRules(ctx.String("inbound-rules"))
 						if err != nil {
 							return fmt.Errorf("failed to convert inbound rules string to security rules: %w", err)
 						}
 						update.InboundRules = rules
 					}
-					if cCtx.IsSet("outbound-rules") {
-						rules, err := jsonStringToSecurityRules(cCtx.String("outbound-rules"))
+					if ctx.IsSet("outbound-rules") {
+						rules, err := jsonStringToSecurityRules(ctx.String("outbound-rules"))
 						if err != nil {
 							return fmt.Errorf("failed to convert outbound rules string to security rules: %w", err)
 						}
 						update.OutboundRules = rules
 					}
 
-					err := checkICMPRules(update.InboundRules, update.InboundRules)
+					err = checkICMPRules(update.InboundRules, update.InboundRules)
 					if err != nil {
 						return fmt.Errorf("update security group failed: %w", err)
 					}
 
-					return updateSecurityGroup(cCtx, mustCreateAPIClient(cCtx), id, update)
+					return updateSecurityGroup(ctx, id, update)
 				},
 			},
 		},
 	}
 }
 
-func securityGroupTableFields(cCtx *cli.Context) []TableField {
+func securityGroupTableFields(ctx *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
@@ -153,81 +158,55 @@ func securityGroupTableFields(cCtx *cli.Context) []TableField {
 }
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(cCtx *cli.Context, c *client.APIClient, description, vpcIdStr string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
-
-	if vpcIdStr == "" {
-		vpcIdStr = getDefaultVpcId(cCtx.Context, c)
+func createSecurityGroup(ctx *cli.Context, description, vpcId string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+	c := createClient(ctx)
+	if vpcId == "" {
+		vpcId = getDefaultVpcId(ctx.Context, c)
 	}
-
-	vpcId, err := uuid.Parse(vpcIdStr)
+	err := checkICMPRules(inboundRules, outboundRules)
 	if err != nil {
-		return fmt.Errorf("failed to parse a valid UUID from %s %w", vpcIdStr, err)
+		return fmt.Errorf("invalid rules: %w", err)
 	}
-
-	err = checkICMPRules(inboundRules, outboundRules)
-	if err != nil {
-		return fmt.Errorf("create security group failed: %w", err)
-	}
-
-	res, httpResp, err := c.SecurityGroupApi.CreateSecurityGroup(context.Background()).SecurityGroup(public.ModelsAddSecurityGroup{
+	res := apiResponse(c.SecurityGroupApi.CreateSecurityGroup(ctx.Context).SecurityGroup(public.ModelsAddSecurityGroup{
 		Description:   description,
-		VpcId:         vpcId.String(),
+		VpcId:         vpcId,
 		InboundRules:  inboundRules,
 		OutboundRules: outboundRules,
-	}).Execute()
-	if err != nil {
-		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks
-		if httpResp != nil && httpResp.StatusCode == http.StatusUnprocessableEntity {
-			var validationErr public.ModelsValidationError
-			decodeErr := json.NewDecoder(httpResp.Body).Decode(&validationErr)
-			if decodeErr != nil {
-				return fmt.Errorf("create security group failed and error decoding: %w", decodeErr)
-			}
-			return fmt.Errorf("create security group validation failed: %s - %s", validationErr.Field, validationErr.Error)
-		}
-		return fmt.Errorf("create security group failed: %w", err)
-	}
-
-	showOutput(cCtx, securityGroupTableFields(cCtx), res)
+	}).Execute())
+	show(ctx, securityGroupTableFields(ctx), res)
 	return nil
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(cCtx *cli.Context, c *client.APIClient, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
-
-	res, httpResp, err := c.SecurityGroupApi.UpdateSecurityGroup(context.Background(), secGroupID).Update(update).Execute()
-	if err != nil {
-		// Decode the body for better logging of a rule with a field that doesn't conform to sanity checks
-		if httpResp != nil && httpResp.StatusCode == http.StatusUnprocessableEntity {
-			var validationErr public.ModelsValidationError
-			decodeErr := json.NewDecoder(httpResp.Body).Decode(&validationErr)
-			if decodeErr != nil {
-				return fmt.Errorf("update security group failed and error decoding: %w", decodeErr)
-			}
-			return fmt.Errorf("update security group validation failed: %s - %s", validationErr.Field, validationErr.Error)
-		}
-		return fmt.Errorf("update security group failed: %w", err)
-	}
-
-	showOutput(cCtx, securityGroupTableFields(cCtx), res)
+func updateSecurityGroup(ctx *cli.Context, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
+	c := createClient(ctx)
+	res := apiResponse(c.SecurityGroupApi.
+		UpdateSecurityGroup(ctx.Context, secGroupID).
+		Update(update).
+		Execute())
+	show(ctx, securityGroupTableFields(ctx), res)
+	showSuccessfully(ctx, "updated")
 	return nil
 }
 
 // listSecurityGroups lists all security groups.
-func listSecurityGroups(cCtx *cli.Context, c *client.APIClient) error {
-	securityGroups := processApiResponse(c.SecurityGroupApi.ListSecurityGroups(context.Background()).Execute())
-	showOutput(cCtx, securityGroupTableFields(cCtx), securityGroups)
+func listSecurityGroups(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.SecurityGroupApi.
+		ListSecurityGroups(ctx.Context).
+		Execute())
+	show(ctx, securityGroupTableFields(ctx), res)
 	return nil
 }
 
 // deleteSecurityGroup deletes an existing security group.
-func deleteSecurityGroup(cCtx *cli.Context, c *client.APIClient, encodeOut, secGroupID string) error {
-	res := processApiResponse(c.SecurityGroupApi.DeleteSecurityGroup(context.Background(), secGroupID).Execute())
-	showOutput(cCtx, securityGroupTableFields(cCtx), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println("\nsuccessfully deleted")
-	}
-
+func deleteSecurityGroup(ctx *cli.Context, encodeOut, secGroupID string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.SecurityGroupApi.
+		DeleteSecurityGroup(ctx.Context, secGroupID).
+		Execute())
+	show(ctx, securityGroupTableFields(ctx), res)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }
 

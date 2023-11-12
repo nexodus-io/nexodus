@@ -1,13 +1,9 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
-	"log"
-
-	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/client"
 )
 
 func createInvitationCommand() *cli.Command {
@@ -18,8 +14,8 @@ func createInvitationCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List invitations",
-				Action: func(cCtx *cli.Context) error {
-					return listInvitations(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listInvitations(ctx)
 				},
 			},
 			{
@@ -39,11 +35,19 @@ func createInvitationCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					return createInvitation(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddInvitation{
-						OrganizationId: cCtx.String("organization-id"),
-						UserId:         cCtx.String("user-id"),
-						UserName:       cCtx.String("user-name"),
+				Action: func(ctx *cli.Context) error {
+					organizationId, err := getUUID(ctx, "organization-id")
+					if err != nil {
+						return err
+					}
+					userId, err := getUUID(ctx, "user-id")
+					if err != nil {
+						return err
+					}
+					return createInvitation(ctx, public.ModelsAddInvitation{
+						OrganizationId: organizationId,
+						UserId:         userId,
+						UserName:       ctx.String("user-name"),
 					})
 				},
 			},
@@ -56,9 +60,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					userID := cCtx.String("inv-id")
-					return deleteInvitation(cCtx, mustCreateAPIClient(cCtx), userID)
+				Action: func(ctx *cli.Context) error {
+					id, err := getUUID(ctx, "inv-id")
+					if err != nil {
+						return err
+					}
+					return deleteInvitation(ctx, id)
 				},
 			},
 			{
@@ -70,9 +77,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					userID := cCtx.String("inv-id")
-					return acceptInvitation(mustCreateAPIClient(cCtx), userID)
+				Action: func(ctx *cli.Context) error {
+					id, err := getUUID(ctx, "inv-id")
+					if err != nil {
+						return err
+					}
+					return acceptInvitation(ctx, id)
 				},
 			},
 		},
@@ -88,48 +98,46 @@ func invitationsTableFields() []TableField {
 	return fields
 }
 
-func listInvitations(cCtx *cli.Context, c *client.APIClient) error {
-	rows := processApiResponse(c.InvitationApi.ListInvitations(cCtx.Context).Execute())
-
-	showOutput(cCtx, invitationsTableFields(), rows)
+func listInvitations(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.InvitationApi.
+		ListInvitations(ctx.Context).
+		Execute())
+	show(ctx, invitationsTableFields(), res)
 	return nil
 }
-func acceptInvitation(c *client.APIClient, id string) error {
-	invID, err := uuid.Parse(id)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", id, err)
-	}
-	if _, err := c.InvitationApi.AcceptInvitation(context.Background(), invID.String()).Execute(); err != nil {
-		log.Fatal(err)
-	}
-	return nil
-}
-
-func deleteInvitation(cCtx *cli.Context, c *client.APIClient, id string) error {
-	invID, err := uuid.Parse(id)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", id, err)
-	}
-	res := processApiResponse(c.InvitationApi.DeleteInvitation(context.Background(), invID.String()).Execute())
-	showOutput(cCtx, invitationsTableFields(), res)
+func acceptInvitation(ctx *cli.Context, id string) error {
+	c := createClient(ctx)
+	httpResp, err := c.InvitationApi.
+		AcceptInvitation(ctx.Context, id).
+		Execute()
+	_ = apiResponse("", httpResp, err)
+	showSuccessfully(ctx, "accepted")
 	return nil
 }
 
-func createInvitation(cCtx *cli.Context, c *client.APIClient, invitation public.ModelsAddInvitation) error {
+func deleteInvitation(ctx *cli.Context, id string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.InvitationApi.
+		DeleteInvitation(ctx.Context, id).
+		Execute())
+	show(ctx, invitationsTableFields(), res)
+	showSuccessfully(ctx, "deleted")
+	return nil
+}
 
+func createInvitation(ctx *cli.Context, invitation public.ModelsAddInvitation) error {
+	c := createClient(ctx)
 	if invitation.OrganizationId == "" {
-		invitation.OrganizationId = getDefaultOrgId(context.Background(), c)
+		invitation.OrganizationId = getDefaultOrgId(ctx.Context, c)
 	}
-	_, err := uuid.Parse(invitation.OrganizationId)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", invitation.OrganizationId, err)
-	}
-
 	if invitation.UserId == "" && invitation.UserName == "" {
-		log.Fatalf("either --user-id or --user-name must be specified")
+		return fmt.Errorf("either the --user-id or --user-name flags are required")
 	}
-
-	res := processApiResponse(c.InvitationApi.CreateInvitation(context.Background()).Invitation(invitation).Execute())
-	showOutput(cCtx, invitationsTableFields(), res)
+	res := apiResponse(c.InvitationApi.
+		CreateInvitation(ctx.Context).
+		Invitation(invitation).
+		Execute())
+	show(ctx, invitationsTableFields(), res)
 	return nil
 }

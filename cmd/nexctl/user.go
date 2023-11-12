@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
 )
 
@@ -15,15 +13,15 @@ func createUserSubCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List all users",
-				Action: func(cCtx *cli.Context) error {
-					return listUsers(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listUsers(ctx)
 				},
 			},
 			{
 				Name:  "get-current",
 				Usage: "Get current user",
-				Action: func(cCtx *cli.Context) error {
-					return getCurrent(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return getCurrent(ctx)
 				},
 			},
 			{
@@ -36,10 +34,12 @@ func createUserSubCommand() *cli.Command {
 						Hidden:   true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					userID := cCtx.String("user-id")
-					return deleteUser(cCtx, mustCreateAPIClient(cCtx), encodeOut, userID)
+				Action: func(ctx *cli.Context) error {
+					userID, err := getUUID(ctx, "user-id")
+					if err != nil {
+						return err
+					}
+					return deleteUser(ctx, userID)
 				},
 			},
 			{
@@ -55,11 +55,16 @@ func createUserSubCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					userID := cCtx.String("user-id")
-					orgID := cCtx.String("organization-id")
-					return deleteUserFromOrg(cCtx, mustCreateAPIClient(cCtx), encodeOut, userID, orgID)
+				Action: func(ctx *cli.Context) error {
+					userID, err := getUUID(ctx, "user-id")
+					if err != nil {
+						return err
+					}
+					orgID, err := getUUID(ctx, "organization-id")
+					if err != nil {
+						return err
+					}
+					return deleteUserFromOrg(ctx, userID, orgID)
 				},
 			},
 		},
@@ -72,33 +77,40 @@ func userTableFields() []TableField {
 	fields = append(fields, TableField{Header: "USER NAME", Field: "Username"})
 	return fields
 }
-func listUsers(cCtx *cli.Context, c *client.APIClient) error {
-	users := processApiResponse(c.UsersApi.ListUsers(context.Background()).Execute())
-	showOutput(cCtx, userTableFields(), users)
+func listUsers(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.UsersApi.
+		ListUsers(ctx.Context).
+		Execute())
+	show(ctx, userTableFields(), res)
 	return nil
 }
 
-func deleteUser(cCtx *cli.Context, c *client.APIClient, encodeOut, userID string) error {
-	res := processApiResponse(c.UsersApi.DeleteUser(context.Background(), userID).Execute())
-	showOutput(cCtx, userTableFields(), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println("\nsuccessfully deleted")
-	}
-
+func deleteUser(ctx *cli.Context, userID string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.UsersApi.
+		DeleteUser(ctx.Context, userID).
+		Execute())
+	show(ctx, userTableFields(), res)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }
 
-func deleteUserFromOrg(cCtx *cli.Context, c *client.APIClient, encodeOut, userID, orgID string) error {
-	res := processApiResponse(c.UsersApi.DeleteUserFromOrganization(context.Background(), userID, orgID).Execute())
-	showOutput(cCtx, userTableFields(), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully removed user %s from organization %s\n", userID, orgID)
-	}
+func deleteUserFromOrg(ctx *cli.Context, userID, orgID string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.UsersApi.
+		DeleteUserFromOrganization(ctx.Context, userID, orgID).
+		Execute())
+	show(ctx, userTableFields(), res)
+	showSuccessfully(ctx, fmt.Sprintf("removed user %s from organization %s\n", userID, orgID))
 	return nil
 }
 
-func getCurrent(cCtx *cli.Context, c *client.APIClient) error {
-	user := processApiResponse(c.UsersApi.GetUser(context.Background(), "me").Execute())
-	showOutput(cCtx, userTableFields(), user)
+func getCurrent(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.UsersApi.
+		GetUser(ctx.Context, "me").
+		Execute())
+	show(ctx, userTableFields(), res)
 	return nil
 }

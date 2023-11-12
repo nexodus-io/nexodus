@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -51,7 +51,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 			rx := strconv.FormatInt(peer.Rx, 10)
 			handshakeTime, err := util.ParseTime(peer.LatestHandshake)
 			if err != nil {
-				log.Printf("Unable to parse LatestHandshake to time: %v", err)
+				fmt.Fprintln(os.Stderr, "Unable to parse LatestHandshake to time:", err)
 			}
 			handshake := "None"
 			if !handshakeTime.IsZero() {
@@ -68,7 +68,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 
 	err = FormatOutput(encodeOut, peers)
 	if err != nil {
-		log.Fatalf("Failed to print output: %v", err)
+		Fatalf("Failed to print output: %v", err)
 	}
 
 	return nil
