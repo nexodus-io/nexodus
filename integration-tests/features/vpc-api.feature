@@ -143,7 +143,7 @@ Feature: Organization API
       """
       {
         "error": "operation not allowed",
-        "reason": "vpc cannot be delete while devices are still attached"
+        "reason": "vpc cannot be deleted while devices are still attached"
       }
       """
 

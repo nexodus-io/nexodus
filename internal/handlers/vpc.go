@@ -129,7 +129,7 @@ func (api *API) CreateVPC(c *gin.Context) {
 		}
 
 		// Create a default security group for the organization
-		_, err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
+		err := api.createDefaultSecurityGroup(ctx, tx, vpc.ID, org.ID)
 		if err != nil {
 			return fmt.Errorf("failed to create default security group for VPC: %w", err)
 		}
@@ -382,9 +382,18 @@ func (api *API) DeleteVPC(c *gin.Context) {
 		api.SendInternalServerError(c, result.Error)
 		return
 	}
-
 	if count > 0 {
-		c.JSON(http.StatusBadRequest, models.NewNotAllowedError("vpc cannot be delete while devices are still attached"))
+		c.JSON(http.StatusBadRequest, models.NewNotAllowedError("vpc cannot be deleted while devices are still attached"))
+		return
+	}
+
+	// Cascade delete related records
+	if res := db.Where("vpc_id = ?", id).Delete(&models.RegKey{}); res.Error != nil {
+		api.SendInternalServerError(c, res.Error)
+		return
+	}
+	if res := db.Where("vpc_id = ?", id).Delete(&models.SecurityGroup{}); res.Error != nil {
+		api.SendInternalServerError(c, res.Error)
 		return
 	}
 

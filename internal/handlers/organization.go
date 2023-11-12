@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -10,8 +9,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"net/http"
+	"time"
 )
 
 type errDuplicateOrganization struct {
@@ -228,33 +227,75 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	}
 
 	var org models.Organization
-	db := api.db.WithContext(ctx)
-	result := api.OrganizationIsReadableByCurrentUser(c, db).
-		First(&org, "id = ?", orgID)
+	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
-		} else {
-			api.SendInternalServerError(c, result.Error)
+		result := api.OrganizationIsReadableByCurrentUser(c, tx).
+			First(&org, "id = ?", orgID)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("organization"))
+			} else {
+				return result.Error
+			}
 		}
-		return
-	}
 
-	type userOrgMapping struct {
-		UserID         string
-		OrganizationID uuid.UUID
-	}
-	var usersInOrg []userOrgMapping
-	if res := db.Table("user_organizations").Select("user_id", "organization_id").Where("organization_id = ?", org.ID).Scan(&usersInOrg); res.Error != nil {
-		api.SendInternalServerError(c, res.Error)
-		return
-	}
+		if org.ID == org.OwnerID {
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default organization cannot be deleted"))
+		}
 
-	if res := api.db.Select(clause.Associations).Delete(&org); res.Error != nil {
-		api.SendInternalServerError(c, fmt.Errorf("failed to delete the organization: %w", err))
-		return
+		return deleteOrganization(tx, orgID)
+	})
+
+	var apiResponseError *ApiResponseError
+	if errors.As(err, &apiResponseError) {
+		c.JSON(apiResponseError.Status, apiResponseError.Body)
+	} else {
+		api.SendInternalServerError(c, err)
 	}
 
 	c.JSON(http.StatusOK, org)
+}
+
+func deleteOrganization(tx *gorm.DB, orgID uuid.UUID) error {
+	var count int64
+	result := tx.Model(&models.Device{}).Where("organization_id = ?", orgID).Count(&count)
+	if result.Error != nil {
+		return result.Error
+	}
+	if count > 0 {
+		return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("organization cannot be deleted while devices are still attached"))
+	}
+
+	// Cascade delete related records
+	if res := tx.Where("organization_id = ?", orgID).Delete(&models.RegKey{}); res.Error != nil {
+		return result.Error
+	}
+	if res := tx.Where("organization_id = ?", orgID).Delete(&models.SecurityGroup{}); res.Error != nil {
+		return result.Error
+	}
+	if res := tx.Where("organization_id = ?", orgID).Delete(&models.VPC{}); res.Error != nil {
+		return result.Error
+	}
+	type UserOrganization struct {
+		UserID         uuid.UUID
+		OrganizationID uuid.UUID
+	}
+	if res := tx.Where("organization_id = ?", orgID).Delete(&UserOrganization{}); res.Error != nil {
+		return result.Error
+	}
+	if res := tx.Where("organization_id = ?", orgID).Delete(&models.Invitation{}); res.Error != nil {
+		return result.Error
+	}
+
+	// Null out unique fields so that the org can be created later with the same values
+	if res := tx.Model(&models.Organization{}).
+		Where("id = ?", orgID).
+		Updates(map[string]interface{}{
+			"name":       nil,
+			"deleted_at": gorm.DeletedAt{Time: time.Now(), Valid: true},
+		}); res.Error != nil {
+		return res.Error
+	}
+
+	return nil
 }

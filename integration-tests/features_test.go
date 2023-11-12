@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/cucumber/godog"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,8 +26,15 @@ func TestFeatures(t *testing.T) {
 		}
 	}
 
+	helper := NewHelper(t)
+	require := helper.require
+
 	tlsConfig := NewTLSConfig(t)
-	require := require.New(t)
+
+	// Some tests may need to run SQL assertions, so set up a port forward to the postgresql instance
+	ctx := context.Background()
+	db, cancel := helper.StartPortForwardToDB(ctx)
+	t.Cleanup(cancel)
 
 	for i := range cucumberOptions.Paths {
 		root := cucumberOptions.Paths[i]
@@ -63,7 +69,8 @@ func TestFeatures(t *testing.T) {
 				o.Paths = []string{path.Join(root, name)}
 
 				s := cucumber.NewTestSuite()
-				s.Context = context.Background()
+				s.DB = db
+				s.Context = ctx
 				s.ApiURL = "https://api.try.nexodus.127.0.0.1.nip.io"
 				s.TlsConfig = tlsConfig
 
@@ -80,4 +87,5 @@ func TestFeatures(t *testing.T) {
 		})
 		require.NoError(err)
 	}
+
 }
