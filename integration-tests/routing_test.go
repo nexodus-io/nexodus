@@ -64,6 +64,7 @@ func TestExitNode(t *testing.T) {
 		"--exit-node-client")
 
 	nexExitNodeServerHostname, err := helper.getNodeHostname(ctx, nexExitNodeServer)
+	require.NoError(err)
 
 	err = helper.startPortListener(ctx, nexExitNodeServer, webserver, protoTCP, "8000")
 	require.NoError(err)
@@ -82,7 +83,7 @@ func TestExitNode(t *testing.T) {
 	// Negative test since the exit node client is no longer in exit mode, the connection should fail since the exit node is no longer available
 	err = helper.startPortListener(ctx, nexExitNodeServer, webserver, protoTCP, "8080")
 	require.NoError(err)
-	connectResults, err = helper.connectToPort(ctx, nexExitNodeClient, webserver, protoTCP, "8080")
+	_, err = helper.connectToPort(ctx, nexExitNodeClient, webserver, protoTCP, "8080")
 	require.Error(err)
 }
 
