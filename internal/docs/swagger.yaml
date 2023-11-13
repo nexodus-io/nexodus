@@ -56,15 +56,21 @@ definitions:
   models.AddRegKey:
     properties:
       description:
+        description: Description of the registration key.
         type: string
       expires_at:
         description: ExpiresAt is optional, if set the registration key is only valid
           until the ExpiresAt time.
         type: string
+      security_group_id:
+        description: SecurityGroupId is the ID of the security group to assign to
+          the device.
+        type: string
       single_use:
         description: SingleUse only allows the registration key to be used once.
         type: boolean
       vpc_id:
+        description: VpcID is the ID of the VPC the device will join.
         type: string
     type: object
   models.AddSecurityGroup:
@@ -284,6 +290,7 @@ definitions:
           the device registration request.
         type: string
       description:
+        description: Description of the registration key.
         type: string
       device_id:
         description: DeviceId is set if the RegKey was created for single use
@@ -296,8 +303,14 @@ definitions:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
       owner_id:
+        description: OwnerID is the ID of the user that created the registration key.
+        type: string
+      security_group_id:
+        description: SecurityGroupId is the ID of the security group to assign to
+          the device.
         type: string
       vpc_id:
+        description: VpcID is the ID of the VPC the device will join.
         type: string
     type: object
   models.SecurityGroup:
@@ -367,6 +380,20 @@ definitions:
         type: boolean
       vpc_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
+  models.UpdateRegKey:
+    properties:
+      description:
+        description: Description of the registration key.
+        type: string
+      expires_at:
+        description: ExpiresAt is optional, if set the registration key is only valid
+          until the ExpiresAt time.
+        type: string
+      security_group_id:
+        description: SecurityGroupId is the ID of the security group to assign to
+          the device.
         type: string
     type: object
   models.UpdateSecurityGroup:
@@ -1349,6 +1376,55 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Get a RegKey
+      tags:
+      - RegKey
+    patch:
+      description: Updates a RegKey by ID
+      operationId: UpdateRegKey
+      parameters:
+      - description: RegKey ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: RegKey Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRegKey'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RegKey'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/models.ValidationError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Update RegKey
       tags:
       - RegKey
   /api/security-groups:

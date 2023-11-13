@@ -12,6 +12,14 @@ import {
   BooleanField,
   Show,
   useRecordContext,
+  useGetIdentity,
+  Edit,
+  SimpleForm,
+  TextInput,
+  ReferenceInput,
+  AutocompleteInput,
+  BooleanInput,
+  DateTimeInput,
 } from "react-admin";
 import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
@@ -193,5 +201,34 @@ const DeviceShowLayout: FC = () => {
       </div>
       <ConditionalOnlineSinceField />
     </SimpleShowLayout>
+  );
+};
+
+export const DeviceEdit = () => {
+  const { identity, isLoading, error } = useGetIdentity();
+  if (isLoading || error) {
+    return <div />;
+  }
+  return (
+    <Edit>
+      <SimpleForm>
+        <TextInput
+          label="Hostname"
+          name="hostname"
+          source="hostname"
+          fullWidth
+        />
+        <ReferenceInput name="vpc_id" source="vpc_id" reference="vpcs">
+          <AutocompleteInput fullWidth />
+        </ReferenceInput>
+        <ReferenceInput
+          name="security_group_id"
+          source="security_group_id"
+          reference="security-groups"
+        >
+          <AutocompleteInput fullWidth />
+        </ReferenceInput>
+      </SimpleForm>
+    </Edit>
   );
 };

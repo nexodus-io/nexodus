@@ -1241,3 +1241,54 @@ func TestVPCSubnetConflict(t *testing.T) {
 	_, err = getContainerIfaceIP(ctx, inetV4, "wg0", node1)
 	require.Error(err)
 }
+
+func TestRegKeyUpdate(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	password := "floofykittens"
+	username, cleanup := helper.createNewUser(ctx, password)
+	defer cleanup()
+
+	commandOut, err := helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json",
+		"reg-key", "create",
+	)
+	require.NoErrorf(err, "nexctl reg-key create error: %v\n", err)
+	regKey := models.RegKey{}
+	err = json.Unmarshal([]byte(commandOut), &regKey)
+	require.NoErrorf(err, "nexctl reg-key create error: %v\n", err)
+
+	commandOut, err = helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json",
+		"reg-key", "update",
+		"--reg-key-id", regKey.ID.String(),
+		"--description", "updated description",
+	)
+	require.NoErrorf(err, "nexctl reg-key update error: %v\n", err)
+	regKey2 := models.RegKey{}
+	err = json.Unmarshal([]byte(commandOut), &regKey2)
+	require.NoErrorf(err, "nexctl reg-key update error: %v\n", err)
+
+	require.Equal("updated description", regKey2.Description)
+
+	commandOut, err = helper.runCommand(nexctl,
+		"--username", username,
+		"--password", password,
+		"--output", "json",
+		"reg-key", "list",
+	)
+	require.NoErrorf(err, "nexctl reg-key list error: %v\n", err)
+	regKeys := []models.RegKey{}
+	err = json.Unmarshal([]byte(commandOut), &regKeys)
+	require.NoErrorf(err, "nexctl reg-key list error: %v\n", err)
+
+	require.Equal([]models.RegKey{regKey2}, regKeys)
+}

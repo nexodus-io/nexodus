@@ -126,59 +126,86 @@ type exitNode struct {
 	exitNodeOrigins       []wgPeerConfig
 }
 
+type Options struct {
+	AdvertiseCidrs          []string
+	ApiURL                  *url.URL
+	Context                 context.Context
+	ExitNodeClientEnabled   bool
+	ExitNodeOriginEnabled   bool
+	InsecureSkipTlsVerify   bool
+	ListenPort              int
+	LogLevel                *zap.AtomicLevel
+	Logger                  *zap.SugaredLogger
+	NetworkRouter           bool
+	NetworkRouterDisableNAT bool
+	Password                string
+	RegKey                  string
+	Relay                   bool
+	RelayOnly               bool
+	RequestedIP             string
+	StateDir                string
+	StateStore              state.Store
+	UserProvidedLocalIP     string
+	Username                string
+	UserspaceMode           bool
+	Version                 string
+	VpcId                   string
+	SecurityGroupId         string
+}
 type Nexodus struct {
-	wireguardPubKey          string
-	wireguardPvtKey          string
-	wireguardPubKeyInConfig  bool
-	tunnelIface              string
-	listenPort               int
-	vpcId                    string
-	vpc                      *public.ModelsVPC
-	requestedIP              string
-	userProvidedLocalIP      string
+	advertiseCidrs          []string
+	apiURL                  *url.URL
+	insecureSkipTlsVerify   bool
+	listenPort              int
+	logLevel                *zap.AtomicLevel
+	logger                  *zap.SugaredLogger
+	networkRouter           bool
+	networkRouterDisableNAT bool
+	password                string
+	regKey                  string
+	relay                   bool
+	requestedIP             string
+	stateDir                string
+	stateStore              state.Store
+	userProvidedLocalIP     string
+	username                string
+	version                 string
+	vpcId                   string
+	securityGroupId         string
+
+	userspaceWG
 	TunnelIP                 string
 	TunnelIpV6               string
-	advertiseCidrs           []string
-	relay                    bool
-	networkRouter            bool
-	networkRouterDisableNAT  bool
-	netRouterInterfaceMap    map[string]*net.Interface
-	relayWgIP                string
-	wgConfig                 wgConfig
 	client                   *client.APIClient
-	apiURL                   *url.URL
-	deviceCacheLock          sync.RWMutex
+	clientOptions            []client.Option
 	deviceCache              map[string]deviceCacheEntry
-	endpointLocalAddress     string
-	nodeReflexiveAddressIPv4 netip.AddrPort
-	reflexiveAddrStunSrc     string
-	hostname                 string
-	securityGroup            *public.ModelsSecurityGroup
-	needSecGroupReconcile    bool
-	symmetricNat             bool
-	ipv6Supported            bool
+	deviceCacheLock          sync.RWMutex
 	deviceReconciled         bool
-	os                       string
+	devicesInformer          *public.Informer[public.ModelsDevice]
+	endpointLocalAddress     string
 	exitNode                 exitNode
-	logger                   *zap.SugaredLogger
-	logLevel                 *zap.AtomicLevel
-	// See the NexdStatus* constants
-	status        int
-	statusMsg     string
-	version       string
-	username      string
-	password      string
-	skipTlsVerify bool
-	stateStore    state.Store
-	stateDir      string
-	userspaceWG
-	securityGroupsInformer *public.Informer[public.ModelsSecurityGroup]
-	devicesInformer        *public.Informer[public.ModelsDevice]
-	informerStop           context.CancelFunc
-	nexCtx                 context.Context
-	nexWg                  *sync.WaitGroup
-	regKey                 string
-	clientOptions          []client.Option
+	hostname                 string
+	informerStop             context.CancelFunc
+	ipv6Supported            bool
+	needSecGroupReconcile    bool
+	netRouterInterfaceMap    map[string]*net.Interface
+	nexCtx                   context.Context
+	nexWg                    *sync.WaitGroup
+	nodeReflexiveAddressIPv4 netip.AddrPort
+	os                       string
+	reflexiveAddrStunSrc     string
+	relayWgIP                string
+	securityGroup            *public.ModelsSecurityGroup
+	securityGroupsInformer   *public.Informer[public.ModelsSecurityGroup]
+	status                   int // See the NexdStatus* constants
+	statusMsg                string
+	symmetricNat             bool
+	tunnelIface              string
+	vpc                      *public.ModelsVPC
+	wgConfig                 wgConfig
+	wireguardPubKey          string
+	wireguardPubKeyInConfig  bool
+	wireguardPvtKey          string
 }
 
 type wgConfig struct {
@@ -199,8 +226,8 @@ type wgLocalConfig struct {
 	ListenPort int
 }
 
-func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *url.URL, regKey string, username string, password string, wgListenPort int, requestedIP string, userProvidedLocalIP string, advertiseCidrs []string, relay bool, relayOnly bool, networkRouterNode bool, networkRouterDisableNAT bool, exitNodeClientEnabled bool, exitNodeOriginEnabled bool, insecureSkipTlsVerify bool, version string, userspaceMode bool, stateStore state.Store, stateDir string, ctx context.Context, vpcId string) (*Nexodus, error) {
-	public.Logger = logger
+func New(o Options) (*Nexodus, error) {
+	public.Logger = o.Logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
@@ -211,42 +238,44 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 	}
 
 	nx := &Nexodus{
-		requestedIP:             requestedIP,
-		userProvidedLocalIP:     userProvidedLocalIP,
-		advertiseCidrs:          advertiseCidrs,
-		relay:                   relay,
-		networkRouter:           networkRouterNode,
-		networkRouterDisableNAT: networkRouterDisableNAT,
-		deviceCache:             make(map[string]deviceCacheEntry),
-		apiURL:                  apiURL,
-		hostname:                hostname,
-		symmetricNat:            relayOnly,
-		logger:                  logger,
-		logLevel:                logLevel,
-		status:                  NexdStatusStarting,
-		version:                 version,
-		regKey:                  regKey,
-		username:                username,
-		password:                password,
-		skipTlsVerify:           insecureSkipTlsVerify,
-		stateStore:              stateStore,
-		stateDir:                stateDir,
-		vpcId:                   vpcId,
+		requestedIP:             o.RequestedIP,
+		userProvidedLocalIP:     o.UserProvidedLocalIP,
+		advertiseCidrs:          o.AdvertiseCidrs,
+		relay:                   o.Relay,
+		networkRouter:           o.NetworkRouter,
+		networkRouterDisableNAT: o.NetworkRouterDisableNAT,
+		apiURL:                  o.ApiURL,
+		symmetricNat:            o.RelayOnly,
+		logger:                  o.Logger,
+		logLevel:                o.LogLevel,
+		version:                 o.Version,
+		regKey:                  o.RegKey,
+		username:                o.Username,
+		password:                o.Password,
+		insecureSkipTlsVerify:   o.InsecureSkipTlsVerify,
+		stateStore:              o.StateStore,
+		stateDir:                o.StateDir,
+		vpcId:                   o.VpcId,
+		securityGroupId:         o.SecurityGroupId,
+
+		hostname:    hostname,
+		deviceCache: make(map[string]deviceCacheEntry),
+		status:      NexdStatusStarting,
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
 		exitNode: exitNode{
-			exitNodeClientEnabled: exitNodeClientEnabled,
-			exitNodeOriginEnabled: exitNodeOriginEnabled,
+			exitNodeClientEnabled: o.ExitNodeClientEnabled,
+			exitNodeOriginEnabled: o.ExitNodeOriginEnabled,
 		},
 	}
 
-	err = nx.setListenPort(wgListenPort)
+	err = nx.setListenPort(o.ListenPort)
 	if err != nil {
 		return nil, err
 	}
 
-	nx.userspaceMode = userspaceMode
+	nx.userspaceMode = o.UserspaceMode
 
 	if !nx.userspaceMode {
 		isOk, err := isElevated()
@@ -264,11 +293,11 @@ func NewNexodus(logger *zap.SugaredLogger, logLevel *zap.AtomicLevel, apiURL *ur
 	// remove orphaned wg interfaces from previous node joins
 	nx.removeExistingInterface()
 
-	if err := nx.symmetricNatDisco(ctx); err != nil {
+	if err := nx.symmetricNatDisco(o.Context); err != nil {
 		nx.logger.Warn(err)
 	}
 
-	err = nx.migrateLegacyState(stateDir)
+	err = nx.migrateLegacyState(o.StateDir)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +472,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			options = append(options, client.WithPasswordGrant(nx.username, nx.password))
 		}
 	}
-	if nx.skipTlsVerify { // #nosec G402
+	if nx.insecureSkipTlsVerify { // #nosec G402
 		options = append(options, client.WithTLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		}))
@@ -463,12 +492,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := nx.handleKeys(); err != nil {
 		return fmt.Errorf("handleKeys: %w", err)
 	}
-	userId, org, err := nx.fetchUserIdAndVpc(ctx)
+	userId, vpc, err := nx.fetchUserIdAndVpc(ctx)
 	if err != nil {
 		return err
 	}
 
-	nx.vpc = org
+	nx.vpc = vpc
 
 	// User requested ip --request-ip takes precedent
 	if nx.userProvidedLocalIP != "" {
@@ -659,16 +688,19 @@ func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.Model
 func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (string, *public.ModelsVPC, error) {
 
 	// get the certs used to validate the JWT.
-	regToken, _, err := nx.client.RegKeyApi.GetRegKey(ctx, "me").Execute()
+	regKeyModel, _, err := nx.client.RegKeyApi.GetRegKey(ctx, "me").Execute()
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
 	}
 
-	vpc, _, err := nx.client.VPCApi.GetVPC(ctx, regToken.VpcId).Execute()
+	nx.securityGroupId = regKeyModel.SecurityGroupId
+	nx.vpcId = regKeyModel.VpcId
+
+	vpc, _, err := nx.client.VPCApi.GetVPC(ctx, regKeyModel.VpcId).Execute()
 	if err != nil {
 		return "", nil, err
 	}
-	return regToken.OwnerId, vpc, nil
+	return regKeyModel.OwnerId, vpc, nil
 }
 
 func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *public.ModelsVPC, error) {

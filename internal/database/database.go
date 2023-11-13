@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231108_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231112_0000"
+	"github.com/nexodus-io/nexodus/internal/database/migration_20231113_0000"
 
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231031_0000"
 	"github.com/nexodus-io/nexodus/internal/database/migration_20231106_0000"
@@ -99,6 +100,7 @@ func Migrations() *migrations.Migrations {
 			migration_20231107_0000.New(),
 			migration_20231108_0000.New(),
 			migration_20231112_0000.New(),
+			migration_20231113_0000.New(),
 		},
 	}
 }

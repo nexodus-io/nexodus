@@ -22,9 +22,10 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --exit-node-client   Enable this node to use an available exit node (default: false) [$NEXD_EXIT_NODE_CLIENT]
-   --help, -h           Show help
-   --unix-socket value  Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
+   --exit-node-client         Enable this node to use an available exit node (default: false) [$NEXD_EXIT_NODE_CLIENT]
+   --help, -h                 Show help
+   --security-group-id value  Optional security group ID to use when registering used to secure this device [$NEXAPI_SECURITY_GROUP_ID]
+   --unix-socket value        Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
 
    Agent Options
 

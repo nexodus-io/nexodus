@@ -28,7 +28,7 @@ export const CustomMenu = (props: MenuProps) => {
         leftIcon={<InvitationIcon />}
       />
       <MenuItemLink
-        to="/security-groups"
+        to="/_security-groups"
         primaryText="Security Groups"
         leftIcon={<SecurityIcon />}
       />

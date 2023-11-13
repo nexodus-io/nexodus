@@ -141,6 +141,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		private.GET("/reg-keys", api.ListRegKeys)
 		private.GET("/reg-keys/:id", api.GetRegKey)
 		private.POST("/reg-keys", api.CreateRegKey)
+		private.PATCH("/reg-keys/:id", api.UpdateRegKey)
 		private.DELETE("/reg-keys/:id", api.DeleteRegKey)
 
 		// Devices

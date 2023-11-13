@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"net/url"
 	"os"
 	"os/signal"
@@ -141,31 +142,43 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	}
 	defer util.IgnoreError(stateStore.Close)
 
-	nex, err := nexodus.NewNexodus(
-		logger.Sugar(),
-		logLevel,
-		apiURL,
-		cCtx.String("reg-key"),
-		cCtx.String("username"),
-		cCtx.String("password"),
-		cCtx.Int("listen-port"),
-		cCtx.String("request-ip"),
-		cCtx.String("local-endpoint-ip"),
-		advertiseCidr,
-		relayNode,
-		cCtx.Bool("relay-only"),
-		cCtx.Bool("network-router"),
-		cCtx.Bool("disable-nat"),
-		cCtx.Bool("exit-node-client"),
-		cCtx.Bool("exit-node"),
-		cCtx.Bool("insecure-skip-tls-verify"),
-		Version,
-		userspaceMode,
-		stateStore,
-		stateDir,
-		ctx,
-		cCtx.String("vpc-id"),
-	)
+	if cCtx.IsSet("reg-key") {
+		if cCtx.IsSet("security-group-id") {
+			return fmt.Errorf("the --reg-key and --security-group-id flags are mutually exclusive")
+		}
+		if cCtx.IsSet("vpc-id") {
+			return fmt.Errorf("the --reg-key and --vpc-id flags are mutually exclusive")
+		}
+	}
+
+	options := nexodus.Options{
+		Logger:                  logger.Sugar(),
+		LogLevel:                logLevel,
+		ApiURL:                  apiURL,
+		RegKey:                  cCtx.String("reg-key"),
+		Username:                cCtx.String("username"),
+		Password:                cCtx.String("password"),
+		ListenPort:              cCtx.Int("listen-port"),
+		RequestedIP:             cCtx.String("request-ip"),
+		UserProvidedLocalIP:     cCtx.String("local-endpoint-ip"),
+		AdvertiseCidrs:          advertiseCidr,
+		Relay:                   relayNode,
+		RelayOnly:               cCtx.Bool("relay-only"),
+		NetworkRouter:           cCtx.Bool("network-router"),
+		NetworkRouterDisableNAT: cCtx.Bool("disable-nat"),
+		ExitNodeClientEnabled:   cCtx.Bool("exit-node-client"),
+		ExitNodeOriginEnabled:   cCtx.Bool("exit-node"),
+		InsecureSkipTlsVerify:   cCtx.Bool("insecure-skip-tls-verify"),
+		Version:                 Version,
+		UserspaceMode:           userspaceMode,
+		StateStore:              stateStore,
+		StateDir:                stateDir,
+		Context:                 ctx,
+		VpcId:                   parseUUIDFlag(cCtx, "vpc-id"),
+		SecurityGroupId:         parseUUIDFlag(cCtx, "security-group-id"),
+	}
+
+	nex, err := nexodus.New(options)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
@@ -205,6 +218,18 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	wg.Wait()
 
 	return nil
+}
+
+func parseUUIDFlag(ctx *cli.Context, flagName string) string {
+	if !ctx.IsSet(flagName) {
+		return ""
+	}
+	uuidStr := ctx.String(flagName)
+	uuid, err := uuid.Parse(uuidStr)
+	if err != nil {
+		log.Fatalf("invalid flag --%s: %s", flagName, err)
+	}
+	return uuid.String()
 }
 
 var additionalPlatformFlags []cli.Flag = nil
@@ -469,6 +494,12 @@ func main() {
 				Value:    false,
 				EnvVars:  []string{"NEXD_EXIT_NODE_CLIENT"},
 				Required: false,
+			},
+			&cli.StringFlag{
+				Name:     "security-group-id",
+				Usage:    "Optional security group ID to use when registering used to secure this device",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SECURITY_GROUP_ID"},
 			},
 			&cli.StringFlag{
 				Name:     "reg-key",

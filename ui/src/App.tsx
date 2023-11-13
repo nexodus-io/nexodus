@@ -14,7 +14,7 @@ import VPCIcon from "@mui/icons-material/Cloud";
 
 // pages
 import { UserShow, UserList } from "./pages/Users";
-import { DeviceList, DeviceShow } from "./pages/Devices";
+import { DeviceEdit, DeviceList, DeviceShow } from "./pages/Devices";
 import {
   OrganizationList,
   OrganizationShow,
@@ -33,11 +33,27 @@ import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
 
 // components
 import { CustomMenu } from "./layout/Menus";
-import { RegKeyCreate, RegKeyList, RegKeyShow } from "./pages/RegKeys";
+import {
+  RegKeyCreate,
+  RegKeyEdit,
+  RegKeyList,
+  RegKeyShow,
+} from "./pages/RegKeys";
 
-const fetchJson = (url: URL, options: any = {}) => {
+const fetchJson = (url: string, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
   options.credentials = "include";
+  // some of the PUT api calls should be converted to PATCH
+  if (options.method === "PUT") {
+    if (
+      url.startsWith(`${backend}/api/reg-keys/`) ||
+      url.startsWith(`${backend}/api/devices/`) ||
+      url.startsWith(`${backend}/api/security-groups/`) ||
+      url.startsWith(`${backend}/api/vpcs/`)
+    ) {
+      options.method = "PATCH";
+    }
+  }
   return fetchUtils.fetchJson(url, options);
 };
 
@@ -51,7 +67,7 @@ const baseDataProvider = simpleRestProvider(
 const dataProvider = {
   ...baseDataProvider,
   getFlag: (name: string) => {
-    return fetchJson(new URL(`${backend}/api/fflags/${name}`)).then(
+    return fetchJson(`${backend}/api/fflags/${name}`).then(
       (response) => response,
     );
   },
@@ -77,8 +93,13 @@ const App = () => {
         recordRepresentation={(record) => `${record.username}`}
       />
       <CustomRoutes>
-        <Route path="/security-groups" element={<SecurityGroups />} />
+        <Route path="/_security-groups" element={<SecurityGroups />} />
       </CustomRoutes>
+      {/* define security-groups so that it can be used as a reference from other resources. */}
+      <Resource
+        name="security-groups"
+        recordRepresentation={(record) => `${record.description}`}
+      />
       <Resource
         name="organizations"
         list={OrganizationList}
@@ -100,6 +121,7 @@ const App = () => {
         list={DeviceList}
         show={DeviceShow}
         icon={DeviceIcon}
+        edit={DeviceEdit}
         recordRepresentation={(record) => `${record.hostname}`}
       />
       <Resource
@@ -114,6 +136,7 @@ const App = () => {
         name="reg-keys"
         list={RegKeyList}
         show={RegKeyShow}
+        edit={RegKeyEdit}
         icon={RegKeyIcon}
         create={RegKeyCreate}
         recordRepresentation={(record) => `${record.id}`}
