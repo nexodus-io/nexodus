@@ -27,6 +27,7 @@ model_models_login_end_request.go
 model_models_login_end_response.go
 model_models_login_start_response.go
 model_models_logout_response.go
+model_models_not_allowed_error.go
 model_models_organization.go
 model_models_refresh_token_request.go
 model_models_refresh_token_response.go

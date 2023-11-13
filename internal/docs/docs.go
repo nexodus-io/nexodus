@@ -1852,7 +1852,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.BaseError"
+                            "$ref": "#/definitions/models.NotAllowedError"
                         }
                     },
                     "429": {
@@ -3090,6 +3090,18 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "logout_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.NotAllowedError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "something bad"
+                },
+                "reason": {
                     "type": "string"
                 }
             }

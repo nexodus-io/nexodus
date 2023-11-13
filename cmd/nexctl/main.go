@@ -315,6 +315,13 @@ func processApiResponse[T any](resp T, httpResp *http.Response, err error) T {
 				log.Fatalf("error: %s, status: %d", err.Error, httpResp.StatusCode)
 			case public.ModelsConflictsError:
 				log.Fatalf("error: %s: conflicting id: %s, status: %d", err.Error, err.Id, httpResp.StatusCode)
+			case public.ModelsNotAllowedError:
+				message := fmt.Sprintf("error: %s", err.Error)
+				if err.Reason != "" {
+					message += fmt.Sprintf(", reason: %s", err.Reason)
+				}
+				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
+				log.Fatalf(message)
 			case public.ModelsValidationError:
 				message := fmt.Sprintf("error: %s", err.Error)
 				if err.Field != "" {

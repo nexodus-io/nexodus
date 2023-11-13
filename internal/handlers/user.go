@@ -188,8 +188,8 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
-// @Failure		 400  {object}  models.BaseError
-// @Failure      400  {object}  models.BaseError
+// @Failure		 400  {object}  models.ValidationError
+// @Failure      400  {object}  models.NotAllowedError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users/{id} [delete]
