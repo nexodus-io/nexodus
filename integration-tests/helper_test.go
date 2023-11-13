@@ -390,7 +390,7 @@ func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, cl
 	helper.require.NoError(err)
 	_ = l.Close()
 
-	service := fmt.Sprintf("service/%s", dbHost)
+	service := fmt.Sprintf("service/%s", strings.TrimSuffix(dbHost, ".nexodus.svc"))
 	portMapping := fmt.Sprintf("%s:%s", localPort, dbPort)
 	cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", service, portMapping)
 	cmd.Stdout = io.Discard
