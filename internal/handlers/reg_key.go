@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v3"
 	"github.com/google/uuid"
@@ -15,8 +18,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
-	"net/http"
-	"time"
 )
 
 // CreateRegKey creates a RegKey
@@ -136,10 +137,6 @@ func (api *API) UpdateRegKey(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
-
-	if !api.secGroupsEnabled(c) {
-		return
-	}
 
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
