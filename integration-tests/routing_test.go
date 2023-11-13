@@ -18,15 +18,14 @@ import (
 
 // TestExitNode performs the following exit node tests:
 // 1. Start two nodes, one is an exit node client and the other is an exit node origin/server.
-// 2. Curl an Internet address from the exit node client to ensure connectivity via the origin server.
-// 3. Kill nexd on the origin server.
-// 4. Negative test from the exit node client to ensure connectivity is unavailable origin server.
-// 5. Use nexctl to disable exit node client configuration since the origin server is no longer available.
-// 6. Curl an Internet address from the exit node client to ensure connectivity is restored.
-// +------------------------+                   +------------------------+                 +------------------------+
-// |               wg0/eth0 |    default-net    | eth0/wg0               |   default-net   |        Internet        |
-// | nexd-exit-node-client  |===================| nexd-exit-node-server  |=================|                        |
-// +------------------------+                   +------------------------+                 +------------------------+
+// 2. Create a loopback on the origin server that will only be reachable if tunneling through the exit node.
+// 3. Connect from the exit node client to ensure connectivity via the origin server.
+// 4. Use nexctl to disable exit node client configuration since the origin server is no longer available.
+// 5. Negative test from the exit node client to ensure connectivity is unavailable origin server.
+// +------------------------+                   +------------------------+
+// |               wg0/eth0 |    default-net    | eth0/wg0     loopback0 |
+// | nexd-exit-node-client  |===================| nexd-exit-node-server  |
+// +------------------------+                   +------------------------+
 func TestExitNode(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
@@ -37,6 +36,8 @@ func TestExitNode(t *testing.T) {
 	password := "floofykittens"
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
+	webserverIP := "10.40.1.1/32"
+	webserver := "10.40.1.1"
 
 	nexExitNodeClient, stop := helper.CreateNodePrivileged(ctx, "exit-client", []string{defaultNetwork}, enableV6)
 	defer stop()
@@ -44,36 +45,31 @@ func TestExitNode(t *testing.T) {
 	nexExitNodeServer, stop := helper.CreateNodePrivileged(ctx, "exit-server", []string{defaultNetwork}, enableV6)
 	defer stop()
 
+	// add a loopback to the exit node server/origin
+	_, err := helper.containerExec(ctx, nexExitNodeServer, []string{"ip", "addr", "add", webserverIP, "dev", "lo"})
+	require.NoError(err)
+
 	helper.runNexd(ctx, nexExitNodeServer,
 		"--username", username,
 		"--password", password,
 		"router",
 		"--exit-node")
 
-	// TODO: replace the sleep with a retry of the command 'nexctl --output=json nexd exit-node list' until an exit node is present
-	time.Sleep(time.Second * 20)
+	// Since we are starting the exit node client at runtime, we are assuming the exit node route has propagated
+	time.Sleep(time.Second * 10)
 
 	helper.runNexd(ctx, nexExitNodeClient,
 		"--username", username,
 		"--password", password,
 		"--exit-node-client")
 
-	nexRouterSite1IP, err := getContainerIfaceIP(ctx, inetV4, "eth0", nexExitNodeClient)
-	require.NoError(err)
+	nexExitNodeServerHostname, err := helper.getNodeHostname(ctx, nexExitNodeServer)
 
-	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s", nexRouterSite1IP)
-	curlOut, err := helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
+	err = helper.startPortListener(ctx, nexExitNodeServer, webserver, protoTCP, "8000")
 	require.NoError(err)
-	helper.Logf("exit node client curl output: %s", curlOut)
-
-	// Kill nexodus on the exit node server
-	_, err = helper.containerExec(ctx, nexExitNodeServer, []string{"killall", "nexd"})
+	connectResults, err := helper.connectToPort(ctx, nexExitNodeClient, webserver, protoTCP, "8000")
 	require.NoError(err)
-
-	// Negative test since the exit node client is now orphaned, the curl should fail since the exit node is no longer available
-	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s (should fail)", nexRouterSite1IP)
-	_, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
-	require.Error(err)
+	require.Equal(nexExitNodeServerHostname, connectResults)
 
 	// Disable the exit node client on the node to return the normal traffic flow
 	disableOut, err := helper.containerExec(ctx, nexExitNodeClient, []string{"/bin/nexctl", "nexd", "exit-node", "disable"})
@@ -82,10 +78,12 @@ func TestExitNode(t *testing.T) {
 
 	// Sleep for 1s to ensure the routing and nftable rules are removed before the next test (likely unnecessary but there to avoid a race condition/flake)
 	time.Sleep(time.Second * 1)
-	helper.Logf("Curling 1.1.1.1 from nexRouterSite1 %s (should succeed)", nexRouterSite1IP)
-	curlOut, err = helper.containerExec(ctx, nexExitNodeClient, []string{"curl", "--silent", "--show-error", "-m", "10", "1.1.1.1"})
-	helper.Logf("exit node client curl output: %s", curlOut)
+
+	// Negative test since the exit node client is no longer in exit mode, the connection should fail since the exit node is no longer available
+	err = helper.startPortListener(ctx, nexExitNodeServer, webserver, protoTCP, "8080")
 	require.NoError(err)
+	connectResults, err = helper.connectToPort(ctx, nexExitNodeClient, webserver, protoTCP, "8080")
+	require.Error(err)
 }
 
 // CreateNodePrivileged creates a privileged container
