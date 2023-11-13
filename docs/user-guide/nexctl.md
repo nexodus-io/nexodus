@@ -117,7 +117,7 @@ COMMANDS:
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
-   --unix-socket value  Path to the unix socket nexd is listening against (default: /run/nexd.sock)
+   --unix-socket value  Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
    --help, -h           Show help
 ```
 
