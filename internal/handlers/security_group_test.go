@@ -64,7 +64,7 @@ func (suite *HandlerTestSuite) TestCreateGetSecurityGroups() {
 			http.MethodPost,
 			"/security-groups", "/security-groups",
 			func(c *gin.Context) {
-				c.Set("nexodus.secGroupsEnabled", "true")
+				c.Set("nexodus.fflag.security-groups", true)
 				suite.api.CreateSecurityGroup(c)
 			},
 			bytes.NewBuffer(resBody),
@@ -120,7 +120,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 		http.MethodPost,
 		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.CreateSecurityGroup(c)
 		},
 		bytes.NewBuffer(resBody),
@@ -141,7 +141,7 @@ func (suite *HandlerTestSuite) TestDeleteSecurityGroup() {
 		http.MethodDelete,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actual.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.DeleteSecurityGroup(c)
 		},
 		nil,
@@ -188,7 +188,7 @@ func (suite *HandlerTestSuite) TestListSecurityGroups() {
 			http.MethodPost,
 			"/security-groups", "/security-groups",
 			func(c *gin.Context) {
-				c.Set("nexodus.secGroupsEnabled", "true")
+				c.Set("nexodus.fflag.security-groups", true)
 				suite.api.CreateSecurityGroup(c)
 			},
 			bytes.NewBuffer(resBody),
@@ -237,7 +237,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 		http.MethodPost,
 		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.CreateSecurityGroup(c)
 		},
 		bytes.NewBuffer(resBody),
@@ -266,7 +266,7 @@ func (suite *HandlerTestSuite) TestUpdateSecurityGroup() {
 		http.MethodPatch,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.UpdateSecurityGroup(c)
 		},
 		bytes.NewBuffer(updateBody),
@@ -306,7 +306,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 		http.MethodPost,
 		"/security-groups", "/security-groups",
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.CreateSecurityGroup(c)
 		},
 		bytes.NewBuffer(resBody),
@@ -337,7 +337,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 		http.MethodPatch,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.UpdateSecurityGroup(c)
 		},
 		bytes.NewBuffer(updateBody),
@@ -363,7 +363,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 		http.MethodPatch,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.UpdateSecurityGroup(c)
 		},
 		bytes.NewBuffer(updateBody),
@@ -389,7 +389,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 		http.MethodPatch,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.UpdateSecurityGroup(c)
 		},
 		bytes.NewBuffer(updateBody),
@@ -415,7 +415,7 @@ func (suite *HandlerTestSuite) TestInvalidUpdateSecurityGroup() {
 		http.MethodPatch,
 		"/security-groups/:id", fmt.Sprintf("/security-groups/%s", actualGroup.ID),
 		func(c *gin.Context) {
-			c.Set("nexodus.secGroupsEnabled", "true")
+			c.Set("nexodus.fflag.security-groups", true)
 			suite.api.UpdateSecurityGroup(c)
 		},
 		bytes.NewBuffer(updateBody),
