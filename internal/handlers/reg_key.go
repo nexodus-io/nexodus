@@ -76,7 +76,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 			OwnerID:        userId,
 			VpcID:          vpc.ID,
 			OrganizationID: vpc.OrganizationID,
-			BearerToken:    "RT:" + token.String(),
+			BearerToken:    "RK:" + token.String(),
 			Description:    request.Description,
 			ExpiresAt:      request.ExpiresAt,
 		}

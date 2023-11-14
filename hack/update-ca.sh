@@ -21,16 +21,16 @@ fi
 if [ "$1" = "prod" ]; then
   cat << EOF > ~/.bash_history
 NEXD_LOGLEVEL=debug nexd --service-url https://qa.nexodus.io
-NEXD_LOGLEVEL=debug nexd --service-url https://try.nexodus.io
+NEXD_LOGLEVEL=debug nexd
 nexd --service-url https://qa.nexodus.io
-nexd --service-url https://try.nexodus.io
+nexd
 EOF
 
   cat << EOF > ~/.motd
 
 To connect this container to the nexodus network, try running:
 
-    nexd --service-url https://try.nexodus.io
+    nexd
 
 Press the up arrow to get this command from bash history.
 
@@ -40,17 +40,18 @@ else
   cat << EOF > ~/.bash_history
 NEXD_LOGLEVEL=debug nexd --service-url https://try.nexodus.io
 NEXD_LOGLEVEL=debug nexd --service-url https://qa.nexodus.io
-NEXD_LOGLEVEL=debug nexd --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens
+NEXD_LOGLEVEL=debug nexd --service-url https://try.nexodus.127.0.0.1.nip.io --reg-key RK:dev-admin-reg-key
 nexd --service-url https://try.nexodus.io
 nexd --service-url https://qa.nexodus.io
-nexd --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens
+nexctl --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens
+nexd --service-url https://try.nexodus.127.0.0.1.nip.io --reg-key RK:dev-admin-reg-key
 EOF
 
   cat << EOF > ~/.motd
 
 To connect this container to the nexodus network, try running:
 
-    nexd --service-url https://try.nexodus.127.0.0.1.nip.io --username admin --password floofykittens
+    nexd --service-url https://try.nexodus.127.0.0.1.nip.io --reg-key RK:dev-admin-reg-key
 
 Commands for using a dev service, qa.nexodus.io, or try.nexodus.io are in bash history.
 
