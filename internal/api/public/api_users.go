@@ -112,7 +112,7 @@ func (a *UsersApiService) DeleteUserExecute(r ApiDeleteUserRequest) (*ModelsUser
 			error: localVarHTTPResponse.Status,
 		}
 		if localVarHTTPResponse.StatusCode == 400 {
-			var v ModelsBaseError
+			var v ModelsNotAllowedError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {
 				newErr.error = err.Error()

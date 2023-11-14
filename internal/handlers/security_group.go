@@ -364,17 +364,17 @@ func (api *API) DeleteSecurityGroup(c *gin.Context) {
 			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		}
 
+		if sg.ID == sg.VpcId {
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default security group cannot be deleted"))
+		}
+
 		var count int64
 		res := tx.Model(&models.Device{}).Where("security_group_id = ?", secGroupID).Count(&count)
 		if res.Error != nil {
 			return res.Error
 		}
 		if count > 0 {
-			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("security group cannot be delete while devices are still using it"))
-		}
-
-		if sg.ID == sg.VpcId {
-			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default security group cannot be deleted"))
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("security group cannot be deleted while devices are still using it"))
 		}
 
 		if res = tx.Delete(&sg, "id = ?", sg.ID); res.Error != nil {
@@ -506,10 +506,14 @@ func (api *API) UpdateSecurityGroup(c *gin.Context) {
 }
 
 // createDefaultSecurityGroup creates the default security group for the organization
-func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID, orgId uuid.UUID) (models.SecurityGroup, error) {
+func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpcId uuid.UUID, orgId uuid.UUID) error {
 
 	// Create the default security group
-	sg := models.SecurityGroup{
+	if db == nil {
+		db = api.db.WithContext(ctx)
+	}
+
+	res := db.Create(&models.SecurityGroup{
 		Base: models.Base{
 			ID: vpcId,
 		},
@@ -518,18 +522,14 @@ func (api *API) createDefaultSecurityGroup(ctx context.Context, db *gorm.DB, vpc
 		Description:    "default vpc security group",
 		InboundRules:   []models.SecurityRule{},
 		OutboundRules:  []models.SecurityRule{},
-	}
-
-	if db == nil {
-		db = api.db.WithContext(ctx)
-	}
-
-	res := db.Create(&sg)
+	})
 	if res.Error != nil {
-		return models.SecurityGroup{}, fmt.Errorf("failed to create the default organization security group: %w", res.Error)
+		if database.IsDuplicateError(res.Error) {
+			res.Error = gorm.ErrDuplicatedKey
+		}
+		return res.Error
 	}
-
-	return sg, nil
+	return nil
 }
 
 // ValidateUpdateSecurityGroupRules validates rules for updating the security group

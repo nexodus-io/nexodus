@@ -32,72 +32,68 @@ func (api *API) UserIsCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	return db.Where("id = ?", userId)
 }
 
-func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, idpUsername string) (uuid.UUID, error) {
-	ctx, span := tracer.Start(ctx, "createUserIfNotExists")
-	defer span.End()
-	span.SetAttributes(
+func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userName string) (uuid.UUID, error) {
+	ctx, span := tracer.Start(ctx, "CreateUserIfNotExists", trace.WithAttributes(
 		attribute.String("ipd_id", idpId),
-		attribute.String("username", idpUsername),
-	)
+		attribute.String("username", userName),
+	))
+	defer span.End()
 	var user models.User
-	var userID uuid.UUID
 
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
 		return api.transaction(ctx, func(tx *gorm.DB) error {
 
-			// First lets check if the user has ever existed in the database
-			res := tx.Unscoped().First(&user, "idp_id = ?", idpId)
-
-			// If the user exists, then lets restore their status in the database
-			if res.Error == nil {
-
-				fieldsToUpdate := []interface{}{}
-
-				// Check if the UserName has changed since the last time we saw this user
-				if user.UserName != idpUsername {
-					user.UserName = idpUsername
-					fieldsToUpdate = append(fieldsToUpdate, "UserName")
-				}
-
-				// do we need to undelete it?
-				if user.DeletedAt.Valid {
-					user.DeletedAt = gorm.DeletedAt{}
-					fieldsToUpdate = append(fieldsToUpdate, "DeletedAt")
-				}
-
-				if len(fieldsToUpdate) > 0 {
-					if res := tx.Unscoped().
-						Model(&user).
-						Select(fieldsToUpdate[0], fieldsToUpdate[1:]...).
-						Updates(&user); res.Error != nil {
-						return res.Error
-					}
-				}
-
-				userID = user.ID
-				err := api.createUserOrgIfNotExists(ctx, tx, userID, idpUsername)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}
-
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("find failed record for idp_id %s: %w", idpId, res.Error)
-			}
-			userID = uuid.New()
-			user.ID = userID
+			// Create the user
+			user.ID = uuid.New()
 			user.IdpID = idpId
-			user.UserName = idpUsername
-			if res = tx.Create(&user); res.Error != nil {
+			user.UserName = userName
+			if res := tx.Create(&user); res.Error != nil {
 				if database.IsDuplicateError(res.Error) {
 					res.Error = gorm.ErrDuplicatedKey
 				}
 				return res.Error
 			}
-			err := api.createUserOrgIfNotExists(ctx, tx, userID, idpUsername)
+
+			// Create the default organization
+			if res := tx.Create(&models.Organization{
+				Base: models.Base{
+					ID: user.ID,
+				},
+				OwnerID:     user.ID,
+				Name:        userName,
+				Description: fmt.Sprintf("%s's organization", userName),
+				Users: []*models.User{{
+					Base: models.Base{
+						ID: user.ID,
+					},
+				}},
+			}); res.Error != nil {
+				if database.IsDuplicateError(res.Error) {
+					res.Error = gorm.ErrDuplicatedKey
+				}
+				return res.Error
+			}
+
+			// Create the default vpc
+			if res := tx.Create(&models.VPC{
+				Base: models.Base{
+					ID: user.ID,
+				},
+				OrganizationID: user.ID,
+				Description:    "default vpc",
+				PrivateCidr:    false,
+				Ipv4Cidr:       defaultIPAMv4Cidr,
+				Ipv6Cidr:       defaultIPAMv6Cidr,
+			}); res.Error != nil {
+				if database.IsDuplicateError(res.Error) {
+					res.Error = gorm.ErrDuplicatedKey
+				}
+				return res.Error
+			}
+
+			// Create a default security group for the default VPC - all have the same ID
+			err := api.createDefaultSecurityGroup(ctx, tx, user.ID, user.ID)
 			if err != nil {
 				return err
 			}
@@ -105,88 +101,10 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, idpUser
 			return nil
 		})
 	})
-
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("can't create user record: %w", err)
+		return uuid.Nil, err
 	}
-
-	if userID != uuid.Nil {
-		return userID, nil
-	}
-
-	return uuid.Nil, fmt.Errorf("can't create user record")
-}
-
-func (api *API) createUserOrgIfNotExists(ctx context.Context, tx *gorm.DB, userId uuid.UUID, userName string) error {
-
-	// Get the first org the use owns.
-	org := models.Organization{}
-	res := api.db.Where("owner_id = ?", userId.String()).First(&org)
-	if res.Error == nil {
-		return nil
-	}
-
-	if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return res.Error
-	}
-
-	org = models.Organization{
-		Base: models.Base{
-			ID: userId,
-		},
-		OwnerID:     userId,
-		Name:        userName,
-		Description: fmt.Sprintf("%s's organization", userName),
-		Users: []*models.User{{
-			Base: models.Base{
-				ID: userId,
-			},
-		}},
-		VPCs: []*models.VPC{{
-			Base: models.Base{
-				ID: userId,
-			},
-			OrganizationID: userId,
-			Description:    "default vpc",
-			PrivateCidr:    false,
-			Ipv4Cidr:       defaultIPAMv4Cidr,
-			Ipv6Cidr:       defaultIPAMv6Cidr,
-		}},
-	}
-
-	// Create the organization
-	if res := tx.Create(&org); res.Error != nil {
-		if database.IsDuplicateError(res.Error) {
-			return res.Error
-		}
-
-		// If we already have an existing organisation then lets just use that one
-		if tx.Where("owner_id = ?", userId).First(&org).Error == nil {
-			return nil
-		}
-
-		return fmt.Errorf("can't create organization record: %w", res.Error)
-	}
-
-	ipamNamespace := defaultIPAMNamespace
-
-	// Create namespaces and prefixes
-	if err := api.ipam.CreateNamespace(ctx, ipamNamespace); err != nil {
-		return fmt.Errorf("failed to create ipam namespace: %w", err)
-	}
-	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv4Cidr); err != nil {
-		return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
-	}
-	if err := api.ipam.AssignCIDR(ctx, ipamNamespace, defaultIPAMv6Cidr); err != nil {
-		return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
-	}
-	// Create a default security group for the default VPC - all have the same ID
-	_, err := api.createDefaultSecurityGroup(ctx, tx, org.ID, org.ID)
-	if err != nil {
-		return fmt.Errorf("failed to create the default security group: %w", res.Error)
-	}
-
-	return nil
+	return user.ID, nil
 }
 
 // GetUser gets a user
@@ -270,16 +188,16 @@ func (api *API) ListUsers(c *gin.Context) {
 // @Produce      json
 // @Param        id  path       string  true  "User ID"
 // @Success      200  {object}  models.User
-// @Failure		 400  {object}  models.BaseError
-// @Failure      400  {object}  models.BaseError
+// @Failure		 400  {object}  models.ValidationError
+// @Failure      400  {object}  models.NotAllowedError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/users/{id} [delete]
 func (api *API) DeleteUser(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteUser")
 	defer span.End()
-	userID := c.Param("id")
-	if userID == "" {
+	userId := c.Param("id")
+	if userId == "" {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
@@ -287,31 +205,74 @@ func (api *API) DeleteUser(c *gin.Context) {
 	var user models.User
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 		if res := api.UserIsCurrentUser(c, tx).
-			First(&user, "id = ?", userID); res.Error != nil {
-			return errUserNotFound
+			First(&user, "id = ?", userId); res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("user"))
+			} else {
+				return res.Error
+			}
 		}
-		if res := api.db.Select(clause.Associations).Delete(&user); res.Error != nil {
-			api.SendInternalServerError(c, fmt.Errorf("failed to delete user: %w", res.Error))
+
+		var count int64
+		result := tx.Model(&models.Device{}).Where("owner_id = ?", userId).Count(&count)
+		if result.Error != nil {
+			return result.Error
+		}
+		if count > 0 {
+			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("user cannot be deleted while devices owned by the user are still attached"))
+		}
+
+		// Cascade delete related records
+		if res := tx.Where("owner_id = ?", userId).Delete(&models.RegKey{}); res.Error != nil {
+			return result.Error
+		}
+		if res := tx.Where("user_id = ?", userId).Delete(&models.Invitation{}); res.Error != nil {
+			return result.Error
+		}
+
+		// We need to delete all the organizations that the user owns
+		orgs := []models.Organization{}
+		if res := tx.Where("owner_id = ?", userId).Find(&orgs); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return result.Error
+		}
+
+		for _, org := range orgs {
+			err := deleteOrganization(tx, org.ID)
+			if err != nil {
+				return err
+			}
+		}
+
+		// delete the cached user
+		prefixId := fmt.Sprintf("%s:%s", CachePrefix, user.IdpID)
+		_, err := api.Redis.Del(c.Request.Context(), prefixId).Result()
+		if err != nil {
+			api.logger.Warnf("failed to delete the cache user:%s", err)
+		}
+
+		// Null out unique fields so that the user can be created later with the same values
+		if res := tx.Model(&user).
+			Where("id = ?", userId).
+			Updates(map[string]interface{}{
+				"idp_id":     nil,
+				"deleted_at": gorm.DeletedAt{Time: time.Now(), Valid: true},
+			}); res.Error != nil {
+			return res.Error
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		if errors.Is(err, errUserNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
+		var apiResponseError *ApiResponseError
+		if errors.As(err, &apiResponseError) {
+			c.JSON(apiResponseError.Status, apiResponseError.Body)
 		} else {
 			api.SendInternalServerError(c, err)
 		}
 		return
 	}
 
-	// delete the cached user
-	prefixId := fmt.Sprintf("%s:%s", CachePrefix, user.IdpID)
-	_, err = api.Redis.Del(c.Request.Context(), prefixId).Result()
-	if err != nil {
-		api.logger.Warnf("failed to delete the cache user:%s", err)
-	}
 	c.JSON(http.StatusOK, user)
 }
 

@@ -14,7 +14,6 @@ type Organization struct {
 
 	Users       []*User       `json:"-" gorm:"many2many:user_organizations;"`
 	Invitations []*Invitation `json:"-"`
-	VPCs        []*VPC        `json:"-"`
 }
 
 func (z *Organization) BeforeCreate(tx *gorm.DB) error {

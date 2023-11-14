@@ -104,6 +104,11 @@ func NewAPI(
 		return nil, err
 	}
 
+	err = api.createDefaultIPamNamespace(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return api, nil
 }
 
@@ -165,4 +170,18 @@ func (api *API) FlagCheck(c *gin.Context, name string) bool {
 		return false
 	}
 	return enabled
+}
+
+func (api *API) createDefaultIPamNamespace(ctx context.Context) error {
+	// Create namespaces and cidrs
+	if err := api.ipam.CreateNamespace(ctx, defaultIPAMNamespace); err != nil {
+		return fmt.Errorf("failed to create ipam namespace: %w", err)
+	}
+	if err := api.ipam.AssignCIDR(ctx, defaultIPAMNamespace, defaultIPAMv4Cidr); err != nil {
+		return fmt.Errorf("can't assign default ipam v4 prefix: %w", err)
+	}
+	if err := api.ipam.AssignCIDR(ctx, defaultIPAMNamespace, defaultIPAMv6Cidr); err != nil {
+		return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
+	}
+	return nil
 }

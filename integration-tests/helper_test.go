@@ -2,9 +2,16 @@ package integration_tests
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/database"
+	"go.uber.org/zap"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"io"
+	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -329,6 +336,118 @@ func (helper *Helper) runCommand(cmd ...string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+func (helper *Helper) MustRunJsonCommand(result interface{}, cmd ...string) {
+	helper.logf("Running command: %s", strings.Join(cmd, " "))
+	// #nosec G204
+	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
+	helper.require.NoErrorf(err, "command: %q: failed with: %v (%s)", strings.Join(cmd, " "), err, output)
+	err = json.Unmarshal(output, &result)
+	helper.require.NoErrorf(err, "command: %q: unmarshal errror: %v (%s)", strings.Join(cmd, " "), err, output)
+}
+
+type SecretsList struct {
+	helper *Helper
+	Items  []struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+		Data map[string]string `json:"data"`
+	} `json:"items"`
+}
+
+func (sl *SecretsList) Get(namePrefix string, key string) string {
+	for _, item := range sl.Items {
+		if strings.HasPrefix(item.Metadata.Name, namePrefix) {
+			v, err := base64.StdEncoding.DecodeString(item.Data[key])
+			sl.helper.require.NoError(err)
+			return string(v)
+		}
+	}
+	return ""
+}
+
+func (helper *Helper) GetAllKubeSecrets() SecretsList {
+	result := SecretsList{}
+	helper.MustRunJsonCommand(&result, "kubectl", "-n", "nexodus", "get", "secrets", "-o", "json")
+	result.helper = helper
+	return result
+}
+
+func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, close func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	secrets := helper.GetAllKubeSecrets()
+	dbUser := secrets.Get("database-pguser-apiserver", "user")
+	dbPassword := secrets.Get("database-pguser-apiserver", "password")
+	dbHost := secrets.Get("database-pguser-apiserver", "pgbouncer-host")
+	dbPort := secrets.Get("database-pguser-apiserver", "pgbouncer-port")
+
+	// find a free port to use...
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	helper.require.NoError(err)
+	_, localPort, err := net.SplitHostPort(l.Addr().String())
+	helper.require.NoError(err)
+	_ = l.Close()
+
+	service := fmt.Sprintf("service/%s", strings.TrimSuffix(dbHost, ".nexodus.svc"))
+	portMapping := fmt.Sprintf("%s:%s", localPort, dbPort)
+	cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", service, portMapping)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	helper.require.NoError(err)
+	close = func() {
+		cancel() // to kill the process
+		_ = cmd.Wait()
+	}
+	defer func() {
+		// if we fail to create a connection to the DB...
+		// stop the port forward
+		if db == nil {
+			close()
+		}
+	}()
+
+	// wait for the port forward to be up and running
+	helper.require.Eventually(func() bool {
+		c, err := net.Dial("tcp", "localhost:"+localPort)
+		if err != nil {
+			return false
+		}
+		_ = c.Close()
+		return true
+	}, time.Second*10, time.Millisecond*100, "port forward is not up and running yet")
+
+	gormConfig := &gorm.Config{
+		Logger: database.NewLogger(zap.NewNop().Sugar()),
+	}
+
+	// try to connect using TLS...
+	db, err = gorm.Open(postgres.Open(
+		fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			"localhost", dbUser, dbPassword, "apiserver", localPort, "require"),
+	), gormConfig)
+	if err != nil && strings.Contains(err.Error(), "tls error") {
+		// fallback to non-TLS
+		db, err = gorm.Open(postgres.Open(
+			fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+				"localhost", dbUser, dbPassword, "apiserver", localPort, "disable"),
+		), gormConfig)
+	}
+	helper.require.NoError(err)
+
+	res := db.Exec("SELECT 1 FROM users")
+	helper.require.NoError(res.Error)
+
+	return
+}
+func (helper *Helper) MustRunCommand(cmd ...string) string {
+	helper.logf("Running command: %s", strings.Join(cmd, " "))
+	// #nosec G204
+	output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
+	helper.require.NoError(err, fmt.Errorf("command: %q: failed with: %w (%s)", strings.Join(cmd, " "), err, output))
+	return string(output)
 }
 
 // nexdStopped checks to see if nexd is stopped. It assumes if we get an error trying to talk to it with nexctl

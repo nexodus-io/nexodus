@@ -221,8 +221,6 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 		}
 		c.Set(gin.AuthUserKey, userID)
 		c.Set(AuthUserName, idpUserName)
-
-		logger.Debugf("user-id is %s", idpUserID)
 		c.Next()
 	}, nil
 }

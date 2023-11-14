@@ -73,6 +73,7 @@ type TestSuite struct {
 	Mu        sync.Mutex
 	nextOrgId uint32
 	TlsConfig *tls.Config
+	DB        *gorm.DB
 }
 
 // TestUser represents a user that can login to the system.  The same users are shared by
@@ -89,7 +90,6 @@ type TestUser struct {
 // concurrently.
 type TestScenario struct {
 	Suite           *TestSuite
-	DB              *gorm.DB
 	CurrentUser     string
 	PathPrefix      string
 	sessions        map[string]*TestSession

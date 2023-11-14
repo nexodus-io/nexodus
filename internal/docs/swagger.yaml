@@ -256,6 +256,14 @@ definitions:
       logout_url:
         type: string
     type: object
+  models.NotAllowedError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      reason:
+        type: string
+    type: object
   models.Organization:
     properties:
       description:
@@ -1676,7 +1684,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.BaseError'
+            $ref: '#/definitions/models.NotAllowedError'
         "429":
           description: Too Many Requests
           schema:

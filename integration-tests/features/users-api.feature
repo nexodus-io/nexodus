@@ -68,6 +68,20 @@ Feature: Users API
       { "error": "not found", "resource": "user" }
       """
 
+    # Before we delete the user, show that the DB has records for the user
+    When I run SQL "SELECT COUNT(*) FROM users WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 1     |
+    And I run SQL "SELECT COUNT(*) FROM organizations WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 1     |
+    And I run SQL "SELECT COUNT(*) FROM vpcs WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 1     |
+    And I run SQL "SELECT COUNT(*) FROM security_groups WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 1     |
+
     # EvilUrsala can delete her own resource
     When I DELETE path "/api/users/${ursala_id}"
     Then the response code should be 200
@@ -79,13 +93,28 @@ Feature: Users API
       }
       """
 
+    # After we delete the user, show that the DB no long has records for the user
+    When I run SQL "SELECT COUNT(*) FROM users WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 0     |
+    And I run SQL "SELECT COUNT(*) FROM organizations WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 0     |
+    And I run SQL "SELECT COUNT(*) FROM vpcs WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 0     |
+    And I run SQL "SELECT COUNT(*) FROM security_groups WHERE id='${ursala_id}' AND deleted_at IS NULL" gives results:
+      | count |
+      | 0     |
+
     # Using the API again should recreate the user.
     When I GET path "/api/users/me"
     Then the response code should be 200
     And the response should match json:
       """
       {
-        "id": "${ursala_id}",
+        "id": "${response.id}",
         "username": "${response.username}"
       }
       """
+

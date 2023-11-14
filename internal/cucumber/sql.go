@@ -35,7 +35,7 @@ func (s *TestScenario) iRunSQLExpectRowToBeAffected(sql string, expected int64) 
 		return err
 	}
 
-	gorm := s.DB
+	gorm := s.Suite.DB
 	exec := gorm.Exec(sql)
 	if exec.Error != nil {
 		return exec.Error
@@ -57,7 +57,7 @@ func (s *TestScenario) iRunSQLGivesResults(sql string, expected *godog.Table) er
 		return err
 	}
 
-	gorm := s.DB
+	gorm := s.Suite.DB
 
 	rows, err := gorm.Raw(sql).Rows()
 	if err != nil {

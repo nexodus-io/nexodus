@@ -1018,6 +1018,18 @@ func TestNexctl(t *testing.T) {
 			deleteUserID = u.ID
 		}
 	}
+
+	// first delete his devices...
+	for _, device := range devices {
+		_, err = helper.runCommand(nexctl,
+			"--username", username,
+			"--password", password,
+			"device", "delete",
+			"--device-id", device.ID.String(),
+		)
+		require.NoError(err)
+	}
+
 	_, err = helper.runCommand(nexctl,
 		"--username", username,
 		"--password", password,
