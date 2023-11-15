@@ -12,7 +12,7 @@ spec:
         - args:
             - sh
             - -c
-            - env; cat /configs/envoy-template/envoy.yaml | envsubst > /configs/envoy/envoy.yaml
+            - env; cat /configs/envoy-template/envoy.yaml | envsubst > /configs/envoy/envoy.yaml; cp /configs/envoy-template/sds_config.yaml /configs/envoy/sds_config.yaml
           image: quay.io/nexodus/envsubst:latest
           imagePullPolicy: IfNotPresent
           name: envsubst
@@ -81,9 +81,9 @@ spec:
                   name: apiproxy
                   key: ENVOY_COMP_LOG_LEVEL
           ports:
-            - name: api-envoy
+            - name: https
               protocol: TCP
-              containerPort: 9090
+              containerPort: 8443
             - name: metrics-envoy
               protocol: TCP
               containerPort: 9000
@@ -92,6 +92,13 @@ spec:
               mountPath: /configs/envoy
             - name: envoy-unix-sockets
               mountPath: /sockets
+            - name: nexodus-api-cert
+              mountPath: "/configs/envoy-certs/nexodus-api-cert"
+              readOnly: true
+            - name: nexodus-frontend-cert
+              mountPath: "/configs/envoy-certs/nexodus-frontend-cert"
+              readOnly: true
+
           readinessProbe:
             httpGet:
               path: /ready
@@ -104,6 +111,7 @@ spec:
               port: 9000
             initialDelaySeconds: 10
             periodSeconds: 5
+
           resources:
             requests:
               cpu: 100m
@@ -122,3 +130,11 @@ spec:
         - name: envoy-unix-sockets
           emptyDir:
             medium: Memory
+        - name: nexodus-api-cert
+          secret:
+            secretName: nexodus-api-cert
+            optional: false
+        - name: nexodus-frontend-cert
+          secret:
+            secretName: nexodus-frontend-cert
+            optional: false

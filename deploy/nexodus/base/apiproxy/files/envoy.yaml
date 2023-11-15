@@ -1,4 +1,8 @@
-# The administration endpoint uses a Unix socket instead of TCP in order
+node:
+  cluster: apiproxy
+  id: ${HOSTNAME}
+
+  # The administration endpoint uses a Unix socket instead of TCP in order
 # to avoid exposing it outside of the pod. Requests for metrics and
 # probes will go via an HTTP listener that only accepts requests for the
 # /metrics and /ready paths.
@@ -179,15 +183,36 @@ static_resources:
                           route:
                             cluster: admin
 
-
-    # listener: ingress - frontend and apiserver
-    - name: ingress
+    # listener: https - frontend and apiserver
+    - name: https
       address:
         socket_address:
           address: 0.0.0.0
-          port_value: 8080
+          port_value: 8443
+      listener_filters:
+        - name: tls_inspector
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.tls_inspector.v3.TlsInspector
+
       filter_chains:
-        - filters:
+        - filter_chain_match:
+            server_names: ["${APIPROXY_WEB_DOMAIN}"]
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                # TODO: try to get dynamic loading of certs working...
+                # tls_certificate_sds_secret_configs:
+                #   name: nexodus-frontend-cert
+                #   sds_config:
+                #     path: /configs/envoy/sds_config.yaml
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "/configs/envoy-certs/nexodus-frontend-cert/tls.crt"
+                    private_key:
+                      filename: "/configs/envoy-certs/nexodus-frontend-cert/tls.key"
+          filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
@@ -196,7 +221,85 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                       path: /dev/stdout
-                stat_prefix: ingress
+
+                stat_prefix: frontend
+                http_filters:
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+
+                  # This is needed to enable the rate limiter:
+                  - name: envoy.filters.http.ratelimit
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+                      # domain: "%REQ(:authority)%"
+                      domain: "nexodus"
+                      failure_mode_deny: false
+                      timeout: 0.5s
+                      enable_x_ratelimit_headers: DRAFT_VERSION_03
+                      rate_limit_service:
+                        transport_api_version: V3
+                        grpc_service:
+                          envoy_grpc:
+                            cluster_name: ratelimiter
+
+                  # This is mandatory in order to have the HTTP routes above.
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+                route_config:
+                  name: frontend
+                  virtual_hosts:
+                    - name: frontend
+                      domains:
+                        - "${APIPROXY_WEB_DOMAIN}"
+                      retry_policy:
+                        num_retries: 2
+                        retry_back_off:
+                          base_interval: 0.25s
+                          max_interval: 60s
+                        retry_on: 5xx,connect-failure,refused-stream
+                      routes:
+                        - name: default
+                          match:
+                            prefix: /
+                          route:
+                            timeout: 10s
+                            cluster: frontend
+                            rate_limits:
+                              - actions:
+                                  - generic_key:
+                                      descriptor_key: resource_group
+                                      descriptor_value: spa
+
+        - filter_chain_match:
+            server_names: ["${APIPROXY_API_DOMAIN}"]
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                # TODO: try to get dynamic loading of certs working...
+                # tls_certificate_sds_secret_configs:
+                #   name: nexodus-api-cert
+                #   sds_config:
+                #     path: /configs/envoy/sds_config.yaml
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "/configs/envoy-certs/nexodus-api-cert/tls.crt"
+                    private_key:
+                      filename: "/configs/envoy-certs/nexodus-api-cert/tls.key"
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                access_log:
+                  - name: envoy.access_loggers.file
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                      path: /dev/stdout
+                stat_prefix: apiserver
 
                 generate_request_id: true
                 tracing:
@@ -295,34 +398,8 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
                 route_config:
-                  name: frontend
+                  name: apiserver
                   virtual_hosts:
-                    - name: frontend
-                      domains:
-                        - "${APIPROXY_WEB_DOMAIN}"
-                      retry_policy:
-                        num_retries: 2
-                        retry_back_off:
-                          base_interval: 0.25s
-                          max_interval: 60s
-                        retry_on: 5xx,connect-failure,refused-stream
-                      routes:
-                        - name: default
-                          match:
-                            prefix: /
-                          typed_per_filter_config:
-                            envoy.filters.http.ext_authz:
-                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
-                              disabled: true
-                          route:
-                            timeout: 10s
-                            cluster: frontend
-                            rate_limits:
-                              - actions:
-                                  - generic_key:
-                                      descriptor_key: resource_group
-                                      descriptor_value: spa
-
                     - name: apiserver
                       domains:
                         - "${APIPROXY_API_DOMAIN}"
@@ -379,14 +456,7 @@ static_resources:
                           match:
                             safe_regex:
                               google_re2: {}
-                              regex: "^\/api\/organizations\/[^/?]+\/events$"
-
-                          request_headers_to_add:
-                            header:
-                              key: "x-jwt-claim-sub"
-                              value: "test %DYNAMIC_METADATA(envoy.filters.http.jwt_authn:payload:sub)%"
-                            keep_empty_value: true
-                            append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                              regex: "^\/api\/vpcs\/[^/?]+\/events$"
                           route:
                             timeout: 0s
                             idle_timeout: 0s
@@ -409,12 +479,6 @@ static_resources:
 
                         - match: {prefix: "/api/"}
                           name: default
-                          request_headers_to_add:
-                            header:
-                              key: "x-jwt-claim-sub"
-                              value: "test %DYNAMIC_METADATA(envoy.filters.http.jwt_authn:payload:sub)%"
-                            keep_empty_value: true
-                            append_action: OVERWRITE_IF_EXISTS_OR_ADD
                           route:
                             priority: DEFAULT
                             timeout: 30s

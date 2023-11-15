@@ -3,12 +3,9 @@ kind: Ingress
 metadata:
   name: frontend
   annotations:
-    cert-manager.io/issuer: nexodus-issuer
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    route.openshift.io/termination: passthrough
 spec:
-  tls:
-    - hosts:
-        - try.nexodus.127.0.0.1.nip.io
-      secretName: nexodus-frontend-cert
   rules:
     - host: try.nexodus.127.0.0.1.nip.io
       http:
@@ -19,4 +16,4 @@ spec:
               service:
                 name: apiproxy
                 port:
-                  number: 8080
+                  number: 8443
