@@ -227,7 +227,9 @@ func (s *extender) iRunPlaywrightScript(script string) error {
 			},
 			Cmd: []string{
 				"/update-ca.sh",
-				"npx", "playwright", "test", script,
+				"/bin/bash",
+				"-c",
+				fmt.Sprintf("npm install && npx playwright test '%s'", script),
 			},
 			ConfigModifier: func(config *container.Config) {
 				config.WorkingDir = "/ui"
