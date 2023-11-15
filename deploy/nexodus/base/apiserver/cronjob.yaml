@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: apiserver
+spec:
+  # Run daily
+  schedule: "@midnight"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: hello
+              image: registry.access.redhat.com/ubi9/ubi-minimal
+              imagePullPolicy: IfNotPresent
+              command:
+                - /usr/bin/curl
+                - http://apiserver:8080/private/gc?retention=24h
+          restartPolicy: Never

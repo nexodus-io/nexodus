@@ -60,6 +60,7 @@ endif
 
 
 SWAGGER_YAML:=internal/docs/swagger.yaml
+PRIVATE_SWAGGER_YAML:=internal/docs-private/swagger.yaml
 
 # Crunchy DB operator does not work well on arm64, use an different overlay to work around it.
 UNAME_M := $(shell uname -m)
@@ -315,31 +316,40 @@ dist/.go-licenses: $(NEX_ALL_GO) | dist
 	$(CMD_PREFIX) touch $@
 
 .PHONY: gen-docs
-gen-docs: $(SWAGGER_YAML) ## Generate API docs
+gen-docs: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) ## Generate API docs
 .PHONY: openapi-lint
 openapi-lint: dist/.openapi-lint ## Lint the OpenAPI document
 .PHONY: openapi-lint
-dist/.openapi-lint: internal/docs/swagger.yaml | dist
+dist/.openapi-lint: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[OPENAPI LINT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
-		validate -i /src/internal/docs/swagger.yaml
+		validate -i /src/$(SWAGGER_YAML)
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src openapitools/openapi-generator-cli:v6.5.0 \
+		validate -i /src/$(PRIVATE_SWAGGER_YAML)
 	$(CMD_PREFIX) touch $@
 
 $(SWAGGER_YAML): $(APISERVER_DEPS) | dist
-	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[API DOCS]"
+	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[PUBLIC API DOCS]"
 	$(CMD_PREFIX) docker run \--platform linux/x86_64 --rm \
 		-v $(CURDIR):/workdir -w /workdir \
 		ghcr.io/swaggo/swag:v1.16.2 \
-		/root/swag init $(SWAG_ARGS) -g ./cmd/apiserver/main.go -o ./internal/docs
+		/root/swag init $(SWAG_ARGS) --tags "!Private" -g ./cmd/apiserver/main.go -o ./internal/docs
+
+$(PRIVATE_SWAGGER_YAML): $(APISERVER_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s ./cmd/apiserver/main.go\n" "[PRIVATE API DOCS]"
+	$(CMD_PREFIX) docker run \--platform linux/x86_64 --rm \
+		-v $(CURDIR):/workdir -w /workdir \
+		ghcr.io/swaggo/swag:v1.16.2 \
+		/root/swag init $(SWAG_ARGS) --tags "Private" -g ./cmd/apiserver/main.go -o ./internal/docs-private
 
 .PHONY: gen-openapi-client
 gen-openapi-client: internal/api/public/client.go ## Generate the OpenAPI Client
-internal/api/public/client.go: internal/docs/swagger.yaml | dist
-	$(ECHO_PREFIX) printf "  %-12s internal/docs/swagger.yaml\n" "[OPENAPI CLIENT GEN]"
+internal/api/public/client.go: $(SWAGGER_YAML) | dist
+	$(ECHO_PREFIX) printf "  %-12s $(SWAGGER_YAML)\n" "[OPENAPI CLIENT GEN]"
 	$(CMD_PREFIX) rm -f $(shell find internal/api/public | grep .go | grep -v _custom.go)
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src --user $(shell id -u):$(shell id -g) \
 		openapitools/openapi-generator-cli:v6.5.0 \
-		generate -i /src/internal/docs/swagger.yaml -g go \
+		generate -i /src/$(SWAGGER_YAML) -g go \
 		--package-name public \
 		-o /src/internal/api/public \
 		-t /src/hack/openapi-templates \
@@ -374,7 +384,7 @@ docs/user-guide/nexctl.md: dist/nexctl hack/nexctl-docs.sh
 	$(ECHO_PREFIX) printf "  %-12s nexctl\n" "[DOCS]"
 	$(CMD_PREFIX) hack/nexctl-docs.sh
 
-dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt docs/user-guide/nexd.md docs/user-guide/nexctl.md | dist
+dist/.generate: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) dist/.ui-fmt docs/user-guide/nexd.md docs/user-guide/nexctl.md | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 
