@@ -19,12 +19,14 @@ import (
 type extender struct {
 	*cucumber.TestScenario
 	cleanups []func()
+	helper   *Helper
 }
 
 func init() {
 	cucumber.StepModules = append(cucumber.StepModules, func(ctx *godog.ScenarioContext, s *cucumber.TestScenario) {
 		e := &extender{
 			TestScenario: s,
+			helper:       NewHelper(s.Suite.TestingT),
 		}
 		ctx.Step(`^a user named "([^"]*)" with password "([^"]*)"$`, e.aUserNamedWithPassword)
 
@@ -42,6 +44,7 @@ func init() {
 		ctx.Step(`^I generate a new key pair as \${([^}]*)}/\${([^}]*)}$`, e.iGenerateANewPublicKeyPairAsVariable)
 		ctx.Step(`^I decrypt the sealed "([^"]*)" with "([^"]*)" and store the result as \${([^}]*)}$`, e.iDeycryptTheSealedWithAndStoreTheResultAsDevice_bearer_token)
 		ctx.Step(`^I run playwright script "([^"]*)"$`, e.iRunPlaywrightScript)
+		ctx.Step(`^I port forward to kube resource "([^"]*)" on port (\d+) via local port \${([^}]*)}$`, e.iStartPortForward)
 
 		ctx.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
 			if err == nil {
@@ -268,5 +271,12 @@ func (s *extender) iRunPlaywrightScript(script string) error {
 	if state.ExitCode != 0 {
 		return fmt.Errorf("playwright failed with exit code %d", state.ExitCode)
 	}
+	return nil
+}
+
+func (s *extender) iStartPortForward(service string, port int, variable string) error {
+	localPort, cleanup := s.helper.StartPortForward(s.Suite.Context, service, port)
+	s.cleanups = append(s.cleanups, cleanup)
+	s.Variables[variable] = localPort
 	return nil
 }

@@ -442,6 +442,40 @@ func (helper *Helper) StartPortForwardToDB(ctx context.Context) (db *gorm.DB, cl
 
 	return
 }
+
+func (helper *Helper) StartPortForward(ctx context.Context, service string, servicePort int) (localPort string, close func()) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	// find a free port to use...
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	helper.require.NoError(err)
+	_, localPort, err = net.SplitHostPort(l.Addr().String())
+	helper.require.NoError(err)
+	_ = l.Close()
+
+	portMapping := fmt.Sprintf("%s:%d", localPort, servicePort)
+	cmd := exec.CommandContext(ctx, "kubectl", "-n", "nexodus", "port-forward", service, portMapping)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	helper.require.NoError(err)
+	close = func() {
+		cancel() // to kill the process
+		_ = cmd.Wait()
+	}
+
+	// wait for the port forward to be up and running
+	helper.require.Eventually(func() bool {
+		c, err := net.Dial("tcp", "localhost:"+localPort)
+		if err != nil {
+			return false
+		}
+		_ = c.Close()
+		return true
+	}, time.Second*10, time.Millisecond*100, "port forward is not up and running yet")
+	return
+}
+
 func (helper *Helper) MustRunCommand(cmd ...string) string {
 	helper.logf("Running command: %s", strings.Join(cmd, " "))
 	// #nosec G204

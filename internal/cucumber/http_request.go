@@ -34,9 +34,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	fmt "fmt"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -100,11 +101,19 @@ func (s *TestScenario) SendHttpRequestWithJsonBodyAndStyle(method, path string, 
 		}
 		body.WriteString(expanded)
 	}
+
 	expandedPath, err := s.Expand(path)
 	if err != nil {
 		return err
 	}
-	fullUrl := s.Suite.ApiURL + s.PathPrefix + expandedPath
+
+	fullUrl := ""
+	expandedPathUrl, err := url.Parse(expandedPath)
+	if err == nil && expandedPathUrl.Scheme != "" {
+		fullUrl = expandedPath
+	} else {
+		fullUrl = s.Suite.ApiURL + s.PathPrefix + expandedPath
+	}
 
 	// Lets reset all the response session state...
 	if session.Resp != nil {
