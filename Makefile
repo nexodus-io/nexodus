@@ -20,6 +20,11 @@ else
     GOTESTSUM_FMT=standard-verbose
 endif
 
+# Pinned container image tags. Check for updates periodically.
+OPA_IMAGE:=docker.io/openpolicyagent/opa:latest@sha256:62469564756440afc4a9cb87d1875a0b462a12721260404b967a8a06f9410d17
+PRETTIER_IMAGE:=tmknom/prettier:3.0.3
+MKDOCS_MATERIAL_IMAGE:=squidfunk/mkdocs-material:9.4
+
 NEXODUS_VERSION?=$(shell date +%Y.%m.%d)
 NEXODUS_RELEASE?=$(shell git describe --always --abbrev=6 --exclude qa --exclude prod)
 NEXODUS_GCFLAGS?=
@@ -264,18 +269,17 @@ ui-lint: dist/.ui-lint ## Lint the UI source
 
 dist/.ui-lint: $(filter-out $(wildcard ui/node_modules/*),$(wildcard ui/*) $(wildcard ui/**/*)) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[UI LINT]"
-	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir tmknom/prettier:3.0.3 --check /workdir/ui/src/ >/dev/null
+	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir $(PRETTIER_IMAGE) --check /workdir/ui/src/ >/dev/null
 	$(CMD_PREFIX) touch $@
 
 policies=$(wildcard internal/routers/*.rego)
 
-OPA_IMAGE_VERSION:=latest@sha256:62469564756440afc4a9cb87d1875a0b462a12721260404b967a8a06f9410d17
 .PHONY: opa-lint
 opa-lint: dist/.opa-lint ## Lint the OPA policies
 dist/.opa-lint: $(policies) | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[OPA LINT]"
-	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:$(OPA_IMAGE_VERSION) fmt --fail $(policies) $(PIPE_DEV_NULL)
-	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:$(OPA_IMAGE_VERSION) test -v $(policies) $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir $(OPA_IMAGE) fmt --fail $(policies) $(PIPE_DEV_NULL)
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir $(OPA_IMAGE) test -v $(policies) $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) touch $@
 
 .PHONY: action-lint
@@ -348,7 +352,7 @@ internal/api/public/%.go: internal/api/public/client.go
 .PHONY: opa-fmt
 opa-fmt: ## Lint the OPA policies
 	$(ECHO_PREFIX) printf "  %-12s \n" "[OPA FMT]"
-	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir docker.io/openpolicyagent/opa:$(OPA_IMAGE_VERSION) fmt --write $(policies)
+	$(CMD_PREFIX) docker run --platform linux/x86_64 --rm -v $(CURDIR):/workdir -w /workdir $(OPA_IMAGE) fmt --write $(policies)
 
 
 .PHONY: ui-fmt
@@ -356,7 +360,7 @@ ui-fmt: dist/.ui-fmt ## Format the UI sources
 dist/.ui-fmt: $(wildcard ui/*) $(wildcard ui/src/**) | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[UI FMT]"
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/workdir --user $(shell id -u):$(shell id -g) \
-		tmknom/prettier:3.0.3 --write /workdir/ui/src/ $(PIPE_DEV_NULL)
+		$(PRETTIER_IMAGE) --write /workdir/ui/src/ $(PIPE_DEV_NULL)
 	$(CMD_PREFIX) touch $@
 
 .PHONY: generate
@@ -854,11 +858,11 @@ cat:
 
 .PHONY: docs
 docs: ## Generate docs site into site/ directory
-	$(CMD_PREFIX) docker run --rm -it -v ${PWD}:/docs squidfunk/mkdocs-material:9.4 build
+	$(CMD_PREFIX) docker run --rm -it -v ${PWD}:/docs $(MKDOCS_MATERIAL_IMAGE) build
 
 .PHONY: docs-preview
 docs-preview: ## Generate a live preview of project documentation
-	$(CMD_PREFIX) docker run --rm -it -p 8000:8000 -v ${PWD}:/docs squidfunk/mkdocs-material:9.4
+	$(CMD_PREFIX) docker run --rm -it -p 8000:8000 -v ${PWD}:/docs $(MKDOCS_MATERIAL_IMAGE)
 
 
 .PHONY: graph-prereqs
