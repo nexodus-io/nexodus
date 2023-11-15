@@ -13,12 +13,12 @@ Supported versions:
 - Fedora 38 (x86_64, aarch64)
 - CentOS Stream 9 (x86_64, aarch64)
 
-A Fedora [Copr repository](https://copr.fedorainfracloud.org/coprs/russellb/nexodus/) is updated with new rpms after each new commit to the `main` branch that passes CI. The rpm will include `nexctl`, `nexd`, and integration with systemd.
+A Fedora [Copr repository](https://copr.fedorainfracloud.org/coprs/nexodus/nexodus/) is updated with new rpms after each new commit to the `main` branch that passes CI. The rpm will include `nexctl`, `nexd`, and integration with systemd.
 
 You can add this repository to your Fedora host with the following command:
 
 ```sh
-sudo dnf copr enable russellb/nexodus
+sudo dnf copr enable nexodus/nexodus
 ```
 
 Then you should be able to install Nexodus with:

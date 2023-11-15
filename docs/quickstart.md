@@ -16,7 +16,7 @@ Supported versions:
 
 ```sh
 # Enable the COPR repository and install the nexodus package
-sudo dnf copr enable russellb/nexodus
+sudo dnf copr enable nexodus/nexodus
 sudo dnf install nexodus
 
 # Start the nexodus service and set it to automatically start on boot
