@@ -34,13 +34,30 @@ configMapGenerator:
     name: apiserver
 
 patches:
-  - patch: |-
+  # Update the dns names for the certificates
+  - target:
+      kind: Certificate
+      name: nexodus-frontend-cert
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: try.nexodus.io
+  - target:
+      kind: Certificate
+      name: nexodus-api-cert
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: api.try.nexodus.io
+  - target:
+      kind: Certificate
+      name: nexodus-auth-cert
+    patch: |-
       - op: replace
         path: /spec/dnsNames/0
         value: auth.try.nexodus.io
-    target:
-      kind: Certificate
-      name: nexodus-auth-cert
+
+
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
