@@ -143,6 +143,36 @@ func (api *API) WatchEvents(c *gin.Context) {
 				fetch:      fetcher.Fetch,
 			})
 
+		case "site":
+
+			fetcher := api.fetchManager.Open("org-sites:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+				var items siteList
+				db = db.Unscoped().Limit(100).Order("revision")
+				if gtRevision != 0 {
+					db = db.Where("revision > ?", gtRevision)
+				}
+				db = db.Where("vpc_id = ?", vpcId.String())
+				result := db.Find(&items)
+				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					return nil, result.Error
+				}
+
+				for i := range items {
+					hideSiteBearerToken(items[i], tokenClaims)
+				}
+
+				return items, nil
+			})
+			defer fetcher.Close()
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/sites/vpc=%s", vpcId.String()),
+				fetch:      fetcher.Fetch,
+			})
+
 		case "security-group":
 			watches = append(watches, Watch{
 				kind:       r.Kind,

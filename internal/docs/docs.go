@@ -1713,6 +1713,296 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/sites": {
+            "get": {
+                "description": "Lists all sites",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "List Sites",
+                "operationId": "ListSites",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Site"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adds a new site",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Add Sites",
+                "operationId": "CreateSite",
+                "parameters": [
+                    {
+                        "description": "Add Site",
+                        "name": "Site",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddSite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/sites/{id}": {
+            "get": {
+                "description": "Gets a site by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Get Sites",
+                "operationId": "GetSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing site and associated IPAM lease",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Delete Site",
+                "operationId": "DeleteSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a site by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Update Sites",
+                "operationId": "UpdateSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Site Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -2481,6 +2771,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/vpcs/{id}/sites": {
+            "get": {
+                "description": "Lists all sites for this VPC",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List Sites",
+                "operationId": "ListSitesInVPC",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Site"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/check/auth": {
             "get": {
                 "description": "Checks if the user is currently authenticated",
@@ -2849,6 +3205,25 @@ const docTemplate = `{
                 },
                 "vpc_id": {
                     "type": "string"
+                }
+            }
+        },
+        "models.AddSite": {
+            "type": "object",
+            "properties": {
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
             }
         },
@@ -3233,6 +3608,39 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Site": {
+            "type": "object",
+            "properties": {
+                "bearer_token": {
+                    "description": "the token nexd should use to reconcile Site state.",
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
         "models.TunnelIP": {
             "type": "object",
             "properties": {
@@ -3319,6 +3727,18 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.SecurityRule"
                     }
+                }
+            }
+        },
+        "models.UpdateSite": {
+            "type": "object",
+            "properties": {
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "revision": {
+                    "type": "integer"
                 }
             }
         },

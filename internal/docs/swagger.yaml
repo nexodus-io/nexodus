@@ -89,6 +89,19 @@ definitions:
       vpc_id:
         type: string
     type: object
+  models.AddSite:
+    properties:
+      hostname:
+        example: myhost
+        type: string
+      os:
+        type: string
+      public_key:
+        type: string
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
   models.AddVPC:
     properties:
       description:
@@ -354,6 +367,29 @@ definitions:
       to_port:
         type: integer
     type: object
+  models.Site:
+    properties:
+      bearer_token:
+        description: the token nexd should use to reconcile Site state.
+        type: string
+      hostname:
+        example: myhost
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      os:
+        type: string
+      owner_id:
+        type: string
+      public_key:
+        type: string
+      revision:
+        type: integer
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
   models.TunnelIP:
     properties:
       address:
@@ -416,6 +452,14 @@ definitions:
         items:
           $ref: '#/definitions/models.SecurityRule'
         type: array
+    type: object
+  models.UpdateSite:
+    properties:
+      hostname:
+        example: myhost
+        type: string
+      revision:
+        type: integer
     type: object
   models.UpdateVPC:
     properties:
@@ -1632,6 +1676,200 @@ paths:
       summary: Update Security Group
       tags:
       - SecurityGroup
+  /api/sites:
+    get:
+      consumes:
+      - application/json
+      description: Lists all sites
+      operationId: ListSites
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Site'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Sites
+      tags:
+      - Sites
+    post:
+      consumes:
+      - application/json
+      description: Adds a new site
+      operationId: CreateSite
+      parameters:
+      - description: Add Site
+        in: body
+        name: Site
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddSite'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ConflictsError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Add Sites
+      tags:
+      - Sites
+  /api/sites/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing site and associated IPAM lease
+      operationId: DeleteSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete Site
+      tags:
+      - Sites
+    get:
+      consumes:
+      - application/json
+      description: Gets a site by ID
+      operationId: GetSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get Sites
+      tags:
+      - Sites
+    patch:
+      consumes:
+      - application/json
+      description: Updates a site by ID
+      operationId: UpdateSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSite'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Update Sites
+      tags:
+      - Sites
   /api/users:
     get:
       consumes:
@@ -2145,6 +2383,50 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: List Security Groups in a VPC
+      tags:
+      - VPC
+  /api/vpcs/{id}/sites:
+    get:
+      consumes:
+      - application/json
+      description: Lists all sites for this VPC
+      operationId: ListSitesInVPC
+      parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Site'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Sites
       tags:
       - VPC
   /check/auth:
