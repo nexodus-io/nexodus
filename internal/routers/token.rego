@@ -79,14 +79,14 @@ allow if {
 }
 
 allow if {
-	"devices" = input.path[1]
+	input.path[1] in ["devices", "sites"]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:devices")
 }
 
 allow if {
-	"devices" = input.path[1]
+	input.path[1] in ["devices", "sites"]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:devices")
@@ -148,30 +148,30 @@ allow if {
 	"me" = input.path[2]
 }
 
-# reg token can create a device
+# reg token can create a device or site
 allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	input.method == "POST"
 	count(input.path) == 2
-	"devices" = input.path[1]
+	input.path[1] in ["devices", "sites"]
 }
 
-# reg token can update a device
+# reg token can update a device or site
 allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	input.method == "PATCH"
 	count(input.path) == 3
-	"devices" = input.path[1]
+	input.path[1] in ["devices", "sites"]
 }
 
-# reg token can get a devices/orgs/vpcs
+# reg token can get a devices/orgs/vpcs/sites
 allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "reg-token")
 	input.method == "GET"
-	input.path[1] in ["organizations", "vpcs", "devices"]
+	input.path[1] in ["organizations", "vpcs", "devices", "sites"]
 }
 
 # device tokens can read/update a device
@@ -179,7 +179,7 @@ allow if {
 	valid_nexodus_token
 	contains(token_payload.scope, "device-token")
 	input.method in ["GET", "PATCH"]
-	"devices" = input.path[1]
+	input.path[1] in ["devices", "sites"]
 }
 
 allow if {
