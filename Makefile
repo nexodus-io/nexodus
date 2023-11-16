@@ -284,7 +284,7 @@ dist/.opa-lint: $(policies) | dist
 
 .PHONY: action-lint
 action-lint: dist/.action-lint ## Lint GitHub Action workflows
-dist/.action-lint: $(find -type f .github) | dist
+dist/.action-lint: $(shell find .github -type f) | dist
 	$(ECHO_PREFIX) printf "  %-12s .github/...\n" "[ACTION LINT]"
 	$(CMD_PREFIX) if ! which actionlint $(PIPE_DEV_NULL) ; then \
 		echo "Please install actionlint." ; \
