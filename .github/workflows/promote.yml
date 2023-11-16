@@ -77,8 +77,9 @@ jobs:
       - name: Promote to the prod Tag
         shell: bash
         run: |
+          git tag prod-previous prod --force
           git tag prod --force
-          git push origin prod --force 
+          git push origin prod prod-previous --force 
 
   build-packages:
     # Sync the agent binary in s3 /download with the prod promotion in the update-prod job
