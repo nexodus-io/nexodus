@@ -18,89 +18,89 @@ configMapGenerator:
       - files/promtail.yaml
     name: promtail-config
 patches:
-  - patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.qa.nexodus.io
+  # Use the letsencrypt issuer instead of the self-signed issuer
+  - target:
+      kind: Certificate
+      name: nexodus-auth-cert
+    patch: |-
       - op: replace
         path: /spec/issuerRef/name
         value: letsencrypt
-    target:
+  - target:
       kind: Certificate
-      name: nexodus-auth-cert
-  - patch: |-
-      - op: add
-        path: /metadata/annotations/cert-manager.io~1issuer
+      name: nexodus-frontend-cert
+    patch: |-
+      - op: replace
+        path: /spec/issuerRef/name
         value: letsencrypt
-      - op: remove
-        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+  - target:
+      kind: Certificate
+      name: nexodus-api-cert
+    patch: |-
       - op: replace
-        path: /spec/rules/0/host
-        value: api.qa.nexodus.io
-      - op: replace
-        path: /spec/rules/0/http/paths/0/pathType
-        value: ImplementationSpecific
-      - op: replace
-        path: /spec/rules/0/http/paths/0/path
-        value: ''
-    target:
+        path: /spec/issuerRef/name
+        value: letsencrypt
+
+  # Clean up the ingress resources...
+  - target:
       kind: Ingress
       name: apiproxy
-  - patch: |-
-      - op: add
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
+    patch: |-
       - op: remove
         path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
-      - op: replace
-        path: /spec/rules/0/host
-        value: auth.qa.nexodus.io
       - op: replace
         path: /spec/rules/0/http/paths/0/pathType
         value: ImplementationSpecific
       - op: replace
         path: /spec/rules/0/http/paths/0/path
         value: ''
-    target:
+  - target:
       kind: Ingress
       name: auth
-  - patch: |-
-      - op: add
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
+    patch: |-
       - op: remove
         path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
-      - op: replace
-        path: /spec/rules/0/host
-        value: qa.nexodus.io
       - op: replace
         path: /spec/rules/0/http/paths/0/pathType
         value: ImplementationSpecific
       - op: replace
         path: /spec/rules/0/http/paths/0/path
         value: ''
-    target:
+  - target:
       kind: Ingress
       name: frontend
-  - patch: |-
-      - op: add
-        path: /rules/1
-        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
-    target:
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
+      - op: replace
+        path: /spec/rules/0/http/paths/0/pathType
+        value: ImplementationSpecific
+      - op: replace
+        path: /spec/rules/0/http/paths/0/path
+        value: ''
+
+  # setup promtail roles
+  - target:
       group: rbac.authorization.k8s.io
       version: v1
       kind: Role
       name: promtail-role
-  - patch: |-
+    patch: |-
+      - op: add
+        path: /rules/1
+        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
+
+  # adjust resource limits..
+  - target:
+      kind: StatefulSet
+      name: redis
+    patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
         value: 250m
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
         value: 500Mi
-    target:
-      kind: StatefulSet
-      name: redis
   - patch: |-
       - op: replace
         path: /spec/instances/0/replicas
