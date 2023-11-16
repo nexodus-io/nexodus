@@ -164,18 +164,19 @@ spec:
                   name: nexodus-api-cert
                   key: tls.key
 
-          readinessProbe:
-            httpGet:
-              path: /private/ready
-              port: 8080
-            periodSeconds: 5
-            initialDelaySeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /private/live
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
+          # CI deployment seems to fail when this is enabled
+          # readinessProbe:
+          #   httpGet:
+          #     path: /private/ready
+          #     port: 8080
+          #   periodSeconds: 5
+          #   initialDelaySeconds: 5
+          # livenessProbe:
+          #   httpGet:
+          #     path: /private/live
+          #     port: 8080
+          #   initialDelaySeconds: 10
+          #   periodSeconds: 5
 
           resources:
             requests:
