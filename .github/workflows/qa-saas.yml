@@ -1,5 +1,5 @@
-# qa-scale workflow is for scale testing against the Nexodus qa deployment
-name: qa-scale
+# qa-saas workflow is for scale testing and/or validation against the Nexodus qa or prod SaaS deployments
+name: qa-saas
 
 concurrency:
   group: qa-scale
@@ -28,13 +28,20 @@ on:
         required: false
         default: '90'
 
+      controller_address:
+        description: 'options: qa.nexodus.io | try.nexodus.io'
+        required: true
+        default: 'qa.nexodus.io'
+        type: string
+
+  schedule:
+    - cron: '0 17 * * *'
+
 jobs:
   deploy-qa:
     name: deploy-qa-ec2
     runs-on: ubuntu-latest
     timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes) }}
-    strategy:
-      fail-fast: false
     env:
       AWS_REGION: "us-east-1"
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -42,6 +49,12 @@ jobs:
       ANSIBLE_VAULT_PASSWORD_FILE: "vault-secret.txt"
       ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
       ANSIBLE_HOST_KEY_CHECKING: "false"
+      # Conditional environment variables if the job is scheduled
+      DEPLOYMENT_SIZE: ${{ github.event_name == 'schedule' && 'small' || github.event.inputs.deployment_size }}
+      PR_OR_BRANCH: ${{ github.event_name == 'schedule' && 'main' || github.event.inputs.pr_or_branch }}
+      DEBUG_PAUSE: ${{ github.event_name == 'schedule' && '0' || github.event.inputs.debug_pause }}
+      TIMEOUT_MINUTES: ${{ github.event_name == 'schedule' && '60' || fromJSON(github.event.inputs.timeout_minutes) }}
+      CONTROLLER_ADDRESS: ${{ github.event_name == 'schedule' && 'qa.nexodus.io' || github.event.inputs.controller_address }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,20 +91,34 @@ jobs:
           aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/qa/
           aws s3 cp ./dist/nexctl-linux-amd64 s3://nexodus-io/ec2-e2e/qa/
 
-      - name:  Build Keycloak Tool
+      - name: Set Controller and Keycloak Credentials
         run: |
-          go build -o ./ ./hack/e2e-scripts/kctool/
+          # Set controller authentication address
+          controller_auth_address="auth.${{ github.event.inputs.controller_address }}"
+          echo "CONTROLLER_AUTH_ADDRESS=$controller_auth_address" >> "$GITHUB_ENV"
+          # Set Keycloak credentials based on controller address
+          if [ "${{ github.event.inputs.controller_address }}" = "qa.nexodus.io" ]; then
+            echo "KC_USERNAME=${{ secrets.KC_QA_USERNAME }}" >> "$GITHUB_ENV"
+            echo "KC_PASSWORD=${{ secrets.KC_QA_PASSWORD }}" >> "$GITHUB_ENV"
+          elif [ "${{ github.event.inputs.controller_address }}" = "try.nexodus.io" ]; then
+            echo "KC_USERNAME=${{ secrets.KC_PROD_USERNAME }}" >> "$GITHUB_ENV"
+            echo "KC_PASSWORD=${{ secrets.KC_PROD_PASSWORD }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Create a Keycloak User
         id: kc-user
         run: |
           output=$(./kctool --create-user \
-            -ku "${{ secrets.KC_QA_USERNAME }}" \
-            -kp "${{ secrets.KC_QA_PASSWORD }}" \
+            -ku "${{ env.KC_USERNAME }}" \
+            -kp "${{ env.KC_PASSWORD }}" \
             -u qa \
             -p "${{ secrets.QA_USER_PASSWORD }}" \
-            https://auth.qa.nexodus.io)
+            "https://${{ env.CONTROLLER_AUTH_ADDRESS }}")
           echo "USER=$output" >> "$GITHUB_OUTPUT"
+
+      - name:  Build Keycloak Tool
+        run: |
+          go build -o ./ ./hack/e2e-scripts/kctool/
 
       - name: User results from Keycloak
         run: echo "User is ${{ steps.kc-user.outputs.USER }}"
@@ -141,13 +168,15 @@ jobs:
           --vault-password-file vault-secret.txt \
           --extra-vars "nexodus_auth_uid=${{ steps.kc-user.outputs.USER }}" \
           --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}" \
-          --extra-vars "debug_pause=${{ github.event.inputs.debug_pause }}"
+          --extra-vars "debug_pause=${{ github.event.inputs.debug_pause }}" \
+          --extra-vars "controller_address=${{ github.event.inputs.controller_address }}"
 
       - name: Mesh Connectivity Results
         run: |
           set -e
-          cat ./ops/ansible/aws/connectivity-results.txt
-          if grep -iq 'Unreachable' ./ops/ansible/aws/connectivity-results.txt || grep -iq 'Failed' ./ops/ansible/aws/connectivity-results.txt; then
+          /bin/sh -c 'cat ./ops/ansible/aws/*-connectivity-results.txt > ./ops/ansible/aws/mesh-connectivity-results.txt'
+          cat ./ops/ansible/aws/mesh-connectivity-results.txt
+          if grep -iq 'Unreachable' ./ops/ansible/aws/mesh-connectivity-results.txt || grep -iq 'Failed' ./ops/ansible/aws/mesh-connectivity-results.txt; then
             echo "Connectivity results contain 'Unreachable or Failed' nodes, check the connectivity results and artifacts for details. Failing the job"
             exit 1
           else
