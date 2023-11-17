@@ -4,9 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/cucumber/godog"
+	"github.com/docker/docker/api/types/container"
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/cucumber"
 	"github.com/nexodus-io/nexodus/internal/wgcrypto"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"path"
+	"strings"
 )
 
 type extender struct {
@@ -34,6 +41,7 @@ func init() {
 		ctx.Step(`^I generate a new public key as \${([^}]*)}$`, e.iGenerateANewPublicKeyAsVariable)
 		ctx.Step(`^I generate a new key pair as \${([^}]*)}/\${([^}]*)}$`, e.iGenerateANewPublicKeyPairAsVariable)
 		ctx.Step(`^I decrypt the sealed "([^"]*)" with "([^"]*)" and store the result as \${([^}]*)}$`, e.iDeycryptTheSealedWithAndStoreTheResultAsDevice_bearer_token)
+		ctx.Step(`^I run playwright script "([^"]*)"$`, e.iRunPlaywrightScript)
 
 		ctx.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
 			if err == nil {
@@ -159,5 +167,106 @@ func (s *extender) iDeycryptTheSealedWithAndStoreTheResultAsDevice_bearer_token(
 		return err
 	}
 	s.Variables[storeAs] = string(value)
+	return nil
+}
+
+func (s *extender) iRunPlaywrightScript(script string) error {
+	name := s.Suite.TestingT.Name() + "-" + uuid.New().String()
+	name = strings.ReplaceAll(name, "/", "-")
+
+	certsDir, err := findCertsDir()
+	require.NoError(s.Suite.TestingT, err)
+	projectDir := path.Join(certsDir, "..")
+
+	s.Suite.Mu.Lock()
+	user := s.Users[s.CurrentUser]
+	s.Suite.Mu.Unlock()
+
+	container, err := testcontainers.GenericContainer(s.Suite.Context, testcontainers.GenericContainerRequest{
+		ProviderType: providerType,
+		ContainerRequest: testcontainers.ContainerRequest{
+			// Too bad the following does not work on my mac..
+			//FromDockerfile: testcontainers.FromDockerfile{
+			//	Context:    projectDir,
+			//	Dockerfile: "Containerfile.playwright",
+			//	Repo:       "quay.io",
+			//	Tag:        "nexodus/playwright:latest",
+			//},
+			Image:    "quay.io/nexodus/playwright:latest",
+			Name:     name,
+			Networks: []string{defaultNetwork},
+			HostConfigModifier: func(hostConfig *container.HostConfig) {
+				hostConfig.ExtraHosts = []string{
+					fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+					fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+					fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				}
+				hostConfig.AutoRemove = false
+			},
+			Mounts: []testcontainers.ContainerMount{
+				{
+					Source: testcontainers.GenericBindMountSource{
+						HostPath: certsDir,
+					},
+					Target:   "/.certs",
+					ReadOnly: true,
+				},
+				{
+					Source: testcontainers.GenericBindMountSource{
+						HostPath: path.Join(projectDir, "ui"),
+					},
+					Target:   "/ui",
+					ReadOnly: false,
+				},
+			},
+			// User: fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			Env: map[string]string{
+				"CI":               "true",
+				"NEXODUS_USERNAME": user.Subject,
+				"NEXODUS_PASSWORD": user.Password,
+			},
+			Cmd: []string{
+				"/update-ca.sh",
+				"/bin/bash",
+				"-c",
+				fmt.Sprintf("npm install && npx playwright test '%s'", script),
+			},
+			ConfigModifier: func(config *container.Config) {
+				config.WorkingDir = "/ui"
+			},
+		},
+		Started: true,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		go func() {
+			_ = container.Terminate(s.Suite.Context)
+		}()
+	}()
+	container.FollowOutput(FnConsumer{
+		Apply: func(l testcontainers.Log) {
+			text := string(l.Content)
+			s.Logf("%s", text)
+		},
+	})
+	err = container.StartLogProducer(s.Suite.Context)
+	if err != nil {
+		return err
+	}
+
+	err = wait.ForExit().WaitUntilReady(s.Suite.Context, container)
+	if err != nil {
+		return err
+	}
+
+	state, err := container.State(s.Suite.Context)
+	if err != nil {
+		return err
+	}
+	if state.ExitCode != 0 {
+		return fmt.Errorf("playwright failed with exit code %d", state.ExitCode)
+	}
 	return nil
 }

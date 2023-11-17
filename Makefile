@@ -383,7 +383,7 @@ dist/.generate: $(SWAGGER_YAML) dist/.ui-fmt docs/user-guide/nexd.md docs/user-g
 	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
-e2e: e2eprereqs dist/nexd dist/nexctl image-nexd ## Run e2e verbose tests
+e2e: e2eprereqs dist/nexd dist/nexctl image-nexd image-playwright ## Run e2e verbose tests
 	CGO_ENABLED=1 gotestsum --format $(GOTESTSUM_FMT) -- \
 		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 
@@ -614,6 +614,14 @@ image-ipam:
 image-envsubst:
 	docker build -f Containerfile.envsubst -t quay.io/nexodus/envsubst:$(TAG) .
 	docker tag quay.io/nexodus/envsubst:$(TAG) quay.io/nexodus/envsubst:latest
+
+.PHONY: image-playwright ## Build the playwright image
+image-playwright: dist/.image-playwright
+dist/.image-playwright: Containerfile.playwright hack/update-ca.sh | dist
+	$(CMD_PREFIX) docker build -f Containerfile.playwright \
+		-t quay.io/nexodus/playwright:$(TAG) .
+	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
+	$(CMD_PREFIX) touch $@
 
 .PHONY: images
 images: image-nexd image-frontend image-apiserver image-ipam image-envsubst ## Create container images

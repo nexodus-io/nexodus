@@ -73,6 +73,7 @@ func TestFeatures(t *testing.T) {
 				s.Context = ctx
 				s.ApiURL = "https://api.try.nexodus.127.0.0.1.nip.io"
 				s.TlsConfig = tlsConfig
+				s.TestingT = t
 
 				status := godog.TestSuite{
 					Name:                shortName,

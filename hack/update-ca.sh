@@ -3,8 +3,16 @@ set -e
 
 if [ -f /.certs/rootCA.pem ]; then
   if [ -x /usr/sbin/update-ca-certificates ]; then
-    cp /.certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+    cp /.certs/rootCA.pem /usr/local/share/ca-certificates/cacerts.crt
     /usr/sbin/update-ca-certificates 2> /dev/null > /dev/null
+
+    # the following is needed to get the playwright browsers to know about the root CA
+    if [ -x /usr/bin/certutil ]; then
+      mkdir -p $HOME/.pki/nssdb
+      /usr/bin/certutil --empty-password -d $HOME/.pki/nssdb -N
+      /usr/bin/certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n cacerts.crt -i /usr/local/share/ca-certificates/cacerts.crt
+    fi
+
   elif [ -x /usr/bin/update-ca-trust ]; then
     cp ./.certs/rootCA.pem /etc/pki/ca-trust/source/anchors/rootCA.crt
     /usr/bin/update-ca-trust 2> /dev/null > /dev/null

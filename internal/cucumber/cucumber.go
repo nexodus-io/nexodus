@@ -38,6 +38,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -74,6 +75,7 @@ type TestSuite struct {
 	nextOrgId uint32
 	TlsConfig *tls.Config
 	DB        *gorm.DB
+	TestingT  *testing.T
 }
 
 // TestUser represents a user that can login to the system.  The same users are shared by
@@ -96,6 +98,10 @@ type TestScenario struct {
 	Variables       map[string]interface{}
 	Users           map[string]*TestUser
 	hasTestCaseLock bool
+}
+
+func (s *TestScenario) Logf(format string, args ...any) {
+	s.Suite.TestingT.Logf(format, args...)
 }
 
 func (s *TestScenario) User() *TestUser {
