@@ -16,6 +16,20 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
+func TestAdminAccountLogin(t *testing.T) {
+	t.Parallel()
+	helper := NewHelper(t)
+	require := helper.require
+
+	// make sure the admin account can login and run commands
+	_, err := helper.runCommand(nexctl,
+		"--username", "admin",
+		"--password", "floofykittens",
+		"vpc", "list",
+	)
+	require.NoError(err)
+}
+
 func TestBasicConnectivity(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)

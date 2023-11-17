@@ -44,6 +44,14 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
 		return api.transaction(ctx, func(tx *gorm.DB) error {
 
+			if res := tx.First(&user, "idp_id = ?", idpId); res.Error != nil {
+				if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+					return res.Error
+				}
+			} else {
+				return nil
+			}
+
 			// Create the user
 			user.ID = uuid.New()
 			user.IdpID = idpId
