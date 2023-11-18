@@ -6,6 +6,7 @@ import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 
 // icons
 import DeviceIcon from "@mui/icons-material/Devices";
+import SiteIcon from "@mui/icons-material/BorderOuter";
 import OrganizationIcon from "@mui/icons-material/People";
 import UserIcon from "@mui/icons-material/Person";
 import InvitationIcon from "@mui/icons-material/Rsvp";
@@ -39,6 +40,7 @@ import {
   RegKeyList,
   RegKeyShow,
 } from "./pages/RegKeys";
+import { SiteEdit, SiteList, SiteShow } from "./pages/Sites";
 
 const fetchJson = (url: string, options: any = {}) => {
   // Includes the encrypted session cookie in requests to the API
@@ -122,6 +124,14 @@ const App = () => {
         show={DeviceShow}
         icon={DeviceIcon}
         edit={DeviceEdit}
+        recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="sites"
+        list={SiteList}
+        show={SiteShow}
+        icon={SiteIcon}
+        edit={SiteEdit}
         recordRepresentation={(record) => `${record.hostname}`}
       />
       <Resource
