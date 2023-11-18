@@ -28,8 +28,8 @@ Feature: Site API
         "owner_id": "${user_id}",
         "vpc_id": "${user_id}",
         "public_key": "${public_key}",
-        "hostname": "bbac3081d5e8",
-        "os": "linux"
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """
     Then the response code should be 201
@@ -37,13 +37,15 @@ Feature: Site API
     And the response should match json:
       """
       {
-        "hostname": "bbac3081d5e8",
         "id": "${site_id}",
-        "os": "linux",
-        "owner_id": "${user_id}",
-        "public_key": "${public_key}",
         "revision": ${response.revision},
-        "vpc_id": "${user_id}"
+        "hostname": "",
+        "os": "",
+        "owner_id": "${user_id}",
+        "vpc_id": "${user_id}",
+        "public_key": "${public_key}",
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """
 
@@ -59,13 +61,15 @@ Feature: Site API
     And the response should match json:
       """
       {
-        "hostname": "kittenhome",
         "id": "${site_id}",
-        "os": "linux",
-        "owner_id": "${user_id}",
-        "public_key": "${public_key}",
         "revision": ${response.revision},
-        "vpc_id": "${user_id}"
+        "hostname": "kittenhome",
+        "os": "",
+        "owner_id": "${user_id}",
+        "vpc_id": "${user_id}",
+        "public_key": "${public_key}",
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """
 
@@ -122,13 +126,15 @@ Feature: Site API
     And the response should match json:
       """
       {
-        "hostname": "kittenhome",
         "id": "${site_id}",
-        "os": "linux",
-        "owner_id": "${user_id}",
-        "public_key": "",
         "revision": ${response.revision},
-        "vpc_id": "${user_id}"
+        "hostname": "kittenhome",
+        "os": "",
+        "owner_id": "${user_id}",
+        "vpc_id": "${user_id}",
+        "public_key": "",
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """
 
@@ -139,8 +145,8 @@ Feature: Site API
         "owner_id": "${user_id}",
         "vpc_id": "${user_id}",
         "public_key": "${public_key}",
-        "hostname": "bbac3081d5e8",
-        "os": "linux"
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """
     Then the response code should be 201
@@ -148,12 +154,14 @@ Feature: Site API
     And the response should match json:
       """
       {
-        "hostname": "bbac3081d5e8",
         "id": "${site_id}",
-        "os": "linux",
-        "owner_id": "${user_id}",
-        "public_key": "${public_key}",
         "revision": ${response.revision},
-        "vpc_id": "${user_id}"
+        "hostname": "",
+        "os": "",
+        "owner_id": "${user_id}",
+        "vpc_id": "${user_id}",
+        "public_key": "${public_key}",
+        "name": "site-a",
+        "platform": "kubernetes"
       }
       """

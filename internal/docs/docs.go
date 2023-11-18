@@ -3211,11 +3211,10 @@ const docTemplate = `{
         "models.AddSite": {
             "type": "object",
             "properties": {
-                "hostname": {
-                    "type": "string",
-                    "example": "myhost"
+                "name": {
+                    "type": "string"
                 },
-                "os": {
+                "platform": {
                     "type": "string"
                 },
                 "public_key": {
@@ -3552,6 +3551,11 @@ const docTemplate = `{
                     "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
+                "settings": {
+                    "description": "Settings contains general settings for the device.",
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "vpc_id": {
                     "description": "VpcID is the ID of the VPC the device will join.",
                     "type": "string"
@@ -3623,10 +3627,16 @@ const docTemplate = `{
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "os": {
                     "type": "string"
                 },
                 "owner_id": {
+                    "type": "string"
+                },
+                "platform": {
                     "type": "string"
                 },
                 "public_key": {

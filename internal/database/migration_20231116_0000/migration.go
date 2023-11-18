@@ -17,12 +17,19 @@ type Site struct {
 	BearerToken    string
 	Hostname       string `gorm:"index"`
 	Os             string
+	Name           string `json:"name"`
+	Platform       string `json:"platform"`
 	PublicKey      string
+}
+
+type RegKey struct {
+	Settings map[string]interface{} `json:"settings" gorm:"type:JSONB; serializer:json"` // Settings contains general settings for the device.
 }
 
 func New() *gormigrate.Migration {
 	migrationId := "20231116-0000"
 	return CreateMigrationFromActions(migrationId,
+		AddTableColumnsAction(&RegKey{}),
 		CreateTableAction(&Site{}),
 		ExecActionIf(`
 			CREATE OR REPLACE FUNCTION sites_revision_trigger() RETURNS TRIGGER LANGUAGE plpgsql AS '
