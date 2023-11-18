@@ -356,8 +356,8 @@ func (api *API) CreateSite(c *gin.Context) {
 			VpcID:          vpc.ID,
 			OrganizationID: vpc.OrganizationID,
 			PublicKey:      request.PublicKey,
-			Hostname:       request.Hostname,
-			Os:             request.Os,
+			Platform:       request.Platform,
+			Name:           request.Name,
 			RegKeyID:       regKeyID,
 			BearerToken:    "DT:" + siteToken.String(),
 		}

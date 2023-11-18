@@ -16,14 +16,16 @@ type Site struct {
 	BearerToken    string    `json:"bearer_token,omitempty"` // the token nexd should use to reconcile Site state.
 	Hostname       string    `json:"hostname" example:"myhost"`
 	Os             string    `json:"os"`
+	Name           string    `json:"name"`
+	Platform       string    `json:"platform"`
 	PublicKey      string    `json:"public_key"`
 }
 
 // AddSite is the information needed to add a new Site.
 type AddSite struct {
 	VpcID     uuid.UUID `json:"vpc_id" example:"694aa002-5d19-495e-980b-3d8fd508ea10"`
-	Hostname  string    `json:"hostname" example:"myhost"`
-	Os        string    `json:"os"`
+	Name      string    `json:"name"`
+	Platform  string    `json:"platform"`
 	PublicKey string    `json:"public_key"`
 }
 
