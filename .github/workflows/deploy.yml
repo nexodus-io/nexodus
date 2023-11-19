@@ -4,7 +4,7 @@ concurrency: qa-${{ github.ref_name }}
 
 on:
   push:
-    branches: [main, add-sites-api]
+    branches: [main, playground]
 
 jobs:
   build-images:
@@ -128,8 +128,12 @@ jobs:
         if: env.COMMIT_CHANGES == 1
         shell: bash
         run: |
-          git tag qa --force
-          git push origin qa --force 
+          TAG="qa-${{github.ref_name}}"
+          if [ "${{github.ref_name}}" == "main" ]; then
+            TAG="qa"
+          fi
+          git tag "$TAG" --force
+          git push origin "$TAG" --force 
 
   publish-rpms:
     runs-on: ubuntu-latest
