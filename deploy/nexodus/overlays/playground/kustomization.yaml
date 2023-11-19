@@ -86,120 +86,120 @@ patches:
       kind: PostgresCluster
       name: database
 
-  #
-  # Tuning tweaks
-  - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 500m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 1Gi
-    target:
-      kind: StatefulSet
-      name: redis
-  - patch: |-
-      - op: replace
-        path: /spec/instances/0/replicas
-        value: 1
-      - op: replace
-        path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
-        value: 6Gi
-      - op: replace
-        path: /spec/instances/0/resources/limits/cpu
-        value: 8000m
-      - op: replace
-        path: /spec/instances/0/resources/limits/memory
-        value: 12Gi
-      - op: replace
-        path: /spec/proxy/pgBouncer/replicas
-        value: 2
-      - op: replace
-        path: /spec/proxy/pgBouncer/resources/limits/cpu
-        value: 1000m
-      - op: replace
-        path: /spec/proxy/pgBouncer/resources/limits/memory
-        value: 500Mi
-      - op: replace
-        path: /spec/proxy/pgBouncer/config/databases/ipam
-        value: "host=database-primary port=5432 pool_size=15 reserve_pool=5 max_db_connections=20"
-      - op: replace
-        path: /spec/proxy/pgBouncer/config/databases/apiserver
-        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
-      - op: replace
-        path: /spec/proxy/pgBouncer/config/databases/keycloak
-        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
-      - op: replace
-        path: /spec/proxy/pgBouncer/config/global/max_client_conn
-        value: "10000"
-      - op: replace
-        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/max_connections
-        value: "300"
-      - op: replace
-        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/shared_buffers
-        value: 512MB
-    target:
-      kind: PostgresCluster
-      name: database
-  - patch: |-
-      - op: add
-        path: /spec/template/spec/serviceAccountName
-        value: nexodus-serviceaccount
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 500m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 1Gi
-      - op: replace
-        path: /spec/replicas
-        value: 4
-    target:
-      kind: Deployment
-      name: apiproxy
-  - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 2000m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 2000Mi
-      - op: replace
-        path: /spec/replicas
-        value: 8
-    target:
-      kind: Deployment
-      name: apiserver
-  - patch: |-
-      - op: replace
-        path: /spec/replicas
-        value: 2
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 1000m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 2000Mi
-    target:
-      kind: Deployment
-      name: auth
-  - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 200m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 400Mi
-    target:
-      kind: Deployment
-      name: frontend
-  - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: 300m
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: 500Mi
-    target:
-      kind: Deployment
-      name: ipam
+##
+## Tuning tweaks
+#  - patch: |-
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 500m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 1Gi
+#    target:
+#      kind: StatefulSet
+#      name: redis
+#  - patch: |-
+#      - op: replace
+#        path: /spec/instances/0/replicas
+#        value: 1
+#      - op: replace
+#        path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
+#        value: 6Gi
+#      - op: replace
+#        path: /spec/instances/0/resources/limits/cpu
+#        value: 8000m
+#      - op: replace
+#        path: /spec/instances/0/resources/limits/memory
+#        value: 12Gi
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/replicas
+#        value: 2
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/resources/limits/cpu
+#        value: 1000m
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/resources/limits/memory
+#        value: 500Mi
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/config/databases/ipam
+#        value: "host=database-primary port=5432 pool_size=15 reserve_pool=5 max_db_connections=20"
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/config/databases/apiserver
+#        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/config/databases/keycloak
+#        value: "host=database-primary port=5432 pool_size=50 reserve_pool=20 max_db_connections=70"
+#      - op: replace
+#        path: /spec/proxy/pgBouncer/config/global/max_client_conn
+#        value: "10000"
+#      - op: replace
+#        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/max_connections
+#        value: "300"
+#      - op: replace
+#        path: /spec/patroni/dynamicConfiguration/postgresql/parameters/shared_buffers
+#        value: 512MB
+#    target:
+#      kind: PostgresCluster
+#      name: database
+#  - patch: |-
+#      - op: add
+#        path: /spec/template/spec/serviceAccountName
+#        value: nexodus-serviceaccount
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 500m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 1Gi
+#      - op: replace
+#        path: /spec/replicas
+#        value: 4
+#    target:
+#      kind: Deployment
+#      name: apiproxy
+#  - patch: |-
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 2000m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 2000Mi
+#      - op: replace
+#        path: /spec/replicas
+#        value: 4
+#    target:
+#      kind: Deployment
+#      name: apiserver
+#  - patch: |-
+#      - op: replace
+#        path: /spec/replicas
+#        value: 2
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 1000m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 2000Mi
+#    target:
+#      kind: Deployment
+#      name: auth
+#  - patch: |-
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 200m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 400Mi
+#    target:
+#      kind: Deployment
+#      name: frontend
+#  - patch: |-
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/cpu
+#        value: 300m
+#      - op: replace
+#        path: /spec/template/spec/containers/0/resources/limits/memory
+#        value: 500Mi
+#    target:
+#      kind: Deployment
+#      name: ipam
