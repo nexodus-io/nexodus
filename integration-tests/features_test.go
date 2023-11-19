@@ -57,12 +57,10 @@ func TestFeatures(t *testing.T) {
 			shortName := strings.TrimSuffix(name, ext)
 			t.Run(shortName, func(t *testing.T) {
 
-				// To preserve the current behavior, the test are market to be "safely" run in parallel, however
-				// we may think to introduce a new naming convention i.e. files that ends with _parallel would
-				// cause t.Parallel() to be invoked, other tests won't, so they won't be executed concurrently.
-				//
-				// This could help reducing/removing the need of explicit lock
-				t.Parallel()
+				// features names ending with not_parallel are not run in parallel.
+				if !strings.HasSuffix(shortName, "not_parallel") {
+					t.Parallel()
+				}
 
 				o := cucumberOptions
 				o.TestingT = t

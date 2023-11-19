@@ -1,0 +1,101 @@
+basePath: /
+definitions:
+  models.InternalServerError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      trace_id:
+        type: string
+    type: object
+  models.ValidationError:
+    properties:
+      error:
+        example: something bad
+        type: string
+      field:
+        type: string
+    type: object
+info:
+  contact:
+    name: The Nexodus Authors
+    url: https://github.com/nexodus-io/nexodus/issues
+  description: This is the Nexodus API Server.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Nexodus API
+  version: "1.0"
+paths:
+  /admin/gc:
+    post:
+      consumes:
+      - application/json
+      description: Cleans up old soft deleted records
+      operationId: GarbageCollect
+      parameters:
+      - description: how long to retain deleted records.  defaults to '24h'
+        in: query
+        name: retention
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ValidationError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Cleans up old soft deleted records
+      tags:
+      - Private
+  /private/live:
+    post:
+      consumes:
+      - application/json
+      description: Checks if the service is live
+      operationId: Live
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Checks if the service is live
+      tags:
+      - Private
+  /private/ready:
+    post:
+      consumes:
+      - application/json
+      description: Checks if the service is ready to accept requests
+      operationId: Ready
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Checks if the service is ready to accept requests
+      tags:
+      - Private
+securityDefinitions:
+  OAuth2Implicit:
+    authorizationUrl: https://auth.try.nexodus.127.0.0.1.nip.io/
+    flow: implicit
+    scopes:
+      admin: ' Grants read and write access to administrative information'
+      user: ' Grants read and write access to resources owned by this user'
+    type: oauth2
+swagger: "2.0"

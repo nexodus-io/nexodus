@@ -26,6 +26,7 @@ configMapGenerator:
 resources:
   - service.yaml
   - deployment.yaml
+  - cronjob.yaml
 labels:
   - includeSelectors: true
     pairs:

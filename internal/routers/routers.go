@@ -74,26 +74,26 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 
 	r.GET("/openapi/*any", ginSwagger.WrapHandler(swaggerFiles.Handler), loggerMiddleware)
 
-	device := r.Group("/device", loggerMiddleware)
+	deviceGroup := r.Group("/device", loggerMiddleware)
 	{
-		device.POST("/login/start", o.DeviceFlow.DeviceStart)
-		device.GET("/certs", o.Api.Certs)
+		deviceGroup.POST("/login/start", o.DeviceFlow.DeviceStart)
+		deviceGroup.GET("/certs", o.Api.Certs)
 	}
-	web := r.Group("/web", loggerMiddleware)
+	webGroup := r.Group("/web", loggerMiddleware)
 	{
-		web.Use(o.BrowserFlow.OriginVerifier())
-		web.Use(ginsession.New(
+		webGroup.Use(o.BrowserFlow.OriginVerifier())
+		webGroup.Use(ginsession.New(
 			session.SetCookieName(handlers.SESSION_ID_COOKIE_NAME),
 			session.SetStore(o.SessionStore)))
-		web.POST("/login/start", o.BrowserFlow.LoginStart)
-		web.POST("/login/end", o.BrowserFlow.LoginEnd)
-		web.GET("/user_info", o.BrowserFlow.UserInfo)
-		web.GET("/claims", o.BrowserFlow.Claims)
-		web.POST("/logout", o.BrowserFlow.Logout)
+		webGroup.POST("/login/start", o.BrowserFlow.LoginStart)
+		webGroup.POST("/login/end", o.BrowserFlow.LoginEnd)
+		webGroup.GET("/user_info", o.BrowserFlow.UserInfo)
+		webGroup.GET("/claims", o.BrowserFlow.Claims)
+		webGroup.POST("/logout", o.BrowserFlow.Logout)
 		// web.GET("/check_auth", o.BrowserFlow.CheckAuth)
-		web.POST("/refresh", o.BrowserFlow.Refresh)
+		webGroup.POST("/refresh", o.BrowserFlow.Refresh)
 	}
-	private := r.Group("/api", loggerMiddleware)
+	apiGroup := r.Group("/api", loggerMiddleware)
 	{
 		api := o.Api
 		nexodusJWKS, err := api.JSONWebKeySet()
@@ -106,84 +106,79 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 			return nil, err
 		}
 
-		private.Use(validateJWT)
+		apiGroup.Use(validateJWT)
 
 		// Feature Flags
-		private.GET("fflags", api.ListFeatureFlags)
-		private.GET("fflags/:name", api.GetFeatureFlag)
+		apiGroup.GET("fflags", api.ListFeatureFlags)
+		apiGroup.GET("fflags/:name", api.GetFeatureFlag)
 
 		// Users
-		private.GET("/users", api.ListUsers)
-		private.GET("/users/:id", api.GetUser)
-		private.DELETE("/users/:id", api.DeleteUser)
-		private.DELETE("/users/:id/organizations/:organization", api.DeleteUserFromOrganization)
+		apiGroup.GET("/users", api.ListUsers)
+		apiGroup.GET("/users/:id", api.GetUser)
+		apiGroup.DELETE("/users/:id", api.DeleteUser)
+		apiGroup.DELETE("/users/:id/organizations/:organization", api.DeleteUserFromOrganization)
 
 		// Organizations
-		private.GET("/organizations", api.ListOrganizations)
-		private.POST("/organizations", api.CreateOrganization)
-		private.GET("/organizations/:id", api.GetOrganizations)
-		private.DELETE("/organizations/:id", api.DeleteOrganization)
+		apiGroup.GET("/organizations", api.ListOrganizations)
+		apiGroup.POST("/organizations", api.CreateOrganization)
+		apiGroup.GET("/organizations/:id", api.GetOrganizations)
+		apiGroup.DELETE("/organizations/:id", api.DeleteOrganization)
 
 		// Invitations
-		private.GET("/invitations", api.ListInvitations)
-		private.GET("/invitations/:id", api.GetInvitation)
-		private.POST("/invitations", api.CreateInvitation)
-		private.POST("/invitations/:id/accept", api.AcceptInvitation)
-		private.DELETE("/invitations/:id", api.DeleteInvitation)
+		apiGroup.GET("/invitations", api.ListInvitations)
+		apiGroup.GET("/invitations/:id", api.GetInvitation)
+		apiGroup.POST("/invitations", api.CreateInvitation)
+		apiGroup.POST("/invitations/:id/accept", api.AcceptInvitation)
+		apiGroup.DELETE("/invitations/:id", api.DeleteInvitation)
 
-		private.GET("/vpcs", api.ListVPCs)
-		private.GET("/vpcs/:id", api.GetVPC)
-		private.PATCH("/vpcs/:id", api.UpdateVPC)
-		private.POST("/vpcs", api.CreateVPC)
-		private.DELETE("/vpcs/:id", api.DeleteVPC)
+		apiGroup.GET("/vpcs", api.ListVPCs)
+		apiGroup.GET("/vpcs/:id", api.GetVPC)
+		apiGroup.PATCH("/vpcs/:id", api.UpdateVPC)
+		apiGroup.POST("/vpcs", api.CreateVPC)
+		apiGroup.DELETE("/vpcs/:id", api.DeleteVPC)
 
 		// Registration Tokens
-		private.GET("/reg-keys", api.ListRegKeys)
-		private.GET("/reg-keys/:id", api.GetRegKey)
-		private.POST("/reg-keys", api.CreateRegKey)
-		private.PATCH("/reg-keys/:id", api.UpdateRegKey)
-		private.DELETE("/reg-keys/:id", api.DeleteRegKey)
+		apiGroup.GET("/reg-keys", api.ListRegKeys)
+		apiGroup.GET("/reg-keys/:id", api.GetRegKey)
+		apiGroup.POST("/reg-keys", api.CreateRegKey)
+		apiGroup.PATCH("/reg-keys/:id", api.UpdateRegKey)
+		apiGroup.DELETE("/reg-keys/:id", api.DeleteRegKey)
 
 		// Devices
-		private.GET("/devices", api.ListDevices)
-		private.GET("/devices/:id", api.GetDevice)
-		private.PATCH("/devices/:id", api.UpdateDevice)
-		private.POST("/devices", api.CreateDevice)
-		private.DELETE("/devices/:id", api.DeleteDevice)
+		apiGroup.GET("/devices", api.ListDevices)
+		apiGroup.GET("/devices/:id", api.GetDevice)
+		apiGroup.PATCH("/devices/:id", api.UpdateDevice)
+		apiGroup.POST("/devices", api.CreateDevice)
+		apiGroup.DELETE("/devices/:id", api.DeleteDevice)
 
 		// Device Metadata
-		private.GET("/devices/:id/metadata", api.ListDeviceMetadata)
-		private.GET("/devices/:id/metadata/:key", api.GetDeviceMetadataKey)
-		private.PUT("/devices/:id/metadata/:key", api.UpdateDeviceMetadataKey)
-		private.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
-		private.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
+		apiGroup.GET("/devices/:id/metadata", api.ListDeviceMetadata)
+		apiGroup.GET("/devices/:id/metadata/:key", api.GetDeviceMetadataKey)
+		apiGroup.PUT("/devices/:id/metadata/:key", api.UpdateDeviceMetadataKey)
+		apiGroup.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
+		apiGroup.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 
 		// Security Groups
-		private.GET("/security-groups", api.ListSecurityGroups)
-		private.GET("/security-groups/:id", api.GetSecurityGroup)
-		private.POST("/security-groups", api.CreateSecurityGroup)
-		private.PATCH("/security-groups/:id", api.UpdateSecurityGroup)
-		private.DELETE("/security-groups/:id", api.DeleteSecurityGroup)
+		apiGroup.GET("/security-groups", api.ListSecurityGroups)
+		apiGroup.GET("/security-groups/:id", api.GetSecurityGroup)
+		apiGroup.POST("/security-groups", api.CreateSecurityGroup)
+		apiGroup.PATCH("/security-groups/:id", api.UpdateSecurityGroup)
+		apiGroup.DELETE("/security-groups/:id", api.DeleteSecurityGroup)
 
 		// List / Watch Event API used by nexd
-		private.POST("/vpcs/:id/events", api.WatchEvents)
-		private.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
-		private.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
-		private.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
+		apiGroup.POST("/vpcs/:id/events", api.WatchEvents)
+		apiGroup.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
+		apiGroup.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
+		apiGroup.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
 
 	}
 
-	// Don't log the health/readiness checks.
-	r.GET("/ready", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "UP",
-		})
-	})
-	r.GET("/live", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "UP",
-		})
-	})
+	privateGroup := r.Group("/private")
+	{
+		privateGroup.GET("/gc", o.Api.GarbageCollect, loggerMiddleware)
+		privateGroup.GET("/ready", o.Api.Ready)
+		privateGroup.GET("/live", o.Api.Live)
+	}
 
 	return r, nil
 }
