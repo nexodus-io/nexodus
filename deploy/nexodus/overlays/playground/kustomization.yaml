@@ -41,7 +41,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/dnsNames/0
-        value: `tr`y.nexodus.io
+        value: playground.nexodus.io
   - target:
       kind: Certificate
       name: nexodus-api-cert
