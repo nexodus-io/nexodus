@@ -136,6 +136,7 @@ jobs:
           git push origin "$TAG" --force 
 
   publish-rpms:
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     environment: copr-repo
     strategy:
