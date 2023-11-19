@@ -25,6 +25,8 @@ type ModelsRegKey struct {
 	OwnerId string `json:"owner_id,omitempty"`
 	// SecurityGroupId is the ID of the security group to assign to the device.
 	SecurityGroupId string `json:"security_group_id,omitempty"`
+	// Settings contains general settings for the device.
+	Settings map[string]interface{} `json:"settings,omitempty"`
 	// VpcID is the ID of the VPC the device will join.
 	VpcId string `json:"vpc_id,omitempty"`
 }

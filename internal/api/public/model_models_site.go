@@ -16,8 +16,10 @@ type ModelsSite struct {
 	BearerToken string `json:"bearer_token,omitempty"`
 	Hostname    string `json:"hostname,omitempty"`
 	Id          string `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
 	Os          string `json:"os,omitempty"`
 	OwnerId     string `json:"owner_id,omitempty"`
+	Platform    string `json:"platform,omitempty"`
 	PublicKey   string `json:"public_key,omitempty"`
 	Revision    int32  `json:"revision,omitempty"`
 	VpcId       string `json:"vpc_id,omitempty"`

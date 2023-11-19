@@ -12,8 +12,8 @@ package public
 
 // ModelsAddSite struct for ModelsAddSite
 type ModelsAddSite struct {
-	Hostname  string `json:"hostname,omitempty"`
-	Os        string `json:"os,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Platform  string `json:"platform,omitempty"`
 	PublicKey string `json:"public_key,omitempty"`
 	VpcId     string `json:"vpc_id,omitempty"`
 }

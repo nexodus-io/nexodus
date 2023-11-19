@@ -3174,6 +3174,11 @@ const docTemplate = `{
                     "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
+                "settings": {
+                    "description": "Settings contains general settings for the device.",
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "single_use": {
                     "description": "SingleUse only allows the registration key to be used once.",
                     "type": "boolean"
@@ -3717,6 +3722,11 @@ const docTemplate = `{
                 "security_group_id": {
                     "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
+                },
+                "settings": {
+                    "description": "Settings contains general settings for the device.",
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },

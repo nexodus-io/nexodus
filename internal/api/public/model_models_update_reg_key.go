@@ -18,4 +18,6 @@ type ModelsUpdateRegKey struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// SecurityGroupId is the ID of the security group to assign to the device.
 	SecurityGroupId string `json:"security_group_id,omitempty"`
+	// Settings contains general settings for the device.
+	Settings map[string]interface{} `json:"settings,omitempty"`
 }

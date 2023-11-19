@@ -28,15 +28,17 @@ type NexodusClaims struct {
 }
 
 type AddRegKey struct {
-	VpcID           uuid.UUID  `json:"vpc_id,omitempty"`      // VpcID is the ID of the VPC the device will join.
-	Description     string     `json:"description,omitempty"` // Description of the registration key.
-	SingleUse       bool       `json:"single_use,omitempty"`  // SingleUse only allows the registration key to be used once.
-	ExpiresAt       *time.Time `json:"expires_at,omitempty"`  // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
-	SecurityGroupId *uuid.UUID `json:"security_group_id"`     // SecurityGroupId is the ID of the security group to assign to the device.
+	VpcID           uuid.UUID              `json:"vpc_id,omitempty"`      // VpcID is the ID of the VPC the device will join.
+	Description     string                 `json:"description,omitempty"` // Description of the registration key.
+	SingleUse       bool                   `json:"single_use,omitempty"`  // SingleUse only allows the registration key to be used once.
+	ExpiresAt       *time.Time             `json:"expires_at,omitempty"`  // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
+	SecurityGroupId *uuid.UUID             `json:"security_group_id"`     // SecurityGroupId is the ID of the security group to assign to the device.
+	Settings        map[string]interface{} `json:"settings"`              // Settings contains general settings for the device.
 }
 
 type UpdateRegKey struct {
-	Description     *string    `json:"description,omitempty"` // Description of the registration key.
-	ExpiresAt       *time.Time `json:"expires_at,omitempty"`  // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
-	SecurityGroupId *uuid.UUID `json:"security_group_id"`     // SecurityGroupId is the ID of the security group to assign to the device.
+	Description     *string                `json:"description,omitempty"` // Description of the registration key.
+	ExpiresAt       *time.Time             `json:"expires_at,omitempty"`  // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
+	SecurityGroupId *uuid.UUID             `json:"security_group_id"`     // SecurityGroupId is the ID of the security group to assign to the device.
+	Settings        map[string]interface{} `json:"settings"`              // Settings contains general settings for the device.
 }
