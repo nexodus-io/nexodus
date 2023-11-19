@@ -1,12 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../released
-  - issuer.yaml
+  - ../openshift
   - sealed-secret.yaml
-  - serviceaccount.yaml
-components:
-  - ../../components/limitador
 namespace: nexodus-playground
 configMapGenerator:
   - behavior: replace
@@ -18,10 +14,6 @@ configMapGenerator:
     files:
       - files/nexodus.json
     name: realm
-  - behavior: create
-    files:
-      - files/limits.yaml
-    name: limitador-config
   - behavior: merge
     literals:
       - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
@@ -41,41 +33,41 @@ configMapGenerator:
       - NEXAPI_DEBUG=0
     name: apiserver
 patches:
-  - patch: |-
+
+  # Update the dns names for the certificates
+  - target:
+      kind: Certificate
+      name: nexodus-frontend-cert
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: `tr`y.nexodus.io
+  - target:
+      kind: Certificate
+      name: nexodus-api-cert
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames/0
+        value: api.playground.nexodus.io
+  - target:
+      kind: Certificate
+      name: nexodus-auth-cert
+    patch: |-
       - op: replace
         path: /spec/dnsNames/0
         value: auth.playground.nexodus.io
-      - op: replace
-        path: /spec/issuerRef/name
-        value: letsencrypt
-    target:
-      kind: Certificate
-      name: nexodus-auth-cert
+  # Update the dns names for the ingress
   - patch: |-
       - op: replace
         path: /spec/rules/0/host
         value: api.playground.nexodus.io
-      - op: replace
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
     target:
       kind: Ingress
       name: apiproxy
   - patch: |-
-      - op: add
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
-      - op: remove
-        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-passthrough
       - op: replace
         path: /spec/rules/0/host
         value: auth.playground.nexodus.io
-      - op: replace
-        path: /spec/rules/0/http/paths/0/pathType
-        value: ImplementationSpecific
-      - op: replace
-        path: /spec/rules/0/http/paths/0/path
-        value: ''
     target:
       kind: Ingress
       name: auth
@@ -83,21 +75,19 @@ patches:
       - op: replace
         path: /spec/rules/0/host
         value: playground.nexodus.io
-      - op: replace
-        path: /metadata/annotations/cert-manager.io~1issuer
-        value: letsencrypt
     target:
       kind: Ingress
       name: frontend
   - patch: |-
-      - op: add
-        path: /rules/1
-        value: {"apiGroups":["security.openshift.io"],"resources":["securitycontextconstraints"],"resourceNames":["privileged"],"verbs":["use"]}
+      - op: replace
+        path: /spec/instances/0/dataVolumeClaimSpec/resources/requests/storage
+        value: 8Gi
     target:
-      group: rbac.authorization.k8s.io
-      version: v1
-      kind: Role
-      name: promtail-role
+      kind: PostgresCluster
+      name: database
+
+  #
+  # Tuning tweaks
   - patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
