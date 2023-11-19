@@ -4,7 +4,7 @@ concurrency: qa-${{ github.ref_name }}
 
 on:
   push:
-    branches: [main]
+    branches: [main, add-sites-api]
 
 jobs:
   build-images:
@@ -109,10 +109,10 @@ jobs:
         run: |
           git diff --quiet || echo "COMMIT_CHANGES=1" >> "$GITHUB_ENV"
 
-      - name: Check for new commits in main
+      - name: Check for new commits in ${{ github.ref_name }}
         run: |
           git fetch origin
-          if [ "$(git log HEAD..origin/main --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> "$GITHUB_ENV"
+          if [ "$(git log HEAD..origin/${{ github.ref_name }} --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> "$GITHUB_ENV"
 
       - name: Commit Changes
         id: commit
