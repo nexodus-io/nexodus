@@ -35,7 +35,7 @@
     ]
   },
   "devDependencies": {
-    "@mui/material": "^5.14.17",
+    "@mui/material": "^5.14.18",
     "@playwright/test": "^1.39.0",
     "@types/jest": "^29.5.7",
     "@types/node": "^20.9.2",
