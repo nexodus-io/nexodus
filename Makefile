@@ -788,7 +788,7 @@ cacerts: ## Install the Self-Signed CA Certificate
 dist/rpm:
 	$(CMD_PREFIX) mkdir -p dist/rpm
 
-MOCK_ROOTS?=fedora-38-x86_64 centos-stream+epel-9-x86_64
+MOCK_ROOTS?=fedora-38-x86_64 fedora-39-x86_64 centos-stream+epel-9-x86_64
 MOCK_DEPS:=golang systemd-rpm-macros systemd-units
 MOCK_CONTAINER_DEPS?=
 
@@ -813,15 +813,15 @@ image-mock: ## Build and publish updated mock images to quay.io used for buildin
 		docker push quay.io/nexodus/mock:$$(echo $$MOCK_ROOT | cut -f2 -d'+') ; \
 	done
 
-MOCK_ROOTS_AARCH64:=fedora-38-aarch64 centos-stream+epel-9-aarch64
+MOCK_ROOTS_AARCH64:=fedora-38-aarch64 fedora-39-aarch64 centos-stream+epel-9-aarch64
 
 .PHONY: image-mock-aarch64
 image-mock-aarch64: ## Build and publish updated mock images to quay.io used for building rpms
 	MOCK_ROOTS="$(MOCK_ROOTS_AARCH64)" MOCK_CONTAINER_DEPS="qemu-user-static-aarch64" $(MAKE) image-mock
 
-MOCK_ROOT?=fedora-38-x86_64
-SRPM_MOCK_ROOT?=fedora-38-x86_64
-SRPM_DISTRO?=fc38
+MOCK_ROOT?=fedora-39-x86_64
+SRPM_MOCK_ROOT?=fedora-39-x86_64
+SRPM_DISTRO?=fc39
 NEXODUS_AUTORELEASE=0.1.$(shell date -u +%Y%m%d)git$(NEXODUS_RELEASE).$(SRPM_DISTRO)
 
 .PHONY: srpm

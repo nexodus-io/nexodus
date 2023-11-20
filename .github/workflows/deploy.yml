@@ -148,6 +148,12 @@ jobs:
           - mock_root: fedora-38-aarch64
             srpm_mock_root: fedora-38-x86_64
             srpm_distro: fc38
+          - mock_root: fedora-39-x86_64
+            srpm_mock_root: fedora-39-x86_64
+            srpm_distro: fc39
+          - mock_root: fedora-39-aarch64
+            srpm_mock_root: fedora-39-x86_64
+            srpm_distro: fc39
           - mock_root: centos-stream+epel-9-x86_64
             srpm_mock_root: centos-stream+epel-9-x86_64
             srpm_distro: el9
