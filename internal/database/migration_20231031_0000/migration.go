@@ -3,7 +3,6 @@ package migration_20231031_0000
 import (
 	"time"
 
-	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	. "github.com/nexodus-io/nexodus/internal/database/migrations"
@@ -124,9 +123,9 @@ type SecurityRule struct {
 	IpRanges   []string
 }
 
-func New() *gormigrate.Migration {
+func init() {
 	migrationId := "20231031-0000"
-	return CreateMigrationFromActions(migrationId,
+	CreateMigrationFromActions(migrationId,
 
 		ExecAction(`DROP TABLE IF EXISTS registration_tokens`, ""),
 		ExecAction(`DROP TABLE IF EXISTS device_metadata`, ""),

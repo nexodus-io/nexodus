@@ -268,6 +268,9 @@ func show(cCtx *cli.Context, fields []TableField, result any) {
 						itemValue = itemValue.Elem()
 					}
 					fieldValue := itemValue.FieldByName(field.Field)
+					if !fieldValue.IsValid() {
+						panic(fmt.Sprintf("field %s not found", field.Field))
+					}
 					line = append(line, fieldFormatter(fieldValue))
 				} else {
 					panic("TableField.Formatter or TableField.Field must be set")

@@ -364,8 +364,8 @@ func FuncAction(applyFunc func(*gorm.DB) error, unapplyFunc func(*gorm.DB) error
 	}
 }
 
-func CreateMigrationFromActions(id string, actions ...MigrationAction) *gormigrate.Migration {
-	return &gormigrate.Migration{
+func CreateMigrationFromActions(id string, actions ...MigrationAction) {
+	List = append(List, &gormigrate.Migration{
 		ID: id,
 		Migrate: func(tx *gorm.DB) error {
 			tx = tx.Debug()
@@ -387,7 +387,7 @@ func CreateMigrationFromActions(id string, actions ...MigrationAction) *gormigra
 			}
 			return nil
 		},
-	}
+	})
 }
 
 func NotOnSqlLite(db *gorm.DB) bool {
@@ -395,3 +395,5 @@ func NotOnSqlLite(db *gorm.DB) bool {
 	version := ""
 	return db.Raw("SELECT sqlite_version()").Scan(&version).Error != nil
 }
+
+var List []*gormigrate.Migration = nil

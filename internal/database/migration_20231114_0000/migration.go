@@ -2,7 +2,6 @@ package migration_20231114_0000
 
 import (
 	"fmt"
-	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
 	. "github.com/nexodus-io/nexodus/internal/database/migrations"
 	"gorm.io/gorm"
@@ -76,9 +75,9 @@ const (
 	defaultIPAMv6Cidr = "200::/64"
 )
 
-func New() *gormigrate.Migration {
+func init() {
 	migrationId := "20231114-0000"
-	return CreateMigrationFromActions(migrationId,
+	CreateMigrationFromActions(migrationId,
 		func(tx *gorm.DB, apply bool) error {
 			if !(apply && os.Getenv("NEXAPI_ENVIRONMENT") == "development") {
 				return nil
