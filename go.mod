@@ -59,7 +59,7 @@ require (
 	gorm.io/gorm v1.25.5
 	gvisor.dev/gvisor v0.0.0-20230927004350-cbd86285d259
 	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
+	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.2
 )
 
