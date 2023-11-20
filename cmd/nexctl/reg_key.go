@@ -1,13 +1,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
-	"log"
 )
 
 func createRegKeyCommand() *cli.Command {
@@ -18,8 +13,8 @@ func createRegKeyCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List registration keys",
-				Action: func(cCtx *cli.Context) error {
-					return listRegKeys(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listRegKeys(ctx)
 				},
 			},
 			{
@@ -47,13 +42,13 @@ func createRegKeyCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					return createRegKey(cCtx, mustCreateAPIClient(cCtx), public.ModelsAddRegKey{
-						VpcId:           cCtx.String("vpc-id"),
-						Description:     cCtx.String("description"),
-						ExpiresAt:       toExpiration(cCtx.Duration("expiration")),
-						SingleUse:       cCtx.Bool("single-use"),
-						SecurityGroupId: cCtx.String("security-group-id"),
+				Action: func(ctx *cli.Context) error {
+					return createRegKey(ctx, public.ModelsAddRegKey{
+						VpcId:           ctx.String("vpc-id"),
+						Description:     ctx.String("description"),
+						ExpiresAt:       getExpiration(ctx, "expiration"),
+						SingleUse:       ctx.Bool("single-use"),
+						SecurityGroupId: ctx.String("security-group-id"),
 					})
 				},
 			},
@@ -78,11 +73,11 @@ func createRegKeyCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					return updateRegKey(cCtx, cCtx.String("reg-key-id"), public.ModelsUpdateRegKey{
-						Description:     cCtx.String("description"),
-						ExpiresAt:       toExpiration(cCtx.Duration("expiration")),
-						SecurityGroupId: cCtx.String("security-group-id"),
+				Action: func(ctx *cli.Context) error {
+					return updateRegKey(ctx, ctx.String("reg-key-id"), public.ModelsUpdateRegKey{
+						Description:     ctx.String("description"),
+						ExpiresAt:       getExpiration(ctx, "expiration"),
+						SecurityGroupId: ctx.String("security-group-id"),
 					})
 				},
 			},
@@ -95,10 +90,12 @@ func createRegKeyCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					id := cCtx.String("reg-key-id")
-					return deleteRegKey(cCtx, mustCreateAPIClient(cCtx), encodeOut, id)
+				Action: func(ctx *cli.Context) error {
+					id, err := getUUID(ctx, "reg-key-id")
+					if err != nil {
+						return err
+					}
+					return deleteRegKey(ctx, id)
 				},
 			},
 		},
@@ -123,54 +120,45 @@ func regTokenTableFields() []TableField {
 	return fields
 }
 
-func listRegKeys(cCtx *cli.Context, c *client.APIClient) error {
-	rows := processApiResponse(c.RegKeyApi.ListRegKeys(cCtx.Context).Execute())
-	showOutput(cCtx, regTokenTableFields(), rows)
+func listRegKeys(ctx *cli.Context) error {
+	c := createClient(ctx)
+	rows := apiResponse(c.RegKeyApi.
+		ListRegKeys(ctx.Context).
+		Execute())
+	show(ctx, regTokenTableFields(), rows)
 	return nil
 }
 
-func createRegKey(cCtx *cli.Context, c *client.APIClient, token public.ModelsAddRegKey) error {
-
+func createRegKey(ctx *cli.Context, token public.ModelsAddRegKey) error {
+	c := createClient(ctx)
 	if token.VpcId == "" {
-		token.VpcId = getDefaultVpcId(cCtx.Context, c)
+		token.VpcId = getDefaultVpcId(ctx.Context, c)
 	}
-
-	res := processApiResponse(c.RegKeyApi.CreateRegKey(cCtx.Context).RegKey(token).Execute())
-	showOutput(cCtx, regTokenTableFields(), res)
+	res := apiResponse(c.RegKeyApi.
+		CreateRegKey(ctx.Context).
+		RegKey(token).
+		Execute())
+	show(ctx, regTokenTableFields(), res)
 	return nil
 }
 
-func updateRegKey(cCtx *cli.Context, id string, update public.ModelsUpdateRegKey) error {
-	showOutput(cCtx, regTokenTableFields(), processApiResponse(
-		mustCreateAPIClient(cCtx).
-			RegKeyApi.UpdateRegKey(cCtx.Context, id).
-			Update(update).
-			Execute(),
-	))
+func updateRegKey(ctx *cli.Context, id string, update public.ModelsUpdateRegKey) error {
+	c := createClient(ctx)
+	res := apiResponse(c.RegKeyApi.
+		UpdateRegKey(ctx.Context, id).
+		Update(update).
+		Execute())
+	show(ctx, regTokenTableFields(), res)
+	showSuccessfully(ctx, "updated")
 	return nil
 }
-func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
-	user := processApiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
-	return user.Id
-}
 
-func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
-	user := processApiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
-	return user.Id
-}
-
-func deleteRegKey(cCtx *cli.Context, c *client.APIClient, encodeOut, id string) error {
-	tokenId, err := uuid.Parse(id)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s: %v", id, err)
-	}
-
-	res := processApiResponse(c.RegKeyApi.DeleteRegKey(cCtx.Context, tokenId.String()).Execute())
-
-	showOutput(cCtx, regTokenTableFields(), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println("\nsuccessfully deleted")
-	}
-
+func deleteRegKey(ctx *cli.Context, id string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.RegKeyApi.
+		DeleteRegKey(ctx.Context, id).
+		Execute())
+	show(ctx, regTokenTableFields(), res)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }

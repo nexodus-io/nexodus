@@ -1,13 +1,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v2"
-	"log"
 )
 
 func createOrganizationCommand() *cli.Command {
@@ -18,8 +13,8 @@ func createOrganizationCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List organizations",
-				Action: func(cCtx *cli.Context) error {
-					return listOrganizations(cCtx, mustCreateAPIClient(cCtx))
+				Action: func(ctx *cli.Context) error {
+					return listOrganizations(ctx)
 				},
 			},
 			{
@@ -35,10 +30,10 @@ func createOrganizationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					name := cCtx.String("name")
-					description := cCtx.String("description")
-					return createOrganization(cCtx, mustCreateAPIClient(cCtx), name, description)
+				Action: func(ctx *cli.Context) error {
+					name := ctx.String("name")
+					description := ctx.String("description")
+					return createOrganization(ctx, name, description)
 				},
 			},
 			{
@@ -50,10 +45,13 @@ func createOrganizationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					organizationID := cCtx.String("organization-id")
-					return deleteOrganization(cCtx, mustCreateAPIClient(cCtx), encodeOut, organizationID)
+				Action: func(ctx *cli.Context) error {
+					organizationID, err := getUUID(ctx, "organization-id")
+					if err != nil {
+						return err
+					}
+
+					return deleteOrganization(ctx, organizationID)
 				},
 			},
 		},
@@ -67,18 +65,24 @@ func orgTableFields() []TableField {
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	return fields
 }
-func listOrganizations(cCtx *cli.Context, c *client.APIClient) error {
-	orgs := processApiResponse(c.OrganizationsApi.ListOrganizations(context.Background()).Execute())
-	showOutput(cCtx, orgTableFields(), orgs)
+func listOrganizations(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.OrganizationsApi.
+		ListOrganizations(ctx.Context).
+		Execute())
+	show(ctx, orgTableFields(), res)
 	return nil
 }
 
-func createOrganization(cCtx *cli.Context, c *client.APIClient, name, description string) error {
-	res := processApiResponse(c.OrganizationsApi.CreateOrganization(context.Background()).Organization(public.ModelsAddOrganization{
-		Name:        name,
-		Description: description,
-	}).Execute())
-	showOutput(cCtx, orgTableFields(), res)
+func createOrganization(ctx *cli.Context, name, description string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.OrganizationsApi.
+		CreateOrganization(ctx.Context).
+		Organization(public.ModelsAddOrganization{
+			Name:        name,
+			Description: description,
+		}).Execute())
+	show(ctx, orgTableFields(), res)
 	return nil
 }
 
@@ -86,12 +90,12 @@ func createOrganization(cCtx *cli.Context, c *client.APIClient, name, descriptio
 func moveUserToOrganization(c *client.APIClient, encodeOut, username, OrganizationID string) error {
 	OrganizationUUID, err := uuid.Parse(OrganizationID)
 	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationID, err)
+		Fatalf("failed to parse a valid UUID from %s %v", OrganizationID, err)
 	}
 
 	res, err := c.MoveCurrentUserToOrganization(OrganizationUUID)
 	if err != nil {
-		log.Fatal(err)
+		Fatal(err)
 	}
 
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
@@ -101,24 +105,19 @@ func moveUserToOrganization(c *client.APIClient, encodeOut, username, Organizati
 
 	err = FormatOutput(encodeOut, res)
 	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
+		Fatalf("failed to print output: %v", err)
 	}
 
 	return nil
 }
 */
 
-func deleteOrganization(cCtx *cli.Context, c *client.APIClient, encodeOut, OrganizationID string) error {
-	OrganizationUUID, err := uuid.Parse(OrganizationID)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", OrganizationUUID, err)
-	}
-
-	res := processApiResponse(c.OrganizationsApi.DeleteOrganization(context.Background(), OrganizationUUID.String()).Execute())
-	showOutput(cCtx, orgTableFields(), res)
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Println("\nsuccessfully deleted")
-	}
-
+func deleteOrganization(ctx *cli.Context, id string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.OrganizationsApi.
+		DeleteOrganization(ctx.Context, id).
+		Execute())
+	show(ctx, orgTableFields(), res)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }

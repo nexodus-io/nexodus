@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -88,7 +86,7 @@ func listExitNodes(cCtx *cli.Context, encodeOut string) error {
 
 	err = FormatOutput(encodeOut, exitNodes)
 	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
+		Fatalf("failed to print output: %v", err)
 	}
 
 	return nil

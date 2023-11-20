@@ -1,13 +1,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
 )
@@ -35,16 +31,15 @@ func createDeviceCommand() *cli.Command {
 						Value:   false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					orgID := cCtx.String("vpc-id")
-					if orgID != "" {
-						id, err := uuid.Parse(orgID)
-						if err != nil {
-							log.Fatal(err)
-						}
-						return listVpcDevices(cCtx, mustCreateAPIClient(cCtx), id)
+				Action: func(ctx *cli.Context) error {
+					vpcId, err := getUUID(ctx, "vpc-id")
+					if err != nil {
+						return err
 					}
-					return listAllDevices(cCtx, mustCreateAPIClient(cCtx))
+					if vpcId != "" {
+						return listVpcDevices(ctx, vpcId)
+					}
+					return listAllDevices(ctx)
 				},
 			},
 			{
@@ -56,10 +51,12 @@ func createDeviceCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					devID := cCtx.String("device-id")
-					return deleteDevice(mustCreateAPIClient(cCtx), encodeOut, devID)
+				Action: func(ctx *cli.Context) error {
+					devID, err := getUUID(ctx, "device-id")
+					if err != nil {
+						return err
+					}
+					return deleteDevice(ctx, devID)
 				},
 			},
 			{
@@ -79,19 +76,26 @@ func createDeviceCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					encodeOut := cCtx.String("output")
-					devID := cCtx.String("device-id")
+				Action: func(ctx *cli.Context) error {
+
+					devID, err := getUUID(ctx, "device-id")
+					if err != nil {
+						return err
+					}
+
 					update := public.ModelsUpdateDevice{}
-					if cCtx.IsSet("hostname") {
-						value := cCtx.String("hostname")
+					if ctx.IsSet("hostname") {
+						value := ctx.String("hostname")
 						update.Hostname = value
 					}
-					if cCtx.IsSet("security-group-id") {
-						value := cCtx.String("security-group-id")
+					if ctx.IsSet("security-group-id") {
+						value, err := getUUID(ctx, "security-group-id")
+						if err != nil {
+							return err
+						}
 						update.SecurityGroupId = value
 					}
-					return updateDevice(mustCreateAPIClient(cCtx), encodeOut, devID, update)
+					return updateDevice(ctx, devID, update)
 				},
 			},
 			{
@@ -102,16 +106,9 @@ func createDeviceCommand() *cli.Command {
 		},
 	}
 }
-
-func listVpcDevices(cCtx *cli.Context, c *public.APIClient, vpcId uuid.UUID) error {
-	devices := processApiResponse(c.VPCApi.ListDevicesInVPC(context.Background(), vpcId.String()).Execute())
-	showOutput(cCtx, deviceTableFields(cCtx), devices)
-	return nil
-}
-
-func deviceTableFields(cCtx *cli.Context) []TableField {
+func deviceTableFields(ctx *cli.Context) []TableField {
 	var fields []TableField
-	full := cCtx.Bool("full")
+	full := ctx.Bool("full")
 
 	fields = append(fields, TableField{Header: "DEVICE ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
@@ -133,129 +130,93 @@ func deviceTableFields(cCtx *cli.Context) []TableField {
 	fields = append(fields, TableField{Header: "RELAY", Field: "Relay"})
 	if full {
 		fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
-		fields = append(fields, TableField{
-			Header: "LOCAL IP",
-			Formatter: func(item interface{}) string {
-				dev := item.(public.ModelsDevice)
-				for _, endpoint := range dev.Endpoints {
-					if endpoint.Source == "local" {
-						return endpoint.Address
-					}
+		fields = append(fields, TableField{Header: "LOCAL IP", Formatter: func(item interface{}) string {
+			dev := item.(public.ModelsDevice)
+			for _, endpoint := range dev.Endpoints {
+				if endpoint.Source == "local" {
+					return endpoint.Address
 				}
-				return ""
-			},
-		})
-		fields = append(fields, TableField{Header: "ADVERTISED CIDR",
-			Formatter: func(item interface{}) string {
-				dev := item.(public.ModelsDevice)
-				return strings.Join(dev.AllowedIps, ", ")
-			},
-		})
-		fields = append(fields, TableField{Header: "REFLEXIVE IPv4",
-			Formatter: func(item interface{}) string {
-				dev := item.(public.ModelsDevice)
-				var reflexiveIp4 []string
-				for _, endpoint := range dev.Endpoints {
-					if endpoint.Source != "local" {
-						reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
-					}
+			}
+			return ""
+		}})
+		fields = append(fields, TableField{Header: "ADVERTISED CIDR", Formatter: func(item interface{}) string {
+			dev := item.(public.ModelsDevice)
+			return strings.Join(dev.AllowedIps, ", ")
+		}})
+		fields = append(fields, TableField{Header: "REFLEXIVE IPv4", Formatter: func(item interface{}) string {
+			dev := item.(public.ModelsDevice)
+			var reflexiveIp4 []string
+			for _, endpoint := range dev.Endpoints {
+				if endpoint.Source != "local" {
+					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
 				}
-				return strings.Join(reflexiveIp4, ", ")
-			},
-		})
-		fields = append(fields, TableField{Header: "LOCAL IPv4",
-			Formatter: func(item interface{}) string {
-				dev := item.(public.ModelsDevice)
-				var localIp4 []string
-				for _, endpoint := range dev.Endpoints {
-					if endpoint.Source == "local" {
-						localIp4 = append(localIp4, endpoint.Address)
-					}
+			}
+			return strings.Join(reflexiveIp4, ", ")
+		}})
+		fields = append(fields, TableField{Header: "LOCAL IPv4", Formatter: func(item interface{}) string {
+			dev := item.(public.ModelsDevice)
+			var localIp4 []string
+			for _, endpoint := range dev.Endpoints {
+				if endpoint.Source == "local" {
+					localIp4 = append(localIp4, endpoint.Address)
 				}
-				return strings.Join(localIp4, ", ")
-			},
-		})
+			}
+			return strings.Join(localIp4, ", ")
+		}})
 		fields = append(fields, TableField{Header: "OS", Field: "Os"})
 		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 		fields = append(fields, TableField{Header: "ONLINE", Field: "Online"})
-		fields = append(fields, TableField{Header: "ONLINE SINCE", Field: "OnlineAt"})
+		fields = append(fields, TableField{Header: "ONLINE SINCE", Formatter: func(item interface{}) string {
+			d := item.(public.ModelsDevice)
+			if !d.Online {
+				return ""
+			}
+			parsedTime, err := time.Parse(time.RFC3339, d.OnlineAt)
+			if err != nil {
+				return d.OnlineAt
+			}
+			localTime := parsedTime.Local()
+			return localTime.Format(LocalTimeFormat)
+		}})
 	}
 	return fields
 }
 
-func listAllDevices(cCtx *cli.Context, c *public.APIClient) error {
-	devices := processApiResponse(c.DevicesApi.ListDevices(context.Background()).Execute())
-
-	// Only modify the time to a user-friendly value if the nexctl output is in column form
-	if cCtx.String("output") == encodeColumn || cCtx.String("output") == encodeNoHeader {
-		for i := range devices {
-			convertDeviceTimeToLocal(&devices[i])
-		}
-	}
-
-	showOutput(cCtx, deviceTableFields(cCtx), devices)
+func listAllDevices(ctx *cli.Context) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		ListDevices(ctx.Context).
+		Execute())
+	show(ctx, deviceTableFields(ctx), res)
 	return nil
 }
 
-func deleteDevice(c *public.APIClient, encodeOut, devID string) error {
-	devUUID, err := uuid.Parse(devID)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
-	}
-
-	res := processApiResponse(c.DevicesApi.DeleteDevice(context.Background(), devUUID.String()).Execute())
-
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully deleted device %s\n", res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+func listVpcDevices(ctx *cli.Context, vpcId string) error {
+	c := createClient(ctx)
+	response := apiResponse(c.VPCApi.
+		ListDevicesInVPC(ctx.Context, vpcId).
+		Execute())
+	show(ctx, deviceTableFields(ctx), response)
 	return nil
 }
 
-func updateDevice(c *public.APIClient, encodeOut, devID string, update public.ModelsUpdateDevice) error {
-	devUUID, err := uuid.Parse(devID)
-	if err != nil {
-		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
-	}
+func deleteDevice(ctx *cli.Context, devID string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		DeleteDevice(ctx.Context, devID).
+		Execute())
+	show(ctx, deviceTableFields(ctx), res)
+	showSuccessfully(ctx, "deleted")
+	return nil
+}
 
-	res := processApiResponse(c.DevicesApi.
-		UpdateDevice(context.Background(), devUUID.String()).
+func updateDevice(ctx *cli.Context, devID string, update public.ModelsUpdateDevice) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		UpdateDevice(ctx.Context, devID).
 		Update(update).
 		Execute())
-
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		fmt.Printf("successfully update device %s\n", res.Id)
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, res)
-	if err != nil {
-		log.Fatalf("failed to print output: %v", err)
-	}
-
+	show(ctx, deviceTableFields(ctx), res)
+	showSuccessfully(ctx, "updated")
 	return nil
-}
-
-// convertToLocalTime converts the OnlineAt field to local time
-func convertDeviceTimeToLocal(d *public.ModelsDevice) {
-	if !d.Online {
-		// If the device is not online, set the time field to empty
-		d.OnlineAt = ""
-		return
-	}
-
-	// Try to parse the time and convert it to local time
-	parsedTime, err := time.Parse(time.RFC3339, d.OnlineAt)
-	if err != nil {
-		return
-	}
-
-	localTime := parsedTime.Local()
-	d.OnlineAt = localTime.Format(LocalTimeFormat)
 }

@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/olekukonko/tablewriter"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -107,27 +108,29 @@ func main() {
 	})
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		Fatal(err)
 	}
 }
 
-func toExpiration(duration time.Duration) string {
-	if duration == 0 {
-		return ""
-	}
-	return time.Now().Add(duration).String()
+func Fatal(a ...any) {
+	fmt.Fprintln(os.Stderr, a...)
+	os.Exit(1)
+}
+func Fatalf(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, format+"\n", a...)
+	os.Exit(1)
 }
 
-func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
+func createClient(cCtx *cli.Context) *client.APIClient {
 
 	urlValue := DefaultServiceURL
 	flagUsed := "--service-url"
 	addApiPrefix := true
 	if cCtx.IsSet("host") {
 		if cCtx.IsSet("service-url") {
-			log.Fatalf("please remove the --host flag, the --service-url flag has replaced it")
+			Fatal("please remove the --host flag, the --service-url flag has replaced it")
 		}
-		log.Println("DEPRECATION WARNING: configuring the service url via the --host flag not be supported in a future release.  Please use the --service-url flag instead.")
+		fmt.Fprintln(os.Stderr, "DEPRECATION WARNING: configuring the service url via the --host flag not be supported in a future release.  Please use the --service-url flag instead.")
 		urlValue = cCtx.String("host")
 		flagUsed = "--host"
 		addApiPrefix = false
@@ -137,10 +140,10 @@ func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
 
 	apiURL, err := url.Parse(urlValue)
 	if err != nil {
-		log.Fatalf("invalid '%s=%s' flag provided. error: %v", flagUsed, urlValue, err)
+		Fatalf("invalid '%s=%s' flag provided. error: %v", flagUsed, urlValue, err)
 	}
 	if apiURL.Scheme != "https" {
-		log.Fatalf("invalid '%s=%s' flag provided. error: 'https://' URL scheme is required", flagUsed, urlValue)
+		Fatalf("invalid '%s=%s' flag provided. error: 'https://' URL scheme is required", flagUsed, urlValue)
 	}
 
 	if addApiPrefix {
@@ -153,7 +156,7 @@ func mustCreateAPIClient(cCtx *cli.Context) *client.APIClient {
 		createClientOptions(cCtx)...,
 	)
 	if err != nil {
-		log.Fatal(err)
+		Fatal(err)
 	}
 	return c
 }
@@ -183,14 +186,14 @@ func FormatOutput(format string, result interface{}) error {
 	case encodeJsonPretty:
 		bytes, err := json.MarshalIndent(result, "", "    ")
 		if err != nil {
-			log.Fatalf("failed to encode the ctl output: %v", err)
+			Fatalf("failed to encode the ctl output: %v", err)
 		}
 		fmt.Println(string(bytes))
 
 	case encodeJsonRaw:
 		bytes, err := json.Marshal(result)
 		if err != nil {
-			log.Fatalf("failed to encode the ctl output: %v", err)
+			Fatalf("failed to encode the ctl output: %v", err)
 		}
 		fmt.Println(string(bytes))
 
@@ -201,20 +204,26 @@ func FormatOutput(format string, result interface{}) error {
 	return nil
 }
 
-func showOutput(cCtx *cli.Context, fields []TableField, result any) {
+type TableField struct {
+	Header    string
+	Field     string
+	Formatter func(item interface{}) string
+}
+
+func show(cCtx *cli.Context, fields []TableField, result any) {
 	output := cCtx.String("output")
 	switch output {
 	case encodeJsonPretty:
 		bytes, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			log.Fatalf("failed to encode the ctl output: %v", err)
+			Fatalf("failed to encode the ctl output: %v", err)
 		}
 		fmt.Println(string(bytes))
 
 	case encodeJsonRaw:
 		bytes, err := json.Marshal(result)
 		if err != nil {
-			log.Fatalf("failed to encode the ctl output: %v", err)
+			Fatalf("failed to encode the ctl output: %v", err)
 		}
 		fmt.Println(string(bytes))
 
@@ -269,7 +278,14 @@ func showOutput(cCtx *cli.Context, fields []TableField, result any) {
 		table.Render()
 		return
 	default:
-		log.Fatalf("unknown --output option: %s", output)
+		Fatalf("unknown --output option: %s", output)
+	}
+}
+
+func showSuccessfully(ctx *cli.Context, action string) {
+	encodeOut := ctx.String("output")
+	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
+		fmt.Printf("\nsuccessfully %s\n", action)
 	}
 }
 
@@ -304,7 +320,7 @@ func fieldFormatter(itemValue reflect.Value) string {
 	}
 }
 
-func processApiResponse[T any](resp T, httpResp *http.Response, err error) T {
+func apiResponse[T any](resp T, httpResp *http.Response, err error) T {
 	if err != nil {
 		var openAPIError *public.GenericOpenAPIError
 		switch {
@@ -312,31 +328,75 @@ func processApiResponse[T any](resp T, httpResp *http.Response, err error) T {
 			model := openAPIError.Model()
 			switch err := model.(type) {
 			case public.ModelsBaseError:
-				log.Fatalf("error: %s, status: %d", err.Error, httpResp.StatusCode)
+				Fatalf("error: %s, status: %d", err.Error, httpResp.StatusCode)
 			case public.ModelsConflictsError:
-				log.Fatalf("error: %s: conflicting id: %s, status: %d", err.Error, err.Id, httpResp.StatusCode)
+				Fatalf("error: %s: conflicting id: %s, status: %d", err.Error, err.Id, httpResp.StatusCode)
 			case public.ModelsNotAllowedError:
 				message := fmt.Sprintf("error: %s", err.Error)
 				if err.Reason != "" {
 					message += fmt.Sprintf(", reason: %s", err.Reason)
 				}
 				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
-				log.Fatalf(message)
+				Fatalf(message)
 			case public.ModelsValidationError:
 				message := fmt.Sprintf("error: %s", err.Error)
 				if err.Field != "" {
 					message += fmt.Sprintf(", field: %s", err.Field)
 				}
 				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
-				log.Fatalf(message)
+				Fatalf(message)
 			case public.ModelsInternalServerError:
-				log.Fatalf("error: %s: trace id: %s, status: %d", err.Error, err.TraceId, httpResp.StatusCode)
+				Fatalf("error: %s: trace id: %s, status: %d", err.Error, err.TraceId, httpResp.StatusCode)
 			default:
-				log.Fatalf("error: %s, status: %d", string(openAPIError.Body()), httpResp.StatusCode)
+				Fatalf("error: %s, status: %d", string(openAPIError.Body()), httpResp.StatusCode)
 			}
 		default:
-			log.Fatalf("error: %+v, status: %d", err, httpResp.StatusCode)
+			Fatalf("error: %+v, status: %d", err, httpResp.StatusCode)
 		}
 	}
 	return resp
+}
+
+func getUUID(ctx *cli.Context, name string) (string, error) {
+	value := ctx.String(name)
+	if value == "" {
+		return "", nil
+	}
+	_, err := uuid.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("invalid value for --%s flag: %w", name, err)
+	}
+	return value, nil
+}
+
+func getExpiration(ctx *cli.Context, name string) string {
+	value := ctx.Duration(name)
+	if value == 0 {
+		return ""
+	}
+	return time.Now().Add(value).String()
+}
+
+func getJsonMap(ctx *cli.Context, name string) (map[string]interface{}, error) {
+	value := ctx.String(name)
+	if value == "" {
+		return nil, nil
+	}
+	valueMap := map[string]interface{}{}
+	err := json.Unmarshal([]byte(value), &valueMap)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value for --%s flag: not a json object: %w", name, err)
+
+	}
+	return valueMap, nil
+}
+
+func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
+	user := apiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
+	return user.Id
+}
+
+func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
+	user := apiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
+	return user.Id
 }

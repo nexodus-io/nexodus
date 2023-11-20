@@ -1,10 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,9 +25,9 @@ func init() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				orgId, err := uuid.Parse(c.String("vpc-id"))
+				orgId, err := getUUID(c, "vpc-id")
 				if err != nil {
-					return fmt.Errorf("invalid vpc-id: %w", err)
+					return err
 				}
 				return getVpcMetadata(c, orgId)
 			},
@@ -59,15 +55,15 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(c *cli.Context) error {
-				deviceID, err := uuid.Parse(c.String("device-id"))
+			Action: func(ctx *cli.Context) error {
+				deviceID, err := getUUID(ctx, "device-id")
 				if err != nil {
-					return fmt.Errorf("invalid device-id: %w", err)
+					return err
 				}
-				if c.IsSet("key") {
-					return getDeviceMetadataKey(c, deviceID, c.String("key"))
+				if ctx.IsSet("key") {
+					return getDeviceMetadataKey(ctx, deviceID, ctx.String("key"))
 				} else {
-					return getDeviceMetadata(c, deviceID)
+					return getDeviceMetadata(ctx, deviceID)
 				}
 			},
 		},
@@ -98,19 +94,16 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(c *cli.Context) error {
-				deviceID, err := uuid.Parse(c.String("device-id"))
+			Action: func(ctx *cli.Context) error {
+				deviceID, err := getUUID(ctx, "device-id")
 				if err != nil {
 					return err
 				}
-				key := c.String("key")
-				value := c.String("value")
-
-				if deviceID != uuid.Nil && key != "" && value != "" {
-					return updateDeviceMetadata(c, deviceID, key, value)
-				} else {
-					return fmt.Errorf("device-id, key and value are required")
+				value, err := getJsonMap(ctx, "value")
+				if err != nil {
+					return err
 				}
+				return updateDeviceMetadata(ctx, deviceID, ctx.String("key"), value)
 			},
 		},
 		{
@@ -128,18 +121,12 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(c *cli.Context) error {
-				deviceID, err := uuid.Parse(c.String("device-id"))
+			Action: func(ctx *cli.Context) error {
+				deviceID, err := getUUID(ctx, "device-id")
 				if err != nil {
 					return err
 				}
-				key := c.String("key")
-
-				if deviceID != uuid.Nil && key != "" {
-					return deleteDeviceMetadata(c, deviceID, key)
-				} else {
-					return fmt.Errorf("device-id and key are required")
-				}
+				return deleteDeviceMetadata(ctx, deviceID, ctx.String("key"))
 			},
 		},
 		{
@@ -152,17 +139,12 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(c *cli.Context) error {
-				deviceID, err := uuid.Parse(c.String("device-id"))
+			Action: func(ctx *cli.Context) error {
+				deviceID, err := getUUID(ctx, "device-id")
 				if err != nil {
 					return err
 				}
-
-				if deviceID != uuid.Nil {
-					return clearDeviceMetadata(c, deviceID)
-				} else {
-					return fmt.Errorf("device-id is required")
-				}
+				return clearDeviceMetadata(ctx, deviceID)
 			},
 		},
 	}
@@ -182,87 +164,59 @@ func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
 	return fields
 }
 
-func getDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
-	client := mustCreateAPIClient(c)
-
-	metadata := processApiResponse(client.DevicesApi.
-		ListDeviceMetadata(context.Background(), deviceID.String()).
+func getDeviceMetadata(ctx *cli.Context, deviceID string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		ListDeviceMetadata(ctx.Context, deviceID).
 		Execute())
-
-	showOutput(c, metadataTableFields(c, false), metadata)
+	show(ctx, metadataTableFields(ctx, false), res)
 	return nil
 }
 
-func getDeviceMetadataKey(c *cli.Context, deviceID uuid.UUID, key string) error {
-	client := mustCreateAPIClient(c)
-
-	metadata := processApiResponse(client.DevicesApi.
-		GetDeviceMetadataKey(context.Background(), deviceID.String(), key).
+func getDeviceMetadataKey(ctx *cli.Context, deviceID string, key string) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		GetDeviceMetadataKey(ctx.Context, deviceID, key).
 		Execute())
-
-	showOutput(c, metadataTableFields(c, false), metadata)
+	show(ctx, metadataTableFields(ctx, false), res)
 	return nil
 }
 
-func getVpcMetadata(c *cli.Context, vpcID uuid.UUID) error {
-	client := mustCreateAPIClient(c)
-
+func getVpcMetadata(ctx *cli.Context, vpcID string) error {
+	c := createClient(ctx)
 	prefixes := []string{}
-	metadata := processApiResponse(client.VPCApi.
-		ListMetadataInVPC(context.Background(), vpcID.String(), prefixes).
+	res := apiResponse(c.VPCApi.
+		ListMetadataInVPC(ctx.Context, vpcID, prefixes).
 		Execute())
-
-	showOutput(c, metadataTableFields(c, true), metadata)
-
+	show(ctx, metadataTableFields(ctx, true), res)
 	return nil
 }
 
-func updateDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key, value string) error {
-
-	valueMap := map[string]interface{}{}
-	err := json.Unmarshal([]byte(value), &valueMap)
-	if err != nil {
-		return fmt.Errorf("value must be a json obejct: %w", err)
-	}
-
-	client := mustCreateAPIClient(c)
-
-	metadata := processApiResponse(client.DevicesApi.
-		UpdateDeviceMetadataKey(context.Background(), deviceID.String(), key).
-		Value(valueMap).
+func updateDeviceMetadata(ctx *cli.Context, deviceID string, key string, value map[string]interface{}) error {
+	c := createClient(ctx)
+	res := apiResponse(c.DevicesApi.
+		UpdateDeviceMetadataKey(ctx.Context, deviceID, key).
+		Value(value).
 		Execute())
-
-	showOutput(c, metadataTableFields(c, false), metadata)
+	show(ctx, metadataTableFields(ctx, false), res)
 	return nil
 }
 
-func deleteDeviceMetadata(c *cli.Context, deviceID uuid.UUID, key string) error {
-	client := mustCreateAPIClient(c)
-
-	_, err := client.DevicesApi.
-		DeleteDeviceMetadataKey(context.Background(), deviceID.String(), key).
+func deleteDeviceMetadata(ctx *cli.Context, deviceID string, key string) error {
+	c := createClient(ctx)
+	httpResp, err := c.DevicesApi.
+		DeleteDeviceMetadataKey(ctx.Context, deviceID, key).
 		Execute()
-	if err != nil {
-		return err
-	}
-
+	_ = apiResponse("", httpResp, err)
+	showSuccessfully(ctx, "deleted")
 	return nil
 }
 
-func clearDeviceMetadata(c *cli.Context, deviceID uuid.UUID) error {
-	client := mustCreateAPIClient(c)
-
-	_, err := client.DevicesApi.
-		DeleteDeviceMetadata(context.Background(), deviceID.String()).
+func clearDeviceMetadata(ctx *cli.Context, deviceID string) error {
+	c := createClient(ctx)
+	httpResp, err := c.DevicesApi.
+		DeleteDeviceMetadata(ctx.Context, deviceID).
 		Execute()
-	if err != nil {
-		return err
-	}
+	_ = apiResponse("", httpResp, err)
 	return nil
-}
-
-type TableField struct {
-	Header    string
-	Field     string
-	Formatter func(item interface{}) string
 }
