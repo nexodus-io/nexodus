@@ -16,6 +16,7 @@ configMapGenerator:
     name: auth-config
   - behavior: merge
     literals:
+      - APIPROXY_API_URL=https://api.qa.nexodus.io
       - APIPROXY_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - APIPROXY_API_DOMAIN=api.qa.nexodus.io
       - APIPROXY_WEB_DOMAIN=qa.nexodus.io
@@ -24,6 +25,7 @@ configMapGenerator:
     name: apiproxy
   - behavior: merge
     literals:
+      - NEXAPI_URL=https://api.qa.nexodus.io
       - NEXAPI_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.qa.nexodus.io
       - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
