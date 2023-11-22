@@ -114,16 +114,7 @@ jobs:
           git fetch origin
           if [ "$(git log HEAD..origin/${{ github.ref_name }} --oneline | wc -l)" != "0" ]; then echo "COMMIT_CHANGES=0"; fi >> "$GITHUB_ENV"
 
-      - name: Commit Changes
-        id: commit
-        if: env.COMMIT_CHANGES == 1
-        uses: devops-infra/action-commit-push@master
-        with:
-          github_token: "${{ secrets.GITHUB_TOKEN }}"
-          commit_prefix: "[deploy] "
-          commit_message: "Update qa images to ${{ steps.gitsha.outputs.short }}"
-
-      - name: Tag the release
+      - name: Commit and tag the release
         id: "tag"
         if: env.COMMIT_CHANGES == 1
         shell: bash
@@ -132,6 +123,11 @@ jobs:
           if [ "${{github.ref_name}}" == "main" ]; then
             TAG="qa"
           fi
+          
+          MESSAGE=$(git log -1 --pretty=%B)
+          MESSAGE="[deploy] Update ${TAG} images to ${{ steps.gitsha.outputs.short }}:\n\n${MESSAGE}"
+          git commit -am "$MESSAGE"
+          
           git tag "$TAG" --force
           git push origin "$TAG" --force 
 
