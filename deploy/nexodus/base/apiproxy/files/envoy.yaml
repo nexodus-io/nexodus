@@ -346,6 +346,7 @@ static_resources:
                             - AccessToken
                           forward: true
                           payload_in_metadata: payload
+                          failed_status_in_metadata: "failed_status"
                           issuer: "${APIPROXY_OIDC_URL}"
                           remote_jwks:
                             http_uri:
@@ -361,6 +362,7 @@ static_resources:
                           forward: true
                           payload_in_metadata: payload
                           issuer: "${APIPROXY_API_URL}"
+                          failed_status_in_metadata: "failed_status"
                           remote_jwks:
                             http_uri:
                               uri: "${APIPROXY_API_URL}/device/certs"
@@ -499,18 +501,29 @@ static_resources:
                                           - key: payload
                                           - key: sub
 
-                # We need this in order to generate JSON responses according to
-                # our API guidelines, otherwise Envoy will generate plain text
-                # responses.
+                # Convert non-JSON error responses to JSON. This can happen when:
+                # * the rate limiter rejecting the request
+                # * jwt being invalid
                 local_reply_config:
                   mappers:
                     - filter:
-                        status_code_filter:
-                          comparison:
-                            op: EQ
-                            value:
-                              default_value: 429
-                              runtime_key: none
+                        and_filter:
+                          filters:
+                            - status_code_filter:
+                                comparison:
+                                  op: GE
+                                  value:
+                                    default_value: 400
+                                    runtime_key: none
+                            - header_filter:
+                                header:
+                                  name: "x-envoy-auth-jwt-error"
+                                  invert_match: true
+                                  contains_match: "application/json"
+                      headers_to_add:
+                        - header:
+                            key: content-type
+                            value: application/json
                       body_format_override:
                         json_format:
-                          error: "Too Many Requests"
+                          error: "%LOCAL_REPLY_BODY%"
