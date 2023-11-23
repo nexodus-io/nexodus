@@ -128,7 +128,8 @@ jobs:
           git config --global user.email "${GITHUB_ACTOR}@users.noreply.${INPUT_ORGANIZATION_DOMAIN}"          
           
           MESSAGE=$(git log -1 --pretty=%B)
-          MESSAGE="[deploy] Update ${TAG} images to ${{ steps.gitsha.outputs.short }}:\n\n${MESSAGE}"
+          MESSAGE="[deploy] Update ${TAG} images to ${{ steps.gitsha.outputs.short }}:          
+          ${MESSAGE}"
           git commit -am "$MESSAGE"
           
           git tag "$TAG" --force
