@@ -331,12 +331,14 @@ jobs:
         run: |
           kubectl logs -n nexodus -l app.kubernetes.io/part-of=nexodus --all-containers=true > logs.txt
 
-      - name: Upload Logs
+      - name: Upload Logs and Test Reports
         if: always()
         uses: actions/upload-artifact@v3
         with:
           name: e2e-${{ matrix.overlay }}-logs
-          path: logs.txt
+          path: |
+            logs.txt
+            ./ui/playwright-report/
 
       - name: Check Disk Space
         if: always()

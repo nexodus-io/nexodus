@@ -630,7 +630,7 @@ image-playwright: dist/.image-playwright
 dist/.image-playwright: Containerfile.playwright hack/update-ca.sh | dist
 	$(CMD_PREFIX) docker build -f Containerfile.playwright \
 		-t quay.io/nexodus/playwright:$(TAG) .
-	$(CMD_PREFIX) docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
+	$(CMD_PREFIX) docker tag quay.io/nexodus/playwright:$(TAG) quay.io/nexodus/playwright:latest
 	$(CMD_PREFIX) touch $@
 
 .PHONY: images
