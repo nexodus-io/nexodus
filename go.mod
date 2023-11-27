@@ -69,7 +69,7 @@ require (
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/mhmtszr/concurrent-swiss-map v1.0.4
-	github.com/miekg/dns v1.1.55
+	github.com/miekg/dns v1.1.57
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb
