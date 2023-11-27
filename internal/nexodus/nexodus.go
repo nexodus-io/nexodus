@@ -1199,7 +1199,7 @@ func (nx *Nexodus) symmetricNatDisco(ctx context.Context) error {
 
 		if isSymmetric {
 			nx.symmetricNat = true
-			nx.logger.Infof("Symmetric NAT is detected, this node will be provisioned in relay mode only")
+			nx.logger.Infof("Symmetric NAT detected. A relay node is required to reach other devices outside of this local network.")
 		}
 
 		return nil
