@@ -14,6 +14,12 @@ const (
 	v6        = "v6"
 )
 
+type PingPeersResponse struct {
+	RelayPresent  bool                       `json:"relay-present"`
+	RelayRequired bool                       `json:"relay-required"`
+	Peers         map[string]KeepaliveStatus `json:"peers"`
+}
+
 // ConnectivityV4 pings all peers via IPv4
 func (ac *NexdCtl) ConnectivityV4(_ string, keepaliveResults *string) error {
 	res := ac.nx.connectivityProbe(v4)
@@ -46,9 +52,11 @@ func (ac *NexdCtl) ConnectivityV6(_ string, keepaliveResults *string) error {
 	return nil
 }
 
-func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
-	peerStatusMap := make(map[string]KeepaliveStatus)
-
+func (nx *Nexodus) connectivityProbe(family string) PingPeersResponse {
+	peersByKey := make(map[string]KeepaliveStatus)
+	res := PingPeersResponse{
+		RelayRequired: nx.symmetricNat,
+	}
 	if !nx.relay {
 		nx.deviceCacheIterRead(func(value deviceCacheEntry) {
 			// skip the node sourcing the probe
@@ -68,7 +76,7 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 			}
 
 			hostname := value.device.Hostname
-			peerStatusMap[pubKey] = KeepaliveStatus{
+			peersByKey[pubKey] = KeepaliveStatus{
 				WgIP:        nodeAddr,
 				IsReachable: false,
 				Hostname:    hostname,
@@ -76,17 +84,17 @@ func (nx *Nexodus) connectivityProbe(family string) map[string]KeepaliveStatus {
 			}
 		})
 	}
-	connResults := nx.probeConnectivity(peerStatusMap, nx.logger)
+	res.Peers = nx.probeConnectivity(peersByKey, nx.logger)
 
-	return connResults
+	return res
 }
 
 // probeConnectivity check connectivity in batches to limit excessive traffic in the case of a large number of peers
-func (nx *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
+func (nx *Nexodus) probeConnectivity(peersByKey map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
 	peerConnResultsMap := make(map[string]KeepaliveStatus)
 
-	peerKeys := make([]string, 0, len(peers))
-	for key := range peers {
+	peerKeys := make([]string, 0, len(peersByKey))
+	for key := range peersByKey {
 		peerKeys = append(peerKeys, key)
 	}
 
@@ -104,7 +112,7 @@ func (nx *Nexodus) probeConnectivity(peers map[string]KeepaliveStatus, logger *z
 		})
 
 		for _, pubKey := range batch {
-			go nx.runProbe(peers[pubKey], c)
+			go nx.runProbe(peersByKey[pubKey], c)
 		}
 
 		for range batch {

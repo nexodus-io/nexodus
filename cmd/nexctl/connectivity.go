@@ -50,23 +50,27 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 		fs := "%s\t%s\t%s\t%s\t%s\n"
 		fmt.Fprintf(w, fs, "HOSTNAME", "WIREGUARD ADDRESS", "LATENCY", "PEERING METHOD", "CONNECTION STATUS")
 
-		keys := make([]string, 0, len(result))
-		for k := range result {
+		keys := make([]string, 0, len(result.Peers))
+		for k := range result.Peers {
 			keys = append(keys, k)
 		}
 
 		sort.Slice(keys, func(i, j int) bool {
-			return result[keys[i]].Hostname < result[keys[j]].Hostname
+			return result.Peers[keys[i]].Hostname < result.Peers[keys[j]].Hostname
 		})
 
 		for _, k := range keys {
-			v := result[k]
+			v := result.Peers[k]
 			status := fmt.Sprintf("%s Unreachable", crossmark)
 			if v.IsReachable {
 				status = fmt.Sprintf("%s Reachable", checkmark)
 			}
 			// note: the unicode in the ✓/x will throw off alignment, add it to the last column
 			fmt.Fprintf(w, fs, v.Hostname, k, v.Latency, v.Method, status)
+		}
+
+		if result.RelayRequired && !result.RelayPresent {
+			fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network.\n")
 		}
 
 		w.Flush()
@@ -76,8 +80,8 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 }
 
 // callNexdKeepalives call the Connectivity ctl methods in nexd agent
-func callNexdKeepalives(family string) (map[string]nexodus.KeepaliveStatus, error) {
-	var result map[string]nexodus.KeepaliveStatus
+func callNexdKeepalives(family string) (nexodus.PingPeersResponse, error) {
+	var result nexodus.PingPeersResponse
 	var keepaliveJson string
 	var err error
 
