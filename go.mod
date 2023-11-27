@@ -29,7 +29,7 @@ require (
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/natefinch/atomic v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pion/stun v0.6.0
+	github.com/pion/stun v0.6.1
 	github.com/redis/go-redis/v9 v9.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
