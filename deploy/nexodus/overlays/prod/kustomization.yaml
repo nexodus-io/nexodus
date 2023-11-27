@@ -25,6 +25,7 @@ configMapGenerator:
     name: apiproxy
   - behavior: merge
     literals:
+      - NEXAPI_URL=https://api.try.nexodus.io
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.try.nexodus.io
       - NEXAPI_REDIRECT_URL=https://try.nexodus.io/#/login

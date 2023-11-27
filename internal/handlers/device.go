@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"net/http"
 	"time"
 
@@ -26,6 +27,17 @@ var (
 	errSecurityGroupNotFound = errors.New("security group not found")
 	errRegKeyExhausted       = errors.New("single use reg key exhausted")
 )
+
+type deviceList []*models.Device
+
+func (d deviceList) Item(i int) (any, uint64, gorm.DeletedAt) {
+	item := d[i]
+	return item, item.Revision, item.DeletedAt
+}
+
+func (d deviceList) Len() int {
+	return len(d)
+}
 
 // ListDevices lists all devices
 // @Summary      List Devices
@@ -241,7 +253,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 			if result := api.VPCIsReadableByCurrentUser(c, tx).
 				Preload("Organization").
 				First(&newVpc, "id = ?", request.VpcID); result.Error != nil {
-				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("newVpc"))
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc_id"))
 			}
 
 			newIpamNamespace := defaultIPAMNamespace
@@ -720,4 +732,76 @@ func advertiseCidrEquals(existingPrefix, newPrefix []string) bool {
 		}
 	}
 	return true
+}
+
+// ListDevicesInVPC lists all devices in an VPC
+// @Summary      List Devices
+// @Description  Lists all devices for this VPC
+// @Id           ListDevicesInVPC
+// @Tags         VPC
+// @Accept       json
+// @Produce      json
+// @Param		 gt_revision     query  uint64   false "greater than revision"
+// @Param		 id              path   string true "VPC ID"
+// @Success      200  {object}  []models.Device
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/vpcs/{id}/devices [get]
+func (api *API) ListDevicesInVPC(c *gin.Context) {
+
+	ctx, span := tracer.Start(c.Request.Context(), "ListDevicesInVPC",
+		trace.WithAttributes(
+			attribute.String("vpc_id", c.Param("id")),
+		))
+	defer span.End()
+
+	vpcId, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+		return
+	}
+	var vpc models.VPC
+	db := api.db.WithContext(ctx)
+	result := api.VPCIsReadableByCurrentUser(c, db).
+		First(&vpc, "id = ?", vpcId.String())
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
+		} else {
+			api.SendInternalServerError(c, result.Error)
+		}
+		return
+	}
+
+	var query Query
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
+		return
+	}
+
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+		return
+	}
+
+	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
+		db = db.Where("vpc_id = ?", vpcId.String())
+		db = FilterAndPaginateWithQuery(db, &models.Device{}, c, query, "hostname")
+
+		var items deviceList
+		result := db.Find(&items)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+
+		for i := range items {
+			hideDeviceBearerToken(items[i], tokenClaims)
+		}
+		return items, nil
+	})
+
 }

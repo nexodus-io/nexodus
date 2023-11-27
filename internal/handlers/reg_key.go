@@ -79,6 +79,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 			BearerToken:    "RK:" + token.String(),
 			Description:    request.Description,
 			ExpiresAt:      request.ExpiresAt,
+			Settings:       request.Settings,
 		}
 
 		if request.SecurityGroupId != nil {
@@ -177,6 +178,9 @@ func (api *API) UpdateRegKey(c *gin.Context) {
 			} else {
 				regKey.ExpiresAt = request.ExpiresAt
 			}
+		}
+		if request.Settings != nil {
+			regKey.Settings = request.Settings
 		}
 
 		if res := tx.

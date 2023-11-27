@@ -68,6 +68,33 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		logger.Info("DEPRECATION WARNING: configuring the service url via the positional argument will not be supported in a future release.  Please use the --service-url flag instead.")
 	}
 
+	regKey := cCtx.String("reg-key")
+	if cCtx.IsSet("reg-key") {
+		if cCtx.IsSet("security-group-id") {
+			return fmt.Errorf("the --reg-key and --security-group-id flags are mutually exclusive")
+		}
+		if cCtx.IsSet("vpc-id") {
+			return fmt.Errorf("the --reg-key and --vpc-id flags are mutually exclusive")
+		}
+
+		// TODO: in the future, always assume the service-url is part of the reg-key
+		if strings.Contains(regKey, "#") {
+
+			if cCtx.IsSet("service-url") && cCtx.IsSet("reg-key") {
+				return fmt.Errorf("the --reg-key and --service-url flags are mutually exclusive")
+			}
+
+			u, err := url.Parse(regKey)
+			if err != nil {
+				return fmt.Errorf("invalid '--reg-key=%s' flag provided. error: %w", regKey, err)
+			}
+			regKey = u.Fragment
+			u.Fragment = ""
+			u.RawFragment = ""
+			serviceURL = u.String()
+		}
+	}
+
 	// If it was not set, then fall back to using the default...
 	if serviceURL == "" && DefaultServiceURL != "" {
 		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
@@ -142,20 +169,11 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	}
 	defer util.IgnoreError(stateStore.Close)
 
-	if cCtx.IsSet("reg-key") {
-		if cCtx.IsSet("security-group-id") {
-			return fmt.Errorf("the --reg-key and --security-group-id flags are mutually exclusive")
-		}
-		if cCtx.IsSet("vpc-id") {
-			return fmt.Errorf("the --reg-key and --vpc-id flags are mutually exclusive")
-		}
-	}
-
 	options := nexodus.Options{
 		Logger:                  logger.Sugar(),
 		LogLevel:                logLevel,
 		ApiURL:                  apiURL,
-		RegKey:                  cCtx.String("reg-key"),
+		RegKey:                  regKey,
 		Username:                cCtx.String("username"),
 		Password:                cCtx.String("password"),
 		ListenPort:              cCtx.Int("listen-port"),

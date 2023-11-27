@@ -10,17 +10,25 @@ import {
   DateField,
   DateTimeInput,
   Edit,
+  Identifier,
   List,
+  RaRecord,
   ReferenceField,
   ReferenceInput,
-  SelectInput,
   Show,
   SimpleForm,
   SimpleShowLayout,
   TextField,
   TextInput,
   useGetIdentity,
+  useRecordContext,
+  UseRecordContextParams,
 } from "react-admin";
+
+// @ts-ignore
+import { JsonInput } from "./JsonInput";
+// @ts-ignore
+import { JsonField } from "./JsonField";
 
 const RegKeyListBulkActions = () => (
   <Fragment>
@@ -40,10 +48,22 @@ export const RegKeyList = () => (
   </List>
 );
 
+export const RegKeyFlagField = (
+  props: UseRecordContextParams<RaRecord<Identifier>> | undefined,
+) => {
+  const record = useRecordContext(props);
+  return record ? (
+    <pre>
+      --reg-key '{window.location.origin}#{record.bearer_token}'
+    </pre>
+  ) : null;
+};
+
 export const RegKeyShow = () => (
   <Show>
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
+      <RegKeyFlagField label="Command Line Flag" />
       <TextField label="Bearer Token" source="bearer_token" />
       <ReferenceField
         label="Organization"
@@ -69,6 +89,7 @@ export const RegKeyShow = () => (
       <BooleanField label="Single Use" source="device_id" looseValue={true} />
       <TextField label="Expiration" source="expiration" />
       <TextField label="Description" source="description" />
+      <JsonField label="Settings" source="settings" />
     </SimpleShowLayout>
   </Show>
 );
@@ -109,6 +130,13 @@ export const RegKeyCreate = () => {
           source="expiration"
           fullWidth
         />
+        <JsonInput
+          label="Settings"
+          name="settings"
+          source="settings"
+          fullWidth
+          multiline={true}
+        />
       </SimpleForm>
     </Create>
   );
@@ -146,6 +174,13 @@ export const RegKeyEdit = () => {
           name="expiration"
           source="expiration"
           fullWidth
+        />
+        <JsonInput
+          label="Settings"
+          name="settings"
+          source="settings"
+          fullWidth
+          multiline={true}
         />
       </SimpleForm>
     </Edit>
