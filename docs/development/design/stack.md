@@ -8,14 +8,14 @@ This proposal documents the decisions made around the Nexodus Service.
 
 ### Kubernetes Only
 
-#### Background
+#### Stack Background
 
 Early on, we used Docker Compose for orchestration.
 As the stack and complexity grew, we decided to exclusively support Kubernetes, requiring local development to use KIND.
 
 To support use of KIND for local development, and OpenShift for production deployment we settled on using Kustomize.
 
-#### Decisions
+#### Stack Decisions
 
 - We only support deployment on K8s
 - Kustomize is our deployment configuration tool
@@ -25,7 +25,7 @@ To support use of KIND for local development, and OpenShift for production deplo
 
 ### Microservices First
 
-#### Background
+#### Microservices Background
 
 An early agreed architectural principal of the Nexodus stack was to embrace microservices. This would allow us to iterate on components seperately, give us maximum re-use if the project failed, and most importantly, allow us to scale each component seperately.
 
@@ -44,7 +44,7 @@ However, one could argue that these decisions are in-fact related to how we cons
 
 The current apiserver is a monolith backed by a relational database.
 
-#### Decisions
+#### Microservices Decisions
 
 - We value modularity, but we will compromise if being non-modular is simpler or offers a better developer or user experience.
 
