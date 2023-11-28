@@ -37,7 +37,7 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
 
 ```
 
-*Figure 1. Candidate Types*
+Figure 1. Candidate Types
 
 ## Current and Future Discovery Plans
 
@@ -73,7 +73,7 @@ Discovery is a key component of Nexodus. Enterprise workloads are spread across 
                  +-------+                       +-------+
 ```
 
-*Figure 2. NAT traversal connecting directly via reflexive addresses sockets learned via STUN*
+Figure 2. NAT traversal connecting directly via reflexive addresses sockets learned via STUN
 
 - Discovery of valid sockets is performed via ICE techniques but not an actual protocol implementation. The ICE methodologies originated from IP telephony challenges over a decade ago to solve telephony communication by discovering all possible IP addresses and ports that can be used to establish a connection between the two devices. This enables devices to establish direct, peer-to-peer connections when possible or fallback to using relay servers when direct connections are not possible.
 - Endpoint state is distributed to all peer nodes (except for symmetric NAT nodes that will use a relay hub and spoke mode to reach all other nodes). In order to discover details about a device's address location and relevance to its peers, STUN servers are used. The STUN process looks as follows:

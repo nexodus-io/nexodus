@@ -26,7 +26,7 @@ sudo systemctl enable nexodus
 
 Edit `/etc/sysconfig/nexodus` if you plan to use a Nexodus service other than <https://try.nexodus.io>.
 
-Query the status of `nexd` and follow the instructions to register your device.
+Query the status of `nexd` and follow the instructions to register your device with `sudo nexctl nexd status`.
 
 ```sh
 sudo nexctl nexd status
@@ -47,7 +47,7 @@ To start the `nexd` agent and also have it start automatically on boot, run:
 sudo brew services start nexodus
 ```
 
-Query the status of `nexd` and follow the instructions to register your device.
+Query the status of `nexd` and follow the instructions to register your device with `sudo nexctl nexd status`.
 
 ```sh
 sudo nexctl nexd status

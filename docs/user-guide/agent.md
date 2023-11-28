@@ -117,6 +117,10 @@ Authentication succeeded.
 INFO[0570] Peer setup complete
 ```
 
+### Re-Enrollment
+
+If a user would like to re-enroll a device, simply remove the persistent state file located in `/var/lib/nexd/state.json` on Linux and macOS or `C:\nexodus\state.json` on Windows.
+
 ### User / Password Enrollment
 
 If you would like to use a username and password to enroll your node, you can do so by passing the `--username` and `--password` flags to `nexd`. For example:
@@ -177,7 +181,15 @@ PING 200::2(200::2) 56 data bytes
 64 bytes from 200::2: icmp_seq=1 ttl=64 time=1.16 ms
 ```
 
-You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.127.0.0.1.nip.io/`.
+Alternatively, you can verify connectivity to the device's peers with the following.
+
+```shell
+sudo nexctl nexd peers ping
+```
+
+### Web UI
+
+You can explore the web UI by visiting the URL of the host you added in your `/etc/hosts` file. For example, `https://try.nexodus.127.0.0.1.nip.io/` or `https://try.nexodus.io` if using the demo service.
 
 ### Cleanup Agent From Node
 

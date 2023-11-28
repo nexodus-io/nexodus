@@ -34,9 +34,7 @@ Start a container:
 docker run -it --rm --network=net1 busybox bash
 ```
 
-**Node2 setup**
-
-Join node2 to the user's default assigned VPC
+Node2 setup. Join node2 to the user's default assigned VPC.
 
 ```shell
 sudo nexd router --service-url <SERVICE_URL> --advertise-cidr=172.28.0.0/24
