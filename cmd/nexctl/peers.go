@@ -70,7 +70,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 		if encodeOut != encodeNoHeader {
 			// If we're not printing the header, something is probably trying to parse the output
 			if response.RelayRequired && !response.RelayPresent {
-				fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network.\n")
+				fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 			}
 		}
 

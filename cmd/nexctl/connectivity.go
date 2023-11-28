@@ -70,7 +70,7 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 		}
 
 		if result.RelayRequired && !result.RelayPresent {
-			fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network.\n")
+			fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 		}
 
 		w.Flush()
