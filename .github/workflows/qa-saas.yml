@@ -105,6 +105,10 @@ jobs:
             echo "KC_PASSWORD=${{ secrets.KC_PROD_PASSWORD }}" >> "$GITHUB_ENV"
           fi
 
+      - name:  Build Keycloak Tool
+        run: |
+          go build -o ./ ./hack/e2e-scripts/kctool/
+
       - name: Create a Keycloak User
         id: kc-user
         run: |
@@ -115,10 +119,6 @@ jobs:
             -p "${{ secrets.QA_USER_PASSWORD }}" \
             "https://${{ env.CONTROLLER_AUTH_ADDRESS }}")
           echo "USER=$output" >> "$GITHUB_OUTPUT"
-
-      - name:  Build Keycloak Tool
-        run: |
-          go build -o ./ ./hack/e2e-scripts/kctool/
 
       - name: User results from Keycloak
         run: echo "User is ${{ steps.kc-user.outputs.USER }}"
