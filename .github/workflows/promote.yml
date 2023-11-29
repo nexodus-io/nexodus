@@ -77,6 +77,7 @@ jobs:
       - name: Promote to the prod Tag
         shell: bash
         run: |
+          git fetch --tags
           git tag prod-previous prod --force
           git tag prod --force
           git push origin prod prod-previous --force 
