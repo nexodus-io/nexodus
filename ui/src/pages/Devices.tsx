@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, forwardRef } from "react";
 import {
   Datagrid,
   List,
@@ -10,6 +10,7 @@ import {
   ArrayField,
   DateField,
   BooleanField,
+  BooleanFieldProps,
   Show,
   useRecordContext,
   useGetIdentity,
@@ -25,7 +26,7 @@ import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTheme } from "@mui/material/styles";
-import { Tooltip, Accordion, AccordionDetails } from "@mui/material";
+import { Tooltip, Accordion, AccordionDetails, SvgIcon } from "@mui/material";
 
 interface DeviceAccordionDetailsProps {
   id: string | number;
@@ -37,6 +38,33 @@ const DeviceListBulkActions = () => (
     <BulkDeleteButton />
   </div>
 );
+
+const StatusBooleanField = (props: BooleanFieldProps): JSX.Element => {
+  const { source, label, valueLabelTrue } = props;
+  const record = useRecordContext(props);
+
+  const TrueIcon = forwardRef<any, any>((props, ref) => {
+    return <OnlineIcon color="success" ref={ref} {...props} />;
+  }) as unknown as typeof SvgIcon;
+  TrueIcon.muiName = "TrueIcon";
+
+  const FalseIcon = forwardRef<any, any>((props, ref) => {
+    return <HighlightOffIcon color="disabled" ref={ref} {...props} />;
+  }) as unknown as typeof SvgIcon;
+  FalseIcon.muiName = "FalseIcon";
+
+  return (
+    <BooleanField
+      label="Online Status"
+      source="online"
+      textAlign={"center"}
+      valueLabelTrue={"Connected"}
+      valueLabelFalse={"Not Connected"}
+      TrueIcon={TrueIcon}
+      FalseIcon={FalseIcon}
+    />
+  );
+};
 
 export const DeviceList = () => (
   <List>
@@ -73,15 +101,7 @@ export const DeviceList = () => (
         reference="users"
         link="show"
       />
-      <BooleanField
-        label="Online Status"
-        source="online"
-        textAlign={"center"}
-        valueLabelTrue={"Connected"}
-        valueLabelFalse={"Not Connected"}
-        TrueIcon={OnlineIcon}
-        FalseIcon={HighlightOffIcon}
-      />
+      <StatusBooleanField label="Online Status" />
     </Datagrid>
   </List>
 );
@@ -190,15 +210,7 @@ const DeviceShowLayout: FC = () => {
         reference="users"
         link="show"
       />
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <TextField label="Online" source="online" />
-        <Tooltip
-          title="Online Status displays the nexodus agent's control plane connection status to the API server."
-          placement="right"
-        >
-          <HelpOutlineIcon fontSize="small" style={{ marginLeft: "5px" }} />
-        </Tooltip>
-      </div>
+      <StatusBooleanField label="Online Status" />
       <ConditionalOnlineSinceField />
     </SimpleShowLayout>
   );
