@@ -20,6 +20,7 @@ resources:
   - ingress-api.yaml
   - ingress-frontend.yaml
   - service.yaml
+  - service-lb.yaml
   - certificate-api.yaml
   - certificate-frontend.yaml
 labels:
