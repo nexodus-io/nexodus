@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-type WgListPeers struct {
+type WgSession struct {
 	PublicKey       string
 	Endpoint        string
 	AllowedIPs      []string
@@ -21,10 +21,16 @@ type WgListPeers struct {
 	Healthy         bool
 }
 
+type ListPeersResponse struct {
+	RelayPresent  bool                 `json:"relay-present"`
+	RelayRequired bool                 `json:"relay-required"`
+	Peers         map[string]WgSession `json:"peers"`
+}
+
 // cmdListPeers get peer listings from nexd
 func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 	var err error
-	var peers map[string]WgListPeers
+	var response ListPeersResponse
 	if err = checkVersion(); err != nil {
 		return err
 	}
@@ -34,7 +40,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 		return fmt.Errorf("Failed to list peers: %w\n", err)
 	}
 
-	err = json.Unmarshal([]byte(result), &peers)
+	err = json.Unmarshal([]byte(result), &response)
 	if err != nil {
 		return fmt.Errorf("Failed to marshall peer results: %w\n", err)
 	}
@@ -46,7 +52,7 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
 		}
 
-		for _, peer := range peers {
+		for _, peer := range response.Peers {
 			tx := strconv.FormatInt(peer.Tx, 10)
 			rx := strconv.FormatInt(peer.Rx, 10)
 			handshakeTime, err := util.ParseTime(peer.LatestHandshake)
@@ -61,12 +67,19 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
 		}
 
+		if encodeOut != encodeNoHeader {
+			// If we're not printing the header, something is probably trying to parse the output
+			if response.RelayRequired && !response.RelayPresent {
+				fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
+			}
+		}
+
 		w.Flush()
 
 		return nil
 	}
 
-	err = FormatOutput(encodeOut, peers)
+	err = FormatOutput(encodeOut, response.Peers)
 	if err != nil {
 		Fatalf("Failed to print output: %v", err)
 	}
