@@ -27,7 +27,7 @@ func createInvitationCommand() *cli.Command {
 						Required: false,
 					},
 					&cli.StringFlag{
-						Name:     "user-name",
+						Name:     "email",
 						Required: false,
 					},
 					&cli.StringFlag{
@@ -47,7 +47,7 @@ func createInvitationCommand() *cli.Command {
 					return createInvitation(ctx, public.ModelsAddInvitation{
 						OrganizationId: organizationId,
 						UserId:         userId,
-						UserName:       ctx.String("user-name"),
+						Email:          ctx.String("email"),
 					})
 				},
 			},
@@ -94,6 +94,7 @@ func invitationsTableFields() []TableField {
 	fields = append(fields, TableField{Header: "INVITATION ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
 	fields = append(fields, TableField{Header: "USER ID", Field: "UserId"})
+	fields = append(fields, TableField{Header: "EMAIL", Field: "Email"})
 	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
 	return fields
 }
@@ -131,8 +132,8 @@ func createInvitation(ctx *cli.Context, invitation public.ModelsAddInvitation) e
 	if invitation.OrganizationId == "" {
 		invitation.OrganizationId = getDefaultOrgId(ctx.Context, c)
 	}
-	if invitation.UserId == "" && invitation.UserName == "" {
-		return fmt.Errorf("either the --user-id or --user-name flags are required")
+	if invitation.UserId == "" && invitation.Email == "" {
+		return fmt.Errorf("either the --user-id or --email flags are required")
 	}
 	res := apiResponse(c.InvitationApi.
 		CreateInvitation(ctx.Context).

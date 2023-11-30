@@ -12,9 +12,9 @@ package public
 
 // ModelsAddInvitation struct for ModelsAddInvitation
 type ModelsAddInvitation struct {
+	// The email address of the user to invite (one of email or user_id is required)
+	Email          string `json:"email,omitempty"`
 	OrganizationId string `json:"organization_id,omitempty"`
-	// The user id to invite (one of username or user_id is required)
+	// The user id to invite (one of email or user_id is required)
 	UserId string `json:"user_id,omitempty"`
-	// The username to invite (one of username or user_id is required)
-	UserName string `json:"user_name,omitempty"`
 }

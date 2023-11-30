@@ -2777,15 +2777,15 @@ const docTemplate = `{
         "models.AddInvitation": {
             "type": "object",
             "properties": {
+                "email": {
+                    "description": "The email address of the user to invite (one of email or user_id is required)",
+                    "type": "string"
+                },
                 "organization_id": {
                     "type": "string"
                 },
                 "user_id": {
-                    "description": "The user id to invite (one of username or user_id is required)",
-                    "type": "string"
-                },
-                "user_name": {
-                    "description": "The username to invite (one of username or user_id is required)",
+                    "description": "The user id to invite (one of email or user_id is required)",
                     "type": "string"
                 }
             }
@@ -3043,6 +3043,10 @@ const docTemplate = `{
         "models.Invitation": {
             "type": "object",
             "properties": {
+                "email": {
+                    "description": "The email address to invite",
+                    "type": "string"
+                },
                 "expires_at": {
                     "type": "string"
                 },

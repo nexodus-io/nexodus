@@ -4,7 +4,44 @@ Feature: Invitations API
     Given a user named "Thompson" with password "testpass"
     Given a user named "EvilBob" with password "testpass"
 
-  Scenario: Show basic invitation api in action
+  Scenario: Invite an existing user to an organization by email
+
+    Given I am logged in as "Johnson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${johnson_user_id}
+
+    Given I am logged in as "Thompson"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${thompson_user_id}
+
+    # Workaround: we can't seem to create a test user with an email, so set the email with SQL
+    When I run SQL "INSERT INTO user_identities (kind, value, user_id) VALUES ('email', '${johnson_user_id}@redhat.com', '${johnson_user_id}')" expect 1 row to be affected.
+
+    #
+    # Verify Thompson can invite Johnson to his org:
+    When I POST path "/api/invitations" with json body:
+      """
+      {
+        "email": "${johnson_user_id}@redhat.com",
+        "organization_id": "${thompson_user_id}"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ".id" selection from the response as ${invitation_id}
+    And the response should match json:
+      """
+      {
+        "expires_at": "${response.expires_at}",
+        "id": "${invitation_id}",
+        "organization_id": "${thompson_user_id}",
+        "email": "${johnson_user_id}@redhat.com",
+        "user_id": "${johnson_user_id}"
+      }
+      """
+
+  Scenario: Invite a user to an organization by user id
 
     #
     # Get the user and default org ids for two users...

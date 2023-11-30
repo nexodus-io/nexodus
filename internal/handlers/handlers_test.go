@@ -84,11 +84,12 @@ func (suite *HandlerTestSuite) BeforeTest(_, _ string) {
 	suite.api.db.Exec("DELETE FROM vpcs")
 	suite.api.db.Exec("DELETE FROM user_organizations")
 	suite.api.db.Exec("DELETE FROM organizations")
+	suite.api.db.Exec("DELETE FROM user_identities")
 	suite.api.db.Exec("DELETE FROM users")
 	var err error
-	suite.testUserID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserIdpID, "testuser")
+	suite.testUserID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUserIdpID, "testuser", nil)
 	suite.Require().NoError(err)
-	suite.testUser2ID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2IdpID, "testuser2")
+	suite.testUser2ID, err = suite.api.CreateUserIfNotExists(context.Background(), TestUser2IdpID, "testuser2", nil)
 	suite.Require().NoError(err)
 }
 
