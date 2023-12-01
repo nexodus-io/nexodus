@@ -51,6 +51,12 @@ func disableExitNodeClient(cCtx *cli.Context) error {
 	return nil
 }
 
+func exitNodeTableFields(ctx *cli.Context) []TableField {
+	var fields []TableField
+	fields = append(fields, TableField{Header: "ENDPOINT ADDRESS", Field: "Endpoint"})
+	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
+	return fields
+}
 func listExitNodes(cCtx *cli.Context, encodeOut string) error {
 	var err error
 	var exitNodes []exitNodeOrigin
@@ -68,26 +74,6 @@ func listExitNodes(cCtx *cli.Context, encodeOut string) error {
 		return fmt.Errorf("Failed to marshall exit node results: %w\n", err)
 	}
 
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		w := newTabWriter()
-		fs := "%s\t%s\n"
-		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "ENDPOINT ADDRESS", "PUBLIC KEY")
-		}
-
-		for _, node := range exitNodes {
-			fmt.Fprintf(w, fs, node.Endpoint, node.PublicKey)
-		}
-
-		w.Flush()
-
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, exitNodes)
-	if err != nil {
-		Fatalf("failed to print output: %v", err)
-	}
-
+	show(cCtx, exitNodeTableFields(cCtx), exitNodes)
 	return nil
 }

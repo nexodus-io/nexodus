@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/olekukonko/tablewriter"
@@ -15,7 +16,6 @@ import (
 	"reflect"
 	"runtime"
 	"sort"
-	"text/tabwriter"
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/client"
@@ -25,6 +25,7 @@ import (
 const (
 	encodeJsonRaw    = "json-raw"
 	encodeJsonPretty = "json"
+	encodeYaml       = "yaml"
 	encodeNoHeader   = "no-header"
 	encodeColumn     = "column"
 )
@@ -74,7 +75,7 @@ func main() {
 				Name:     "output",
 				Value:    encodeColumn,
 				Required: false,
-				Usage:    "Output format: json, json-raw, no-header, column (default columns)",
+				Usage:    "Output format: json, json-raw, yaml, no-header, column (default columns)",
 			},
 			&cli.BoolFlag{
 				Name:     "insecure-skip-tls-verify",
@@ -177,33 +178,6 @@ func createClientOptions(cCtx *cli.Context) []client.Option {
 	return options
 }
 
-func newTabWriter() *tabwriter.Writer {
-	return tabwriter.NewWriter(os.Stdout, 10, 1, 5, ' ', 0)
-}
-
-func FormatOutput(format string, result interface{}) error {
-	switch format {
-	case encodeJsonPretty:
-		bytes, err := json.MarshalIndent(result, "", "    ")
-		if err != nil {
-			Fatalf("failed to encode the ctl output: %v", err)
-		}
-		fmt.Println(string(bytes))
-
-	case encodeJsonRaw:
-		bytes, err := json.Marshal(result)
-		if err != nil {
-			Fatalf("failed to encode the ctl output: %v", err)
-		}
-		fmt.Println(string(bytes))
-
-	default:
-		return fmt.Errorf("unknown format option: %s", format)
-	}
-
-	return nil
-}
-
 type TableField struct {
 	Header    string
 	Field     string
@@ -222,6 +196,13 @@ func show(cCtx *cli.Context, fields []TableField, result any) {
 
 	case encodeJsonRaw:
 		bytes, err := json.Marshal(result)
+		if err != nil {
+			Fatalf("failed to encode the ctl output: %v", err)
+		}
+		fmt.Println(string(bytes))
+
+	case encodeYaml:
+		bytes, err := yaml.Marshal(result)
 		if err != nil {
 			Fatalf("failed to encode the ctl output: %v", err)
 		}

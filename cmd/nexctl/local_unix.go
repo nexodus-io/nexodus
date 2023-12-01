@@ -209,8 +209,7 @@ func init() {
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							return cmdListPeers(cCtx, encodeOut)
+							return cmdListPeers(cCtx)
 						},
 					},
 					{

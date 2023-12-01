@@ -67,6 +67,7 @@ require (
 	github.com/coredns/caddy v1.1.1
 	github.com/coredns/coredns v1.11.1
 	github.com/evanphx/json-patch v5.7.0+incompatible
+	github.com/ghodss/yaml v1.0.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/mhmtszr/concurrent-swiss-map v1.0.4
 	github.com/miekg/dns v1.1.57
@@ -103,7 +104,6 @@ require (
 	github.com/farsightsec/golang-framestream v0.3.0 // indirect
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

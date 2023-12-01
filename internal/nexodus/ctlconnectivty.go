@@ -3,6 +3,7 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api"
 	"net"
 
 	"go.uber.org/zap"
@@ -13,12 +14,6 @@ const (
 	v4        = "v4"
 	v6        = "v6"
 )
-
-type PingPeersResponse struct {
-	RelayPresent  bool                       `json:"relay-present"`
-	RelayRequired bool                       `json:"relay-required"`
-	Peers         map[string]KeepaliveStatus `json:"peers"`
-}
 
 // ConnectivityV4 pings all peers via IPv4
 func (ac *NexdCtl) ConnectivityV4(_ string, keepaliveResults *string) error {
@@ -52,9 +47,9 @@ func (ac *NexdCtl) ConnectivityV6(_ string, keepaliveResults *string) error {
 	return nil
 }
 
-func (nx *Nexodus) connectivityProbe(family string) PingPeersResponse {
-	peersByKey := make(map[string]KeepaliveStatus)
-	res := PingPeersResponse{
+func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
+	peersByKey := make(map[string]api.KeepaliveStatus)
+	res := api.PingPeersResponse{
 		RelayRequired: nx.symmetricNat,
 	}
 	if !nx.relay {
@@ -76,7 +71,7 @@ func (nx *Nexodus) connectivityProbe(family string) PingPeersResponse {
 			}
 
 			hostname := value.device.Hostname
-			peersByKey[pubKey] = KeepaliveStatus{
+			peersByKey[pubKey] = api.KeepaliveStatus{
 				WgIP:        nodeAddr,
 				IsReachable: false,
 				Hostname:    hostname,
@@ -90,8 +85,8 @@ func (nx *Nexodus) connectivityProbe(family string) PingPeersResponse {
 }
 
 // probeConnectivity check connectivity in batches to limit excessive traffic in the case of a large number of peers
-func (nx *Nexodus) probeConnectivity(peersByKey map[string]KeepaliveStatus, logger *zap.SugaredLogger) map[string]KeepaliveStatus {
-	peerConnResultsMap := make(map[string]KeepaliveStatus)
+func (nx *Nexodus) probeConnectivity(peersByKey map[string]api.KeepaliveStatus, logger *zap.SugaredLogger) map[string]api.KeepaliveStatus {
+	peerConnResultsMap := make(map[string]api.KeepaliveStatus)
 
 	peerKeys := make([]string, 0, len(peersByKey))
 	for key := range peersByKey {
@@ -107,7 +102,7 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]KeepaliveStatus, logg
 		batch := peerKeys[i:end]
 
 		c := make(chan struct {
-			KeepaliveStatus
+			api.KeepaliveStatus
 			IsReachable bool
 		})
 
@@ -125,7 +120,7 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]KeepaliveStatus, logg
 				logger.Debugf("connectivty probe [ %s ] is not reachable", ip)
 			}
 
-			peerConnResultsMap[ip] = KeepaliveStatus{
+			peerConnResultsMap[ip] = api.KeepaliveStatus{
 				WgIP:        result.WgIP,
 				IsReachable: result.IsReachable,
 				Hostname:    result.Hostname,

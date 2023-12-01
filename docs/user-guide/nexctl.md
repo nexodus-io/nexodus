@@ -52,7 +52,7 @@ GLOBAL OPTIONS:
    --service-url value         Api server URL (default: "https://try.nexodus.127.0.0.1.nip.io")
    --username value            Username
    --password value            Password
-   --output value              Output format: json, json-raw, no-header, column (default columns) (default: "column")
+   --output value              Output format: json, json-raw, yaml, no-header, column (default columns) (default: "column")
    --insecure-skip-tls-verify  If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false)
    --help, -h                  Show help
 ```
