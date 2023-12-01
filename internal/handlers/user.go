@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,13 +33,27 @@ func (api *API) UserIsCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	return db.Where("id = ?", userId)
 }
 
-func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userName string) (uuid.UUID, error) {
+func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userName string, claimsMap map[string]interface{}) (uuid.UUID, error) {
+
 	ctx, span := tracer.Start(ctx, "CreateUserIfNotExists", trace.WithAttributes(
 		attribute.String("ipd_id", idpId),
 		attribute.String("username", userName),
 	))
 	defer span.End()
 	var user models.User
+
+	claims := struct {
+		Issuer        string `json:"iss"`
+		EmailVerified bool   `json:"email_verified"`
+		Email         string `json:"email"`
+	}{}
+
+	if claimsMap != nil {
+		err := util.JsonUnmarshal(claimsMap, &claims)
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
 
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
@@ -61,6 +76,42 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 					res.Error = gorm.ErrDuplicatedKey
 				}
 				return res.Error
+			}
+
+			// doing the following should allow us to eventually
+			// remove the need for the user.IdpID field, and to
+			// associate multiple IDP logins per user
+			if res := tx.Create(&models.UserIdentity{
+				Kind:   "keycloak:id",
+				Value:  idpId,
+				UserID: user.ID,
+			}); res.Error != nil {
+				if database.IsDuplicateError(res.Error) {
+					res.Error = gorm.ErrDuplicatedKey
+				}
+				return res.Error
+			}
+
+			email := strings.TrimSpace(strings.ToLower(claims.Email))
+			if claims.EmailVerified && claims.Email != "" {
+
+				if res := tx.Create(&models.UserIdentity{
+					Kind:   "email",
+					Value:  email,
+					UserID: user.ID,
+				}); res.Error != nil {
+					if database.IsDuplicateError(res.Error) {
+						return NewApiResponseError(http.StatusForbidden, models.NewApiError(fmt.Errorf("user already exists with email address: %s", email)))
+					}
+					return res.Error
+				}
+
+				// associate any pending org invites with the user record.
+				if res := tx.Model(&models.Invitation{}).
+					Where("user_id IS NULL and email = ?", email).
+					Update("user_id", user.ID); res.Error != nil {
+					return res.Error
+				}
 			}
 
 			// Create the default organization
@@ -240,7 +291,8 @@ func (api *API) DeleteUser(c *gin.Context) {
 
 		// We need to delete all the organizations that the user owns
 		orgs := []models.Organization{}
-		if res := tx.Where("owner_id = ?", userId).Find(&orgs); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		if res := tx.Where("owner_id = ?", userId).
+			Find(&orgs); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return result.Error
 		}
 
@@ -249,6 +301,12 @@ func (api *API) DeleteUser(c *gin.Context) {
 			if err != nil {
 				return err
 			}
+		}
+
+		// delete the related identities
+		if res := tx.Where("user_id = ?", userId).
+			Delete(&models.UserIdentity{}); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return result.Error
 		}
 
 		// delete the cached user

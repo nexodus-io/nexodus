@@ -1,24 +1,18 @@
 import { Fragment } from "react";
 import {
+  BulkDeleteButton,
+  BulkExportButton,
+  Create,
   Datagrid,
   List,
-  TextField,
-  ReferenceArrayField,
-  Show,
-  SimpleShowLayout,
-  SingleFieldList,
   ReferenceField,
-  useRecordContext,
-  useGetOne,
-  Loading,
-  BulkExportButton,
-  BulkDeleteButton,
-  ReferenceManyField,
-  Create,
-  SimpleForm,
   ReferenceInput,
-  TextInput,
   required,
+  Show,
+  SimpleForm,
+  SimpleShowLayout,
+  TextField,
+  TextInput,
   useGetIdentity,
 } from "react-admin";
 
@@ -33,7 +27,7 @@ export const InvitationList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<InvitationListBulkActions />}>
       <TextField label="ID" source="id" />
-      <TextField label="User ID" source="user_id" />
+      <TextField label="Email Address" source="email" />
       {/* Right now we can't look up other users, we don't have access */}
       {/*<ReferenceField*/}
       {/*  label="User"*/}
@@ -84,9 +78,9 @@ export const InvitationCreate = () => {
     <Create>
       <SimpleForm>
         <TextInput
-          label="User Name"
-          name="user_name"
-          source="user_name"
+          label="Email Address"
+          name="email"
+          source="email"
           validate={[required()]}
           fullWidth
         />

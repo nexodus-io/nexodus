@@ -198,9 +198,14 @@ func ValidateJWT(ctx context.Context, o APIRouterOptions, jwksURI string, nexodu
 			}
 
 			if cachedUserId == "" {
-				userId, err := o.Api.CreateUserIfNotExists(c.Request.Context(), idpUserID, idpUserName)
+				userId, err := o.Api.CreateUserIfNotExists(c.Request.Context(), idpUserID, idpUserName, claims)
 				if err != nil {
-					o.Api.SendInternalServerError(c, err)
+					var apiResponseError *handlers.ApiResponseError
+					if errors.As(err, &apiResponseError) {
+						c.JSON(apiResponseError.Status, apiResponseError.Body)
+					} else {
+						o.Api.SendInternalServerError(c, err)
+					}
 					c.Abort()
 					return
 				}

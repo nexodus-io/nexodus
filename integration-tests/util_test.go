@@ -268,11 +268,13 @@ func createNewUserWithName(ctx context.Context, name string, password string) (s
 	}
 
 	userid, err := keycloak.CreateUser(ctx, token.AccessToken, "nexodus", gocloak.User{
-		FirstName: gocloak.StringP("Test"),
-		LastName:  gocloak.StringP(name),
-		Email:     gocloak.StringP(userName + "@redhat.com"),
-		Enabled:   gocloak.BoolP(true),
-		Username:  gocloak.StringP(userName),
+		Username:      gocloak.StringP(userName),
+		Enabled:       gocloak.BoolP(true),
+		EmailVerified: gocloak.BoolP(true),
+		FirstName:     gocloak.StringP("Test"),
+		LastName:      gocloak.StringP(name),
+		Email:         gocloak.StringP(userName + "@redhat.com"),
+		Attributes:    &map[string][]string{"origin": {"nexodus-cli"}},
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("user create failed: %w", err)

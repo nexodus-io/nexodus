@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,56 +39,84 @@ func (api *API) CreateInvitation(c *gin.Context) {
 		return
 	}
 
+	if request.OrganizationID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("organization_id"))
+		return
+	}
+
+	if request.UserID == nil && request.Email == nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("email or user_id"))
+	}
+	if request.UserID != nil && request.Email != nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("both email and user_id present"))
+	}
+
+	db := api.db.WithContext(ctx)
+
 	// Only allow org owners to create invites...
 	var org models.Organization
-	db := api.db.WithContext(ctx)
 	if res := api.OrganizationIsOwnedByCurrentUser(c, db).
 		First(&org, "id = ?", request.OrganizationID); res.Error != nil {
 		c.JSON(http.StatusNotFound, models.NewNotFoundError("organization"))
 		return
 	}
 
-	var user models.User
-	if request.UserID != nil && *request.UserID != uuid.Nil {
-		if res := db.
-			Preload("Organizations").
-			Preload("Invitations").
-			First(&user, "id = ?", *request.UserID); res.Error != nil {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
-			return
-		}
-	} else if request.UserName != nil && *request.UserName != "" {
-		if res := db.Debug().
-			Preload("Organizations").
-			Preload("Invitations").
-			First(&user, "user_name = ?", *request.UserName); res.Error != nil {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("user"))
-			return
-		}
-	} else {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("username or user_id"))
-		return
-	}
-
-	for _, org := range user.Organizations {
-		if org.ID == request.OrganizationID {
-			c.JSON(http.StatusBadRequest, models.NewFieldValidationError("organization", "user is already in requested org"))
-			return
-		}
-	}
-	for _, inv := range user.Invitations {
-		if inv.OrganizationID == request.OrganizationID && inv.ExpiresAt.After(time.Now()) {
-			c.JSON(http.StatusConflict, models.NewConflictsError(inv.ID.String()))
-			return
-		}
-	}
-
 	// invitation expires after 1 week
 	expiry := time.Now().Add(time.Hour * 24 * 7)
 	invite := models.Invitation{
-		UserID:         user.ID,
 		OrganizationID: request.OrganizationID,
 		ExpiresAt:      expiry,
+		UserID:         request.UserID,
+	}
+
+	var user models.User
+
+	if request.Email != nil {
+		// normalize the email address
+		email := strings.TrimSpace(strings.ToLower(*request.Email))
+		invite.Email = &email
+
+		// check if user with the email already exists
+		var uid models.UserIdentity
+		if res := db.First(&uid, "kind = 'email' AND value = ?", *invite.Email); res.Error != nil {
+			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				api.SendInternalServerError(c, res.Error)
+				return
+			}
+			// it's fine if the user does not exist yet...
+			invite.UserID = nil
+		} else {
+			invite.UserID = &uid.UserID
+		}
+	}
+
+	// invite.UserID will be nil if the user doesn't exist
+	if invite.UserID != nil {
+
+		// load the user
+		if res := db.
+			Preload("Organizations").
+			Preload("Invitations").
+			First(&user, "id = ?", *invite.UserID); res.Error != nil {
+			api.SendInternalServerError(c, res.Error)
+			return
+		}
+
+		// check if user is already in the org
+		for _, org := range user.Organizations {
+			if org.ID == request.OrganizationID {
+				c.JSON(http.StatusBadRequest, models.NewFieldValidationError("organization", "user is already in requested org"))
+				return
+			}
+		}
+
+		// check if user already has an invite for the org
+		for _, inv := range user.Invitations {
+			if inv.OrganizationID == request.OrganizationID && inv.ExpiresAt.After(time.Now()) {
+				c.JSON(http.StatusConflict, models.NewConflictsError(inv.ID.String()))
+				return
+			}
+		}
 	}
 
 	if res := db.Create(&invite); res.Error != nil {
