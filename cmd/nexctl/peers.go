@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -27,8 +27,32 @@ type ListPeersResponse struct {
 	Peers         map[string]WgSession `json:"peers"`
 }
 
+func peerTableFields(ctx *cli.Context) []TableField {
+	var fields []TableField
+	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
+	fields = append(fields, TableField{Header: "ENDPOINT", Field: "Endpoint"})
+	fields = append(fields, TableField{Header: "ALLOWED IPS", Field: "AllowedIPs"})
+	fields = append(fields, TableField{Header: "LATEST HANDSHAKE", Formatter: func(item interface{}) string {
+		peer := item.(WgSession)
+		handshakeTime, err := util.ParseTime(peer.LatestHandshake)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Unable to parse LatestHandshake to time:", err)
+		}
+		handshake := "None"
+		if !handshakeTime.IsZero() {
+			secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
+			handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
+		}
+		return handshake
+	}})
+	fields = append(fields, TableField{Header: "TRANSMITTED", Field: "Tx"})
+	fields = append(fields, TableField{Header: "RECEIVED", Field: "Rx"})
+	fields = append(fields, TableField{Header: "HEALTHY", Field: "Healthy"})
+	return fields
+}
+
 // cmdListPeers get peer listings from nexd
-func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
+func cmdListPeers(cCtx *cli.Context) error {
 	var err error
 	var response ListPeersResponse
 	if err = checkVersion(); err != nil {
@@ -45,43 +69,9 @@ func cmdListPeers(cCtx *cli.Context, encodeOut string) error {
 		return fmt.Errorf("Failed to marshall peer results: %w\n", err)
 	}
 
-	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
-		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-		if encodeOut != encodeNoHeader {
-			fmt.Fprintf(w, fs, "PUBLIC KEY", "ENDPOINT", "ALLOWED IPS", "LATEST HANDSHAKE", "TRANSMITTED", "RECEIVED", "HEALTHY")
-		}
-
-		for _, peer := range response.Peers {
-			tx := strconv.FormatInt(peer.Tx, 10)
-			rx := strconv.FormatInt(peer.Rx, 10)
-			handshakeTime, err := util.ParseTime(peer.LatestHandshake)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Unable to parse LatestHandshake to time:", err)
-			}
-			handshake := "None"
-			if !handshakeTime.IsZero() {
-				secondsAgo := time.Now().UTC().Sub(handshakeTime).Seconds()
-				handshake = fmt.Sprintf("%.0f seconds ago", secondsAgo)
-			}
-			fmt.Fprintf(w, fs, peer.PublicKey, peer.Endpoint, peer.AllowedIPs, handshake, tx, rx, strconv.FormatBool(peer.Healthy))
-		}
-
-		if encodeOut != encodeNoHeader {
-			// If we're not printing the header, something is probably trying to parse the output
-			if response.RelayRequired && !response.RelayPresent {
-				fmt.Fprintf(w, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
-			}
-		}
-
-		w.Flush()
-
-		return nil
-	}
-
-	err = FormatOutput(encodeOut, response.Peers)
-	if err != nil {
-		Fatalf("Failed to print output: %v", err)
+	show(cCtx, peerTableFields(cCtx), maps.Values(response.Peers))
+	if response.RelayRequired && !response.RelayPresent {
+		fmt.Fprintf(os.Stderr, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 	}
 
 	return nil

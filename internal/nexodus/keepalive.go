@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api"
 	"net"
 	"time"
 
@@ -23,26 +24,18 @@ const (
 	ICMP6_TYPE_ECHO_REQUEST            = 128
 )
 
-type KeepaliveStatus struct {
-	WgIP        string `json:"wg_ip"`
-	IsReachable bool   `json:"is_reachable"`
-	Hostname    string `json:"hostname"`
-	Latency     string `json:""`
-	Method      string `json:"method"`
-}
-
-func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
-	KeepaliveStatus
+func (nx *Nexodus) runProbe(peerStatus api.KeepaliveStatus, c chan struct {
+	api.KeepaliveStatus
 	IsReachable bool
 }) {
 	latency, err := nx.ping(peerStatus.WgIP)
 	if err != nil {
 		nx.logger.Debugf("probe error: %v", err)
 		c <- struct {
-			KeepaliveStatus
+			api.KeepaliveStatus
 			IsReachable bool
 		}{
-			KeepaliveStatus: KeepaliveStatus{
+			KeepaliveStatus: api.KeepaliveStatus{
 				WgIP:     peerStatus.WgIP,
 				Hostname: peerStatus.Hostname,
 				Latency:  "-",
@@ -52,10 +45,10 @@ func (nx *Nexodus) runProbe(peerStatus KeepaliveStatus, c chan struct {
 		}
 	} else {
 		c <- struct {
-			KeepaliveStatus
+			api.KeepaliveStatus
 			IsReachable bool
 		}{
-			KeepaliveStatus: KeepaliveStatus{
+			KeepaliveStatus: api.KeepaliveStatus{
 				WgIP:     peerStatus.WgIP,
 				Hostname: peerStatus.Hostname,
 				Latency:  latency,

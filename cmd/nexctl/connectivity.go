@@ -3,12 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api"
+	"golang.org/x/exp/maps"
+	"os"
 	"sort"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -16,6 +18,25 @@ const (
 	v6 = "v6"
 	v4 = "v4"
 )
+
+func keepaliveStatusTableFields(ctx *cli.Context) []TableField {
+	var fields []TableField
+	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
+	fields = append(fields, TableField{Header: "WIREGUARD ADDRESS", Field: "WgIP"})
+	fields = append(fields, TableField{Header: "LATENCY", Field: "Latency"})
+	fields = append(fields, TableField{Header: "PEERING METHOD", Field: "Method"})
+	fields = append(fields, TableField{Header: "CONNECTION STATUS", Formatter: func(item interface{}) string {
+		green := color.New(color.FgGreen).SprintFunc()
+		red := color.New(color.FgRed).SprintFunc()
+		v := item.(api.KeepaliveStatus)
+		status := fmt.Sprintf("%s Unreachable", red("x"))
+		if v.IsReachable {
+			status = fmt.Sprintf("%s Reachable", green("✓"))
+		}
+		return status
+	}})
+	return fields
+}
 
 // cmdConnStatus check the reachability of the node's peers and sort the return by hostname
 func cmdConnStatus(cCtx *cli.Context, family string) error {
@@ -39,49 +60,21 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 	// clear spinner
 	fmt.Print("\r \r")
 
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
+	peers := maps.Values(result.Peers)
+	sort.Slice(peers, func(i, j int) bool {
+		return peers[i].Hostname < peers[j].Hostname
+	})
+	show(cCtx, keepaliveStatusTableFields(cCtx), peers)
 
-	checkmark := green("✓")
-	crossmark := red("x")
-
-	if err == nil {
-		w := newTabWriter()
-		fs := "%s\t%s\t%s\t%s\t%s\n"
-		fmt.Fprintf(w, fs, "HOSTNAME", "WIREGUARD ADDRESS", "LATENCY", "PEERING METHOD", "CONNECTION STATUS")
-
-		keys := make([]string, 0, len(result.Peers))
-		for k := range result.Peers {
-			keys = append(keys, k)
-		}
-
-		sort.Slice(keys, func(i, j int) bool {
-			return result.Peers[keys[i]].Hostname < result.Peers[keys[j]].Hostname
-		})
-
-		for _, k := range keys {
-			v := result.Peers[k]
-			status := fmt.Sprintf("%s Unreachable", crossmark)
-			if v.IsReachable {
-				status = fmt.Sprintf("%s Reachable", checkmark)
-			}
-			// note: the unicode in the ✓/x will throw off alignment, add it to the last column
-			fmt.Fprintf(w, fs, v.Hostname, k, v.Latency, v.Method, status)
-		}
-
-		if result.RelayRequired && !result.RelayPresent {
-			fmt.Fprintf(w, "\nWARNING: A relay node is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
-		}
-
-		w.Flush()
+	if result.RelayRequired && !result.RelayPresent {
+		fmt.Fprintf(os.Stderr, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 	}
-
-	return err
+	return nil
 }
 
 // callNexdKeepalives call the Connectivity ctl methods in nexd agent
-func callNexdKeepalives(family string) (nexodus.PingPeersResponse, error) {
-	var result nexodus.PingPeersResponse
+func callNexdKeepalives(family string) (api.PingPeersResponse, error) {
+	var result api.PingPeersResponse
 	var keepaliveJson string
 	var err error
 
