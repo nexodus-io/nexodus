@@ -449,6 +449,10 @@ definitions:
     type: object
   models.UserInfoResponse:
     properties:
+      email:
+        type: string
+      email_verified:
+        type: boolean
       family_name:
         type: string
       given_name:

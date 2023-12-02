@@ -270,11 +270,13 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 	}
 
 	var claims struct {
-		Username   string `json:"preferred_username"`
-		GivenName  string `json:"given_name"`
-		FamilyName string `json:"family_name"`
-		Picture    string `json:"picture"`
-		UpdatedAt  int64  `json:"updated_at"`
+		EmailVerified bool   `json:"email_verified"`
+		Email         string `json:"email"`
+		Username      string `json:"preferred_username"`
+		GivenName     string `json:"given_name"`
+		FamilyName    string `json:"family_name"`
+		Picture       string `json:"picture"`
+		UpdatedAt     int64  `json:"updated_at"`
 	}
 
 	err = info.Claims(&claims)
@@ -290,6 +292,8 @@ func (o *OidcAgent) UserInfo(c *gin.Context) {
 		UpdatedAt:         int64(claims.UpdatedAt),
 		FamilyName:        claims.FamilyName,
 		Picture:           claims.Picture,
+		EmailVerified:     claims.EmailVerified,
+		Email:             claims.Email,
 	}
 
 	c.JSON(http.StatusOK, res)

@@ -1,4 +1,4 @@
-import { Fragment, FunctionComponent, useCallback } from "react";
+import React, { Fragment, FunctionComponent, useCallback } from "react";
 import {
   BulkDeleteButton,
   BulkExportButton,
@@ -19,6 +19,9 @@ import {
   useRefresh,
   useRecordContext,
   NotificationType,
+  UseRecordContextParams,
+  RaRecord,
+  Identifier,
 } from "react-admin";
 
 import { backend, fetchJson as apiFetchJson } from "../common/Api";
@@ -72,8 +75,17 @@ const AcceptInvitationButton: FunctionComponent = () => {
   return <Button label="Accept" onClick={handleAccept} />;
 };
 
-const AcceptInvitationField: FunctionComponent = () => {
-  return <AcceptInvitationButton />;
+export const AcceptInvitationField = (
+  props: UseRecordContextParams<RaRecord<Identifier>> | undefined,
+) => {
+  const record = useRecordContext(props);
+  const { identity } = useGetIdentity();
+  console.log("identity", identity);
+  console.log("record", record);
+  // only show the accept button for invitations that are for the current user
+  return record && identity && identity.email == record.email ? (
+    <AcceptInvitationButton />
+  ) : null;
 };
 
 export const InvitationList = () => (

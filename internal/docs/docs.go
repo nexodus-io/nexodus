@@ -3365,6 +3365,12 @@ const docTemplate = `{
         "models.UserInfoResponse": {
             "type": "object",
             "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
                 "family_name": {
                     "type": "string"
                 },

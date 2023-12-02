@@ -180,9 +180,10 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
       const data = await response.json();
       if (response && data) {
         id = {
-          id: data.subject,
+          id: data.sub,
           fullName: data.preferred_username,
           avatar: data.picture,
+          email: data.email,
         } as UserIdentity;
       }
     } catch (err: any) {

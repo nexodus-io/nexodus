@@ -28,6 +28,8 @@ type UserInfoResponse struct {
 	UpdatedAt         int64  `json:"updated_at"`
 	FamilyName        string `json:"family_name"`
 	Picture           string `json:"picture"`
+	EmailVerified     bool   `json:"email_verified"`
+	Email             string `json:"email"`
 }
 
 type RefreshTokenRequest struct {
