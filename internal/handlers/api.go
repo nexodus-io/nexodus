@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
+	"github.com/nexodus-io/nexodus/internal/email"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
 	"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr/envfm"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -52,6 +53,8 @@ type API struct {
 	URL            string
 	PrivateKey     *rsa.PrivateKey
 	Certificates   []*x509.Certificate
+	SmtpServer     email.SmtpServer
+	SmtpFrom       string
 }
 
 func NewAPI(
@@ -184,4 +187,12 @@ func (api *API) createDefaultIPamNamespace(ctx context.Context) error {
 		return fmt.Errorf("can't assign default ipam v6 prefix: %w", err)
 	}
 	return nil
+}
+
+func (api *API) SendEmail(message email.Message) error {
+	if api.SmtpServer.HostPort == "" {
+		return nil
+	}
+	message.From = api.SmtpFrom
+	return email.Send(api.SmtpServer, message)
 }
