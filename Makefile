@@ -248,7 +248,7 @@ png-lint: dist/.png-lint ## Lint the png files from excalidraw
 dist/.png-lint: $(shell find . -iname '*.png') | dist
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[PNG LINT]"
 	$(CMD_PREFIX) for file in $^; do \
-		if grep -q "$$file" .excalidraw-ignore; then continue ; fi ; \
+		if echo "$$file" | grep -q --basic-regexp --file=.excalidraw-ignore; then continue ; fi ; \
 		if ! grep -q "excalidraw+json" $$file; then \
 			echo "$$file was not exported from excalidraw with 'Embed Scene' enabled." ; \
 			echo "If this is not an excalidraw file, add it to .excalidraw-ignore" ; \

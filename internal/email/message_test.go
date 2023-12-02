@@ -30,7 +30,8 @@ func TestMessageEncode(t *testing.T) {
 			},
 		},
 		// this allows the multipart boundary to be deterministic
-		Rand: rand.New(rand.NewSource(0)), // #nosec G404
+		// #nosec G404
+		Rand: rand.New(rand.NewSource(0)),
 	}
 	buf := bytes.NewBuffer(nil)
 	err = email.Write(buf)
