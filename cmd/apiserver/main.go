@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	redisStore "github.com/go-session/redis/v3"
 	"github.com/go-session/session/v3"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/nexodus-io/nexodus/internal/email"
 	"github.com/nexodus-io/nexodus/internal/ipam/cmd"
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -231,21 +233,52 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:     "tls-key",
-				Usage:    "the server jwks private key",
+				Usage:    "The server jwks private key",
 				Required: true,
 				EnvVars:  []string{"NEXAPI_TLS_KEY"},
 			},
 			&cli.StringFlag{
 				Name:     "tls-cert",
-				Usage:    "the server jwks cert key",
+				Usage:    "The server jwks cert key",
 				Required: true,
 				EnvVars:  []string{"NEXAPI_TLS_KEY"},
 			},
 			&cli.StringFlag{
 				Name:     "url",
-				Usage:    "the server url",
+				Usage:    "The server url",
 				Required: true,
 				EnvVars:  []string{"NEXAPI_URL"},
+			},
+
+			&cli.StringFlag{
+				Name:     "smtp-host-port",
+				Usage:    "SMTP server host:port address",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SMTP_HOST_PORT"},
+			},
+			&cli.StringFlag{
+				Name:     "smtp-user",
+				Usage:    "SMTP server user name",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SMTP_USER"},
+			},
+			&cli.StringFlag{
+				Name:     "smtp-password",
+				Usage:    "SMTP server password",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SMTP_PASSWORD"},
+			},
+			&cli.BoolFlag{
+				Name:     "smtp-tls",
+				Usage:    "Use TLS to connect to the SMTP server",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SMTP_TLS"},
+			},
+			&cli.BoolFlag{
+				Name:     "smtp-from",
+				Usage:    "The form address to use for emails",
+				Required: false,
+				EnvVars:  []string{"NEXAPI_SMTP_FROM"},
 			},
 		},
 
@@ -289,6 +322,20 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+
+				smtpServer := email.SmtpServer{
+					HostPort: cCtx.String("smtp-host-port"),
+					User:     cCtx.String("smtp-host-user"),
+					Password: cCtx.String("smtp-host-password"),
+				}
+				if cCtx.Bool("smtp-tls") { // #nosec G402
+					smtpServer.Tls = &tls.Config{
+						InsecureSkipVerify: cCtx.Bool("insecure-tls"),
+					}
+				}
+				api.SmtpServer = smtpServer
+				api.SmtpFrom = cCtx.String("smtp-from")
+
 				scopes := []string{"openid", "profile", "email"}
 				scopes = append(scopes, cCtx.StringSlice("scopes")...)
 
