@@ -1,0 +1,6 @@
+
+{{ .FromUserName }} has invited you to be a member of the {{ .OrganizationName }} Organization.
+
+Visit {{ .InvitationURL }} to accept or decline this invitation.
+
+{{ if ne .ExpiresIn "" }}This invitation will expire in {{ .ExpiresIn }}.{{ else }}This invitation will not expire.{{ end }}

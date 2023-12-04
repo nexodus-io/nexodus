@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{{ .Subject }}</title>
+  <meta charset="UTF-8">
+  <style>
+      body {
+          margin: 0;
+          padding: 0;
+          min-height: 100%;
+          min-width: 100%;
+          width: 100% !important;
+          font-family: Helvetica, Arial, sans-serif;
+          font-size: 16px;
+          font-weight: normal;
+          line-height: 20px;
+          background-color: #fafafa;
+          color: #333;
+          -webkit-font-smoothing: antialiased;
+          -webkit-text-size-adjust: 100%;
+          -ms-text-size-adjust: 100%;
+      }
+      .container {
+          max-width: 500px;
+          margin-top: 2em;
+          margin-left: auto;
+          margin-right: auto;
+      }
+      .logo {
+          max-width: 100%;
+          vertical-align: middle;
+          display: inline-block;
+          border: 0;
+          margin-top: 1em;
+          margin-bottom: 1em;
+      }
+      .outline-block {
+          width: 100%;
+          /*padding: 1.5em;*/
+          border-style: solid;
+          border-width: 1px;
+          border-color: rgb(230, 230, 230);
+          border-radius: 6px;
+      }
+      .outline-block .inner {
+          padding: 1em;
+      }
+      .center {
+          text-align: center;
+      }
+      .callout {
+          margin: 0;
+          padding-bottom: 1em;
+          border-bottom: 1px solid rgb(230, 230, 230);
+          font-size: 24px;
+          line-height: 30px;
+      }
+      .button {
+          margin-top: 10px;
+          margin-bottom: 10px;
+          text-align: center;
+          display: inline-block;
+          padding: 9px 15px;
+          background-color: #3898EC;
+          color: white;
+          border: 0;
+          line-height: inherit;
+          text-decoration: none;
+          cursor: pointer;
+          border-radius: 0;
+      }
+  </style>
+</head>
+<body bgcolor="#fafafa" topmargin="0" leftmargin="0" marginheight="0" marginwidth="0" class="body">
+<div class="container">
+  <div class="center">
+    <img src="nexodus.png" width="250" alt="Nexodus Logo" class="logo">
+  </div>
+  <div class="outline-block"><div class="inner">
+    <p class="callout">
+      <strong>{{ .FromUserName }}</strong>
+      has invited you to be a member of the <strong>{{ .OrganizationName }}</strong> Organization.</p>
+    <p class="paragraph">
+      You can accept or decline this invitation. <br>
+    </p>
+    <p class="paragraph">
+      {{ if ne .ExpiresIn "" }}This invitation will expire in {{ .ExpiresIn }}.{{ else }} This invitation will not expire.{{ end }}
+    </p>
+    <div class="action-block center">
+      <a href="{{ .InvitationURL }}" class="button">View Invitation</a>
+    </div>
+    <p class="paragraph">
+      If the button is not working, copy and paste the following link into your web browser:<br>
+    </p>
+    <a href="{{ .InvitationURL }}">{{ .InvitationURL }}</a>
+  </div></div>
+</div>
+</body>
+</html>

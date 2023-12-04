@@ -71,9 +71,10 @@ func (api *API) CreateInvitation(c *gin.Context) {
 
 	var user models.User
 
+	email := ""
 	if request.Email != nil {
 		// normalize the email address
-		email := strings.TrimSpace(strings.ToLower(*request.Email))
+		email = strings.TrimSpace(strings.ToLower(*request.Email))
 		invite.Email = &email
 
 		// check if user with the email already exists
@@ -110,19 +111,47 @@ func (api *API) CreateInvitation(c *gin.Context) {
 			}
 		}
 
-		// check if user already has an invite for the org
+		// check if user already has an invitation for the org
 		for _, inv := range user.Invitations {
 			if inv.OrganizationID == request.OrganizationID && inv.ExpiresAt.After(time.Now()) {
 				c.JSON(http.StatusConflict, models.NewConflictsError(inv.ID.String()))
 				return
 			}
 		}
+
+		// See if the user has an associated email address
+		if email == "" {
+			var uid models.UserIdentity
+			if res := db.First(&uid, "kind = 'email' AND user_id = ?", *invite.UserID); res.Error != nil {
+				if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+					api.SendInternalServerError(c, res.Error)
+					return
+				}
+			} else {
+				email = uid.Value
+				invite.Email = &email
+			}
+		}
+	}
+
+	from := models.User{}
+	if res := db.First(&from, "id = ?", api.GetCurrentUserID(c)); res.Error != nil {
+		api.SendInternalServerError(c, res.Error)
+		return
 	}
 
 	if res := db.Create(&invite); res.Error != nil {
 		api.SendInternalServerError(c, res.Error)
 		return
 	}
+
+	if email != "" {
+		err := api.sendInvitationEmail(from.UserName, email, &invite, org.Name)
+		if err != nil { // invite will still be created even if email fails, so don't return an error
+			api.Logger(c).Warn("error sending invitation email", "error", err)
+		}
+	}
+
 	c.JSON(http.StatusCreated, invite)
 }
 

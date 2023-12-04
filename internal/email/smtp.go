@@ -2,6 +2,7 @@ package email
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
@@ -36,7 +37,7 @@ func new(options SmtpServer) (*smtp.Client, error) {
 	}
 
 	if options.User != "" || options.Password != "" {
-		if err := client.Auth(sasl.NewPlainClient("", options.User, options.Password)); err != nil {
+		if err := client.Auth(sasl.NewLoginClient(options.User, options.Password)); err != nil {
 			return nil, fmt.Errorf("AUTH failed: %w", err)
 		}
 	}
@@ -73,6 +74,13 @@ func Send(options SmtpServer, email Message) error {
 	}
 	err = client.Quit()
 	if err != nil {
+		smtpError := &smtp.SMTPError{}
+		if errors.As(err, &smtpError) {
+			// Seems some SMTP servers return 250 instead of 221 on QUIT
+			if smtpError.Code == 250 {
+				return nil
+			}
+		}
 		return err
 	}
 	return nil
