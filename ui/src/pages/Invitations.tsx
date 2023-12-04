@@ -1,7 +1,8 @@
-import { Fragment } from "react";
+import React, { Fragment, FunctionComponent, useCallback } from "react";
 import {
   BulkDeleteButton,
   BulkExportButton,
+  Button,
   Create,
   Datagrid,
   List,
@@ -14,7 +15,16 @@ import {
   TextField,
   TextInput,
   useGetIdentity,
+  useNotify,
+  useRefresh,
+  useRecordContext,
+  NotificationType,
+  UseRecordContextParams,
+  RaRecord,
+  Identifier,
 } from "react-admin";
+
+import { backend, fetchJson as apiFetchJson } from "../common/Api";
 
 const InvitationListBulkActions = () => (
   <Fragment>
@@ -22,6 +32,61 @@ const InvitationListBulkActions = () => (
     <BulkDeleteButton />
   </Fragment>
 );
+
+const AcceptInvitationButton: FunctionComponent = () => {
+  const record = useRecordContext<{ id?: number }>();
+  const notify = useNotify();
+  const refresh = useRefresh();
+
+  const handleAccept = useCallback(async () => {
+    if (!record || !record.id) {
+      console.error("Record or record ID is undefined");
+      notify("No record selected for accepting the invitation", {
+        type: "warning" as NotificationType,
+      });
+      return;
+    }
+
+    console.log("Attempting to accept invitation for record ID:", record.id);
+
+    try {
+      const response = await apiFetchJson(
+        `${backend}/api/invitations/${record.id}/accept`,
+        { method: "POST" },
+      );
+      console.log("Invitation accept response:", response);
+      notify("Invitation accepted", { type: "info" as NotificationType });
+      refresh();
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error accepting invitation:", error.message);
+        notify("Error accepting invitation: " + error.message, {
+          type: "warning" as NotificationType,
+        });
+      } else {
+        console.error("Error accepting invitation:", error);
+        notify("Error accepting invitation", {
+          type: "warning" as NotificationType,
+        });
+      }
+    }
+  }, [record, notify, refresh]);
+
+  return <Button label="Accept" onClick={handleAccept} />;
+};
+
+export const AcceptInvitationField = (
+  props: UseRecordContextParams<RaRecord<Identifier>> | undefined,
+) => {
+  const record = useRecordContext(props);
+  const { identity } = useGetIdentity();
+  console.log("identity", identity);
+  console.log("record", record);
+  // only show the accept button for invitations that are for the current user
+  return record && identity && identity.email == record.email ? (
+    <AcceptInvitationButton />
+  ) : null;
+};
 
 export const InvitationList = () => (
   <List>
@@ -42,6 +107,7 @@ export const InvitationList = () => (
         link="show"
       />
       <TextField label="Expires" source="expiry" />
+      <AcceptInvitationField />
     </Datagrid>
   </List>
 );
