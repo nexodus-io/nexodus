@@ -41,7 +41,6 @@ jobs:
       AWS_REGION: "us-east-1"
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      ANSIBLE_VAULT_PASSWORD_FILE: "vault-secret.txt"
       ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
       ANSIBLE_HOST_KEY_CHECKING: "false"
       # Conditional environment variables if the job is scheduled
@@ -80,7 +79,14 @@ jobs:
           make dist/nexd-linux-amd64
           make dist/nexctl-linux-amd64
 
-      - name:  Copy Binaries to S3
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          role-session-name: nexodus-ci-deploy
+          aws-region: us-east-1
+
+      - name: Copy binaries to s3
         run: |
           aws s3 cp ./dist/nexd-linux-amd64 s3://nexodus-io/ec2-e2e/qa/
           aws s3 cp ./dist/nexctl-linux-amd64 s3://nexodus-io/ec2-e2e/qa/
