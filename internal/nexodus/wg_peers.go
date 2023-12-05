@@ -103,10 +103,11 @@ var wgPeerMethods = []wgPeerMethod{
 		},
 	},
 	{
-		// Last chance, try connecting to the peer via a derp relay, in case the legacy relay is not available and non of the peering methods above worked
+		// Last chance, try connecting to the peer via a derp relay, in case the legacy relay is not available
+		// and none of the peering methods above worked
 		name: peeringMethodViaDerpRelay,
 		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
-			return !nx.relay && !device.Relay && nx.symmetricNat && device.SymmetricNat
+			return !nx.relay && !device.Relay && (nx.symmetricNat || device.SymmetricNat)
 		},
 		buildPeerConfig: buildPeerViaDerpRelay,
 	},
@@ -228,11 +229,10 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 		if d.device.Relay {
 			relayAvailable = true
 			relayDevice = d.device
-		}
-		if d.device.Relay && d.peerHealthy {
-			healthyRelay = true
-			relayDevice = d.device
-			break
+			if d.peerHealthy {
+				healthyRelay = true
+				break
+			}
 		}
 	}
 
@@ -241,10 +241,9 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	// the connection to active relay.
 	if relayAvailable {
 		nx.nexRelay.SetCustomDERPMap(relayDevice)
-		nx.logger.Debugf("Relay is available, use the on-boarded relay %v", nx.nexRelay.derpMap.Regions[901])
+
 	} else {
 		nx.nexRelay.SetDefaultDERPMap()
-		nx.logger.Debugf("Relay is not available, lets default to hosted relay %v", nx.nexRelay.derpMap.Regions[900])
 	}
 
 	now := time.Now()

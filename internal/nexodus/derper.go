@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 // The derper binary is a simple DERP server.
-package nexodus // import "tailscale.com/cmd/derper"
+package nexodus
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 	"go4.org/mem"
 	"golang.org/x/time/rate"
 	"tailscale.com/atomicfile"
@@ -47,7 +48,7 @@ var (
 	configPath = ""
 	certMode   = "letsencrypt"
 	certDir    = tsweb.DefaultCertDir("derper-certs")
-	hostname   = "derp.nexodus.com"
+	hostname   = "relay.nexodus.com"
 	runSTUN    = true
 	runDERP    = true
 
@@ -76,6 +77,15 @@ var (
 	stunIPv4 = stunAddrFamily.Get("ipv4")
 	stunIPv6 = stunAddrFamily.Get("ipv6")
 )
+
+type Derper struct {
+	ctx context.Context
+	wg         *sync.WaitGroup
+	logger     *zap.SugaredLogger
+
+	httptlssrv *http.Server
+	httpsrv    *http.Server
+}
 
 func init() {
 	stats.Set("counter_requests", stunDisposition)
@@ -157,8 +167,16 @@ func updateFlags(cCtx *cli.Context) {
 	acceptConnBurst = cCtx.Int("accept-connection-burst")
 }
 
-func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
+func NewDerper(ctx context.Context, cCtx *cli.Context, wg *sync.WaitGroup, logger *zap.SugaredLogger) *Derper {
 	updateFlags(cCtx)
+	return &Derper{
+		ctx: ctx,
+		wg:     wg,
+		logger: logger,
+
+	}
+}
+func (d *Derper) StartDerp() {
 
 	if dev {
 		addr = ":3340" // above the keys DERP
@@ -212,7 +230,7 @@ func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
 		tsweb.AddBrowserHeaders(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(200)
-		_,_ = io.WriteString(w, `<html><body>
+		_, _ = io.WriteString(w, `<html><body>
 <h1>Nexodus Relay</h1>
 <p>
   This is a
@@ -220,15 +238,15 @@ func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
 </p>
 `)
 		if !runDERP {
-			_,_ = io.WriteString(w, `<p>Status: <b>disabled</b></p>`)
+			_, _ = io.WriteString(w, `<p>Status: <b>disabled</b></p>`)
 		}
 		if tsweb.AllowDebugAccess(r) {
-			_,_ = io.WriteString(w, "<p>Debug info at <a href='/debug/'>/debug/</a>.</p>\n")
+			_, _ = io.WriteString(w, "<p>Debug info at <a href='/debug/'>/debug/</a>.</p>\n")
 		}
 	}))
 	mux.Handle("/robots.txt", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tsweb.AddBrowserHeaders(w)
-		_,_ = io.WriteString(w, "User-agent: *\nDisallow: /\n")
+		_, _ = io.WriteString(w, "User-agent: *\nDisallow: /\n")
 	}))
 	mux.Handle("/generate_204", http.HandlerFunc(serveNoContent))
 	debug := tsweb.Debugger(mux)
@@ -239,13 +257,13 @@ func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		} else {
-			_,_ = io.WriteString(w, "derp.Server ConsistencyCheck okay")
+			_, _ = io.WriteString(w, "derp.Server ConsistencyCheck okay")
 		}
 	}))
 	debug.Handle("traffic", "Traffic check", http.HandlerFunc(s.ServeDebugTraffic))
 
 	if runSTUN {
-		go serveSTUN(nx.nexCtx,listenHost, stunPort)
+		go serveSTUN(d.ctx, listenHost, stunPort)
 	}
 
 	quietLogger := log.New(logFilter{}, "", 0)
@@ -320,8 +338,8 @@ func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
 					// duration exceeds server's WriteTimeout".
 					WriteTimeout: 5 * time.Minute,
 				}
-				nx.nexRelay.httpsrv = port80srv
-				util.GoWithWaitGroup(wg, func() {
+				d.httpsrv = port80srv
+				util.GoWithWaitGroup(d.wg, func() {
 					err := port80srv.ListenAndServe()
 					if err != nil {
 						if err != http.ErrServerClosed {
@@ -332,20 +350,45 @@ func (nx *Nexodus) startDerp(cCtx *cli.Context, wg *sync.WaitGroup) {
 			}()
 		}
 
-		util.GoWithWaitGroup(wg, func() {
+		util.GoWithWaitGroup(d.wg, func() {
 			if err = rateLimitedListenAndServeTLS(httpsrv); err != nil && err != http.ErrServerClosed {
-				nx.logger.Errorf("Derp HTTPS/TLS server encounter error: %v", err)
+				d.logger.Errorf("Derp HTTPS/TLS server encounter error: %v", err)
 			}
 		})
 	} else {
 		log.Printf("derper: serving on %s", addr)
-		util.GoWithWaitGroup(wg, func() {
+		util.GoWithWaitGroup(d.wg, func() {
 			if err = httpsrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				nx.logger.Errorf("Derp HTTP server encounter error: %v", err)
+				d.logger.Errorf("Derp HTTP server encounter error: %v", err)
 			}
 		})
 	}
-	nx.nexRelay.httptlssrv = httpsrv
+	d.httptlssrv = httpsrv
+}
+
+func (d *Derper) StopDerper() {
+	if d.httpsrv != nil {
+		shutdownHttpCtx,_ := context.WithTimeout(context.Background(), 1*time.Second)
+
+		util.GoWithWaitGroup(d.wg, func() {
+			d.logger.Debug("Stopping HTTP Derp relay server")
+			if err := d.httpsrv.Shutdown(shutdownHttpCtx); err != nil {
+				d.logger.Errorf("failed to shutdown HTTP Derp relay server %v", err)
+			}
+		})
+		<-shutdownHttpCtx.Done()
+	}
+	if d.httptlssrv != nil {
+		shutdownHttptlsCtx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+
+		util.GoWithWaitGroup(d.wg, func() {
+			d.logger.Debug("Stopping HTTPS/TLS Derp relay server")
+			if err := d.httptlssrv.Shutdown(shutdownHttptlsCtx); err != nil {
+				d.logger.Errorf("failed to shutdown HTTPS/TLS Derp relay server %v", err)
+			}
+		})
+		<-shutdownHttptlsCtx.Done()
+	}
 }
 
 const (

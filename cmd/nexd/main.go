@@ -54,6 +54,20 @@ var DefaultServiceURL = "https://try.nexodus.io"
 
 func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	defer cancel()
+	wg := &sync.WaitGroup{}
+
+	if mode == nexdModeRelayDerp && !cCtx.Bool("onboard") {
+		derper := nexodus.NewDerper(ctx, cCtx, wg, logger.Sugar())
+		derper.StartDerp()
+
+		<-ctx.Done()
+		derper.StopDerper()
+		wg.Wait()
+		return nil
+	}
+
 	// Fail if you try to configure the service URL both ways
 	if command.IsSet("service-url") && command.Args().Len() > 0 {
 		return fmt.Errorf("please remove the service URL positional argument, it was configured via the --service-url flag")
@@ -128,8 +142,6 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 		return fmt.Errorf("existing nexd service already running")
 	}
 
-	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	defer cancel()
 
 	pprof_init(ctx, command, logger)
 
@@ -211,7 +223,6 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 		logger.Fatal(err.Error())
 	}
 
-	wg := &sync.WaitGroup{}
 
 	for _, egressRule := range command.StringSlice("egress") {
 		rule, err := nexodus.ParseProxyRule(egressRule, nexodus.ProxyTypeEgress)
@@ -241,6 +252,7 @@ func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logL
 	if err := nex.Start(ctx, wg, cCtx); err != nil {
 		logger.Fatal(err.Error())
 	}
+
 	<-ctx.Done()
 	nex.Stop()
 	wg.Wait()
@@ -418,6 +430,13 @@ func main() {
 				},
 
 				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:     "onboard",
+						Usage:    "Onboard the derp relay to nexodus and connect to local mesh network.",
+						EnvVars:  []string{"NEXD_DERP_ONBOARD"},
+						Value:    false,
+						Required: false,
+					},
 					&cli.BoolFlag{
 						Name:     "dev",
 						Usage:    "Run in localhost development mode (overrides -a)",

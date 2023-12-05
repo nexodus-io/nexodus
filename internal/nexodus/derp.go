@@ -116,9 +116,9 @@ func (nr *nexRelay) setNearestDERP(derpNum int) (wantDERP bool) {
 	// start connecting to our home DERP if we are not already.
 	dr := nr.derpMap.Regions[derpNum]
 	if dr == nil {
-		nr.logf("[unexpected] magicsock: derpMap.Regions[%v] is nil", derpNum)
+		nr.logger.Errorf("[derpMap regions for derp region code [%d] is nil", derpNum)
 	} else {
-		nr.logf("magicsock: home is now derp-%v (%v)", derpNum, nr.derpMap.Regions[derpNum].RegionCode)
+		nr.logger.Infof("home region for %d is now derp-%v (%s)", derpNum, nr.derpMap.Regions[derpNum].RegionCode)
 	}
 	for i, ad := range nr.activeDerp {
 		go ad.c.NotePreferred(i == nr.myDerp)
@@ -222,7 +222,7 @@ func (nr *nexRelay) derpWriteChanOfAddr(addr netip.AddrPort, peer key.NodePublic
 		return nil
 	}
 	if nr.privateKey.IsZero() {
-		nr.logf("DERP lookup of %v with no private key; ignoring", addr)
+		nr.logger.Debugf("DERP lookup of %v with no private key; ignoring", addr)
 		return nil
 	}
 
@@ -241,7 +241,7 @@ func (nr *nexRelay) derpWriteChanOfAddr(addr netip.AddrPort, peer key.NodePublic
 	if !peer.IsZero() {
 		why = peer.ShortString()
 	}
-	nr.logf("adding connection to derp-%d for %s", regionID, why)
+	nr.logger.Infof("adding connection to derp-%d for %s", regionID, why)
 
 	firstDerp := false
 	if nr.activeDerp == nil {
@@ -344,9 +344,9 @@ func (nr *nexRelay) setPeerLastDerpLocked(peer key.NodePublic, regionID, homeID 
 		newDesc = "alt"
 	}
 	if old == 0 {
-		nr.logf("[v1] derp route for %s set to derp-%d (%s)", peer.ShortString(), regionID, newDesc)
+		nr.logger.Infof("[v1] derp route for %s set to derp-%d (%s)", peer.ShortString(), regionID, newDesc)
 	} else {
-		nr.logf("[v1] derp route for %s changed from derp-%d => derp-%d (%s)", peer.ShortString(), old, regionID, newDesc)
+		nr.logger.Infof("[v1] derp route for %s changed from derp-%d => derp-%d (%s)", peer.ShortString(), old, regionID, newDesc)
 	}
 }
 
@@ -414,7 +414,7 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 				return
 			}
 			if nr.networkDown() {
-				nr.logf("[v1] derp.Recv(derp-%d): network down, closing", regionID)
+				nr.logger.Warnf("[v1] derp.Recv(derp-%d): network down, closing", regionID)
 				return
 			}
 			select {
@@ -423,7 +423,7 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 			default:
 			}
 
-			nr.logf("[%p] derp.Recv(derp-%d): %v", dc, regionID, err)
+			nr.logger.Infof("[%p] derp.Recv(derp-%d): %v", dc, regionID, err)
 
 			// Back off a bit before reconnecting.
 			bo.BackOff(ctx, err)
@@ -446,13 +446,13 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 		case derp.ServerInfoMessage:
 			health.SetDERPRegionConnectedState(regionID, true)
 			health.SetDERPRegionHealth(regionID, "") // until declared otherwise
-			nr.logf("derp-%d connected; connGen=%v", regionID, connGen)
+			nr.logger.Infof("derp-%d connected; connGen=%v", regionID, connGen)
 			continue
 		case derp.ReceivedPacket:
 			pkt = m
 			res.n = len(m.Data)
 			res.src = m.Source
-			//nr.logf("got derp-%v packet: %v", regionID, m.Data)
+			nr.logger.Debugf("got derp-%d packet of len : %d received", regionID, res.n)
 
 			// If this is a new sender we hadn't seen before, remember it and
 			// register a route for this peer.
@@ -468,7 +468,7 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 			pingData := [8]byte(m)
 			go func() {
 				if err := dc.SendPong(pingData); err != nil {
-					nr.logf("derp-%d SendPong error: %v", regionID, err)
+					nr.logger.Errorf("derp-%d SendPong error: %v", regionID, err)
 				}
 			}()
 			continue
@@ -479,10 +479,10 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 			case derp.PeerGoneReasonDisconnected:
 				// Do nothing.
 			case derp.PeerGoneReasonNotHere:
-				nr.logf("[unexpected] magicsock: derp-%d does not know about peer %s, removing route",
+				nr.logger.Infof("[unexpected] derp-%d does not know about peer %s, removing route",
 					regionID, key.NodePublic(m.Peer).ShortString())
 			default:
-				nr.logf("[unexpected] magicsock: derp-%d peer %s gone, reason %v, removing route",
+				nr.logger.Infof("[unexpected] derp-%d peer %s gone, reason %v, removing route",
 					regionID, key.NodePublic(m.Peer).ShortString(), m.Reason)
 			}
 			nr.removeDerpPeerRoute(key.NodePublic(m.Peer), regionID, dc)
@@ -529,15 +529,15 @@ func (nr *nexRelay) runDerpWriter(ctx context.Context, dc *derphttp.Client, ch <
 		case wr := <-ch:
 			err := dc.Send(wr.pubKey, wr.b)
 			if err != nil {
-				nr.logf("derp.Send(%v): %v", wr.addr, err)
+				nr.logger.Errorf("packet send to derp server (%v) failed: %v", wr.addr, err)
 			}
 		}
 	}
 }
 
-func (c *nexRelay) receiveDERP(buffs [][]byte, sizes []int) (int, error) {
-	for dm := range c.derpRecvCh {
-		n := c.processDERPReadResult(dm, buffs[0])
+func (nr *nexRelay) receiveDERP(buffs [][]byte, sizes []int) (int, error) {
+	for dm := range nr.derpRecvCh {
+		n := nr.processDERPReadResult(dm, buffs[0])
 		if n == 0 {
 			// No data read occurred. Wait for another packet.
 			continue
@@ -548,14 +548,14 @@ func (c *nexRelay) receiveDERP(buffs [][]byte, sizes []int) (int, error) {
 	return 0, net.ErrClosed
 }
 
-func (c *nexRelay) processDERPReadResult(dm derpReadResult, b []byte) (n int) {
+func (nr *nexRelay) processDERPReadResult(dm derpReadResult, b []byte) (n int) {
 	if dm.copyBuf == nil {
 		return 0
 	}
 	ncopy := dm.copyBuf(b)
 	if ncopy != dm.n {
 		err := fmt.Errorf("received DERP packet of length %d that's too big for WireGuard buf size %d", dm.n, ncopy)
-		c.logf("derp-read: %v", err)
+		nr.logger.Errorf("failed to read derp read results: %v", err)
 		return 0
 	}
 	return n
@@ -569,21 +569,18 @@ func (nr *nexRelay) debugUseDERPHTTP() bool {
 	return false
 }
 
-func (c *nexRelay) debugUseDERP() bool {
-	return c.debugUseDERPAddr() != ""
+func (nr *nexRelay) debugUseDERP() bool {
+	return nr.debugUseDERPAddr() != ""
 }
 
 // SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
 func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 	if nr.myDerp == DefaultDerpRegionID {
+		nr.logger.Debugf("User on-boarded derp relay is available, switching to on-boarded relay. : [ %v] ", nr.derpMap.Regions[CustomDerpRegionID])
 		nr.closeDerpLocked(nr.myDerp, "switching to custom DERP map")
 	}
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
-	if nr.derpMap != nil {
-		// Default map already set.
-		return
-	}
 	var dm *tailcfg.DERPMap
 	var derpAddr string
 	for _,addr := range de.Endpoints {
@@ -593,12 +590,12 @@ func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 	}
 
 	if derpAddr == "" {
-		nr.logf("no STUN endpoint found for relay device %v", de)
+		nr.logger.Warnf("no STUN endpoint found for relay device %v", de)
 		return
 	}
 	_,_,err := net.SplitHostPort(derpAddr)
 	if err != nil {
-		nr.logf("Failed to parse stun address %s : %v", derpAddr, err)
+		nr.logger.Errorf("Failed to parse stun address %s : %v", derpAddr, err)
 	}
 
 	derpPort := 443
@@ -631,15 +628,12 @@ func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 // SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
 func (nr *nexRelay) SetDefaultDERPMap() {
 	if nr.myDerp == CustomDerpRegionID {
+		nr.logger.Debugf("Relay is not available, lets default to hosted relay %v", nr.derpMap.Regions[DefaultDerpRegionID])
 		nr.closeDerpLocked(nr.myDerp, "switching to default DERP map")
 	}
 
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
-	if nr.derpMap != nil {
-		// Default map already set.
-		return
-	}
 	var dm *tailcfg.DERPMap
 	var derpAddr = nr.debugUseDERPAddr()
 	if derpAddr != "" {
@@ -757,7 +751,7 @@ func (nr *nexRelay) DebugBreakDERPConns() error {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 	if len(nr.activeDerp) == 0 {
-		nr.logf("DebugBreakDERPConns: no active DERP connections")
+		nr.logger.Info("DebugBreakDERPConns: no active DERP connections")
 		return nil
 	}
 	nr.closeAllDerpLocked("debug-break-derp")
@@ -783,7 +777,7 @@ func (nr *nexRelay) closeOrReconnectDERPLocked(regionID int, why string) {
 // It is the responsibility of the caller to call logActiveDerpLocked after any set of closes.
 func (nr *nexRelay) closeDerpLocked(regionID int, why string) {
 	if ad, ok := nr.activeDerp[regionID]; ok {
-		nr.logf("magicsock: closing connection to derp-%v (%v), age %v", regionID, why, time.Since(ad.createTime).Round(time.Second))
+		nr.logger.Infof("closing connection to derp-%d (%s), age %v", regionID, why, time.Since(ad.createTime).Round(time.Second))
 		go ad.c.Close()
 		ad.cancel()
 		delete(nr.activeDerp, regionID)
@@ -804,7 +798,7 @@ func simpleDur(d time.Duration) time.Duration {
 // c.mu must be held.
 func (nr *nexRelay) logActiveDerpLocked() {
 	now := time.Now()
-	nr.logf("%v active derp conns%s", len(nr.activeDerp), logger.ArgWriter(func(buf *bufio.Writer) {
+	nr.logger.Infof("%d active derp conns %s", len(nr.activeDerp), logger.ArgWriter(func(buf *bufio.Writer) {
 		if len(nr.activeDerp) == 0 {
 			return
 		}

@@ -90,26 +90,26 @@ type userspaceWG struct {
 }
 
 type nexRelay struct {
-	httptlssrv *http.Server
-	httpsrv   *http.Server
-	derpProxy *WGUserSpaceProxy
+	derper        *Derper
+	derpProxy     *DerpUserSpaceProxy
 	derpIpMapping *DerpIpMapping
 
 	// ============================================================
 	// mu guards all following fields; see userspaceEngine lock
 	// ordering rules against the engine. For derphttp, mu must
 	// be held before derphttp.Client.mu.
-	mu     sync.Mutex
-	muCond *sync.Cond
-	derpMap          *tailcfg.DERPMap
+	mu      sync.Mutex
+	muCond  *sync.Cond
+	derpMap *tailcfg.DERPMap
 
-	closed  bool        // Close was called
+	closed bool // Close was called
 
-	privateKey       key.NodePrivate               // WireGuard private key for this node
-	logf             tlogger.Logf
+	privateKey key.NodePrivate // WireGuard private key for this node
+	logger     *zap.SugaredLogger
+	logf       tlogger.Logf
 
-	activeDerp       map[int]activeDerp            // DERP regionID -> connection to a node in that region
-	prevDerp         map[int]*syncs.WaitGroupChan
+	activeDerp map[int]activeDerp // DERP regionID -> connection to a node in that region
+	prevDerp   map[int]*syncs.WaitGroupChan
 
 	connCtx       context.Context // closed on Conn.Close
 	connCtxCancel func()          // closes connCtx
@@ -120,9 +120,9 @@ type nexRelay struct {
 	// lock ordering deadlocks. See issue 3726 and mu field docs.
 	derpMapAtomic atomic.Pointer[tailcfg.DERPMap]
 
-	myDerp           int                           // nearest DERP region ID; 0 means none/unknown
-	fakeEndpoint     netip.AddrPort                  // Fake WireGuard endpoint; the port is the DERP regionID
-	derpStarted      chan struct{}                 // closed on first connection to DERP; for tests & cleaner Close
+	myDerp       int            // nearest DERP region ID; 0 means none/unknown
+	fakeEndpoint netip.AddrPort // Fake WireGuard endpoint; the port is the DERP regionID
+	derpStarted  chan struct{}  // closed on first connection to DERP; for tests & cleaner Close
 
 	// derpRoute contains optional alternate routes to use as an
 	// optimization instead of contacting a peer via their home
@@ -141,7 +141,7 @@ type nexRelay struct {
 	// It must have buffer size > 0; see issue 3736.
 	derpRecvCh chan derpReadResult
 
-		// derpCleanupTimer is the timer that fires to occasionally clean
+	// derpCleanupTimer is the timer that fires to occasionally clean
 	// up idle DERP connections. It's only used when there is a non-home
 	// DERP connection in use.
 	derpCleanupTimer *time.Timer
@@ -234,7 +234,7 @@ type Nexodus struct {
 	password                string
 	regKey                  string
 	relay                   bool
-	relayDerp                bool
+	relayDerp               bool
 	requestedIP             string
 	stateDir                string
 	stateStore              state.Store
@@ -245,7 +245,8 @@ type Nexodus struct {
 	securityGroupId         string
 
 	userspaceWG
-	nexRelay nexRelay
+	derper                   *Derper
+	nexRelay                 nexRelay
 	TunnelIP                 string
 	TunnelIpV6               string
 	client                   *client.APIClient
@@ -339,10 +340,11 @@ func New(o Options) (*Nexodus, error) {
 		},
 		nexRelay: nexRelay{
 			derpIpMapping: NewDerpIpMapping(),
-			derpRecvCh:   make(chan derpReadResult, 1),
-			derpStarted:  make(chan struct{}),
-			peerLastDerp: make(map[key.NodePublic]int),
-			logf: tlogger.WithPrefix(log.Printf, "nexodus-derp: "),
+			derpRecvCh:    make(chan derpReadResult, 1),
+			derpStarted:   make(chan struct{}),
+			peerLastDerp:  make(map[key.NodePublic]int),
+			logf:          tlogger.WithPrefix(log.Printf, "nexodus-derp: "),
+			logger:        o.Logger,
 		},
 		exitNode: exitNode{
 			exitNodeClientEnabled: o.ExitNodeClientEnabled,
@@ -703,7 +705,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup, cCtx *cli.Cont
 	}
 
 	if nx.relayDerp {
-		nx.startDerp(cCtx, wg)
+		nx.derper = NewDerper(ctx, cCtx, wg, nx.logger)
+		nx.derper.StartDerp()
 	}
 
 	util.GoWithWaitGroup(wg, func() {
@@ -870,30 +873,13 @@ func (nx *Nexodus) Stop() {
 		}
 	}
 
-	if nx.nexRelay.httpsrv != nil {
-		shutdownHttpCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		util.GoWithWaitGroup(nx.nexWg, func() {
-			nx.logger.Info("Stopping HTTP Derp relay server")
-			if err := nx.nexRelay.httpsrv.Shutdown(shutdownHttpCtx); err != nil {
-				nx.logger.Errorf("failed to shutdown HTTP Derp relay server %v", err)
-			}
-		})
+	if nx.derper != nil {
+		nx.logger.Info("Stopping Derp Server")
+		nx.derper.StopDerper()
 	}
-	if nx.nexRelay.httptlssrv != nil {
-		shutdownHttptlsCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		util.GoWithWaitGroup(nx.nexWg, func() {
-			nx.logger.Info("Stopping HTTPS/TLS Derp relay server")
-			if err := nx.nexRelay.httptlssrv.Shutdown(shutdownHttptlsCtx); err != nil {
-				nx.logger.Errorf("failed to shutdown HTTPS/TLS Derp relay server %v", err)
-			}
-		})
-	}
-
 	if nx.nexRelay.derpProxy != nil {
 		nx.logger.Info("Stopping HTTPS/TLS Derp Server Proxy")
-		nx.nexRelay.derpProxy.StopDerpProxy()
+		nx.nexRelay.derpProxy.stopDerpProxy()
 	}
 }
 
@@ -1247,9 +1233,14 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			return err
 		}
 
-		if !nx.relay && !nx.relayDerp && nx.nexRelay.derpMap != nil && nx.nexRelay.myDerp != 0 && nx.nexRelay.derpProxy == nil {
-			// Start Derp Proxy if we have a Derp Map and a Derp ID
-			nx.nexRelay.derpProxy = StartDerpProxy(nx.logger, &nx.nexRelay)
+		if !nx.relay && !nx.relayDerp && nx.nexRelay.derpMap != nil && nx.nexRelay.myDerp != 0 {
+			if nx.nexRelay.derpProxy == nil {
+				// Start Derp Proxy if we have a Derp Map and a Derp ID
+				nx.nexRelay.derpProxy = NewDerpUserSpaceProxy(nx.logger, &nx.nexRelay)
+				nx.nexRelay.derpProxy.startDerpProxy()
+			} else if nx.nexRelay.derpProxy.port != nx.nexRelay.myDerp {
+				nx.nexRelay.derpProxy.restartDerpProxy()
+			}
 		}
 	}
 

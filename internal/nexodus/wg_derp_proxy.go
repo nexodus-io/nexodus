@@ -13,50 +13,62 @@ import (
 	"tailscale.com/types/key"
 )
 
-// WGUserSpaceProxy proxies
-type WGUserSpaceProxy struct {
+// DerpUserSpaceProxy proxies
+type DerpUserSpaceProxy struct {
 	port     int
+	listenAddr net.Addr
 	srcAddr  net.Addr
 	nexRelay *nexRelay
 	ctx      context.Context
 	cancel   context.CancelFunc
 
-	remoteConn net.Conn
 	localConn  net.PacketConn
 	packetConn *ipv4.PacketConn
 	log        *zap.SugaredLogger
 }
 
-func StartDerpProxy(logger *zap.SugaredLogger, nexRelay *nexRelay) *WGUserSpaceProxy {
-	derpProxy := newWGUserSpaceProxy(logger, nexRelay)
-
-	derpProxy.StartListening(nil)
-	return derpProxy
-}
-
-func (p *WGUserSpaceProxy) StopDerpProxy() {
-	p.ctx.Done()
-}
-
 // NewWGUserSpaceProxy instantiate a user space WireGuard proxy
-func newWGUserSpaceProxy(logger *zap.SugaredLogger, nexRelay *nexRelay) *WGUserSpaceProxy {
-	logger.Debugf("instantiate new userspace derp proxy")
-	p := &WGUserSpaceProxy{
+func NewDerpUserSpaceProxy(logger *zap.SugaredLogger, nexRelay *nexRelay) *DerpUserSpaceProxy {
+	logger.Debugf("Instantiate new userspace derp proxy")
+	p := &DerpUserSpaceProxy{
 		port:     nexRelay.myDerp,
 		log:      logger,
 		nexRelay: nexRelay,
 	}
-	p.ctx, p.cancel = context.WithCancel(context.Background())
 	return p
 }
 
+func (p *DerpUserSpaceProxy) startDerpProxy() {
+	p.startListening()
+}
+
+func (p *DerpUserSpaceProxy) restartDerpProxy() {
+	p.ctx.Done()
+
+	if err := p.closeConn(); err != nil {
+		p.log.Errorf("failed to close the local user space connection %v", err)
+	}
+
+	//Reset the port
+	p.port = p.nexRelay.myDerp
+	p.startListening()
+}
+
+func (p *DerpUserSpaceProxy) stopDerpProxy() {
+	p.cancel()
+	p.ctx.Done()
+}
+
 // StartListening start the proxy with the given remote conn
-func (p *WGUserSpaceProxy) StartListening(remoteConn net.Conn) (net.Addr, error) {
+func (p *DerpUserSpaceProxy) startListening() error {
+
+	p.ctx, p.cancel = context.WithCancel(context.Background())
+
 	// Create a UDP address to listen on
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", p.port))
 	if err != nil {
-		p.log.Errorf("Error resolving UDP address:", err)
-		return nil, err
+		p.log.Errorf("error resolving UDP address:", err)
+		return err
 	}
 
 	p.log.Debugf("addr is ", addr.IP, addr.Port)
@@ -64,42 +76,40 @@ func (p *WGUserSpaceProxy) StartListening(remoteConn net.Conn) (net.Addr, error)
 	// Create a UDP connection to listen for incoming packets
 	p.localConn, err = net.ListenPacket("udp4", addr.String())
 	if err != nil {
-		p.log.Errorf("Error listening on UDP:", err)
-		return nil, err
+		p.log.Errorf("error listening on UDP:", err)
+		return err
 	}
 
 	p.packetConn = ipv4.NewPacketConn(p.localConn)
 	if err := p.packetConn.SetControlMessage(ipv4.FlagDst, true); err != nil {
-		p.log.Errorf("Error setting control message:", err)
-		return nil, err
+		p.log.Errorf("error setting control message:", err)
+		return err
 	}
 
-	//print conn4
 	p.log.Debugf("Proxy start listening on %s for wireguard packets.", p.localConn.LocalAddr())
+
+	p.listenAddr = p.localConn.LocalAddr()
 
 	go p.proxyToRemote()
 	go p.proxyToLocal()
 
-	return p.localConn.LocalAddr(), err
+	return err
 }
 
 // CloseConn close the localConn
-func (p *WGUserSpaceProxy) CloseConn() error {
-	p.cancel()
-	if p.localConn == nil {
-		return nil
+func (p *DerpUserSpaceProxy) closeConn() error {
+	if p.packetConn != nil {
+		return p.packetConn.Close()
 	}
-	return p.localConn.Close()
-}
-
-// Free doing nothing because this implementation of proxy does not have global state
-func (p *WGUserSpaceProxy) Free() error {
+	if p.localConn != nil {
+		return p.localConn.Close()
+	}
 	return nil
 }
 
 // proxyToRemote proxies everything from Wireguard to the RemoteKey peer
 // blocks
-func (p *WGUserSpaceProxy) proxyToRemote() {
+func (p *DerpUserSpaceProxy) proxyToRemote() {
 
 	buf := make([]byte, 1500)
 	for {
@@ -116,10 +126,7 @@ func (p *WGUserSpaceProxy) proxyToRemote() {
 			p.log.Debugf("packet (%d bytes) received from (localAddr : %s, readFromSrcAddr : %s)", n, p.localConn.LocalAddr().String(), srcAddr.String())
 
 			p.srcAddr = srcAddr
-			if cm != nil {
-				p.log.Debugf("control message: %s", cm.Dst)
-				p.log.Debugf("control message: %+v", cm)
-			}
+			p.log.Debugf("control message: %+v", cm)
 			if cm.Dst.IsLoopback() {
 				addr, err := netip.ParseAddr(cm.Dst.String())
 				if err != nil {
@@ -160,7 +167,7 @@ func (p *WGUserSpaceProxy) proxyToRemote() {
 
 // proxyToLocal proxies everything from the RemoteKey peer to local Wireguard
 // blocks
-func (p *WGUserSpaceProxy) proxyToLocal() {
+func (p *DerpUserSpaceProxy) proxyToLocal() {
 
 	buf := make([]byte, 1500)
 	for dm := range p.nexRelay.derpRecvCh {
@@ -180,13 +187,13 @@ func (p *WGUserSpaceProxy) proxyToLocal() {
 
 		if srcIp := p.nexRelay.derpIpMapping.CheckIfKeyExist(pubKey); srcIp != "" {
 
-			dstIp, _,err := net.SplitHostPort(p.srcAddr.String())
+			dstIp, _, err := net.SplitHostPort(p.srcAddr.String())
 			if err != nil {
 				p.log.Debugf("Error splitting host port %s : %v", p.srcAddr.String(), err)
 				continue
 			}
 
-			cm := &ipv4.ControlMessage{TTL: 0,Src: net.ParseIP(srcIp),Dst: net.ParseIP(dstIp),IfIndex: 1}
+			cm := &ipv4.ControlMessage{TTL: 0, Src: net.ParseIP(srcIp), Dst: net.ParseIP(dstIp), IfIndex: 1}
 			var n int
 			n, err = p.packetConn.WriteTo(buf[:ncopy], cm, p.srcAddr)
 			if err != nil {
