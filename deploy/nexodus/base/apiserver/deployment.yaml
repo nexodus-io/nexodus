@@ -163,6 +163,36 @@ spec:
                 secretKeyRef:
                   name: nexodus-api-cert
                   key: tls.key
+            - name: NEXAPI_SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-server
+                  key: NEXAPI_SMTP_FROM
+                  optional: true
+            - name: NEXAPI_SMTP_HOST_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-server
+                  key: NEXAPI_SMTP_HOST_PORT
+                  optional: true
+            - name: NEXAPI_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-server
+                  key: NEXAPI_SMTP_PASSWORD
+                  optional: true
+            - name: NEXAPI_SMTP_TLS
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-server
+                  key: NEXAPI_SMTP_TLS
+                  optional: true
+            - name: NEXAPI_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-server
+                  key: NEXAPI_SMTP_USER
+                  optional: true
 
           # CI deployment seems to fail when this is enabled
           # readinessProbe:

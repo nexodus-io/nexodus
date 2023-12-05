@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../openshift
   - sealed-secret.yaml
+  - sealed-secret-smtp.yaml
 namespace: nexodus-qa
 configMapGenerator:
   - behavior: replace

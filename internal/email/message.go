@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/email/linesplitter"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"io"
 	"math/rand"
@@ -64,7 +65,20 @@ func (e *Message) Write(w io.Writer) (err error) {
 	defer util.CLose(&err, related.Close)
 
 	if e.HtmlMessages != "" {
-		err = related.AddQuotedPrintablePart("text/html", []byte(e.HtmlMessages))
+
+		html := e.HtmlMessages
+		for i, attachment := range e.Attachments {
+			if !attachment.Inline {
+				continue
+			}
+			if attachment.CID == "" {
+				attachment.CID = attachment.Name
+				e.Attachments[i] = attachment
+			}
+			html = strings.ReplaceAll(html, fmt.Sprintf(` src="%s"`, attachment.Name), fmt.Sprintf(` src="cid:%s"`, attachment.CID))
+		}
+
+		err = related.AddQuotedPrintablePart("text/html", []byte(html))
 		if err != nil {
 			return err
 		}
@@ -95,15 +109,12 @@ func (e *Message) Write(w io.Writer) (err error) {
 }
 
 func (attachment Attachment) write(writer Writer) error {
-	if attachment.CID == "" {
-		attachment.CID = attachment.Name
-	}
 	disposition := "attachment"
 	if attachment.Inline {
 		disposition = "inline"
 	}
 	headers := textproto.MIMEHeader{
-		"Content-Disposition":       {fmt.Sprintf(`%s; filename="%s""`, disposition, attachment.Name)},
+		"Content-Disposition":       {fmt.Sprintf(`%s; filename="%s"`, disposition, attachment.Name)},
 		"Content-Id":                {fmt.Sprintf("<%s>", attachment.CID)},
 		"Content-Transfer-Encoding": {"BASE64"},
 	}
@@ -112,11 +123,12 @@ func (attachment Attachment) write(writer Writer) error {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	base64Writer := base64.NewEncoder(base64.StdEncoding, buf)
+	base64Writer := base64.NewEncoder(base64.StdEncoding, linesplitter.New(buf, 998))
 	_, err := io.Copy(base64Writer, attachment.Content)
 	if err != nil {
 		return err
 	}
+
 	err = writer.AddPart(headers, buf)
 	if err != nil {
 		return err

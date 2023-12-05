@@ -12,3 +12,4 @@ internal/email/test.png
 ui/src/images/favicon/.*
 ui/node_modules/.*
 ui/build/.*
+internal/handlers/templates/nexodus.png

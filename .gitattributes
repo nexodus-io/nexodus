@@ -22,3 +22,4 @@
 # These are binaries
 *.png binary
 *.jpg binary
+*.fixture binary

@@ -90,3 +90,20 @@ make redeploy
 # redeploy the services and reset the database
 make recreate-db
 ```
+
+### Enabling Email Notifications
+
+To enable email notifications, you will need to create a Kubernetes secret that contains the SMTP server configuration in the namespace that the nexodus. Here's an example of what that Kubernetes secret would look like:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smtp-server
+stringData:
+  NEXAPI_SMTP_HOST_PORT: "smtp.example.com:465"
+  NEXAPI_SMTP_TLS: "true"
+  NEXAPI_SMTP_USER: "smtp-username"
+  NEXAPI_SMTP_PASSWORD: "password"
+  NEXAPI_SMTP_FROM: "no-reply@example"
+```

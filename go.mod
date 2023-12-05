@@ -66,6 +66,7 @@ require (
 require (
 	github.com/coredns/caddy v1.1.1
 	github.com/coredns/coredns v1.11.1
+	github.com/dustin/go-humanize v1.0.1
 	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
 	github.com/emersion/go-smtp v0.19.0
 	github.com/evanphx/json-patch v5.7.0+incompatible

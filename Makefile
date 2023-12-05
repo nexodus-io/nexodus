@@ -73,7 +73,7 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-openapi-client generate go-lint yaml-lint md-lint ui-lint opa-lint action-lint apiserver nexd nexctl ## Run linters and build nexd
+all: gen-openapi-client generate png-lint go-lint yaml-lint md-lint ui-lint opa-lint action-lint apiserver nexd nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
