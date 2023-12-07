@@ -9,6 +9,8 @@ type User struct {
 	Base
 	IdpID         string          `json:"-"` // Comes from the IDP
 	Organizations []*Organization `gorm:"many2many:user_organizations" json:"-"`
+	FullName      string          `json:"full_name"`
+	Picture       string          `json:"picture"`
 	UserName      string          `json:"username"`
 	Invitations   []*Invitation   `json:"-"`
 }

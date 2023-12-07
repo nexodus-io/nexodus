@@ -46,14 +46,31 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 		Issuer        string `json:"iss"`
 		EmailVerified bool   `json:"email_verified"`
 		Email         string `json:"email"`
+		GivenName     string `json:"given_name"`
+		FamilyName    string `json:"family_name"`
+		Picture       string `json:"picture"`
 	}{}
 
+	fullName := ""
 	if claimsMap != nil {
 		err := util.JsonUnmarshal(claimsMap, &claims)
 		if err != nil {
 			return uuid.Nil, err
 		}
+
+		claims.Email = strings.TrimSpace(strings.ToLower(claims.Email))
+
+		names := []string{}
+		if claims.GivenName != "" {
+			names = append(names, claims.GivenName)
+		}
+		if claims.FamilyName != "" {
+			names = append(names, claims.FamilyName)
+		}
+		fullName = strings.Join(names, " ")
 	}
+
+	fmt.Println("claims", claims)
 
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
@@ -64,6 +81,50 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 					return res.Error
 				}
 			} else {
+				// The user exists... Do we need to update the user due to a change in the claims?
+				if user.UserName != userName || user.FullName != fullName || user.Picture != claims.Picture {
+					if res := tx.Model(&user).
+						Where("id = ?", user.ID).
+						Updates(map[string]interface{}{
+							"user_name": userName,
+							"full_name": fullName,
+							"picture":   claims.Picture,
+						}); res.Error != nil {
+						api.logger.Warn("failed to update user:", res.Error)
+					}
+				}
+
+				if claims.EmailVerified && claims.Email != "" {
+					// is the email address already associated with the user?
+					var count int64
+					if res := tx.Model(&models.UserIdentity{}).
+						Where("kind = 'email' and value = ? and user_id =?", claims.Email, user.ID).
+						Count(&count); res.Error != nil {
+						return res.Error
+					}
+					if count != 1 {
+						fmt.Println("adding email")
+						// create the identity
+						if res := tx.Create(&models.UserIdentity{
+							Kind:   "email",
+							Value:  claims.Email,
+							UserID: user.ID,
+						}); res.Error != nil {
+							if !database.IsDuplicateError(res.Error) {
+								return NewApiResponseError(http.StatusForbidden, models.NewApiError(fmt.Errorf("user already exists with email address: %s", claims.Email)))
+							}
+							api.logger.Warn("failed to add user email:", res.Error)
+						}
+
+						// associate any pending org invites with the user record.
+						if res := tx.Model(&models.Invitation{}).
+							Where("user_id IS NULL and email = ?", claims.Email).
+							Update("user_id", user.ID); res.Error != nil {
+							api.logger.Warn("failed to update invitation:", res.Error)
+						}
+					}
+				}
+
 				return nil
 			}
 
@@ -71,6 +132,8 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 			user.ID = uuid.New()
 			user.IdpID = idpId
 			user.UserName = userName
+			user.Picture = claims.Picture
+			user.FullName = fullName
 			if res := tx.Create(&user); res.Error != nil {
 				if database.IsDuplicateError(res.Error) {
 					res.Error = gorm.ErrDuplicatedKey
@@ -92,23 +155,22 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 				return res.Error
 			}
 
-			email := strings.TrimSpace(strings.ToLower(claims.Email))
 			if claims.EmailVerified && claims.Email != "" {
 
 				if res := tx.Create(&models.UserIdentity{
 					Kind:   "email",
-					Value:  email,
+					Value:  claims.Email,
 					UserID: user.ID,
 				}); res.Error != nil {
 					if database.IsDuplicateError(res.Error) {
-						return NewApiResponseError(http.StatusForbidden, models.NewApiError(fmt.Errorf("user already exists with email address: %s", email)))
+						return NewApiResponseError(http.StatusForbidden, models.NewApiError(fmt.Errorf("user already exists with email address: %s", claims.Email)))
 					}
 					return res.Error
 				}
 
 				// associate any pending org invites with the user record.
 				if res := tx.Model(&models.Invitation{}).
-					Where("user_id IS NULL and email = ?", email).
+					Where("user_id IS NULL and email = ?", claims.Email).
 					Update("user_id", user.ID); res.Error != nil {
 					return res.Error
 				}

@@ -87,7 +87,7 @@ export const RegKeyShow = () => (
         link="show"
       />
       <BooleanField label="Single Use" source="device_id" looseValue={true} />
-      <TextField label="Expiration" source="expiration" />
+      <DateField label="Expiration" source="expiration" showTime={true} />
       <TextField label="Description" source="description" />
       <JsonField label="Settings" source="settings" />
     </SimpleShowLayout>

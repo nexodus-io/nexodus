@@ -230,9 +230,13 @@ definitions:
         type: string
       expires_at:
         type: string
+      from:
+        $ref: '#/definitions/models.User'
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
+      organization:
+        $ref: '#/definitions/models.Organization'
       organization_id:
         type: string
       user_id:
@@ -441,8 +445,12 @@ definitions:
     type: object
   models.User:
     properties:
+      full_name:
+        type: string
       id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      picture:
         type: string
       username:
         type: string

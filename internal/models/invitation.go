@@ -9,10 +9,13 @@ import (
 // Invitation is a request for a user to join an organization
 type Invitation struct {
 	Base
-	UserID         *uuid.UUID `json:"user_id,omitempty"`
-	Email          *string    `json:"email,omitempty"` // The email address to invite
-	OrganizationID uuid.UUID  `json:"organization_id"`
-	ExpiresAt      time.Time  `json:"expires_at"`
+	UserID         *uuid.UUID    `json:"user_id,omitempty"`
+	Email          *string       `json:"email,omitempty"` // The email address to invite
+	OrganizationID uuid.UUID     `json:"organization_id"`
+	Organization   *Organization `json:"organization,omitempty"`
+	ExpiresAt      time.Time     `json:"expires_at"`
+	FromID         uuid.UUID     `json:"-"`
+	From           *User         `json:"from,omitempty"`
 }
 
 type AddInvitation struct {

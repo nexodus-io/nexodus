@@ -22,6 +22,8 @@ import {
   UseRecordContextParams,
   RaRecord,
   Identifier,
+  DateTimeInput,
+  AutocompleteInput,
 } from "react-admin";
 
 import { backend, fetchJson as apiFetchJson } from "../common/Api";
@@ -80,10 +82,8 @@ export const AcceptInvitationField = (
 ) => {
   const record = useRecordContext(props);
   const { identity } = useGetIdentity();
-  console.log("identity", identity);
-  console.log("record", record);
   // only show the accept button for invitations that are for the current user
-  return record && identity && identity.email == record.email ? (
+  return record && identity && identity.id == record.user_id ? (
     <AcceptInvitationButton />
   ) : null;
 };
@@ -91,22 +91,10 @@ export const AcceptInvitationField = (
 export const InvitationList = () => (
   <List>
     <Datagrid rowClick="show" bulkActionButtons={<InvitationListBulkActions />}>
-      <TextField label="ID" source="id" />
-      <TextField label="Email Address" source="email" />
-      {/* Right now we can't look up other users, we don't have access */}
-      {/*<ReferenceField*/}
-      {/*  label="User"*/}
-      {/*  source="user_id"*/}
-      {/*  reference="users"*/}
-      {/*  link="show"*/}
-      {/*/>*/}
-      <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
-        link="show"
-      />
-      <TextField label="Expires" source="expiry" />
+      <TextField label="From" source="from.full_name" />
+      <TextField label="To" source="email" />
+      <TextField label="Organization" source="organization.name" />
+      <TextField label="Expires At" source="expires_at" />
       <AcceptInvitationField />
     </Datagrid>
   </List>
@@ -116,21 +104,11 @@ export const InvitationShow = () => (
   <Show>
     <SimpleShowLayout>
       <TextField label="ID" source="id" />
-      <TextField label="User ID" source="user_id" />
-      {/* Right now we can't look up other users, we don't have access */}
-      {/*<ReferenceField*/}
-      {/*  label="User"*/}
-      {/*  source="user_id"*/}
-      {/*  reference="users"*/}
-      {/*  link="show"*/}
-      {/*/>*/}
-      <ReferenceField
-        label="Organization"
-        source="organization_id"
-        reference="organizations"
-        link="show"
-      />
-      <TextField label="Expires" source="expiry" />
+      <TextField label="From" source="from.full_name" />
+      <TextField label="To" source="email" />
+      <TextField label="Organization" source="organization.name" />
+      <TextField label="Expires At" source="expires_at" />
+      <AcceptInvitationField />
     </SimpleShowLayout>
   </Show>
 );
@@ -151,11 +129,19 @@ export const InvitationCreate = () => {
           fullWidth
         />
         <ReferenceInput
-          label="User Name"
+          label="Organization"
           name="organization_id"
           source="organization_id"
           reference="organizations"
           filter={{ owner_id: identity.id }}
+        >
+          <AutocompleteInput fullWidth />
+        </ReferenceInput>
+        <DateTimeInput
+          label="Expires At"
+          name="expires_at"
+          source="expires_at"
+          fullWidth
         />
       </SimpleForm>
     </Create>

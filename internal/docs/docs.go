@@ -3050,9 +3050,15 @@ const docTemplate = `{
                 "expires_at": {
                     "type": "string"
                 },
+                "from": {
+                    "$ref": "#/definitions/models.User"
+                },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "organization": {
+                    "$ref": "#/definitions/models.Organization"
                 },
                 "organization_id": {
                     "type": "string"
@@ -3353,9 +3359,15 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
+                "full_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "picture": {
+                    "type": "string"
                 },
                 "username": {
                     "type": "string"

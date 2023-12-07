@@ -15,6 +15,7 @@ Feature: Invitations API
     When I GET path "/api/users/me"
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${thompson_user_id}
+    Given I store the ".username" selection from the response as ${thompson_username}
 
     # Workaround: we can't seem to create a test user with an email, so set the email with SQL
     When I run SQL "INSERT INTO user_identities (kind, value, user_id) VALUES ('email', '${johnson_user_id}@redhat.com', '${johnson_user_id}')" expect 1 row to be affected.
@@ -61,6 +62,7 @@ Feature: Invitations API
     When I GET path "/api/users/me"
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${thompson_user_id}
+    Given I store the ".username" selection from the response as ${thompson_username}
 
     When I GET path "/api/organizations"
     Then the response code should be 200
@@ -115,6 +117,18 @@ Feature: Invitations API
           "expires_at": "${response[0].expires_at}",
           "id": "${invitation_id}",
           "organization_id": "${thompson_organization_id}",
+          "from": {
+            "full_name": "Test Thompson",
+            "id": "${thompson_user_id}",
+            "picture": "",
+            "username": "${thompson_username}"
+          },
+          "organization": {
+            "description": "${thompson_username}'s organization",
+            "id": "${thompson_organization_id}",
+            "name": "${thompson_username}",
+            "owner_id": "${thompson_user_id}"
+          },
           "user_id": "${johnson_user_id}"
         }
       ]
@@ -130,6 +144,18 @@ Feature: Invitations API
           "expires_at": "${response[0].expires_at}",
           "id": "${invitation_id}",
           "organization_id": "${thompson_organization_id}",
+          "from": {
+            "full_name": "Test Thompson",
+            "id": "${thompson_user_id}",
+            "picture": "",
+            "username": "${thompson_username}"
+          },
+          "organization": {
+            "description": "${thompson_username}'s organization",
+            "id": "${thompson_organization_id}",
+            "name": "${thompson_username}",
+            "owner_id": "${thompson_user_id}"
+          },
           "user_id": "${johnson_user_id}"
         }
       ]

@@ -12,6 +12,8 @@ package public
 
 // ModelsUser struct for ModelsUser
 type ModelsUser struct {
+	FullName string `json:"full_name,omitempty"`
 	Id       string `json:"id,omitempty"`
+	Picture  string `json:"picture,omitempty"`
 	Username string `json:"username,omitempty"`
 }
