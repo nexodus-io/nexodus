@@ -13,9 +13,11 @@ package public
 // ModelsInvitation struct for ModelsInvitation
 type ModelsInvitation struct {
 	// The email address to invite
-	Email          string `json:"email,omitempty"`
-	ExpiresAt      string `json:"expires_at,omitempty"`
-	Id             string `json:"id,omitempty"`
-	OrganizationId string `json:"organization_id,omitempty"`
-	UserId         string `json:"user_id,omitempty"`
+	Email          string             `json:"email,omitempty"`
+	ExpiresAt      string             `json:"expires_at,omitempty"`
+	From           ModelsUser         `json:"from,omitempty"`
+	Id             string             `json:"id,omitempty"`
+	Organization   ModelsOrganization `json:"organization,omitempty"`
+	OrganizationId string             `json:"organization_id,omitempty"`
+	UserId         string             `json:"user_id,omitempty"`
 }

@@ -92,8 +92,14 @@ func createInvitationCommand() *cli.Command {
 func invitationsTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "INVITATION ID", Field: "Id"})
-	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
-	fields = append(fields, TableField{Header: "USER ID", Field: "UserId"})
+	fields = append(fields, TableField{Header: "ORGANIZATION", Formatter: func(item interface{}) string {
+		inv := item.(public.ModelsInvitation)
+		return inv.Organization.Name
+	}})
+	fields = append(fields, TableField{Header: "FROM", Formatter: func(item interface{}) string {
+		inv := item.(public.ModelsInvitation)
+		return fmt.Sprintf("%s <%s>", inv.From.FullName, inv.From.Username)
+	}})
 	fields = append(fields, TableField{Header: "EMAIL", Field: "Email"})
 	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
 	return fields

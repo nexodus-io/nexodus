@@ -15,6 +15,8 @@ Feature: Device API
       """
       {
         "id": "${user_id}",
+        "full_name": "Test Bob",
+        "picture": "",
         "username": "${response.username}"
       }
       """

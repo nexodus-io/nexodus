@@ -171,7 +171,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
 
   getIdentity: async (): Promise<UserIdentity> => {
     console.log("Get Identity Called");
-    const request = new Request(`${api}/web/user_info`, {
+    const request = new Request(`${api}/api/users/me`, {
       credentials: "include",
     });
     let id;
@@ -180,8 +180,8 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => ({
       const data = await response.json();
       if (response && data) {
         id = {
-          id: data.sub,
-          fullName: data.preferred_username,
+          id: data.id,
+          fullName: data.full_name,
           avatar: data.picture,
           email: data.email,
         } as UserIdentity;

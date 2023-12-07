@@ -139,6 +139,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 		api.SendInternalServerError(c, res.Error)
 		return
 	}
+	invite.FromID = from.ID
 
 	if res := db.Create(&invite); res.Error != nil {
 		api.SendInternalServerError(c, res.Error)
@@ -174,7 +175,10 @@ func (api *API) ListInvitations(c *gin.Context) {
 	db := api.db.WithContext(ctx)
 	db = api.InvitationIsForCurrentUserOrOrgOwner(c, db)
 	db = FilterAndPaginate(db, &models.Invitation{}, c, "id")
-	result := db.Find(&invitations)
+	result := db.
+		Joins("From").
+		Joins("Organization").
+		Find(&invitations)
 	if result.Error != nil {
 		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
 		return
@@ -229,7 +233,10 @@ func (api *API) GetInvitation(c *gin.Context) {
 	var org models.Invitation
 	db := api.db.WithContext(ctx)
 	result := api.InvitationIsForCurrentUserOrOrgOwner(c, db).
-		First(&org, "id = ?", id.String())
+		Joins("From").
+		Joins("Organization").
+		// we have to qualify the column name here because of the join
+		First(&org, "invitations.id = ?", id.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

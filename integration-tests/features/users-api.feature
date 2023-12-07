@@ -20,6 +20,8 @@ Feature: Users API
       """
       {
         "id": "${ursala_id}",
+        "full_name": "Test EvilUrsala",
+        "picture": "",
         "username": "${response.username}"
       }
       """
@@ -36,6 +38,8 @@ Feature: Users API
       [
         {
           "id": "${ursala_id}",
+          "full_name": "Test EvilUrsala",
+          "picture": "",
           "username": "${response[0].username}"
         }
       ]
@@ -48,6 +52,8 @@ Feature: Users API
       """
       {
         "id": "${ursala_id}",
+        "full_name": "Test EvilUrsala",
+        "picture": "",
         "username": "${response.username}"
       }
       """
@@ -89,6 +95,8 @@ Feature: Users API
       """
       {
         "id": "${ursala_id}",
+        "full_name": "Test EvilUrsala",
+        "picture": "",
         "username": "${response.username}"
       }
       """
@@ -114,6 +122,8 @@ Feature: Users API
       """
       {
         "id": "${response.id}",
+        "full_name": "Test EvilUrsala",
+        "picture": "",
         "username": "${response.username}"
       }
       """
