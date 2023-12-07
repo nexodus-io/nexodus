@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
@@ -14,8 +15,8 @@ func createInvitationCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List invitations",
-				Action: func(ctx *cli.Context) error {
-					return listInvitations(ctx)
+				Action: func(command *cli.Context) error {
+					return listInvitations(command.Context, command)
 				},
 			},
 			{
@@ -35,19 +36,19 @@ func createInvitationCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					organizationId, err := getUUID(ctx, "organization-id")
+				Action: func(command *cli.Context) error {
+					organizationId, err := getUUID(command, "organization-id")
 					if err != nil {
 						return err
 					}
-					userId, err := getUUID(ctx, "user-id")
+					userId, err := getUUID(command, "user-id")
 					if err != nil {
 						return err
 					}
-					return createInvitation(ctx, public.ModelsAddInvitation{
+					return createInvitation(command.Context, command, public.ModelsAddInvitation{
 						OrganizationId: organizationId,
 						UserId:         userId,
-						Email:          ctx.String("email"),
+						Email:          command.String("email"),
 					})
 				},
 			},
@@ -60,12 +61,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					id, err := getUUID(ctx, "inv-id")
+				Action: func(command *cli.Context) error {
+					id, err := getUUID(command, "inv-id")
 					if err != nil {
 						return err
 					}
-					return deleteInvitation(ctx, id)
+					return deleteInvitation(command.Context, command, id)
 				},
 			},
 			{
@@ -77,12 +78,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					id, err := getUUID(ctx, "inv-id")
+				Action: func(command *cli.Context) error {
+					id, err := getUUID(command, "inv-id")
 					if err != nil {
 						return err
 					}
-					return acceptInvitation(ctx, id)
+					return acceptInvitation(command.Context, command, id)
 				},
 			},
 		},
@@ -105,46 +106,46 @@ func invitationsTableFields() []TableField {
 	return fields
 }
 
-func listInvitations(ctx *cli.Context) error {
-	c := createClient(ctx)
+func listInvitations(ctx context.Context, command *cli.Context) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.InvitationApi.
-		ListInvitations(ctx.Context).
+		ListInvitations(ctx).
 		Execute())
-	show(ctx, invitationsTableFields(), res)
+	show(command, invitationsTableFields(), res)
 	return nil
 }
-func acceptInvitation(ctx *cli.Context, id string) error {
-	c := createClient(ctx)
+func acceptInvitation(ctx context.Context, command *cli.Context, id string) error {
+	c := createClient(ctx, command)
 	httpResp, err := c.InvitationApi.
-		AcceptInvitation(ctx.Context, id).
+		AcceptInvitation(ctx, id).
 		Execute()
 	_ = apiResponse("", httpResp, err)
-	showSuccessfully(ctx, "accepted")
+	showSuccessfully(command, "accepted")
 	return nil
 }
 
-func deleteInvitation(ctx *cli.Context, id string) error {
-	c := createClient(ctx)
+func deleteInvitation(ctx context.Context, command *cli.Context, id string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.InvitationApi.
-		DeleteInvitation(ctx.Context, id).
+		DeleteInvitation(ctx, id).
 		Execute())
-	show(ctx, invitationsTableFields(), res)
-	showSuccessfully(ctx, "deleted")
+	show(command, invitationsTableFields(), res)
+	showSuccessfully(command, "deleted")
 	return nil
 }
 
-func createInvitation(ctx *cli.Context, invitation public.ModelsAddInvitation) error {
-	c := createClient(ctx)
+func createInvitation(ctx context.Context, command *cli.Context, invitation public.ModelsAddInvitation) error {
+	c := createClient(ctx, command)
 	if invitation.OrganizationId == "" {
-		invitation.OrganizationId = getDefaultOrgId(ctx.Context, c)
+		invitation.OrganizationId = getDefaultOrgId(ctx, c)
 	}
 	if invitation.UserId == "" && invitation.Email == "" {
 		return fmt.Errorf("either the --user-id or --email flags are required")
 	}
 	res := apiResponse(c.InvitationApi.
-		CreateInvitation(ctx.Context).
+		CreateInvitation(ctx).
 		Invitation(invitation).
 		Execute())
-	show(ctx, invitationsTableFields(), res)
+	show(command, invitationsTableFields(), res)
 	return nil
 }

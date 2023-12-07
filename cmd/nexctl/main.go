@@ -88,7 +88,7 @@ func main() {
 			{
 				Name:  "version",
 				Usage: "Get the version of nexctl",
-				Action: func(cCtx *cli.Context) error {
+				Action: func(command *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
 				},
@@ -122,21 +122,21 @@ func Fatalf(format string, a ...any) {
 	os.Exit(1)
 }
 
-func createClient(cCtx *cli.Context) *client.APIClient {
+func createClient(ctx context.Context, command *cli.Context) *client.APIClient {
 
 	urlValue := DefaultServiceURL
 	flagUsed := "--service-url"
 	addApiPrefix := true
-	if cCtx.IsSet("host") {
-		if cCtx.IsSet("service-url") {
+	if command.IsSet("host") {
+		if command.IsSet("service-url") {
 			Fatal("please remove the --host flag, the --service-url flag has replaced it")
 		}
 		fmt.Fprintln(os.Stderr, "DEPRECATION WARNING: configuring the service url via the --host flag not be supported in a future release.  Please use the --service-url flag instead.")
-		urlValue = cCtx.String("host")
+		urlValue = command.String("host")
 		flagUsed = "--host"
 		addApiPrefix = false
-	} else if cCtx.IsSet("service-url") {
-		urlValue = cCtx.String("service-url")
+	} else if command.IsSet("service-url") {
+		urlValue = command.String("service-url")
 	}
 
 	apiURL, err := url.Parse(urlValue)
@@ -152,25 +152,22 @@ func createClient(cCtx *cli.Context) *client.APIClient {
 		apiURL.Path = ""
 	}
 
-	c, err := client.NewAPIClient(cCtx.Context,
-		apiURL.String(), nil,
-		createClientOptions(cCtx)...,
-	)
+	c, err := client.NewAPIClient(ctx, apiURL.String(), nil, createClientOptions(command)...)
 	if err != nil {
 		Fatal(err)
 	}
 	return c
 }
 
-func createClientOptions(cCtx *cli.Context) []client.Option {
+func createClientOptions(command *cli.Context) []client.Option {
 	options := []client.Option{
 		client.WithPasswordGrant(
-			cCtx.String("username"),
-			cCtx.String("password"),
+			command.String("username"),
+			command.String("password"),
 		),
 		client.WithUserAgent(fmt.Sprintf("nexctl/%s (%s; %s)", Version, runtime.GOOS, runtime.GOARCH)),
 	}
-	if cCtx.Bool("insecure-skip-tls-verify") { // #nosec G402
+	if command.Bool("insecure-skip-tls-verify") { // #nosec G402
 		options = append(options, client.WithTLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		}))
@@ -184,8 +181,8 @@ type TableField struct {
 	Formatter func(item interface{}) string
 }
 
-func show(cCtx *cli.Context, fields []TableField, result any) {
-	output := cCtx.String("output")
+func show(command *cli.Context, fields []TableField, result any) {
+	output := command.String("output")
 	switch output {
 	case encodeJsonPretty:
 		bytes, err := json.MarshalIndent(result, "", "  ")
@@ -266,8 +263,8 @@ func show(cCtx *cli.Context, fields []TableField, result any) {
 	}
 }
 
-func showSuccessfully(ctx *cli.Context, action string) {
-	encodeOut := ctx.String("output")
+func showSuccessfully(command *cli.Context, action string) {
+	encodeOut := command.String("output")
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("\nsuccessfully %s\n", action)
 	}
@@ -341,8 +338,8 @@ func apiResponse[T any](resp T, httpResp *http.Response, err error) T {
 	return resp
 }
 
-func getUUID(ctx *cli.Context, name string) (string, error) {
-	value := ctx.String(name)
+func getUUID(command *cli.Context, name string) (string, error) {
+	value := command.String(name)
 	if value == "" {
 		return "", nil
 	}
@@ -353,16 +350,16 @@ func getUUID(ctx *cli.Context, name string) (string, error) {
 	return value, nil
 }
 
-func getExpiration(ctx *cli.Context, name string) string {
-	value := ctx.Duration(name)
+func getExpiration(command *cli.Context, name string) string {
+	value := command.Duration(name)
 	if value == 0 {
 		return ""
 	}
 	return time.Now().Add(value).String()
 }
 
-func getJsonMap(ctx *cli.Context, name string) (map[string]interface{}, error) {
-	value := ctx.String(name)
+func getJsonMap(command *cli.Context, name string) (map[string]interface{}, error) {
+	value := command.String(name)
 	if value == "" {
 		return nil, nil
 	}

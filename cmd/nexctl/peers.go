@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/exp/maps"
@@ -27,7 +28,7 @@ type ListPeersResponse struct {
 	Peers         map[string]WgSession `json:"peers"`
 }
 
-func peerTableFields(ctx *cli.Context) []TableField {
+func peerTableFields(command *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 	fields = append(fields, TableField{Header: "ENDPOINT", Field: "Endpoint"})
@@ -52,7 +53,7 @@ func peerTableFields(ctx *cli.Context) []TableField {
 }
 
 // cmdListPeers get peer listings from nexd
-func cmdListPeers(cCtx *cli.Context) error {
+func cmdListPeers(ctx context.Context, command *cli.Context) error {
 	var err error
 	var response ListPeersResponse
 	if err = checkVersion(); err != nil {
@@ -69,7 +70,7 @@ func cmdListPeers(cCtx *cli.Context) error {
 		return fmt.Errorf("Failed to marshall peer results: %w\n", err)
 	}
 
-	show(cCtx, peerTableFields(cCtx), maps.Values(response.Peers))
+	show(command, peerTableFields(command), maps.Values(response.Peers))
 	if response.RelayRequired && !response.RelayPresent {
 		fmt.Fprintf(os.Stderr, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 	}

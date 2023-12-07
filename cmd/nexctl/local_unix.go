@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/rpc/jsonrpc"
@@ -52,13 +53,13 @@ func init() {
 								Value:   false,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
+						Action: func(command *cli.Context) error {
 							var result string
 							var err error
 							if err := checkVersion(); err != nil {
 								return err
 							}
-							if cCtx.Bool("ipv6") {
+							if command.Bool("ipv6") {
 								result, err = callNexd("GetTunnelIPv6", "")
 							} else {
 								result, err = callNexd("GetTunnelIPv4", "")
@@ -74,7 +75,7 @@ func init() {
 					{
 						Name:  "debug",
 						Usage: "Get the debug logging status",
-						Action: func(cCtx *cli.Context) error {
+						Action: func(command *cli.Context) error {
 							if err := checkVersion(); err != nil {
 								return err
 							}
@@ -100,7 +101,7 @@ func init() {
 							{
 								Name:  "on",
 								Usage: "Turn debug logging on",
-								Action: func(cCtx *cli.Context) error {
+								Action: func(command *cli.Context) error {
 									if err := checkVersion(); err != nil {
 										return err
 									}
@@ -116,7 +117,7 @@ func init() {
 							{
 								Name:  "off",
 								Usage: "Turn debug logging off",
-								Action: func(cCtx *cli.Context) error {
+								Action: func(command *cli.Context) error {
 									if err := checkVersion(); err != nil {
 										return err
 									}
@@ -140,7 +141,7 @@ func init() {
 					{
 						Name:  "list",
 						Usage: "List the nexd proxy rules",
-						Action: func(cCtx *cli.Context) error {
+						Action: func(command *cli.Context) error {
 							if err := checkVersion(); err != nil {
 								return err
 							}
@@ -168,8 +169,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							return proxyAddRemove(cCtx, true)
+						Action: func(command *cli.Context) error {
+							return proxyAddRemove(command.Context, command, true)
 						},
 					},
 					{
@@ -187,8 +188,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							return proxyAddRemove(cCtx, false)
+						Action: func(command *cli.Context) error {
+							return proxyAddRemove(command.Context, command, false)
 						},
 					},
 				},
@@ -208,22 +209,22 @@ func init() {
 								Value:   false,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							return cmdListPeers(cCtx)
+						Action: func(command *cli.Context) error {
+							return cmdListPeers(command.Context, command)
 						},
 					},
 					{
 						Name:  "ping",
 						Usage: "run a test to check the nexd IPv4 peer connectivity (host firewalls or security groups may block the ICMP probes)",
-						Action: func(cCtx *cli.Context) error {
-							return cmdConnStatus(cCtx, v4)
+						Action: func(command *cli.Context) error {
+							return cmdConnStatus(command.Context, command, v4)
 						},
 					},
 					{
 						Name:  "ping6",
 						Usage: "run a test to check the nexd IPv6 peer connectivity (host firewalls or security groups may block the ICMP probes)",
-						Action: func(cCtx *cli.Context) error {
-							return cmdConnStatus(cCtx, v6)
+						Action: func(command *cli.Context) error {
+							return cmdConnStatus(command.Context, command, v6)
 						},
 					},
 				},
@@ -235,16 +236,16 @@ func init() {
 					{
 						Name:  "list",
 						Usage: "list exit nodes",
-						Action: func(cCtx *cli.Context) error {
-							encodeOut := cCtx.String("output")
-							return listExitNodes(cCtx, encodeOut)
+						Action: func(command *cli.Context) error {
+							encodeOut := command.String("output")
+							return listExitNodes(command.Context, command, encodeOut)
 						},
 					},
 					{
 						Name:  "enable",
 						Usage: "Enable the device to use an exit node in the current organization. Warning: this will funnel all traffic through the exit node if one exists and will likely cause your device to be unreachable outside of the nexodus peer network.",
-						Action: func(cCtx *cli.Context) error {
-							return enableExitNodeClient(cCtx)
+						Action: func(command *cli.Context) error {
+							return enableExitNodeClient(command.Context, command)
 						},
 					},
 					{
@@ -257,8 +258,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							return disableExitNodeClient(cCtx)
+						Action: func(command *cli.Context) error {
+							return disableExitNodeClient(command.Context, command)
 						},
 					},
 				},
@@ -302,7 +303,7 @@ func checkVersion() error {
 	return nil
 }
 
-func cmdLocalVersion(cCtx *cli.Context) error {
+func cmdLocalVersion(command *cli.Context) error {
 	fmt.Printf("nexctl version: %s\n", Version)
 
 	result, err := callNexd("Version", "")
@@ -313,7 +314,7 @@ func cmdLocalVersion(cCtx *cli.Context) error {
 	return err
 }
 
-func cmdLocalStatus(cCtx *cli.Context) error {
+func cmdLocalStatus(command *cli.Context) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -328,12 +329,12 @@ func cmdLocalStatus(cCtx *cli.Context) error {
 	return nil
 }
 
-func proxyAddRemove(cCtx *cli.Context, add bool) error {
+func proxyAddRemove(ctx context.Context, command *cli.Context, add bool) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
-	ingress := cCtx.StringSlice("ingress")
-	egress := cCtx.StringSlice("egress")
+	ingress := command.StringSlice("ingress")
+	egress := command.StringSlice("egress")
 	if len(ingress) == 0 && len(egress) == 0 {
 		return fmt.Errorf("No rules provided")
 	}

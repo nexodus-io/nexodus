@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	// #nosec
@@ -14,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func pprof_init(cCtx *cli.Context, logger *zap.Logger) {
+func pprof_init(ctx context.Context, command *cli.Context, logger *zap.Logger) {
 	port := "8088"
 	if envVar := os.Getenv("NEXAPI_PPROF_PORT"); envVar != "" {
 		_, err := strconv.Atoi(port)

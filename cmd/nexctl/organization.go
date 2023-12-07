@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v2"
 )
@@ -13,8 +14,8 @@ func createOrganizationCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List organizations",
-				Action: func(ctx *cli.Context) error {
-					return listOrganizations(ctx)
+				Action: func(command *cli.Context) error {
+					return listOrganizations(command.Context, command)
 				},
 			},
 			{
@@ -30,10 +31,10 @@ func createOrganizationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					name := ctx.String("name")
-					description := ctx.String("description")
-					return createOrganization(ctx, name, description)
+				Action: func(command *cli.Context) error {
+					name := command.String("name")
+					description := command.String("description")
+					return createOrganization(command.Context, command, name, description)
 				},
 			},
 			{
@@ -45,13 +46,13 @@ func createOrganizationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					organizationID, err := getUUID(ctx, "organization-id")
+				Action: func(command *cli.Context) error {
+					organizationID, err := getUUID(command, "organization-id")
 					if err != nil {
 						return err
 					}
 
-					return deleteOrganization(ctx, organizationID)
+					return deleteOrganization(command.Context, command, organizationID)
 				},
 			},
 		},
@@ -65,24 +66,24 @@ func orgTableFields() []TableField {
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	return fields
 }
-func listOrganizations(ctx *cli.Context) error {
-	c := createClient(ctx)
+func listOrganizations(ctx context.Context, command *cli.Context) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.OrganizationsApi.
-		ListOrganizations(ctx.Context).
+		ListOrganizations(ctx).
 		Execute())
-	show(ctx, orgTableFields(), res)
+	show(command, orgTableFields(), res)
 	return nil
 }
 
-func createOrganization(ctx *cli.Context, name, description string) error {
-	c := createClient(ctx)
+func createOrganization(ctx context.Context, command *cli.Context, name, description string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.OrganizationsApi.
-		CreateOrganization(ctx.Context).
+		CreateOrganization(ctx).
 		Organization(public.ModelsAddOrganization{
 			Name:        name,
 			Description: description,
 		}).Execute())
-	show(ctx, orgTableFields(), res)
+	show(command, orgTableFields(), res)
 	return nil
 }
 
@@ -112,12 +113,12 @@ func moveUserToOrganization(c *client.APIClient, encodeOut, username, Organizati
 }
 */
 
-func deleteOrganization(ctx *cli.Context, id string) error {
-	c := createClient(ctx)
+func deleteOrganization(ctx context.Context, command *cli.Context, id string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.OrganizationsApi.
-		DeleteOrganization(ctx.Context, id).
+		DeleteOrganization(ctx, id).
 		Execute())
-	show(ctx, orgTableFields(), res)
-	showSuccessfully(ctx, "deleted")
+	show(command, orgTableFields(), res)
+	showSuccessfully(command, "deleted")
 	return nil
 }

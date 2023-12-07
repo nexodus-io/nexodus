@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/urfave/cli/v2"
 )
@@ -13,15 +14,15 @@ func createUserSubCommand() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List all users",
-				Action: func(ctx *cli.Context) error {
-					return listUsers(ctx)
+				Action: func(command *cli.Context) error {
+					return listUsers(command.Context, command)
 				},
 			},
 			{
 				Name:  "get-current",
 				Usage: "Get current user",
-				Action: func(ctx *cli.Context) error {
-					return getCurrent(ctx)
+				Action: func(command *cli.Context) error {
+					return getCurrent(command.Context, command)
 				},
 			},
 			{
@@ -34,12 +35,12 @@ func createUserSubCommand() *cli.Command {
 						Hidden:   true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					userID, err := getUUID(ctx, "user-id")
+				Action: func(command *cli.Context) error {
+					userID, err := getUUID(command, "user-id")
 					if err != nil {
 						return err
 					}
-					return deleteUser(ctx, userID)
+					return deleteUser(command.Context, command, userID)
 				},
 			},
 			{
@@ -55,16 +56,16 @@ func createUserSubCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					userID, err := getUUID(ctx, "user-id")
+				Action: func(command *cli.Context) error {
+					userID, err := getUUID(command, "user-id")
 					if err != nil {
 						return err
 					}
-					orgID, err := getUUID(ctx, "organization-id")
+					orgID, err := getUUID(command, "organization-id")
 					if err != nil {
 						return err
 					}
-					return deleteUserFromOrg(ctx, userID, orgID)
+					return deleteUserFromOrg(command.Context, command, userID, orgID)
 				},
 			},
 		},
@@ -77,40 +78,40 @@ func userTableFields() []TableField {
 	fields = append(fields, TableField{Header: "USER NAME", Field: "Username"})
 	return fields
 }
-func listUsers(ctx *cli.Context) error {
-	c := createClient(ctx)
+func listUsers(ctx context.Context, command *cli.Context) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
-		ListUsers(ctx.Context).
+		ListUsers(ctx).
 		Execute())
-	show(ctx, userTableFields(), res)
+	show(command, userTableFields(), res)
 	return nil
 }
 
-func deleteUser(ctx *cli.Context, userID string) error {
-	c := createClient(ctx)
+func deleteUser(ctx context.Context, command *cli.Context, userID string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
-		DeleteUser(ctx.Context, userID).
+		DeleteUser(ctx, userID).
 		Execute())
-	show(ctx, userTableFields(), res)
-	showSuccessfully(ctx, "deleted")
+	show(command, userTableFields(), res)
+	showSuccessfully(command, "deleted")
 	return nil
 }
 
-func deleteUserFromOrg(ctx *cli.Context, userID, orgID string) error {
-	c := createClient(ctx)
+func deleteUserFromOrg(ctx context.Context, command *cli.Context, userID, orgID string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
-		DeleteUserFromOrganization(ctx.Context, userID, orgID).
+		DeleteUserFromOrganization(ctx, userID, orgID).
 		Execute())
-	show(ctx, userTableFields(), res)
-	showSuccessfully(ctx, fmt.Sprintf("removed user %s from organization %s\n", userID, orgID))
+	show(command, userTableFields(), res)
+	showSuccessfully(command, fmt.Sprintf("removed user %s from organization %s\n", userID, orgID))
 	return nil
 }
 
-func getCurrent(ctx *cli.Context) error {
-	c := createClient(ctx)
+func getCurrent(ctx context.Context, command *cli.Context) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
-		GetUser(ctx.Context, "me").
+		GetUser(ctx, "me").
 		Execute())
-	show(ctx, userTableFields(), res)
+	show(command, userTableFields(), res)
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api"
@@ -19,7 +20,7 @@ const (
 	v4 = "v4"
 )
 
-func keepaliveStatusTableFields(ctx *cli.Context) []TableField {
+func keepaliveStatusTableFields(command *cli.Context) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
 	fields = append(fields, TableField{Header: "WIREGUARD ADDRESS", Field: "WgIP"})
@@ -39,7 +40,7 @@ func keepaliveStatusTableFields(ctx *cli.Context) []TableField {
 }
 
 // cmdConnStatus check the reachability of the node's peers and sort the return by hostname
-func cmdConnStatus(cCtx *cli.Context, family string) error {
+func cmdConnStatus(ctx context.Context, command *cli.Context, family string) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func cmdConnStatus(cCtx *cli.Context, family string) error {
 	sort.Slice(peers, func(i, j int) bool {
 		return peers[i].Hostname < peers[j].Hostname
 	})
-	show(cCtx, keepaliveStatusTableFields(cCtx), peers)
+	show(command, keepaliveStatusTableFields(command), peers)
 
 	if result.RelayRequired && !result.RelayPresent {
 		fmt.Fprintf(os.Stderr, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
