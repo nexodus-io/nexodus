@@ -48,39 +48,39 @@ var Version = "dev"
 // Optionally set at build time using ldflags
 var DefaultServiceURL = "https://try.nexodus.io"
 
-func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
+func nexdRun(ctx context.Context, command *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
 
 	// Fail if you try to configure the service URL both ways
-	if cCtx.IsSet("service-url") && cCtx.Args().Len() > 0 {
+	if command.IsSet("service-url") && command.Args().Len() > 0 {
 		return fmt.Errorf("please remove the service URL positional argument, it was configured via the --service-url flag")
 	}
-	if cCtx.Args().Len() > 1 {
-		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", cCtx.Args().Tail())
+	if command.Args().Len() > 1 {
+		return fmt.Errorf("nexd only takes one positional argument, the service URL. Additional arguments ignored: %s", command.Args().Tail())
 	}
 
 	serviceURL := ""
-	if cCtx.IsSet("service-url") {
+	if command.IsSet("service-url") {
 		// It was set via a flag
-		serviceURL = cCtx.String("service-url")
-	} else if cCtx.Args().Len() > 0 {
+		serviceURL = command.String("service-url")
+	} else if command.Args().Len() > 0 {
 		// It was set via a positional arg
-		serviceURL = cCtx.Args().First()
+		serviceURL = command.Args().First()
 		logger.Info("DEPRECATION WARNING: configuring the service url via the positional argument will not be supported in a future release.  Please use the --service-url flag instead.")
 	}
 
-	regKey := cCtx.String("reg-key")
-	if cCtx.IsSet("reg-key") {
-		if cCtx.IsSet("security-group-id") {
+	regKey := command.String("reg-key")
+	if command.IsSet("reg-key") {
+		if command.IsSet("security-group-id") {
 			return fmt.Errorf("the --reg-key and --security-group-id flags are mutually exclusive")
 		}
-		if cCtx.IsSet("vpc-id") {
+		if command.IsSet("vpc-id") {
 			return fmt.Errorf("the --reg-key and --vpc-id flags are mutually exclusive")
 		}
 
 		// TODO: in the future, always assume the service-url is part of the reg-key
 		if strings.Contains(regKey, "#") {
 
-			if cCtx.IsSet("service-url") && cCtx.IsSet("reg-key") {
+			if command.IsSet("service-url") && command.IsSet("reg-key") {
 				return fmt.Errorf("the --reg-key and --service-url flags are mutually exclusive")
 			}
 
@@ -95,7 +95,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		}
 	}
 
-	// If it was not set, then fall back to using the default...
+	// If it was not set, thctx *cli.Contexten fall back to using the default...
 	if serviceURL == "" && DefaultServiceURL != "" {
 		logger.Info("No service URL provided, using default service URL", zap.String("url", DefaultServiceURL))
 		serviceURL = DefaultServiceURL
@@ -119,14 +119,15 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	apiURL.Host = "api." + apiURL.Host
 	apiURL.Path = ""
 
-	_, err = nexodus.CtlStatus(cCtx)
+	_, err = nexodus.CtlStatus(command)
 	if err == nil {
 		return fmt.Errorf("existing nexd service already running")
 	}
 
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	defer cancel()
 
-	pprof_init(cCtx, logger)
+	pprof_init(ctx, command, logger)
 
 	userspaceMode := false
 	relayNode := false
@@ -135,11 +136,11 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	case nexdModeAgent:
 		logger.Info("Starting node agent with wireguard driver")
 	case nexdModeRouter:
-		advertiseCidr = cCtx.StringSlice("advertise-cidr")
+		advertiseCidr = command.StringSlice("advertise-cidr")
 		// Check if child-prefix is set and log a deprecation warning.
-		if cCtx.IsSet("child-prefix") {
+		if command.IsSet("child-prefix") {
 			logger.Warn("DEPRECATION WARNING: The 'child-prefix' flag is deprecated. In the future, please use 'advertise-cidr' instead.")
-			advertiseCidr = append(advertiseCidr, cCtx.StringSlice("child-prefix")...)
+			advertiseCidr = append(advertiseCidr, command.StringSlice("child-prefix")...)
 		}
 		logger.Info("Starting node agent with wireguard driver and router function")
 	case nexdModeRelay:
@@ -150,7 +151,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		logger.Info("Starting in L4 proxy mode")
 	}
 
-	stunServers := cCtx.StringSlice("stun-server")
+	stunServers := command.StringSlice("stun-server")
 	if stunServers != nil {
 		if len(stunServers) < 2 {
 			return fmt.Errorf("at least two stun servers are required")
@@ -163,7 +164,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		log.Error(err)
 	}
 
-	stateDir := cCtx.String("state-dir")
+	stateDir := command.String("state-dir")
 	if stateStore == nil {
 		stateStore = fstore.New(filepath.Join(stateDir, "state.json"))
 	}
@@ -174,26 +175,26 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 		LogLevel:                logLevel,
 		ApiURL:                  apiURL,
 		RegKey:                  regKey,
-		Username:                cCtx.String("username"),
-		Password:                cCtx.String("password"),
-		ListenPort:              cCtx.Int("listen-port"),
-		RequestedIP:             cCtx.String("request-ip"),
-		UserProvidedLocalIP:     cCtx.String("local-endpoint-ip"),
+		Username:                command.String("username"),
+		Password:                command.String("password"),
+		ListenPort:              command.Int("listen-port"),
+		RequestedIP:             command.String("request-ip"),
+		UserProvidedLocalIP:     command.String("local-endpoint-ip"),
 		AdvertiseCidrs:          advertiseCidr,
 		Relay:                   relayNode,
-		RelayOnly:               cCtx.Bool("relay-only"),
-		NetworkRouter:           cCtx.Bool("network-router"),
-		NetworkRouterDisableNAT: cCtx.Bool("disable-nat"),
-		ExitNodeClientEnabled:   cCtx.Bool("exit-node-client"),
-		ExitNodeOriginEnabled:   cCtx.Bool("exit-node"),
-		InsecureSkipTlsVerify:   cCtx.Bool("insecure-skip-tls-verify"),
+		RelayOnly:               command.Bool("relay-only"),
+		NetworkRouter:           command.Bool("network-router"),
+		NetworkRouterDisableNAT: command.Bool("disable-nat"),
+		ExitNodeClientEnabled:   command.Bool("exit-node-client"),
+		ExitNodeOriginEnabled:   command.Bool("exit-node"),
+		InsecureSkipTlsVerify:   command.Bool("insecure-skip-tls-verify"),
 		Version:                 Version,
 		UserspaceMode:           userspaceMode,
 		StateStore:              stateStore,
 		StateDir:                stateDir,
 		Context:                 ctx,
-		VpcId:                   parseUUIDFlag(cCtx, "vpc-id"),
-		SecurityGroupId:         parseUUIDFlag(cCtx, "security-group-id"),
+		VpcId:                   parseUUIDFlag(command, "vpc-id"),
+		SecurityGroupId:         parseUUIDFlag(command, "security-group-id"),
 	}
 
 	nex, err := nexodus.New(options)
@@ -203,7 +204,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 
 	wg := &sync.WaitGroup{}
 
-	for _, egressRule := range cCtx.StringSlice("egress") {
+	for _, egressRule := range command.StringSlice("egress") {
 		rule, err := nexodus.ParseProxyRule(egressRule, nexodus.ProxyTypeEgress)
 		if err != nil {
 			logger.Fatal(fmt.Sprintf("Failed to add egress proxy rule (%s): %v", egressRule, err))
@@ -213,7 +214,7 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 			logger.Fatal(fmt.Sprintf("Failed to add egress proxy rule (%s): %v", egressRule, err))
 		}
 	}
-	for _, ingressRule := range cCtx.StringSlice("ingress") {
+	for _, ingressRule := range command.StringSlice("ingress") {
 		rule, err := nexodus.ParseProxyRule(ingressRule, nexodus.ProxyTypeIngress)
 		if err != nil {
 			logger.Fatal(fmt.Sprintf("Failed to add ingress proxy rule (%s): %v", ingressRule, err))
@@ -231,18 +232,18 @@ func nexdRun(cCtx *cli.Context, logger *zap.Logger, logLevel *zap.AtomicLevel, m
 	if err := nex.Start(ctx, wg); err != nil {
 		logger.Fatal(err.Error())
 	}
-	<-ctx.Done()
+	<-command.Done()
 	nex.Stop()
 	wg.Wait()
 
 	return nil
 }
 
-func parseUUIDFlag(ctx *cli.Context, flagName string) string {
-	if !ctx.IsSet(flagName) {
+func parseUUIDFlag(command *cli.Context, flagName string) string {
+	if !command.IsSet(flagName) {
 		return ""
 	}
-	uuidStr := ctx.String(flagName)
+	uuidStr := command.String(flagName)
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		log.Fatalf("invalid flag --%s: %s", flagName, err)
@@ -285,7 +286,7 @@ func main() {
 			{
 				Name:  "version",
 				Usage: "Get the version of nexd",
-				Action: func(cCtx *cli.Context) error {
+				Action: func(command *cli.Context) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
 				},
@@ -293,8 +294,8 @@ func main() {
 			{
 				Name:  "proxy",
 				Usage: "Run nexd as an L4 proxy instead of creating a network interface",
-				Action: func(cCtx *cli.Context) error {
-					return nexdRun(cCtx, logger, logLevel, nexdModeProxy)
+				Action: func(command *cli.Context) error {
+					return nexdRun(command.Context, command, logger, logLevel, nexdModeProxy)
 				},
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
@@ -312,12 +313,12 @@ func main() {
 			{
 				Name:  "router",
 				Usage: "Enable advertise-cidr function of the node agent to enable prefix forwarding.",
-				Action: func(cCtx *cli.Context) error {
-					if cCtx.Bool("exit-node") {
+				Action: func(command *cli.Context) error {
+					if command.Bool("exit-node") {
 						if runtime.GOOS != nexodus.Linux.String() {
 							return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
 						}
-						advertiseCidrs := cCtx.StringSlice("advertise-cidr")
+						advertiseCidrs := command.StringSlice("advertise-cidr")
 						// Check if "0.0.0.0/0" already exists in advertise-cidr
 						found := false
 						for _, prefix := range advertiseCidrs {
@@ -329,13 +330,13 @@ func main() {
 						// If not found, add it to advertise-cidr
 						if !found {
 							advertiseCidrs = append(advertiseCidrs, "0.0.0.0/0")
-							err := cCtx.Set("advertise-cidr", strings.Join(advertiseCidrs, ","))
+							err := command.Set("advertise-cidr", strings.Join(advertiseCidrs, ","))
 							if err != nil {
 								return fmt.Errorf("failed to set advertise-cidr: %w", err)
 							}
 						}
 					}
-					return nexdRun(cCtx, logger, logLevel, nexdModeRouter)
+					return nexdRun(command.Context, command, logger, logLevel, nexdModeRouter)
 				},
 
 				Flags: []cli.Flag{
@@ -344,7 +345,7 @@ func main() {
 						Usage:    "Request a `CIDR` range of addresses that will be advertised from this node (optional)",
 						EnvVars:  []string{"NEXD_REQUESTED_ADVERTISE_CIDR"},
 						Required: false,
-						Action: func(ctx *cli.Context, advertiseCidr []string) error {
+						Action: func(command *cli.Context, advertiseCidr []string) error {
 							for _, cidr := range advertiseCidr {
 								if err := nexodus.ValidateCIDR(cidr); err != nil {
 									return fmt.Errorf("advertise prefix CIDR(s) passed in --advertise-cidr %s is not valid: %w", cidr, err)
@@ -357,7 +358,7 @@ func main() {
 						Name:   "child-prefix",
 						Usage:  "(DEPRECATED WARNING) please use --advertise-cidr instead.",
 						Hidden: true,
-						Action: func(ctx *cli.Context, advertiseCidr []string) error {
+						Action: func(command *cli.Context, advertiseCidr []string) error {
 							for _, cidr := range advertiseCidr {
 								if err := nexodus.ValidateCIDR(cidr); err != nil {
 									return fmt.Errorf("advertise prefix CIDR(s) passed in --advertise-cidr %s is not valid: %w", cidr, err)
@@ -392,12 +393,12 @@ func main() {
 			{
 				Name:  "relay",
 				Usage: "Enable relay and discovery support function for the node agent.",
-				Action: func(cCtx *cli.Context) error {
+				Action: func(command *cli.Context) error {
 					if runtime.GOOS != nexodus.Linux.String() {
 						return fmt.Errorf("Relay node is only supported for Linux Operating System")
 					}
 
-					return nexdRun(cCtx, logger, logLevel, nexdModeRelay)
+					return nexdRun(command.Context, command, logger, logLevel, nexdModeRelay)
 				},
 			},
 		},
@@ -417,7 +418,7 @@ func main() {
 				EnvVars:  []string{"NEXD_REQUESTED_IP"},
 				Required: false,
 				Category: wireguardOptions,
-				Action: func(ctx *cli.Context, ip string) error {
+				Action: func(command *cli.Context, ip string) error {
 					if ip != "" {
 						if err := nexodus.ValidateIp(ip); err != nil {
 							return fmt.Errorf("the IP address passed in --request-ip %s is not valid: %w", ip, err)
@@ -436,7 +437,7 @@ func main() {
 				EnvVars:  []string{"NEXD_LOCAL_ENDPOINT_IP"},
 				Required: false,
 				Category: wireguardOptions,
-				Action: func(ctx *cli.Context, ip string) error {
+				Action: func(command *cli.Context, ip string) error {
 					if ip != "" {
 						if err := nexodus.ValidateIp(ip); err != nil {
 							return fmt.Errorf("the IP address passed in --local-endpoint-ip %s is not valid: %w", ip, err)
@@ -527,24 +528,24 @@ func main() {
 				Hidden:   true,
 			},
 		},
-		Before: func(c *cli.Context) error {
-			if c.Bool("network-router") {
+		Before: func(command *cli.Context) error {
+			if command.Bool("network-router") {
 				if runtime.GOOS != nexodus.Linux.String() {
 					return fmt.Errorf("network-router mode is only supported for Linux operating systems")
 				}
-				if len(c.StringSlice("advertise-cidr")) == 0 {
+				if len(command.StringSlice("advertise-cidr")) == 0 {
 					return fmt.Errorf("--advertise-cidr is required for a device to be a network-router")
 				}
 			}
-			if c.Bool("exit-node-client") {
+			if command.Bool("exit-node-client") {
 				if runtime.GOOS != nexodus.Linux.String() {
 					return fmt.Errorf("exit-node support is currently only supported for Linux operating systems")
 				}
 			}
 			return nil
 		},
-		Action: func(cCtx *cli.Context) error {
-			return nexdRun(cCtx, logger, logLevel, nexdModeAgent)
+		Action: func(command *cli.Context) error {
+			return nexdRun(command.Context, command, logger, logLevel, nexdModeAgent)
 		},
 	}
 

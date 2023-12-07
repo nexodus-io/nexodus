@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,12 +25,12 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(c *cli.Context) error {
-				orgId, err := getUUID(c, "vpc-id")
+			Action: func(command *cli.Context) error {
+				orgId, err := getUUID(command, "vpc-id")
 				if err != nil {
 					return err
 				}
-				return getVpcMetadata(c, orgId)
+				return getVpcMetadata(command.Context, command, orgId)
 			},
 		},
 	}
@@ -55,15 +56,15 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(ctx *cli.Context) error {
-				deviceID, err := getUUID(ctx, "device-id")
+			Action: func(command *cli.Context) error {
+				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				if ctx.IsSet("key") {
-					return getDeviceMetadataKey(ctx, deviceID, ctx.String("key"))
+				if command.IsSet("key") {
+					return getDeviceMetadataKey(command.Context, command, deviceID, command.String("key"))
 				} else {
-					return getDeviceMetadata(ctx, deviceID)
+					return getDeviceMetadata(command.Context, command, deviceID)
 				}
 			},
 		},
@@ -94,16 +95,16 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(ctx *cli.Context) error {
-				deviceID, err := getUUID(ctx, "device-id")
+			Action: func(command *cli.Context) error {
+				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				value, err := getJsonMap(ctx, "value")
+				value, err := getJsonMap(command, "value")
 				if err != nil {
 					return err
 				}
-				return updateDeviceMetadata(ctx, deviceID, ctx.String("key"), value)
+				return updateDeviceMetadata(command.Context, command, deviceID, command.String("key"), value)
 			},
 		},
 		{
@@ -121,12 +122,12 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(ctx *cli.Context) error {
-				deviceID, err := getUUID(ctx, "device-id")
+			Action: func(command *cli.Context) error {
+				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				return deleteDeviceMetadata(ctx, deviceID, ctx.String("key"))
+				return deleteDeviceMetadata(command.Context, command, deviceID, command.String("key"))
 			},
 		},
 		{
@@ -139,20 +140,20 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(ctx *cli.Context) error {
-				deviceID, err := getUUID(ctx, "device-id")
+			Action: func(command *cli.Context) error {
+				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				return clearDeviceMetadata(ctx, deviceID)
+				return clearDeviceMetadata(command.Context, command, deviceID)
 			},
 		},
 	}
 }
 
-func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
+func metadataTableFields(command *cli.Context, includeDeviceId bool) []TableField {
 	var fields = []TableField{}
-	full := cCtx.Bool("full")
+	full := command.Bool("full")
 	if includeDeviceId || full {
 		fields = append(fields, TableField{Header: "DEVICE ID", Field: "DeviceId"})
 	}
@@ -164,58 +165,58 @@ func metadataTableFields(cCtx *cli.Context, includeDeviceId bool) []TableField {
 	return fields
 }
 
-func getDeviceMetadata(ctx *cli.Context, deviceID string) error {
-	c := createClient(ctx)
+func getDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		ListDeviceMetadata(ctx.Context, deviceID).
+		ListDeviceMetadata(ctx, deviceID).
 		Execute())
-	show(ctx, metadataTableFields(ctx, false), res)
+	show(command, metadataTableFields(command, false), res)
 	return nil
 }
 
-func getDeviceMetadataKey(ctx *cli.Context, deviceID string, key string) error {
-	c := createClient(ctx)
+func getDeviceMetadataKey(ctx context.Context, command *cli.Context, deviceID string, key string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		GetDeviceMetadataKey(ctx.Context, deviceID, key).
+		GetDeviceMetadataKey(ctx, deviceID, key).
 		Execute())
-	show(ctx, metadataTableFields(ctx, false), res)
+	show(command, metadataTableFields(command, false), res)
 	return nil
 }
 
-func getVpcMetadata(ctx *cli.Context, vpcID string) error {
-	c := createClient(ctx)
+func getVpcMetadata(ctx context.Context, command *cli.Context, vpcID string) error {
+	c := createClient(ctx, command)
 	prefixes := []string{}
 	res := apiResponse(c.VPCApi.
-		ListMetadataInVPC(ctx.Context, vpcID, prefixes).
+		ListMetadataInVPC(ctx, vpcID, prefixes).
 		Execute())
-	show(ctx, metadataTableFields(ctx, true), res)
+	show(command, metadataTableFields(command, true), res)
 	return nil
 }
 
-func updateDeviceMetadata(ctx *cli.Context, deviceID string, key string, value map[string]interface{}) error {
-	c := createClient(ctx)
+func updateDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string, key string, value map[string]interface{}) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		UpdateDeviceMetadataKey(ctx.Context, deviceID, key).
+		UpdateDeviceMetadataKey(ctx, deviceID, key).
 		Value(value).
 		Execute())
-	show(ctx, metadataTableFields(ctx, false), res)
+	show(command, metadataTableFields(command, false), res)
 	return nil
 }
 
-func deleteDeviceMetadata(ctx *cli.Context, deviceID string, key string) error {
-	c := createClient(ctx)
+func deleteDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string, key string) error {
+	c := createClient(ctx, command)
 	httpResp, err := c.DevicesApi.
-		DeleteDeviceMetadataKey(ctx.Context, deviceID, key).
+		DeleteDeviceMetadataKey(ctx, deviceID, key).
 		Execute()
 	_ = apiResponse("", httpResp, err)
-	showSuccessfully(ctx, "deleted")
+	showSuccessfully(command, "deleted")
 	return nil
 }
 
-func clearDeviceMetadata(ctx *cli.Context, deviceID string) error {
-	c := createClient(ctx)
+func clearDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string) error {
+	c := createClient(ctx, command)
 	httpResp, err := c.DevicesApi.
-		DeleteDeviceMetadata(ctx.Context, deviceID).
+		DeleteDeviceMetadata(ctx, deviceID).
 		Execute()
 	_ = apiResponse("", httpResp, err)
 	return nil

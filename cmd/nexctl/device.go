@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -31,15 +32,15 @@ func createDeviceCommand() *cli.Command {
 						Value:   false,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					vpcId, err := getUUID(ctx, "vpc-id")
+				Action: func(command *cli.Context) error {
+					vpcId, err := getUUID(command, "vpc-id")
 					if err != nil {
 						return err
 					}
 					if vpcId != "" {
-						return listVpcDevices(ctx, vpcId)
+						return listVpcDevices(command.Context, command, vpcId)
 					}
-					return listAllDevices(ctx)
+					return listAllDevices(command.Context, command)
 				},
 			},
 			{
@@ -51,12 +52,12 @@ func createDeviceCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					devID, err := getUUID(ctx, "device-id")
+				Action: func(command *cli.Context) error {
+					devID, err := getUUID(command, "device-id")
 					if err != nil {
 						return err
 					}
-					return deleteDevice(ctx, devID)
+					return deleteDevice(command.Context, command, devID)
 				},
 			},
 			{
@@ -76,26 +77,26 @@ func createDeviceCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
+				Action: func(command *cli.Context) error {
 
-					devID, err := getUUID(ctx, "device-id")
+					devID, err := getUUID(command, "device-id")
 					if err != nil {
 						return err
 					}
 
 					update := public.ModelsUpdateDevice{}
-					if ctx.IsSet("hostname") {
-						value := ctx.String("hostname")
+					if command.IsSet("hostname") {
+						value := command.String("hostname")
 						update.Hostname = value
 					}
-					if ctx.IsSet("security-group-id") {
-						value, err := getUUID(ctx, "security-group-id")
+					if command.IsSet("security-group-id") {
+						value, err := getUUID(command, "security-group-id")
 						if err != nil {
 							return err
 						}
 						update.SecurityGroupId = value
 					}
-					return updateDevice(ctx, devID, update)
+					return updateDevice(command.Context, command, devID, update)
 				},
 			},
 			{
@@ -106,9 +107,9 @@ func createDeviceCommand() *cli.Command {
 		},
 	}
 }
-func deviceTableFields(ctx *cli.Context) []TableField {
+func deviceTableFields(command *cli.Context) []TableField {
 	var fields []TableField
-	full := ctx.Bool("full")
+	full := command.Bool("full")
 
 	fields = append(fields, TableField{Header: "DEVICE ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
@@ -182,41 +183,41 @@ func deviceTableFields(ctx *cli.Context) []TableField {
 	return fields
 }
 
-func listAllDevices(ctx *cli.Context) error {
-	c := createClient(ctx)
+func listAllDevices(ctx context.Context, command *cli.Context) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		ListDevices(ctx.Context).
+		ListDevices(ctx).
 		Execute())
-	show(ctx, deviceTableFields(ctx), res)
+	show(command, deviceTableFields(command), res)
 	return nil
 }
 
-func listVpcDevices(ctx *cli.Context, vpcId string) error {
-	c := createClient(ctx)
+func listVpcDevices(ctx context.Context, command *cli.Context, vpcId string) error {
+	c := createClient(ctx, command)
 	response := apiResponse(c.VPCApi.
-		ListDevicesInVPC(ctx.Context, vpcId).
+		ListDevicesInVPC(ctx, vpcId).
 		Execute())
-	show(ctx, deviceTableFields(ctx), response)
+	show(command, deviceTableFields(command), response)
 	return nil
 }
 
-func deleteDevice(ctx *cli.Context, devID string) error {
-	c := createClient(ctx)
+func deleteDevice(ctx context.Context, command *cli.Context, devID string) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		DeleteDevice(ctx.Context, devID).
+		DeleteDevice(ctx, devID).
 		Execute())
-	show(ctx, deviceTableFields(ctx), res)
-	showSuccessfully(ctx, "deleted")
+	show(command, deviceTableFields(command), res)
+	showSuccessfully(command, "deleted")
 	return nil
 }
 
-func updateDevice(ctx *cli.Context, devID string, update public.ModelsUpdateDevice) error {
-	c := createClient(ctx)
+func updateDevice(ctx context.Context, command *cli.Context, devID string, update public.ModelsUpdateDevice) error {
+	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
-		UpdateDevice(ctx.Context, devID).
+		UpdateDevice(ctx, devID).
 		Update(update).
 		Execute())
-	show(ctx, deviceTableFields(ctx), res)
-	showSuccessfully(ctx, "updated")
+	show(command, deviceTableFields(command), res)
+	showSuccessfully(command, "updated")
 	return nil
 }

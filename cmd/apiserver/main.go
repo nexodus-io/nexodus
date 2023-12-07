@@ -282,12 +282,12 @@ func main() {
 			},
 		},
 
-		Action: func(cCtx *cli.Context) error {
-			ctx, _ := signal.NotifyContext(cCtx.Context, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+		Action: func(command *cli.Context) error {
+			ctx, _ := signal.NotifyContext(command.Context, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 			ctx, span := tracer.Start(ctx, "Run")
 			defer span.End()
-			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
-				pprof_init(cCtx, logger)
+			withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
+				pprof_init(command.Context, command, logger)
 
 				if err := database.Migrations().Migrate(ctx, db); err != nil {
 					log.Fatal(err)
@@ -297,20 +297,20 @@ func main() {
 				wg := &sync.WaitGroup{}
 				signalBus.Start(ctx, wg)
 
-				ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
+				ipam := ipam.NewIPAM(logger.Sugar(), command.String("ipam-address"))
 
 				fflags := fflags.NewFFlags(logger.Sugar())
 
 				store := inmem.New()
 
 				redisClient := redis.NewClient(&redis.Options{
-					Addr: cCtx.String("redis-server"),
-					DB:   cCtx.Int("redis-db"),
+					Addr: command.String("redis-server"),
+					DB:   command.Int("redis-db"),
 				})
 
 				sessionStore := redisStore.NewRedisStore(&redisStore.Options{
-					Addr: cCtx.String("redis-server"),
-					DB:   cCtx.Int("redis-db"),
+					Addr: command.String("redis-server"),
+					DB:   command.Int("redis-db"),
 				})
 
 				sessionManager := session.NewManager(
@@ -324,35 +324,35 @@ func main() {
 				}
 
 				smtpServer := email.SmtpServer{
-					HostPort: cCtx.String("smtp-host-port"),
-					User:     cCtx.String("smtp-host-user"),
-					Password: cCtx.String("smtp-host-password"),
+					HostPort: command.String("smtp-host-port"),
+					User:     command.String("smtp-host-user"),
+					Password: command.String("smtp-host-password"),
 				}
-				if cCtx.Bool("smtp-tls") { // #nosec G402
+				if command.Bool("smtp-tls") { // #nosec G402
 					smtpServer.Tls = &tls.Config{
-						InsecureSkipVerify: cCtx.Bool("insecure-tls"),
+						InsecureSkipVerify: command.Bool("insecure-tls"),
 					}
 				}
 				api.SmtpServer = smtpServer
-				api.SmtpFrom = cCtx.String("smtp-from")
+				api.SmtpFrom = command.String("smtp-from")
 
 				scopes := []string{"openid", "profile", "email"}
-				scopes = append(scopes, cCtx.StringSlice("scopes")...)
+				scopes = append(scopes, command.StringSlice("scopes")...)
 
 				webAuth, err := agent.NewOidcAgent(
 					ctx,
 					logger,
-					cCtx.String("oidc-url"),
-					cCtx.String("oidc-backchannel-url"),
-					cCtx.Bool("insecure-tls"),
-					cCtx.String("oidc-client-id-web"),
-					cCtx.String("oidc-client-secret-web"),
-					cCtx.String("redirect-url"),
+					command.String("oidc-url"),
+					command.String("oidc-backchannel-url"),
+					command.Bool("insecure-tls"),
+					command.String("oidc-client-id-web"),
+					command.String("oidc-client-secret-web"),
+					command.String("redirect-url"),
 					scopes,
-					cCtx.String("domain"),
-					cCtx.StringSlice("origins"),
+					command.String("domain"),
+					command.StringSlice("origins"),
 					"", // backend
-					cCtx.String("cookie-key"),
+					command.String("cookie-key"),
 				)
 				if err != nil {
 					log.Fatal(err)
@@ -361,14 +361,14 @@ func main() {
 				cliAuth, err := agent.NewOidcAgent(
 					ctx,
 					logger,
-					cCtx.String("oidc-url"),
-					cCtx.String("oidc-backchannel-url"),
-					cCtx.Bool("insecure-tls"),
-					cCtx.String("oidc-client-id-cli"),
+					command.String("oidc-url"),
+					command.String("oidc-backchannel-url"),
+					command.Bool("insecure-tls"),
+					command.String("oidc-client-id-cli"),
 					"", // clientSecret
 					"", // redirectURL
 					scopes,
-					cCtx.String("domain"),
+					command.String("domain"),
 					[]string{}, // origins
 					"",         // backend
 					"",         // cookieKey
@@ -377,21 +377,21 @@ func main() {
 					log.Fatal(err)
 				}
 
-				tlsKey := cCtx.String("tls-key")
+				tlsKey := command.String("tls-key")
 				api.PrivateKey, err = jwt.ParseRSAPrivateKeyFromPEM([]byte(tlsKey))
 				if err != nil {
 					log.Fatal(fmt.Errorf("invalid tls-key: %w", err))
 				}
-				api.URL = cCtx.String("url")
+				api.URL = command.String("url")
 
 				router, err := routers.NewAPIRouter(ctx, routers.APIRouterOptions{
 					Logger:          logger.Sugar(),
 					Api:             api,
-					ClientIdWeb:     cCtx.String("oidc-client-id-web"),
-					ClientIdCli:     cCtx.String("oidc-client-id-cli"),
-					OidcURL:         cCtx.String("oidc-url"),
-					OidcBackchannel: cCtx.String("oidc-backchannel-url"),
-					InsecureTLS:     cCtx.Bool("insecure-tls"),
+					ClientIdWeb:     command.String("oidc-client-id-web"),
+					ClientIdCli:     command.String("oidc-client-id-cli"),
+					OidcURL:         command.String("oidc-url"),
+					OidcBackchannel: command.String("oidc-backchannel-url"),
+					InsecureTLS:     command.Bool("insecure-tls"),
 					BrowserFlow:     webAuth,
 					DeviceFlow:      cliAuth,
 					Store:           store,
@@ -402,7 +402,7 @@ func main() {
 				}
 
 				httpServer := &http.Server{
-					Addr:              cCtx.String("listen"),
+					Addr:              command.String("listen"),
 					Handler:           router,
 					ReadTimeout:       5 * time.Second,
 					ReadHeaderTimeout: 5 * time.Second,
@@ -417,7 +417,7 @@ func main() {
 					}
 				})
 
-				grpcListener, err := net.Listen("tcp", cCtx.String("listen-grpc"))
+				grpcListener, err := net.Listen("tcp", command.String("listen-grpc"))
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -482,9 +482,9 @@ func main() {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "rollback",
 		Usage: "Rollback the last database migration",
-		Action: func(cCtx *cli.Context) error {
-			ctx := cCtx.Context
-			withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
+		Action: func(command *cli.Context) error {
+			ctx := command.Context
+			withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
 				if err := database.Migrations().RollbackLast(ctx, db); err != nil {
 					log.Fatal(err)
 				}
@@ -501,10 +501,10 @@ func main() {
 			{
 				Name:  "rebuild",
 				Usage: "Rebuild the IPAM service using the allocated ips and cidrs in nexodus database",
-				Action: func(cCtx *cli.Context) error {
-					ctx := cCtx.Context
-					withLoggerAndDB(ctx, cCtx, func(logger *zap.Logger, db *gorm.DB, dsn string) {
-						ipam := ipam.NewIPAM(logger.Sugar(), cCtx.String("ipam-address"))
+				Action: func(command *cli.Context) error {
+					ctx := command.Context
+					withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
+						ipam := ipam.NewIPAM(logger.Sugar(), command.String("ipam-address"))
 						if err := cmd.Rebuild(ctx, logger, db, ipam); err != nil {
 							log.Fatal(err)
 						}
@@ -553,18 +553,18 @@ func main() {
 						EnvVars: []string{"IPAM_DB_SSLMODE"},
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					ctx := cCtx.Context
-					log := getLogger(cCtx).Sugar()
+				Action: func(command *cli.Context) error {
+					ctx := command.Context
+					log := getLogger(command).Sugar()
 					ipamDB, _, err := database.NewDatabase(
 						ctx,
 						log,
-						cCtx.String("ipam-db-host"),
-						cCtx.String("ipam-db-user"),
-						cCtx.String("ipam-db-password"),
-						cCtx.String("ipam-db-name"),
-						cCtx.String("ipam-db-port"),
-						cCtx.String("ipam-db-sslmode"),
+						command.String("ipam-db-host"),
+						command.String("ipam-db-user"),
+						command.String("ipam-db-password"),
+						command.String("ipam-db-name"),
+						command.String("ipam-db-port"),
+						command.String("ipam-db-sslmode"),
 					)
 					if err != nil {
 						log.Fatal(err)
@@ -583,11 +583,11 @@ func main() {
 	}
 }
 
-func getLogger(cCtx *cli.Context) *zap.Logger {
+func getLogger(command *cli.Context) *zap.Logger {
 	var logger *zap.Logger
 	var err error
 	// set the log level
-	if cCtx.Bool("debug") {
+	if command.Bool("debug") {
 		logConfig := zap.NewProductionConfig()
 		logConfig.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 		logger, err = logConfig.Build()
@@ -599,9 +599,9 @@ func getLogger(cCtx *cli.Context) *zap.Logger {
 	}
 	return logger
 }
-func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
-	logger := getLogger(cCtx)
-	cleanup := initTracer(logger.Sugar(), cCtx.Bool("trace-insecure"), cCtx.String("trace-endpoint"))
+func withLoggerAndDB(ctx context.Context, command *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
+	logger := getLogger(command)
+	cleanup := initTracer(logger.Sugar(), command.Bool("trace-insecure"), command.String("trace-endpoint"))
 	defer func() {
 		if cleanup == nil {
 			return
@@ -614,12 +614,12 @@ func withLoggerAndDB(ctx context.Context, cCtx *cli.Context, f func(logger *zap.
 	db, dsn, err := database.NewDatabase(
 		ctx,
 		logger.Sugar(),
-		cCtx.String("db-host"),
-		cCtx.String("db-user"),
-		cCtx.String("db-password"),
-		cCtx.String("db-name"),
-		cCtx.String("db-port"),
-		cCtx.String("db-sslmode"),
+		command.String("db-host"),
+		command.String("db-user"),
+		command.String("db-password"),
+		command.String("db-name"),
+		command.String("db-port"),
+		command.String("db-sslmode"),
 	)
 	if err != nil {
 		log.Fatal(err)
