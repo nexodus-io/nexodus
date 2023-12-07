@@ -16,41 +16,43 @@ import (
 // features, for example.
 type FFlags struct {
 	logger *zap.SugaredLogger
-}
-
-type FFlag struct {
-	env          string
-	defaultValue bool
-}
-
-var hardCodedFlags = map[string]FFlag{
-	"multi-organization": {"NEXAPI_FFLAG_MULTI_ORGANIZATION", true},
-	"security-groups":    {"NEXAPI_FFLAG_SECURITY_GROUPS", true},
+	Flags  map[string]func() bool
 }
 
 func NewFFlags(logger *zap.SugaredLogger) *FFlags {
 	return &FFlags{
 		logger: logger,
+		Flags:  map[string]func() bool{},
 	}
 }
+func (f *FFlags) RegisterEnvFlag(name, env string, defaultValue bool) {
+	result := defaultValue
+	if envValue, err := strconv.ParseBool(os.Getenv(env)); err == nil {
+		result = envValue
+	}
+	f.RegisterFlag(name, func() bool {
+		return result
+	})
+}
 
-func (f *FFlags) getFlagValue(c *gin.Context, name string, fflag FFlag) bool {
+func (f *FFlags) RegisterFlag(name string, fn func() bool) {
+	f.Flags[name] = fn
+}
+
+func (f *FFlags) getFlagValue(c *gin.Context, name string, fn func() bool) bool {
 	ctxName := fmt.Sprintf("nexodus.fflag.%s", name)
 	if _, found := c.Get(ctxName); found {
 		return c.GetBool(ctxName)
 	}
-	if envValue, err := strconv.ParseBool(os.Getenv(fflag.env)); err == nil {
-		return envValue
-	}
-	return fflag.defaultValue
+	return fn()
 }
 
 // ListFlags returns a map of all currently defined feature flags and
 // whether those features are enabled (true) or not (false).
 func (f *FFlags) ListFlags(c *gin.Context) map[string]bool {
 	result := map[string]bool{}
-	for name, fflag := range hardCodedFlags {
-		result[name] = f.getFlagValue(c, name, fflag)
+	for name, fn := range f.Flags {
+		result[name] = f.getFlagValue(c, name, fn)
 	}
 	return result
 }
@@ -59,11 +61,9 @@ func (f *FFlags) ListFlags(c *gin.Context) map[string]bool {
 // flag is enabled (true) or not (false). An error is returned if
 // the flag name is invalid.
 func (f *FFlags) GetFlag(c *gin.Context, flag string) (bool, error) {
-	fflag, ok := hardCodedFlags[flag]
-
+	fn, ok := f.Flags[flag]
 	if !ok {
-		f.logger.Errorf("Invalid feature flag name: %s", flag)
-		return false, fmt.Errorf("Invalid feature flag name: %s", flag)
+		return false, fmt.Errorf("invalid feature flag name: %s", flag)
 	}
-	return f.getFlagValue(c, flag, fflag), nil
+	return f.getFlagValue(c, flag, fn), nil
 }

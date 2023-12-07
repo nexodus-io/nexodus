@@ -14,6 +14,7 @@ import (
 	"github.com/nexodus-io/nexodus/internal/signalbus"
 	"github.com/redis/go-redis/v9"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -51,10 +52,12 @@ type API struct {
 	fetchManager   fetchmgr.FetchManager
 	onlineTracker  *DeviceTracker
 	URL            string
+	URLParsed      *url.URL
 	PrivateKey     *rsa.PrivateKey
 	Certificates   []*x509.Certificate
 	SmtpServer     email.SmtpServer
 	SmtpFrom       string
+	caKeyPair      CertificateKeyPair
 }
 
 func NewAPI(
@@ -67,7 +70,22 @@ func NewAPI(
 	signalBus signalbus.SignalBus,
 	redis *redis.Client,
 	sessionManager *session.Manager,
+	caKeyPair CertificateKeyPair,
 ) (*API, error) {
+
+	fflags.RegisterEnvFlag("multi-organization", "NEXAPI_FFLAG_MULTI_ORGANIZATION", true)
+	fflags.RegisterEnvFlag("security-groups", "NEXAPI_FFLAG_SECURITY_GROUPS", true)
+	fflags.RegisterEnvFlag("devices", "NEXAPI_FFLAG_DEVICES", true)
+	fflags.RegisterEnvFlag("sites", "NEXAPI_FFLAG_SITES", false)
+	fflags.RegisterFlag("ca", func() bool {
+		if !fflags.Flags["sites"]() {
+			return false
+		}
+		if caKeyPair.Certificate == nil {
+			return false
+		}
+		return true
+	})
 
 	ctx, span := tracer.Start(parent, "NewAPI")
 	defer span.End()
@@ -101,6 +119,7 @@ func NewAPI(
 		sessionManager: sessionManager,
 		fetchManager:   fetchManager,
 		onlineTracker:  onlineTracker,
+		caKeyPair:      caKeyPair,
 	}
 
 	if err := api.populateStore(ctx); err != nil {

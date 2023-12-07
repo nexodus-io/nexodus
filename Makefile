@@ -549,6 +549,7 @@ clear-db:
 		DROP TABLE IF EXISTS security_groups;\
 		DROP TABLE IF EXISTS device_metadata;\
 		DROP TABLE IF EXISTS devices;\
+		DROP TABLE IF EXISTS sites;\
 		DROP TABLE IF EXISTS user_organizations;\
 		DROP TABLE IF EXISTS vpcs;\
 		DROP TABLE IF EXISTS organizations;\

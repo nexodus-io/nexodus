@@ -54,6 +54,11 @@ func (d deviceList) Len() int {
 func (api *API) ListDevices(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListDevices")
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
+
 	devices := make([]models.Device, 0)
 
 	db := api.db.WithContext(ctx)
@@ -136,6 +141,11 @@ func (api *API) GetDevice(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
+
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -184,6 +194,11 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
+
 	deviceId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -430,6 +445,11 @@ func getAllowedIPs(ip string, ip6 string, relay bool) ([]string, error) {
 func (api *API) CreateDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "AddDevice")
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
+
 	var request models.AddDevice
 	// Call BindJSON to bind the received JSON
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -639,6 +659,11 @@ func (api *API) CreateDevice(c *gin.Context) {
 func (api *API) DeleteDevice(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "DeleteDevice")
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
+
 	deviceID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
@@ -756,6 +781,10 @@ func (api *API) ListDevicesInVPC(c *gin.Context) {
 			attribute.String("vpc_id", c.Param("id")),
 		))
 	defer span.End()
+
+	if !api.FlagCheck(c, "devices") {
+		return
+	}
 
 	vpcId, err := uuid.Parse(c.Param("id"))
 	if err != nil {

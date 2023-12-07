@@ -7,13 +7,15 @@ import (
 // VPC contains Devices
 type VPC struct {
 	Base
-	OrganizationID uuid.UUID `json:"organization_id"`
-	Description    string    `json:"description"`
-	PrivateCidr    bool      `json:"private_cidr"`
-	Ipv4Cidr       string    `json:"ipv4_cidr"`
-	Ipv6Cidr       string    `json:"ipv6_cidr"`
-
-	Organization *Organization `json:"-"`
+	OrganizationID uuid.UUID     `json:"organization_id"`
+	Description    string        `json:"description"`
+	PrivateCidr    bool          `json:"private_cidr"`
+	Ipv4Cidr       string        `json:"ipv4_cidr"`
+	Ipv6Cidr       string        `json:"ipv6_cidr"`
+	CaKey          string        `json:"-"`
+	CaCertificates []string      `json:"ca_certificates,omitempty" gorm:"type:JSONB; serializer:json"`
+	Organization   *Organization `json:"-"`
+	Revision       uint64        `json:"revision" gorm:"type:bigserial;index:"`
 }
 
 type AddVPC struct {

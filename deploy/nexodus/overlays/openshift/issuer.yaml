@@ -12,3 +12,42 @@ spec:
       - http01:
           ingress:
             serviceType: ClusterIP
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nexodus-selfsigned-ca
+spec:
+  isCA: true
+  commonName: nexodus-selfsigned-ca
+  secretName: nexodus-ca-key-pair
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    encoding: PKCS1
+  uris:
+    - https://try.nexodus.127.0.0.1.nip.io
+  usages:
+    - digital signature
+    - key encipherment
+    - crl sign
+    - cert sign
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: nexodus-issuer
+spec:
+  ca:
+    secretName: nexodus-ca-key-pair

@@ -193,6 +193,28 @@ spec:
                   name: smtp-server
                   key: NEXAPI_SMTP_USER
                   optional: true
+            - name: NEXAPI_CA_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-ca-key-pair
+                  key: ca.crt
+                  optional: true
+            - name: NEXAPI_CA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nexodus-ca-key-pair
+                  key: tls.key
+                  optional: true
+            - name: NEXAPI_FFLAG_DEVICES
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_FFLAG_DEVICES
+            - name: NEXAPI_FFLAG_SITES
+              valueFrom:
+                configMapKeyRef:
+                  name: apiserver
+                  key: NEXAPI_FFLAG_SITES
 
           # CI deployment seems to fail when this is enabled
           # readinessProbe:
