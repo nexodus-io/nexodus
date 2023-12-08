@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	agent "github.com/nexodus-io/nexodus/pkg/oidcagent"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 )
 
@@ -29,116 +30,114 @@ const (
 )
 
 func main() {
-	app := &cli.App{
+	app := &cli.Command{
 		Name: "go-oidc-agent",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Usage:   "Enable Debug Logging",
 				Value:   false,
-				EnvVars: []string{"DEBUG"},
+				Sources: cli.EnvVars("DEBUG"),
 			},
 			&cli.StringFlag{
 				Name:  flowArg,
 				Usage: "OAuth2 Flow",
 				Value: "authorization",
-				Action: func(ctx *cli.Context, s string) error {
+				Action: func(ctx context.Context, command *cli.Command, s string) error {
 					if s != "authorization" && s != "device" {
 						return fmt.Errorf("flag 'flow' value should be one of 'authorization' or 'device'")
 					}
 					return nil
 				},
-				EnvVars: []string{"OIDC_FLOW"},
+				Sources: cli.EnvVars("OIDC_FLOW"),
 			},
 			&cli.StringFlag{
 				Name:    oidcProviderArg,
 				Usage:   "OIDC Provider URL",
 				Value:   "https://accounts.google.com",
-				EnvVars: []string{"OIDC_PROVIDER"},
+				Sources: cli.EnvVars("OIDC_PROVIDER"),
 			},
 			&cli.StringFlag{
 				Name:    oidcBackChannelArg,
 				Usage:   "OIDC Backchannel URL",
 				Value:   "https://auth.service.k8s.local",
-				EnvVars: []string{"OIDC_BACKCHANNEL"},
+				Sources: cli.EnvVars("OIDC_BACKCHANNEL"),
 			},
 			&cli.BoolFlag{
 				Name:    insecureTLSArg,
 				Usage:   "Trust Any TLS Certificate",
 				Value:   false,
-				EnvVars: []string{"INSECURE_TLS"},
+				Sources: cli.EnvVars("INSECURE_TLS"),
 			},
 			&cli.StringFlag{
 				Name:    oidcClientIDArg,
 				Usage:   "OIDC Client ID",
 				Value:   "my-app-id",
-				EnvVars: []string{"OIDC_CLIENT_ID"},
+				Sources: cli.EnvVars("OIDC_CLIENT_ID"),
 			},
 			&cli.StringFlag{
 				Name:    oidcClientSecretArg,
 				Usage:   "OIDC Client Secret",
 				Value:   "secret",
-				EnvVars: []string{"OIDC_CLIENT_SECRET"},
+				Sources: cli.EnvVars("OIDC_CLIENT_SECRET"),
 			},
 			&cli.StringFlag{
 				Name:    redirectURLArg,
 				Usage:   "Redirect URL. This is the URL of the SPA.",
 				Value:   "https://example.com",
-				EnvVars: []string{"REDIRECT_URL"},
+				Sources: cli.EnvVars("REDIRECT_URL"),
 			},
 			&cli.StringSliceFlag{
 				Name:    scopesArg,
 				Usage:   "Additional OAUTH2 scopes",
-				Value:   &cli.StringSlice{},
-				EnvVars: []string{"SCOPES"},
+				Sources: cli.EnvVars("SCOPES"),
 			},
 			&cli.StringSliceFlag{
 				Name:    originsArg,
 				Usage:   "Trusted Origins. At least 1 MUST be provided",
-				Value:   &cli.StringSlice{},
-				EnvVars: []string{"ORIGINS"},
+				Sources: cli.EnvVars("ORIGINS"),
 			},
 			&cli.StringFlag{
 				Name:    domainArg,
 				Usage:   "Domain that the agent is running on.",
 				Value:   "api.example.com",
-				EnvVars: []string{"DOMAIN"},
+				Sources: cli.EnvVars("DOMAIN"),
 			},
 			&cli.StringFlag{
 				Name:    backendArg,
 				Usage:   "Backend that we are proxying to.",
 				Value:   "backend.example.com",
-				EnvVars: []string{"BACKEND"},
+				Sources: cli.EnvVars("BACKEND"),
 			},
 			&cli.StringFlag{
 				Name:    cookieKeyArg,
 				Usage:   "Key to the cookie jar.",
 				Value:   "p2s5v8y/B?E(G+KbPeShVmYq3t6w9z$C",
-				EnvVars: []string{"COOKIE_KEY"},
+				Sources: cli.EnvVars("COOKIE_KEY"),
 			},
 		},
 		Action: run,
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(cCtx *cli.Context) error {
-	debug := cCtx.Bool("debug")
-	oidcProvider := cCtx.String(oidcProviderArg)
-	oidcBackchannel := cCtx.String(oidcBackChannelArg)
-	insecureTLS := cCtx.Bool(insecureTLSArg)
-	clientID := cCtx.String(oidcClientIDArg)
-	clientSecret := cCtx.String(oidcClientSecretArg)
-	redirectURL := cCtx.String(redirectURLArg)
-	additionalScopes := cCtx.StringSlice(scopesArg)
-	origins := cCtx.StringSlice(originsArg)
-	domain := cCtx.String(domainArg)
-	backend := cCtx.String(backendArg)
-	cookieKey := cCtx.String(cookieKeyArg)
-	flow := cCtx.String(flowArg)
+func run(ctx context.Context, command *cli.Command) error {
+	debug := command.Bool("debug")
+	oidcProvider := command.String(oidcProviderArg)
+	oidcBackchannel := command.String(oidcBackChannelArg)
+	insecureTLS := command.Bool(insecureTLSArg)
+	clientID := command.String(oidcClientIDArg)
+	clientSecret := command.String(oidcClientSecretArg)
+	redirectURL := command.String(redirectURLArg)
+	additionalScopes := command.StringSlice(scopesArg)
+	origins := command.StringSlice(originsArg)
+	domain := command.String(domainArg)
+	backend := command.String(backendArg)
+	cookieKey := command.String(cookieKeyArg)
+	flow := command.String(flowArg)
 
 	var logger *zap.Logger
 	var err error
@@ -160,7 +159,7 @@ func run(cCtx *cli.Context) error {
 	scopes = append(scopes, additionalScopes...)
 
 	auth, err := agent.NewOidcAgent(
-		cCtx.Context, logger, oidcProvider,
+		ctx, logger, oidcProvider,
 		oidcBackchannel, insecureTLS,
 		clientID, clientSecret, redirectURL,
 		scopes, domain, origins, backend, cookieKey)

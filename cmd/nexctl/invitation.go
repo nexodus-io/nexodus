@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func createInvitationCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "invitation",
 		Usage: "commands relating to invitations",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List invitations",
-				Action: func(command *cli.Context) error {
-					return listInvitations(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return listInvitations(ctx, command)
 				},
 			},
 			{
@@ -36,7 +36,7 @@ func createInvitationCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					organizationId, err := getUUID(command, "organization-id")
 					if err != nil {
 						return err
@@ -45,7 +45,7 @@ func createInvitationCommand() *cli.Command {
 					if err != nil {
 						return err
 					}
-					return createInvitation(command.Context, command, public.ModelsAddInvitation{
+					return createInvitation(ctx, command, public.ModelsAddInvitation{
 						OrganizationId: organizationId,
 						UserId:         userId,
 						Email:          command.String("email"),
@@ -61,12 +61,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					id, err := getUUID(command, "inv-id")
 					if err != nil {
 						return err
 					}
-					return deleteInvitation(command.Context, command, id)
+					return deleteInvitation(ctx, command, id)
 				},
 			},
 			{
@@ -78,12 +78,12 @@ func createInvitationCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					id, err := getUUID(command, "inv-id")
 					if err != nil {
 						return err
 					}
-					return acceptInvitation(command.Context, command, id)
+					return acceptInvitation(ctx, command, id)
 				},
 			},
 		},
@@ -106,7 +106,7 @@ func invitationsTableFields() []TableField {
 	return fields
 }
 
-func listInvitations(ctx context.Context, command *cli.Context) error {
+func listInvitations(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.InvitationApi.
 		ListInvitations(ctx).
@@ -114,7 +114,7 @@ func listInvitations(ctx context.Context, command *cli.Context) error {
 	show(command, invitationsTableFields(), res)
 	return nil
 }
-func acceptInvitation(ctx context.Context, command *cli.Context, id string) error {
+func acceptInvitation(ctx context.Context, command *cli.Command, id string) error {
 	c := createClient(ctx, command)
 	httpResp, err := c.InvitationApi.
 		AcceptInvitation(ctx, id).
@@ -124,7 +124,7 @@ func acceptInvitation(ctx context.Context, command *cli.Context, id string) erro
 	return nil
 }
 
-func deleteInvitation(ctx context.Context, command *cli.Context, id string) error {
+func deleteInvitation(ctx context.Context, command *cli.Command, id string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.InvitationApi.
 		DeleteInvitation(ctx, id).
@@ -134,7 +134,7 @@ func deleteInvitation(ctx context.Context, command *cli.Context, id string) erro
 	return nil
 }
 
-func createInvitation(ctx context.Context, command *cli.Context, invitation public.ModelsAddInvitation) error {
+func createInvitation(ctx context.Context, command *cli.Command, invitation public.ModelsAddInvitation) error {
 	c := createClient(ctx, command)
 	if invitation.OrganizationId == "" {
 		invitation.OrganizationId = getDefaultOrgId(ctx, c)

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/util"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type WgSession struct {
@@ -28,7 +28,7 @@ type ListPeersResponse struct {
 	Peers         map[string]WgSession `json:"peers"`
 }
 
-func peerTableFields(command *cli.Context) []TableField {
+func peerTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 	fields = append(fields, TableField{Header: "ENDPOINT", Field: "Endpoint"})
@@ -53,7 +53,7 @@ func peerTableFields(command *cli.Context) []TableField {
 }
 
 // cmdListPeers get peer listings from nexd
-func cmdListPeers(ctx context.Context, command *cli.Context) error {
+func cmdListPeers(ctx context.Context, command *cli.Command) error {
 	var err error
 	var response ListPeersResponse
 	if err = checkVersion(); err != nil {

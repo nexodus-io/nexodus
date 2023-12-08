@@ -33,7 +33,7 @@ NAME:
    nexctl - controls the Nexodus control and data planes
 
 USAGE:
-   nexctl [global options] command [command options] [arguments...]
+   nexctl [global options] [command [command options]] [arguments...]
 
 COMMANDS:
    device          Commands relating to devices
@@ -54,7 +54,7 @@ GLOBAL OPTIONS:
    --password value            Password
    --output value              Output format: json, json-raw, yaml, no-header, column (default columns) (default: "column")
    --insecure-skip-tls-verify  If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false)
-   --help, -h                  Show help
+   --help, -h                  Show help (default: false)
 ```
 
 #### nexctl device
@@ -64,7 +64,7 @@ NAME:
    nexctl device - Commands relating to devices
 
 USAGE:
-   nexctl device command [command options] [arguments...]
+   nexctl device [command [command options]] [arguments...]
 
 COMMANDS:
    list      List all devices
@@ -74,7 +74,7 @@ COMMANDS:
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```
 
 #### nexctl invitation
@@ -84,7 +84,7 @@ NAME:
    nexctl invitation - commands relating to invitations
 
 USAGE:
-   nexctl invitation command [command options] [arguments...]
+   nexctl invitation [command [command options]] [arguments...]
 
 COMMANDS:
    list     List invitations
@@ -94,7 +94,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```
 
 #### nexctl nexd
@@ -104,7 +104,7 @@ NAME:
    nexctl nexd - Commands for interacting with the local instance of nexd
 
 USAGE:
-   nexctl nexd command [command options] [arguments...]
+   nexctl nexd [command [command options]] [arguments...]
 
 COMMANDS:
    version    Display the nexd version
@@ -118,7 +118,7 @@ COMMANDS:
 
 OPTIONS:
    --unix-socket value  Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
-   --help, -h           Show help
+   --help, -h           Show help (default: false)
 ```
 
 #### nexctl organization
@@ -128,7 +128,7 @@ NAME:
    nexctl organization - Commands relating to organizations
 
 USAGE:
-   nexctl organization command [command options] [arguments...]
+   nexctl organization [command [command options]] [arguments...]
 
 COMMANDS:
    list     List organizations
@@ -137,7 +137,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```
 
 #### nexctl user
@@ -147,7 +147,7 @@ NAME:
    nexctl user - Commands relating to users
 
 USAGE:
-   nexctl user command [command options] [arguments...]
+   nexctl user [command [command options]] [arguments...]
 
 COMMANDS:
    list         List all users
@@ -157,7 +157,7 @@ COMMANDS:
    help, h      Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```
 
 #### nexctl security-group
@@ -167,7 +167,7 @@ NAME:
    nexctl security-group - commands relating to security groups
 
 USAGE:
-   nexctl security-group command [command options] [arguments...]
+   nexctl security-group [command [command options]] [arguments...]
 
 COMMANDS:
    list     List all security groups
@@ -177,5 +177,5 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```

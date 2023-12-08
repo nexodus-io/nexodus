@@ -4,19 +4,19 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func createVpcCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "vpc",
 		Usage: "Commands relating to vpcs",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List vpcs",
-				Action: func(command *cli.Context) error {
-					return listVPCs(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return listVPCs(ctx, command)
 				},
 			},
 			{
@@ -40,8 +40,8 @@ func createVpcCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
-					return createVPC(command.Context, command, public.ModelsAddVPC{
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return createVPC(ctx, command, public.ModelsAddVPC{
 						Ipv4Cidr:       command.String("ipv4-cidr"),
 						Ipv6Cidr:       command.String("ipv6-cidr"),
 						Description:    command.String("description"),
@@ -63,7 +63,7 @@ func createVpcCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					id, err := getUUID(command, "vpc-id")
 					if err != nil {
 						return err
@@ -72,7 +72,7 @@ func createVpcCommand() *cli.Command {
 					update := public.ModelsUpdateVPC{
 						Description: command.String("description"),
 					}
-					return updateVPC(command.Context, command, id, update)
+					return updateVPC(ctx, command, id, update)
 				},
 			},
 			{
@@ -84,24 +84,24 @@ func createVpcCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					vpcID, err := getUUID(command, "vpc-id")
 					if err != nil {
 						return err
 					}
-					return deleteVPC(command.Context, command, vpcID)
+					return deleteVPC(ctx, command, vpcID)
 				},
 			},
 			{
-				Name:        "metadata",
-				Usage:       "Commands relating to device metadata across the vpc",
-				Subcommands: vpcMetadataSubcommands,
+				Name:     "metadata",
+				Usage:    "Commands relating to device metadata across the vpc",
+				Commands: vpcMetadataSubcommands,
 			},
 		},
 	}
 }
 
-func updateVPC(ctx context.Context, command *cli.Context, idStr string, update public.ModelsUpdateVPC) error {
+func updateVPC(ctx context.Context, command *cli.Command, idStr string, update public.ModelsUpdateVPC) error {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
@@ -127,7 +127,7 @@ func vpcTableFields() []TableField {
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	return fields
 }
-func listVPCs(ctx context.Context, command *cli.Context) error {
+func listVPCs(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.VPCApi.
 		ListVPCs(ctx).
@@ -136,7 +136,7 @@ func listVPCs(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func createVPC(ctx context.Context, command *cli.Context, resource public.ModelsAddVPC) error {
+func createVPC(ctx context.Context, command *cli.Command, resource public.ModelsAddVPC) error {
 	c := createClient(ctx, command)
 	if resource.OrganizationId == "" {
 		resource.OrganizationId = getDefaultOrgId(ctx, c)
@@ -149,7 +149,7 @@ func createVPC(ctx context.Context, command *cli.Context, resource public.Models
 	return nil
 }
 
-func deleteVPC(ctx context.Context, command *cli.Context, id string) error {
+func deleteVPC(ctx context.Context, command *cli.Command, id string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.VPCApi.
 		DeleteVPC(ctx, id).

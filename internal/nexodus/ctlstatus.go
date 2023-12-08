@@ -6,7 +6,7 @@ import (
 	"net/rpc/jsonrpc"
 	"runtime"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func callNexd(method string) (string, error) {
@@ -28,7 +28,7 @@ func callNexd(method string) (string, error) {
 }
 
 // CtlStatus attempt to retrieve the status of the nexd service
-func CtlStatus(cCtx *cli.Context) (string, error) {
+func CtlStatus(command *cli.Command) (string, error) {
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		return "", fmt.Errorf("nexd ctl interface not yet supported on %s", runtime.GOOS)
 	}

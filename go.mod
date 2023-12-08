@@ -9,11 +9,18 @@ require (
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6
 	github.com/cockroachdb/cockroach-go/v2 v2.3.5
+	github.com/coredns/caddy v1.1.1
+	github.com/coredns/coredns v1.11.1
 	github.com/coreos/go-oidc/v3 v3.8.0
 	github.com/cucumber/godog v0.13.0
 	github.com/docker/docker v24.0.7+incompatible // 24.0 branch
+	github.com/dustin/go-humanize v1.0.1
+	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
+	github.com/emersion/go-smtp v0.19.0
 	github.com/envoyproxy/go-control-plane v0.11.1
+	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.16.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/zap v0.2.0
 	github.com/gin-gonic/gin v1.9.1
@@ -25,9 +32,13 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/securecookie v1.1.1
 	github.com/itchyny/gojq v0.12.13
+	github.com/jackc/pgx/v5 v5.4.3
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/metal-stack/go-ipam v1.11.6
+	github.com/mhmtszr/concurrent-swiss-map v1.0.4
+	github.com/miekg/dns v1.1.57
 	github.com/natefinch/atomic v1.0.1
+	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pion/stun v0.6.1
 	github.com/redis/go-redis/v9 v9.3.0
@@ -38,7 +49,7 @@ require (
 	github.com/swaggo/swag v1.16.2
 	github.com/testcontainers/testcontainers-go v0.26.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.3
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/urfave/cli/v3 v3.0.0-alpha6.0.20231207122148-2b97d2ebd9f1
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/zsais/go-gin-prometheus v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.44.0
@@ -48,12 +59,14 @@ require (
 	go.opentelemetry.io/otel/sdk v1.21.0
 	go.opentelemetry.io/otel/trace v1.21.0
 	go.uber.org/zap v1.26.0
+	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
 	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.15.0
 	golang.org/x/sys v0.15.0
 	golang.org/x/term v0.15.0
 	golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
@@ -61,22 +74,6 @@ require (
 	k8s.io/api v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.4
-)
-
-require (
-	github.com/coredns/caddy v1.1.1
-	github.com/coredns/coredns v1.11.1
-	github.com/dustin/go-humanize v1.0.1
-	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
-	github.com/emersion/go-smtp v0.19.0
-	github.com/evanphx/json-patch v5.7.0+incompatible
-	github.com/ghodss/yaml v1.0.0
-	github.com/jackc/pgx/v5 v5.4.3
-	github.com/mhmtszr/concurrent-swiss-map v1.0.4
-	github.com/miekg/dns v1.1.57
-	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb
 )
 
 require (
@@ -205,7 +202,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -240,7 +236,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

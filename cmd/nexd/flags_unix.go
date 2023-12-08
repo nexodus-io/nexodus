@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/nexodus-io/nexodus/internal/api"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var stateDirDefault = "/var/lib/nexd"

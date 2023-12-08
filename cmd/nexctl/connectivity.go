@@ -12,7 +12,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	v4 = "v4"
 )
 
-func keepaliveStatusTableFields(command *cli.Context) []TableField {
+func keepaliveStatusTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
 	fields = append(fields, TableField{Header: "WIREGUARD ADDRESS", Field: "WgIP"})
@@ -40,7 +40,7 @@ func keepaliveStatusTableFields(command *cli.Context) []TableField {
 }
 
 // cmdConnStatus check the reachability of the node's peers and sort the return by hostname
-func cmdConnStatus(ctx context.Context, command *cli.Context, family string) error {
+func cmdConnStatus(ctx context.Context, command *cli.Command, family string) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
