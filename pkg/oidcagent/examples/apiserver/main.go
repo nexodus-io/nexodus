@@ -9,11 +9,11 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	app := &cli.App{
+	app := &cli.Command{
 		Name: "apiserver",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -30,16 +30,15 @@ func main() {
 		Action: run,
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(cCtx *cli.Context) error {
-	providerArg := cCtx.String("provider")
-	clientIDArg := cCtx.String("client-id")
+func run(ctx context.Context, command *cli.Command) error {
+	providerArg := command.String("provider")
+	clientIDArg := command.String("client-id")
 
-	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, providerArg)
 	if err != nil {
 		return err

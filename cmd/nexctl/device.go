@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const LocalTimeFormat = "2006-01-02 15:04:05 MST"
@@ -15,7 +15,7 @@ func createDeviceCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "device",
 		Usage: "Commands relating to devices",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List all devices",
@@ -32,15 +32,15 @@ func createDeviceCommand() *cli.Command {
 						Value:   false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					vpcId, err := getUUID(command, "vpc-id")
 					if err != nil {
 						return err
 					}
 					if vpcId != "" {
-						return listVpcDevices(command.Context, command, vpcId)
+						return listVpcDevices(ctx, command, vpcId)
 					}
-					return listAllDevices(command.Context, command)
+					return listAllDevices(ctx, command)
 				},
 			},
 			{
@@ -52,12 +52,12 @@ func createDeviceCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					devID, err := getUUID(command, "device-id")
 					if err != nil {
 						return err
 					}
-					return deleteDevice(command.Context, command, devID)
+					return deleteDevice(ctx, command, devID)
 				},
 			},
 			{
@@ -77,7 +77,7 @@ func createDeviceCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 
 					devID, err := getUUID(command, "device-id")
 					if err != nil {
@@ -96,18 +96,18 @@ func createDeviceCommand() *cli.Command {
 						}
 						update.SecurityGroupId = value
 					}
-					return updateDevice(command.Context, command, devID, update)
+					return updateDevice(ctx, command, devID, update)
 				},
 			},
 			{
-				Name:        "metadata",
-				Usage:       "Commands relating to device metadata",
-				Subcommands: deviceMetadataSubcommands,
+				Name:     "metadata",
+				Usage:    "Commands relating to device metadata",
+				Commands: deviceMetadataSubcommands,
 			},
 		},
 	}
 }
-func deviceTableFields(command *cli.Context) []TableField {
+func deviceTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	full := command.Bool("full")
 
@@ -183,7 +183,7 @@ func deviceTableFields(command *cli.Context) []TableField {
 	return fields
 }
 
-func listAllDevices(ctx context.Context, command *cli.Context) error {
+func listAllDevices(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		ListDevices(ctx).
@@ -192,7 +192,7 @@ func listAllDevices(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func listVpcDevices(ctx context.Context, command *cli.Context, vpcId string) error {
+func listVpcDevices(ctx context.Context, command *cli.Command, vpcId string) error {
 	c := createClient(ctx, command)
 	response := apiResponse(c.VPCApi.
 		ListDevicesInVPC(ctx, vpcId).
@@ -201,7 +201,7 @@ func listVpcDevices(ctx context.Context, command *cli.Context, vpcId string) err
 	return nil
 }
 
-func deleteDevice(ctx context.Context, command *cli.Context, devID string) error {
+func deleteDevice(ctx context.Context, command *cli.Command, devID string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		DeleteDevice(ctx, devID).
@@ -211,7 +211,7 @@ func deleteDevice(ctx context.Context, command *cli.Context, devID string) error
 	return nil
 }
 
-func updateDevice(ctx context.Context, command *cli.Context, devID string, update public.ModelsUpdateDevice) error {
+func updateDevice(ctx context.Context, command *cli.Command, devID string, update public.ModelsUpdateDevice) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		UpdateDevice(ctx, devID).

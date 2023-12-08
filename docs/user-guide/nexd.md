@@ -12,7 +12,7 @@ NAME:
    nexd - Node agent to configure encrypted mesh networking with nexodus.
 
 USAGE:
-   nexd [global options] command [command options] [arguments...]
+   nexd [global options] [command [command options]] [arguments...]
 
 COMMANDS:
    version  Get the version of nexd
@@ -22,11 +22,6 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --exit-node-client         Enable this node to use an available exit node (default: false) [$NEXD_EXIT_NODE_CLIENT]
-   --help, -h                 Show help
-   --security-group-id value  Optional security group ID to use when registering used to secure this device [$NEXAPI_SECURITY_GROUP_ID]
-   --unix-socket value        Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
-
    Agent Options
 
    --relay-only  Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]
@@ -39,7 +34,7 @@ GLOBAL OPTIONS:
    --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. (default: $HOME/.nexodus) [$NEXD_STATE_DIR]
    --stun-server value [ --stun-server value ]  stun server to use discover our endpoint address.  At least two are required. [$NEXD_STUN_SERVER]
    --username string                            Username string for accessing the nexodus service [$NEXD_USERNAME]
-   --vpc-id value                               VPC ID to use when registering with the nexodus service [$NEXD_ORG_ID]
+   --vpc-id value                               VPC ID to use when registering with the nexodus service [$NEXD_VPC_ID]
 
    Wireguard Options
 
@@ -56,12 +51,12 @@ NAME:
    nexd proxy - Run nexd as an L4 proxy instead of creating a network interface
 
 USAGE:
-   nexd proxy [command options] [arguments...]
+   nexd proxy [command [command options]] 
 
 OPTIONS:
    --ingress value [ --ingress value ]  Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
    --egress value [ --egress value ]    Forward connections from a locally accessible network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via the Nexodus network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
-   --help, -h                           Show help
+   --help, -h                           Show help (default: false)
 ```
 
 #### nexd router
@@ -71,14 +66,14 @@ NAME:
    nexd router - Enable advertise-cidr function of the node agent to enable prefix forwarding.
 
 USAGE:
-   nexd router [command options] [arguments...]
+   nexd router [command [command options]] 
 
 OPTIONS:
    --advertise-cidr CIDR [ --advertise-cidr CIDR ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_ADVERTISE_CIDR]
    --network-router                                 Make the node a network router node that will forward traffic specified by --advertise-cidr through the physical interface that contains the default gateway (default: false) [$NEXD_NET_ROUTER_NODE]
    --disable-nat                                    disable NAT for the network router mode. This will require devices on the network to be configured with an ip route (default: false) [$NEXD_DISABLE_NAT]
    --exit-node                                      Enable this node to be an exit node. This allows other agents to source all traffic leaving the Nexodus mesh from this node (default: false) [$NEXD_EXIT_NODE]
-   --help, -h                                       Show help
+   --help, -h                                       Show help (default: false)
 ```
 
 #### nexd relay
@@ -88,8 +83,8 @@ NAME:
    nexd relay - Enable relay and discovery support function for the node agent.
 
 USAGE:
-   nexd relay [command options] [arguments...]
+   nexd relay [command [command options]] 
 
 OPTIONS:
-   --help, -h  Show help
+   --help, -h  Show help (default: false)
 ```

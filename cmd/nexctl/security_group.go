@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func createSecurityGroupCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "security-group",
 		Usage: "commands relating to security groups",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List all security groups",
-				Action: func(command *cli.Context) error {
-					return listSecurityGroups(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return listSecurityGroups(ctx, command)
 				},
 			},
 			{
@@ -29,14 +29,14 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					encodeOut := command.String("output")
 					sgID, err := getUUID(command, "security-group-id")
 					if err != nil {
 						return err
 					}
 
-					return deleteSecurityGroup(command.Context, command, encodeOut, sgID)
+					return deleteSecurityGroup(ctx, command, encodeOut, sgID)
 				},
 			},
 			{
@@ -60,7 +60,7 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					description := command.String("description")
 					vpcId, err := getUUID(command, "vpc-id")
 					if err != nil {
@@ -85,7 +85,7 @@ func createSecurityGroupCommand() *cli.Command {
 						}
 					}
 
-					return createSecurityGroup(command.Context, command, description, vpcId, inboundRules, outboundRules)
+					return createSecurityGroup(ctx, command, description, vpcId, inboundRules, outboundRules)
 				},
 			},
 			{
@@ -109,7 +109,7 @@ func createSecurityGroupCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 
 					update := public.ModelsUpdateSecurityGroup{}
 
@@ -141,14 +141,14 @@ func createSecurityGroupCommand() *cli.Command {
 						return fmt.Errorf("update security group failed: %w", err)
 					}
 
-					return updateSecurityGroup(command.Context, command, id, update)
+					return updateSecurityGroup(ctx, command, id, update)
 				},
 			},
 		},
 	}
 }
 
-func securityGroupTableFields(command *cli.Context) []TableField {
+func securityGroupTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
@@ -159,7 +159,7 @@ func securityGroupTableFields(command *cli.Context) []TableField {
 }
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(ctx context.Context, command *cli.Context, description, vpcId string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func createSecurityGroup(ctx context.Context, command *cli.Command, description, vpcId string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
 	c := createClient(ctx, command)
 	if vpcId == "" {
 		vpcId = getDefaultVpcId(ctx, c)
@@ -179,7 +179,7 @@ func createSecurityGroup(ctx context.Context, command *cli.Context, description,
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(ctx context.Context, command *cli.Context, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
+func updateSecurityGroup(ctx context.Context, command *cli.Command, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.SecurityGroupApi.
 		UpdateSecurityGroup(ctx, secGroupID).
@@ -191,7 +191,7 @@ func updateSecurityGroup(ctx context.Context, command *cli.Context, secGroupID s
 }
 
 // listSecurityGroups lists all security groups.
-func listSecurityGroups(ctx context.Context, command *cli.Context) error {
+func listSecurityGroups(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.SecurityGroupApi.
 		ListSecurityGroups(ctx).
@@ -201,7 +201,7 @@ func listSecurityGroups(ctx context.Context, command *cli.Context) error {
 }
 
 // deleteSecurityGroup deletes an existing security group.
-func deleteSecurityGroup(ctx context.Context, command *cli.Context, encodeOut, secGroupID string) error {
+func deleteSecurityGroup(ctx context.Context, command *cli.Command, encodeOut, secGroupID string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.SecurityGroupApi.
 		DeleteSecurityGroup(ctx, secGroupID).

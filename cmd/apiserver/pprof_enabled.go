@@ -11,11 +11,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 )
 
-func pprof_init(ctx context.Context, command *cli.Context, logger *zap.Logger) {
+func pprof_init(ctx context.Context, command *cli.Command, logger *zap.Logger) {
 	port := "8088"
 	if envVar := os.Getenv("NEXAPI_PPROF_PORT"); envVar != "" {
 		_, err := strconv.Atoi(port)

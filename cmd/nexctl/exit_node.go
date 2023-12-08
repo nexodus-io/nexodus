@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type exitNodeOrigin struct {
@@ -14,7 +14,7 @@ type exitNodeOrigin struct {
 	PersistentKeepAlive string
 }
 
-func enableExitNodeClient(ctx context.Context, command *cli.Context) error {
+func enableExitNodeClient(ctx context.Context, command *cli.Command) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func enableExitNodeClient(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func disableExitNodeClient(ctx context.Context, command *cli.Context) error {
+func disableExitNodeClient(ctx context.Context, command *cli.Command) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -52,13 +52,13 @@ func disableExitNodeClient(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func exitNodeTableFields(command *cli.Context) []TableField {
+func exitNodeTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "ENDPOINT ADDRESS", Field: "Endpoint"})
 	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 	return fields
 }
-func listExitNodes(ctx context.Context, command *cli.Context, encodeOut string) error {
+func listExitNodes(ctx context.Context, command *cli.Command, encodeOut string) error {
 	var err error
 	var exitNodes []exitNodeOrigin
 	if err = checkVersion(); err != nil {

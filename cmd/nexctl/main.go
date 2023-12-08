@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/nexodus-io/nexodus/internal/client"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -41,54 +41,61 @@ var additionalPlatformCommands []*cli.Command = nil
 func main() {
 	// Override usage to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
-	app := &cli.App{
-		Name:                 "nexctl",
-		Usage:                "controls the Nexodus control and data planes",
-		EnableBashCompletion: true,
+	app := &cli.Command{
+		Name:                  "nexctl",
+		Usage:                 "controls the Nexodus control and data planes",
+		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "debug",
-				Value:   false,
-				Usage:   "Enable debug logging",
-				EnvVars: []string{"NEXCTL_DEBUG"},
+				Name:       "debug",
+				Value:      false,
+				Usage:      "Enable debug logging",
+				Sources:    cli.EnvVars("NEXCTL_DEBUG"),
+				Persistent: true,
 			},
 			&cli.StringFlag{
-				Name:   "host",
-				Value:  DefaultServiceURL,
-				Usage:  "Api server URL",
-				Hidden: true,
+				Name:       "host",
+				Value:      DefaultServiceURL,
+				Usage:      "Api server URL",
+				Hidden:     true,
+				Persistent: true,
 			},
 			&cli.StringFlag{
-				Name:  "service-url",
-				Value: DefaultServiceURL,
-				Usage: "Api server URL",
+				Name:       "service-url",
+				Value:      DefaultServiceURL,
+				Usage:      "Api server URL",
+				Persistent: true,
 			},
 			&cli.StringFlag{
-				Name:  "username",
-				Usage: "Username",
+				Name:       "username",
+				Usage:      "Username",
+				Persistent: true,
 			},
 			&cli.StringFlag{
-				Name:  "password",
-				Usage: "Password",
+				Name:       "password",
+				Usage:      "Password",
+				Persistent: true,
 			},
 			&cli.StringFlag{
-				Name:     "output",
-				Value:    encodeColumn,
-				Required: false,
-				Usage:    "Output format: json, json-raw, yaml, no-header, column (default columns)",
+				Name:       "output",
+				Value:      encodeColumn,
+				Required:   false,
+				Usage:      "Output format: json, json-raw, yaml, no-header, column (default columns)",
+				Persistent: true,
 			},
 			&cli.BoolFlag{
-				Name:     "insecure-skip-tls-verify",
-				Value:    false,
-				Usage:    "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
-				Required: false,
+				Name:       "insecure-skip-tls-verify",
+				Value:      false,
+				Usage:      "If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure",
+				Required:   false,
+				Persistent: true,
 			},
 		},
 		Commands: []*cli.Command{
 			{
 				Name:  "version",
 				Usage: "Get the version of nexctl",
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					fmt.Printf("version: %s\n", Version)
 					return nil
 				},
@@ -108,7 +115,7 @@ func main() {
 		return app.Commands[i].Name < app.Commands[j].Name
 	})
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		Fatal(err)
 	}
 }
@@ -122,7 +129,7 @@ func Fatalf(format string, a ...any) {
 	os.Exit(1)
 }
 
-func createClient(ctx context.Context, command *cli.Context) *client.APIClient {
+func createClient(ctx context.Context, command *cli.Command) *client.APIClient {
 
 	urlValue := DefaultServiceURL
 	flagUsed := "--service-url"
@@ -159,7 +166,7 @@ func createClient(ctx context.Context, command *cli.Context) *client.APIClient {
 	return c
 }
 
-func createClientOptions(command *cli.Context) []client.Option {
+func createClientOptions(command *cli.Command) []client.Option {
 	options := []client.Option{
 		client.WithPasswordGrant(
 			command.String("username"),
@@ -181,7 +188,7 @@ type TableField struct {
 	Formatter func(item interface{}) string
 }
 
-func show(command *cli.Context, fields []TableField, result any) {
+func show(command *cli.Command, fields []TableField, result any) {
 	output := command.String("output")
 	switch output {
 	case encodeJsonPretty:
@@ -263,7 +270,7 @@ func show(command *cli.Context, fields []TableField, result any) {
 	}
 }
 
-func showSuccessfully(command *cli.Context, action string) {
+func showSuccessfully(command *cli.Command, action string) {
 	encodeOut := command.String("output")
 	if encodeOut == encodeColumn || encodeOut == encodeNoHeader {
 		fmt.Printf("\nsuccessfully %s\n", action)
@@ -338,7 +345,7 @@ func apiResponse[T any](resp T, httpResp *http.Response, err error) T {
 	return resp
 }
 
-func getUUID(command *cli.Context, name string) (string, error) {
+func getUUID(command *cli.Command, name string) (string, error) {
 	value := command.String(name)
 	if value == "" {
 		return "", nil
@@ -350,7 +357,7 @@ func getUUID(command *cli.Context, name string) (string, error) {
 	return value, nil
 }
 
-func getExpiration(command *cli.Context, name string) string {
+func getExpiration(command *cli.Command, name string) string {
 	value := command.Duration(name)
 	if value == 0 {
 		return ""
@@ -358,7 +365,7 @@ func getExpiration(command *cli.Context, name string) string {
 	return time.Now().Add(value).String()
 }
 
-func getJsonMap(command *cli.Context, name string) (map[string]interface{}, error) {
+func getJsonMap(command *cli.Command, name string) (map[string]interface{}, error) {
 	value := command.String(name)
 	if value == "" {
 		return nil, nil

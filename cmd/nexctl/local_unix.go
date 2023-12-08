@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/nexodus-io/nexodus/internal/api"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func init() {
@@ -27,7 +27,7 @@ func init() {
 				Required:    false,
 			},
 		},
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:   "version",
 				Usage:  "Display the nexd version",
@@ -41,7 +41,7 @@ func init() {
 			{
 				Name:  "get",
 				Usage: "Get a value from the local nexd instance",
-				Subcommands: []*cli.Command{
+				Commands: []*cli.Command{
 					{
 						Name:  "tunnelip",
 						Usage: "Get the tunnel IP address",
@@ -53,7 +53,7 @@ func init() {
 								Value:   false,
 							},
 						},
-						Action: func(command *cli.Context) error {
+						Action: func(ctx context.Context, command *cli.Command) error {
 							var result string
 							var err error
 							if err := checkVersion(); err != nil {
@@ -75,7 +75,7 @@ func init() {
 					{
 						Name:  "debug",
 						Usage: "Get the debug logging status",
-						Action: func(command *cli.Context) error {
+						Action: func(ctx context.Context, command *cli.Command) error {
 							if err := checkVersion(); err != nil {
 								return err
 							}
@@ -93,15 +93,15 @@ func init() {
 			{
 				Name:  "set",
 				Usage: "Set a value on the local nexd instance",
-				Subcommands: []*cli.Command{
+				Commands: []*cli.Command{
 					{
 						Name:  "debug",
 						Usage: "Set debug logging on or off",
-						Subcommands: []*cli.Command{
+						Commands: []*cli.Command{
 							{
 								Name:  "on",
 								Usage: "Turn debug logging on",
-								Action: func(command *cli.Context) error {
+								Action: func(ctx context.Context, command *cli.Command) error {
 									if err := checkVersion(); err != nil {
 										return err
 									}
@@ -117,7 +117,7 @@ func init() {
 							{
 								Name:  "off",
 								Usage: "Turn debug logging off",
-								Action: func(command *cli.Context) error {
+								Action: func(ctx context.Context, command *cli.Command) error {
 									if err := checkVersion(); err != nil {
 										return err
 									}
@@ -137,11 +137,11 @@ func init() {
 			{
 				Name:  "proxy",
 				Usage: "Commands for interacting nexd's proxy configuration",
-				Subcommands: []*cli.Command{
+				Commands: []*cli.Command{
 					{
 						Name:  "list",
 						Usage: "List the nexd proxy rules",
-						Action: func(command *cli.Context) error {
+						Action: func(ctx context.Context, command *cli.Command) error {
 							if err := checkVersion(); err != nil {
 								return err
 							}
@@ -169,8 +169,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(command *cli.Context) error {
-							return proxyAddRemove(command.Context, command, true)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return proxyAddRemove(ctx, command, true)
 						},
 					},
 					{
@@ -188,8 +188,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(command *cli.Context) error {
-							return proxyAddRemove(command.Context, command, false)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return proxyAddRemove(ctx, command, false)
 						},
 					},
 				},
@@ -197,7 +197,7 @@ func init() {
 			{
 				Name:  "peers",
 				Usage: "Commands for interacting with nexd peer connectivity",
-				Subcommands: []*cli.Command{
+				Commands: []*cli.Command{
 					{
 						Name:  "list",
 						Usage: "list the nexd peers for this device",
@@ -209,22 +209,22 @@ func init() {
 								Value:   false,
 							},
 						},
-						Action: func(command *cli.Context) error {
-							return cmdListPeers(command.Context, command)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return cmdListPeers(ctx, command)
 						},
 					},
 					{
 						Name:  "ping",
 						Usage: "run a test to check the nexd IPv4 peer connectivity (host firewalls or security groups may block the ICMP probes)",
-						Action: func(command *cli.Context) error {
-							return cmdConnStatus(command.Context, command, v4)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return cmdConnStatus(ctx, command, v4)
 						},
 					},
 					{
 						Name:  "ping6",
 						Usage: "run a test to check the nexd IPv6 peer connectivity (host firewalls or security groups may block the ICMP probes)",
-						Action: func(command *cli.Context) error {
-							return cmdConnStatus(command.Context, command, v6)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return cmdConnStatus(ctx, command, v6)
 						},
 					},
 				},
@@ -232,20 +232,20 @@ func init() {
 			{
 				Name:  "exit-node",
 				Usage: "Commands for interacting nexd exit node configuration",
-				Subcommands: []*cli.Command{
+				Commands: []*cli.Command{
 					{
 						Name:  "list",
 						Usage: "list exit nodes",
-						Action: func(command *cli.Context) error {
+						Action: func(ctx context.Context, command *cli.Command) error {
 							encodeOut := command.String("output")
-							return listExitNodes(command.Context, command, encodeOut)
+							return listExitNodes(ctx, command, encodeOut)
 						},
 					},
 					{
 						Name:  "enable",
 						Usage: "Enable the device to use an exit node in the current organization. Warning: this will funnel all traffic through the exit node if one exists and will likely cause your device to be unreachable outside of the nexodus peer network.",
-						Action: func(command *cli.Context) error {
-							return enableExitNodeClient(command.Context, command)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return enableExitNodeClient(ctx, command)
 						},
 					},
 					{
@@ -258,8 +258,8 @@ func init() {
 								Required: false,
 							},
 						},
-						Action: func(command *cli.Context) error {
-							return disableExitNodeClient(command.Context, command)
+						Action: func(ctx context.Context, command *cli.Command) error {
+							return disableExitNodeClient(ctx, command)
 						},
 					},
 				},
@@ -303,7 +303,7 @@ func checkVersion() error {
 	return nil
 }
 
-func cmdLocalVersion(command *cli.Context) error {
+func cmdLocalVersion(ctx context.Context, command *cli.Command) error {
 	fmt.Printf("nexctl version: %s\n", Version)
 
 	result, err := callNexd("Version", "")
@@ -314,7 +314,7 @@ func cmdLocalVersion(command *cli.Context) error {
 	return err
 }
 
-func cmdLocalStatus(command *cli.Context) error {
+func cmdLocalStatus(ctx context.Context, command *cli.Command) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}
@@ -329,7 +329,7 @@ func cmdLocalStatus(command *cli.Context) error {
 	return nil
 }
 
-func proxyAddRemove(ctx context.Context, command *cli.Context, add bool) error {
+func proxyAddRemove(ctx context.Context, command *cli.Command, add bool) error {
 	if err := checkVersion(); err != nil {
 		return err
 	}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var deviceMetadataSubcommands []*cli.Command
@@ -25,12 +25,12 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(command *cli.Context) error {
+			Action: func(ctx context.Context, command *cli.Command) error {
 				orgId, err := getUUID(command, "vpc-id")
 				if err != nil {
 					return err
 				}
-				return getVpcMetadata(command.Context, command, orgId)
+				return getVpcMetadata(ctx, command, orgId)
 			},
 		},
 	}
@@ -56,15 +56,15 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(command *cli.Context) error {
+			Action: func(ctx context.Context, command *cli.Command) error {
 				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
 				if command.IsSet("key") {
-					return getDeviceMetadataKey(command.Context, command, deviceID, command.String("key"))
+					return getDeviceMetadataKey(ctx, command, deviceID, command.String("key"))
 				} else {
-					return getDeviceMetadata(command.Context, command, deviceID)
+					return getDeviceMetadata(ctx, command, deviceID)
 				}
 			},
 		},
@@ -95,7 +95,7 @@ func init() {
 					Value:   false,
 				},
 			},
-			Action: func(command *cli.Context) error {
+			Action: func(ctx context.Context, command *cli.Command) error {
 				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
@@ -104,7 +104,7 @@ func init() {
 				if err != nil {
 					return err
 				}
-				return updateDeviceMetadata(command.Context, command, deviceID, command.String("key"), value)
+				return updateDeviceMetadata(ctx, command, deviceID, command.String("key"), value)
 			},
 		},
 		{
@@ -122,12 +122,12 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(command *cli.Context) error {
+			Action: func(ctx context.Context, command *cli.Command) error {
 				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				return deleteDeviceMetadata(command.Context, command, deviceID, command.String("key"))
+				return deleteDeviceMetadata(ctx, command, deviceID, command.String("key"))
 			},
 		},
 		{
@@ -140,18 +140,18 @@ func init() {
 					Required: true,
 				},
 			},
-			Action: func(command *cli.Context) error {
+			Action: func(ctx context.Context, command *cli.Command) error {
 				deviceID, err := getUUID(command, "device-id")
 				if err != nil {
 					return err
 				}
-				return clearDeviceMetadata(command.Context, command, deviceID)
+				return clearDeviceMetadata(ctx, command, deviceID)
 			},
 		},
 	}
 }
 
-func metadataTableFields(command *cli.Context, includeDeviceId bool) []TableField {
+func metadataTableFields(command *cli.Command, includeDeviceId bool) []TableField {
 	var fields = []TableField{}
 	full := command.Bool("full")
 	if includeDeviceId || full {
@@ -165,7 +165,7 @@ func metadataTableFields(command *cli.Context, includeDeviceId bool) []TableFiel
 	return fields
 }
 
-func getDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string) error {
+func getDeviceMetadata(ctx context.Context, command *cli.Command, deviceID string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		ListDeviceMetadata(ctx, deviceID).
@@ -174,7 +174,7 @@ func getDeviceMetadata(ctx context.Context, command *cli.Context, deviceID strin
 	return nil
 }
 
-func getDeviceMetadataKey(ctx context.Context, command *cli.Context, deviceID string, key string) error {
+func getDeviceMetadataKey(ctx context.Context, command *cli.Command, deviceID string, key string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		GetDeviceMetadataKey(ctx, deviceID, key).
@@ -183,7 +183,7 @@ func getDeviceMetadataKey(ctx context.Context, command *cli.Context, deviceID st
 	return nil
 }
 
-func getVpcMetadata(ctx context.Context, command *cli.Context, vpcID string) error {
+func getVpcMetadata(ctx context.Context, command *cli.Command, vpcID string) error {
 	c := createClient(ctx, command)
 	prefixes := []string{}
 	res := apiResponse(c.VPCApi.
@@ -193,7 +193,7 @@ func getVpcMetadata(ctx context.Context, command *cli.Context, vpcID string) err
 	return nil
 }
 
-func updateDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string, key string, value map[string]interface{}) error {
+func updateDeviceMetadata(ctx context.Context, command *cli.Command, deviceID string, key string, value map[string]interface{}) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		UpdateDeviceMetadataKey(ctx, deviceID, key).
@@ -203,7 +203,7 @@ func updateDeviceMetadata(ctx context.Context, command *cli.Context, deviceID st
 	return nil
 }
 
-func deleteDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string, key string) error {
+func deleteDeviceMetadata(ctx context.Context, command *cli.Command, deviceID string, key string) error {
 	c := createClient(ctx, command)
 	httpResp, err := c.DevicesApi.
 		DeleteDeviceMetadataKey(ctx, deviceID, key).
@@ -213,7 +213,7 @@ func deleteDeviceMetadata(ctx context.Context, command *cli.Context, deviceID st
 	return nil
 }
 
-func clearDeviceMetadata(ctx context.Context, command *cli.Context, deviceID string) error {
+func clearDeviceMetadata(ctx context.Context, command *cli.Command, deviceID string) error {
 	c := createClient(ctx, command)
 	httpResp, err := c.DevicesApi.
 		DeleteDeviceMetadata(ctx, deviceID).

@@ -45,7 +45,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var tracer trace.Tracer
@@ -74,220 +74,218 @@ func init() {
 func main() {
 	// Override to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
-	app := &cli.App{
+	app := &cli.Command{
 		Name: "apiserver",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "debug",
 				Value:   false,
 				Usage:   "Enable debug logging",
-				EnvVars: []string{"NEXAPI_DEBUG"},
+				Sources: cli.EnvVars("NEXAPI_DEBUG"),
 			},
 			&cli.StringFlag{
 				Name:    "listen",
 				Value:   "0.0.0.0:8080",
 				Usage:   "The address and port to listen for HTTP requests on",
-				EnvVars: []string{"NEXAPI_LISTEN"},
+				Sources: cli.EnvVars("NEXAPI_LISTEN"),
 			},
 
 			&cli.StringFlag{
 				Name:    "listen-grpc",
 				Value:   "0.0.0.0:5080",
 				Usage:   "The address and port to listen for GRPC requests on",
-				EnvVars: []string{"NEXAPI_LISTEN_GRPC"},
+				Sources: cli.EnvVars("NEXAPI_LISTEN_GRPC"),
 			},
 
 			&cli.StringFlag{
 				Name:    "oidc-url",
 				Value:   "https://auth.try.nexodus.127.0.0.1.nip.io",
 				Usage:   "Address of oidc provider",
-				EnvVars: []string{"NEXAPI_OIDC_URL"},
+				Sources: cli.EnvVars("NEXAPI_OIDC_URL"),
 			},
 			&cli.StringFlag{
 				Name:    "oidc-backchannel-url",
 				Value:   "",
 				Usage:   "Backend address of oidc provider",
-				EnvVars: []string{"NEXAPI_OIDC_BACKCHANNEL"},
+				Sources: cli.EnvVars("NEXAPI_OIDC_BACKCHANNEL"),
 			},
 			&cli.BoolFlag{
 				Name:    "insecure-tls",
 				Value:   false,
 				Usage:   "Trust any TLS certificate",
-				EnvVars: []string{"NEXAPI_INSECURE_TLS"},
+				Sources: cli.EnvVars("NEXAPI_INSECURE_TLS"),
 			},
 			&cli.StringFlag{
 				Name:    "oidc-client-id-web",
 				Value:   "nexodus-web",
 				Usage:   "OIDC client id for web",
-				EnvVars: []string{"NEXAPI_OIDC_CLIENT_ID_WEB"},
+				Sources: cli.EnvVars("NEXAPI_OIDC_CLIENT_ID_WEB"),
 			},
 			&cli.StringFlag{
 				Name:    "oidc-client-secret-web",
 				Value:   "",
 				Usage:   "OIDC client secret for web",
-				EnvVars: []string{"NEXAPI_OIDC_CLIENT_SECRET_WEB"},
+				Sources: cli.EnvVars("NEXAPI_OIDC_CLIENT_SECRET_WEB"),
 			},
 			&cli.StringFlag{
 				Name:    "oidc-client-id-cli",
 				Value:   "nexodus-cli",
 				Usage:   "OIDC client id for cli",
-				EnvVars: []string{"NEXAPI_OIDC_CLIENT_ID_CLI"},
+				Sources: cli.EnvVars("NEXAPI_OIDC_CLIENT_ID_CLI"),
 			},
 			&cli.StringFlag{
 				Name:    "db-host",
 				Value:   "apiserver-db",
 				Usage:   "Database host name",
-				EnvVars: []string{"NEXAPI_DB_HOST"},
+				Sources: cli.EnvVars("NEXAPI_DB_HOST"),
 			},
 			&cli.StringFlag{
 				Name:    "db-port",
 				Value:   "5432",
 				Usage:   "Database port",
-				EnvVars: []string{"NEXAPI_DB_PORT"},
+				Sources: cli.EnvVars("NEXAPI_DB_PORT"),
 			},
 			&cli.StringFlag{
 				Name:    "db-user",
 				Value:   "apiserver",
 				Usage:   "Database user",
-				EnvVars: []string{"NEXAPI_DB_USER"},
+				Sources: cli.EnvVars("NEXAPI_DB_USER"),
 			},
 			&cli.StringFlag{
 				Name:    "db-password",
 				Value:   "secret",
 				Usage:   "Database password",
-				EnvVars: []string{"NEXAPI_DB_PASSWORD"},
+				Sources: cli.EnvVars("NEXAPI_DB_PASSWORD"),
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
 				Value:   "apiserver",
 				Usage:   "Database name",
-				EnvVars: []string{"NEXAPI_DB_NAME"},
+				Sources: cli.EnvVars("NEXAPI_DB_NAME"),
 			},
 			&cli.StringFlag{
 				Name:    "db-sslmode",
 				Value:   "disable",
 				Usage:   "Database ssl mode",
-				EnvVars: []string{"NEXAPI_DB_SSLMODE"},
+				Sources: cli.EnvVars("NEXAPI_DB_SSLMODE"),
 			},
 			&cli.StringFlag{
 				Name:    "ipam-address",
 				Value:   "ipam:9090",
 				Usage:   "Address of ipam grpc service",
-				EnvVars: []string{"NEXAPI_IPAM_URL"},
+				Sources: cli.EnvVars("NEXAPI_IPAM_URL"),
 			},
 			&cli.BoolFlag{
 				Name:    "trace-insecure",
 				Value:   false,
 				Usage:   "Set OTLP endpoint to insecure mode",
-				EnvVars: []string{"NEXAPI_TRACE_INSECURE"},
+				Sources: cli.EnvVars("NEXAPI_TRACE_INSECURE"),
 			},
 			&cli.StringFlag{
 				Name:    "trace-endpoint",
 				Value:   "",
 				Usage:   "OTLP endpoint for trace data",
-				EnvVars: []string{"NEXAPI_TRACE_ENDPOINT_OTLP"},
+				Sources: cli.EnvVars("NEXAPI_TRACE_ENDPOINT_OTLP"),
 			},
 
 			&cli.StringFlag{
 				Name:    "redirect-url",
 				Usage:   "Redirect URL. This is the URL of the SPA.",
 				Value:   "https://example.com",
-				EnvVars: []string{"NEXAPI_REDIRECT_URL"},
+				Sources: cli.EnvVars("NEXAPI_REDIRECT_URL"),
 			},
 			&cli.StringSliceFlag{
 				Name:    "scopes",
 				Usage:   "Additional OAUTH2 scopes",
-				Value:   &cli.StringSlice{},
-				EnvVars: []string{"NEXAPI_SCOPES"},
+				Sources: cli.EnvVars("NEXAPI_SCOPES"),
 			},
 			&cli.StringSliceFlag{
 				Name:    "origins",
 				Usage:   "Trusted Origins. At least 1 MUST be provided",
-				Value:   &cli.StringSlice{},
-				EnvVars: []string{"NEXAPI_ORIGINS"},
+				Sources: cli.EnvVars("NEXAPI_ORIGINS"),
 			},
 			&cli.StringFlag{
 				Name:    "domain",
 				Usage:   "Domain that the agent is running on.",
 				Value:   "api.example.com",
-				EnvVars: []string{"NEXAPI_DOMAIN"},
+				Sources: cli.EnvVars("NEXAPI_DOMAIN"),
 			},
 			&cli.StringFlag{
 				Name:    "cookie-key",
 				Usage:   "Key to the cookie jar.",
 				Value:   "p2s5v8y/B?E(G+KbPeShVmYq3t6w9z$C",
-				EnvVars: []string{"NEXAPI_COOKIE_KEY"},
+				Sources: cli.EnvVars("NEXAPI_COOKIE_KEY"),
 			},
 			&cli.StringFlag{
 				Name:     "redis-server",
 				Usage:    "Redis host:port address",
 				Value:    "redis:6379",
-				EnvVars:  []string{"NEXAPI_REDIS_SERVER"},
+				Sources:  cli.EnvVars("NEXAPI_REDIS_SERVER"),
 				Required: true,
 			},
 			&cli.IntFlag{
 				Name:    "redis-db",
 				Usage:   "Redis database to be selected after connecting to the server.",
 				Value:   1,
-				EnvVars: []string{"NEXAPI_REDIS_DB"},
+				Sources: cli.EnvVars("NEXAPI_REDIS_DB"),
 			},
 			&cli.StringFlag{
 				Name:     "tls-key",
 				Usage:    "The server jwks private key",
 				Required: true,
-				EnvVars:  []string{"NEXAPI_TLS_KEY"},
+				Sources:  cli.EnvVars("NEXAPI_TLS_KEY"),
 			},
 			&cli.StringFlag{
 				Name:     "tls-cert",
 				Usage:    "The server jwks cert key",
 				Required: true,
-				EnvVars:  []string{"NEXAPI_TLS_KEY"},
+				Sources:  cli.EnvVars("NEXAPI_TLS_KEY"),
 			},
 			&cli.StringFlag{
 				Name:     "url",
 				Usage:    "The server url",
 				Required: true,
-				EnvVars:  []string{"NEXAPI_URL"},
+				Sources:  cli.EnvVars("NEXAPI_URL"),
 			},
 
 			&cli.StringFlag{
 				Name:     "smtp-host-port",
 				Usage:    "SMTP server host:port address",
 				Required: false,
-				EnvVars:  []string{"NEXAPI_SMTP_HOST_PORT"},
+				Sources:  cli.EnvVars("NEXAPI_SMTP_HOST_PORT"),
 			},
 			&cli.StringFlag{
 				Name:     "smtp-user",
 				Usage:    "SMTP server user name",
 				Required: false,
-				EnvVars:  []string{"NEXAPI_SMTP_USER"},
+				Sources:  cli.EnvVars("NEXAPI_SMTP_USER"),
 			},
 			&cli.StringFlag{
 				Name:     "smtp-password",
 				Usage:    "SMTP server password",
 				Required: false,
-				EnvVars:  []string{"NEXAPI_SMTP_PASSWORD"},
+				Sources:  cli.EnvVars("NEXAPI_SMTP_PASSWORD"),
 			},
 			&cli.BoolFlag{
 				Name:     "smtp-tls",
 				Usage:    "Use TLS to connect to the SMTP server",
 				Required: false,
-				EnvVars:  []string{"NEXAPI_SMTP_TLS"},
+				Sources:  cli.EnvVars("NEXAPI_SMTP_TLS"),
 			},
 			&cli.BoolFlag{
 				Name:     "smtp-from",
 				Usage:    "The form address to use for emails",
 				Required: false,
-				EnvVars:  []string{"NEXAPI_SMTP_FROM"},
+				Sources:  cli.EnvVars("NEXAPI_SMTP_FROM"),
 			},
 		},
 
-		Action: func(command *cli.Context) error {
-			ctx, _ := signal.NotifyContext(command.Context, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+		Action: func(ctx context.Context, command *cli.Command) error {
+			ctx, _ = signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 			ctx, span := tracer.Start(ctx, "Run")
 			defer span.End()
 			withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
-				pprof_init(command.Context, command, logger)
+				pprof_init(ctx, command, logger)
 
 				if err := database.Migrations().Migrate(ctx, db); err != nil {
 					log.Fatal(err)
@@ -305,12 +303,12 @@ func main() {
 
 				redisClient := redis.NewClient(&redis.Options{
 					Addr: command.String("redis-server"),
-					DB:   command.Int("redis-db"),
+					DB:   int(command.Int("redis-db")),
 				})
 
 				sessionStore := redisStore.NewRedisStore(&redisStore.Options{
 					Addr: command.String("redis-server"),
-					DB:   command.Int("redis-db"),
+					DB:   int(command.Int("redis-db")),
 				})
 
 				sessionManager := session.NewManager(
@@ -482,8 +480,8 @@ func main() {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "rollback",
 		Usage: "Rollback the last database migration",
-		Action: func(command *cli.Context) error {
-			ctx := command.Context
+		Action: func(ctx context.Context, command *cli.Command) error {
+
 			withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
 				if err := database.Migrations().RollbackLast(ctx, db); err != nil {
 					log.Fatal(err)
@@ -497,12 +495,12 @@ func main() {
 		// only show this sub command if your in debug mode.
 		Hidden: os.Getenv("NEXAPI_DEBUG") != "true",
 		Usage:  "Interact with the ipam service",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "rebuild",
 				Usage: "Rebuild the IPAM service using the allocated ips and cidrs in nexodus database",
-				Action: func(command *cli.Context) error {
-					ctx := command.Context
+				Action: func(ctx context.Context, command *cli.Command) error {
+
 					withLoggerAndDB(ctx, command, func(logger *zap.Logger, db *gorm.DB, dsn string) {
 						ipam := ipam.NewIPAM(logger.Sugar(), command.String("ipam-address"))
 						if err := cmd.Rebuild(ctx, logger, db, ipam); err != nil {
@@ -520,41 +518,41 @@ func main() {
 						Name:    "ipam-db-host",
 						Value:   "postgres",
 						Usage:   "Database host name",
-						EnvVars: []string{"NEXAPI_DB_HOST"},
+						Sources: cli.EnvVars("NEXAPI_DB_HOST"),
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-port",
 						Value:   "5432",
 						Usage:   "Database port",
-						EnvVars: []string{"NEXAPI_DB_PORT"},
+						Sources: cli.EnvVars("NEXAPI_DB_PORT"),
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-user",
 						Value:   "ipam",
 						Usage:   "Database user",
-						EnvVars: []string{"IPAM_DB_USER"},
+						Sources: cli.EnvVars("IPAM_DB_USER"),
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-password",
 						Value:   "password",
 						Usage:   "Database password",
-						EnvVars: []string{"IPAM_DB_PASSWORD"},
+						Sources: cli.EnvVars("IPAM_DB_PASSWORD"),
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-name",
 						Value:   "ipam",
 						Usage:   "Database name",
-						EnvVars: []string{"IPAM_DB_NAME"},
+						Sources: cli.EnvVars("IPAM_DB_NAME"),
 					},
 					&cli.StringFlag{
 						Name:    "ipam-db-sslmode",
 						Value:   "disable",
 						Usage:   "Database ssl mode",
-						EnvVars: []string{"IPAM_DB_SSLMODE"},
+						Sources: cli.EnvVars("IPAM_DB_SSLMODE"),
 					},
 				},
-				Action: func(command *cli.Context) error {
-					ctx := command.Context
+				Action: func(ctx context.Context, command *cli.Command) error {
+
 					log := getLogger(command).Sugar()
 					ipamDB, _, err := database.NewDatabase(
 						ctx,
@@ -578,12 +576,12 @@ func main() {
 		},
 	})
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func getLogger(command *cli.Context) *zap.Logger {
+func getLogger(command *cli.Command) *zap.Logger {
 	var logger *zap.Logger
 	var err error
 	// set the log level
@@ -599,7 +597,7 @@ func getLogger(command *cli.Context) *zap.Logger {
 	}
 	return logger
 }
-func withLoggerAndDB(ctx context.Context, command *cli.Context, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
+func withLoggerAndDB(ctx context.Context, command *cli.Command, f func(logger *zap.Logger, db *gorm.DB, dsn string)) {
 	logger := getLogger(command)
 	cleanup := initTracer(logger.Sugar(), command.Bool("trace-insecure"), command.String("trace-endpoint"))
 	defer func() {

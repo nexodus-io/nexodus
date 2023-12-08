@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func createRegKeyCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "reg-key",
 		Usage: "Commands relating to registration keys",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List registration keys",
@@ -24,8 +24,8 @@ func createRegKeyCommand() *cli.Command {
 						Value:   false,
 					},
 				},
-				Action: func(command *cli.Context) error {
-					return listRegKeys(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return listRegKeys(ctx, command)
 				},
 			},
 			{
@@ -57,7 +57,7 @@ func createRegKeyCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					settings := map[string]interface{}{}
 					if command.String("settings") != "" {
 						err := json.Unmarshal([]byte(command.String("settings")), &settings)
@@ -68,7 +68,7 @@ func createRegKeyCommand() *cli.Command {
 						settings = nil
 					}
 
-					return createRegKey(command.Context, command, public.ModelsAddRegKey{
+					return createRegKey(ctx, command, public.ModelsAddRegKey{
 						VpcId:           command.String("vpc-id"),
 						Description:     command.String("description"),
 						ExpiresAt:       getExpiration(command, "expiration"),
@@ -103,7 +103,7 @@ func createRegKeyCommand() *cli.Command {
 						Required: false,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					settings := map[string]interface{}{}
 					if command.String("settings") != "" {
 						err := json.Unmarshal([]byte(command.String("settings")), &settings)
@@ -114,7 +114,7 @@ func createRegKeyCommand() *cli.Command {
 						settings = nil
 					}
 
-					return updateRegKey(command.Context, command, command.String("reg-key-id"), public.ModelsUpdateRegKey{
+					return updateRegKey(ctx, command, command.String("reg-key-id"), public.ModelsUpdateRegKey{
 						Description:     command.String("description"),
 						ExpiresAt:       getExpiration(command, "expiration"),
 						SecurityGroupId: command.String("security-group-id"),
@@ -131,19 +131,19 @@ func createRegKeyCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					id, err := getUUID(command, "reg-key-id")
 					if err != nil {
 						return err
 					}
-					return deleteRegKey(command.Context, command, id)
+					return deleteRegKey(ctx, command, id)
 				},
 			},
 		},
 	}
 }
 
-func regTokenTableFields(command *cli.Context) []TableField {
+func regTokenTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "TOKEN ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
@@ -168,7 +168,7 @@ func regTokenTableFields(command *cli.Context) []TableField {
 	return fields
 }
 
-func listRegKeys(ctx context.Context, command *cli.Context) error {
+func listRegKeys(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	rows := apiResponse(c.RegKeyApi.
 		ListRegKeys(ctx).
@@ -177,7 +177,7 @@ func listRegKeys(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func createRegKey(ctx context.Context, command *cli.Context, token public.ModelsAddRegKey) error {
+func createRegKey(ctx context.Context, command *cli.Command, token public.ModelsAddRegKey) error {
 	c := createClient(ctx, command)
 	if token.VpcId == "" {
 		token.VpcId = getDefaultVpcId(ctx, c)
@@ -190,7 +190,7 @@ func createRegKey(ctx context.Context, command *cli.Context, token public.Models
 	return nil
 }
 
-func updateRegKey(ctx context.Context, command *cli.Context, id string, update public.ModelsUpdateRegKey) error {
+func updateRegKey(ctx context.Context, command *cli.Command, id string, update public.ModelsUpdateRegKey) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.RegKeyApi.
 		UpdateRegKey(ctx, id).
@@ -201,7 +201,7 @@ func updateRegKey(ctx context.Context, command *cli.Context, id string, update p
 	return nil
 }
 
-func deleteRegKey(ctx context.Context, command *cli.Context, id string) error {
+func deleteRegKey(ctx context.Context, command *cli.Command, id string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.RegKeyApi.
 		DeleteRegKey(ctx, id).

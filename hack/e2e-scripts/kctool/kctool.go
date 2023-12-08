@@ -10,7 +10,7 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/google/uuid"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type AppConfig struct {
@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	app := &cli.App{
+	app := &cli.Command{
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "create-user",
@@ -65,22 +65,22 @@ func main() {
 				Usage:   "Password for the new user",
 			},
 		},
-		Action: func(c *cli.Context) error {
+		Action: func(ctx context.Context, command *cli.Command) error {
 			// Check if there is an argument for the Keycloak host.
-			if c.Args().Len() != 1 {
+			if command.Args().Len() != 1 {
 				return cli.Exit("Please provide the Keycloak host URL as the last argument.", 1)
 			}
 
-			kcHost := c.Args().First()
+			kcHost := command.Args().First()
 
 			config := &AppConfig{
-				CreateUser: c.Bool("create-user"),
-				DeleteUser: c.Bool("delete-user"),
+				CreateUser: command.Bool("create-user"),
+				DeleteUser: command.Bool("delete-user"),
 				KcHost:     kcHost,
-				KcUsername: c.String("kc-username"),
-				KcPassword: c.String("kc-password"),
-				User:       c.String("user"),
-				Password:   c.String("password"),
+				KcUsername: command.String("kc-username"),
+				KcPassword: command.String("kc-password"),
+				User:       command.String("user"),
+				Password:   command.String("password"),
 			}
 
 			if config.CreateUser && config.DeleteUser {
@@ -97,14 +97,14 @@ func main() {
 			} else if config.DeleteUser {
 				config.deleteUser()
 			} else {
-				_ = cli.ShowAppHelp(c)
+				_ = cli.ShowAppHelp(command)
 			}
 
 			return nil
 		},
 	}
 
-	err := app.Run(os.Args)
+	err := app.Run(context.Background(), os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,26 +3,26 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func createUserSubCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "user",
 		Usage: "Commands relating to users",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "List all users",
-				Action: func(command *cli.Context) error {
-					return listUsers(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return listUsers(ctx, command)
 				},
 			},
 			{
 				Name:  "get-current",
 				Usage: "Get current user",
-				Action: func(command *cli.Context) error {
-					return getCurrent(command.Context, command)
+				Action: func(ctx context.Context, command *cli.Command) error {
+					return getCurrent(ctx, command)
 				},
 			},
 			{
@@ -35,12 +35,12 @@ func createUserSubCommand() *cli.Command {
 						Hidden:   true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					userID, err := getUUID(command, "user-id")
 					if err != nil {
 						return err
 					}
-					return deleteUser(command.Context, command, userID)
+					return deleteUser(ctx, command, userID)
 				},
 			},
 			{
@@ -56,7 +56,7 @@ func createUserSubCommand() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: func(command *cli.Context) error {
+				Action: func(ctx context.Context, command *cli.Command) error {
 					userID, err := getUUID(command, "user-id")
 					if err != nil {
 						return err
@@ -65,7 +65,7 @@ func createUserSubCommand() *cli.Command {
 					if err != nil {
 						return err
 					}
-					return deleteUserFromOrg(command.Context, command, userID, orgID)
+					return deleteUserFromOrg(ctx, command, userID, orgID)
 				},
 			},
 		},
@@ -78,7 +78,7 @@ func userTableFields() []TableField {
 	fields = append(fields, TableField{Header: "USER NAME", Field: "Username"})
 	return fields
 }
-func listUsers(ctx context.Context, command *cli.Context) error {
+func listUsers(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
 		ListUsers(ctx).
@@ -87,7 +87,7 @@ func listUsers(ctx context.Context, command *cli.Context) error {
 	return nil
 }
 
-func deleteUser(ctx context.Context, command *cli.Context, userID string) error {
+func deleteUser(ctx context.Context, command *cli.Command, userID string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
 		DeleteUser(ctx, userID).
@@ -97,7 +97,7 @@ func deleteUser(ctx context.Context, command *cli.Context, userID string) error 
 	return nil
 }
 
-func deleteUserFromOrg(ctx context.Context, command *cli.Context, userID, orgID string) error {
+func deleteUserFromOrg(ctx context.Context, command *cli.Command, userID, orgID string) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
 		DeleteUserFromOrganization(ctx, userID, orgID).
@@ -107,7 +107,7 @@ func deleteUserFromOrg(ctx context.Context, command *cli.Context, userID, orgID 
 	return nil
 }
 
-func getCurrent(ctx context.Context, command *cli.Context) error {
+func getCurrent(ctx context.Context, command *cli.Command) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.UsersApi.
 		GetUser(ctx, "me").
