@@ -34,7 +34,7 @@ type wgPeerMethod struct {
 	// name of the peering method
 	name string
 	// determine if this peering method is available for the given device
-	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool
+	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool,wgRelayAvailable bool) bool
 	// buildPeerConfig builds the peer configuration for a given peering method
 	buildPeerConfig func(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, localIP, peerPort, reflexiveIP4 string) wgPeerConfig
 }
@@ -44,7 +44,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// This node is a relay node and we have the same reflexive address as the peer
 		name: peeringMethodRelaySelfDirectLocal,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool, _ bool) bool {
 			return nx.relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalPeerForRelayNode,
@@ -52,7 +52,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// This node is a relay node
 		name: peeringMethodRelaySelf,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool, _ bool) bool {
 			return nx.relay
 		},
 		buildPeerConfig: buildPeerForRelayNode,
@@ -60,7 +60,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// The peer is a relay node and we have the same reflexive address as the peer
 		name: peeringMethodRelayPeerDirectLocal,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool, _ bool) bool {
 			return !nx.relay && device.Relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalRelayPeer,
@@ -68,7 +68,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// The peer is a relay node
 		name: peeringMethodRelayPeer,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool, _ bool) bool {
 			return !nx.relay && device.Relay
 		},
 		buildPeerConfig: buildRelayPeer,
@@ -76,7 +76,7 @@ var wgPeerMethods = []wgPeerMethod{
 	{
 		// We are behind the same reflexive address as the peer, try direct, local peering
 		name: peeringMethodDirectLocal,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool, _ bool) bool {
 			return !nx.relay && !device.Relay && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalPeer,
@@ -85,16 +85,16 @@ var wgPeerMethods = []wgPeerMethod{
 		// If neither side is behind symmetric NAT, we can try peering with its reflexive address.
 		// This is the address+port opened up by the peer using STUN.
 		name: peeringMethodReflexive,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool, _ bool) bool {
 			return !nx.relay && !device.Relay && !device.SymmetricNat && !nx.symmetricNat
 		},
 		buildPeerConfig: buildReflexivePeer,
 	},
 	{
-		// try connecting to the peer via a relay
+		// try connecting to the peer via a wireguard relay
 		name: peeringMethodViaRelay,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
-			return !nx.relay && !device.Relay && healthyRelay
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool, wgRelayAvailable bool) bool {
+			return !nx.relay && !device.Relay && healthyRelay && wgRelayAvailable
 		},
 		buildPeerConfig: func(nx *Nexodus, device public.ModelsDevice, _ []string, _, _, _ string) wgPeerConfig {
 			return wgPeerConfig{
@@ -106,8 +106,8 @@ var wgPeerMethods = []wgPeerMethod{
 		// Last chance, try connecting to the peer via a derp relay, in case the legacy relay is not available
 		// and none of the peering methods above worked
 		name: peeringMethodViaDerpRelay,
-		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool) bool {
-			return !nx.relay && !device.Relay && (nx.symmetricNat || device.SymmetricNat)
+		checkPrereqs: func(nx *Nexodus, device public.ModelsDevice, _ string, healthyRelay bool, wgRelayAvailable bool) bool {
+			return !nx.relay && !device.Relay && !wgRelayAvailable && (nx.symmetricNat || device.SymmetricNat)
 		},
 		buildPeerConfig: buildPeerViaDerpRelay,
 	},
@@ -135,7 +135,7 @@ func (nx *Nexodus) peeringReset(d *deviceCacheEntry) {
 
 // shouldResetPeering() determines if we should reset peering to start over at the
 // beginning of the peering list.
-func (nx *Nexodus) shouldResetPeering(d *deviceCacheEntry, reflexiveIP4 string, healthyRelay bool) bool {
+func (nx *Nexodus) shouldResetPeering(d *deviceCacheEntry, reflexiveIP4 string, healthyRelay bool, wgRelayAvailable bool) bool {
 	if d.peeringMethodIndex == -1 {
 		// Already in a reset state
 		return false
@@ -148,7 +148,7 @@ func (nx *Nexodus) shouldResetPeering(d *deviceCacheEntry, reflexiveIP4 string, 
 
 	// If not at the end, check to see if the prerequisites pass for any of the following methods
 	for i := d.peeringMethodIndex + 1; i < len(wgPeerMethods); i++ {
-		if wgPeerMethods[i].checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay) {
+		if wgPeerMethods[i].checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay, wgRelayAvailable) {
 			// Prequisites pass for this method, so don't reset
 			return false
 		}
@@ -158,7 +158,7 @@ func (nx *Nexodus) shouldResetPeering(d *deviceCacheEntry, reflexiveIP4 string, 
 	return true
 }
 
-func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wgPeerConfig, string, int) {
+func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool, wgRelayAvailable bool) (wgPeerConfig, string, int) {
 	localIP, reflexiveIP4 := nx.extractLocalAndReflexiveIP(d.device)
 	peerPort := nx.extractPeerPort(localIP)
 	relayAllowedIP := []string{
@@ -169,7 +169,7 @@ func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wg
 	tryNextMethod := nx.peeringFailed(*d, healthyRelay)
 	if tryNextMethod {
 		nx.logger.Debugf("Peering with peer [ %s ] using method [ %s ] has failed, trying next method", d.device.PublicKey, d.peeringMethod)
-		if nx.shouldResetPeering(d, reflexiveIP4, healthyRelay) {
+		if nx.shouldResetPeering(d, reflexiveIP4, healthyRelay, wgRelayAvailable) {
 			// We failed to connect via a relay, which is the last resort, so start over at the beginning
 			nx.peeringReset(d)
 			tryNextMethod = false
@@ -188,7 +188,7 @@ func (nx *Nexodus) rebuildPeerConfig(d *deviceCacheEntry, healthyRelay bool) (wg
 			// A peering method was previously chosen and it failed
 			continue
 		}
-		if !method.checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay) {
+		if !method.checkPrereqs(nx, d.device, reflexiveIP4, healthyRelay, wgRelayAvailable) {
 			// This peering method is not a candidate for this peer, the prereqs failed
 			continue
 		}
@@ -225,10 +225,12 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	healthyRelay := false
 	relayDevice := public.ModelsDevice{}
 	relayAvailable := false
+	isDerpRelay := false
 	for _, d := range nx.deviceCache {
 		if d.device.Relay {
 			relayAvailable = true
 			relayDevice = d.device
+			isDerpRelay = nx.isDerpRelay(d)
 			if d.peerHealthy {
 				healthyRelay = true
 				break
@@ -236,17 +238,19 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 		}
 	}
 
-	// Configure the derp relay, if it's connected and healthy.
-	// If relay become unhealthy, remove the default map and close
-	// the connection to active relay.
-	if relayAvailable {
+	// If on-boarded relay is available and it's derp relay, set custom derp map
+	// If there is no on-boarded relay, set default derp map
+	// if there is on-boarded relay, but it's wireguard relay, skip derp map setting
+	// This is to ensure that if wireguard relay is on-boarded, legacy control flow
+	// should work the same as before.
+	if relayAvailable && isDerpRelay {
 		nx.nexRelay.SetCustomDERPMap(relayDevice)
-
-	} else {
+	} else if !relayAvailable {
 		nx.nexRelay.SetDefaultDERPMap()
 	}
 
 	now := time.Now()
+	wgRelayAvailable := relayAvailable && !isDerpRelay
 	for _, dIter := range nx.deviceCache {
 		d := dIter
 		// skip ourselves
@@ -254,7 +258,7 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 			continue
 		}
 
-		peerConfig, chosenMethod, chosenMethodIndex := nx.rebuildPeerConfig(&d, healthyRelay)
+		peerConfig, chosenMethod, chosenMethodIndex := nx.rebuildPeerConfig(&d, healthyRelay, wgRelayAvailable)
 		if len(peerConfig.AllowedIPsForRelay) > 0 {
 			allowedIPsForRelay = append(allowedIPsForRelay, peerConfig.AllowedIPsForRelay...)
 		}
@@ -434,6 +438,11 @@ func buildPeerViaDerpRelay(nx *Nexodus, device public.ModelsDevice, _ []string, 
 		nx.logger.Errorf("Failed to get next available ip address from the pool: %v", err)
 		return wgPeerConfig{}
 	}
+	err = nx.configureLoopback(ip)
+	if err != nil {
+		nx.logger.Errorf("Failed to configure loopback interface: %v", err)
+		return wgPeerConfig{}
+	}
 	ip = net.JoinHostPort(ip, strconv.Itoa(nx.nexRelay.myDerp))
 	return wgPeerConfig{
 		PublicKey:           device.PublicKey,
@@ -478,4 +487,14 @@ func (nx *Nexodus) buildLocalConfig() {
 	}
 	// set the node unique local interface configuration
 	nx.wgConfig.Interface = localInterface
+}
+
+func (nx *Nexodus) isDerpRelay(d deviceCacheEntry) bool {
+	rtype,ok := d.metadata.Value["type"]
+	if !ok {
+		return false
+	} else if rtype == "derp" {
+		return true
+	}
+	return false
 }

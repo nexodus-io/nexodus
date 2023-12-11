@@ -179,6 +179,7 @@ type peerHealth struct {
 
 type deviceCacheEntry struct {
 	device public.ModelsDevice
+	metadata public.ModelsDeviceMetadata
 	// the last time this device was updated as seen from the API
 	lastUpdated time.Time
 	peerHealth
@@ -1177,6 +1178,14 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 
 		// Store the relay IP for easy reference later
 		if p.Relay {
+			metadata,_,err := nx.getDeviceRelayMetadata(p.Id)
+			if err != nil {
+				nx.logger.Warnf("failed to get relay metadata for peer (hostname:%s pubkey:%s): %v",
+					p.Hostname, p.PublicKey, err)
+			} else {
+				existing.metadata = metadata
+				nx.logger.Debugf("successfully fetched device metadata: %v",existing.metadata)
+			}
 			nx.relayWgIP = p.AllowedIps[0]
 		}
 

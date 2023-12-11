@@ -628,7 +628,7 @@ func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 // SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
 func (nr *nexRelay) SetDefaultDERPMap() {
 	if nr.myDerp == CustomDerpRegionID {
-		nr.logger.Debugf("Relay is not available, lets default to hosted relay %v", nr.derpMap.Regions[DefaultDerpRegionID])
+		nr.logger.Debugf("Derp relay is not available, lets default to hosted relay %v", nr.derpMap.Regions[DefaultDerpRegionID])
 		nr.closeDerpLocked(nr.myDerp, "switching to default DERP map")
 	}
 

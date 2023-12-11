@@ -46,6 +46,8 @@ func TestRebuildPeerConfig(t *testing.T) {
 		peerSymmetricNAT bool
 		// we have a healthy relay available
 		healthyRelay bool
+		//is it derp relay available
+		derpRelay bool
 		// the peering method expected to be chosen based on the local and remote peer parameters
 		expectedMethod string
 		// the second choice peering method
@@ -70,6 +72,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			healthyRelay:   true,
+			derpRelay:      false,
 			expectedMethod: peeringMethodDirectLocal,
 			secondMethod:   peeringMethodReflexive,
 			thirdMethod:    peeringMethodViaRelay,
@@ -91,6 +94,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			healthyRelay:   true,
+			derpRelay:      false,
 			expectedMethod: peeringMethodReflexive,
 			secondMethod:   peeringMethodViaRelay,
 			thirdMethod:    peeringMethodViaRelay, // stay with a healthy relay
@@ -102,6 +106,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			peerIsRelay:    true,
+			derpRelay:      false,
 			expectedMethod: peeringMethodRelayPeerDirectLocal,
 			secondMethod:   peeringMethodRelayPeer,
 			thirdMethod:    peeringMethodRelayPeerDirectLocal,
@@ -113,6 +118,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			peerIsRelay:    true,
+			derpRelay:      false,
 			expectedMethod: peeringMethodRelayPeer,
 			secondMethod:   peeringMethodRelayPeer, // our only choice
 			thirdMethod:    peeringMethodRelayPeer, // our only choice
@@ -166,6 +172,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			healthyRelay:   true,
+			derpRelay:      false,
 			expectedMethod: peeringMethodViaRelay,
 			secondMethod:   peeringMethodViaRelay, // our only choice
 			thirdMethod:    peeringMethodViaRelay, // our only choice
@@ -178,6 +185,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerStunIP:       "2.2.2.2:4321",
 			peerSymmetricNAT: true,
 			healthyRelay:     true,
+			derpRelay:      false,
 			expectedMethod:   peeringMethodViaRelay,
 			secondMethod:     peeringMethodViaRelay, // our only choice
 			thirdMethod:      peeringMethodViaRelay, // our only choice
@@ -208,7 +216,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			}
 			tc.nx.peeringReset(&d)
 
-			_, chosenMethod, chosenIndex := tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, chosenIndex := tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.derpRelay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			now := time.Now()
@@ -220,7 +228,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			d.peeringMethodIndex = chosenIndex
 			d.peeringTime = now.Add(-15 * time.Minute)
 			d.peerHealthyTime = now.Add(-15*time.Minute + 5*time.Second)
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.derpRelay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			// Switch to unhealthy, but since this was previously a successful
@@ -228,19 +236,19 @@ func TestRebuildPeerConfig(t *testing.T) {
 			// have 1 minute until the deadline to work again.
 			d.peerHealthy = false
 			d.peerHealthyTime = now.Add(-1*peeringRestoreTimeout + time.Minute)
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.derpRelay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			// After 3 minutes, we should switch to the next best method.
 			// We were last healthy 3 minutes and 5 seconds ago.
 			d.peerHealthyTime = now.Add(-1*peeringRestoreTimeout - 5*time.Second)
-			_, chosenMethod, chosenIndex = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, chosenIndex = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.derpRelay)
 			require.Equal(tc.secondMethod, chosenMethod)
 
 			// Another recalculation should switch to the third best method.
 			d.peeringMethod = chosenMethod
 			d.peeringMethodIndex = chosenIndex
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.derpRelay)
 			require.Equal(tc.thirdMethod, chosenMethod)
 		})
 	}
