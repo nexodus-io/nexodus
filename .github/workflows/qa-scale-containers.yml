@@ -124,7 +124,7 @@ jobs:
       - name: User results from Keycloak
         run: echo "User is ${{ steps.kc-user.outputs.USER }}"
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
