@@ -29,7 +29,7 @@ require (
 	github.com/go-session/redis/v3 v3.1.0
 	github.com/go-session/session/v3 v3.2.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/itchyny/gojq v0.12.13
 	github.com/jackc/pgx/v5 v5.4.3
