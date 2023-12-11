@@ -35,7 +35,7 @@ require (
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/metal-stack/go-ipam v1.11.6
-	github.com/mhmtszr/concurrent-swiss-map v1.0.4
+	github.com/mhmtszr/concurrent-swiss-map v1.0.5
 	github.com/miekg/dns v1.1.57
 	github.com/natefinch/atomic v1.0.1
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
