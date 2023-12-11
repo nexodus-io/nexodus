@@ -11,7 +11,7 @@ require (
 	github.com/cockroachdb/cockroach-go/v2 v2.3.5
 	github.com/coredns/caddy v1.1.1
 	github.com/coredns/coredns v1.11.1
-	github.com/coreos/go-oidc/v3 v3.8.0
+	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/cucumber/godog v0.13.0
 	github.com/docker/docker v24.0.7+incompatible // 24.0 branch
 	github.com/dustin/go-humanize v1.0.1
