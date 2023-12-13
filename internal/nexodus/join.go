@@ -45,7 +45,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 					SymmetricNat:   nx.symmetricNat,
 					Hostname:       nx.hostname,
 					Endpoints:      endpoints,
-					Relay:          nx.relay,
+					Relay:          nx.relay || nx.relayDerp,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {
@@ -83,7 +83,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 	return *d, deviceOperationMsg, nil
 }
 
-func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string)  (*http.Response, error){
+func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string) (*http.Response, error) {
 	if nx.relay || nx.relayDerp {
 		var rtype interface{}
 		if nx.relay {
@@ -92,9 +92,14 @@ func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string)  (*http.Response, 
 			rtype = "derp"
 		}
 
-		relaytype := map[string]interface{}{"type": rtype}
-		_, resp, err := nx.client.DevicesApi.UpdateDeviceMetadataKey(context.Background(), deviceId, "relay").Value(relaytype).Execute()
-		nx.logger.Debugf("Updated device metadata: %s", resp.Status)
+		var certModeManual bool
+		if nx.Derper.certMode == "manual" {
+			certModeManual = true
+		}
+
+		relayMetadata := map[string]interface{}{"type": rtype, "hostname": nx.Derper.hostname, "certmodemanual": certModeManual}
+		md, resp, err := nx.client.DevicesApi.UpdateDeviceMetadataKey(context.Background(), deviceId, "relay").Value(relayMetadata).Execute()
+		nx.logger.Debugf("Updated relay device %s metadata to: %v", deviceId, md)
 		return resp, err
 	}
 	return nil, nil

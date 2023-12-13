@@ -31,9 +31,9 @@ func (dim *DerpIpMapping) GetPublicKey(ipAddress string) (string, bool) {
 
 // GetLocalIPMappingForPeer finds the next available IP address in the 127.0.0.0/24 range.
 func (dim *DerpIpMapping) GetLocalIPMappingForPeer(publicKey string) (string, error) {
-        if ip := dim.CheckIfKeyExist(publicKey) ; ip != "" {
-                return ip, nil
-        }
+	if ip := dim.CheckIfKeyExist(publicKey); ip != "" {
+		return ip, nil
+	}
 	dim.mutex.Lock()
 	defer dim.mutex.Unlock()
 
@@ -54,28 +54,28 @@ func (dim *DerpIpMapping) GetLocalIPMappingForPeer(publicKey string) (string, er
 }
 
 func (dim *DerpIpMapping) RemoveLocalIpMappingForPeer(publicKey string) error {
-        dim.mutex.Lock()
-        defer dim.mutex.Unlock()
+	dim.mutex.Lock()
+	defer dim.mutex.Unlock()
 
-        for ip, pk := range dim.mapping {
-                if pk == publicKey {
-                        delete(dim.mapping, ip)
-                        return nil
-                }
-        }
+	for ip, pk := range dim.mapping {
+		if pk == publicKey {
+			delete(dim.mapping, ip)
+			return nil
+		}
+	}
 
-        return fmt.Errorf("no IP address found for the given public key")
+	return fmt.Errorf("no IP address found for the given public key")
 }
 
 func (dim *DerpIpMapping) CheckIfKeyExist(publicKey string) string {
-        dim.mutex.Lock()
-        defer dim.mutex.Unlock()
+	dim.mutex.Lock()
+	defer dim.mutex.Unlock()
 
-        for ip, pk := range dim.mapping {
-                if pk == publicKey {
-                        return ip
-                }
-        }
+	for ip, pk := range dim.mapping {
+		if pk == publicKey {
+			return ip
+		}
+	}
 
-        return ""
+	return ""
 }

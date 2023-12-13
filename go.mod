@@ -2,8 +2,6 @@ module github.com/nexodus-io/nexodus
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/Nerzal/gocloak/v13 v13.8.0
 	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
@@ -79,7 +77,7 @@ require (
 )
 
 require (
-	github.com/urfave/cli/v2 v2.24.3
+	github.com/txn2/txeh v1.5.5
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13
 	golang.org/x/time v0.3.0
 	nhooyr.io/websocket v1.8.10
@@ -107,7 +105,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-iptables v0.6.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cucumber/gherkin/go/v26 v26.2.0 // indirect
 	github.com/cucumber/messages/go/v21 v21.0.1 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20230821191801-fc76608aecf0 // indirect
@@ -186,7 +183,6 @@ require (
 	github.com/quic-go/quic-go v0.37.4 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.11 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect

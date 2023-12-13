@@ -718,6 +718,8 @@ load-images: ## Load images onto kind
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image quay.io/nexodus/nexd:latest
 	$(CMD_PREFIX) docker pull docker.io/library/redis:6.0
 	$(CMD_PREFIX) kind load --name nexodus-dev docker-image docker.io/library/redis:6.0
+	$(CMD_PREFIX) docker pull docker.io/envoyproxy/envoy:v1.27.0
+	$(CMD_PREFIX) kind load --name nexodus-dev docker-image docker.io/envoyproxy/envoy:v1.27.0
 
 .PHONY: redeploy
 redeploy: images load-images ## Redeploy nexodus after images changes

@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/nexodus/derp/derphttp"
 	"tailscale.com/derp"
 	"tailscale.com/health"
@@ -27,16 +26,18 @@ import (
 )
 
 const (
-	DefaultDerpRegionID = 900
+	DefaultDerpRegionID   = 900
 	DefaultDerpRegionCode = "web"
 	DefaultDerpRegionName = "NexodusDefault"
-	DefaultDerpNodeName = "900nex"
-	DefaultDerpIPAddr = "relay.nexodus.io"
-	CustomDerpRegionID = 901
-	CustomDerpRegionCode = "local"
-	CustomDerpRegionName = "NexodusLocal"
-	CustomDerpNodeName = "901nex"
+	DefaultDerpNodeName   = "900nex"
+	DefaultDerpIPAddr     = "relay.nexodus.io"
+	CustomDerpRegionID    = 901
+	CustomDerpRegionCode  = "local"
+	CustomDerpRegionName  = "NexodusLocal"
+	CustomDerpNodeName    = "901nex"
+	CustomDerpIPAddr      = "custom.relay.nexodus.io"
 )
+
 // derpRoute is a route entry for a public key, saying that a certain
 // peer should be available at DERP node derpID, as long as the
 // current connection for that derpID is dc. (but dc should not be
@@ -78,7 +79,6 @@ type activeDerp struct {
 }
 
 var processStartUnixNano = time.Now().UnixNano()
-
 
 func (nr *nexRelay) derpRegionCodeLocked(regionID int) string {
 	if nr.derpMap == nil {
@@ -200,6 +200,7 @@ func bufferedDerpWritesBeforeDrop() int {
 }
 
 func (nr *nexRelay) networkDown() bool { return false }
+
 // derpWriteChanOfAddr returns a DERP client for fake UDP addresses that
 // represent DERP servers, creating them as necessary. For real UDP
 // addresses, it returns nil.
@@ -574,30 +575,10 @@ func (nr *nexRelay) debugUseDERP() bool {
 }
 
 // SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
-func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
-	if nr.myDerp == DefaultDerpRegionID {
-		nr.logger.Debugf("User on-boarded derp relay is available, switching to on-boarded relay. : [ %v] ", nr.derpMap.Regions[CustomDerpRegionID])
-		nr.closeDerpLocked(nr.myDerp, "switching to custom DERP map")
-	}
+func (nr *nexRelay) SetCustomDERPMap(derpStunAddr string, hostname string) {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 	var dm *tailcfg.DERPMap
-	var derpAddr string
-	for _,addr := range de.Endpoints {
-		if addr.Source == "stun:" {
-			derpAddr = addr.Address
-		}
-	}
-
-	if derpAddr == "" {
-		nr.logger.Warnf("no STUN endpoint found for relay device %v", de)
-		return
-	}
-	_,_,err := net.SplitHostPort(derpAddr)
-	if err != nil {
-		nr.logger.Errorf("Failed to parse stun address %s : %v", derpAddr, err)
-	}
-
 	derpPort := 443
 	if nr.debugUseDERPHTTP() {
 		// Match the port for -dev in derper.go
@@ -607,13 +588,13 @@ func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 		OmitDefaultRegions: true,
 		Regions: map[int]*tailcfg.DERPRegion{
 			CustomDerpRegionID: {
-				RegionID: CustomDerpRegionID,
+				RegionID:   CustomDerpRegionID,
 				RegionName: CustomDerpRegionName,
 				RegionCode: CustomDerpRegionCode,
 				Nodes: []*tailcfg.DERPNode{{
 					Name:     CustomDerpNodeName,
 					RegionID: CustomDerpRegionID,
-					HostName: DefaultDerpIPAddr, // TODO: Move to stun ip after fixing the local certificates.
+					HostName: hostname,
 					DERPPort: derpPort,
 				}},
 			},
@@ -627,11 +608,6 @@ func (nr *nexRelay) SetCustomDERPMap(de public.ModelsDevice) {
 
 // SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
 func (nr *nexRelay) SetDefaultDERPMap() {
-	if nr.myDerp == CustomDerpRegionID {
-		nr.logger.Debugf("Derp relay is not available, lets default to hosted relay %v", nr.derpMap.Regions[DefaultDerpRegionID])
-		nr.closeDerpLocked(nr.myDerp, "switching to default DERP map")
-	}
-
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 	var dm *tailcfg.DERPMap
@@ -646,7 +622,7 @@ func (nr *nexRelay) SetDefaultDERPMap() {
 			OmitDefaultRegions: true,
 			Regions: map[int]*tailcfg.DERPRegion{
 				DefaultDerpRegionID: {
-					RegionID: DefaultDerpRegionID,
+					RegionID:   DefaultDerpRegionID,
 					RegionName: DefaultDerpRegionName,
 					RegionCode: DefaultDerpRegionCode,
 					Nodes: []*tailcfg.DERPNode{{
@@ -731,6 +707,26 @@ func (nr *nexRelay) SetDERPMap(dm *tailcfg.DERPMap) {
 			nr.logActiveDerpLocked()
 		}
 	}
+}
+
+func (nr *nexRelay) getDerpRelayHostname(regionId int) (string, error) {
+	nr.mu.Lock()
+	defer nr.mu.Unlock()
+
+	if nr.derpMap != nil {
+		region, ok := nr.derpMap.Regions[regionId]
+		if !ok {
+			return "", fmt.Errorf("region %d not found in derp map", regionId)
+		}
+
+		if len(region.Nodes) == 0 {
+			return "", fmt.Errorf("region %d has no registered derp relay nodes", regionId)
+		}
+
+		return region.Nodes[0].HostName, nil
+	}
+
+	return "", fmt.Errorf("derp map is nil")
 }
 
 func (nr *nexRelay) wantDerpLocked() bool { return nr.derpMap != nil }

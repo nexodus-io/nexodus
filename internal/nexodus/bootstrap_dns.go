@@ -144,5 +144,5 @@ func handleBootstrapDNS(w http.ResponseWriter, r *http.Request) {
 
 	// Fall back to returning the public set of cached DNS names
 	j := dnsCacheBytes.Load()
-	_,_ = w.Write(j)
+	_, _ = w.Write(j)
 }

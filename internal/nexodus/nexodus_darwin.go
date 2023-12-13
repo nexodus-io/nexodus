@@ -107,7 +107,7 @@ func (nx *Nexodus) findLocalIP() (string, error) {
 }
 
 func (nx *Nexodus) configureLoopback(ip string) error {
-	_, err := RunCommand("ifconfig", "lo0","alias",ip, "up")
+	_, err := RunCommand("ifconfig", "lo0", "alias", ip, "up")
 	if err != nil {
 		nx.logger.Errorf("failed to setup loopback alias for ip %s : %v\n", dev, err)
 		return fmt.Errorf("%w", interfaceErr)

@@ -3,6 +3,7 @@
         "apiserver",
         "backchannel",
         "buildx",
+        "certdir",
         "chrisdickinson",
         "Containerfile",
         "Controltower",

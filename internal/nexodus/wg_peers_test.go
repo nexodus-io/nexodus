@@ -185,7 +185,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerStunIP:       "2.2.2.2:4321",
 			peerSymmetricNAT: true,
 			healthyRelay:     true,
-			derpRelay:      false,
+			derpRelay:        false,
 			expectedMethod:   peeringMethodViaRelay,
 			secondMethod:     peeringMethodViaRelay, // our only choice
 			thirdMethod:      peeringMethodViaRelay, // our only choice

@@ -15,11 +15,12 @@ USAGE:
    nexd [global options] [command [command options]] [arguments...]
 
 COMMANDS:
-   version  Get the version of nexd
-   proxy    Run nexd as an L4 proxy instead of creating a network interface
-   router   Enable advertise-cidr function of the node agent to enable prefix forwarding.
-   relay    Enable relay and discovery support function for the node agent.
-   help, h  Shows a list of commands or help for one command
+   version    Get the version of nexd
+   proxy      Run nexd as an L4 proxy instead of creating a network interface
+   router     Enable advertise-cidr function of the node agent to enable prefix forwarding.
+   relay      Enable relay and discovery support function for the node agent.
+   relayderp  Enable DERP relay to relay traffic between nexd nodes.
+   help, h    Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    Agent Options
@@ -31,7 +32,7 @@ GLOBAL OPTIONS:
    --insecure-skip-tls-verify                   If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false) [$NEXD_INSECURE_SKIP_TLS_VERIFY]
    --password string                            Password string for accessing the nexodus service [$NEXD_PASSWORD]
    --service-url value                          URL to the Nexodus service (default: "https://try.nexodus.127.0.0.1.nip.io") [$NEXD_SERVICE_URL]
-   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. (default: $HOME/.nexodus) [$NEXD_STATE_DIR]
+   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. (default: /var/lib/nexd) [$NEXD_STATE_DIR]
    --stun-server value [ --stun-server value ]  stun server to use discover our endpoint address.  At least two are required. [$NEXD_STUN_SERVER]
    --username string                            Username string for accessing the nexodus service [$NEXD_USERNAME]
    --vpc-id value                               VPC ID to use when registering with the nexodus service [$NEXD_VPC_ID]

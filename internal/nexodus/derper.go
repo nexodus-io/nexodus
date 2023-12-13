@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 	"go4.org/mem"
 	"golang.org/x/time/rate"
@@ -79,12 +79,16 @@ var (
 )
 
 type Derper struct {
-	ctx context.Context
-	wg         *sync.WaitGroup
-	logger     *zap.SugaredLogger
+	ctx    context.Context
+	wg     *sync.WaitGroup
+	logger *zap.SugaredLogger
 
 	httptlssrv *http.Server
 	httpsrv    *http.Server
+
+	hostname string
+	certMode string
+	certDir  string
 }
 
 func init() {
@@ -145,35 +149,37 @@ func writeNewConfig() config {
 	return cfg
 }
 
-func updateFlags(cCtx *cli.Context) {
+func updateFlags(command *cli.Command) {
 
-	dev = cCtx.Bool("dev")
-	addr = cCtx.String("a")
-	httpPort = cCtx.Int("http-port")
-	stunPort = cCtx.Int("stun-port")
-	configPath = cCtx.String("c")
-	certMode = cCtx.String("certmode")
-	certDir = cCtx.String("certdir")
-	hostname = cCtx.String("hostname")
-	runSTUN = cCtx.Bool("stun")
+	dev = command.Bool("dev")
+	addr = command.String("a")
+	httpPort = int(command.Int("http-port"))
+	stunPort = int(command.Int("stun-port"))
+	configPath = command.String("c")
+	certMode = command.String("certmode")
+	certDir = command.String("certdir")
+	hostname = command.String("hostname")
+	runSTUN = command.Bool("stun")
 
-	meshPSKFile = cCtx.String("mesh-psk-file")
-	meshWith = cCtx.String("mesh-with")
-	bootstrapDNS = cCtx.String("bootstrap-dns-names")
-	unpublishedDNS = cCtx.String("unpublished-bootstrap-dns-names")
-	verifyClients = cCtx.Bool("verify-clients")
+	meshPSKFile = command.String("mesh-psk-file")
+	meshWith = command.String("mesh-with")
+	bootstrapDNS = command.String("bootstrap-dns-names")
+	unpublishedDNS = command.String("unpublished-bootstrap-dns-names")
+	verifyClients = command.Bool("verify-clients")
 
-	acceptConnLimit = cCtx.Float64("accept-connection-limit")
-	acceptConnBurst = cCtx.Int("accept-connection-burst")
+	acceptConnLimit = command.Float("accept-connection-limit")
+	acceptConnBurst = int(command.Int("accept-connection-burst"))
 }
 
-func NewDerper(ctx context.Context, cCtx *cli.Context, wg *sync.WaitGroup, logger *zap.SugaredLogger) *Derper {
-	updateFlags(cCtx)
+func NewDerper(ctx context.Context, command *cli.Command, wg *sync.WaitGroup, logger *zap.SugaredLogger) *Derper {
+	updateFlags(command)
 	return &Derper{
-		ctx: ctx,
-		wg:     wg,
-		logger: logger,
-
+		ctx:      ctx,
+		wg:       wg,
+		logger:   logger,
+		hostname: hostname,
+		certMode: certMode,
+		certDir:  certDir,
 	}
 }
 func (d *Derper) StartDerp() {
@@ -368,7 +374,7 @@ func (d *Derper) StartDerp() {
 
 func (d *Derper) StopDerper() {
 	if d.httpsrv != nil {
-		shutdownHttpCtx,_ := context.WithTimeout(context.Background(), 1*time.Second)
+		shutdownHttpCtx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 
 		util.GoWithWaitGroup(d.wg, func() {
 			d.logger.Debug("Stopping HTTP Derp relay server")

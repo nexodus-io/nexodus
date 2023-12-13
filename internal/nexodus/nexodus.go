@@ -30,7 +30,6 @@ import (
 	tlogger "tailscale.com/types/logger"
 
 	"github.com/nexodus-io/nexodus/internal/state"
-	"github.com/urfave/cli/v2"
 	"golang.org/x/oauth2"
 
 	"github.com/google/uuid"
@@ -178,7 +177,7 @@ type peerHealth struct {
 }
 
 type deviceCacheEntry struct {
-	device public.ModelsDevice
+	device   public.ModelsDevice
 	metadata public.ModelsDeviceMetadata
 	// the last time this device was updated as seen from the API
 	lastUpdated time.Time
@@ -200,6 +199,7 @@ type Options struct {
 	AdvertiseCidrs          []string
 	ApiURL                  *url.URL
 	Context                 context.Context
+	Derper                  *Derper
 	ExitNodeClientEnabled   bool
 	ExitNodeOriginEnabled   bool
 	InsecureSkipTlsVerify   bool
@@ -246,7 +246,7 @@ type Nexodus struct {
 	securityGroupId         string
 
 	userspaceWG
-	derper                   *Derper
+	Derper                   *Derper
 	nexRelay                 nexRelay
 	TunnelIP                 string
 	TunnelIpV6               string
@@ -339,6 +339,7 @@ func New(o Options) (*Nexodus, error) {
 		userspaceWG: userspaceWG{
 			proxies: map[ProxyKey]*UsProxy{},
 		},
+		Derper: o.Derper,
 		nexRelay: nexRelay{
 			derpIpMapping: NewDerpIpMapping(),
 			derpRecvCh:    make(chan derpReadResult, 1),
@@ -514,7 +515,7 @@ func (nx *Nexodus) resetApiClient(ctx context.Context) error {
 	return nil
 }
 
-func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup, cCtx *cli.Context) error {
+func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.nexCtx = ctx
 	nx.nexWg = wg
 
@@ -706,8 +707,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup, cCtx *cli.Cont
 	}
 
 	if nx.relayDerp {
-		nx.derper = NewDerper(ctx, cCtx, wg, nx.logger)
-		nx.derper.StartDerp()
+		nx.Derper.StartDerp()
 	}
 
 	util.GoWithWaitGroup(wg, func() {
@@ -874,9 +874,9 @@ func (nx *Nexodus) Stop() {
 		}
 	}
 
-	if nx.derper != nil {
+	if nx.Derper != nil {
 		nx.logger.Info("Stopping Derp Server")
-		nx.derper.StopDerper()
+		nx.Derper.StopDerper()
 	}
 	if nx.nexRelay.derpProxy != nil {
 		nx.logger.Info("Stopping HTTPS/TLS Derp Server Proxy")
@@ -1178,13 +1178,13 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 
 		// Store the relay IP for easy reference later
 		if p.Relay {
-			metadata,_,err := nx.getDeviceRelayMetadata(p.Id)
+			metadata, _, err := nx.getDeviceRelayMetadata(p.Id)
 			if err != nil {
 				nx.logger.Warnf("failed to get relay metadata for peer (hostname:%s pubkey:%s): %v",
 					p.Hostname, p.PublicKey, err)
 			} else {
 				existing.metadata = metadata
-				nx.logger.Debugf("successfully fetched device metadata: %v",existing.metadata)
+				nx.logger.Debugf("successfully fetched device metadata: %v", existing.metadata)
 			}
 			nx.relayWgIP = p.AllowedIps[0]
 		}

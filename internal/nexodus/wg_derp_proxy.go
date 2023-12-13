@@ -15,12 +15,12 @@ import (
 
 // DerpUserSpaceProxy proxies
 type DerpUserSpaceProxy struct {
-	port     int
+	port       int
 	listenAddr net.Addr
-	srcAddr  net.Addr
-	nexRelay *nexRelay
-	ctx      context.Context
-	cancel   context.CancelFunc
+	srcAddr    net.Addr
+	nexRelay   *nexRelay
+	ctx        context.Context
+	cancel     context.CancelFunc
 
 	localConn  net.PacketConn
 	packetConn *ipv4.PacketConn

@@ -1,6 +1,7 @@
 package nexodus
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"runtime"
@@ -34,7 +35,7 @@ type wgPeerMethod struct {
 	// name of the peering method
 	name string
 	// determine if this peering method is available for the given device
-	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool,wgRelayAvailable bool) bool
+	checkPrereqs func(nx *Nexodus, device public.ModelsDevice, reflexiveIP4 string, healthyRelay bool, wgRelayAvailable bool) bool
 	// buildPeerConfig builds the peer configuration for a given peering method
 	buildPeerConfig func(nx *Nexodus, device public.ModelsDevice, relayAllowedIP []string, localIP, peerPort, reflexiveIP4 string) wgPeerConfig
 }
@@ -223,14 +224,14 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 	// do we have a healthy relay available?
 	healthyRelay := false
-	relayDevice := public.ModelsDevice{}
 	relayAvailable := false
 	isDerpRelay := false
+	var relayDevice deviceCacheEntry
 	for _, d := range nx.deviceCache {
 		if d.device.Relay {
 			relayAvailable = true
-			relayDevice = d.device
-			isDerpRelay = nx.isDerpRelay(d)
+			relayDevice = d
+			isDerpRelay = nx.derpRelay(d)
 			if d.peerHealthy {
 				healthyRelay = true
 				break
@@ -244,9 +245,65 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 	// This is to ensure that if wireguard relay is on-boarded, legacy control flow
 	// should work the same as before.
 	if relayAvailable && isDerpRelay {
-		nx.nexRelay.SetCustomDERPMap(relayDevice)
+		var derpAddr string
+		for _, addr := range relayDevice.device.Endpoints {
+			if addr.Source == "stun:" {
+				derpAddr = addr.Address
+			}
+		}
+
+		if derpAddr == "" {
+			nx.logger.Warnf("no STUN endpoint found for relay device %v", relayDevice.metadata.DeviceId)
+		}
+		hostname, err := nx.getDerpRelayHostname(relayDevice)
+		if err != nil {
+			nx.logger.Warnf("failed to get hostname for relay device %v: %v", relayDevice.metadata.DeviceId, err)
+		}
+
+		if hostname != "" && derpAddr != "" {
+			if nx.nexRelay.myDerp == DefaultDerpRegionID {
+				nx.logger.Debugf("User on-boarded derp relay is available, switching to on-boarded relay from public relay. : [ %v] ", nx.nexRelay.derpMap.Regions[CustomDerpRegionID])
+				nx.nexRelay.closeDerpLocked(nx.nexRelay.myDerp, "switching to custom DERP map")
+			}
+			if nx.nexRelay.myDerp == 0 {
+				nx.logger.Debugf("User on-boarded derp relay is available, use it for region: [ %d] ", CustomDerpRegionID)
+			}
+
+			if nx.nexRelay.myDerp != CustomDerpRegionID {
+				nx.nexRelay.SetCustomDERPMap(derpAddr, hostname)
+				cmManual := nx.certModeManual(relayDevice)
+
+				if cmManual {
+					// If the cert mode is manual, we need to set the local DNS entry
+					// to point it to the provided hostname
+					ip, _, err := net.SplitHostPort(derpAddr)
+					if err != nil {
+						nx.logger.Errorf("Failed to parse stun address %s : %v", derpAddr, err)
+					}
+
+					err = SetLocalDerpDnsEntry(ip, hostname)
+					if err != nil {
+						nx.logger.Warnf("failed to set local DNS entry for relay device %v: %v", relayDevice.metadata.DeviceId, err)
+					}
+				}
+			}
+
+		}
 	} else if !relayAvailable {
+		if nx.nexRelay.myDerp == CustomDerpRegionID {
+			nx.nexRelay.logger.Debugf("User on-boarded derp relay is gone, lets default to hosted relay %v", nx.nexRelay.derpMap.Regions[DefaultDerpRegionID])
+			nx.nexRelay.closeDerpLocked(nx.nexRelay.myDerp, "switching to default DERP map")
+
+			// Clean up the local DNS entry set for onboarded derp relay
+			hostname, err := nx.nexRelay.getDerpRelayHostname(nx.nexRelay.myDerp)
+			if err != nil {
+				nx.nexRelay.logger.Warnf("failed to get hostname for derp relay device %v: %v", relayDevice.metadata.DeviceId, err)
+			} else {
+				RemoveLocalDerpDnsEntry(hostname)
+			}
+		}
 		nx.nexRelay.SetDefaultDERPMap()
+
 	}
 
 	now := time.Now()
@@ -287,9 +344,9 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 
 	if healthyRelay && len(allowedIPsForRelay) > 0 {
 		// Add child prefix CIDRs to the relay for peers that we can only reach via the relay
-		relayConfig := nx.wgConfig.Peers[relayDevice.PublicKey]
+		relayConfig := nx.wgConfig.Peers[relayDevice.device.PublicKey]
 		relayConfig.AllowedIPs = append([]string{nx.vpc.Ipv4Cidr, nx.vpc.Ipv4Cidr}, allowedIPsForRelay...)
-		nx.wgConfig.Peers[relayDevice.PublicKey] = relayConfig
+		nx.wgConfig.Peers[relayDevice.device.PublicKey] = relayConfig
 	}
 
 	return updatedPeers
@@ -489,12 +546,28 @@ func (nx *Nexodus) buildLocalConfig() {
 	nx.wgConfig.Interface = localInterface
 }
 
-func (nx *Nexodus) isDerpRelay(d deviceCacheEntry) bool {
-	rtype,ok := d.metadata.Value["type"]
+func (nx *Nexodus) derpRelay(d deviceCacheEntry) bool {
+	rtype, ok := d.metadata.Value["type"]
 	if !ok {
 		return false
 	} else if rtype == "derp" {
 		return true
 	}
 	return false
+}
+
+func (nx *Nexodus) getDerpRelayHostname(d deviceCacheEntry) (string, error) {
+	hostname, ok := d.metadata.Value["hostname"]
+	if !ok {
+		return "", fmt.Errorf("derp hostname metadata not found")
+	}
+	return hostname.(string), nil
+}
+
+func (nx *Nexodus) certModeManual(d deviceCacheEntry) bool {
+	rtype, ok := d.metadata.Value["certmodemanual"]
+	if !ok {
+		return false
+	}
+	return rtype.(bool)
 }

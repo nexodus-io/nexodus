@@ -75,7 +75,6 @@ func (nx *Nexodus) configureLoopback(ip string) error {
 	return nil
 }
 
-
 func buildWindowsWireguardIfaceConf(pvtKey, wgAddress, wgListenPort string) error {
 	f, err := fileHandle(windowsWgConfigFile, windowsConfFilePermissions)
 	if err != nil {
