@@ -16,19 +16,19 @@ patches:
         value: monitoring.rhobs/v1
   - target:
       group: integreatly.org
-      version: v1alpha1
+      version: v1beta1
       kind: Grafana
     path: grafana-patch.yaml
   - target:
       group: integreatly.org
-      version: v1alpha1
+      version: v1beta1
       kind: Grafana
     patch: |-
       - op: remove
         path: /spec/config/security
   - target:
       group: integreatly.org
-      version: v1alpha1
+      version: v1beta1
       kind: Grafana
     patch: |-
       - op: remove
