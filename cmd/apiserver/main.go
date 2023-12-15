@@ -272,9 +272,9 @@ func main() {
 				Required: false,
 				Sources:  cli.EnvVars("NEXAPI_SMTP_TLS"),
 			},
-			&cli.BoolFlag{
+			&cli.StringFlag{
 				Name:     "smtp-from",
-				Usage:    "The form address to use for emails",
+				Usage:    "The from address to use for emails",
 				Required: false,
 				Sources:  cli.EnvVars("NEXAPI_SMTP_FROM"),
 			},
