@@ -46,3 +46,7 @@
         chdir: "{{ repo_dir }}"
         target: recreate-db
       delegate_to: "{{ target_host }}"
+      register: recreate_db_result
+      until: recreate_db_result is succeeded
+      retries: 5
+      delay: 10
