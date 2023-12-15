@@ -708,23 +708,7 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
-      "protocolMappers" : [ {
-        "id" : "6273d8b6-f6e8-42e5-bece-aba7835e94e2",
-        "name" : "from_google",
-        "protocol" : "openid-connect",
-        "protocolMapper" : "oidc-usermodel-attribute-mapper",
-        "consentRequired" : false,
-        "config" : {
-          "aggregate.attrs" : "false",
-          "userinfo.token.claim" : "false",
-          "multivalued" : "false",
-          "user.attribute" : "from_google",
-          "id.token.claim" : "false",
-          "access.token.claim" : "true",
-          "claim.name" : "from_google",
-          "jsonType.label" : "boolean"
-        }
-      } ],
+      "protocolMappers" : [],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -784,23 +768,7 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
-      "protocolMappers" : [ {
-        "id" : "6273d8b6-f6e8-42e5-bece-aba7835e94e1",
-        "name" : "from_google",
-        "protocol" : "openid-connect",
-        "protocolMapper" : "oidc-usermodel-attribute-mapper",
-        "consentRequired" : false,
-        "config" : {
-          "aggregate.attrs" : "false",
-          "userinfo.token.claim" : "false",
-          "multivalued" : "false",
-          "user.attribute" : "from_google",
-          "id.token.claim" : "false",
-          "access.token.claim" : "true",
-          "claim.name" : "from_google",
-          "jsonType.label" : "boolean"
-        }
-      } ],
+      "protocolMappers" : [],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -1621,17 +1589,17 @@
       "clientSecret" : "${GOOGLE_CLIENT_SECRET}"
     }
   } ],
-  "identityProviderMappers" : [ {
-    "id" : "870802b9-27fd-4cba-aabe-62d7051b075a",
-    "name" : "from_google",
-    "identityProviderAlias" : "google",
-    "identityProviderMapper" : "hardcoded-attribute-idp-mapper",
-    "config" : {
-      "syncMode" : "INHERIT",
-      "attribute.value" : "true",
-      "attribute" : "from_google"
+  "identityProviderMappers" : [{
+    "id": "dca33fa6-edb4-4d8b-aae6-392f2e43d3b0",
+    "name": "picture",
+    "identityProviderAlias": "google",
+    "identityProviderMapper": "google-user-attribute-mapper",
+    "config": {
+      "syncMode": "FORCE",
+      "jsonField": "picture",
+      "userAttribute": "picture"
     }
-  } ],
+  }],
   "components": {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
       {
