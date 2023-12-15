@@ -114,7 +114,7 @@ jobs:
       - name: Initialize the api-server Images
         run: |
           mkdir -p ./ops/ansible/aws/nexd-logs/api-server
-          ansible-playbook -vv ./hack/e2e-scripts/aws-e2e-pr-build.yml \
+          ansible-playbook -vvv ./hack/e2e-scripts/aws-e2e-pr-build.yml \
           --private-key nexodus.pem \
           --extra-vars "target_host=${{ vars.EC2_API_SERVER_ADDR }}" \
           --extra-vars "pr_or_branch=${{ github.event.inputs.pr_or_branch }}" \
