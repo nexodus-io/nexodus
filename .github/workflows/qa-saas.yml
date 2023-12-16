@@ -129,7 +129,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install Ansible and Dependencies
-        run: pip3.10 install boto boto3 ansible-vault ansible-core==2.13.3
+        run: pip3.10 install boto boto3 ansible-vault ansible-core
 
       - name: Install amazon.aws Ansible library
         run: ansible-galaxy collection install amazon.aws
@@ -187,7 +187,9 @@ jobs:
       - name: Terminate EC2 Instances
         if: always()
         run: |
-          ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml
+          ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml \
+          --private-key nexodus.pem \
+          --vault-password-file vault-secret.txt
 
       - name: Upload nexd and api-server Logs to Artifacts
         if: always()

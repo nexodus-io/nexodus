@@ -152,7 +152,9 @@ jobs:
       - name: Terminate EC2 Instances
         if: always()
         run: |
-          ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml
+          ansible-playbook -vv ./ops/ansible/aws/terminate-instances.yml \
+          --private-key nexodus.pem \
+          --vault-password-file vault-secret.txt
 
       - name: Upload nexd and api-server Logs to Artifacts
         if: always()
