@@ -43,11 +43,12 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
       ANSIBLE_HOST_KEY_CHECKING: "false"
-      # Conditional environment variables if the job is scheduled
-      DEPLOYMENT_SIZE: ${{ github.event_name == 'schedule' && 'small' || github.event.inputs.deployment_size }}
-      PR_OR_BRANCH: ${{ github.event_name == 'schedule' && 'main' || github.event.inputs.pr_or_branch }}
-      DEBUG_PAUSE: ${{ github.event_name == 'schedule' && '0' || github.event.inputs.debug_pause }}
-      CONTROLLER_ADDRESS: ${{ github.event_name == 'schedule' && 'qa.nexodus.io' || github.event.inputs.controller_address }}
+      # Set default values for scheduled runs
+      DEPLOYMENT_SIZE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_size || 'small' }}
+      PR_OR_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pr_or_branch || 'main' }}
+      DEBUG_PAUSE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_pause || '0' }}
+      CONTROLLER_ADDRESS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.controller_address || 'qa.nexodus.io' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
