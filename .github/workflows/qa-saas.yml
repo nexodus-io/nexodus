@@ -30,7 +30,7 @@ on:
         type: string
 
   schedule:
-    - cron: '0 17 * * *'
+    - cron: '30 1 * * *'
 
 jobs:
   deploy-qa:
@@ -94,16 +94,21 @@ jobs:
 
       - name: Set Controller and Keycloak Credentials
         run: |
-          # Set controller authentication address
-          controller_auth_address="auth.${{ github.event.inputs.controller_address }}"
+           # Set controller address to default if not provided in event inputs
+          controller_address=${{ github.event.inputs.controller_address || 'qa.nexodus.io' }}
+          controller_auth_address="auth.$controller_address"
           echo "CONTROLLER_AUTH_ADDRESS=$controller_auth_address" >> "$GITHUB_ENV"
           # Set Keycloak credentials based on controller address
-          if [ "${{ github.event.inputs.controller_address }}" = "qa.nexodus.io" ]; then
-            echo "KC_USERNAME=${{ secrets.KC_QA_USERNAME }}" >> "$GITHUB_ENV"
-            echo "KC_PASSWORD=${{ secrets.KC_QA_PASSWORD }}" >> "$GITHUB_ENV"
-          elif [ "${{ github.event.inputs.controller_address }}" = "try.nexodus.io" ]; then
-            echo "KC_USERNAME=${{ secrets.KC_PROD_USERNAME }}" >> "$GITHUB_ENV"
-            echo "KC_PASSWORD=${{ secrets.KC_PROD_PASSWORD }}" >> "$GITHUB_ENV"
+          if [ "$controller_address" = "qa.nexodus.io" ]; then
+          echo "KC_USERNAME=${{ secrets.KC_QA_USERNAME }}" >> "$GITHUB_ENV"
+          echo "KC_PASSWORD=${{ secrets.KC_QA_PASSWORD }}" >> "$GITHUB_ENV"
+          elif [ "$controller_address" = "try.nexodus.io" ]; then
+          echo "KC_USERNAME=${{ secrets.KC_PROD_USERNAME }}" >> "$GITHUB_ENV"
+          echo "KC_PASSWORD=${{ secrets.KC_PROD_PASSWORD }}" >> "$GITHUB_ENV"
+          else
+          # Default to qa.nexodus.io credentials if controller_address is not specified
+          echo "KC_USERNAME=${{ secrets.KC_QA_USERNAME }}" >> "$GITHUB_ENV"
+          echo "KC_PASSWORD=${{ secrets.KC_QA_PASSWORD }}" >> "$GITHUB_ENV"
           fi
 
       - name:  Build Keycloak Tool
@@ -169,8 +174,8 @@ jobs:
           --vault-password-file vault-secret.txt \
           --extra-vars "nexodus_auth_uid=${{ steps.kc-user.outputs.USER }}" \
           --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}" \
-          --extra-vars "debug_pause=${{ github.event.inputs.debug_pause }}" \
-          --extra-vars "controller_address=${{ github.event.inputs.controller_address }}"
+          --extra-vars "debug_pause=$debug_pause" \
+          --extra-vars "controller_address=$controller_address"
 
       - name: Mesh Connectivity Results
         run: |
