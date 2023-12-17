@@ -30,7 +30,7 @@ on:
         type: string
 
   schedule:
-    - cron: '45 1 * * *'
+    - cron: '0 17 * * *'
 
 jobs:
   deploy-qa:
@@ -96,6 +96,7 @@ jobs:
         run: |
           # Set controller address to default if not provided in event inputs
           controller_address=${{ github.event.inputs.controller_address || 'qa.nexodus.io' }}
+          echo "controller_address=${controller_address}" >> "$GITHUB_ENV"
           controller_auth_address="auth.$controller_address"
           echo "CONTROLLER_AUTH_ADDRESS=$controller_auth_address" >> "$GITHUB_ENV"
           # Set Keycloak credentials based on controller address
@@ -139,6 +140,11 @@ jobs:
       - name: Install amazon.aws Ansible library
         run: ansible-galaxy collection install amazon.aws
 
+      - name: Set Default Deployment Size if Not Provided
+        if: github.event_name == 'schedule' || github.event.inputs.deployment_size == ''
+        run: |
+          echo "${{ secrets.ANSIBLE_VARS_SMALL_QA }}" > ./ops/ansible/aws/vars.yml
+
       - name: Set Deployment Size to Small
         if: github.event.inputs.deployment_size == 'small'
         run: |
@@ -174,7 +180,7 @@ jobs:
           --vault-password-file vault-secret.txt \
           --extra-vars "nexodus_auth_uid=${{ steps.kc-user.outputs.USER }}" \
           --extra-vars "nexodus_auth_password=${{ secrets.QA_USER_PASSWORD }}" \
-          --extra-vars "debug_pause=$debug_pause" \
+          --extra-vars "debug_pause=0" \
           --extra-vars "controller_address=$controller_address"
 
       - name: Mesh Connectivity Results
