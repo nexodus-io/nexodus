@@ -30,7 +30,7 @@ on:
         type: string
 
   schedule:
-    - cron: '30 1 * * *'
+    - cron: '45 1 * * *'
 
 jobs:
   deploy-qa:
@@ -94,7 +94,7 @@ jobs:
 
       - name: Set Controller and Keycloak Credentials
         run: |
-           # Set controller address to default if not provided in event inputs
+          # Set controller address to default if not provided in event inputs
           controller_address=${{ github.event.inputs.controller_address || 'qa.nexodus.io' }}
           controller_auth_address="auth.$controller_address"
           echo "CONTROLLER_AUTH_ADDRESS=$controller_auth_address" >> "$GITHUB_ENV"
