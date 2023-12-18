@@ -219,7 +219,7 @@ jobs:
 
     steps:
       - name: download binary artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: nexodus-packages
           path: dist/packages
@@ -270,37 +270,37 @@ jobs:
           sudo apt-get -qy install libnss3-tools
 
       - name: Download apiserver image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: apiserver
           path: /tmp
 
       - name: Download frontend image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: frontend
           path: /tmp
 
       - name: Download ipam image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ipam
           path: /tmp
 
       - name: Download nexd image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: nexd
           path: /tmp
 
       - name: Download envsubst image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: envsubst
           path: /tmp
 
       - name: Download playwright image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: playwright
           path: /tmp
