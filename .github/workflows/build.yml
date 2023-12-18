@@ -139,7 +139,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
 
       - name: Upload ${{ matrix.name }} artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: /tmp/${{ matrix.name }}.tar
@@ -193,7 +193,7 @@ jobs:
           NEXODUS_BUILD_PROFILE=prod make -j dist/packages
 
       - name: Upload nexodus zip packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nexodus-packages
           if-no-files-found: error
@@ -201,7 +201,7 @@ jobs:
             dist/packages/*.zip
 
       - name: Upload nexodus tar.gz packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nexodus-packages
           if-no-files-found: error
@@ -333,7 +333,7 @@ jobs:
 
       - name: Upload Logs and Test Reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-${{ matrix.overlay }}-logs
           path: |
@@ -373,7 +373,7 @@ jobs:
           echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> "$GITHUB_OUTPUT"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nexodus-rpms
           path: |

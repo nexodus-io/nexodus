@@ -102,7 +102,7 @@ jobs:
           NEXODUS_BUILD_PROFILE=prod make -j dist/packages
 
       - name: Upload nexodus zip packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nexodus-packages
           if-no-files-found: error
@@ -110,7 +110,7 @@ jobs:
             dist/packages/*.zip
 
       - name: Upload nexodus tar.gz packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nexodus-packages
           if-no-files-found: error

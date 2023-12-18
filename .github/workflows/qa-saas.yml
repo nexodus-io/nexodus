@@ -204,7 +204,7 @@ jobs:
 
       - name: Upload nexd and api-server Logs to Artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dev-ec2-artifacts
           path: ./ops/ansible/aws/nexd-logs/
