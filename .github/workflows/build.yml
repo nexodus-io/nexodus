@@ -139,7 +139,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
 
       - name: Upload ${{ matrix.name }} artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: /tmp/${{ matrix.name }}.tar
@@ -193,17 +193,17 @@ jobs:
           NEXODUS_BUILD_PROFILE=prod make -j dist/packages
 
       - name: Upload nexodus zip packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-packages-zip
           if-no-files-found: error
           path: |
             dist/packages/*.zip
 
       - name: Upload nexodus tar.gz packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-packages-tar
           if-no-files-found: error
           path: |
             dist/packages/*.tar.gz
@@ -218,10 +218,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: download binary artifacts
-        uses: actions/download-artifact@v3
+      - name: download zip binary artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-packages-zip
+          path: dist/packages
+
+      - name: download tar.gz binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nexodus-packages-tar
           path: dist/packages
 
       - name: Display structure of downloaded files
@@ -270,37 +276,37 @@ jobs:
           sudo apt-get -qy install libnss3-tools
 
       - name: Download apiserver image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: apiserver
           path: /tmp
 
       - name: Download frontend image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: frontend
           path: /tmp
 
       - name: Download ipam image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ipam
           path: /tmp
 
       - name: Download nexd image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: nexd
           path: /tmp
 
       - name: Download envsubst image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: envsubst
           path: /tmp
 
       - name: Download playwright image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: playwright
           path: /tmp
@@ -333,7 +339,7 @@ jobs:
 
       - name: Upload Logs and Test Reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-${{ matrix.overlay }}-logs
           path: |
@@ -369,13 +375,13 @@ jobs:
       - name: Build rpm
         id: build-rpm
         run: |
-          MOCK_ROOT="${{ matrix.mock_root}}" SRPM_MOCK_ROOT="${{ matrix.srpm_mock_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make rpm
-          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-*.x86_64.rpm" >> "$GITHUB_OUTPUT"
+          MOCK_ROOT="${{ matrix.mock_root }}" SRPM_MOCK_ROOT="${{ matrix.srpm_mock_root }}" SRPM_DISTRO="${{ matrix.srpm_distro }}" make rpm
+          echo "artifact-name=$(pwd)/dist/rpm/mock/nexodus-${{ matrix.mock_root }}-*.x86_64.rpm" >> "$GITHUB_OUTPUT"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: nexodus-rpms
+          name: nexodus-rpms-${{ matrix.mock_root }}
           path: |
             ${{ steps.build-rpm.outputs.artifact-name }}
 
