@@ -15,27 +15,37 @@ export const CustomMenu = (props: MenuProps) => {
         to="/organizations"
         primaryText="Organizations"
         leftIcon={<OrganizationIcon />}
+        placeholder="" // Added placeholder
       />
-      <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
+      <MenuItemLink
+        to="/vpcs"
+        primaryText="VPCs"
+        leftIcon={<VPCIcon />}
+        placeholder=""
+      />
       <MenuItemLink
         to="/devices"
         primaryText="Devices"
         leftIcon={<DeviceIcon />}
+        placeholder=""
       />
       <MenuItemLink
         to="/invitations"
         primaryText="Invitations"
         leftIcon={<InvitationIcon />}
+        placeholder=""
       />
       <MenuItemLink
         to="/_security-groups"
         primaryText="Security Groups"
         leftIcon={<SecurityIcon />}
+        placeholder=""
       />
       <MenuItemLink
         to="/reg-keys"
         primaryText="Registration Keys"
         leftIcon={<RegKeyIcon />}
+        placeholder=""
       />
     </Menu>
   );
