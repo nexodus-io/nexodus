@@ -47,7 +47,7 @@ var (
 	stunPort   = 3478
 	configPath = ""
 	certMode   = "letsencrypt"
-	certDir    = tsweb.DefaultCertDir("derper-certs")
+	certDir    = ""
 	hostname   = "relay.nexodus.com"
 	runSTUN    = true
 	runDERP    = true
@@ -152,7 +152,7 @@ func writeNewConfig() config {
 func updateFlags(command *cli.Command) {
 
 	dev = command.Bool("dev")
-	addr = command.String("a")
+	addr = command.String("addr")
 	httpPort = int(command.Int("http-port"))
 	stunPort = int(command.Int("stun-port"))
 	configPath = command.String("c")
@@ -492,7 +492,7 @@ func serverSTUNListener(ctx context.Context, pc *net.UDPConn) {
 	}
 }
 
-var validProdHostname = regexp.MustCompile(`^derp([^.]*)\.tailscale\.com\.?$`)
+var validProdHostname = regexp.MustCompile(`^relay([^.]*)\.nexodus\.io\.?$`)
 
 func prodAutocertHostPolicy(_ context.Context, host string) error {
 	if validProdHostname.MatchString(host) {

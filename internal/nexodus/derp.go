@@ -3,9 +3,10 @@ package nexodus
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
-	"net"
 	"net/netip"
+	"os"
 	"reflect"
 	"runtime"
 	"sort"
@@ -35,7 +36,6 @@ const (
 	CustomDerpRegionCode  = "local"
 	CustomDerpRegionName  = "NexodusLocal"
 	CustomDerpNodeName    = "901nex"
-	CustomDerpIPAddr      = "custom.relay.nexodus.io"
 )
 
 // derpRoute is a route entry for a public key, saying that a certain
@@ -76,55 +76,6 @@ type activeDerp struct {
 	// It is always non-nil and initialized to a non-zero Time.
 	lastWrite  *time.Time
 	createTime time.Time
-}
-
-var processStartUnixNano = time.Now().UnixNano()
-
-func (nr *nexRelay) derpRegionCodeLocked(regionID int) string {
-	if nr.derpMap == nil {
-		return ""
-	}
-	if dr, ok := nr.derpMap.Regions[regionID]; ok {
-		return dr.RegionCode
-	}
-	return ""
-}
-
-// c.mu must NOT be held.
-func (nr *nexRelay) setNearestDERP(derpNum int) (wantDERP bool) {
-	nr.mu.Lock()
-	defer nr.mu.Unlock()
-	if !nr.wantDerpLocked() {
-		nr.myDerp = 0
-		health.SetMagicSockDERPHome(0)
-		return false
-	}
-	if derpNum == nr.myDerp {
-		// No change.
-		return true
-	}
-	nr.myDerp = derpNum
-	health.SetMagicSockDERPHome(derpNum)
-
-	if nr.privateKey.IsZero() {
-		// No private key yet, so DERP connections won't come up anyway.
-		// Return early rather than ultimately log a couple lines of noise.
-		return true
-	}
-
-	// On change, notify all currently connected DERP servers and
-	// start connecting to our home DERP if we are not already.
-	dr := nr.derpMap.Regions[derpNum]
-	if dr == nil {
-		nr.logger.Errorf("[derpMap regions for derp region code [%d] is nil", derpNum)
-	} else {
-		nr.logger.Infof("home region for %d is now derp-%v (%s)", derpNum, nr.derpMap.Regions[derpNum].RegionCode)
-	}
-	for i, ad := range nr.activeDerp {
-		go ad.c.NotePreferred(i == nr.myDerp)
-	}
-	nr.goDerpConnect(derpNum)
-	return true
 }
 
 // startDerpHomeConnectLocked starts connecting to our DERP home, if any.
@@ -304,7 +255,10 @@ func (nr *nexRelay) derpWriteChanOfAddr(addr netip.AddrPort, peer key.NodePublic
 	if firstDerp {
 		startGate = nr.derpStarted
 		go func() {
-			dc.Connect(ctx)
+			err := dc.Connect(ctx)
+			if err != nil {
+				nr.logger.Warnf("failed to connect derp-%d : %v", regionID, err)
+			}
 			close(nr.derpStarted)
 			nr.muCond.Broadcast()
 		}()
@@ -411,7 +365,7 @@ func (nr *nexRelay) runDerpReader(ctx context.Context, derpFakeAddr netip.AddrPo
 				delete(peerPresent, peer)
 				nr.removeDerpPeerRoute(peer, regionID, dc)
 			}
-			if err == derphttp.ErrClientClosed {
+			if errors.Is(err, derphttp.ErrClientClosed) {
 				return
 			}
 			if nr.networkDown() {
@@ -536,45 +490,15 @@ func (nr *nexRelay) runDerpWriter(ctx context.Context, dc *derphttp.Client, ch <
 	}
 }
 
-func (nr *nexRelay) receiveDERP(buffs [][]byte, sizes []int) (int, error) {
-	for dm := range nr.derpRecvCh {
-		n := nr.processDERPReadResult(dm, buffs[0])
-		if n == 0 {
-			// No data read occurred. Wait for another packet.
-			continue
-		}
-		sizes[0] = n
-		return 1, nil
-	}
-	return 0, net.ErrClosed
-}
-
-func (nr *nexRelay) processDERPReadResult(dm derpReadResult, b []byte) (n int) {
-	if dm.copyBuf == nil {
-		return 0
-	}
-	ncopy := dm.copyBuf(b)
-	if ncopy != dm.n {
-		err := fmt.Errorf("received DERP packet of length %d that's too big for WireGuard buf size %d", dm.n, ncopy)
-		nr.logger.Errorf("failed to read derp read results: %v", err)
-		return 0
-	}
-	return n
-}
-
-func (nr *nexRelay) debugUseDERPAddr() string {
-	return DefaultDerpIPAddr
-}
-
 func (nr *nexRelay) debugUseDERPHTTP() bool {
+	if devMode := os.Getenv("NEXD_DERP_DEV_MODE"); devMode != "" {
+		return true
+	}
+
 	return false
 }
 
-func (nr *nexRelay) debugUseDERP() bool {
-	return nr.debugUseDERPAddr() != ""
-}
-
-// SetDefaultDERPMap sets the default DERP map to use for nexodus deployments
+// SetCustomDERPMap sets the default DERP map to use for nexodus deployments
 func (nr *nexRelay) SetCustomDERPMap(derpStunAddr string, hostname string) {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
@@ -611,7 +535,7 @@ func (nr *nexRelay) SetDefaultDERPMap() {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 	var dm *tailcfg.DERPMap
-	var derpAddr = nr.debugUseDERPAddr()
+	var derpAddr = DefaultDerpIPAddr
 	if derpAddr != "" {
 		derpPort := 443
 		if nr.debugUseDERPHTTP() {
@@ -655,7 +579,7 @@ func (nr *nexRelay) SetDERPMap(dm *tailcfg.DERPMap) {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 
-	var derpAddr = nr.debugUseDERPAddr()
+	var derpAddr = DefaultDerpIPAddr
 	if derpAddr != "" {
 		derpPort := 443
 		if nr.debugUseDERPHTTP() {
@@ -755,20 +679,6 @@ func (nr *nexRelay) DebugBreakDERPConns() error {
 	return nil
 }
 
-// closeOrReconnectDERPLocked closes the DERP connection to the
-// provided regionID and starts reconnecting it if it's our current
-// home DERP.
-//
-// why is a reason for logging.
-//
-// c.mu must be held.
-func (nr *nexRelay) closeOrReconnectDERPLocked(regionID int, why string) {
-	nr.closeDerpLocked(regionID, why)
-	if !nr.privateKey.IsZero() && nr.myDerp == regionID {
-		nr.startDerpHomeConnectLocked()
-	}
-}
-
 // c.mu must be held.
 // It is the responsibility of the caller to call logActiveDerpLocked after any set of closes.
 func (nr *nexRelay) closeDerpLocked(regionID int, why string) {
@@ -798,7 +708,7 @@ func (nr *nexRelay) logActiveDerpLocked() {
 		if len(nr.activeDerp) == 0 {
 			return
 		}
-		buf.WriteString(":")
+		_, _ = buf.WriteString(":")
 		nr.foreachActiveDerpSortedLocked(func(node int, ad activeDerp) {
 			fmt.Fprintf(buf, " derp-%d=cr%v,wr%v", node, simpleDur(now.Sub(ad.createTime)), simpleDur(now.Sub(*ad.lastWrite)))
 		})
@@ -823,67 +733,12 @@ func (nr *nexRelay) foreachActiveDerpSortedLocked(fn func(regionID int, ad activ
 	}
 }
 
-func (nr *nexRelay) cleanStaleDerp() {
-	nr.mu.Lock()
-	defer nr.mu.Unlock()
-	if nr.closed {
-		return
-	}
-	nr.derpCleanupTimerArmed = false
-
-	tooOld := time.Now().Add(-derpInactiveCleanupTime)
-	dirty := false
-	someNonHomeOpen := false
-	for i, ad := range nr.activeDerp {
-		if i == nr.myDerp {
-			continue
-		}
-		if ad.lastWrite.Before(tooOld) {
-			nr.closeDerpLocked(i, "idle")
-			dirty = true
-		} else {
-			someNonHomeOpen = true
-		}
-	}
-	if dirty {
-		nr.logActiveDerpLocked()
-	}
-	if someNonHomeOpen {
-		nr.scheduleCleanStaleDerpLocked()
-	}
-}
-
-func (nr *nexRelay) scheduleCleanStaleDerpLocked() {
-	if nr.derpCleanupTimerArmed {
-		// Already going to fire soon. Let the existing one
-		// fire lest it get infinitely delayed by repeated
-		// calls to scheduleCleanStaleDerpLocked.
-		return
-	}
-	nr.derpCleanupTimerArmed = true
-	if nr.derpCleanupTimer != nil {
-		nr.derpCleanupTimer.Reset(derpCleanStaleInterval)
-	} else {
-		nr.derpCleanupTimer = time.AfterFunc(derpCleanStaleInterval, nr.cleanStaleDerp)
-	}
-}
-
 // DERPs reports the number of active DERP connections.
 func (nr *nexRelay) DERPs() int {
 	nr.mu.Lock()
 	defer nr.mu.Unlock()
 
 	return len(nr.activeDerp)
-}
-
-func (nr *nexRelay) derpRegionCodeOfIDLocked(regionID int) string {
-	if nr.derpMap == nil {
-		return ""
-	}
-	if r, ok := nr.derpMap.Regions[regionID]; ok {
-		return r.RegionCode
-	}
-	return ""
 }
 
 // derpAddrFamSelector is the derphttp.AddressFamilySelector we pass
@@ -898,13 +753,3 @@ type derpAddrFamSelector struct{ c *nexRelay }
 func (s derpAddrFamSelector) PreferIPv6() bool {
 	return false
 }
-
-const (
-	// derpInactiveCleanupTime is how long a non-home DERP connection
-	// needs to be idle (last written to) before we close it.
-	derpInactiveCleanupTime = 60 * time.Second
-
-	// derpCleanStaleInterval is how often cleanStaleDerp runs when there
-	// are potentially-stale DERP connections to close.
-	derpCleanStaleInterval = 15 * time.Second
-)

@@ -18,7 +18,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/state/fstore"
 	"github.com/nexodus-io/nexodus/internal/state/kstore"
 	log "github.com/sirupsen/logrus"
-	"tailscale.com/tsweb"
 
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/stun"
@@ -54,7 +53,7 @@ var DefaultServiceURL = "https://try.nexodus.io"
 
 func nexdRun(ctx context.Context, command *cli.Command, logger *zap.Logger, logLevel *zap.AtomicLevel, mode nexdMode) error {
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	defer cancel()
 	wg := &sync.WaitGroup{}
 
@@ -456,25 +455,27 @@ func main() {
 						Sources:  cli.EnvVars("NEXD_DERP_DEV_MODE"),
 						Value:    false,
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.StringFlag{
-						Name:     "a",
+						Name:     "addr",
 						Value:    ":443",
-						Usage:    "Server HTTP/HTTPS listen address, in form \":port\", \"ip:port\", or for IPv6 \"[ip]:port\". If the IP is omitted, it defaults to all interfaces. Serves HTTPS if the port is 443 and/or -certmode is manual, otherwise HTTP.",
+						Usage:    "Server HTTP/HTTPS listen address, in form \":port\", \"ip:port\", or for IPv6 \"[ip]:port\".",
 						Sources:  cli.EnvVars("NEXD_DERP_LISTEN_ADDR"),
 						Required: false,
 					},
 					&cli.IntFlag{
 						Name:     "http-port",
 						Value:    80,
-						Usage:    "The port on which to serve HTTP. Set to -1 to disable. The listener is bound to the same IP (if any) as specified in the -a flag.",
+						Usage:    "The port on which to serve HTTP. Set to -1 to disable.",
 						Sources:  cli.EnvVars("NEXD_DERP_HTTP_PORT"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.IntFlag{
 						Name:     "stun-port",
 						Value:    3478,
-						Usage:    "The UDP port on which to serve STUN. The listener is bound to the same IP (if any) as specified in the -a flag.",
+						Usage:    "The UDP port on which to serve STUN.",
 						Sources:  cli.EnvVars("NEXD_DERP_STUN_PORT"),
 						Required: false,
 					},
@@ -484,6 +485,7 @@ func main() {
 						Usage:    "Config file path",
 						Sources:  cli.EnvVars("NEXD_DERP_CONFIG_PATH"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.StringFlag{
 						Name:     "certmode",
@@ -494,8 +496,8 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:     "certdir",
-						Value:    tsweb.DefaultCertDir("derper-certs"),
-						Usage:    "Directory to store LetsEncrypt certs, if addr's port is :443",
+						Value:    stateDirDefault,
+						Usage:    "Directory to store LetsEncrypt certs.",
 						Sources:  cli.EnvVars("NEXD_DERP_CERT_DIR"),
 						Required: false,
 					},
@@ -508,7 +510,7 @@ func main() {
 					},
 					&cli.BoolFlag{
 						Name:     "stun",
-						Usage:    "Run a STUN server. It will bind to the same IP (if any) as the --addr flag value.",
+						Usage:    "Run a STUN server.",
 						Sources:  cli.EnvVars("NEXD_DERP_RUN_STUN"),
 						Value:    true,
 						Required: false,
@@ -516,9 +518,10 @@ func main() {
 					&cli.StringFlag{
 						Name:     "mesh-psk-file",
 						Value:    nexodus.DefaultMeshPSKFile(),
-						Usage:    "If non-empty, path to file containing the mesh pre-shared key file. It should contain some hex string; whitespace is trimmed.",
+						Usage:    "If non-empty, path to file containing the mesh pre-shared key file.",
 						Sources:  cli.EnvVars("NEXD_DERP_MESH_PSK_FILE"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.StringFlag{
 						Name:     "mesh-with",
@@ -526,6 +529,7 @@ func main() {
 						Usage:    "Optional comma-separated list of hostnames to mesh with; the server's own hostname can be in the list",
 						Sources:  cli.EnvVars("NEXD_DERP_MESH_WITH"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.StringFlag{
 						Name:     "bootstrap-dns-names",
@@ -533,6 +537,7 @@ func main() {
 						Usage:    "Optional comma-separated list of hostnames to make available at /bootstrap-dns",
 						Sources:  cli.EnvVars("NEXD_DERP_BOOTSTRAP_DNS_NAMES"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.StringFlag{
 						Name:     "unpublished-bootstrap-dns-names",
@@ -540,6 +545,7 @@ func main() {
 						Usage:    "Optional comma-separated list of hostnames to make available at /bootstrap-dns and not publish in the list",
 						Sources:  cli.EnvVars("NEXD_DERP_UNPUBLISHED_BOOTSTRAP_DNS_NAMES"),
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.BoolFlag{
 						Name:     "verify-clients",
@@ -547,6 +553,7 @@ func main() {
 						Sources:  cli.EnvVars("NEXD_DERP_VERIFY_CLIENTS"),
 						Value:    false,
 						Required: false,
+						Hidden:   true,
 					},
 					&cli.FloatFlag{
 						Name:     "accept-connection-limit",

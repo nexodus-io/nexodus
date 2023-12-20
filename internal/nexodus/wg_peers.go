@@ -12,8 +12,6 @@ import (
 	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
-const relayDerpPeeringIp = "127.0.0.1:59000"
-
 const (
 	// How long to wait for successful peering after choosing a new peering method
 	peeringTimeout = time.Second * 30
@@ -297,9 +295,11 @@ func (nx *Nexodus) buildPeersConfig() map[string]public.ModelsDevice {
 			// Clean up the local DNS entry set for onboarded derp relay
 			hostname, err := nx.nexRelay.getDerpRelayHostname(nx.nexRelay.myDerp)
 			if err != nil {
-				nx.nexRelay.logger.Warnf("failed to get hostname for derp relay device %v: %v", relayDevice.metadata.DeviceId, err)
+				nx.nexRelay.logger.Warnf("failed to get hostname for derp relay device %s: %v", relayDevice.metadata.DeviceId, err)
 			} else {
-				RemoveLocalDerpDnsEntry(hostname)
+				if err = RemoveLocalDerpDnsEntry(hostname); err != nil {
+					nx.nexRelay.logger.Warnf("failed to remove local DNS entry for derp relay device %s: %v", relayDevice.metadata.DeviceId, err)
+				}
 			}
 		}
 		nx.nexRelay.SetDefaultDERPMap()

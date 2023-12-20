@@ -89,7 +89,6 @@ type userspaceWG struct {
 }
 
 type nexRelay struct {
-	derper        *Derper
 	derpProxy     *DerpUserSpaceProxy
 	derpIpMapping *DerpIpMapping
 

@@ -60,7 +60,7 @@ func (p *DerpUserSpaceProxy) stopDerpProxy() {
 }
 
 // StartListening start the proxy with the given remote conn
-func (p *DerpUserSpaceProxy) startListening() error {
+func (p *DerpUserSpaceProxy) startListening() {
 
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 
@@ -68,7 +68,7 @@ func (p *DerpUserSpaceProxy) startListening() error {
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", p.port))
 	if err != nil {
 		p.log.Errorf("error resolving UDP address:", err)
-		return err
+		return
 	}
 
 	p.log.Debugf("addr is ", addr.IP, addr.Port)
@@ -77,13 +77,13 @@ func (p *DerpUserSpaceProxy) startListening() error {
 	p.localConn, err = net.ListenPacket("udp4", addr.String())
 	if err != nil {
 		p.log.Errorf("error listening on UDP:", err)
-		return err
+		return
 	}
 
 	p.packetConn = ipv4.NewPacketConn(p.localConn)
 	if err := p.packetConn.SetControlMessage(ipv4.FlagDst, true); err != nil {
 		p.log.Errorf("error setting control message:", err)
-		return err
+		return
 	}
 
 	p.log.Debugf("Proxy start listening on %s for wireguard packets.", p.localConn.LocalAddr())
@@ -92,8 +92,6 @@ func (p *DerpUserSpaceProxy) startListening() error {
 
 	go p.proxyToRemote()
 	go p.proxyToLocal()
-
-	return err
 }
 
 // CloseConn close the localConn
@@ -207,9 +205,4 @@ func (p *DerpUserSpaceProxy) proxyToLocal() {
 			continue
 		}
 	}
-}
-
-// isLoopbackIP checks if the given IP address is in the range of 127.0.0.0/8 (loopback address range).
-func isLoopbackIP(ip net.IP) bool {
-	return ip.IsLoopback()
 }
