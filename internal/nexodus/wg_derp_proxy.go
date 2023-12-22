@@ -179,7 +179,8 @@ func (p *DerpUserSpaceProxy) proxyToLocal() {
 			p.log.Debugf("derp-read: %v", err)
 			continue
 		}
-		b := dm.src.Raw32()
+
+		b := dm.src.Raw32() //nolint:staticcheck
 		pubKey := base64.StdEncoding.EncodeToString(b[:])
 		p.log.Debugf("packet (%d bytes) received from (regionId : %s, wgPubKey: %s pubKey : %s)", ncopy, dm.regionID, dm.src.WireGuardGoString(), pubKey)
 

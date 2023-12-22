@@ -498,6 +498,7 @@ func main() {
 						Name:     "certdir",
 						Value:    stateDirDefault,
 						Usage:    "Directory to store LetsEncrypt certs.",
+						DefaultText: stateDirDefaultExpression,
 						Sources:  cli.EnvVars("NEXD_DERP_CERT_DIR"),
 						Required: false,
 					},

@@ -64,10 +64,10 @@ Requires: nftables
 
 %build
 %if 0%{?fedora}
-# has Go 1.20 already
+# has Go 1.21 already
 %else
-  curl -L https://go.dev/dl/go1.20.4.linux-amd64.tar.gz -o go1.20.4.linux-amd64.tar.gz
-  tar -C .. -xzf go1.20.4.linux-amd64.tar.gz
+  curl -L https://go.dev/dl/go1.21.5.linux-amd64.tar.gz -o go1.21.5.linux-amd64.tar.gz
+  tar -C .. -xzf go1.21.5.linux-amd64.tar.gz
   export PATH=/$(pwd)/../go/bin:$PATH
 %endif
 

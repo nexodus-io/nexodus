@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"tailscale.com/net/stun"
-	"tailscale.com/tstest/deptest"
 )
 
 func TestProdAutocertHostPolicy(t *testing.T) {
@@ -20,15 +19,7 @@ func TestProdAutocertHostPolicy(t *testing.T) {
 		in     string
 		wantOK bool
 	}{
-		{"derp.tailscale.com", true},
-		{"derp.tailscale.com.", true},
-		{"derp1.tailscale.com", true},
-		{"derp1b.tailscale.com", true},
-		{"derp2.tailscale.com", true},
-		{"derp02.tailscale.com", true},
-		{"derp-nyc.tailscale.com", true},
-		{"derpfoo.tailscale.com", true},
-		{"derp02.bar.tailscale.com", false},
+		{"relay.nexodus.io", true},
 		{"example.net", false},
 	}
 	for _, tt := range tests {
@@ -128,15 +119,4 @@ func TestNoContent(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDeps(t *testing.T) {
-	deptest.DepChecker{
-		BadDeps: map[string]string{
-			"gvisor.dev/gvisor/pkg/buffer":       "https://github.com/tailscale/tailscale/issues/9756",
-			"gvisor.dev/gvisor/pkg/cpuid":        "https://github.com/tailscale/tailscale/issues/9756",
-			"gvisor.dev/gvisor/pkg/tcpip":        "https://github.com/tailscale/tailscale/issues/9756",
-			"gvisor.dev/gvisor/pkg/tcpip/header": "https://github.com/tailscale/tailscale/issues/9756",
-		},
-	}.Check(t)
 }

@@ -140,6 +140,26 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 			"echo ready && sleep infinity",
 		},
 	}
+
+	if derpIp := os.Getenv("NEX_DERP_RELAY_IP"); derpIp != "" {
+		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
+			hostConfig.Sysctls = hostConfSysctl
+			hostConfig.CapAdd = []string{
+				"SYS_MODULE",
+				"NET_ADMIN",
+				"NET_RAW",
+			}
+			hostConfig.ExtraHosts = []string{
+				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+				fmt.Sprintf("relay.nexodus.io:%s", derpIp),
+			}
+			hostConfig.AutoRemove = true
+			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
+		}
+	}
+
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ProviderType:     providerType,
 		ContainerRequest: req,

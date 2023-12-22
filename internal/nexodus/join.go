@@ -91,13 +91,13 @@ func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string) (*http.Response, e
 		} else {
 			rtype = "derp"
 		}
-
-		var certModeManual bool
-		if nx.Derper.certMode == "manual" {
-			certModeManual = true
+		var relayMetadata map[string]interface{}
+		if nx.Derper != nil && nx.Derper.certMode == "manual" {
+			relayMetadata = map[string]interface{}{"type": rtype, "hostname": nx.Derper.hostname, "certmodemanual": true}
+		} else {
+			relayMetadata = map[string]interface{}{"type": rtype}
 		}
 
-		relayMetadata := map[string]interface{}{"type": rtype, "hostname": nx.Derper.hostname, "certmodemanual": certModeManual}
 		md, resp, err := nx.client.DevicesApi.UpdateDeviceMetadataKey(context.Background(), deviceId, "relay").Value(relayMetadata).Execute()
 		nx.logger.Debugf("Updated relay device %s metadata to: %v", deviceId, md)
 		return resp, err

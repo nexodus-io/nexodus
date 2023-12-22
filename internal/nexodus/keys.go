@@ -28,8 +28,9 @@ func (nx *Nexodus) handleKeys() error {
 		}
 		state.PublicKey = wgKey.PublicKey().String()
 
-		//Use the wg private key for derp http client.
-		nx.nexRelay.privateKey = key.NodePrivateFromRaw32(mem.B(wgKey[:]))
+		// Use the wg private key for derp http client.
+
+		nx.nexRelay.privateKey = key.NodePrivateFromRaw32(mem.B(wgKey[:])) //nolint:staticcheck
 
 		nx.logger.Debugf("Public key for relay is set to [ %s]", nx.nexRelay.privateKey.Public().WireGuardGoString())
 		state.PrivateKey = wgKey.String()

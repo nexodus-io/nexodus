@@ -32,7 +32,7 @@ GLOBAL OPTIONS:
    --insecure-skip-tls-verify                   If true, server certificates will not be checked for validity. This will make your HTTPS connections insecure (default: false) [$NEXD_INSECURE_SKIP_TLS_VERIFY]
    --password string                            Password string for accessing the nexodus service [$NEXD_PASSWORD]
    --service-url value                          URL to the Nexodus service (default: "https://try.nexodus.127.0.0.1.nip.io") [$NEXD_SERVICE_URL]
-   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. (default: /var/lib/nexd) [$NEXD_STATE_DIR]
+   --state-dir value                            Directory to store state in, such as api tokens to reuse after interactive login. (default: $HOME/.nexodus) [$NEXD_STATE_DIR]
    --stun-server value [ --stun-server value ]  stun server to use discover our endpoint address.  At least two are required. [$NEXD_STUN_SERVER]
    --username string                            Username string for accessing the nexodus service [$NEXD_USERNAME]
    --vpc-id value                               VPC ID to use when registering with the nexodus service [$NEXD_VPC_ID]
@@ -52,7 +52,7 @@ NAME:
    nexd proxy - Run nexd as an L4 proxy instead of creating a network interface
 
 USAGE:
-   nexd proxy [command [command options]] 
+   nexd proxy [command [command options]]
 
 OPTIONS:
    --ingress value [ --ingress value ]  Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
@@ -67,7 +67,7 @@ NAME:
    nexd router - Enable advertise-cidr function of the node agent to enable prefix forwarding.
 
 USAGE:
-   nexd router [command [command options]] 
+   nexd router [command [command options]]
 
 OPTIONS:
    --advertise-cidr CIDR [ --advertise-cidr CIDR ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_ADVERTISE_CIDR]
@@ -84,7 +84,7 @@ NAME:
    nexd relay - Enable relay and discovery support function for the node agent.
 
 USAGE:
-   nexd relay [command [command options]] 
+   nexd relay [command [command options]]
 
 OPTIONS:
    --help, -h  Show help (default: false)

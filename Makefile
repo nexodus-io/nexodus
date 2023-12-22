@@ -393,9 +393,10 @@ dist/.generate: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) dist/.ui-fmt docs/user-g
 	$(CMD_PREFIX) touch $@
 
 .PHONY: e2e
-e2e: e2eprereqs dist/nexd dist/nexctl image-nexd image-playwright ## Run e2e verbose tests
+e2e: e2eprereqs dist/nexd dist/nexctl image-nexd image-playwright .derpcerts ## Run e2e verbose tests
 	CGO_ENABLED=1 gotestsum --format $(GOTESTSUM_FMT) -- \
 		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
+
 
 .PHONY: e2e-podman
 e2e-podman: ## Run e2e tests on podman
@@ -786,6 +787,13 @@ cacerts: ## Install the Self-Signed CA Certificate
 	$(CMD_PREFIX) mkdir -p $(CURDIR)/.certs
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	$(CMD_PREFIX) CAROOT=$(CURDIR)/.certs mkcert -install
+
+.derpcerts: ## Create and fetch the Self-Signed CA Certificate for derp relay from the cluster
+	$(CMD_PREFIX) ./hack/relayderp-certs.sh
+	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.crt"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.crt
+	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.key"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.key
+	$(CMD_PREFIX) $(kubectl) get secret nexodus-onboard-derp-relay-cert -o json | jq -r '.data."tls.crt"' | base64 -d > $(CURDIR)/.certs/custom.relay.nexodus.io.crt
+	$(CMD_PREFIX) $(kubectl) get secret nexodus-onboard-derp-relay-cert -o json | jq -r '.data."tls.key"' | base64 -d > $(CURDIR)/.certs/custom.relay.nexodus.io.key
 
 ##@ Packaging
 

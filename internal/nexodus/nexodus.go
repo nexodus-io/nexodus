@@ -118,9 +118,8 @@ type nexRelay struct {
 	// lock ordering deadlocks. See issue 3726 and mu field docs.
 	derpMapAtomic atomic.Pointer[tailcfg.DERPMap]
 
-	myDerp       int            // nearest DERP region ID; 0 means none/unknown
-	fakeEndpoint netip.AddrPort // Fake WireGuard endpoint; the port is the DERP regionID
-	derpStarted  chan struct{}  // closed on first connection to DERP; for tests & cleaner Close
+	myDerp      int           // nearest DERP region ID; 0 means none/unknown
+	derpStarted chan struct{} // closed on first connection to DERP; for tests & cleaner Close
 
 	// derpRoute contains optional alternate routes to use as an
 	// optimization instead of contacting a peer via their home
@@ -138,19 +137,7 @@ type nexRelay struct {
 	// derpRecvCh is used by receiveDERP to read DERP messages.
 	// It must have buffer size > 0; see issue 3736.
 	derpRecvCh chan derpReadResult
-
-	// derpCleanupTimer is the timer that fires to occasionally clean
-	// up idle DERP connections. It's only used when there is a non-home
-	// DERP connection in use.
-	derpCleanupTimer *time.Timer
-
-	// derpCleanupTimerArmed is whether derpCleanupTimer is
-	// scheduled to fire within derpCleanStaleInterval.
-	derpCleanupTimerArmed bool
 }
-
-// Threasholds for determining peer connection health
-const ()
 
 type peerHealth struct {
 	// the last tx bytes value for this peer
