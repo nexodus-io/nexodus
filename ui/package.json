@@ -37,7 +37,7 @@
   "devDependencies": {
     "@mui/material": "^5.15.0",
     "@playwright/test": "^1.39.0",
-    "@types/jest": "^29.5.10",
+    "@types/jest": "^29.5.11",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.38",
     "@types/react-dom": "^18.2.18",
