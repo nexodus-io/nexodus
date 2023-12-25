@@ -36,6 +36,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       ANSIBLE_PRIVATE_KEY_FILE: "nexodus.pem"
       ANSIBLE_HOST_KEY_CHECKING: "false"
+      ANSIBLE_CONFIG: "ops/ansible/aws/ansible.cfg"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
