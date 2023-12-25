@@ -4,6 +4,7 @@
   gather_facts: true
   vars:
     repo_dir: /home/ubuntu/nexodus
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Ensure nexodus directory is absent (remove it)
       file:
@@ -41,17 +42,12 @@
         target: load-images
       delegate_to: "{{ target_host }}"
 
-    - name: Recreate DB asynchronously
+    - name: Recreate DB
       command: make recreate-db
       args:
         chdir: "{{ repo_dir }}"
       delegate_to: "{{ target_host }}"
-      async: 360
-      poll: 30  # Check the task status every 30 seconds
-      register: recreate_db_result
 
-    - name: Wait for the Recreate DB asynchronous task to complete
-      async_status:
-        jid: "{{ recreate_db_result.ansible_job_id }}"
-      register: job_result
-      until: job_result.finished
+    - name: Pause for 20s after the DB recreates
+      pause:
+        seconds: 20
