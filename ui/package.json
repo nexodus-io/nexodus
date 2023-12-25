@@ -43,7 +43,7 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.0",
     "cross-env": "^7.0.3",
-    "ip-cidr": "^3.1.0",
+    "ip-cidr": "^4.0.0",
     "jwt-decode": "^4.0.0",
     "prettier": "3.1.1",
     "typescript": "^5.3.2",
