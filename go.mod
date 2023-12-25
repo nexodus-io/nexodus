@@ -32,7 +32,7 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/itchyny/gojq v0.12.14
-	github.com/jackc/pgx/v5 v5.4.3
+	github.com/jackc/pgx/v5 v5.5.1
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/mhmtszr/concurrent-swiss-map v1.0.5
@@ -128,6 +128,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
