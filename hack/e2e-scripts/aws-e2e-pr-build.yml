@@ -41,12 +41,17 @@
         target: load-images
       delegate_to: "{{ target_host }}"
 
-    - name: Recreate DB
+    - name: Recreate DB asynchronously
       command: make recreate-db
       args:
         chdir: "{{ repo_dir }}"
       delegate_to: "{{ target_host }}"
+      async: 360
+      poll: 30  # Check the task status every 30 seconds
       register: recreate_db_result
-      until: recreate_db_result is succeeded
-      retries: 5
-      delay: 10
+
+    - name: Wait for the Recreate DB asynchronous task to complete
+      async_status:
+        jid: "{{ recreate_db_result.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
