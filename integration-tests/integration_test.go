@@ -88,12 +88,12 @@ func TestBasicConnectivity(t *testing.T) {
 	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node1", node1IPv6)
-	err = ping(ctx, node1, inetV6, node1IPv6)
+	helper.Logf("Pinging %s from node1", node2IPv6)
+	err = ping(ctx, node1, inetV6, node2IPv6)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node2", node2IPv6)
-	err = ping(ctx, node2, inetV6, node2IPv6)
+	helper.Logf("Pinging %s from node2", node1IPv6)
+	err = ping(ctx, node2, inetV6, node1IPv6)
 	require.NoError(err)
 
 	helper.Log("killing nexodus and re-joining nodes with new keys")
@@ -437,16 +437,12 @@ func TestHubVPC(t *testing.T) {
 	err = ping(ctx, node1, inetV4, node2IP)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node1", node3IP)
-	err = ping(ctx, node1, inetV4, node3IP)
+	helper.Logf("Pinging %s from node2", node3IP)
+	err = ping(ctx, node2, inetV4, node3IP)
 	require.NoError(err)
 
 	helper.Logf("Pinging %s from node3", node1IP)
-	err = ping(ctx, node2, inetV4, node2IP)
-	require.NoError(err)
-
-	helper.Logf("Pinging %s from node2", node3IP)
-	err = ping(ctx, node2, inetV4, node3IP)
+	err = ping(ctx, node3, inetV4, node1IP)
 	require.NoError(err)
 
 	hubVPCAdvertiseCidr := "10.188.100.0/24"
@@ -486,16 +482,16 @@ func TestHubVPC(t *testing.T) {
 	err = ping(ctx, node3, inetV4, node2LoopbackIP.String())
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node1", node3IP)
-	err = ping(ctx, node1, inetV4, node3IP)
-	require.NoError(err)
-
-	helper.Logf("Pinging %s from node3", node1IP)
-	err = ping(ctx, node2, inetV4, node2IP)
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	require.NoError(err)
 
 	helper.Logf("Pinging %s from node2", node3IP)
 	err = ping(ctx, node2, inetV4, node3IP)
+	require.NoError(err)
+
+	helper.Logf("Pinging %s from node3", node1IP)
+	err = ping(ctx, node3, inetV4, node1IP)
 	require.NoError(err)
 
 	// get the device id for node3
@@ -772,11 +768,11 @@ func TestRelay(t *testing.T) {
 	require.NoError(err)
 
 	helper.Logf("Pinging %s from node3", node1IP)
-	err = ping(ctx, node2, inetV4, node1IP)
+	err = ping(ctx, node3, inetV4, node1IP)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node3", node2IP)
-	err = ping(ctx, node2, inetV4, node2IP)
+	helper.Logf("Pinging %s from node1", node2IP)
+	err = ping(ctx, node1, inetV4, node2IP)
 	require.NoError(err)
 
 	// v6 relay connectivity checks
@@ -795,12 +791,12 @@ func TestRelay(t *testing.T) {
 	err = ping(ctx, node2, inetV6, node3IPv6)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node3", node1IPv6)
+	helper.Logf("Pinging %s from node2", node1IPv6)
 	err = ping(ctx, node2, inetV6, node1IPv6)
 	require.NoError(err)
 
 	helper.Logf("Pinging %s from node3", node2IPv6)
-	err = ping(ctx, node2, inetV6, node2IPv6)
+	err = ping(ctx, node3, inetV6, node2IPv6)
 	require.NoError(err)
 }
 
@@ -1147,12 +1143,12 @@ func TestConnectivityUsingWireguardGo(t *testing.T) {
 	node2IPv6, err := getContainerIfaceIP(ctx, inetV6, "wg0", node2)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node1", node1IPv6)
-	err = ping(ctx, node1, inetV6, node1IPv6)
+	helper.Logf("Pinging %s from node1", node2IPv6)
+	err = ping(ctx, node1, inetV6, node2IPv6)
 	require.NoError(err)
 
-	helper.Logf("Pinging %s from node2", node2IPv6)
-	err = ping(ctx, node2, inetV6, node2IPv6)
+	helper.Logf("Pinging %s from node2", node1IPv6)
+	err = ping(ctx, node2, inetV6, node1IPv6)
 	require.NoError(err)
 }
 
