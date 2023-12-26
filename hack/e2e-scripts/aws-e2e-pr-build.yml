@@ -47,7 +47,3 @@
       args:
         chdir: "{{ repo_dir }}"
       delegate_to: "{{ target_host }}"
-
-    - name: Pause for 20s after the DB recreates
-      pause:
-        seconds: 20
