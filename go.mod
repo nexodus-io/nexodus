@@ -16,7 +16,7 @@ require (
 	github.com/docker/docker v24.0.7+incompatible // 24.0 branch
 	github.com/dustin/go-humanize v1.0.1
 	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
-	github.com/emersion/go-smtp v0.19.0
+	github.com/emersion/go-smtp v0.20.0
 	github.com/envoyproxy/go-control-plane v0.11.1
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.16.0
