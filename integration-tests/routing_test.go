@@ -130,15 +130,7 @@ func (helper *Helper) CreateNodePrivileged(ctx context.Context, nameSuffix strin
 				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 			}
 			hostConfig.AutoRemove = true
-		},
-		Mounts: []testcontainers.ContainerMount{
-			{
-				Source: testcontainers.GenericBindMountSource{
-					HostPath: certsDir,
-				},
-				Target:   "/.certs",
-				ReadOnly: true,
-			},
+			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
 		},
 		Cmd: []string{
 			"/update-ca.sh",

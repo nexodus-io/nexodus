@@ -34,6 +34,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	testcontainers_network "github.com/testcontainers/testcontainers-go/network"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -130,15 +131,7 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 			}
 			hostConfig.AutoRemove = true
-		},
-		Mounts: []testcontainers.ContainerMount{
-			{
-				Source: testcontainers.GenericBindMountSource{
-					HostPath: certsDir,
-				},
-				Target:   "/.certs",
-				ReadOnly: true,
-			},
+			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
 		},
 		Cmd: []string{
 			"/update-ca.sh",
@@ -206,28 +199,26 @@ func (helper *Helper) containerExec(ctx context.Context, container testcontainer
 	return string(output), err
 }
 
-// CreateNetwork creates a docker network
-func (helper *Helper) CreateNetwork(ctx context.Context, name, cidr string) testcontainers.Network {
-	req := testcontainers.GenericNetworkRequest{
-		ProviderType: providerType,
-		NetworkRequest: testcontainers.NetworkRequest{
-			Name:   name,
-			Driver: "bridge",
-			IPAM: &network.IPAM{
-				Driver: ipamDriver,
-				Config: []network.IPAMConfig{
-					{
-						Subnet: cidr,
-					},
-				},
+// CreateNetwork creates a docker network using the new API.
+func (helper *Helper) CreateNetwork(ctx context.Context, name, cidr string) *testcontainers.DockerNetwork {
+	ipamConfig := &network.IPAM{
+		Driver: ipamDriver,
+		Config: []network.IPAMConfig{
+			{
+				Subnet: cidr,
 			},
 		},
 	}
-	net, err := testcontainers.GenericNetwork(
-		ctx,
-		req,
-	)
-	require.NoError(helper.T, err)
+
+	opts := []testcontainers_network.NetworkCustomizer{
+		testcontainers_network.WithDriver("bridge"),
+		testcontainers_network.WithIPAM(ipamConfig),
+		testcontainers_network.WithLabels(map[string]string{"name": name}),
+	}
+
+	net, err := testcontainers_network.New(ctx, opts...)
+	require.NoError(helper.T, err) // Handle the error appropriately for your use case
+
 	return net
 }
 

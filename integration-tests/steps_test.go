@@ -3,6 +3,10 @@ package integration_tests
 import (
 	"context"
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/cucumber/godog"
 	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
@@ -12,8 +16,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"path"
-	"strings"
 )
 
 type extender struct {
@@ -205,22 +207,10 @@ func (s *extender) iRunPlaywrightScript(script string) error {
 					fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
 				}
 				hostConfig.AutoRemove = false
-			},
-			Mounts: []testcontainers.ContainerMount{
-				{
-					Source: testcontainers.GenericBindMountSource{
-						HostPath: certsDir,
-					},
-					Target:   "/.certs",
-					ReadOnly: true,
-				},
-				{
-					Source: testcontainers.GenericBindMountSource{
-						HostPath: path.Join(projectDir, "ui"),
-					},
-					Target:   "/ui",
-					ReadOnly: false,
-				},
+				hostConfig.Binds = []string{
+					certsDir + ":/.certs",
+					filepath.Join(projectDir, "ui") + ":/ui",
+				}
 			},
 			// User: fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 			Env: map[string]string{
