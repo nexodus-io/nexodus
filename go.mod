@@ -30,7 +30,7 @@ require (
 	github.com/go-session/session/v3 v3.2.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.5.0
-	github.com/gorilla/securecookie v1.1.1
+	github.com/gorilla/securecookie v1.1.2
 	github.com/itchyny/gojq v0.12.14
 	github.com/jackc/pgx/v5 v5.5.1
 	github.com/libp2p/go-reuseport v0.4.0
