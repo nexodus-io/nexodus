@@ -52,7 +52,7 @@ NAME:
    nexd proxy - Run nexd as an L4 proxy instead of creating a network interface
 
 USAGE:
-   nexd proxy [command [command options]]
+   nexd proxy [command [command options]] 
 
 OPTIONS:
    --ingress value [ --ingress value ]  Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
@@ -88,4 +88,26 @@ USAGE:
 
 OPTIONS:
    --help, -h  Show help (default: false)
+```
+
+#### nexd relayderp
+
+```text
+NAME:
+   nexd relayderp - Enable DERP relay to relay traffic between nexd nodes.
+
+USAGE:
+   nexd relayderp [command [command options]]
+
+OPTIONS:
+   --onboard                        Onboard the derp relay to nexodus and connect to local mesh network. (default: false) [$NEXD_DERP_ONBOARD]
+   --addr value                     Server HTTP/HTTPS listen address, in form ":port", "ip:port", or for IPv6 "[ip]:port". (default: ":443") [$NEXD_DERP_LISTEN_ADDR]
+   --stun-port value                The UDP port on which to serve STUN. (default: 3478) [$NEXD_DERP_STUN_PORT]
+   --certmode value                 Mode for getting a cert. possible options: manual, letsencrypt (default: "letsencrypt") [$NEXD_DERP_CERT_MODE]
+   --certdir value                  Directory to store LetsEncrypt certs. (default: $HOME/.nexodus) [$NEXD_DERP_CERT_DIR]
+   --hostname value                 LetsEncrypt host name, if addr's port is :443 (default: "relay.nexodus.io") [$NEXD_DERP_HOSTNAME]
+   --stun                           Run a STUN server. (default: true) [$NEXD_DERP_RUN_STUN]
+   --accept-connection-limit value  Rate limit for accepting new connection (default: +Inf) [$NEXD_DERP_ACCEPT_CONN_LIMIT]
+   --accept-connection-burst value  Burst limit for accepting new connection. (default: 9223372036854775807) [$NEXD_DERP_ACCEPT_CONN_BURST]
+   --help, -h                       Show help (default: false)
 ```
