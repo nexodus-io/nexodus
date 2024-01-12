@@ -114,6 +114,9 @@ func (api *API) WatchEvents(c *gin.Context) {
 		switch r.Kind {
 
 		case "device":
+			if !api.FlagCheck(c, "devices") {
+				return
+			}
 
 			fetcher := api.fetchManager.Open("org-devices:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 				var items deviceList
@@ -143,7 +146,46 @@ func (api *API) WatchEvents(c *gin.Context) {
 				fetch:      fetcher.Fetch,
 			})
 
+		case "site":
+
+			if !api.FlagCheck(c, "sites") {
+				return
+			}
+
+			fetcher := api.fetchManager.Open("org-sites:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+				var items siteList
+				db = db.Unscoped().Limit(100).Order("revision")
+				if gtRevision != 0 {
+					db = db.Where("revision > ?", gtRevision)
+				}
+				db = db.Where("vpc_id = ?", vpcId.String())
+				result := db.Find(&items)
+				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					return nil, result.Error
+				}
+
+				userId := api.GetCurrentUserID(c)
+				for i := range items {
+					hideSiteBearerToken(items[i], tokenClaims, userId)
+				}
+
+				return items, nil
+			})
+			defer fetcher.Close()
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/sites/vpc=%s", vpcId.String()),
+				fetch:      fetcher.Fetch,
+			})
+
 		case "security-group":
+			if !api.FlagCheck(c, "security-groups") {
+				return
+			}
+
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
@@ -165,6 +207,10 @@ func (api *API) WatchEvents(c *gin.Context) {
 			})
 
 		case "device-metadata":
+
+			if !api.FlagCheck(c, "devices") {
+				return
+			}
 
 			watchOptions := struct {
 				Prefixes []string `form:"prefix"`
@@ -224,6 +270,26 @@ func (api *API) WatchEvents(c *gin.Context) {
 				},
 			})
 
+		case "vpc":
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/vpc=%s", vpcId.String()),
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+					var items vpcList
+					db = db.Unscoped().Limit(100).Order("revision")
+					if gtRevision != 0 {
+						db = db.Where("revision > ?", gtRevision)
+					}
+					db = db.Where("organization_id = ?", vpc.OrganizationID.String())
+					result := db.Find(&items)
+					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						return nil, result.Error
+					}
+					return items, nil
+				},
+			})
 		default:
 			c.JSON(http.StatusBadRequest, models.NewInvalidField(fmt.Sprintf("request[%d].kind", i)))
 		}

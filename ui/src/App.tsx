@@ -1,11 +1,9 @@
-import { Admin, CustomRoutes, Resource, fetchUtils } from "react-admin";
+import { Admin, CustomRoutes, Resource } from "react-admin";
 import { Route } from "react-router";
-
-import simpleRestProvider from "ra-data-simple-rest";
-import { goOidcAgentAuthProvider } from "./providers/AuthProvider";
 
 // icons
 import DeviceIcon from "@mui/icons-material/Devices";
+import SiteIcon from "@mui/icons-material/BorderOuter";
 import OrganizationIcon from "@mui/icons-material/People";
 import UserIcon from "@mui/icons-material/Person";
 import InvitationIcon from "@mui/icons-material/Rsvp";
@@ -13,14 +11,14 @@ import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
 
 // pages
-import { UserShow, UserList } from "./pages/Users";
+import { UserList, UserShow } from "./pages/Users";
 import { DeviceEdit, DeviceList, DeviceShow } from "./pages/Devices";
 import {
+  OrganizationCreate,
   OrganizationList,
   OrganizationShow,
-  OrganizationCreate,
 } from "./pages/Organizations";
-import { VPCList, VPCShow, VPCCreate } from "./pages/VPCs";
+import { VPCCreate, VPCList, VPCShow } from "./pages/VPCs";
 import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import Layout from "./layout/Layout";
@@ -39,39 +37,8 @@ import {
   RegKeyList,
   RegKeyShow,
 } from "./pages/RegKeys";
-
-const fetchJson = (url: string, options: any = {}) => {
-  // Includes the encrypted session cookie in requests to the API
-  options.credentials = "include";
-  // some of the PUT api calls should be converted to PATCH
-  if (options.method === "PUT") {
-    if (
-      url.startsWith(`${backend}/api/reg-keys/`) ||
-      url.startsWith(`${backend}/api/devices/`) ||
-      url.startsWith(`${backend}/api/security-groups/`) ||
-      url.startsWith(`${backend}/api/vpcs/`)
-    ) {
-      options.method = "PATCH";
-    }
-  }
-  return fetchUtils.fetchJson(url, options);
-};
-
-const backend = `${window.location.protocol}//api.${window.location.host}`;
-const authProvider = goOidcAgentAuthProvider(backend);
-const baseDataProvider = simpleRestProvider(
-  `${backend}/api`,
-  fetchJson,
-  "X-Total-Count",
-);
-const dataProvider = {
-  ...baseDataProvider,
-  getFlag: (name: string) => {
-    return fetchJson(`${backend}/api/fflags/${name}`).then(
-      (response) => response,
-    );
-  },
-};
+import { SiteEdit, SiteList, SiteShow } from "./pages/Sites";
+import { authProvider, dataProvider } from "./DataProvider";
 
 const App = () => {
   return (
@@ -122,6 +89,14 @@ const App = () => {
         show={DeviceShow}
         icon={DeviceIcon}
         edit={DeviceEdit}
+        recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="sites"
+        list={SiteList}
+        show={SiteShow}
+        icon={SiteIcon}
+        edit={SiteEdit}
         recordRepresentation={(record) => `${record.hostname}`}
       />
       <Resource

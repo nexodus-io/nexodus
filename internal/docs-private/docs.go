@@ -154,7 +154,17 @@ const docTemplate = `{
                 "user": " Grants read and write access to resources owned by this user"
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "X509 Certificate related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.",
+            "name": "CA"
+        },
+        {
+            "description": "Skupper Site related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.",
+            "name": "Sites"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

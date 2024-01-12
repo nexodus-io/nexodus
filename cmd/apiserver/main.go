@@ -17,6 +17,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -54,23 +55,24 @@ func init() {
 	tracer = otel.Tracer("apiserver")
 }
 
-// @title          Nexodus API
-// @version        1.0
-// @description	This is the Nexodus API Server.
+// @title               Nexodus API
+// @description         This is the Nexodus API Server.
+// @version             1.0
+// @contact.name        The Nexodus Authors
+// @contact.url         https://github.com/nexodus-io/nexodus/issues
+// @license.name        Apache 2.0
+// @license.url         http://www.apache.org/licenses/LICENSE-2.0.html
+// @BasePath            /
 
-// @contact.name   The Nexodus Authors
-// @contact.url    https://github.com/nexodus-io/nexodus/issues
-
-// @license.name  	Apache 2.0
-// @license.url   	http://www.apache.org/licenses/LICENSE-2.0.html
+// @tag.name            CA
+// @tag.description     X509 Certificate related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.
+// @tag.name            Sites
+// @tag.description     Skupper Site related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.
 
 // @securitydefinitions.oauth2.implicit OAuth2Implicit
-// @authorizationurl https://auth.try.nexodus.127.0.0.1.nip.io/
-//
+// @authorizationurl     https://auth.try.nexodus.127.0.0.1.nip.io/
 // @scope.admin Grants read and write access to administrative information
 // @scope.user Grants read and write access to resources owned by this user
-
-// @BasePath  		/
 func main() {
 	// Override to capitalize "Show"
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
@@ -278,6 +280,18 @@ func main() {
 				Required: false,
 				Sources:  cli.EnvVars("NEXAPI_SMTP_FROM"),
 			},
+			&cli.StringFlag{
+				Name:     "ca-cert",
+				Usage:    "Certificate authority cert",
+				Required: false,
+				Sources:  cli.EnvVars("NEXAPI_CA_CERT"),
+			},
+			&cli.StringFlag{
+				Name:     "ca-key",
+				Usage:    "Certificate authority key",
+				Required: false,
+				Sources:  cli.EnvVars("NEXAPI_CA_KEY"),
+			},
 		},
 
 		Action: func(ctx context.Context, command *cli.Command) error {
@@ -316,7 +330,16 @@ func main() {
 					session.SetStore(sessionStore),
 				)
 
-				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, redisClient, sessionManager)
+				caKeyPair := handlers.CertificateKeyPair{}
+				if command.String("ca-cert") != "" && command.String("ca-key") != "" {
+					var err error
+					caKeyPair, err = handlers.ParseCertificateKeyPair([]byte(command.String("ca-cert")), []byte(command.String("ca-key")))
+					if err != nil {
+						log.Fatal("invalid --ca-cert or --ca-key values:", err)
+					}
+				}
+
+				api, err := handlers.NewAPI(ctx, logger.Sugar(), db, ipam, fflags, store, signalBus, redisClient, sessionManager, caKeyPair)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -381,6 +404,10 @@ func main() {
 					log.Fatal(fmt.Errorf("invalid tls-key: %w", err))
 				}
 				api.URL = command.String("url")
+				api.URLParsed, err = url.Parse(api.URL)
+				if err != nil {
+					log.Fatal(fmt.Errorf("invalid url: %w", err))
+				}
 
 				router, err := routers.NewAPIRouter(ctx, routers.APIRouterOptions{
 					Logger:          logger.Sugar(),

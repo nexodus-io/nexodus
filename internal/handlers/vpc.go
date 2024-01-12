@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/util"
+	"gorm.io/gorm/clause"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -104,7 +105,9 @@ func (api *API) CreateVPC(c *gin.Context) {
 			Ipv6Cidr:       request.Ipv6Cidr,
 		}
 
-		if res := tx.Create(&vpc); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Create(&vpc); res.Error != nil {
 			if database.IsDuplicateError(res.Error) {
 				return NewApiResponseError(http.StatusConflict, models.NewConflictsError(vpc.ID.String()))
 			}
@@ -386,7 +389,9 @@ func (api *API) UpdateVPC(c *gin.Context) {
 			vpc.Description = *request.Description
 		}
 
-		if res := tx.Save(&vpc); res.Error != nil {
+		if res := tx.
+			Clauses(clause.Returning{Columns: []clause.Column{{Name: "revision"}}}).
+			Save(&vpc); res.Error != nil {
 			return res.Error
 		}
 		return nil
@@ -401,5 +406,18 @@ func (api *API) UpdateVPC(c *gin.Context) {
 		}
 		return
 	}
+
+	api.signalBus.Notify(fmt.Sprintf("/vpc=%s", vpc.ID.String()))
 	c.JSON(http.StatusOK, vpc)
+}
+
+type vpcList []*models.VPC
+
+func (d vpcList) Item(i int) (any, uint64, gorm.DeletedAt) {
+	item := d[i]
+	return item, item.Revision, item.DeletedAt
+}
+
+func (d vpcList) Len() int {
+	return len(d)
 }

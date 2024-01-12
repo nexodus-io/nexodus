@@ -26,16 +26,19 @@
 package cucumber
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/ghodss/yaml"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -127,36 +130,55 @@ func (s *TestScenario) Session() *TestSession {
 	return result
 }
 
-func (s *TestScenario) JsonMustMatch(actual, expected string, expand bool) error {
+type Encoding struct {
+	Name      string
+	Marshal   func(any) ([]byte, error)
+	Unmarshal func([]byte, any) error
+}
+
+var JsonEncoding = Encoding{
+	Name: "json",
+	Marshal: func(a any) ([]byte, error) {
+		return json.MarshalIndent(a, "", "  ")
+	},
+	Unmarshal: json.Unmarshal,
+}
+var YamlEncoding = Encoding{
+	Name:      "yaml",
+	Marshal:   yaml.Marshal,
+	Unmarshal: yaml.Unmarshal,
+}
+
+func (s *TestScenario) EncodingMustMatch(encoding Encoding, actual, expected string, expandExpected bool) error {
 
 	var actualParsed interface{}
-	err := json.Unmarshal([]byte(actual), &actualParsed)
+	err := encoding.Unmarshal([]byte(actual), &actualParsed)
 	if err != nil {
-		return fmt.Errorf("error parsing actual json: %w\njson was:\n%s", err, actual)
+		return fmt.Errorf("error parsing actual %s: %w\n%s was:\n%s", encoding.Name, err, encoding.Name, actual)
 	}
 
 	var expectedParsed interface{}
 	expanded := expected
-	if expand {
-		expanded, err = s.Expand(expected, "defs", "ref")
+	if expandExpected {
+		expanded, err = s.Expand(expected)
 		if err != nil {
 			return err
 		}
 	}
 
-	// When you first set up a test step, you might not know what JSON you are expecting.
+	// When you first set up a test step, you might not know what data you are expecting.
 	if strings.TrimSpace(expanded) == "" {
-		actual, _ := json.MarshalIndent(actualParsed, "", "  ")
-		return fmt.Errorf("expected json not specified, actual json was:\n%s", actual)
+		actual, _ := encoding.Marshal(actualParsed)
+		return fmt.Errorf("expected %s not specified, actual %s was:\n%s", encoding.Name, encoding.Name, actual)
 	}
 
-	if err := json.Unmarshal([]byte(expanded), &expectedParsed); err != nil {
-		return fmt.Errorf("error parsing expected json: %w\njson was:\n%s", err, expanded)
+	if err := encoding.Unmarshal([]byte(expanded), &expectedParsed); err != nil {
+		return fmt.Errorf("error parsing expected %s: %w\n%s was:\n%s", encoding.Name, err, encoding.Name, expanded)
 	}
 
 	if !reflect.DeepEqual(expectedParsed, actualParsed) {
-		expected, _ := json.MarshalIndent(expectedParsed, "", "  ")
-		actual, _ := json.MarshalIndent(actualParsed, "", "  ")
+		expected, _ := encoding.Marshal(expectedParsed)
+		actual, _ := encoding.Marshal(actualParsed)
 
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(string(expected)),
@@ -171,6 +193,14 @@ func (s *TestScenario) JsonMustMatch(actual, expected string, expand bool) error
 	}
 
 	return nil
+}
+
+func (s *TestScenario) JsonMustMatch(actual, expected string, expandExpected bool) error {
+	return s.EncodingMustMatch(JsonEncoding, actual, expected, expandExpected)
+}
+
+func (s *TestScenario) YamlMustMatch(actual, expected string, expandExpected bool) error {
+	return s.EncodingMustMatch(YamlEncoding, actual, expected, expandExpected)
 }
 
 func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) error {
@@ -190,11 +220,11 @@ func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) err
 
 	// When you first set up a test step, you might not know what JSON you are expecting.
 	if strings.TrimSpace(expected) == "" {
-		actual, _ := json.MarshalIndent(actualParsed, "", "  ")
+		actual, _ := JsonEncoding.Marshal(actualParsed)
 		return fmt.Errorf("expected json not specified, actual json was:\n%s", actual)
 	}
 
-	actualIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+	actualIndented, err := JsonEncoding.Marshal(actualParsed)
 	if err != nil {
 		return err
 	}
@@ -208,7 +238,7 @@ func (s *TestScenario) JsonMustContain(actual, expected string, expand bool) err
 	if err != nil {
 		return fmt.Errorf("error parsing merged json: %w\njson was:\n%s", err, actual)
 	}
-	mergedIndented, err := json.MarshalIndent(actualParsed, "", "  ")
+	mergedIndented, err := JsonEncoding.Marshal(actualParsed)
 	if err != nil {
 		return err
 	}
@@ -246,12 +276,14 @@ func (s *TestScenario) Expand(value string, skippedVars ...string) (result strin
 }
 
 func (s *TestScenario) ResolveString(name string) (string, error) {
-
 	value, err := s.Resolve(name)
 	if err != nil {
 		return "", err
 	}
+	return ToString(value, name, JsonEncoding)
+}
 
+func ToString(value interface{}, name string, encoding Encoding) (string, error) {
 	switch value := value.(type) {
 	case string:
 		return value, nil
@@ -272,7 +304,7 @@ func (s *TestScenario) ResolveString(name string) (string, error) {
 		return "", fmt.Errorf("failed to evaluate selection: %s: %w", name, value)
 	}
 
-	bytes, err := json.Marshal(value)
+	bytes, err := encoding.Marshal(value)
 	if err != nil {
 		return "", err
 	}
@@ -280,19 +312,28 @@ func (s *TestScenario) ResolveString(name string) (string, error) {
 }
 
 func (s *TestScenario) Resolve(name string) (interface{}, error) {
+
+	pipes := strings.Split(name, "|")
+	for i := range pipes {
+		pipes[i] = strings.TrimSpace(pipes[i])
+	}
+	name = pipes[0]
+	pipes = pipes[1:]
+
 	session := s.Session()
 	if name == "response" {
-		return session.RespJson()
+		value, err := session.RespJson()
+		return pipeline(pipes, value, err)
 	} else if strings.HasPrefix(name, "response.") || strings.HasPrefix(name, "response[") {
 		selector := "." + name
 		query, err := gojq.Parse(selector)
 		if err != nil {
-			return nil, err
+			return pipeline(pipes, nil, err)
 		}
 
 		j, err := session.RespJson()
 		if err != nil {
-			return nil, err
+			return pipeline(pipes, nil, err)
 		}
 
 		j = map[string]interface{}{
@@ -301,16 +342,166 @@ func (s *TestScenario) Resolve(name string) (interface{}, error) {
 
 		iter := query.Run(j)
 		if next, found := iter.Next(); found {
-			return next, nil
+			return pipeline(pipes, next, nil)
 		} else {
-			return nil, fmt.Errorf("field ${%s} not found in json response:\n%s", name, string(session.RespBytes))
+			return pipeline(pipes, nil, fmt.Errorf("field ${%s} not found in json response:\n%s", name, string(session.RespBytes)))
 		}
 	}
+
+	parts := strings.Split(name, ".")
+	name = parts[0]
+
 	value, found := s.Variables[name]
 	if !found {
-		return nil, fmt.Errorf("variable ${%s} not defined yet", name)
+		return pipeline(pipes, nil, fmt.Errorf("variable ${%s} not defined yet", name))
 	}
-	return value, nil
+
+	if len(parts) > 1 {
+
+		var err error
+		for _, part := range parts[1:] {
+			value, err = s.SelectChild(value, part)
+			if err != nil {
+				return pipeline(pipes, nil, err)
+			}
+		}
+
+		return pipeline(pipes, value, nil)
+
+	}
+
+	return pipeline(pipes, value, nil)
+}
+
+func (s *TestScenario) SelectChild(value any, path string) (any, error) {
+	v := reflect.ValueOf(value)
+
+	// dereference pointers
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Map:
+		key := reflect.ValueOf(path)
+		if v.Type().Key() != key.Type() {
+			return nil, fmt.Errorf("cannot select map key %s from %s", path, v.Type())
+		}
+		v = v.MapIndex(key)
+		if !v.IsValid() {
+			return nil, fmt.Errorf("map key %s not found", path)
+		}
+	case reflect.Slice:
+		index, err := strconv.Atoi(path)
+		if err != nil {
+			return nil, fmt.Errorf("cannot select slice index %s from %s", path, v.Type())
+		}
+		if index < 0 || index >= v.Len() {
+			return nil, fmt.Errorf("slice index %s out of range", path)
+		}
+		v = v.Index(index)
+	case reflect.Struct:
+		f := v.FieldByName(path)
+		if f.IsValid() {
+			v = f
+		} else {
+
+			m := v.MethodByName(path)
+			if m.IsValid() {
+
+				// get all the arg types of the method
+				remainingTypes := []reflect.Type{}
+				for i := 0; i < m.Type().NumIn(); i++ {
+					remainingTypes = append(remainingTypes, m.Type().In(i))
+				}
+				args := []reflect.Value{}
+
+				for len(remainingTypes) > 0 {
+					switch remainingTypes[0] {
+					case reflect.TypeOf((*context.Context)(nil)).Elem():
+						args = append(args, reflect.ValueOf(s.Session().Ctx))
+						remainingTypes = remainingTypes[1:]
+					case reflect.TypeOf((*testing.T)(nil)).Elem():
+						args = append(args, reflect.ValueOf(s.Suite.TestingT))
+						remainingTypes = remainingTypes[1:]
+					case reflect.TypeOf((*gorm.DB)(nil)).Elem():
+						args = append(args, reflect.ValueOf(s.Suite.DB))
+						remainingTypes = remainingTypes[1:]
+					}
+				}
+				if len(remainingTypes) > 0 {
+					return nil, fmt.Errorf("cannot statisfy method %s arg type: %s", path, remainingTypes[0])
+				}
+
+				result := m.Call(args)
+				switch m.Type().NumOut() {
+				case 1:
+					value = result[0].Interface()
+					return value, nil
+				case 2:
+					value = result[0].Interface()
+					if err, ok := result[1].Interface().(error); ok && err != nil {
+						return nil, err
+					}
+					return value, nil
+				case 0:
+					return nil, fmt.Errorf("method %s returns to few values", path)
+				default:
+					return nil, fmt.Errorf("method %s returns to many values", path)
+				}
+
+			}
+
+			return nil, fmt.Errorf("struct field %s not found", path)
+		}
+
+	default:
+		return nil, fmt.Errorf("can't navigate to '%s' on type of %s", path, v.Type())
+	}
+	return v.Interface(), nil
+}
+
+func pipeline(pipes []string, value any, err error) (any, error) {
+	for _, pipe := range pipes {
+		fn := PipeFunctions[pipe]
+		if fn == nil {
+			return nil, fmt.Errorf("unknown pipe: %s", pipe)
+		}
+		value, err = fn(value, err)
+	}
+	return value, err
+}
+
+var PipeFunctions = map[string]func(any, error) (any, error){
+	"json": func(value any, err error) (any, error) {
+		if err != nil {
+			return value, err
+		}
+		buf := bytes.NewBuffer(nil)
+		encoder := json.NewEncoder(buf)
+		encoder.SetIndent("", "  ")
+		err = encoder.Encode(value)
+		if err != nil {
+			return value, err
+		}
+		return buf.String(), err
+	},
+	"json_escape": func(value any, err error) (any, error) {
+		if err != nil {
+			return value, err
+		}
+		data, err := json.Marshal(fmt.Sprintf("%v", value))
+		if err != nil {
+			return value, err
+		}
+		return strings.TrimSuffix(strings.TrimPrefix(string(data), `"`), `"`), nil
+	},
+	"string": func(value any, err error) (any, error) {
+		if err != nil {
+			return value, err
+		}
+		return fmt.Sprintf("%v", value), nil
+	},
 }
 
 func contains(s []string, e string) bool {

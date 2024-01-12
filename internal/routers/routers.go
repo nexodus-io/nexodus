@@ -158,6 +158,13 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
 		apiGroup.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 
+		// Sites
+		apiGroup.GET("/sites", api.ListSites)
+		apiGroup.GET("/sites/:id", api.GetSite)
+		apiGroup.PATCH("/sites/:id", api.UpdateSite)
+		apiGroup.POST("/sites", api.CreateSite)
+		apiGroup.DELETE("/sites/:id", api.DeleteSite)
+
 		// Security Groups
 		apiGroup.GET("/security-groups", api.ListSecurityGroups)
 		apiGroup.GET("/security-groups/:id", api.GetSecurityGroup)
@@ -168,9 +175,11 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		// List / Watch Event API used by nexd
 		apiGroup.POST("/vpcs/:id/events", api.WatchEvents)
 		apiGroup.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
+		apiGroup.GET("/vpcs/:id/sites", api.ListSitesInVPC)
 		apiGroup.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
 		apiGroup.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
 
+		apiGroup.POST("/ca/sign", api.SignCSR)
 	}
 
 	privateGroup := r.Group("/private")

@@ -6,15 +6,16 @@ resources:
 namespace: nexodus-playground
 configMapGenerator:
   - behavior: replace
+    name: auth-config
     literals:
       - hostname=auth.playground.nexodus.io
       - frontend-url=https://playground.nexodus.io
-    name: auth-config
   - behavior: replace
+    name: realm
     files:
       - files/nexodus.json
-    name: realm
   - behavior: merge
+    name: apiproxy
     literals:
       - APIPROXY_API_URL=https://api.playground.nexodus.io
       - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
@@ -22,8 +23,8 @@ configMapGenerator:
       - APIPROXY_WEB_DOMAIN=playground.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://playground.nexodus.io
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:info,router:info,jwt:info
-    name: apiproxy
   - behavior: merge
+    name: apiserver
     literals:
       - NEXAPI_URL=https://api.playground.nexodus.io
       - NEXAPI_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
@@ -31,9 +32,9 @@ configMapGenerator:
       - NEXAPI_REDIRECT_URL=https://playground.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://playground.nexodus.io
       - NEXAPI_ENVIRONMENT=qa
-      - NEXAPI_FFLAG_SECURITY_GROUPS=true
+      - NEXAPI_FFLAG_DEVICES=false
+      - NEXAPI_FFLAG_SITES=true
       - NEXAPI_DEBUG=0
-    name: apiserver
 patches:
 
   # Update the dns names for the certificates

@@ -14,8 +14,16 @@ spec:
   commonName: nexodus-selfsigned-ca
   secretName: nexodus-ca-key-pair
   privateKey:
-    algorithm: ECDSA
-    size: 256
+    algorithm: RSA
+    size: 2048
+    encoding: PKCS1
+  uris:
+    - https://try.nexodus.127.0.0.1.nip.io
+  usages:
+    - digital signature
+    - key encipherment
+    - crl sign
+    - cert sign
   issuerRef:
     name: selfsigned-issuer
     kind: Issuer

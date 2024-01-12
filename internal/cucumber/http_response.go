@@ -67,7 +67,6 @@ func init() {
 		ctx.Step(`^the response code should be (\d+)$`, s.theResponseCodeShouldBe)
 		ctx.Step(`^the response should match json:$`, s.TheResponseShouldMatchJsonDoc)
 		ctx.Step(`^the response should contain json:$`, s.TheResponseShouldContainJsonDoc)
-		ctx.Step(`^the \${([^"]*)} should contain json:$`, s.theVariableShouldContainJson)
 		ctx.Step(`^the response should match:$`, s.theResponseShouldMatchText)
 		ctx.Step(`^the response should match "([^"]*)"$`, s.theResponseShouldMatchText)
 		ctx.Step(`^I store the "([^"]*)" selection from the response as \${([^"]*)}$`, s.iStoreTheSelectionFromTheResponseAs)
@@ -80,6 +79,9 @@ func init() {
 		ctx.Step(`^the "([^"]*)" selection from the response should match json:$`, s.theSelectionFromTheResponseShouldMatchJson)
 		ctx.Step(`^\${([^"]*)} is not empty$`, s.vpc_idIsNotEmpty)
 		ctx.Step(`^"([^"]*)" should match "([^"]*)"$`, s.textShouldMatchText)
+		ctx.Step(`^\${([^"]*)} should match:$`, s.theVariableShouldMatchText)
+		ctx.Step(`^\${([^"]*)} should match yaml:$`, s.theVariableShouldMatchYaml)
+		ctx.Step(`^\${([^"]*)} should contain json:$`, s.theVariableShouldContainJson)
 	})
 }
 
@@ -171,6 +173,40 @@ func (s *TestScenario) textShouldMatchText(actual, expected string) error {
 		return fmt.Errorf("actual does not match expected, diff:\n%s", diff)
 	}
 	return nil
+}
+
+func (s *TestScenario) theVariableShouldMatchText(variable string, expected *godog.DocString) error {
+	expanded, err := s.Expand(expected.Content)
+	if err != nil {
+		return err
+	}
+
+	actual, err := s.ResolveString(variable)
+	if err != nil {
+		return err
+	}
+
+	if expanded != actual {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(expanded),
+			B:        difflib.SplitLines(actual),
+			FromFile: "Expected",
+			FromDate: "",
+			ToFile:   "Actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		return fmt.Errorf("actual does not match expected, diff:\n%s", diff)
+	}
+	return nil
+}
+
+func (s *TestScenario) theVariableShouldMatchYaml(variable string, expected *godog.DocString) error {
+	actual, err := s.ResolveString(variable)
+	if err != nil {
+		return err
+	}
+	return s.YamlMustMatch(actual, expected.Content, true)
 }
 
 func (s *TestScenario) theResponseShouldMatchText(expected string) error {

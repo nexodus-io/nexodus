@@ -94,6 +94,18 @@ definitions:
       vpc_id:
         type: string
     type: object
+  models.AddSite:
+    properties:
+      name:
+        type: string
+      platform:
+        type: string
+      public_key:
+        type: string
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
   models.AddVPC:
     properties:
       description:
@@ -114,6 +126,77 @@ definitions:
     properties:
       error:
         example: something bad
+        type: string
+    type: object
+  models.CertificateSigningRequest:
+    properties:
+      duration:
+        description: |-
+          Requested 'duration' (i.e. lifetime) of the Certificate. Note that the
+          issuer may choose to ignore the requested duration, just like any other
+          requested attribute.
+          +optional
+        type: string
+      is_ca:
+        description: |-
+          Requested basic constraints isCA value. Note that the issuer may choose
+          to ignore the requested isCA value, just like any other requested attribute.
+
+          NOTE: If the CSR in the `Request` field has a BasicConstraints extension,
+          it must have the same isCA value as specified here.
+
+          If true, this will automatically add the `cert sign` usage to the list
+          of requested `usages`.
+          +optional
+        type: boolean
+      request:
+        description: |-
+          The PEM-encoded X.509 certificate signing request to be submitted to the
+          issuer for signing.
+
+          If the CSR has a BasicConstraints extension, its isCA attribute must
+          match the `isCA` value of this CertificateRequest.
+          If the CSR has a KeyUsage extension, its key usages must match the
+          key usages in the `usages` field of this CertificateRequest.
+          If the CSR has a ExtKeyUsage extension, its extended key usages
+          must match the extended key usages in the `usages` field of this
+          CertificateRequest.
+        example: '-----BEGIN CERTIFICATE REQUEST-----(...)-----END CERTIFICATE REQUEST-----'
+        type: string
+      usages:
+        description: |-
+          Requested key usages and extended key usages.
+
+          NOTE: If the CSR in the `Request` field has uses the KeyUsage or
+          ExtKeyUsage extension, these extensions must have the same values
+          as specified here without any additional values.
+
+          If unset, defaults to `digital signature` and `key encipherment`.
+          +optional
+        items:
+          $ref: '#/definitions/models.KeyUsage'
+        type: array
+    type: object
+  models.CertificateSigningResponse:
+    properties:
+      ca:
+        description: |-
+          The PEM encoded X.509 certificate of the signer, also known as the CA
+          (Certificate Authority).
+          This is set on a best-effort basis by different issuers.
+          If not set, the CA is assumed to be unknown/not available.
+          +optional
+        example: '-----BEGIN CERTIFICATE-----(...)-----END CERTIFICATE-----'
+        type: string
+      certificate:
+        description: |-
+          The PEM encoded X.509 certificate resulting from the certificate
+          signing request.
+          If not set, the CertificateRequest has either not been completed or has
+          failed. More information on failure can be found by checking the
+          `conditions` field.
+          +optional
+        example: '-----BEGIN CERTIFICATE-----(...)-----END CERTIFICATE-----'
         type: string
     type: object
   models.ConflictsError:
@@ -242,6 +325,56 @@ definitions:
       user_id:
         type: string
     type: object
+  models.KeyUsage:
+    enum:
+    - signing
+    - digital signature
+    - content commitment
+    - key encipherment
+    - key agreement
+    - data encipherment
+    - cert sign
+    - crl sign
+    - encipher only
+    - decipher only
+    - any
+    - server auth
+    - client auth
+    - code signing
+    - email protection
+    - s/mime
+    - ipsec end system
+    - ipsec tunnel
+    - ipsec user
+    - timestamping
+    - ocsp signing
+    - microsoft sgc
+    - netscape sgc
+    type: string
+    x-enum-varnames:
+    - UsageSigning
+    - UsageDigitalSignature
+    - UsageContentCommitment
+    - UsageKeyEncipherment
+    - UsageKeyAgreement
+    - UsageDataEncipherment
+    - UsageCertSign
+    - UsageCRLSign
+    - UsageEncipherOnly
+    - UsageDecipherOnly
+    - UsageAny
+    - UsageServerAuth
+    - UsageClientAuth
+    - UsageCodeSigning
+    - UsageEmailProtection
+    - UsageSMIME
+    - UsageIPsecEndSystem
+    - UsageIPsecTunnel
+    - UsageIPsecUser
+    - UsageTimestamping
+    - UsageOCSPSigning
+    - UsageMicrosoftSGC
+    - UsageNetscapeSGC
   models.LoginEndRequest:
     properties:
       request_url:
@@ -370,6 +503,35 @@ definitions:
       to_port:
         type: integer
     type: object
+  models.Site:
+    properties:
+      bearer_token:
+        description: the token nexd should use to reconcile Site state.
+        type: string
+      hostname:
+        example: myhost
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      link_secret:
+        type: string
+      name:
+        type: string
+      os:
+        type: string
+      owner_id:
+        type: string
+      platform:
+        type: string
+      public_key:
+        type: string
+      revision:
+        type: integer
+      vpc_id:
+        example: 694aa002-5d19-495e-980b-3d8fd508ea10
+        type: string
+    type: object
   models.TunnelIP:
     properties:
       address:
@@ -437,6 +599,18 @@ definitions:
           $ref: '#/definitions/models.SecurityRule'
         type: array
     type: object
+  models.UpdateSite:
+    properties:
+      hostname:
+        example: myhost
+        type: string
+      link_secret:
+        type: string
+      os:
+        type: string
+      revision:
+        type: integer
+    type: object
   models.UpdateVPC:
     properties:
       description:
@@ -476,6 +650,10 @@ definitions:
     type: object
   models.VPC:
     properties:
+      ca_certificates:
+        items:
+          type: string
+        type: array
       description:
         type: string
       id:
@@ -489,6 +667,8 @@ definitions:
         type: string
       private_cidr:
         type: boolean
+      revision:
+        type: integer
     type: object
   models.ValidationError:
     properties:
@@ -529,6 +709,37 @@ info:
   title: Nexodus API
   version: "1.0"
 paths:
+  /api/ca/sign:
+    post:
+      consumes:
+      - application/json
+      description: Signs a certificate signing request
+      operationId: SignCSR
+      parameters:
+      - description: Certificate signing request
+        in: body
+        name: CertificateSigningRequest
+        required: true
+        schema:
+          $ref: '#/definitions/models.CertificateSigningRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.CertificateSigningResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ValidationError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Signs a certificate signing request
+      tags:
+      - CA
   /api/devices:
     get:
       consumes:
@@ -1660,6 +1871,200 @@ paths:
       summary: Update Security Group
       tags:
       - SecurityGroup
+  /api/sites:
+    get:
+      consumes:
+      - application/json
+      description: Lists all sites
+      operationId: ListSites
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Site'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Sites
+      tags:
+      - Sites
+    post:
+      consumes:
+      - application/json
+      description: Adds a new site
+      operationId: CreateSite
+      parameters:
+      - description: Add Site
+        in: body
+        name: Site
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddSite'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ConflictsError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Add Sites
+      tags:
+      - Sites
+  /api/sites/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing site and associated IPAM lease
+      operationId: DeleteSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete Site
+      tags:
+      - Sites
+    get:
+      consumes:
+      - application/json
+      description: Gets a site by ID
+      operationId: GetSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get Sites
+      tags:
+      - Sites
+    patch:
+      consumes:
+      - application/json
+      description: Updates a site by ID
+      operationId: UpdateSite
+      parameters:
+      - description: Site ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Site Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSite'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Site'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Update Sites
+      tags:
+      - Sites
   /api/users:
     get:
       consumes:
@@ -2175,6 +2580,50 @@ paths:
       summary: List Security Groups in a VPC
       tags:
       - VPC
+  /api/vpcs/{id}/sites:
+    get:
+      consumes:
+      - application/json
+      description: Lists all sites for this VPC
+      operationId: ListSitesInVPC
+      parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - description: VPC ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Site'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Sites
+      tags:
+      - VPC
   /check/auth:
     get:
       consumes:
@@ -2348,3 +2797,10 @@ securityDefinitions:
       user: ' Grants read and write access to resources owned by this user'
     type: oauth2
 swagger: "2.0"
+tags:
+- description: X509 Certificate related APIs, these APIs are experimental and disabled
+    by default.  Use the feature flag apis to check if they are enabled on the server.
+  name: CA
+- description: Skupper Site related APIs, these APIs are experimental and disabled
+    by default.  Use the feature flag apis to check if they are enabled on the server.
+  name: Sites

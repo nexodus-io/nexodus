@@ -27,6 +27,7 @@ Feature: Organization API
         "description": "default vpc",
         "id": "${oscar_user_id}",
         "organization_id": "${oscar_user_id}",
+        "revision": ${response.revision},
         "private_cidr": false
       }
       """
@@ -72,6 +73,7 @@ Feature: Organization API
         "description": "extra vpc",
         "id": "${extra_vpc_id}",
         "organization_id": "${oscar_user_id}",
+        "revision": ${response.revision},
         "private_cidr": false
       }
       """
@@ -104,6 +106,7 @@ Feature: Organization API
         "description": "extra vpc modified",
         "id": "${extra_vpc_id}",
         "organization_id": "${oscar_user_id}",
+        "revision": ${response.revision},
         "private_cidr": false
       }
       """

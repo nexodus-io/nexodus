@@ -15,6 +15,53 @@
     },
     "basePath": "/",
     "paths": {
+        "/api/ca/sign": {
+            "post": {
+                "description": "Signs a certificate signing request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CA"
+                ],
+                "summary": "Signs a certificate signing request",
+                "operationId": "SignCSR",
+                "parameters": [
+                    {
+                        "description": "Certificate signing request",
+                        "name": "CertificateSigningRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CertificateSigningRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CertificateSigningResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/devices": {
             "get": {
                 "description": "Lists all devices",
@@ -1706,6 +1753,296 @@
                 }
             }
         },
+        "/api/sites": {
+            "get": {
+                "description": "Lists all sites",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "List Sites",
+                "operationId": "ListSites",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Site"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adds a new site",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Add Sites",
+                "operationId": "CreateSite",
+                "parameters": [
+                    {
+                        "description": "Add Site",
+                        "name": "Site",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddSite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/sites/{id}": {
+            "get": {
+                "description": "Gets a site by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Get Sites",
+                "operationId": "GetSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing site and associated IPAM lease",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Delete Site",
+                "operationId": "DeleteSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a site by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sites"
+                ],
+                "summary": "Update Sites",
+                "operationId": "UpdateSite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Site Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Site"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "description": "Lists all users",
@@ -2474,6 +2811,72 @@
                 }
             }
         },
+        "/api/vpcs/{id}/sites": {
+            "get": {
+                "description": "Lists all sites for this VPC",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VPC"
+                ],
+                "summary": "List Sites",
+                "operationId": "ListSitesInVPC",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "VPC ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Site"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/check/auth": {
             "get": {
                 "description": "Checks if the user is currently authenticated",
@@ -2850,6 +3253,24 @@
                 }
             }
         },
+        "models.AddSite": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
         "models.AddVPC": {
             "type": "object",
             "properties": {
@@ -2879,6 +3300,46 @@
                 "error": {
                     "type": "string",
                     "example": "something bad"
+                }
+            }
+        },
+        "models.CertificateSigningRequest": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "description": "Requested 'duration' (i.e. lifetime) of the Certificate. Note that the\nissuer may choose to ignore the requested duration, just like any other\nrequested attribute.\n+optional",
+                    "type": "string"
+                },
+                "is_ca": {
+                    "description": "Requested basic constraints isCA value. Note that the issuer may choose\nto ignore the requested isCA value, just like any other requested attribute.\n\nNOTE: If the CSR in the `Request` field has a BasicConstraints extension,\nit must have the same isCA value as specified here.\n\nIf true, this will automatically add the `cert sign` usage to the list\nof requested `usages`.\n+optional",
+                    "type": "boolean"
+                },
+                "request": {
+                    "description": "The PEM-encoded X.509 certificate signing request to be submitted to the\nissuer for signing.\n\nIf the CSR has a BasicConstraints extension, its isCA attribute must\nmatch the `isCA` value of this CertificateRequest.\nIf the CSR has a KeyUsage extension, its key usages must match the\nkey usages in the `usages` field of this CertificateRequest.\nIf the CSR has a ExtKeyUsage extension, its extended key usages\nmust match the extended key usages in the `usages` field of this\nCertificateRequest.",
+                    "type": "string",
+                    "example": "-----BEGIN CERTIFICATE REQUEST-----(...)-----END CERTIFICATE REQUEST-----"
+                },
+                "usages": {
+                    "description": "Requested key usages and extended key usages.\n\nNOTE: If the CSR in the `Request` field has uses the KeyUsage or\nExtKeyUsage extension, these extensions must have the same values\nas specified here without any additional values.\n\nIf unset, defaults to `digital signature` and `key encipherment`.\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.KeyUsage"
+                    }
+                }
+            }
+        },
+        "models.CertificateSigningResponse": {
+            "type": "object",
+            "properties": {
+                "ca": {
+                    "description": "The PEM encoded X.509 certificate of the signer, also known as the CA\n(Certificate Authority).\nThis is set on a best-effort basis by different issuers.\nIf not set, the CA is assumed to be unknown/not available.\n+optional",
+                    "type": "string",
+                    "example": "-----BEGIN CERTIFICATE-----(...)-----END CERTIFICATE-----"
+                },
+                "certificate": {
+                    "description": "The PEM encoded X.509 certificate resulting from the certificate\nsigning request.\nIf not set, the CertificateRequest has either not been completed or has\nfailed. More information on failure can be found by checking the\n`conditions` field.\n+optional",
+                    "type": "string",
+                    "example": "-----BEGIN CERTIFICATE-----(...)-----END CERTIFICATE-----"
                 }
             }
         },
@@ -3060,6 +3521,59 @@
                     "type": "string"
                 }
             }
+        },
+        "models.KeyUsage": {
+            "type": "string",
+            "enum": [
+                "signing",
+                "digital signature",
+                "content commitment",
+                "key encipherment",
+                "key agreement",
+                "data encipherment",
+                "cert sign",
+                "crl sign",
+                "encipher only",
+                "decipher only",
+                "any",
+                "server auth",
+                "client auth",
+                "code signing",
+                "email protection",
+                "s/mime",
+                "ipsec end system",
+                "ipsec tunnel",
+                "ipsec user",
+                "timestamping",
+                "ocsp signing",
+                "microsoft sgc",
+                "netscape sgc"
+            ],
+            "x-enum-varnames": [
+                "UsageSigning",
+                "UsageDigitalSignature",
+                "UsageContentCommitment",
+                "UsageKeyEncipherment",
+                "UsageKeyAgreement",
+                "UsageDataEncipherment",
+                "UsageCertSign",
+                "UsageCRLSign",
+                "UsageEncipherOnly",
+                "UsageDecipherOnly",
+                "UsageAny",
+                "UsageServerAuth",
+                "UsageClientAuth",
+                "UsageCodeSigning",
+                "UsageEmailProtection",
+                "UsageSMIME",
+                "UsageIPsecEndSystem",
+                "UsageIPsecTunnel",
+                "UsageIPsecUser",
+                "UsageTimestamping",
+                "UsageOCSPSigning",
+                "UsageMicrosoftSGC",
+                "UsageNetscapeSGC"
+            ]
         },
         "models.LoginEndRequest": {
             "type": "object",
@@ -3246,6 +3760,48 @@
                 }
             }
         },
+        "models.Site": {
+            "type": "object",
+            "properties": {
+                "bearer_token": {
+                    "description": "the token nexd should use to reconcile Site state.",
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "link_secret": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "vpc_id": {
+                    "type": "string",
+                    "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
         "models.TunnelIP": {
             "type": "object",
             "properties": {
@@ -3340,6 +3896,24 @@
                 }
             }
         },
+        "models.UpdateSite": {
+            "type": "object",
+            "properties": {
+                "hostname": {
+                    "type": "string",
+                    "example": "myhost"
+                },
+                "link_secret": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.UpdateVPC": {
             "type": "object",
             "properties": {
@@ -3399,6 +3973,12 @@
         "models.VPC": {
             "type": "object",
             "properties": {
+                "ca_certificates": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
@@ -3417,6 +3997,9 @@
                 },
                 "private_cidr": {
                     "type": "boolean"
+                },
+                "revision": {
+                    "type": "integer"
                 }
             }
         },
@@ -3473,5 +4056,15 @@
                 "user": " Grants read and write access to resources owned by this user"
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "X509 Certificate related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.",
+            "name": "CA"
+        },
+        {
+            "description": "Skupper Site related APIs, these APIs are experimental and disabled by default.  Use the feature flag apis to check if they are enabled on the server.",
+            "name": "Sites"
+        }
+    ]
 }

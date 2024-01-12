@@ -4,6 +4,7 @@
 {{>partial_header}}
 package {{packageName}}
 {{#models}}
+{{^model.isEnum}}
 {{#imports}}
 {{#-first}}
 import (
@@ -13,6 +14,7 @@ import (
 )
 {{/-last}}
 {{/imports}}
+{{/model.isEnum}}
 {{#model}}
 {{#isEnum}}
 // {{{classname}}} {{#description}}{{{.}}}{{/description}}{{^description}}the model '{{{classname}}}'{{/description}}

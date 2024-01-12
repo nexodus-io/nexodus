@@ -99,3 +99,10 @@ securityDefinitions:
       user: ' Grants read and write access to resources owned by this user'
     type: oauth2
 swagger: "2.0"
+tags:
+- description: X509 Certificate related APIs, these APIs are experimental and disabled
+    by default.  Use the feature flag apis to check if they are enabled on the server.
+  name: CA
+- description: Skupper Site related APIs, these APIs are experimental and disabled
+    by default.  Use the feature flag apis to check if they are enabled on the server.
+  name: Sites

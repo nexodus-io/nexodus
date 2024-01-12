@@ -46,6 +46,9 @@ func (api *API) Check(ctx context.Context, checkReq *auth.CheckRequest) (*auth.C
 		} else if strings.HasPrefix(authorizationHeader, "Bearer DT:") {
 			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
 			return checkDeviceToken(ctx, api, token)
+		} else if strings.HasPrefix(authorizationHeader, "Bearer ST:") {
+			token := strings.TrimPrefix(authorizationHeader, "Bearer ")
+			return checkSiteToken(ctx, api, token)
 		}
 		return okResponse, nil
 	}
@@ -157,6 +160,65 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 			},
 		},
 	}, nil
+}
+
+func checkSiteToken(ctx context.Context, api *API, token string) (*auth.CheckResponse, error) {
+
+	var site models.Site
+	db := api.db.WithContext(ctx)
+	result := db.First(&site, "bearer_token = ?", token)
+	if result.Error != nil {
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid site token"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
+	var user models.User
+	result = db.First(&user, "id = ?", site.OwnerID)
+	if result.Error != nil {
+
+		message := "internal server error"
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			message = "invalid reg key user"
+		}
+		return denyCheckResponse(401, models.NewBaseError(message))
+	}
+
+	// replace it with a JWT token...
+	claims := models.NexodusClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:  api.URL,
+			ID:      site.ID.String(),
+			Subject: user.IdpID,
+		},
+		VpcID: site.VpcID,
+		Scope: "device-token",
+	}
+
+	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)
+	if err != nil {
+		return denyCheckResponse(401, models.NewBaseError("internal server error"))
+	}
+
+	return &auth.CheckResponse{
+		Status: &status.Status{Code: int32(codes.OK)},
+		HttpResponse: &auth.CheckResponse_OkResponse{
+			OkResponse: &auth.OkHttpResponse{
+				Headers: []*core.HeaderValueOption{
+					{
+						AppendAction: core.HeaderValueOption_OVERWRITE_IF_EXISTS_OR_ADD,
+						Header: &core.HeaderValue{
+							Key:   "authorization",
+							Value: "Bearer " + jwttoken,
+						},
+					},
+				},
+			},
+		},
+	}, nil
+
 }
 
 func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckResponse, error) {
