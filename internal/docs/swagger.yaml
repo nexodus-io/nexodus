@@ -558,6 +558,8 @@ definitions:
       hostname:
         example: myhost
         type: string
+      relay:
+        type: boolean
       revision:
         type: integer
       security_group_id:

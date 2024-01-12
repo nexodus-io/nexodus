@@ -45,6 +45,7 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 					SymmetricNat:   nx.symmetricNat,
 					Hostname:       nx.hostname,
 					Endpoints:      endpoints,
+					Relay:          nx.relay,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {

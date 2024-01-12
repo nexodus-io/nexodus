@@ -54,5 +54,6 @@ type UpdateDevice struct {
 	Hostname        string     `json:"hostname" example:"myhost"`
 	Endpoints       []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Revision        *uint64    `json:"revision"`
+	Relay           *bool      `json:"relay"`
 	SecurityGroupId *uuid.UUID `json:"security_group_id"`
 }
