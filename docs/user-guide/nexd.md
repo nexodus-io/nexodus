@@ -52,7 +52,7 @@ NAME:
    nexd proxy - Run nexd as an L4 proxy instead of creating a network interface
 
 USAGE:
-   nexd proxy [command [command options]] 
+   nexd proxy [command [command options]]
 
 OPTIONS:
    --ingress value [ --ingress value ]  Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
