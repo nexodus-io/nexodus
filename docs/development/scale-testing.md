@@ -118,17 +118,17 @@ The difference is this script adds the self-signed cert from the kind deployment
 ### Scale testing setup
 
 - Nexodus control plane stack was replicated into a playground namespace in the same cluster.
-- Using [qa-container-scale.sh](../../hack/e2e-scripts/scale/qa-container-scale.sh) script multiple device running next agent were created and connected to the Nexodus control plane.
-- Used AWS EC2 x2large instance to spawn these nexd devices. Each EC2 instance was able to accommodate 1000 containers. New EC2 VM was added as we need to scale more.
+- Using the [qa-container-scale.sh](../../hack/e2e-scripts/scale/qa-container-scale.sh) script, multiple devices running the nexd agent were created and connected to the Nexodus control plane.
+- Used AWS EC2 x2large instance to spawn these nexd devices. Each EC2 instance was able to accommodate 1000 containers. A New EC2 VM was added as we need to scale more.
 - Helpful scripts to run scale tests are available in [nexodus/hack/e2e-scripts/scale](../../hack/e2e-scripts/scale) directory.
 
 ### Major challenges for scale
 
-- High CPU of some key components - ApiServer and ApiProxy. Major contributor to the high CPU was the slow DB queries (such as fetching devices, security groups). Because of slow DB queries, ApiServer was not able to process the requests fast enough and new device onboarding started failing.
-  - Implementing watchers for the slow queries and optimized the queries help reduce the overall request processing time and the CPU usage.
-- ApiProxy to ApiServer connection scale issues. As number of devices increased, the number of connections & requests per connection to ApiProxy (Envoy proxy) to ApiServer increased. This caused the ApiProxy to get overloaded and that triggered envoy proxy's circuit breakers. Due to open circuit breaker  device nexd agent started seeing request failures and stopped getting updates from control plane.
+- High CPU of some key components - ApiServer and ApiProxy. A major contributor to the high CPU were the slow DB queries (such as fetching devices, security groups). Because of the slow DB queries, ApiServer was not able to process the requests fast enough and new device onboarding started failing.
+  - Implementing watchers for the slow queries and optimizing the queries help reduce the overall request processing time and the CPU usage.
+- ApiProxy to ApiServer connection scale issues. As the number of devices increased, the number of connections & requests per connection to ApiProxy (Envoy proxy) to ApiServer increased. This caused the ApiProxy to get overloaded and that triggered envoy proxy's circuit breakers. Due to the open circuit breaker, nexd agent started seeing request failures and stopped getting updates from the control plane.
   - Configuring the envoy proxy's connection pool and circuit breaker to handle the 10K scale, resolved the connection scale issues.
-- ApiServer to DB connection scale issues. Once ApiProxy to ApiServer connection/request rate limited was fixed, it allowed higher number of connections/requests from ApiServer to DB as number of devices increased. This caused the DB to get overloaded and DB start running our of connections.
-  - Introduced PGBouncer between ApiServer and DB to manage connection pooling configuration and DB connection configuration (shared buffer, max connections, max client connections)resolved the connection issues.
-- Once the above mentioned issues were resolved, ApiProxy, ApiServer and DB pods start encountering high CPU, but this time it's simply because they need more compute to process more request. At this point, scale was proportioned to the available compute to these component.
-  - Horizontally scaling the replicas and allocating more compute resources to these replicas handled 10K devices with 60% overall resources usage. Refer this [deployment yaml](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus/overlays/playground/kustomization.yaml#L91) for more details about the replicas and compute resources allocated to each component.
+- ApiServer to DB connection scale issues. Once the ApiProxy to ApiServer connection/request rate limit was fixed, it allowed a higher number of connections/requests from ApiServer to DB as the number of devices increased. This caused the DB to get overloaded and DB start running out of connections.
+  - Introduced PGBouncer between the ApiServer and DB to manage connection pooling configuration and DB connection configuration (shared buffer, max connections, max client connections)which resolved the connection issues.
+- Once the above mentioned issues were resolved, the ApiProxy, ApiServer and DB pods start encountering high CPU, but this time it was simply because they needed more compute to process more requests. At this point, scale was proportioned to the available compute to these components.
+  - Horizontally scaling the replicas and allocating more compute resources to these replicas handled 10K devices with 60% overall resources usage. Refer to this [deployment yaml](https://github.com/nexodus-io/nexodus/blob/main/deploy/nexodus/overlays/playground/kustomization.yaml#L91) for more details about the replicas and compute resources allocated to each component.
