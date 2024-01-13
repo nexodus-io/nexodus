@@ -1,20 +1,10 @@
 import {
-  Button,
   Card,
-  CardActions,
   CardContent,
   CardHeader,
   CardMedia,
   Typography,
 } from "@mui/material";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import {
-  faApple,
-  faWindows,
-  faLinux,
-} from "@fortawesome/free-brands-svg-icons";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@mui/material/styles";
 
 import CardImage from "../wordmark.png";
