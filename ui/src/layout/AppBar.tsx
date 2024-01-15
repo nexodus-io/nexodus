@@ -1,23 +1,6 @@
-import {
-  defaultTheme,
-  Layout,
-  AppBar,
-  AppBarProps,
-  ToggleThemeButton,
-  LayoutProps,
-} from "react-admin";
-import {
-  createTheme,
-  Box,
-  Theme,
-  Typography,
-  useMediaQuery,
-} from "@mui/material";
+import { AppBar, AppBarProps } from "react-admin";
+import { Box, Theme, Typography, useMediaQuery } from "@mui/material";
 import LogoSrc from "../logo.png";
-
-const darkTheme = createTheme({
-  palette: { mode: "dark" },
-});
 
 const CustomAppBar = (props: JSX.IntrinsicAttributes & AppBarProps) => {
   const isLargeEnough = useMediaQuery<Theme>((theme) =>
@@ -49,7 +32,6 @@ const CustomAppBar = (props: JSX.IntrinsicAttributes & AppBarProps) => {
       ></Typography>
       {isLargeEnough && <img src={LogoSrc} alt="Nexodus" height="40px" />}
       {isLargeEnough && <Box component="span" sx={{ flex: 1 }} />}
-      <ToggleThemeButton lightTheme={defaultTheme} darkTheme={darkTheme} />
     </AppBar>
   );
 };

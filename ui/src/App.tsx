@@ -39,6 +39,11 @@ import {
 } from "./pages/RegKeys";
 import { SiteEdit, SiteList, SiteShow } from "./pages/Sites";
 import { authProvider, dataProvider } from "./DataProvider";
+import { createTheme } from "@mui/material";
+
+const darkTheme = createTheme({
+  palette: { mode: "dark" },
+});
 
 const App = () => {
   return (
@@ -50,6 +55,7 @@ const App = () => {
       layout={Layout}
       loginPage={LoginPage}
       menu={CustomMenu}
+      darkTheme={darkTheme}
       requireAuth
     >
       <Resource
@@ -62,7 +68,6 @@ const App = () => {
       <CustomRoutes>
         <Route path="/_security-groups" element={<SecurityGroups />} />
       </CustomRoutes>
-      {/* define security-groups so that it can be used as a reference from other resources. */}
       <Resource
         name="security-groups"
         recordRepresentation={(record) => `${record.description}`}
