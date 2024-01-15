@@ -49,6 +49,6 @@
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
     "vite-plugin-svgr": "^4.2.0",
-    "vite-tsconfig-paths": "^4.2.2"
+    "vite-tsconfig-paths": "^4.2.3"
   }
 }
