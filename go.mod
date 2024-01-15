@@ -49,7 +49,7 @@ require (
 	github.com/swaggo/swag v1.16.2
 	github.com/testcontainers/testcontainers-go v0.27.0
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.3
-	github.com/urfave/cli/v3 v3.0.0-alpha7
+	github.com/urfave/cli/v3 v3.0.0-alpha8
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/zsais/go-gin-prometheus v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.46.1
