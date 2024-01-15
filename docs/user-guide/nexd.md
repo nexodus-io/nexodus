@@ -22,6 +22,11 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
+   --exit-node-client         Enable this node to use an available exit node (default: false) [$NEXD_EXIT_NODE_CLIENT]
+   --help, -h                 Show help (default: false)
+   --security-group-id value  Optional security group ID to use when registering used to secure this device [$NEXAPI_SECURITY_GROUP_ID]
+   --unix-socket value        Path to the unix socket nexd is listening against (default: /var/run/nexd.sock)
+
    Agent Options
 
    --relay-only  Set if this node is unable to NAT hole punch or you do not want to fully mesh (Nexodus will set this automatically if symmetric NAT is detected) (default: false) [$NEXD_RELAY_ONLY]
