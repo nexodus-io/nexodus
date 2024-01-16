@@ -106,4 +106,4 @@ In this scenario user need to install the root CA key (rootCA.key) to all the no
 CAROOT=</path/to/cert/dir> mkcert -install
 ```
 
-Now you can onboard the device to Nexodus and if the device is behind symmetric NAT, it will use the self hosted relay and will use the root CA key to verify the TLS certificate of the relay node.
+Now you can onboard the device to Nexodus, and if the device is behind symmetric NAT, it will use the self-hosted relay and will use the root CA key to verify the TLS certificate of the relay node.
