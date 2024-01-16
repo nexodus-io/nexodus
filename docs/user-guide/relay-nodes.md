@@ -100,7 +100,7 @@ Now you can use the private DNS name and the key/certificates to onboard the rel
 sudo nexd relayderp --hostname xyz.relay.io -a ":443" --certmode manual --certdir "<certificate-directory-path>"  --onboard
 ```
 
-In this scenario user need to install the root CA key (rootCA.key) to all the nodes that needs to be connected through this onboard relay. Copy the file to each node and run the following command to install the root CA key:
+In this scenario, the user needs to install the root CA key (rootCA.key) to all the nodes that need to be connected through this onboard relay. Copy the file to each node and run the following command to install the root CA key:
 
 ```sh
 CAROOT=</path/to/cert/dir> mkcert -install
