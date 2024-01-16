@@ -788,7 +788,8 @@ cacerts: ## Install the Self-Signed CA Certificate
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-ca-key-pair -o json | jq -r '.data."ca.crt"' | base64 -d > $(CURDIR)/.certs/rootCA.pem
 	$(CMD_PREFIX) CAROOT=$(CURDIR)/.certs mkcert -install
 
-.derpcerts: ## Create and fetch the Self-Signed CA Certificate for derp relay from the cluster
+.PHONY: derpcerts
+derpcerts: ## Create and fetch the Self-Signed CA Certificate for derp relay from the cluster
 	$(CMD_PREFIX) ./hack/relayderp-certs.sh
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.crt"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.crt
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.key"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.key
