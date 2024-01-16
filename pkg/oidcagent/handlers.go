@@ -346,52 +346,71 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 
 	var data models.RefreshTokenRequest
 
-	err := c.BindJSON(&data)
-	if err != nil {
+	if err := c.BindJSON(&data); err != nil {
+		logger.Debugf("Failed to bind JSON: %v", err)
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
-	tokenRaw, ok := session.Get(TokenKey)
 
-	if !ok {
-		logger.Debug("No existing token in session, unauthorized")
+	// Attempt to get the session token
+	tokenRaw, ok := session.Get(TokenKey)
+	if !ok && data.RefreshToken == "" {
+		logger.Debug("No token in session and no refresh token provided, unauthorized")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	token, err := JsonStringToToken(tokenRaw.(string))
-	if err != nil {
-		logger.Debug("Failed to convert token from JSON string %v", tokenRaw)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
+	var newToken *oauth2.Token
+	var err error
 
-	src := o.oauthConfig.TokenSource(ctx, token)
-	newToken, err := src.Token()
+	if ok {
+		// If session token is available, use it
+		token, err := JsonStringToToken(tokenRaw.(string))
+		if err != nil {
+			logger.Debugf("Failed to convert token from JSON string: %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
-	if err != nil {
-		logger.Debug("Failed to refresh token: %v", err)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
+		src := o.oauthConfig.TokenSource(ctx, token)
+		newToken, err = src.Token()
+		if err != nil {
+			logger.Debugf("Failed to refresh token with session token: %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// If no session token, use the refresh token provided in the request
+		t := &oauth2.Token{RefreshToken: data.RefreshToken}
+		src := o.oauthConfig.TokenSource(ctx, t)
+		newToken, err = src.Token()
+		if err != nil {
+			logger.Debugf("Failed to refresh token with provided refresh token: %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	tokenString, err := tokenToJSONString(newToken)
 	if err != nil {
-		logger.Debug("Failed to convert new token to string: %v", err)
+		logger.Debugf("Failed to convert new token to string: %v", err)
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
+	// Update the session with the new token
 	session.Set(TokenKey, tokenString)
-	if err := session.Save(); err != nil {
-		logger.Debug("Failed to save new token in session: %v", err)
+	if err :=
+		session.Save(); err != nil {
+		logger.Debugf("Failed to save new token in session: %v", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
+	// Send the refreshed token in the response
 	c.JSON(http.StatusOK, models.RefreshTokenResponse{
 		AccessToken:  newToken.AccessToken,
 		RefreshToken: newToken.RefreshToken,
@@ -409,6 +428,7 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 // @Router      /web/logout [post]
 func (o *OidcAgent) Logout(c *gin.Context) {
 	session := ginsession.FromContext(c)
+
 	idToken, ok := session.Get(IDTokenKey)
 	if !ok {
 		c.AbortWithStatus(http.StatusUnauthorized)
