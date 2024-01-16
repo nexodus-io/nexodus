@@ -5,7 +5,7 @@ The Nexodus Service makes the best effort to establish direct peering between de
 Currently Nexodus supports two types of relay:
 
 1. Wireguard based relay :
-    This relay node does not offer public, shared relay nodes. Instead, a relay node must be added to each VPC which requires them. Adding a relay node follows the same process as any other device but with additional options given to `nexd`. This relays traffic using the wireguard tunnels, so the traffic gets decrypted and re-encrypted at the relay node. This relay node is hosted by the customer and can be any device that can run the Nexodus Agent.
+    This relay node does not offer public, shared relay nodes. Instead, a relay node must be added to each VPC which requires them. Adding a relay node follows the same process as any other device but with additional options given to `nexd`. This relays traffic using the wireguard tunnels, so the traffic gets decrypted and re-encrypted at the relay node. This relay node is hosted by a member of the organization and can be any device that can run the Nexodus Agent.
 2. HTTPS based relay (DERP Relay) :
     This relay node is a public, shared relay node that is hosted by Nexodus at [Nexodus DERP Relay](relay.nexodus.io). This relay node relays traffic using HTTPS/TLS, so the traffic is not decrypted at the relay node. This relay node is hosted by Nexodus and is available to all users. Scenarios where user don't want to use the public relay, user can manually deploy this relay on their own infrastructure and onboard the relay similar to the wireguard relay node, but as a wireguard relay, it would be scoped to the specific VPC where it's on-boarded.
 
