@@ -9,7 +9,7 @@ Currently Nexodus supports two types of relay:
 2. HTTPS based relay (DERP Relay) :
     This relay node is a public, shared relay node that is hosted by Nexodus at [Nexodus DERP Relay](relay.nexodus.io). This relay node relays traffic using HTTPS/TLS, so the traffic is not decrypted at the relay node. This relay node is hosted by Nexodus and is available to all users. In scenarios where users don't want to use the public relay, the user can manually deploy this relay on their own infrastructure and onboard the relay similar to the wireguard relay node, but as a wireguard relay, it would be scoped to the specific VPC where it's on-boarded.
 
-Given that both the relays can be on-boarded manually and relays the traffic, the reason we support wireguard based relay is because it performs relatively better compared to HTTPS/TLS relay.
+Given that both the relays can be on-boarded manually and relay the traffic, the reason we support wireguard-based relay is that it performs relatively better compared to HTTPS/TLS relay.
 
 A relay node needs to be reachable from all the devices to ensure that devices can successfully connect (wireguard/udp, https/tcp) to the relay (and also on a predictable Wireguard port such as the default UDP port of 51820 for wireguard based relay). They would most commonly be run on a public IP address, though it could be anywhere reachable by all devices in the VPC. There is only a need for one relay node in a VPC.
 
