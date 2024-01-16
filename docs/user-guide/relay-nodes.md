@@ -87,7 +87,7 @@ Run the following command to sign and generate the server certificate
 openssl x509 -req -in server.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out server.crt -days 800 -sha256 -extfile v3.ext
 ```
 
-Above command will generate rootCA key (rootCA.key) and certificate (rootCA.cet) files and server key (server.key) and certificate (server.crt) files. Rename the server key and certificate files to `<relay-private-domain-name>.key` and `<relay-private-domain-name>.crt` respectively.
+The above command will generate rootCA key (rootCA.key) and certificate (rootCA.cet) files and server key (server.key) and certificate (server.crt) files. Rename the server key and certificate files to `<relay-private-domain-name>.key` and `<relay-private-domain-name>.crt` respectively.
 
 ```sh
 cp server.key xyz.relay.io.key
