@@ -30,7 +30,7 @@ import (
 const (
 	nexodusLogEnv     = "NEXD_LOGLEVEL"
 	wireguardOptions  = "Wireguard Options"
-	derpOptions       = "Derp Options"
+	derpOptions       = "DERP Options"
 	agentOptions      = "Agent Options"
 	nexServiceOptions = "Nexodus Service Options"
 )
