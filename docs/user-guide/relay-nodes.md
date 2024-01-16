@@ -11,21 +11,23 @@ Currently Nexodus supports two types of relay:
 
 Given that both the relays can be on-boarded manually and relay the traffic, the reason we support wireguard-based relay is that it performs relatively better compared to HTTPS/TLS relay.
 
-A relay node needs to be reachable from all the devices to ensure that devices can successfully connect (wireguard/udp, https/tcp) to the relay (and also on a predictable Wireguard port such as the default UDP port of 51820 for wireguard based relay). They would most commonly be run on a public IP address, though it could be anywhere reachable by all devices in the VPC. There is only a need for one relay node in a VPC.
+A relay node needs to be reachable from all the devices to ensure that devices can successfully connect (wireguard/udp, https/tcp) to the relay (and also on a predictable Wireguard port such as the default UDP port of 51820 for wireguard-based relay). They would most commonly be run on a public IP address, though it could be anywhere reachable by all devices in the VPC. There is only a need for one relay node in a VPC.
 
-Given that Nexodus provides multiple options on how user can relay the traffic and they can switch between them, Nexodus uses a simple approach to select the relay node:
+Given that Nexodus provides multiple options on how users can relay the traffic and they can switch between them, Nexodus uses a simple approach to select the relay node:
 
 1. If there is no on-boarded relay present in the VPC, Nexodus will use the public DERP relay.
-2. If user on-boards a relay node (wireguard or DERP), It will switch to use the on-boarded relay.
-3. If user removes the on-boarded relay node, It fallback to the public DERP relay node.
+2. If the user on-boards a relay node (wireguard or DERP), It will switch to use the on-boarded relay.
+3. If the user removes the on-boarded relay node, it falls back to the public DERP relay node.
 
-NOTE: Currently Nexodus does not support multiple relay nodes in a VPC.
+!!! note
+
+    Currently, Nexodus does not support multiple relay nodes in a VPC.
 
 ![no-alt-text](../images/relay-nodes-diagram-1.png)
 
-Please follow the instructions below on how to setup specific relay.
+Please follow the instructions below on how to set up a specific relay.
 
-## Setup Nexodus Wireguard Relay
+## Set Up Nexodus Wireguard Relay
 
 Unlike normal peering, the Nexodus relay node needs to be reachable from all the nodes that want to peer with the relay node. The default port in the following command is `51820` but a custom port can be specified using the `--listen-port` flag. Follow the instructions in [Deploying the Nexodus Agent](agent.md) instructions to set up the `nexd` binary.
 
@@ -41,13 +43,13 @@ If you're using the Nexodus rpm package, edit `/etc/sysconfig/nexodus` to add th
 NEXD_ARGS="--service-url https://try.nexodus.io relay"
 ```
 
-## Setup Self Hosted Nexodus DERP Relay
+## Set Up Self-hosted Nexodus DERP Relay
 
-If user would prefer to use it's own relay instead of the public DERP relay, user can deploy the relay node on their own infrastructure and on-board it to Nexodus. Peers behind symmetric NAT will switch to the self hosted relay once it's successfully on-boarded. DERP relay uses TLS for communication, so user will need to provide a TLS certificate and key to the relay node. User can onboard the relay in following two ways:
+If the user would prefer to use its own relay instead of the public DERP relay, the user can deploy the relay node on their own infrastructure and on-board it to Nexodus. Peers behind symmetric NAT will switch to the self-hosted relay once it's successfully on-boarded. DERP relay uses TLS for communication, so the user will need to provide a TLS certificate and key to the relay node. Users can onboard the relay in the following two ways:
 
 ### Using public DNS name
 
-User need to configure a DNS name (e.g NameCheap, CloudFlare etc) resolving to the IP address of the machine running the relay node. The DNS name will be used to generate the TLS certificate (letsencrypt) for the relay node. User can use the following command to onboard the relay node:
+Users need to configure a DNS name (e.g., NameCheap, CloudFlare, etc.) resolving to the IP address of the machine running the relay node. The DNS name will be used to generate the TLS certificate (letsencrypt) for the relay node. Users can use the following command to onboard the relay node:
 
 ```sh
 sudo nexd relayderp --hostname <relay domain name> --onboard
@@ -55,7 +57,7 @@ sudo nexd relayderp --hostname <relay domain name> --onboard
 
 ### Using private DNS name
 
-If user don't want to use a public DNS name, user can use a private DNS name (e.g. `xyz.relay.io`) to onboard the relay. But this requires users to generate a TLS certificate and key for the relay node. User can use the following commands to generate the TLS certificate and key (you need openssl to generate the key and certificate):
+If users don't want to use a public DNS name, they can use a private DNS name (e.g., `xyz.relay.io`) to onboard the relay. However, this requires users to generate a TLS certificate and key for the relay node. Users can use the following commands to generate the TLS certificate and key (you need `openssl` to generate the key and certificate):
 
 ```sh
 # Create CA’s root key
@@ -78,7 +80,7 @@ keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 subjectAltName = <relay-private-domain-name>
 ```
 
-Set subjectAltName to the private DNS name (e.g. `xyz.relay.io`) that user want to use for the relay node.
+Set `subjectAltName` to the private DNS name (e.g. `xyz.relay.io`) that user wants to use for the relay node.
 
 Run the following command to sign and generate the server certificate
 
