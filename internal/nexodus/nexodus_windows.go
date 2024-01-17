@@ -71,6 +71,10 @@ func (nx *Nexodus) findLocalIP() (string, error) {
 	return discoverGenericIPv4(nx.logger, nx.apiURL.Host, "443")
 }
 
+func (nx *Nexodus) configureLoopback(ip string) error {
+	return nil
+}
+
 func buildWindowsWireguardIfaceConf(pvtKey, wgAddress, wgListenPort string) error {
 	f, err := fileHandle(windowsWgConfigFile, windowsConfFilePermissions)
 	if err != nil {

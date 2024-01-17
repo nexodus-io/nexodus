@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi8/ubi as build
 
 RUN if [ ! -d /usr/local/go ] ; then \
         [[ $(uname -p) = "x86_64" ]] && ARCH="amd64" || ARCH="arm64" ; \
-        curl -sL https://go.dev/dl/go1.20.8.linux-${ARCH}.tar.gz -o /tmp/go.tgz; \
+        curl -sL https://go.dev/dl/go1.21.5.linux-${ARCH}.tar.gz -o /tmp/go.tgz; \
         tar -C /usr/local -xzf /tmp/go.tgz; \
         mkdir -p /go/bin; \
         mkdir -p /go/src; \

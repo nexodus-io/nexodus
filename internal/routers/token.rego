@@ -166,6 +166,16 @@ allow if {
 	input.path[1] in ["devices", "sites"]
 }
 
+# reg token can update a device metadata
+allow if {
+	valid_nexodus_token
+	contains(token_payload.scope, "reg-token")
+	input.method == "PUT"
+	count(input.path) == 5
+	"devices" = input.path[1]
+	"metadata" = input.path[3]
+}
+
 # reg token can get a devices/orgs/vpcs/sites
 allow if {
 	valid_nexodus_token

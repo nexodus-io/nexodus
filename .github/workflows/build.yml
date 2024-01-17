@@ -38,7 +38,7 @@ jobs:
       - name: Generate Source Code
         run: |
           make generate
-          
+
       - name: Check for uncommitted changes
         id: check-changes
         run: |
@@ -50,7 +50,7 @@ jobs:
             echo "========================================================"
             exit 1
           fi
-          
+
   go-lint-linux:
     runs-on: ubuntu-latest
     strategy:
@@ -95,7 +95,7 @@ jobs:
 
       - name: Check Kube Manifests
         run: |
-          make -j yaml-lint k8s-lint 
+          make -j yaml-lint k8s-lint
 
   opa-lint:
     runs-on: ubuntu-latest
@@ -227,7 +227,7 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -lah -R
         working-directory: dist/packages
-        
+
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -316,7 +316,7 @@ jobs:
 
       - name: Setup KIND
         run: |
-          OVERLAY=${{ matrix.overlay }} make setup-kind install-olm deploy-operators load-images deploy cacerts
+          OVERLAY=${{ matrix.overlay }} make setup-kind install-olm deploy-operators load-images deploy cacerts derpcerts
 
       - name: Build dist
         run: |

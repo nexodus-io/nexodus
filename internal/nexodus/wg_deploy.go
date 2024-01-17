@@ -28,7 +28,7 @@ func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 		}
 	}
 
-	// keep track of the last error that occured during config setup which can be returned at the end
+	// keep track of the last error that occurred during config setup which can be returned at the end
 	var lastErr error
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, updatedPeer := range updatedPeers {

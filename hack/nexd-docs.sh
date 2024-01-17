@@ -12,7 +12,7 @@ echo '```text' >> docs/user-guide/nexd.md.tmp
 dist/nexd -h >> docs/user-guide/nexd.md.tmp
 echo '```' >> docs/user-guide/nexd.md.tmp
 
-for subcmd in proxy router relay; do
+for subcmd in proxy router relay relayderp; do
     printf "\n#### nexd $subcmd\n\n" >> docs/user-guide/nexd.md.tmp
     echo '```text' >> docs/user-guide/nexd.md.tmp
     dist/nexd ${subcmd} -h >> docs/user-guide/nexd.md.tmp

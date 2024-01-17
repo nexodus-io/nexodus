@@ -159,3 +159,7 @@ func (nx *Nexodus) findLocalIP() (string, error) {
 
 	return linuxIP.String(), nil
 }
+
+func (nx *Nexodus) configureLoopback(ip string) error {
+	return nil
+}

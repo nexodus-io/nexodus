@@ -1,5 +1,10 @@
 run:
   allow-parallel-runners: true
+  skip-dirs:
+    - internal/nexodus/derp
+  skip-files:
+    - internal/nexodus/cert.go
+    - internal/nexodus/derper.go
 linters:
   enable:
     - gosec

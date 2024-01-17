@@ -34,6 +34,15 @@ func TestRebuildPeerConfig(t *testing.T) {
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
 	}
+	nxDerpRelay := &Nexodus{
+		vpc:                      nxBase.vpc,
+		symmetricNat:             true,
+		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
+		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
+	}
 
 	testCases := []struct {
 		// descriptive name of the test case
@@ -46,6 +55,8 @@ func TestRebuildPeerConfig(t *testing.T) {
 		peerSymmetricNAT bool
 		// we have a healthy relay available
 		healthyRelay bool
+		//is it derp relay available
+		relay bool
 		// the peering method expected to be chosen based on the local and remote peer parameters
 		expectedMethod string
 		// the second choice peering method
@@ -70,6 +81,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			healthyRelay:   true,
+			relay:          true,
 			expectedMethod: peeringMethodDirectLocal,
 			secondMethod:   peeringMethodReflexive,
 			thirdMethod:    peeringMethodViaRelay,
@@ -91,6 +103,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			healthyRelay:   true,
+			relay:          true,
 			expectedMethod: peeringMethodReflexive,
 			secondMethod:   peeringMethodViaRelay,
 			thirdMethod:    peeringMethodViaRelay, // stay with a healthy relay
@@ -102,6 +115,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			peerIsRelay:    true,
+			relay:          true,
 			expectedMethod: peeringMethodRelayPeerDirectLocal,
 			secondMethod:   peeringMethodRelayPeer,
 			thirdMethod:    peeringMethodRelayPeerDirectLocal,
@@ -113,6 +127,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			peerIsRelay:    true,
+			relay:          true,
 			expectedMethod: peeringMethodRelayPeer,
 			secondMethod:   peeringMethodRelayPeer, // our only choice
 			thirdMethod:    peeringMethodRelayPeer, // our only choice
@@ -150,14 +165,14 @@ func TestRebuildPeerConfig(t *testing.T) {
 		},
 		{
 			// No peering method available when we are behind symmetric NAT and we
-			// have no relay available.
+			// have no legacy relay available, but public derp relay available.
 			name:           "no peering method when behind symmetric NAT without a relay",
-			nx:             nxSymmetricNAT,
+			nx:             nxDerpRelay,
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
-			expectedMethod: peeringMethodNone,
-			secondMethod:   peeringMethodNone,
-			thirdMethod:    peeringMethodNone,
+			expectedMethod: peeringMethodViaDerpRelay,
+			secondMethod:   peeringMethodViaDerpRelay,
+			thirdMethod:    peeringMethodViaDerpRelay,
 		},
 		{
 			// Use the relay when we are behind symmetric NAT and we have a relay available
@@ -166,6 +181,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
 			healthyRelay:   true,
+			relay:          true,
 			expectedMethod: peeringMethodViaRelay,
 			secondMethod:   peeringMethodViaRelay, // our only choice
 			thirdMethod:    peeringMethodViaRelay, // our only choice
@@ -178,6 +194,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerStunIP:       "2.2.2.2:4321",
 			peerSymmetricNAT: true,
 			healthyRelay:     true,
+			relay:            true,
 			expectedMethod:   peeringMethodViaRelay,
 			secondMethod:     peeringMethodViaRelay, // our only choice
 			thirdMethod:      peeringMethodViaRelay, // our only choice
@@ -208,7 +225,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			}
 			tc.nx.peeringReset(&d)
 
-			_, chosenMethod, chosenIndex := tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, chosenIndex := tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.relay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			now := time.Now()
@@ -220,7 +237,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 			d.peeringMethodIndex = chosenIndex
 			d.peeringTime = now.Add(-15 * time.Minute)
 			d.peerHealthyTime = now.Add(-15*time.Minute + 5*time.Second)
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.relay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			// Switch to unhealthy, but since this was previously a successful
@@ -228,19 +245,19 @@ func TestRebuildPeerConfig(t *testing.T) {
 			// have 1 minute until the deadline to work again.
 			d.peerHealthy = false
 			d.peerHealthyTime = now.Add(-1*peeringRestoreTimeout + time.Minute)
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.relay)
 			require.Equal(tc.expectedMethod, chosenMethod)
 
 			// After 3 minutes, we should switch to the next best method.
 			// We were last healthy 3 minutes and 5 seconds ago.
 			d.peerHealthyTime = now.Add(-1*peeringRestoreTimeout - 5*time.Second)
-			_, chosenMethod, chosenIndex = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, chosenIndex = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.relay)
 			require.Equal(tc.secondMethod, chosenMethod)
 
 			// Another recalculation should switch to the third best method.
 			d.peeringMethod = chosenMethod
 			d.peeringMethodIndex = chosenIndex
-			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay)
+			_, chosenMethod, _ = tc.nx.rebuildPeerConfig(&d, tc.healthyRelay, tc.relay)
 			require.Equal(tc.thirdMethod, chosenMethod)
 		})
 	}
