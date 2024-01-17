@@ -1,7 +1,7 @@
 run:
   allow-parallel-runners: true
   skip-dirs:
-    - internal/nexodus/derp
+    - pkg/derp
   skip-files:
     - internal/nexodus/cert.go
     - internal/nexodus/derper.go
