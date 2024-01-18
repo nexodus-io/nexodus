@@ -49,8 +49,7 @@ func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, f
 	}
 
 	device := &models.Device{}
-	db := api.DeviceIsOwnedByCurrentUser(c, api.db)
-	result := db.First(&device, "public_key = ?", publicKey)
+	result := api.DeviceIsOwnedByCurrentUser(c, api.db).First(&device, "public_key = ?", publicKey)
 	if result.Error != nil {
 		ot.logger.Warn("cannot track: invalid device public_key", zap.String("public_key", publicKey), zap.Error(result.Error))
 		fn()
@@ -67,7 +66,7 @@ func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, f
 		device.Online = true
 		now := time.Now()
 		device.OnlineAt = &now
-		err := db.Model(device).Select("online", "online_at").Where("public_key = ?", publicKey).Updates(device).Error
+		err := api.db.Select("online", "online_at").Updates(device).Error
 		if err != nil {
 			ot.logger.Warn("failed to update db state for device", zap.String("public_key", publicKey), zap.Error(err))
 			fn()
@@ -90,7 +89,7 @@ func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, f
 			}
 
 			device := &models.Device{}
-			result := db.First(&device, "public_key = ?", publicKey)
+			result := api.db.First(&device, "public_key = ?", publicKey)
 			if result.Error != nil {
 				ot.logger.Warn("cannot track: invalid device public_key", zap.String("public_key", publicKey), zap.Error(result.Error))
 				return
@@ -99,7 +98,7 @@ func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, f
 				device.Online = false
 				now := time.Now()
 				device.OnlineAt = &now
-				err := db.Model(device).Select("online", "online_at").Where("public_key = ?", publicKey).Updates(device).Error
+				err := api.db.Select("online", "online_at").Updates(device).Error
 				if err != nil {
 					ot.logger.Warn("failed to update db state for device", zap.String("public_key", publicKey), zap.Error(err))
 				}
