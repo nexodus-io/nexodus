@@ -1,32 +1,29 @@
 import React, { FC, forwardRef } from "react";
 import {
-  Datagrid,
-  List,
-  TextField,
-  SimpleShowLayout,
-  ReferenceField,
-  BulkExportButton,
-  BulkDeleteButton,
   ArrayField,
-  DateField,
+  AutocompleteInput,
   BooleanField,
   BooleanFieldProps,
-  Show,
-  useRecordContext,
-  useGetIdentity,
+  BulkDeleteButton,
+  BulkExportButton,
+  Datagrid,
+  DateField,
   Edit,
-  SimpleForm,
-  TextInput,
+  List,
+  ReferenceField,
   ReferenceInput,
-  AutocompleteInput,
-  BooleanInput,
-  DateTimeInput,
+  Show,
+  SimpleForm,
+  SimpleShowLayout,
+  TextField,
+  TextInput,
+  useGetIdentity,
+  useRecordContext,
 } from "react-admin";
 import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTheme } from "@mui/material/styles";
-import { Tooltip, Accordion, AccordionDetails, SvgIcon } from "@mui/material";
+import { Accordion, AccordionDetails, SvgIcon } from "@mui/material";
 
 interface DeviceAccordionDetailsProps {
   id: string | number;

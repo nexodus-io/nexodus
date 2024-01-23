@@ -1,26 +1,15 @@
-import { DashboardMenuItem, MenuItemLink, Menu } from "react-admin";
+import { DashboardMenuItem, Menu, MenuItemLink, MenuProps } from "react-admin";
 import SecurityIcon from "@mui/icons-material/Security";
 import DeviceIcon from "@mui/icons-material/Devices";
 import SiteIcon from "@mui/icons-material/BorderOuter";
 import OrganizationIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
-import { MenuProps } from "react-admin";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
-import { dataProvider } from "../DataProvider";
-import { useEffect, useState } from "react";
+import { useFlags } from "../common/FlagsContext";
 
 export const CustomMenu = (props: MenuProps) => {
-  const [flags, setFlags] = useState({} as { [index: string]: boolean });
-  useEffect(() => {
-    (async () => {
-      try {
-        setFlags(await dataProvider.getFlags());
-      } catch (e) {
-        console.log(e);
-      }
-    })();
-  }, []);
+  const flags = useFlags();
 
   return (
     <Menu {...props}>

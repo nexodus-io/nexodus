@@ -4,7 +4,7 @@ concurrency: qa-${{ github.ref_name }}
 
 on:
   push:
-    branches: [main, playground]
+    branches: [main]
 
 jobs:
   build-images:
