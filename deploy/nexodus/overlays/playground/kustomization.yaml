@@ -33,6 +33,7 @@ configMapGenerator:
       - NEXAPI_ORIGINS=https://playground.nexodus.io
       - NEXAPI_ENVIRONMENT=qa
       - NEXAPI_FFLAG_DEVICES=false
+      - NEXAPI_FFLAG_SECURITY_GROUPS=false
       - NEXAPI_FFLAG_SITES=true
       - NEXAPI_DEBUG=0
 patches:

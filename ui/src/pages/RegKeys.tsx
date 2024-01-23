@@ -29,6 +29,7 @@ import {
 import { JsonInput } from "./JsonInput";
 // @ts-ignore
 import { JsonField } from "./JsonField";
+import { useFlags } from "../common/FlagsContext";
 
 const RegKeyListBulkActions = () => (
   <Fragment>
@@ -59,42 +60,52 @@ export const RegKeyFlagField = (
   ) : null;
 };
 
-export const RegKeyShow = () => (
-  <Show>
-    <SimpleShowLayout>
-      <TextField label="ID" source="id" />
-      <RegKeyFlagField label="Command Line Flag" />
-      <TextField label="Bearer Token" source="bearer_token" />
-      <ReferenceField
-        label="Organization"
-        source="vpc_id"
-        reference="vpcs"
-        link="show"
-      />
-      <ReferenceField
-        label="Security Group"
-        source="security_group_id"
-        reference="security-groups"
-        // We can't deep link to security groups yet...
-        // link={(record) =>{
-        //   return `/_security-groups/${record.id}`
-        // }}
-      />
-      <ReferenceField
-        label="Device"
-        source="device_id"
-        reference="devices"
-        link="show"
-      />
-      <BooleanField label="Single Use" source="device_id" looseValue={true} />
-      <DateField label="Expiration" source="expiration" showTime={true} />
-      <TextField label="Description" source="description" />
-      <JsonField label="Settings" source="settings" />
-    </SimpleShowLayout>
-  </Show>
-);
+export const RegKeyShow = () => {
+  const flags = useFlags();
+  return (
+    <Show>
+      <SimpleShowLayout>
+        <TextField label="ID" source="id" />
+        <RegKeyFlagField label="Command Line Flag" />
+        <TextField label="Bearer Token" source="bearer_token" />
+        <ReferenceField
+          label="Organization"
+          source="vpc_id"
+          reference="vpcs"
+          link="show"
+        />
+        {flags["security-groups"] && (
+          <ReferenceField
+            label="Security Group"
+            source="security_group_id"
+            reference="security-groups"
+            // We can't deep link to security groups yet...
+            // link={(record) =>{
+            //   return `/_security-groups/${record.id}`
+            // }}
+          />
+        )}
+        {flags["devices"] && (
+          <ReferenceField
+            label="Device"
+            source="device_id"
+            reference="devices"
+            link="show"
+          />
+        )}
+        <BooleanField label="Single Use" source="device_id" looseValue={true} />
+        <DateField label="Expiration" source="expiration" showTime={true} />
+        <TextField label="Description" source="description" />
+        {/*
+        <JsonField label="Settings" source="settings" />
+        */}
+      </SimpleShowLayout>
+    </Show>
+  );
+};
 
 export const RegKeyCreate = () => {
+  const flags = useFlags();
   const { identity, isLoading, error } = useGetIdentity();
   if (isLoading || error) {
     return <div />;
@@ -111,13 +122,15 @@ export const RegKeyCreate = () => {
         <ReferenceInput name="vpc_id" source="vpc_id" reference="vpcs">
           <AutocompleteInput fullWidth />
         </ReferenceInput>
-        <ReferenceInput
-          name="security_group_id"
-          source="security_group_id"
-          reference="security-groups"
-        >
-          <AutocompleteInput fullWidth />
-        </ReferenceInput>
+        {flags["security-groups"] && (
+          <ReferenceInput
+            name="security_group_id"
+            source="security_group_id"
+            reference="security-groups"
+          >
+            <AutocompleteInput fullWidth />
+          </ReferenceInput>
+        )}
         <BooleanInput
           label="Single Use"
           name="single_use"
@@ -130,6 +143,7 @@ export const RegKeyCreate = () => {
           source="expiration"
           fullWidth
         />
+        {/*
         <JsonInput
           label="Settings"
           name="settings"
@@ -137,12 +151,14 @@ export const RegKeyCreate = () => {
           fullWidth
           multiline={true}
         />
+        */}
       </SimpleForm>
     </Create>
   );
 };
 
 export const RegKeyEdit = () => {
+  const flags = useFlags();
   const { identity, isLoading, error } = useGetIdentity();
   if (isLoading || error) {
     return <div />;
@@ -156,13 +172,15 @@ export const RegKeyEdit = () => {
           source="description"
           fullWidth
         />
-        <ReferenceInput
-          name="security_group_id"
-          source="security_group_id"
-          reference="security-groups"
-        >
-          <AutocompleteInput fullWidth />
-        </ReferenceInput>
+        {flags["security-groups"] && (
+          <ReferenceInput
+            name="security_group_id"
+            source="security_group_id"
+            reference="security-groups"
+          >
+            <AutocompleteInput fullWidth />
+          </ReferenceInput>
+        )}
         <BooleanInput
           label="Single Use"
           name="single_use"
@@ -175,6 +193,7 @@ export const RegKeyEdit = () => {
           source="expiration"
           fullWidth
         />
+        {/*
         <JsonInput
           label="Settings"
           name="settings"
@@ -182,6 +201,7 @@ export const RegKeyEdit = () => {
           fullWidth
           multiline={true}
         />
+        */}
       </SimpleForm>
     </Edit>
   );

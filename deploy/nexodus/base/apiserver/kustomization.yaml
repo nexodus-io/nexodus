@@ -10,7 +10,6 @@ configMapGenerator:
       - NEXAPI_INSECURE_TLS=1
       - NEXAPI_TRACE_ENDPOINT_OTLP="tempo.nexodus-monitoring.svc:4317"
       - NEXAPI_TRACE_INSECURE="1"
-      - NEXAPI_FFLAG_SECURITY_GROUPS=false
       - NEXAPI_DB_SSLMODE=require
       - NEXAPI_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
       - NEXAPI_URL=https://api.try.nexodus.127.0.0.1.nip.io
@@ -24,6 +23,7 @@ configMapGenerator:
       - NEXAPI_FETCH_MGR_TIMEOUT=2s
       - NEXAPI_DEVICE_CACHE_SIZE=500
       - NEXAPI_FFLAG_DEVICES=true
+      - NEXAPI_FFLAG_SECURITY_GROUPS=true
       - NEXAPI_FFLAG_SITES=true
 resources:
   - service.yaml

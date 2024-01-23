@@ -40,6 +40,7 @@ import {
 import { SiteEdit, SiteList, SiteShow } from "./pages/Sites";
 import { authProvider, dataProvider } from "./DataProvider";
 import { createTheme } from "@mui/material";
+import { FlagsProvider } from "./common/FlagsContext";
 
 const darkTheme = createTheme({
   palette: { mode: "dark" },

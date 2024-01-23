@@ -18,10 +18,6 @@ secretGenerator:
 configMapGenerator:
   - behavior: merge
     literals:
-      - NEXAPI_FFLAG_SECURITY_GROUPS=true
-    name: apiserver
-  - behavior: merge
-    literals:
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug
     name: apiproxy
   - behavior: create
