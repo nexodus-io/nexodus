@@ -4,17 +4,6 @@ import future.keywords
 
 default valid_keycloak_token := false
 
-default allowed_email := false
-
-allowed_email if {
-	token_payload.from_google
-	endswith(token_payload.email, "redhat.com")
-}
-
-allowed_email if {
-	not token_payload.from_google
-}
-
 valid_nexodus_token if {
 	[valid, _, _] := io.jwt.decode_verify(input.access_token, {"cert": input.nexodus_jwks})
 	valid == true
@@ -23,7 +12,6 @@ valid_nexodus_token if {
 valid_keycloak_token if {
 	[valid, _, _] := io.jwt.decode_verify(input.access_token, {"cert": input.jwks, "aud": "account"})
 	valid == true
-	allowed_email
 }
 
 valid_token if {
