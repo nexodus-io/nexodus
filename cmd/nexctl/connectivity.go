@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api"
-	"golang.org/x/exp/maps"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/nexodus-io/nexodus/internal/api"
+	"golang.org/x/exp/maps"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
@@ -45,10 +46,14 @@ func cmdConnStatus(ctx context.Context, command *cli.Command, family string) err
 		return err
 	}
 
-	// start spinner
-	s := spinner.New(spinner.CharSets[70], 100*time.Millisecond)
-	s.Suffix = " Running Probe..."
-	s.Start()
+	var s *spinner.Spinner
+	if command.String("output") == encodeColumn {
+		// start spinner, but only for human readable output format,
+		// not when generating parseable output.
+		s = spinner.New(spinner.CharSets[70], 100*time.Millisecond)
+		s.Suffix = " Running Probe..."
+		s.Start()
+	}
 
 	result, err := callNexdKeepalives(family)
 	if err != nil {
@@ -56,8 +61,10 @@ func cmdConnStatus(ctx context.Context, command *cli.Command, family string) err
 		fmt.Print("\r \r")
 		return err
 	}
-	// stop spinner
-	s.Stop()
+	if s != nil {
+		// stop spinner
+		s.Stop()
+	}
 	// clear spinner
 	fmt.Print("\r \r")
 
