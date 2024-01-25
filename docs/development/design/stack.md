@@ -33,7 +33,7 @@ This resulted in the following decisions:
 
 1. IPAM would be a separate service, consumed over gRPC, since it already has an [upstream project](https://github.com/metal-stack/go-ipam).
 1. Authentication would use Open ID Connect (OIDC), provided by default in our stack by Keycloak.
-1. <!-- We no longer do the following.
+<!-- We no longer do the following.
 
   The `go-oidc-agent` proxy would be deployed as a binary, in-front of existing services vs. embedding that logic as library code in the apiserver.
 -->
