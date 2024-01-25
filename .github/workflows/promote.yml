@@ -80,7 +80,7 @@ jobs:
           git fetch --tags
           git tag prod-previous prod --force
           git tag prod --force
-          git push origin prod prod-previous --force 
+          git push origin prod prod-previous --force
 
   build-packages:
     # Sync the agent binary in s3 /download with the prod promotion in the update-prod job
@@ -104,7 +104,7 @@ jobs:
       - name: Upload nexodus zip packages
         uses: actions/upload-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-zip-packages
           if-no-files-found: error
           path: |
             dist/packages/*.zip
@@ -112,7 +112,7 @@ jobs:
       - name: Upload nexodus tar.gz packages
         uses: actions/upload-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-tar-packages
           if-no-files-found: error
           path: |
             dist/packages/*.tar.gz
@@ -126,23 +126,29 @@ jobs:
     environment: image-repositories
 
     steps:
-      - name: download binary artifacts
+      - name: Download nexodus zip packages
         uses: actions/download-artifact@v4
         with:
-          name: nexodus-packages
+          name: nexodus-zip-packages
+          path: dist/packages
+
+      - name: Download nexodus tar.gz packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nexodus-tar-packages
           path: dist/packages
 
       - name: Display structure of downloaded files
         run: ls -lah -R
         working-directory: dist/packages
 
-      - name: configure aws credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           role-session-name: nexodus-ci-deploy
           aws-region: us-east-1
 
-      - name: copy binaries to s3
+      - name: Copy binaries to S3
         run: |
           aws s3 sync dist/packages s3://nexodus-io/download
