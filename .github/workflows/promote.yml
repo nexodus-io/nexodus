@@ -73,6 +73,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: "qa"
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Promote to the prod Tag
         shell: bash
@@ -80,9 +81,7 @@ jobs:
           git fetch --tags
           git tag prod-previous prod --force
           git tag prod --force
-          git push origin prod prod-previous --force 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push origin prod prod-previous --force
 
   build-packages:
     # Sync the agent binary in s3 /download with the prod promotion in the update-prod job
