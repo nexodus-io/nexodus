@@ -80,7 +80,9 @@ jobs:
           git fetch --tags
           git tag prod-previous prod --force
           git tag prod --force
-          git push origin prod prod-previous --force
+          git push origin prod prod-previous --force 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-packages:
     # Sync the agent binary in s3 /download with the prod promotion in the update-prod job
