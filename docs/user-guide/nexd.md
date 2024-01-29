@@ -57,7 +57,7 @@ NAME:
    nexd proxy - Run nexd as an L4 proxy instead of creating a network interface
 
 USAGE:
-   nexd proxy [command [command options]]
+   nexd proxy [command [command options]] 
 
 OPTIONS:
    --ingress value [ --ingress value ]  Forward connections from the Nexodus network made to [port] on this proxy instance to port [destination_port] at [destination_ip] via a locally accessible network using a value in the form: protocol:port:destination_ip:destination_port. All fields are required.
@@ -72,7 +72,7 @@ NAME:
    nexd router - Enable advertise-cidr function of the node agent to enable prefix forwarding.
 
 USAGE:
-   nexd router [command [command options]]
+   nexd router [command [command options]] 
 
 OPTIONS:
    --advertise-cidr CIDR [ --advertise-cidr CIDR ]  Request a CIDR range of addresses that will be advertised from this node (optional) [$NEXD_REQUESTED_ADVERTISE_CIDR]
@@ -89,7 +89,7 @@ NAME:
    nexd relay - Enable relay and discovery support function for the node agent.
 
 USAGE:
-   nexd relay [command [command options]]
+   nexd relay [command [command options]] 
 
 OPTIONS:
    --help, -h  Show help (default: false)
@@ -102,7 +102,7 @@ NAME:
    nexd relayderp - Enable DERP relay to relay traffic between nexd nodes.
 
 USAGE:
-   nexd relayderp [command [command options]]
+   nexd relayderp [command [command options]] 
 
 OPTIONS:
    --onboard                        Onboard the derp relay to nexodus and connect to local mesh network. (default: false) [$NEXD_DERP_ONBOARD]
