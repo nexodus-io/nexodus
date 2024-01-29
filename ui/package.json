@@ -45,7 +45,7 @@
     "cross-env": "^7.0.3",
     "ip-cidr": "^4.0.0",
     "jwt-decode": "^4.0.0",
-    "prettier": "3.2.2",
+    "prettier": "3.2.4",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "vite-plugin-svgr": "^4.2.0",
