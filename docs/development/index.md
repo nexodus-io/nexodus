@@ -17,6 +17,10 @@ Other dependencies can be installed by running `hack/install-tools.sh`. See
 [the script](https://github.com/nexodus-io/nexodus/blob/main/hack/install-tools.sh)
 for further details on the dependencies it installs.
 
+### Code Organization
+
+For an overview of where to find different parts of the codebase, see [Code Organization](code-organization.md).
+
 ### Building
 
 Run `make` to see documentation of the available build targets. The most common build
