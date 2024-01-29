@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Capture current timestamp
         run: |
@@ -70,7 +70,7 @@ jobs:
     needs: ["run-qa-dev"]
     steps:
       - name: Checkout the qa Tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           ref: "qa"
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -89,7 +89,7 @@ jobs:
     needs: ["run-qa-dev"]
     steps:
       - name: Checkout the qa Tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           ref: "qa"
 
