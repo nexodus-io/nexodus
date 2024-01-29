@@ -71,9 +71,9 @@ require (
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
 	gvisor.dev/gvisor v0.0.0-20230928000133-4fe30062272c
-	k8s.io/api v0.29.0
+	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
-	k8s.io/client-go v0.29.0
+	k8s.io/client-go v0.29.1
 )
 
 require (
