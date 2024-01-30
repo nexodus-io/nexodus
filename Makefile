@@ -790,6 +790,10 @@ cacerts: ## Install the Self-Signed CA Certificate
 
 .PHONY: derpcerts
 derpcerts: ## Create and fetch the Self-Signed CA Certificate for derp relay from the cluster
+	@if [ ! -d "$(CURDIR)/.certs" ]; then \
+		echo ".certs directory does not exist, running make cacerts..."; \
+		make cacerts; \
+	fi
 	$(CMD_PREFIX) ./hack/relayderp-certs.sh
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.crt"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.crt
 	$(CMD_PREFIX) $(kubectl) get secret nexodus-derp-relay-cert -o json | jq -r '.data."tls.key"' | base64 -d > $(CURDIR)/.certs/relay.nexodus.io.key
