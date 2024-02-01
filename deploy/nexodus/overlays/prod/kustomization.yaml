@@ -31,6 +31,7 @@ configMapGenerator:
       - NEXAPI_REDIRECT_URL=https://try.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://try.nexodus.io
       - NEXAPI_ENVIRONMENT=production
+      - NEXAPI_FFLAG_SITES=false
       - NEXAPI_DEBUG=0
     name: apiserver
 
