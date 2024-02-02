@@ -346,8 +346,8 @@ func main() {
 
 				smtpServer := email.SmtpServer{
 					HostPort: command.String("smtp-host-port"),
-					User:     command.String("smtp-host-user"),
-					Password: command.String("smtp-host-password"),
+					User:     command.String("smtp-user"),
+					Password: command.String("smtp-password"),
 				}
 				if command.Bool("smtp-tls") { // #nosec G402
 					smtpServer.Tls = &tls.Config{
