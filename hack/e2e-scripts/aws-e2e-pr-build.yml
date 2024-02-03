@@ -30,8 +30,14 @@
         cmd: docker system prune -f
       become: true
 
-    - name: Rebuild the Cluster
-      make:
+    - name: Redeploy
+      ansible.builtin.shell:
+        cmd: make redeploy
         chdir: "{{ repo_dir }}"
-        target: run-on-kind
+      delegate_to: "{{ target_host }}"
+
+    - name: Recreate DB
+      ansible.builtin.shell:
+        cmd: make recreate-db
+        chdir: "{{ repo_dir }}"
       delegate_to: "{{ target_host }}"
