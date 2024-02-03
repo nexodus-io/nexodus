@@ -28,7 +28,6 @@
     - name: Prune System
       ansible.builtin.command:
         cmd: docker system prune -f
-      become: true
 
     - name: Redeploy
       ansible.builtin.shell:
