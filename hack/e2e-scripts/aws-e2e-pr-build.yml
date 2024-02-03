@@ -30,20 +30,8 @@
         cmd: docker system prune -f
       become: true
 
-    - name: Replace the current kind images with this branch
+    - name: Rebuild the Cluster
       make:
         chdir: "{{ repo_dir }}"
-        target: images
-      delegate_to: "{{ target_host }}"
-
-    - name: Load images
-      make:
-        chdir: "{{ repo_dir }}"
-        target: load-images
-      delegate_to: "{{ target_host }}"
-
-    - name: Recreate DB
-      command: make recreate-db
-      args:
-        chdir: "{{ repo_dir }}"
+        target: run-on-kind
       delegate_to: "{{ target_host }}"
