@@ -1,6 +1,0 @@
-# Start Nexodus agents
-- hosts: nexodusNodes
-  vars_files:
-    - vars.yml
-  roles:
-    - role: start-nexodus-agent

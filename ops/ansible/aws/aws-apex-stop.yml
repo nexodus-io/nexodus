@@ -1,6 +1,0 @@
-# Stop Nexodus agents
-- hosts: nexodusNodes
-  vars_files:
-    - vars.yml
-  roles:
-    - role: stop-nexodus-agent
