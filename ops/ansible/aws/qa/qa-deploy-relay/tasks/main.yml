@@ -32,6 +32,7 @@
     NEXD_LOGLEVEL=debug nexd \
     --username '{{ nexodus_auth_uid }}' \
     --password '{{ nexodus_auth_password }}' \
+    --insecure-skip-tls-verify \
     relay \
     {{ nexodus_url }} >> nexodus-logs.txt 2>&1 &
 
