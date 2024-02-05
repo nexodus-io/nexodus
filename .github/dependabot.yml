@@ -5,18 +5,38 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
   # Maintain dependencies for NodeJS
   - package-ecosystem: "npm"
     directory: "/ui"
     schedule:
       interval: "weekly"
+    groups:
+      node-production-dependencies:
+        dependency-type: "production"
+      node-development-dependencies:
+        dependency-type: "development"
   # Maintain dependencies for Go
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
   # Maintain dependencies for Docker
   - package-ecosystem: "docker"
     directory: "/deploy"
     schedule:
       interval: "weekly"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
