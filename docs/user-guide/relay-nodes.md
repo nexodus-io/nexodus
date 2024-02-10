@@ -77,10 +77,10 @@ Create an extension file
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-subjectAltName = <relay-private-domain-name>
+subjectAltName = DNS:<relay-private-domain-name>
 ```
 
-Set `subjectAltName` to the private DNS name (e.g. `xyz.relay.io`) that user wants to use for the relay node.
+Set `subjectAltName` to the private DNS name (e.g. `DNS:xyz.relay.io`) that user wants to use for the relay node.
 
 Run the following command to sign and generate the server certificate
 
@@ -99,7 +99,7 @@ cp server.crt xyz.relay.io.crt
 Now you can use the private DNS name and the key/certificates to onboard the relay. Use the following command to onboard the relay node:
 
 ```sh
-sudo nexd relayderp --hostname xyz.relay.io -a ":443" --certmode manual --certdir "<certificate-directory-path>"  --onboard
+sudo nexd relayderp --hostname xyz.relay.io --addr ":443" --certmode manual --certdir "<certificate-directory-path>"  --onboard
 ```
 
 In this scenario, the user needs to install the root CA key (rootCA.key) to all the nodes that need to be connected through this onboard relay. Copy the file to each node and run the following command to install the root CA key:
