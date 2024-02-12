@@ -29,18 +29,6 @@ Use the `--force` option if you want to reinstall them in case you think the ver
 
 ## IDE Tips
 
-### Dev Containers
-
-If you only have `make` and `docker` installed, your can run a container that has all the needed development tooling by running:
-
-    make run-dev-container
-
-__NOTE: Currently, this does not support starting the Nexodus service in kind.__
-
-#### VS Code
-
-The [Dev Container](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) plugin supports automatically running VSCode in the development container that has all the need development tooling
-
 ### [VSCode](https://code.visualstudio.com/)
 
 Recommended plugins:

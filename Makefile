@@ -481,25 +481,6 @@ run-nexd-container: image-nexd ## Run a container that you can run nexodus in
 		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
 		quay.io/nexodus/nexd:latest /update-ca.sh
 
-.dev-container: Containerfile.dev
-	$(CMD_PREFIX) docker build -f Containerfile.dev -t quay.io/nexodus/dev:latest .
-	$(CMD_PREFIX) touch $@
-
-.PHONY: run-dev-container
-run-dev-container: .dev-container ## Run docker container that you can develop and run nexodus in
-	$(CMD_PREFIX) docker run --rm -it --network bridge \
-		--cap-add SYS_MODULE \
-		--cap-add NET_ADMIN \
-		--cap-add NET_RAW \
-		--add-host try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
-		--add-host api.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
-		--add-host auth.try.nexodus.127.0.0.1.nip.io:$(NEXODUS_LOCAL_IP) \
-		--mount type=bind,source=$(shell pwd)/.certs,target=/.certs,readonly \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $(CURDIR):$(CURDIR) \
-		--workdir $(CURDIR) \
-		quay.io/nexodus/dev:latest
-
 .PHONY: run-sql-apiserver
 run-sql-apiserver: ## runs a command line SQL client to interact with the apiserver database
 ifeq ($(OVERLAY),dev)
