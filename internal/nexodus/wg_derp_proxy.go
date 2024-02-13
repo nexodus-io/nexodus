@@ -67,22 +67,22 @@ func (p *DerpUserSpaceProxy) startListening() {
 	// Create a UDP address to listen on
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", p.port))
 	if err != nil {
-		p.log.Errorf("error resolving UDP address:", err)
+		p.log.Errorf("error resolving UDP address: %v", err)
 		return
 	}
 
-	p.log.Debugf("addr is ", addr.IP, addr.Port)
+	p.log.Debugf("Listening on UDP address %s", addr.String())
 
 	// Create a UDP connection to listen for incoming packets
 	p.localConn, err = net.ListenPacket("udp4", addr.String())
 	if err != nil {
-		p.log.Errorf("error listening on UDP:", err)
+		p.log.Errorf("error listening on UDP: %v", err)
 		return
 	}
 
 	p.packetConn = ipv4.NewPacketConn(p.localConn)
 	if err := p.packetConn.SetControlMessage(ipv4.FlagDst, true); err != nil {
-		p.log.Errorf("error setting control message:", err)
+		p.log.Errorf("error setting control message: %v", err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (p *DerpUserSpaceProxy) proxyToRemote() {
 		default:
 			n, cm, srcAddr, err := p.packetConn.ReadFrom(buf)
 			if err != nil {
-				p.log.Errorf("Error reading local wireguard UDP packets:", err)
+				p.log.Errorf("Error reading local wireguard UDP packets: %v", err)
 				continue
 			}
 
@@ -128,7 +128,7 @@ func (p *DerpUserSpaceProxy) proxyToRemote() {
 			if cm.Dst.IsLoopback() {
 				addr, err := netip.ParseAddr(cm.Dst.String())
 				if err != nil {
-					p.log.Errorf("Error parsing packet destination address:", err)
+					p.log.Errorf("Error parsing packet destination address: %v", err)
 					continue
 				}
 				addrPort := netip.AddrPortFrom(addr, uint16(p.nexRelay.myDerp))
@@ -182,7 +182,7 @@ func (p *DerpUserSpaceProxy) proxyToLocal() {
 
 		b := dm.src.Raw32() //nolint:staticcheck
 		pubKey := base64.StdEncoding.EncodeToString(b[:])
-		p.log.Debugf("packet (%d bytes) received from (regionId : %s, wgPubKey: %s pubKey : %s)", ncopy, dm.regionID, dm.src.WireGuardGoString(), pubKey)
+		p.log.Debugf("packet (%d bytes) received from (regionId : %d, wgPubKey: %s pubKey : %s)", ncopy, dm.regionID, dm.src.WireGuardGoString(), pubKey)
 
 		if srcIp := p.nexRelay.derpIpMapping.CheckIfKeyExist(pubKey); srcIp != "" {
 
