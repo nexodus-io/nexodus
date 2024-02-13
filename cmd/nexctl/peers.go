@@ -72,7 +72,7 @@ func cmdListPeers(ctx context.Context, command *cli.Command) error {
 
 	show(command, peerTableFields(command), maps.Values(response.Peers))
 	if response.RelayRequired && !response.RelayPresent {
-		fmt.Fprintf(os.Stderr, "\nWARNING: A relay note is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
+		fmt.Fprintf(os.Stderr, "\nWARNING: A relay node is required but not present. Connectivity will be limited to devices on the same local network. See https://docs.nexodus.io/user-guide/relay-nodes/\n")
 	}
 
 	return nil
