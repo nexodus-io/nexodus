@@ -1,6 +1,0 @@
-{
-  "name": "nexodus build tools",
-  "build": {
-    "dockerfile": "../Containerfile.dev"
-  }
-}

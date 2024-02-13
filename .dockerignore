@@ -35,4 +35,3 @@ docs/
 # dotfiles and ci workflows
 .github/
 .vscode/
-.devcontainer/
