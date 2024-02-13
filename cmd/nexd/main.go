@@ -431,7 +431,7 @@ func main() {
 						if command.String("certdir") == "" {
 							return fmt.Errorf("certdir is required for manual certmode. Place the cert files (.crt/.key) in the certdir and run nexd again.")
 						}
-					} else if command.String("certmode") != "" {
+					} else if command.String("certmode") != "letsencrypt" {
 						return fmt.Errorf("Invalid value for certmode: %s", command.String("certmode"))
 					}
 					if command.Bool("onboard") {
