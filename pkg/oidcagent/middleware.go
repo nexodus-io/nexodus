@@ -14,15 +14,17 @@ import (
 func (a *OidcAgent) OriginVerifier() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		permitted := false
-		for _, o := range a.trustedOrigins {
-			if origin == o {
-				permitted = true
-				break
+		if origin != "" {
+			permitted := false
+			for _, o := range a.trustedOrigins {
+				if origin == o {
+					permitted = true
+					break
+				}
 			}
-		}
-		if !permitted {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			if !permitted {
+				c.AbortWithStatus(http.StatusUnauthorized)
+			}
 		}
 		c.Next()
 	}

@@ -85,11 +85,11 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		webGroup.Use(ginsession.New(
 			session.SetCookieName(handlers.SESSION_ID_COOKIE_NAME),
 			session.SetStore(o.SessionStore)))
-		webGroup.POST("/login/start", o.BrowserFlow.LoginStart)
-		webGroup.POST("/login/end", o.BrowserFlow.LoginEnd)
+		webGroup.GET("/login/start", o.BrowserFlow.LoginStart)
+		webGroup.GET("/login/end", o.BrowserFlow.LoginEnd)
 		webGroup.GET("/user_info", o.BrowserFlow.UserInfo)
 		webGroup.GET("/claims", o.BrowserFlow.Claims)
-		webGroup.POST("/logout", o.BrowserFlow.Logout)
+		webGroup.GET("/logout", o.BrowserFlow.Logout)
 		// web.GET("/check_auth", o.BrowserFlow.CheckAuth)
 		webGroup.POST("/refresh", o.BrowserFlow.Refresh)
 	}

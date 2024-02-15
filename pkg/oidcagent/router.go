@@ -22,8 +22,8 @@ func NewCodeFlowRouter(auth *OidcAgent) *gin.Engine {
 
 func AddCodeFlowRoutes(r gin.IRouter, auth *OidcAgent) {
 	r.Use(auth.OriginVerifier())
-	r.POST("/login/start", auth.LoginStart)
-	r.POST("/login/end", auth.LoginEnd)
+	r.GET("/login/start", auth.LoginStart)
+	r.GET("/login/end", auth.LoginEnd)
 	r.GET("/user_info", auth.UserInfo)
 	r.GET("/claims", auth.Claims)
 	r.POST("/logout", auth.Logout)

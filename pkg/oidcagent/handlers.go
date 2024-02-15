@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -53,10 +52,30 @@ func (o *OidcAgent) prepareContext(c *gin.Context) context.Context {
 // @Tags         Auth
 // @Accepts      json
 // @Produce      json
-// @Success      200 {object} models.LoginStartResponse
-// @Router       /web/login/start [post]
+// @Param		 redirect     query  string   true "URL to redirect to if login succeeds"
+// @Param		 failure     query  string   false "URL to redirect to if login fails (optional)"
+// @Success      302 {string} string "Redirects to the OAuth2 authorization URL"
+// @Router       /web/login/start [get]
 func (o *OidcAgent) LoginStart(c *gin.Context) {
 	logger := o.logger
+	logger.Debug("handling login start request")
+
+	query := struct {
+		Redirect string `form:"redirect"`
+		Failure  string `form:"failure"`
+	}{}
+	err := c.ShouldBindQuery(&query)
+	if err != nil {
+		logger.With("error", err).Info("unable to bind query")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	if query.Redirect == "" {
+		logger.Info("redirect URL missing")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	state, err := randString(16)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -72,15 +91,17 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 	logger = logger.With(
 		"state", state,
 		"nonce", nonce,
+		"redirect", query.Redirect,
 	)
 
 	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("failure", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	logger.Debug("set cookies")
-	c.JSON(http.StatusOK, models.LoginStartResponse{
-		AuthorizationRequestURL: o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce)),
-	})
+	url := o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce))
+	c.Redirect(http.StatusFound, url)
 }
 
 // LoginEnd completes the OIDC login process.
@@ -90,153 +111,135 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 // @Tags         Auth
 // @Accepts      json
 // @Produce      json
-// @Param        data body models.LoginEndRequest true "End Login"
-// @Success      200 {object} models.LoginEndResponse
-// @Router       /web/login/end [post]
+// @Param		 code     query  string   true "oauth2 code from authorization server"
+// @Param		 state    query  string   true "state value from the login start request"
+// @Param		 error    query  string   true "error message if login failed"
+// @Success      302 {string} string "Redirects to the URLs specified in the login start request"
+// @Router       /web/login/end [get]
 func (o *OidcAgent) LoginEnd(c *gin.Context) {
-	var data models.LoginEndRequest
-	var accessToken, refreshToken, rawIDToken string
-
-	err := c.BindJSON(&data)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-
-	requestURL, err := url.Parse(data.RequestURL)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
 
 	logger := o.logger
 	ctx := o.prepareContext(c)
 	logger.Debug("handling login end request")
 
-	values := requestURL.Query()
-	code := values.Get("code")
-	state := values.Get("state")
-	queryErr := values.Get("error")
-
-	failed := state != "" && queryErr != ""
-
-	if failed {
-		logger.Debug("login failed")
-		var status int
-		if queryErr == "login_required" {
-			status = http.StatusUnauthorized
-		} else {
-			status = http.StatusBadRequest
-		}
-		c.AbortWithStatus(status)
+	query := struct {
+		Code  string `form:"code"`
+		State string `form:"state"`
+		Error string `form:"error"`
+	}{}
+	err := c.ShouldBindQuery(&query)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	handleAuth := state != "" && code != ""
+	redirectURL, err := c.Cookie("redirect")
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	if redirectURL == "" {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	c.SetCookie("redirect", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	failureURL, _ := c.Cookie("failure")
+	c.SetCookie("failure", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	if failureURL == "" {
+		failureURL = redirectURL
+	}
 
-	loggedIn := false
-	if handleAuth {
-		logger.Debug("login success")
-		originalState, err := c.Cookie("state")
-		if err != nil {
-			logger.With(
-				"error", err,
-			).Debug("unable to access state cookie")
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
+	failed := query.State != "" && query.Error != ""
+	if failed {
+		logger.Debug("login failed")
+		c.Redirect(302, failureURL)
+		return
+	}
 
-		c.SetCookie("state", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
-		if state != originalState {
-			logger.With(
-				"error", err,
-			).Debug("state does not match")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
+	if query.State == "" || query.Code == "" {
+		logger.Debug("state or code missing")
+		c.Redirect(302, failureURL)
+		return
+	}
 
-		nonce, err := c.Cookie("nonce")
-		if err != nil {
-			logger.With(
-				"error", err,
-			).Debug("unable to get nonce cookie")
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-		c.SetCookie("nonce", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	originalState, err := c.Cookie("state")
+	if err != nil {
+		logger.With("error", err).Debug("unable to access state cookie")
+		c.Redirect(302, failureURL)
+		return
+	}
 
-		oauth2Token, err := o.oauthConfig.Exchange(ctx, code)
-		if err != nil {
-			logger.With(
-				"error", err,
-			).Debug("unable to exchange token")
-			_ = c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		var ok bool
-		rawIDToken, ok = oauth2Token.Extra("id_token").(string)
-		if !ok {
-			logger.With(
-				"ok", ok,
-			).Debug("unable to get id_token")
-			_ = c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("no id_token field in oauth2 token"))
-			return
-		}
-
-		idToken, err := o.verifier.Verify(ctx, rawIDToken)
-		if err != nil {
-			logger.With(
-				"error", err,
-			).Debug("unable to verify id_token")
-			_ = c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		if idToken.Nonce != nonce {
-			logger.Debug("nonce does not match")
-			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("nonce did not match"))
-			return
-		}
-
-		session := ginsession.FromContext(c)
-		tokenString, err := tokenToJSONString(oauth2Token)
-		if err != nil {
-			logger.Debug("can't convert token to string")
-			_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("can't convert token to string"))
-			return
-		}
-		session.Set(TokenKey, tokenString)
-		session.Set(IDTokenKey, rawIDToken)
-		if err := session.Save(); err != nil {
-			logger.With("error", err,
-				"id_token_size", len(rawIDToken)).Debug("can't save session storage")
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		logger.With("session_id", session.SessionID()).Debug("user is logged in")
-		loggedIn = true
-
-		// extract the access_token and refresh_token from the oauth2Token
-		// to be returned in the response for the web auth token lifecycle.
-		accessToken = oauth2Token.Extra("access_token").(string)
-		refreshToken = oauth2Token.Extra("refresh_token").(string)
-	} else {
-		logger.Debug("checking if user is logged in")
-		loggedIn = isLoggedIn(c)
+	c.SetCookie("state", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	if query.State != originalState {
+		logger.With("error", err).Debug("state does not match")
+		c.Redirect(302, failureURL)
+		return
 	}
 
 	session := ginsession.FromContext(c)
-	logger.With("session_id", session.SessionID()).With("logged_in", loggedIn).Debug("complete")
-	res := models.LoginEndResponse{
-		Handled:      handleAuth,
-		LoggedIn:     loggedIn,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+
+	if query.Code == "logout" {
+		session.Delete(IDTokenKey)
+		session.Delete(TokenKey)
+		if err := session.Save(); err != nil {
+			c.Redirect(302, failureURL)
+			return
+		}
+		c.Redirect(302, redirectURL)
+		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	nonce, err := c.Cookie("nonce")
+	if err != nil {
+		logger.With("error", err).Debug("unable to get nonce cookie")
+		c.Redirect(302, failureURL)
+		return
+	}
+	c.SetCookie("nonce", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+
+	oauth2Token, err := o.oauthConfig.Exchange(ctx, query.Code)
+	if err != nil {
+		logger.With("error", err).Debug("unable to exchange token")
+		c.Redirect(302, failureURL)
+		return
+	}
+
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+		logger.With("ok", ok).Debug("unable to get id_token")
+		c.Redirect(302, failureURL)
+		return
+	}
+
+	idToken, err := o.verifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		logger.With("error", err).Debug("unable to verify id_token")
+		c.Redirect(302, failureURL)
+		return
+	}
+
+	if idToken.Nonce != nonce {
+		logger.Debug("nonce does not match")
+		c.Redirect(302, failureURL)
+		return
+	}
+
+	tokenString, err := tokenToJSONString(oauth2Token)
+	if err != nil {
+		logger.Debug("can't convert token to string")
+		c.Redirect(302, failureURL)
+		return
+	}
+	session.Set(TokenKey, tokenString)
+	session.Set(IDTokenKey, rawIDToken)
+	if err := session.Save(); err != nil {
+		logger.With("error", err, "id_token_size", len(rawIDToken)).Debug("can't save session storage")
+		c.Redirect(302, failureURL)
+		return
+	}
+
+	logger.With("session_id", session.SessionID()).Debug("user is logged in")
+	c.Redirect(http.StatusFound, redirectURL)
 }
 
 // UserInfo retrieves details about the currently authenticated user.
@@ -338,19 +341,10 @@ func (o *OidcAgent) Claims(c *gin.Context) {
 // @Tags        Auth
 // @Accept      json
 // @Produce     json
-// @Param        data body models.RefreshTokenRequest true "End Login"
-// @Success      200 {object} models.RefreshTokenResponse
+// @Success     204
 // @Router      /web/refresh [post]
 func (o *OidcAgent) Refresh(c *gin.Context) {
 	logger := o.logger
-
-	var data models.RefreshTokenRequest
-
-	err := c.BindJSON(&data)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
 
 	session := ginsession.FromContext(c)
 	ctx := o.prepareContext(c)
@@ -391,11 +385,7 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	c.JSON(http.StatusOK, models.RefreshTokenResponse{
-		AccessToken:  newToken.AccessToken,
-		RefreshToken: newToken.RefreshToken,
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // Logout provides the URL to log out the current user.
@@ -405,32 +395,62 @@ func (o *OidcAgent) Refresh(c *gin.Context) {
 // @Tags        Auth
 // @Accept      json
 // @Produce     json
-// @Success     200 {object} models.LogoutResponse
-// @Router      /web/logout [post]
+// @Param		redirect     query  string   true "URL to redirect to after logout"
+// @Success     302 {string} string "Redirects to the OAuth2 logout URL"
+// @Router      /web/logout [get]
 func (o *OidcAgent) Logout(c *gin.Context) {
+	logger := o.logger
+
+	query := struct {
+		Redirect string `form:"redirect"`
+	}{}
+	err := c.ShouldBindQuery(&query)
+	if err != nil {
+		logger.With("error", err).Info("unable to bind query")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	if query.Redirect == "" {
+		logger.Info("redirect URL missing")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	session := ginsession.FromContext(c)
 	idToken, ok := session.Get(IDTokenKey)
 	if !ok {
-		c.AbortWithStatus(http.StatusUnauthorized)
+		// If the user is not logged in, redirect to the specified URL
+		c.Redirect(http.StatusFound, query.Redirect)
 		return
 	}
-
-	session.Delete(IDTokenKey)
-	session.Delete(TokenKey)
-	if err := session.Save(); err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	logoutURL, err := o.LogoutURL(idToken.(string))
+	state, err := randString(16)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, models.LogoutResponse{
-		LogoutURL: logoutURL.String(),
-	})
+	// Yeah we reuse the LoginEnd function here to complete the logout process
+	u, err := url.Parse(o.redirectURL)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	q := u.Query()
+	q.Set("code", "logout")
+	q.Set("state", state)
+	u.RawQuery = q.Encode()
+
+	// Redirect to the OIDC provider's logout URL
+	logoutURL, err := o.LogoutURL(idToken.(string), u.String())
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.Redirect(http.StatusFound, logoutURL.String())
 }
 
 func (o *OidcAgent) CodeFlowProxy(c *gin.Context) {

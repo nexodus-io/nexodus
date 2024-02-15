@@ -742,7 +742,7 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "${WEB_CLIENT_SECRET}",
       "redirectUris": [
-        "${FRONTEND_URL}/*"
+        "${REDIRECT_URL}/*"
       ],
       "webOrigins": [
         "+"

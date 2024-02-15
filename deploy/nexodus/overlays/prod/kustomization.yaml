@@ -10,6 +10,7 @@ configMapGenerator:
     literals:
       - hostname=auth.try.nexodus.io
       - frontend-url=https://try.nexodus.io
+      - redirect-url=https://api.try.nexodus.io/web
     name: auth-config
   - behavior: replace
     files:
@@ -29,7 +30,6 @@ configMapGenerator:
       - NEXAPI_URL=https://api.try.nexodus.io
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.try.nexodus.io
-      - NEXAPI_REDIRECT_URL=https://try.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://try.nexodus.io
       - NEXAPI_ENVIRONMENT=production
       - NEXAPI_FFLAG_SITES=false

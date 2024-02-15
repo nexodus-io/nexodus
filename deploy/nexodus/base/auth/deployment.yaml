@@ -83,6 +83,11 @@ spec:
                 configMapKeyRef:
                   name: auth-config
                   key: frontend-url
+            - name: REDIRECT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: redirect-url
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:

@@ -375,32 +375,6 @@ definitions:
     - UsageOCSPSigning
     - UsageMicrosoftSGC
     - UsageNetscapeSGC
-  models.LoginEndRequest:
-    properties:
-      request_url:
-        type: string
-    type: object
-  models.LoginEndResponse:
-    properties:
-      access_token:
-        type: string
-      handled:
-        type: boolean
-      logged_in:
-        type: boolean
-      refresh_token:
-        type: string
-    type: object
-  models.LoginStartResponse:
-    properties:
-      authorization_request_url:
-        type: string
-    type: object
-  models.LogoutResponse:
-    properties:
-      logout_url:
-        type: string
-    type: object
   models.NotAllowedError:
     properties:
       error:
@@ -422,18 +396,6 @@ definitions:
         type: string
       owner_id:
         example: aa22666c-0f57-45cb-a449-16efecc04f2e
-        type: string
-    type: object
-  models.RefreshTokenRequest:
-    properties:
-      refresh_token:
-        type: string
-    type: object
-  models.RefreshTokenResponse:
-    properties:
-      access_token:
-        type: string
-      refresh_token:
         type: string
     type: object
   models.RegKey:
@@ -2698,56 +2660,81 @@ paths:
       tags:
       - Auth
   /web/login/end:
-    post:
+    get:
       description: Handles the callback from the OAuth2/OpenID provider and verifies
         the tokens.
       operationId: WebEnd
       parameters:
-      - description: End Login
-        in: body
-        name: data
+      - description: oauth2 code from authorization server
+        in: query
+        name: code
         required: true
-        schema:
-          $ref: '#/definitions/models.LoginEndRequest'
+        type: string
+      - description: state value from the login start request
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: error message if login failed
+        in: query
+        name: error
+        required: true
+        type: string
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "302":
+          description: Redirects to the URLs specified in the login start request
           schema:
-            $ref: '#/definitions/models.LoginEndResponse'
+            type: string
       summary: Completes OIDC Web Login
       tags:
       - Auth
   /web/login/start:
-    post:
+    get:
       description: Generates state and nonce, then redirects the user to the OAuth2
         authorization URL.
       operationId: WebStart
+      parameters:
+      - description: URL to redirect to if login succeeds
+        in: query
+        name: redirect
+        required: true
+        type: string
+      - description: URL to redirect to if login fails (optional)
+        in: query
+        name: failure
+        type: string
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "302":
+          description: Redirects to the OAuth2 authorization URL
           schema:
-            $ref: '#/definitions/models.LoginStartResponse'
+            type: string
       summary: Initiates OIDC Web Login
       tags:
       - Auth
   /web/logout:
-    post:
+    get:
       consumes:
       - application/json
       description: Provides the URL to initiate the logout process for the current
         user.
       operationId: Logout
+      parameters:
+      - description: URL to redirect to after logout
+        in: query
+        name: redirect
+        required: true
+        type: string
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "302":
+          description: Redirects to the OAuth2 logout URL
           schema:
-            $ref: '#/definitions/models.LogoutResponse'
+            type: string
       summary: Generate Logout URL
       tags:
       - Auth
@@ -2757,20 +2744,11 @@ paths:
       - application/json
       description: Obtains and updates a new access token for the user.
       operationId: Refresh
-      parameters:
-      - description: End Login
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/models.RefreshTokenRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.RefreshTokenResponse'
+        "204":
+          description: No Content
       summary: Refresh Access Token
       tags:
       - Auth

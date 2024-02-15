@@ -14,6 +14,7 @@ configMapGenerator:
     literals:
       - hostname=auth.qa.nexodus.io
       - frontend-url=https://qa.nexodus.io
+      - redirect-url=https://api.qa.nexodus.io/web
     name: auth-config
   - behavior: merge
     literals:
@@ -29,7 +30,6 @@ configMapGenerator:
       - NEXAPI_URL=https://api.qa.nexodus.io
       - NEXAPI_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - NEXAPI_DOMAIN=api.qa.nexodus.io
-      - NEXAPI_REDIRECT_URL=https://qa.nexodus.io/#/login
       - NEXAPI_ORIGINS=https://qa.nexodus.io
       - NEXAPI_ENVIRONMENT=qa
       - NEXAPI_DEBUG=0

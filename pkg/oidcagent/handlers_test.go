@@ -1,7 +1,6 @@
 package oidcagent
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/nexodus-io/nexodus/pkg/oidcagent/models"
@@ -35,45 +34,20 @@ func TestLoginStart(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/login/start", auth.LoginStart)
-	req, _ := http.NewRequest("POST", "/login/start", nil)
+	r.GET("/login/start", auth.LoginStart)
+	req, _ := http.NewRequest("GET", "/login/start?redirect=a&failure=b", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusOK, w.Code)
-
-	data, err := io.ReadAll(w.Body)
-	require.NoError(t, err)
-
-	var response models.LoginStartResponse
-	err = json.Unmarshal(data, &response)
-	require.NoError(t, err)
-
-	assert.NotEmpty(t, response.AuthorizationRequestURL)
+	require.Equal(t, http.StatusFound, w.Code)
+	assert.Equal(t, "https://auth.example.com/auth?state=foo&client_id=bar", w.Header().Get("Location"))
 
 	cookies := w.Result().Cookies()
-	assert.Equal(t, 2, len(cookies))
-	assert.Equal(t, "state", cookies[0].Name)
-	assert.Equal(t, "nonce", cookies[1].Name)
-}
-
-func TestLoginEnd_AuthErrorLoginRequired(t *testing.T) {
-	auth := &OidcAgent{
-		logger: zap.NewExample().Sugar(),
-	}
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := models.LoginEndRequest{
-		RequestURL: "https://example.com?state=foo&error=login_required",
-	}
-	reqBody, err := json.Marshal(&loginEndRequest)
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/login/end", bytes.NewReader(reqBody))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, 4, len(cookies))
+	assert.Equal(t, "redirect", cookies[0].Name)
+	assert.Equal(t, "failure", cookies[1].Name)
+	assert.Equal(t, "state", cookies[2].Name)
+	assert.Equal(t, "nonce", cookies[3].Name)
 }
 
 func TestLoginEnd_AuthErrorOther(t *testing.T) {
@@ -82,13 +56,8 @@ func TestLoginEnd_AuthErrorOther(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := models.LoginEndRequest{
-		RequestURL: "https://example.com?state=foo&error=kittens",
-	}
-	reqBody, err := json.Marshal(&loginEndRequest)
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/login/end", bytes.NewReader(reqBody))
+	r.GET("/login/end", auth.LoginEnd)
+	req, _ := http.NewRequest("GET", "/login/end", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -134,13 +103,17 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(ginsession.New())
-	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := models.LoginEndRequest{
-		RequestURL: "https://example.com?state=foo&code=kittens",
-	}
-	reqBody, err := json.Marshal(&loginEndRequest)
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/login/end", bytes.NewReader(reqBody))
+	r.GET("/login/end", auth.LoginEnd)
+
+	req, _ := http.NewRequest("GET", "/login/end?state=foo&code=kittens", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  "redirect",
+		Value: "https://example.com/ok",
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "failure",
+		Value: "https://example.com/failed",
+	})
 	req.AddCookie(&http.Cookie{
 		Name:  "state",
 		Value: "foo",
@@ -152,107 +125,74 @@ func TestLoginEnd_HandleLogin(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusFound, w.Code)
+	assert.Equal(t, "https://example.com/ok", w.Header().Get("Location"))
 
-	data, err := io.ReadAll(w.Body)
-	require.NoError(t, err)
-
-	var response models.LoginEndResponse
-	err = json.Unmarshal(data, &response)
-	require.NoError(t, err)
-
-	assert.Equal(t, true, response.LoggedIn)
-	assert.Equal(t, true, response.Handled)
-}
-
-func TestLoginEnd_LoggedIn(t *testing.T) {
-	auth := &OidcAgent{
-		logger: zap.NewExample().Sugar(),
-	}
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	session.InitManager(
-		session.SetStore(
-			cookie.NewCookieStore(
-				cookie.SetCookieName("demo_cookie_store_id"),
-				cookie.SetHashKey([]byte(auth.cookieKey)),
-			),
-		),
-	)
-	r.Use(ginsession.New())
-	r.Use(func(c *gin.Context) {
-		session := ginsession.FromContext(c)
-		t := oauth2.Token{
-			AccessToken: "kittens",
-		}
-		token, _ := tokenToJSONString(&t)
-		session.Set(TokenKey, token)
-		if err := session.Save(); err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-		c.Next()
-	})
-
-	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := models.LoginEndRequest{
-		RequestURL: "https://example.com",
-	}
-	reqBody, err := json.Marshal(&loginEndRequest)
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/login/end", bytes.NewReader(reqBody))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-
-	data, err := io.ReadAll(w.Body)
-	require.NoError(t, err)
-
-	var response models.LoginEndResponse
-	err = json.Unmarshal(data, &response)
-	require.NoError(t, err)
-
-	assert.True(t, response.LoggedIn)
-	assert.False(t, response.Handled)
 }
 
 func TestLoginEnd_NotLoggedIn(t *testing.T) {
 	auth := &OidcAgent{
 		logger: zap.NewExample().Sugar(),
+		verifier: &FakeIDTokenVerifier{
+			VerifyFn: func(ctx context.Context, rawIDToken string) (*oidc.IDToken, error) {
+				t := &oidc.IDToken{
+					Nonce: "bar",
+				}
+				return t, nil
+			},
+		},
+		oauthConfig: &FakeOauthConfig{
+			ExchangeFn: func(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+				t := &oauth2.Token{
+					AccessToken:  "floofy",
+					RefreshToken: "kittens",
+				}
+				field := reflect.ValueOf(t).Elem().FieldByName("raw")
+				setUnexportedField(field, map[string]interface{}{
+					"id_token":      "boxofkittehs",
+					"access_token":  "floofy",
+					"refresh_token": "kittens",
+				})
+				return t, nil
+			},
+		},
 	}
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
+
 	session.InitManager(
 		session.SetStore(
 			cookie.NewCookieStore(
-				cookie.SetCookieName("demo_cookie_store_id"),
-				cookie.SetHashKey([]byte(auth.cookieKey)),
+				cookie.SetHashKey([]byte("secretkey")),
 			),
 		),
 	)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
 	r.Use(ginsession.New())
-	r.POST("/login/end", auth.LoginEnd)
-	loginEndRequest := models.LoginEndRequest{
-		RequestURL: "https://example.com",
-	}
-	reqBody, err := json.Marshal(&loginEndRequest)
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/login/end", bytes.NewReader(reqBody))
+	r.GET("/login/end", auth.LoginEnd)
+
+	req, _ := http.NewRequest("GET", "/login/end?state=foo&code=kittens&error=failed", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  "redirect",
+		Value: "https://example.com/ok",
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "failure",
+		Value: "https://example.com/failed",
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "state",
+		Value: "foo",
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "nonce",
+		Value: "bar",
+	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusOK, w.Code)
-
-	data, err := io.ReadAll(w.Body)
-	require.NoError(t, err)
-
-	var response models.LoginEndResponse
-	err = json.Unmarshal(data, &response)
-	require.NoError(t, err)
-
-	assert.False(t, response.LoggedIn)
-	assert.False(t, response.Handled)
+	require.Equal(t, http.StatusFound, w.Code)
+	assert.Equal(t, "https://example.com/failed", w.Header().Get("Location"))
 }
 
 func TestUserInfo_NotLoggedIn(t *testing.T) {
