@@ -30,9 +30,9 @@ func TestConnectivityFailureWithoutDerpRelay(t *testing.T) {
 	err := os.Setenv("NEX_DERP_RELAY_IP", "127.0.0.1")
 	require.NoError(err)
 
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// Start the nodes in relay-only mode to mimic the symmetric NAT scenario
@@ -69,7 +69,7 @@ func TestConnectivityViaPublicRelay1(t *testing.T) {
 	defer cleanup()
 
 	// create the derp relay node
-	relay, stop := helper.CreateNode(ctx, "derp-relay", []string{defaultNetwork}, disableV6)
+	relay, stop := helper.CreateNode(ctx, "derp-relay", []string{defaultNetwork}, enableV6)
 	defer stop()
 	relayIp, err := relay.ContainerIP(ctx)
 	require.NoError(err)
@@ -79,9 +79,9 @@ func TestConnectivityViaPublicRelay1(t *testing.T) {
 	err = os.Setenv("NEX_DERP_RELAY_IP", relayIp)
 	require.NoError(err)
 
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// start derp relay node without onboarding, mimicking the public relay scenario
@@ -122,7 +122,7 @@ func TestConnectivityViaPublicRelay2(t *testing.T) {
 	defer cleanup()
 
 	// create the derp relay node
-	relay, stop := helper.CreateNode(ctx, "derp-relay", []string{defaultNetwork}, disableV6)
+	relay, stop := helper.CreateNode(ctx, "derp-relay", []string{defaultNetwork}, enableV6)
 	defer stop()
 	relayIp, err := relay.ContainerIP(ctx)
 	require.NoError(err)
@@ -132,9 +132,9 @@ func TestConnectivityViaPublicRelay2(t *testing.T) {
 	err = os.Setenv("NEX_DERP_RELAY_IP", relayIp)
 	require.NoError(err)
 
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// start derp relay node without onboarding, mimicking the public relay scenario
@@ -175,11 +175,11 @@ func TestConnectivityViaOnboardedRelay1(t *testing.T) {
 	defer cleanup()
 
 	// create the nodes
-	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, disableV6)
+	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// start derp relay and onboard the relay as well
@@ -223,11 +223,11 @@ func TestConnectivityViaOnboardedRelay2(t *testing.T) {
 	defer cleanup()
 
 	// create the nodes
-	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, disableV6)
+	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// start derp relay and onboard the relay as well
@@ -268,9 +268,9 @@ func TestConnectivityWithRelaySwitchover(t *testing.T) {
 	defer cleanup()
 
 	// create the nodes
-	pubrelay, stop := helper.CreateNode(ctx, "public-relay", []string{defaultNetwork}, disableV6)
+	pubrelay, stop := helper.CreateNode(ctx, "public-relay", []string{defaultNetwork}, enableV6)
 	defer stop()
-	onboardrelay, stop := helper.CreateNode(ctx, "onboard-relay", []string{defaultNetwork}, disableV6)
+	onboardrelay, stop := helper.CreateNode(ctx, "onboard-relay", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// start derp relay and onboard the relay as well
@@ -285,9 +285,9 @@ func TestConnectivityWithRelaySwitchover(t *testing.T) {
 	os.Setenv("NEX_DERP_RELAY_IP", relayIp)
 	require.NoError(err)
 
-	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, disableV6)
+	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
-	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, disableV6)
+	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
 	// Start one node with relay-only to mimic symmetric NAT and other behind reflexive address
