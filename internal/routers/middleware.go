@@ -253,3 +253,8 @@ func getURLAsText(ctx context.Context, jwksURL string) (string, error) {
 	keySet := string(body)
 	return keySet, nil
 }
+
+func NoCacheMiddleware(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+	c.Next()
+}
