@@ -13,7 +13,6 @@ configMapGenerator:
       - NEXAPI_DB_SSLMODE=require
       - NEXAPI_DOMAIN=api.try.nexodus.127.0.0.1.nip.io
       - NEXAPI_URL=https://api.try.nexodus.127.0.0.1.nip.io
-      - NEXAPI_REDIRECT_URL=https://try.nexodus.127.0.0.1.nip.io/#/login
       - NEXAPI_ORIGINS=https://try.nexodus.127.0.0.1.nip.io
       - NEXAPI_SCOPES=read:organizations,write:organizations,read:users,write:users,read:devices,write:devices
       - NEXAPI_REDIS_SERVER=redis:6379

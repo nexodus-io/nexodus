@@ -9,6 +9,7 @@ configMapGenerator:
   - literals:
       - hostname=auth.try.nexodus.127.0.0.1.nip.io
       - frontend-url=https://try.nexodus.127.0.0.1.nip.io
+      - redirect-url=https://api.try.nexodus.127.0.0.1.nip.io/web
     name: auth-config
   - files:
       - files/nexodus.json

@@ -128,7 +128,7 @@ func NewOidcAgent(ctx context.Context,
 	return auth, nil
 }
 
-func (o *OidcAgent) LogoutURL(idToken string) (*url.URL, error) {
+func (o *OidcAgent) LogoutURL(idToken string, redirect string) (*url.URL, error) {
 	u, err := url.Parse(o.endSessionURL)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (o *OidcAgent) LogoutURL(idToken string) (*url.URL, error) {
 	params := u.Query()
 	params.Add("client_id", o.clientID)
 	params.Add("id_token_hint", idToken)
-	params.Add("post_logout_redirect_uri", o.redirectURL)
+	params.Add("post_logout_redirect_uri", redirect)
 	u.RawQuery = params.Encode()
 	return u, nil
 }

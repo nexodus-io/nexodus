@@ -2984,7 +2984,7 @@
             }
         },
         "/web/login/end": {
-            "post": {
+            "get": {
                 "description": "Handles the callback from the OAuth2/OpenID provider and verifies the tokens.",
                 "produces": [
                     "application/json"
@@ -2996,27 +2996,39 @@
                 "operationId": "WebEnd",
                 "parameters": [
                     {
-                        "description": "End Login",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.LoginEndRequest"
-                        }
+                        "type": "string",
+                        "description": "oauth2 code from authorization server",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "state value from the login start request",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "error message if login failed",
+                        "name": "error",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "302": {
+                        "description": "Redirects to the URLs specified in the login start request",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginEndResponse"
+                            "type": "string"
                         }
                     }
                 }
             }
         },
         "/web/login/start": {
-            "post": {
+            "get": {
                 "description": "Generates state and nonce, then redirects the user to the OAuth2 authorization URL.",
                 "produces": [
                     "application/json"
@@ -3026,18 +3038,33 @@
                 ],
                 "summary": "Initiates OIDC Web Login",
                 "operationId": "WebStart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL to redirect to if login succeeds",
+                        "name": "redirect",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL to redirect to if login fails (optional)",
+                        "name": "failure",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "302": {
+                        "description": "Redirects to the OAuth2 authorization URL",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginStartResponse"
+                            "type": "string"
                         }
                     }
                 }
             }
         },
         "/web/logout": {
-            "post": {
+            "get": {
                 "description": "Provides the URL to initiate the logout process for the current user.",
                 "consumes": [
                     "application/json"
@@ -3050,11 +3077,20 @@
                 ],
                 "summary": "Generate Logout URL",
                 "operationId": "Logout",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL to redirect to after logout",
+                        "name": "redirect",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "302": {
+                        "description": "Redirects to the OAuth2 logout URL",
                         "schema": {
-                            "$ref": "#/definitions/models.LogoutResponse"
+                            "type": "string"
                         }
                     }
                 }
@@ -3074,23 +3110,9 @@
                 ],
                 "summary": "Refresh Access Token",
                 "operationId": "Refresh",
-                "parameters": [
-                    {
-                        "description": "End Login",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.RefreshTokenRequest"
-                        }
-                    }
-                ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.RefreshTokenResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -3575,47 +3597,6 @@
                 "UsageNetscapeSGC"
             ]
         },
-        "models.LoginEndRequest": {
-            "type": "object",
-            "properties": {
-                "request_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.LoginEndResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "handled": {
-                    "type": "boolean"
-                },
-                "logged_in": {
-                    "type": "boolean"
-                },
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.LoginStartResponse": {
-            "type": "object",
-            "properties": {
-                "authorization_request_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.LogoutResponse": {
-            "type": "object",
-            "properties": {
-                "logout_url": {
-                    "type": "string"
-                }
-            }
-        },
         "models.NotAllowedError": {
             "type": "object",
             "properties": {
@@ -3646,25 +3627,6 @@
                 "owner_id": {
                     "type": "string",
                     "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
-                }
-            }
-        },
-        "models.RefreshTokenRequest": {
-            "type": "object",
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RefreshTokenResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
                 }
             }
         },

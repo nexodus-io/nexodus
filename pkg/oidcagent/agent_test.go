@@ -52,10 +52,9 @@ func (f *FakeIDTokenVerifier) Verify(ctx context.Context, rawIDToken string) (*o
 func TestLogoutURL(t *testing.T) {
 	o := OidcAgent{
 		clientID:      "test-client",
-		redirectURL:   "https://example.com",
 		endSessionURL: "https://auth.example.com/logout",
 	}
-	actual, err := o.LogoutURL("my-id-token")
+	actual, err := o.LogoutURL("my-id-token", "https://example.com")
 	require.NoError(t, err)
 	expected := "https://auth.example.com/logout?client_id=test-client&id_token_hint=my-id-token&post_logout_redirect_uri=https%3A%2F%2Fexample.com"
 	assert.Equal(t, expected, actual.String())

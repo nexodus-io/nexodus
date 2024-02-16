@@ -189,13 +189,6 @@ func main() {
 				Usage:   "OTLP endpoint for trace data",
 				Sources: cli.EnvVars("NEXAPI_TRACE_ENDPOINT_OTLP"),
 			},
-
-			&cli.StringFlag{
-				Name:    "redirect-url",
-				Usage:   "Redirect URL. This is the URL of the SPA.",
-				Value:   "https://example.com",
-				Sources: cli.EnvVars("NEXAPI_REDIRECT_URL"),
-			},
 			&cli.StringSliceFlag{
 				Name:    "scopes",
 				Usage:   "Additional OAUTH2 scopes",
@@ -344,6 +337,12 @@ func main() {
 					log.Fatal(err)
 				}
 
+				api.URL = command.String("url")
+				api.URLParsed, err = url.Parse(api.URL)
+				if err != nil {
+					log.Fatal(fmt.Errorf("invalid url: %w", err))
+				}
+
 				smtpServer := email.SmtpServer{
 					HostPort: command.String("smtp-host-port"),
 					User:     command.String("smtp-user"),
@@ -368,7 +367,7 @@ func main() {
 					command.Bool("insecure-tls"),
 					command.String("oidc-client-id-web"),
 					command.String("oidc-client-secret-web"),
-					command.String("redirect-url"),
+					fmt.Sprintf("%s/web/login/end", api.URL),
 					scopes,
 					command.String("domain"),
 					command.StringSlice("origins"),
@@ -402,11 +401,6 @@ func main() {
 				api.PrivateKey, err = jwt.ParseRSAPrivateKeyFromPEM([]byte(tlsKey))
 				if err != nil {
 					log.Fatal(fmt.Errorf("invalid tls-key: %w", err))
-				}
-				api.URL = command.String("url")
-				api.URLParsed, err = url.Parse(api.URL)
-				if err != nil {
-					log.Fatal(fmt.Errorf("invalid url: %w", err))
 				}
 
 				router, err := routers.NewAPIRouter(ctx, routers.APIRouterOptions{
