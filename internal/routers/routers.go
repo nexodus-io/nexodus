@@ -48,6 +48,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
+	r.Use(NoCacheMiddleware)
 	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{
 		TimeFormat: time.RFC3339,
 		UTC:        true,
