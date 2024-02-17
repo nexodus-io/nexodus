@@ -94,11 +94,12 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 		"redirect", query.Redirect,
 	)
 
-	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
-	c.SetCookie("failure", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
-	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
-	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", true, true)
+	c.SetCookie("failure", query.Failure, int(time.Hour.Seconds()), "/", "", true, true)
+	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", true, true)
+	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", true, true)
+
 	logger.Debug("set cookies")
 	url := o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce))
 	c.Redirect(http.StatusFound, url)
@@ -142,9 +143,9 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	c.SetCookie("redirect", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("redirect", "", -1, "/", "", true, true)
 	failureURL, _ := c.Cookie("failure")
-	c.SetCookie("failure", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("failure", "", -1, "/", "", true, true)
 	if failureURL == "" {
 		failureURL = redirectURL
 	}
@@ -169,7 +170,7 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("state", "", -1, "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("state", "", -1, "/", "", true, true)
 	if query.State != originalState {
 		logger.With("error", err).Debug("state does not match")
 		c.Redirect(302, failureURL)
