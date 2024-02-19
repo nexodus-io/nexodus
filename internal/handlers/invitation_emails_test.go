@@ -20,8 +20,8 @@ var expectedEmail string
 func TestAPI_composeInvitationEmail(t *testing.T) {
 	require := require.New(t)
 	api := &API{
-		URL:      "https://try.nexodus.io",
-		SmtpFrom: "no-reply@amazonses.com",
+		FrontendURL: "https://try.nexodus.io",
+		SmtpFrom:    "no-reply@amazonses.com",
 	}
 	invite := &models.Invitation{
 		Base: models.Base{
@@ -49,7 +49,7 @@ func TestAPI_sendInvitationEmail(t *testing.T) {
 		t.SkipNow()
 	}
 	api := &API{
-		URL: "https://try.nexodus.io",
+		FrontendURL: "https://try.nexodus.io",
 		SmtpServer: email.SmtpServer{
 			HostPort: os.Getenv("NEXAPI_SMTP_HOST_PORT"),
 			User:     os.Getenv("NEXAPI_SMTP_USER"),

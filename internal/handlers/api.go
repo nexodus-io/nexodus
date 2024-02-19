@@ -58,6 +58,7 @@ type API struct {
 	SmtpServer     email.SmtpServer
 	SmtpFrom       string
 	caKeyPair      CertificateKeyPair
+	FrontendURL    string
 }
 
 func NewAPI(
