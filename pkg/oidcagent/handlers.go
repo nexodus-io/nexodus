@@ -78,28 +78,23 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 
 	state, err := randString(16)
 	if err != nil {
+		logger.With("error", err).Info("unable generate random state")
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
 	nonce, err := randString(16)
 	if err != nil {
+		logger.With("error", err).Info("unable generate random nonce")
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	logger = logger.With(
-		"state", state,
-		"nonce", nonce,
-		"redirect", query.Redirect,
-	)
-
-	c.SetSameSite(http.SameSiteStrictMode)
+	
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
-	c.SetCookie("failure", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
+	c.SetCookie("failure", query.Failure, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("state", state, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("nonce", nonce, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
-	logger.Debug("set cookies")
 	url := o.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce))
 	c.Redirect(http.StatusFound, url)
 }
@@ -135,10 +130,12 @@ func (o *OidcAgent) LoginEnd(c *gin.Context) {
 
 	redirectURL, err := c.Cookie("redirect")
 	if err != nil {
+		logger.With("error", err).Info("unable to access redirect cookie")
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 	if redirectURL == "" {
+		logger.Info("redirect URL missing")
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
