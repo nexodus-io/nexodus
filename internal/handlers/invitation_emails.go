@@ -55,7 +55,7 @@ func (api *API) composeInvitationEmail(fromName string, to string, invitation *m
 		InvitationURL    string
 		ExpiresIn        string
 	}{
-		InvitationURL:    fmt.Sprintf("%s#/invitations/%s/show", api.URL, invitation.ID),
+		InvitationURL:    fmt.Sprintf("%s#/invitations/%s/show", api.FrontendURL, invitation.ID),
 		OrganizationName: orgName,
 		Subject:          fmt.Sprintf("%s invited you to join %s", fromName, orgName),
 		From:             fmt.Sprintf("%s <%s>", fromName, api.SmtpFrom),

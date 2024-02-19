@@ -89,7 +89,7 @@ func (o *OidcAgent) LoginStart(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	
+
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("redirect", query.Redirect, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)
 	c.SetCookie("failure", query.Failure, int(time.Hour.Seconds()), "/", "", c.Request.URL.Scheme == "https", true)

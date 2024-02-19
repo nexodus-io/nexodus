@@ -338,6 +338,7 @@ func main() {
 				}
 
 				api.URL = command.String("url")
+				api.FrontendURL = command.StringSlice("origins")[0]
 				api.URLParsed, err = url.Parse(api.URL)
 				if err != nil {
 					log.Fatal(fmt.Errorf("invalid url: %w", err))
