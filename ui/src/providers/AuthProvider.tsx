@@ -2,6 +2,7 @@ import { AuthProvider, UserIdentity } from "react-admin";
 import { RefreshManager } from "./RefreshManager";
 import { red } from "@mui/material/colors";
 
+const originalLocationURL = window.location.href;
 export const goOidcAgentAuthProvider = (api: string): AuthProvider => {
   const getMe = async (): Promise<UserIdentity> => {
     const request = new Request(`${api}/api/users/me`, {
@@ -33,7 +34,7 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => {
     login: async (params = {}) => {
       console.log("Login Called!!");
 
-      let redirect = window.location.href;
+      let redirect = originalLocationURL;
       if (redirect.endsWith("#/login")) {
         // replace #/login with empty string
         redirect = redirect.replace("#/login", "");
@@ -42,11 +43,13 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => {
       console.log("redirect", redirect);
 
       // Send the user to the authentication server, and have them come back to the redirect URL
-      window.location.replace(`${api}/web/login/start?redirect=${redirect}`);
+      window.location.replace(
+        `${api}/web/login/start?redirect=${encodeURIComponent(redirect)}`,
+      );
     },
 
     logout: async () => {
-      console.log("Logout Called");
+      RefreshManager.stopRefreshing();
       try {
         await getMe();
       } catch (err) {
@@ -54,11 +57,12 @@ export const goOidcAgentAuthProvider = (api: string): AuthProvider => {
         return;
       }
 
-      RefreshManager.stopRefreshing();
       let redirect = window.location.href;
       // does the redirect contain a hash? If so, remove it.
       redirect = redirect.split("#")[0];
-      window.location.replace(`${api}/web/logout?redirect=${redirect}`);
+      window.location.replace(
+        `${api}/web/logout?redirect=${encodeURIComponent(redirect)}`,
+      );
     },
 
     checkError: async (error: any) => {
