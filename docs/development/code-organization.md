@@ -21,6 +21,16 @@ is found in the files following this pattern: `internal/nexodus/ctl*.go`.
 
 All of the code for the Nexodus web UI is found under `ui/`.
 
+### The Nexodus API Server
+
+The entrypoint for `apiserver` is in `cmd/main.go`. Most of the code for the API server is found
+under `internal/`.
+
+* `internal/routers` - the code for mapping HTTP requests to the code that will handle them.
+* `internal/handlers` - the code that handles the HTTP requests as mapped from the request router.
+* `internal/database` - the code for managing the database schema and migrations.
+* `internal/models` - the data structures that are used to interact with the database.
+
 ### Tests
 
 The integration tests are found under `integration-tests/`. Unit tests are found throughout the code base,
