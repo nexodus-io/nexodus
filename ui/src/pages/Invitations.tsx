@@ -6,7 +6,6 @@ import {
   Create,
   Datagrid,
   List,
-  ReferenceField,
   ReferenceInput,
   required,
   Show,
@@ -82,6 +81,9 @@ export const AcceptInvitationField = (
 ) => {
   const record = useRecordContext(props);
   const { identity } = useGetIdentity();
+  if (!identity) {
+    return null;
+  }
   // only show the accept button for invitations that are for the current user
   return record && identity && identity.id == record.user_id ? (
     <AcceptInvitationButton />
@@ -115,7 +117,7 @@ export const InvitationShow = () => (
 
 export const InvitationCreate = () => {
   const { identity, isLoading, error } = useGetIdentity();
-  if (isLoading || error) {
+  if (isLoading || error || !identity) {
     return <div />;
   }
   return (
