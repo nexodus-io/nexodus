@@ -309,8 +309,9 @@ func main() {
 				store := inmem.New()
 
 				redisClient := redis.NewClient(&redis.Options{
-					Addr: command.String("redis-server"),
-					DB:   int(command.Int("redis-db")),
+					Addr:             command.String("redis-server"),
+					DB:               int(command.Int("redis-db")),
+					DisableIndentity: true,
 				})
 
 				sessionStore := redisStore.NewRedisStore(&redisStore.Options{

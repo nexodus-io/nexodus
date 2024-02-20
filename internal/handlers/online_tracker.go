@@ -21,8 +21,9 @@ func New(logger *zap.Logger) (*DeviceTracker, error) {
 
 	return &DeviceTracker{
 		redis: redis.NewClient(&redis.Options{
-			Addr: redisAddr,
-			DB:   redisDB,
+			Addr:             redisAddr,
+			DB:               redisDB,
+			DisableIndentity: true,
 		}),
 		reconnectGracePeriod: time.Second * 5,
 		logger:               logger,

@@ -34,8 +34,9 @@ func New(logger *zap.Logger) (fetchmgr.FetchManager, error) {
 		}
 
 		redisClient := redis.NewClient(&redis.Options{
-			Addr: redisAddr,
-			DB:   redisDB,
+			Addr:             redisAddr,
+			DB:               redisDB,
+			DisableIndentity: true,
 		})
 
 		return redisfm.New(redisClient, timeout, logger, "fetchmgr:"), nil
