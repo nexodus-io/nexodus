@@ -612,6 +612,15 @@ definitions:
       updated_at:
         type: integer
     type: object
+  models.UserOrganization:
+    properties:
+      organization_id:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      user_id:
+        type: string
+    type: object
   models.VPC:
     properties:
       ca_certificates:
@@ -640,6 +649,8 @@ definitions:
         example: something bad
         type: string
       field:
+        type: string
+      reason:
         type: string
     type: object
   models.Watch:
@@ -1440,6 +1451,127 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: Get Organizations
+      tags:
+      - Organizations
+  /api/organizations/{id}/users:
+    get:
+      consumes:
+      - application/json
+      description: Lists all the users of an organization
+      operationId: ListOrganizationUsers
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.UserOrganization'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Organization Users
+      tags:
+      - Organizations
+  /api/organizations/{id}/users/{uid}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing organization user
+      operationId: DeleteOrganizationUser
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.UserOrganization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ValidationError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete a Organization User
+      tags:
+      - Organizations
+    get:
+      consumes:
+      - application/json
+      description: Gets a Organization User by Organization ID and User ID
+      operationId: GetOrganizationUser
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserOrganization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get Organization User
       tags:
       - Organizations
   /api/reg-keys:

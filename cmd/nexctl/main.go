@@ -332,6 +332,9 @@ func apiResponse[T any](resp T, httpResp *http.Response, err error) T {
 				if err.Field != "" {
 					message += fmt.Sprintf(", field: %s", err.Field)
 				}
+				if err.Reason != "" {
+					message += fmt.Sprintf(", reason: %s", err.Reason)
+				}
 				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
 				Fatalf(message)
 			case public.ModelsInternalServerError:

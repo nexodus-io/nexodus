@@ -125,6 +125,10 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.GET("/organizations/:id", api.GetOrganizations)
 		apiGroup.DELETE("/organizations/:id", api.DeleteOrganization)
 
+		apiGroup.GET("/organizations/:id/users", api.ListOrganizationUsers)
+		apiGroup.GET("/organizations/:id/users/:uid", api.GetOrganizationUser)
+		apiGroup.DELETE("/organizations/:id/users/:uid", api.DeleteOrganizationUser)
+
 		// Invitations
 		apiGroup.GET("/invitations", api.ListInvitations)
 		apiGroup.GET("/invitations/:id", api.GetInvitation)
