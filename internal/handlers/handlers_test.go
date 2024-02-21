@@ -66,9 +66,10 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	ipamClient := ipam.NewIPAM(suite.logger, ipamClientAddr)
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
+		Addr:             "localhost:6379",
+		Password:         "",
+		DB:               0,
+		DisableIndentity: true,
 	})
 	fflags := fflags.NewFFlags(suite.logger)
 	store := inmem.New()

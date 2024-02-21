@@ -40,7 +40,8 @@ func TestFetchManager(t *testing.T) {
 	logger, _ := zap.NewProductionConfig().Build()
 
 	client := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
+		Addr:             "127.0.0.1:6379",
+		DisableIndentity: true,
 	})
 	for i := 0; i < 10; i++ {
 		_, err = client.Del(context.Background(), "key1").Result()
@@ -62,7 +63,8 @@ func TestFetchManager(t *testing.T) {
 	managers := []fetchmgr.FetchManager{}
 	for i := 0; i < 5; i++ {
 		client := redis.NewClient(&redis.Options{
-			Addr: "127.0.0.1:6379",
+			Addr:             "127.0.0.1:6379",
+			DisableIndentity: true,
 		})
 		clients = append(clients, client)
 		manager := redisfm.New(client, 1000*time.Second, logger, "")
