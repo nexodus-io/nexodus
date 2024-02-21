@@ -223,7 +223,27 @@ func (api *API) DeleteOrganizationUser(c *gin.Context) {
 			return err
 		}
 		result = tx.Delete(&model)
-		return result.Error
+		if result.Error != nil {
+			return result.Error
+		}
+
+		result = tx.Where("organization_id=? AND owner_id=?", id, uid).
+			Delete(&models.RegKey{})
+		if result.Error != nil {
+			return result.Error
+		}
+		result = tx.Where("organization_id=? AND owner_id=?", id, uid).
+			Delete(&models.Device{})
+		if result.Error != nil {
+			return result.Error
+		}
+		result = tx.Where("organization_id=? AND owner_id=?", id, uid).
+			Delete(&models.Site{})
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return nil
 	})
 	if err != nil {
 		var apiResponseError *ApiResponseError
