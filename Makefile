@@ -646,7 +646,7 @@ deploy-nexodus-agent: image-nexd
 ##@ Kubernetes - work with an existing cluster (kind dev env or another one)
 .PHONY: install-olm
 install-olm: ## Install OLM on the cluster
-	$(CMD_PREFIX) curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.24.0/install.sh | bash -s v0.24.0
+	$(CMD_PREFIX) curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.27.0/install.sh | bash -s v0.27.0
 
 .PHONY: deploy-operators
 deploy-operators: ## Deploy all operators and wait for readiness
