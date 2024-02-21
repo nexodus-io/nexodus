@@ -58,6 +58,7 @@ const App = () => {
       menu={CustomMenu}
       darkTheme={darkTheme}
       requireAuth
+      disableTelemetry
     >
       <Resource
         name="users"
