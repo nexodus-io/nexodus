@@ -12,6 +12,7 @@ package public
 
 // ModelsValidationError struct for ModelsValidationError
 type ModelsValidationError struct {
-	Error string `json:"error,omitempty"`
-	Field string `json:"field,omitempty"`
+	Error  string `json:"error,omitempty"`
+	Field  string `json:"field,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }

@@ -43,6 +43,7 @@ model_models_update_site.go
 model_models_update_vpc.go
 model_models_user.go
 model_models_user_info_response.go
+model_models_user_organization.go
 model_models_validation_error.go
 model_models_vpc.go
 model_models_watch.go
