@@ -70,8 +70,6 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 		fullName = strings.Join(names, " ")
 	}
 
-	fmt.Println("claims", claims)
-
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
 		return api.transaction(ctx, func(tx *gorm.DB) error {

@@ -108,7 +108,6 @@ func (i *IPAM) AssignFromPool(parent context.Context, namespace uuid.UUID, ipamP
 }
 
 func (i *IPAM) AssignCIDR(parent context.Context, namespace uuid.UUID, cidr string) error {
-	println()
 	ctx, span := tracer.Start(parent, "AssignPrefix")
 	defer span.End()
 	cidr, err := cleanCidr(cidr)
