@@ -16,10 +16,12 @@ type Invitation struct {
 	ExpiresAt      time.Time     `json:"expires_at"`
 	FromID         uuid.UUID     `json:"-"`
 	From           *User         `json:"from,omitempty"`
+	Roles          StringArray   `json:"roles" swaggertype:"array,string"`
 }
 
 type AddInvitation struct {
 	Email          *string    `json:"email"`   // The email address of the user to invite (one of email or user_id is required)
 	UserID         *uuid.UUID `json:"user_id"` // The user id to invite (one of email or user_id is required)
 	OrganizationID uuid.UUID  `json:"organization_id"`
+	Roles          []string   `json:"roles"`
 }

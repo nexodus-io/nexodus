@@ -68,7 +68,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 		org = models.Organization{
 			Name:        request.Name,
-			OwnerID:     userId,
 			Description: request.Description,
 		}
 
@@ -77,6 +76,18 @@ func (api *API) CreateOrganization(c *gin.Context) {
 				return errDuplicateOrganization{ID: org.ID.String()}
 			}
 			api.logger.Error("Failed to create organization: ", res.Error)
+			return res.Error
+		}
+
+		if res := tx.Create(&models.UserOrganization{
+			UserID:         userId,
+			OrganizationID: org.ID,
+			Roles:          []string{"owner"},
+		}); res.Error != nil {
+			if database.IsDuplicateError(res.Error) {
+				return errDuplicateOrganization{ID: org.ID.String()}
+			}
+			api.logger.Error("Failed to create organization owner: ", res.Error)
 			return res.Error
 		}
 
@@ -102,19 +113,22 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
+	allowedRoles := []string{"owner", "member"}
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("owner_id = ? OR id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
+		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
 	} else {
-		return db.Where("owner_id = ? OR id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
+		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
 	}
 }
 
 func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-	// this could potentially be driven by rego output
-	return db.Where("owner_id = ?", userId)
+	allowedRoles := []string{"owner"}
+	if api.dialect == database.DialectSqlLite {
+		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
+	} else {
+		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
+	}
 }
 
 // ListOrganizations lists all Organizations
@@ -229,7 +243,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	var org models.Organization
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
-		result := api.OrganizationIsReadableByCurrentUser(c, tx).
+		result := api.OrganizationIsOwnedByCurrentUser(c, tx).
 			First(&org, "id = ?", orgID)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -239,8 +253,13 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 			}
 		}
 
-		if org.ID == org.OwnerID {
+		user := models.User{}
+		result = tx.Unscoped().First(&user, "id = ?", orgID)
+		if result.Error == nil {
+			// found a user with the same id, it's a user's default org...
 			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default organization cannot be deleted"))
+		} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return result.Error
 		}
 
 		return deleteOrganization(tx, orgID)

@@ -3389,6 +3389,12 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "string"
                 },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "user_id": {
                     "description": "The user id to invite (one of email or user_id is required)",
                     "type": "string"
@@ -3726,6 +3732,12 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "string"
                 },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "user_id": {
                     "type": "string"
                 }
@@ -3810,10 +3822,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "zone-red"
-                },
-                "owner_id": {
-                    "type": "string",
-                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 }
             }
         },
@@ -4127,6 +4135,12 @@ const docTemplate = `{
             "properties": {
                 "organization_id": {
                     "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "user": {
                     "$ref": "#/definitions/models.User"

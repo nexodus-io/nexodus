@@ -154,6 +154,19 @@ func DropTableAction(table interface{}) MigrationAction {
 		return nil
 	}
 }
+func ChangeColumnTypeAction(table string, columnName string, oldType string, newType string) MigrationAction {
+	return ExecAction(
+		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s`, table, columnName, newType, columnName, newType),
+		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s`, table, columnName, oldType, columnName, oldType),
+	)
+}
+func ChangeColumnTypeActionIf(table string, columnName string, oldType string, newType string, condition func(tx *gorm.DB) bool) MigrationAction {
+	return ExecActionIf(
+		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s`, table, columnName, newType, columnName, newType),
+		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s`, table, columnName, oldType, columnName, oldType),
+		condition,
+	)
+}
 
 func AddTableColumnsAction(table interface{}) MigrationAction {
 	caller := ""
