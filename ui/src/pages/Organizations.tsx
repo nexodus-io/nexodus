@@ -13,6 +13,7 @@ import {
   SimpleForm,
   TextInput,
 } from "react-admin";
+import { UserOrganizationList } from "./UserOrganizations";
 
 const OrganizationListBulkActions = () => (
   <Fragment>
@@ -45,6 +46,8 @@ export const OrganizationShow = () => (
       <TextField label="ID" source="id" />
       <TextField label="Name" source="name" />
       <TextField label="Description" source="description" />
+      <h2>User Membership</h2>
+      <UserOrganizationList />
     </SimpleShowLayout>
   </Show>
 );
