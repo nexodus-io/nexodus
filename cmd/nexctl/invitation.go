@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v3"
+	"strings"
 )
 
 func createInvitationCommand() *cli.Command {
@@ -35,6 +36,12 @@ func createInvitationCommand() *cli.Command {
 						Name:     "organization-id",
 						Required: false,
 					},
+					&cli.StringSliceFlag{
+						Name:        "role",
+						Required:    false,
+						DefaultText: "member",
+						Value:       []string{"member"},
+					},
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
 					organizationId, err := getUUID(command, "organization-id")
@@ -45,10 +52,13 @@ func createInvitationCommand() *cli.Command {
 					if err != nil {
 						return err
 					}
+					role := command.StringSlice("role")
+
 					return createInvitation(ctx, command, public.ModelsAddInvitation{
 						OrganizationId: organizationId,
 						UserId:         userId,
 						Email:          command.String("email"),
+						Roles:          role,
 					})
 				},
 			},
@@ -102,6 +112,10 @@ func invitationsTableFields() []TableField {
 		return fmt.Sprintf("%s <%s>", inv.From.FullName, inv.From.Username)
 	}})
 	fields = append(fields, TableField{Header: "EMAIL", Field: "Email"})
+	fields = append(fields, TableField{Header: "ROLES", Formatter: func(item interface{}) string {
+		inv := item.(public.ModelsInvitation)
+		return strings.Join(inv.Roles, ", ")
+	}})
 	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
 	return fields
 }

@@ -29,12 +29,6 @@ export const OrganizationList = () => (
     >
       <TextField label="Name" source="name" />
       <TextField label="Description" source="description" />
-      <ReferenceField
-        label="Owner"
-        source="owner_id"
-        reference="users"
-        link="show"
-      />
     </Datagrid>
   </List>
 );
