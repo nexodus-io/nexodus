@@ -19,5 +19,6 @@ type ModelsInvitation struct {
 	Id             string             `json:"id,omitempty"`
 	Organization   ModelsOrganization `json:"organization,omitempty"`
 	OrganizationId string             `json:"organization_id,omitempty"`
+	Roles          []string           `json:"roles,omitempty"`
 	UserId         string             `json:"user_id,omitempty"`
 }

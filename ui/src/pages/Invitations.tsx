@@ -23,9 +23,27 @@ import {
   Identifier,
   DateTimeInput,
   AutocompleteInput,
+  CheckboxGroupInput,
+  ArrayField,
+  SingleFieldList,
+  ChipField,
+  WrapperField,
 } from "react-admin";
 
 import { backend, fetchJson as apiFetchJson } from "../common/Api";
+import { StringListField } from "../components/StringListField";
+
+export const roleChoices = [
+  { id: "owner", name: "Owner" },
+  { id: "member", name: "Member" },
+];
+
+export function choiceMapper(choices: { id: string; name: string }[]) {
+  return function (x: any) {
+    const choice = choices.find((c) => c.id === x);
+    return choice ? choice.name : x;
+  };
+}
 
 const InvitationListBulkActions = () => (
   <Fragment>
@@ -97,6 +115,13 @@ export const InvitationList = () => (
       <TextField label="To" source="email" />
       <TextField label="Organization" source="organization.name" />
       <TextField label="Expires At" source="expires_at" />
+      <StringListField
+        source="roles"
+        label="Roles"
+        mappper={choiceMapper(roleChoices)}
+      >
+        <ChipField source="value" size="small" />
+      </StringListField>
       <AcceptInvitationField />
     </Datagrid>
   </List>
@@ -110,6 +135,13 @@ export const InvitationShow = () => (
       <TextField label="To" source="email" />
       <TextField label="Organization" source="organization.name" />
       <TextField label="Expires At" source="expires_at" />
+      <StringListField
+        source="roles"
+        label="Roles"
+        mappper={choiceMapper(roleChoices)}
+      >
+        <ChipField source="value" size="small" />
+      </StringListField>
       <AcceptInvitationField />
     </SimpleShowLayout>
   </Show>
@@ -144,6 +176,13 @@ export const InvitationCreate = () => {
           name="expires_at"
           source="expires_at"
           fullWidth
+        />
+        <CheckboxGroupInput
+          defaultValue={["member"]}
+          label="Roles"
+          source="roles"
+          row={false}
+          choices={roleChoices}
         />
       </SimpleForm>
     </Create>

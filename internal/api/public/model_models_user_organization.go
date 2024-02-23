@@ -13,6 +13,7 @@ package public
 // ModelsUserOrganization struct for ModelsUserOrganization
 type ModelsUserOrganization struct {
 	OrganizationId string     `json:"organization_id,omitempty"`
+	Roles          []string   `json:"roles,omitempty"`
 	User           ModelsUser `json:"user,omitempty"`
 	UserId         string     `json:"user_id,omitempty"`
 }

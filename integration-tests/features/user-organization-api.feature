@@ -42,6 +42,7 @@ Feature: Invitations API
       [{
           "organization_id": "${brent_organization.id}",
           "user_id": "${brent_user.id}",
+          "roles": ["owner"],
           "user": ${brent_user}
       }]
       """
@@ -106,14 +107,17 @@ Feature: Invitations API
       [{
           "organization_id": "${brent_organization.id}",
           "user_id": "${anil_user.id}",
+          "roles": ["member"],
           "user": ${anil_user}
       }, {
           "organization_id": "${brent_organization.id}",
           "user_id": "${brent_user.id}",
+          "roles": ["owner"],
           "user": ${brent_user}
       }, {
           "organization_id": "${brent_organization.id}",
           "user_id": "${russel_user.id}",
+          "roles": ["member"],
           "user": ${russel_user}
       }]
       """
@@ -150,6 +154,7 @@ Feature: Invitations API
       {
           "organization_id": "${brent_organization.id}",
           "user_id": "${anil_user.id}",
+          "roles": ["member"],
           "user": ${anil_user}
       }
       """
@@ -162,6 +167,7 @@ Feature: Invitations API
       {
           "organization_id": "${brent_organization.id}",
           "user_id": "${anil_user.id}",
+          "roles": ["member"],
           "user": ${anil_user}
       }
       """
@@ -173,10 +179,12 @@ Feature: Invitations API
       [{
           "organization_id": "${brent_organization.id}",
           "user_id": "${brent_user.id}",
+          "roles": ["owner"],
           "user": ${brent_user}
       }, {
           "organization_id": "${brent_organization.id}",
           "user_id": "${russel_user.id}",
+          "roles": ["member"],
           "user": ${russel_user}
       }]
       """

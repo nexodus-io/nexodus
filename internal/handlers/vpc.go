@@ -156,19 +156,22 @@ func (api *API) CreateVPC(c *gin.Context) {
 
 func (api *API) VPCIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
+
+	allowedRoles := []string{"owner", "member"}
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId)
+		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
 	} else {
-		return db.Where("organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId)
+		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
 	}
 }
 
 func (api *API) VPCIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
+	allowedRoles := []string{"owner"}
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
+		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
 	} else {
-		return db.Where("organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId)
+		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
 	}
 }
 

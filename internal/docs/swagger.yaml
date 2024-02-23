@@ -41,6 +41,10 @@ definitions:
         type: string
       organization_id:
         type: string
+      roles:
+        items:
+          type: string
+        type: array
       user_id:
         description: The user id to invite (one of email or user_id is required)
         type: string
@@ -322,6 +326,10 @@ definitions:
         $ref: '#/definitions/models.Organization'
       organization_id:
         type: string
+      roles:
+        items:
+          type: string
+        type: array
       user_id:
         type: string
     type: object
@@ -393,9 +401,6 @@ definitions:
         type: string
       name:
         example: zone-red
-        type: string
-      owner_id:
-        example: aa22666c-0f57-45cb-a449-16efecc04f2e
         type: string
     type: object
   models.RegKey:
@@ -616,6 +621,10 @@ definitions:
     properties:
       organization_id:
         type: string
+      roles:
+        items:
+          type: string
+        type: array
       user:
         $ref: '#/definitions/models.User'
       user_id:
