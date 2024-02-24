@@ -53,25 +53,11 @@ func (d securityGroupList) Len() int {
 }
 
 func (api *API) SecurityGroupIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	allowedRoles := []string{"owner", "member"}
-	if api.dialect == database.DialectSqlLite {
-		//return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=?) OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
-		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
-	} else {
-		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
-	}
+	return api.CurrentUserHasRole(c, db, "organization_id", MemberRoles)
 }
 
 func (api *API) SecurityGroupIsWriteableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	allowedRoles := []string{"owner"}
-	if api.dialect == database.DialectSqlLite {
-		//return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=?) OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
-		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
-	} else {
-		return db.Where("organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
-	}
+	return api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles)
 }
 
 // ListSecurityGroups lists all Security Groups
@@ -168,13 +154,7 @@ func (api *API) ListSecurityGroupsInVPC(c *gin.Context) {
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
 		var items securityGroupList
-
-		if api.dialect == database.DialectSqlLite {
-			db = db.Where("organization_id in (SELECT DISTINCT organization_id FROM devices where vpc_id=?)", vpcId.String())
-		} else {
-			db = db.Where("organization_id::text in (SELECT DISTINCT organization_id::text FROM devices where vpc_id=?)", vpcId.String())
-		}
-
+		db = db.Where("organization_id in (SELECT DISTINCT organization_id FROM devices where vpc_id=?)", vpcId.String())
 		db = FilterAndPaginateWithQuery(db, &models.SecurityGroup{}, c, query, "id")
 		result := db.Find(&items)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {

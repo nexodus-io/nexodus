@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -203,21 +202,13 @@ func (api *API) ListInvitations(c *gin.Context) {
 
 func (api *API) InvitationIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
 	return db.Where("user_id = ?", userId)
 }
 
 func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-	allowedRoles := []string{"owner"}
-
-	// this could potentially be driven by rego output
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("user_id = ? OR organization_id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, userId, allowedRoles)
-	} else {
-		return db.Where("user_id = ? OR organization_id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, userId, models.StringArray(allowedRoles))
-	}
+	return db.Where(api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles).
+		Or(db.Where("user_id = ?", userId)))
 }
 
 // GetInvitation gets a specific Invitation

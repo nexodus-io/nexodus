@@ -53,6 +53,15 @@ func (q *Query) GetFilter() (map[string]interface{}, error) {
 	return parts, nil
 }
 
+func (q *Query) SetFilter(f map[string]interface{}) error {
+	b, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+	q.Filter = string(b)
+	return nil
+}
+
 func FilterAndPaginate(db *gorm.DB, model interface{}, c *gin.Context, orderBy string) *gorm.DB {
 	var query Query
 	if err := c.ShouldBindQuery(&query); err != nil {

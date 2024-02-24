@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -12,6 +13,9 @@ import (
 	"net/http"
 	"time"
 )
+
+var OwnerRoles = []string{"owner"}
+var MemberRoles = []string{"owner", "member"}
 
 type errDuplicateOrganization struct {
 	ID string
@@ -112,22 +116,19 @@ func (api *API) CreateOrganization(c *gin.Context) {
 }
 
 func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	allowedRoles := []string{"owner", "member"}
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
-	} else {
-		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
-	}
+	return api.CurrentUserHasRole(c, db, "id", MemberRoles)
 }
 
 func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	return api.CurrentUserHasRole(c, db, "id", OwnerRoles)
+}
+
+func (api *API) CurrentUserHasRole(c *gin.Context, db *gorm.DB, orgIdField string, allowedRoles []string) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-	allowedRoles := []string{"owner"}
 	if api.dialect == database.DialectSqlLite {
-		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", userId, allowedRoles)
+		return db.Where(fmt.Sprintf("%s in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", orgIdField), userId, allowedRoles)
 	} else {
-		return db.Where("id in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", userId, models.StringArray(allowedRoles))
+		return db.Where(fmt.Sprintf("%s in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", orgIdField), userId, models.StringArray(allowedRoles))
 	}
 }
 
@@ -146,11 +147,52 @@ func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *g
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
-	var orgs []models.Organization
 
+	var query Query
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
+		return
+	}
+
+	var orgs []models.Organization
 	db := api.db.WithContext(ctx)
 	db = api.OrganizationIsReadableByCurrentUser(c, db)
-	db = FilterAndPaginate(db, &models.Organization{}, c, "name")
+
+	// handle the special case of a roles filter (since the Organization does not have a roles field)
+	if query.Filter != "" {
+		filter, err := query.GetFilter()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, models.NewApiError(err))
+			return
+		}
+
+		if value, found := filter["roles"]; found {
+			if rolesI, ok := value.([]interface{}); ok {
+				roles := []string{}
+				// convert rolesI to roles
+				for _, roleI := range rolesI {
+					if role, ok := roleI.(string); ok {
+						roles = append(roles, role)
+					} else {
+						c.JSON(http.StatusBadRequest, models.NewBadQueryParameterError("filter.role must be an array of strings"))
+						return
+					}
+				}
+				db = api.CurrentUserHasRole(c, db, "id", roles)
+			} else {
+				c.JSON(http.StatusBadRequest, models.NewBadQueryParameterError("filter.role must be an array of strings"))
+				return
+			}
+			delete(filter, "roles")
+			err := query.SetFilter(filter)
+			if err != nil {
+				api.SendInternalServerError(c, err)
+				return
+			}
+		}
+	}
+
+	db = FilterAndPaginateWithQuery(db, &models.Organization{}, c, query, "name")
 	result := db.Find(&orgs)
 
 	if result.Error != nil {

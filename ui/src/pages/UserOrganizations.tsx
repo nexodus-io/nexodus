@@ -1,12 +1,15 @@
 import {
   BulkDeleteButton,
   BulkExportButton,
+  ChipField,
   Datagrid,
   List,
   TextField,
 } from "react-admin";
 import { useParams } from "react-router-dom";
 import React, { Fragment } from "react";
+import { StringListField } from "../components/StringListField";
+import { choiceMapper, roleChoices } from "./Invitations";
 
 function importer(record: any) {
   record.id = [record.organization_id, record.user_id];
@@ -31,7 +34,14 @@ export const UserOrganizationList = () => {
         }
       >
         <TextField label="Full Name" source="user.full_name" />
-        <TextField label="Full Name" source="user.username" />
+        <TextField label="User Name" source="user.username" />
+        <StringListField
+          source="roles"
+          label="Roles"
+          mappper={choiceMapper(roleChoices)}
+        >
+          <ChipField source="value" size="small" />
+        </StringListField>
       </Datagrid>
     </List>
   );
