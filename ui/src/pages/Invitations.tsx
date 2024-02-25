@@ -167,7 +167,7 @@ export const InvitationCreate = () => {
           name="organization_id"
           source="organization_id"
           reference="organizations"
-          filter={{ owner_id: identity.id }}
+          filter={{ roles: ["owner"] }}
         >
           <AutocompleteInput fullWidth />
         </ReferenceInput>

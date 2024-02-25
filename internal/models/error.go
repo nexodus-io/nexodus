@@ -49,6 +49,14 @@ func NewBadPathParameterError(param string) ValidationError {
 	}
 }
 
+func NewBadQueryParameterError(param string) ValidationError {
+	return ValidationError{
+		Field: param,
+		BaseError: BaseError{
+			Error: "query parameter invalid",
+		},
+	}
+}
 func NewBadPathParameterErrorAndReason(param string, reason string) ValidationError {
 	return ValidationError{
 		Field:  param,

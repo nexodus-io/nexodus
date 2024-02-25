@@ -35,17 +35,6 @@ export const UserShow = () => (
       <TextField label="Username" source="username" />
 
       <ReferenceManyField
-        label="Owned Organizations"
-        reference="organizations"
-        target="owner_id"
-      >
-        <Datagrid>
-          <TextField label="Name" source="name" />
-          <TextField label="Description" source="description" />
-        </Datagrid>
-      </ReferenceManyField>
-
-      <ReferenceManyField
         label="Owned Devices"
         reference="devices"
         target="user_id"
