@@ -11,42 +11,49 @@ import { useFlags } from "../common/FlagsContext";
 export const CustomMenu = (props: MenuProps) => {
   const flags = useFlags();
 
-  return (
-    <Menu {...props}>
-      <DashboardMenuItem />
+return (
+  <Menu {...props}>
+    <DashboardMenuItem />
+    <MenuItemLink
+      to="/organizations"
+      primaryText="Organizations"
+      leftIcon={<OrganizationIcon />}
+    />
+    <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
+    {flags["devices"] && (
       <MenuItemLink
-        to="/organizations"
-        primaryText="Organizations"
-        leftIcon={<OrganizationIcon />}
+        to="/devices"
+        primaryText="Devices"
+        leftIcon={<DeviceIcon />}
       />
-      <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
-      {flags["devices"] && (
-        <MenuItemLink
-          to="/devices"
-          primaryText="Devices"
-          leftIcon={<DeviceIcon />}
-        />
-      )}
-      {flags["sites"] && (
-        <MenuItemLink to="/sites" primaryText="Sites" leftIcon={<SiteIcon />} />
-      )}
+    )}
+    <MenuItemLink
+      to="/graph"
+      primaryText="Graph"
+      leftIcon={<DeviceIcon />}
+    />
+    {flags["sites"] && (
+      <MenuItemLink to="/sites" primaryText="Sites" leftIcon={<SiteIcon />} />
+    )}
+    <MenuItemLink
+      to="/invitations"
+      primaryText="Invitations"
+      leftIcon={<InvitationIcon />}
+    />
+    {flags["security-groups"] && (
       <MenuItemLink
-        to="/invitations"
-        primaryText="Invitations"
-        leftIcon={<InvitationIcon />}
+        to="/_security-groups"
+        primaryText="Security Groups"
+        leftIcon={<SecurityIcon />}
       />
-      {flags["security-groups"] && (
-        <MenuItemLink
-          to="/_security-groups"
-          primaryText="Security Groups"
-          leftIcon={<SecurityIcon />}
-        />
-      )}
-      <MenuItemLink
-        to="/reg-keys"
-        primaryText="Registration Keys"
-        leftIcon={<RegKeyIcon />}
-      />
-    </Menu>
-  );
+    )}
+    <MenuItemLink
+      to="/reg-keys"
+      primaryText="Registration Keys"
+      leftIcon={<RegKeyIcon />}
+    />
+  </Menu>
+);
+
+
 };

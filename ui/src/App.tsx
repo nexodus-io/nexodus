@@ -96,6 +96,14 @@ const App = () => {
         icon={DeviceIcon}
         edit={DeviceEdit}
         recordRepresentation={(record) => `${record.hostname}`}
+        />
+      <Resource
+        name="graph"
+        list={DeviceList}
+        show={DeviceShow}
+        icon={DeviceIcon}
+        edit={DeviceEdit}
+        recordRepresentation={(record) => `${record.hostname}`}
       />
       <Resource
         name="sites"
