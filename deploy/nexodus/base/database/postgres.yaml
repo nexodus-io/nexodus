@@ -20,7 +20,7 @@ spec:
           memory: 2Gi
         requests:
           cpu: 500m
-          memory: 2Gi
+          memory: 1Gi
       sidecars:
         replicaCertCopy:
           resources:
