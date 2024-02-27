@@ -140,6 +140,9 @@ const docTemplate = `{
                 },
                 "field": {
                     "type": "string"
+                },
+                "reason": {
+                    "type": "string"
                 }
             }
         }

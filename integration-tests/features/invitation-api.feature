@@ -37,6 +37,7 @@ Feature: Invitations API
         "expires_at": "${response.expires_at}",
         "id": "${invitation_id}",
         "organization_id": "${thompson_user_id}",
+        "roles": ["member"],
         "email": "${johnson_user_id}@redhat.com",
         "user_id": "${johnson_user_id}"
       }
@@ -102,6 +103,7 @@ Feature: Invitations API
         "expires_at": "${response.expires_at}",
         "id": "${invitation_id}",
         "organization_id": "${thompson_organization_id}",
+        "roles": ["member"],
         "user_id": "${johnson_user_id}"
       }
       """
@@ -123,11 +125,11 @@ Feature: Invitations API
             "picture": "",
             "username": "${thompson_username}"
           },
+          "roles": ["member"],
           "organization": {
             "description": "${thompson_username}'s organization",
             "id": "${thompson_organization_id}",
-            "name": "${thompson_username}",
-            "owner_id": "${thompson_user_id}"
+            "name": "${thompson_username}"
           },
           "user_id": "${johnson_user_id}"
         }
@@ -150,11 +152,11 @@ Feature: Invitations API
             "picture": "",
             "username": "${thompson_username}"
           },
+          "roles": ["member"],
           "organization": {
             "description": "${thompson_username}'s organization",
             "id": "${thompson_organization_id}",
-            "name": "${thompson_username}",
-            "owner_id": "${thompson_user_id}"
+            "name": "${thompson_username}"
           },
           "user_id": "${johnson_user_id}"
         }

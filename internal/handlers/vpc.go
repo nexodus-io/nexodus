@@ -155,21 +155,11 @@ func (api *API) CreateVPC(c *gin.Context) {
 }
 
 func (api *API) VPCIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("organization_id in (SELECT organization_id FROM user_organizations where user_id=?)", userId)
-	} else {
-		return db.Where("organization_id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId)
-	}
+	return api.CurrentUserHasRole(c, db, "organization_id", MemberRoles)
 }
 
 func (api *API) VPCIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("organization_id in (SELECT id FROM organizations where owner_id=?)", userId)
-	} else {
-		return db.Where("organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId)
-	}
+	return api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles)
 }
 
 // ListVPCs lists all VPCs

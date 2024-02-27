@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"errors"
-	"github.com/nexodus-io/nexodus/internal/database"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/maps"
 	"net/http"
 	"strings"
 	"time"
@@ -14,6 +15,11 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 	"gorm.io/gorm"
 )
+
+var allowedRoles = map[string]struct{}{
+	"member": {},
+	"owner":  {},
+}
 
 // CreateInvitation creates an invitation
 // @Summary      Create an invitation
@@ -50,6 +56,13 @@ func (api *API) CreateInvitation(c *gin.Context) {
 	if request.UserID != nil && request.Email != nil {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("both email and user_id present"))
 	}
+	if len(util.FilterOutAllowed(request.Roles, allowedRoles)) > 0 {
+		c.JSON(http.StatusBadRequest, models.NewFieldValidationError("roles", "allowed values are: "+strings.Join(maps.Keys(allowedRoles), ", ")))
+		return
+	}
+	if len(request.Roles) == 0 {
+		request.Roles = []string{"member"}
+	}
 
 	db := api.db.WithContext(ctx)
 
@@ -67,6 +80,7 @@ func (api *API) CreateInvitation(c *gin.Context) {
 		OrganizationID: request.OrganizationID,
 		ExpiresAt:      expiry,
 		UserID:         request.UserID,
+		Roles:          request.Roles,
 	}
 
 	var user models.User
@@ -188,20 +202,13 @@ func (api *API) ListInvitations(c *gin.Context) {
 
 func (api *API) InvitationIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
 	return db.Where("user_id = ?", userId)
 }
 
 func (api *API) InvitationIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("user_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
-	} else {
-		return db.Where("user_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
-	}
+	return db.Where(api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles).
+		Or(db.Where("user_id = ?", userId)))
 }
 
 // GetInvitation gets a specific Invitation
@@ -283,17 +290,18 @@ func (api *API) AcceptInvitation(c *gin.Context) {
 			First(&invitation, "id = ?", id); res.Error != nil {
 			return errInvitationNotFound
 		}
+
 		var user models.User
-		if res := tx.Preload("Organizations").First(&user, "id = ?", invitation.UserID); res.Error != nil {
+		if res := tx.First(&user, "id = ?", invitation.UserID); res.Error != nil {
 			return errUserNotFound
 		}
 
-		var org models.Organization
-		if res := tx.First(&org, "id = ?", invitation.OrganizationID); res.Error != nil {
-			return errOrgNotFound
+		userOrganization := models.UserOrganization{
+			UserID:         user.ID,
+			OrganizationID: invitation.OrganizationID,
+			Roles:          invitation.Roles,
 		}
-		user.Organizations = append(user.Organizations, &org)
-		if res := tx.Save(&user); res.Error != nil {
+		if res := tx.Create(&userOrganization); res.Error != nil {
 			return res.Error
 		}
 		if res := tx.Delete(&invitation); res.Error != nil {

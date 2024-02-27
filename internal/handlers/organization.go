@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/database"
@@ -12,6 +13,9 @@ import (
 	"net/http"
 	"time"
 )
+
+var OwnerRoles = []string{"owner"}
+var MemberRoles = []string{"owner", "member"}
 
 type errDuplicateOrganization struct {
 	ID string
@@ -68,7 +72,6 @@ func (api *API) CreateOrganization(c *gin.Context) {
 
 		org = models.Organization{
 			Name:        request.Name,
-			OwnerID:     userId,
 			Description: request.Description,
 		}
 
@@ -77,6 +80,18 @@ func (api *API) CreateOrganization(c *gin.Context) {
 				return errDuplicateOrganization{ID: org.ID.String()}
 			}
 			api.logger.Error("Failed to create organization: ", res.Error)
+			return res.Error
+		}
+
+		if res := tx.Create(&models.UserOrganization{
+			UserID:         userId,
+			OrganizationID: org.ID,
+			Roles:          []string{"owner"},
+		}); res.Error != nil {
+			if database.IsDuplicateError(res.Error) {
+				return errDuplicateOrganization{ID: org.ID.String()}
+			}
+			api.logger.Error("Failed to create organization owner: ", res.Error)
 			return res.Error
 		}
 
@@ -101,20 +116,20 @@ func (api *API) CreateOrganization(c *gin.Context) {
 }
 
 func (api *API) OrganizationIsReadableByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("owner_id = ? OR id in (SELECT organization_id FROM user_organizations where user_id=?)", userId, userId)
-	} else {
-		return db.Where("owner_id = ? OR id::text in (SELECT organization_id::text FROM user_organizations where user_id=?)", userId, userId)
-	}
+	return api.CurrentUserHasRole(c, db, "id", MemberRoles)
 }
 
 func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	return api.CurrentUserHasRole(c, db, "id", OwnerRoles)
+}
+
+func (api *API) CurrentUserHasRole(c *gin.Context, db *gorm.DB, orgIdField string, allowedRoles []string) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-	// this could potentially be driven by rego output
-	return db.Where("owner_id = ?", userId)
+	if api.dialect == database.DialectSqlLite {
+		return db.Where(fmt.Sprintf("%s in (SELECT DISTINCT organization_id FROM user_organizations, json_each(roles) AS role where user_id=? AND role.value IN (?))", orgIdField), userId, allowedRoles)
+	} else {
+		return db.Where(fmt.Sprintf("%s in (SELECT DISTINCT organization_id FROM user_organizations where user_id=? AND (roles && ?))", orgIdField), userId, models.StringArray(allowedRoles))
+	}
 }
 
 // ListOrganizations lists all Organizations
@@ -132,11 +147,52 @@ func (api *API) OrganizationIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *g
 func (api *API) ListOrganizations(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListOrganizations")
 	defer span.End()
-	var orgs []models.Organization
 
+	var query Query
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewApiError(err))
+		return
+	}
+
+	var orgs []models.Organization
 	db := api.db.WithContext(ctx)
 	db = api.OrganizationIsReadableByCurrentUser(c, db)
-	db = FilterAndPaginate(db, &models.Organization{}, c, "name")
+
+	// handle the special case of a roles filter (since the Organization does not have a roles field)
+	if query.Filter != "" {
+		filter, err := query.GetFilter()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, models.NewApiError(err))
+			return
+		}
+
+		if value, found := filter["roles"]; found {
+			if rolesI, ok := value.([]interface{}); ok {
+				roles := []string{}
+				// convert rolesI to roles
+				for _, roleI := range rolesI {
+					if role, ok := roleI.(string); ok {
+						roles = append(roles, role)
+					} else {
+						c.JSON(http.StatusBadRequest, models.NewBadQueryParameterError("filter.role must be an array of strings"))
+						return
+					}
+				}
+				db = api.CurrentUserHasRole(c, db, "id", roles)
+			} else {
+				c.JSON(http.StatusBadRequest, models.NewBadQueryParameterError("filter.role must be an array of strings"))
+				return
+			}
+			delete(filter, "roles")
+			err := query.SetFilter(filter)
+			if err != nil {
+				api.SendInternalServerError(c, err)
+				return
+			}
+		}
+	}
+
+	db = FilterAndPaginateWithQuery(db, &models.Organization{}, c, query, "name")
 	result := db.Find(&orgs)
 
 	if result.Error != nil {
@@ -229,7 +285,7 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 	var org models.Organization
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
-		result := api.OrganizationIsReadableByCurrentUser(c, tx).
+		result := api.OrganizationIsOwnedByCurrentUser(c, tx).
 			First(&org, "id = ?", orgID)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -239,8 +295,13 @@ func (api *API) DeleteOrganization(c *gin.Context) {
 			}
 		}
 
-		if org.ID == org.OwnerID {
+		user := models.User{}
+		result = tx.Unscoped().First(&user, "id = ?", orgID)
+		if result.Error == nil {
+			// found a user with the same id, it's a user's default org...
 			return NewApiResponseError(http.StatusBadRequest, models.NewNotAllowedError("default organization cannot be deleted"))
+		} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return result.Error
 		}
 
 		return deleteOrganization(tx, orgID)

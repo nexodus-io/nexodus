@@ -133,6 +133,9 @@
                 },
                 "field": {
                     "type": "string"
+                },
+                "reason": {
+                    "type": "string"
                 }
             }
         }

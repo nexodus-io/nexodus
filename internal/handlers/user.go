@@ -16,7 +16,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // key for username in gin.Context
@@ -69,8 +68,6 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 		}
 		fullName = strings.Join(names, " ")
 	}
-
-	fmt.Println("claims", claims)
 
 	// Retry the operation if we get a duplicate key error which can occur on concurrent requests when creating a user
 	err := util.RetryOperationForErrors(ctx, time.Millisecond*10, 1, []error{gorm.ErrDuplicatedKey}, func() error {
@@ -181,18 +178,21 @@ func (api *API) CreateUserIfNotExists(ctx context.Context, idpId string, userNam
 				Base: models.Base{
 					ID: user.ID,
 				},
-				OwnerID:     user.ID,
 				Name:        userName,
 				Description: fmt.Sprintf("%s's organization", userName),
-				Users: []*models.User{{
-					Base: models.Base{
-						ID: user.ID,
-					},
-				}},
 			}); res.Error != nil {
 				if database.IsDuplicateError(res.Error) {
 					res.Error = gorm.ErrDuplicatedKey
 				}
+				return res.Error
+			}
+
+			// Makes the user the owner of the organization
+			if res := tx.Create(&models.UserOrganization{
+				UserID:         user.ID,
+				OrganizationID: user.ID,
+				Roles:          []string{"owner"},
+			}); res.Error != nil {
 				return res.Error
 			}
 
@@ -351,17 +351,48 @@ func (api *API) DeleteUser(c *gin.Context) {
 			return result.Error
 		}
 
-		// We need to delete all the organizations that the user owns
-		orgs := []models.Organization{}
-		if res := tx.Where("owner_id = ?", userId).
-			Find(&orgs); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		// find the organizations the user is an owner of
+		ownerRole := []string{"owner"}
+		res := tx
+		if api.dialect == database.DialectSqlLite {
+			res = tx.Where("user_id = ? AND EXISTS (SELECT * FROM json_each(roles) AS role WHERE role.value IN ?)", userId, ownerRole)
+		} else {
+			res = tx.Where("user_id = ? AND (roles && ?)", userId, models.StringArray(ownerRole))
+		}
+
+		userOrgs := []models.UserOrganization{}
+		if res = res.Find(&userOrgs); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return result.Error
 		}
 
-		for _, org := range orgs {
-			err := deleteOrganization(tx, org.ID)
-			if err != nil {
-				return err
+		for _, org := range userOrgs {
+
+			// check if the user is the only owner of the organization
+			res := tx.Model(&models.UserOrganization{})
+			if api.dialect == database.DialectSqlLite {
+				where := "organization_id = ? AND EXISTS (SELECT * FROM json_each(roles) AS role WHERE role.value IN ?)"
+				res = res.Where(where, org.OrganizationID, ownerRole)
+			} else {
+				where := "organization_id = ? AND (roles && ?)"
+				res = res.Where(where, org.OrganizationID, models.StringArray(ownerRole))
+			}
+			var count int64
+			if res = res.Count(&count); res.Error != nil {
+				return result.Error
+			}
+
+			// if the user is the only owner, delete the organization
+			if count <= 1 {
+				err := deleteOrganization(tx, org.OrganizationID)
+				if err != nil {
+					return err
+				}
+			} else {
+				// remove the user from the organization
+				if res := tx.Where("user_id = ?", userId).
+					Delete(&models.UserOrganization{}); res.Error != nil {
+					return result.Error
+				}
 			}
 		}
 
@@ -404,11 +435,6 @@ func (api *API) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-type UserOrganization struct {
-	UserID         string    `json:"user_id"`
-	OrganizationID uuid.UUID `json:"organization_id"`
-}
-
 // DeleteUserFromOrganization removes a user from an organization
 // @Summary      Remove a User from an Organization
 // @Description  Deletes an existing organization associated to a user
@@ -449,10 +475,9 @@ func (api *API) DeleteUserFromOrganization(c *gin.Context) {
 			return errOrgNotFound
 		}
 		if res := api.db.
-			Select(clause.Associations).
 			Where("user_id = ?", userID).
 			Where("organization_id = ?", orgID).
-			Delete(&UserOrganization{}); res.Error != nil {
+			Delete(&models.UserOrganization{}); res.Error != nil {
 			api.SendInternalServerError(c, fmt.Errorf("failed to remove the association from the user_organizations table: %w", res.Error))
 		}
 		return nil

@@ -42,8 +42,7 @@ Feature: Organization API
         {
           "description": "${oscar_username}'s organization",
           "id": "${oscar_organization_id}",
-          "name": "${oscar_username}",
-          "owner_id": "${oscar_user_id}"
+          "name": "${oscar_username}"
         }
       ]
       """

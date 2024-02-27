@@ -131,6 +131,7 @@ USAGE:
    nexctl organization [command [command options]] [arguments...]
 
 COMMANDS:
+   user     Commands relating to organization users
    list     List organizations
    create   Create a organizations
    delete   Delete a organization

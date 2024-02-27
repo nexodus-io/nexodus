@@ -23,7 +23,8 @@ func NewBaseError(error string) BaseError {
 // ValidationError is returned in the body of an HTTP 400
 type ValidationError struct {
 	BaseError
-	Field string `json:"field,omitempty"`
+	Field  string `json:"field,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 type InternalServerError struct {
@@ -42,6 +43,24 @@ func NewBadPayloadError(err error) ValidationError {
 func NewBadPathParameterError(param string) ValidationError {
 	return ValidationError{
 		Field: param,
+		BaseError: BaseError{
+			Error: "path parameter invalid",
+		},
+	}
+}
+
+func NewBadQueryParameterError(param string) ValidationError {
+	return ValidationError{
+		Field: param,
+		BaseError: BaseError{
+			Error: "query parameter invalid",
+		},
+	}
+}
+func NewBadPathParameterErrorAndReason(param string, reason string) ValidationError {
+	return ValidationError{
+		Field:  param,
+		Reason: reason,
 		BaseError: BaseError{
 			Error: "path parameter invalid",
 		},

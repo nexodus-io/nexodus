@@ -1172,6 +1172,186 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/organizations/{id}/users": {
+            "get": {
+                "description": "Lists all the users of an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "List Organization Users",
+                "operationId": "ListOrganizationUsers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.UserOrganization"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/{id}/users/{uid}": {
+            "get": {
+                "description": "Gets a Organization User by Organization ID and User ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Get Organization User",
+                "operationId": "GetOrganizationUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserOrganization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing organization user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Delete a Organization User",
+                "operationId": "DeleteOrganizationUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserOrganization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/reg-keys": {
             "get": {
                 "description": "Lists all reg keys",
@@ -3209,6 +3389,12 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "string"
                 },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "user_id": {
                     "description": "The user id to invite (one of email or user_id is required)",
                     "type": "string"
@@ -3546,6 +3732,12 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "string"
                 },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "user_id": {
                     "type": "string"
                 }
@@ -3630,10 +3822,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "zone-red"
-                },
-                "owner_id": {
-                    "type": "string",
-                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 }
             }
         },
@@ -3942,6 +4130,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UserOrganization": {
+            "type": "object",
+            "properties": {
+                "organization_id": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/models.User"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.VPC": {
             "type": "object",
             "properties": {
@@ -3983,6 +4191,9 @@ const docTemplate = `{
                     "example": "something bad"
                 },
                 "field": {
+                    "type": "string"
+                },
+                "reason": {
                     "type": "string"
                 }
             }

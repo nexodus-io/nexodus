@@ -1,11 +1,14 @@
 package models
 
 import (
+	"github.com/nexodus-io/nexodus/internal/database/datatype"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+type StringArray = datatype.StringArray
 
 // Base contains common columns for all tables.
 type Base struct {

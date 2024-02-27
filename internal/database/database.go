@@ -14,6 +14,7 @@ import (
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231130_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231206_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231211_0000"
+	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240221_0000"
 	"sort"
 
 	"github.com/cenkalti/backoff/v4"

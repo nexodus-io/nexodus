@@ -66,13 +66,10 @@ func (pgsb *PgSignalBus) Start(ctx context.Context, wg *sync.WaitGroup) {
 			if err != nil {
 				pgsb.logger.Info("pq listener error", err.Error())
 			}
-
-			fmt.Println(ev)
 			switch ev {
 			case pq.ListenerEventReconnected:
 				pgsb.signalBus.NotifyAll()
 			}
-
 		})
 		defer listener.Close() // clean up connections on return..
 
