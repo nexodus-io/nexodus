@@ -6,6 +6,7 @@ import OrganizationIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
+import HubIcon from '@mui/icons-material/Hub';
 import { useFlags } from "../common/FlagsContext";
 
 export const CustomMenu = (props: MenuProps) => {
@@ -29,8 +30,8 @@ return (
     )}
     <MenuItemLink
       to="/graph"
-      primaryText="Graph"
-      leftIcon={<DeviceIcon />}
+      primaryText="Network"
+      leftIcon={<HubIcon />}
     />
     {flags["sites"] && (
       <MenuItemLink to="/sites" primaryText="Sites" leftIcon={<SiteIcon />} />
