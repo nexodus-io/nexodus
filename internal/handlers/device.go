@@ -508,18 +508,18 @@ func (api *API) CreateDevice(c *gin.Context) {
 			}
 
 			// is the user token restricted to operating on a single device?
-			if tokenClaims.DeviceID != uuid.Nil {
-				err = tx.Where("id = ?", tokenClaims.DeviceID).First(&device).Error
+			if tokenClaims.AgentID != nil {
+				err = tx.Where("id = ?", tokenClaims.AgentID).First(&device).Error
 				if err == nil {
 					// If we get here the device exists but has a different public key, so assume
 					// the reg toke has been previously used.
 					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegKeyExhausted))
 				}
 
-				deviceId = tokenClaims.DeviceID
+				deviceId = *tokenClaims.AgentID
 			}
 
-			if tokenClaims.VpcID != request.VpcID {
+			if tokenClaims.VpcID == nil || *tokenClaims.VpcID != request.VpcID {
 				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("vpc_id", "does not match the reg key vpc_id"))
 			}
 		}

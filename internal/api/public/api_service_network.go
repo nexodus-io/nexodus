@@ -19,35 +19,35 @@ import (
 	"strings"
 )
 
-// VPCApiService VPCApi service
-type VPCApiService service
+// ServiceNetworkApiService ServiceNetworkApi service
+type ServiceNetworkApiService service
 
-type ApiCreateVPCRequest struct {
-	ctx        context.Context
-	ApiService *VPCApiService
-	vPC        *ModelsAddVPC
+type ApiCreateServiceNetworkRequest struct {
+	ctx            context.Context
+	ApiService     *ServiceNetworkApiService
+	serviceNetwork *ModelsAddServiceNetwork
 }
 
-// Add VPC
-func (r ApiCreateVPCRequest) VPC(vPC ModelsAddVPC) ApiCreateVPCRequest {
-	r.vPC = &vPC
+// Add ServiceNetwork
+func (r ApiCreateServiceNetworkRequest) ServiceNetwork(serviceNetwork ModelsAddServiceNetwork) ApiCreateServiceNetworkRequest {
+	r.serviceNetwork = &serviceNetwork
 	return r
 }
 
-func (r ApiCreateVPCRequest) Execute() (*ModelsVPC, *http.Response, error) {
-	return r.ApiService.CreateVPCExecute(r)
+func (r ApiCreateServiceNetworkRequest) Execute() (*ModelsServiceNetwork, *http.Response, error) {
+	return r.ApiService.CreateServiceNetworkExecute(r)
 }
 
 /*
-CreateVPC Create an VPC
+CreateServiceNetwork Create an ServiceNetwork
 
-Creates a named vpc with the given CIDR
+Creates a named serviceNetwork with the given CIDR
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateVPCRequest
+	@return ApiCreateServiceNetworkRequest
 */
-func (a *VPCApiService) CreateVPC(ctx context.Context) ApiCreateVPCRequest {
-	return ApiCreateVPCRequest{
+func (a *ServiceNetworkApiService) CreateServiceNetwork(ctx context.Context) ApiCreateServiceNetworkRequest {
+	return ApiCreateServiceNetworkRequest{
 		ApiService: a,
 		ctx:        ctx,
 	}
@@ -55,27 +55,27 @@ func (a *VPCApiService) CreateVPC(ctx context.Context) ApiCreateVPCRequest {
 
 // Execute executes the request
 //
-//	@return ModelsVPC
-func (a *VPCApiService) CreateVPCExecute(r ApiCreateVPCRequest) (*ModelsVPC, *http.Response, error) {
+//	@return ModelsServiceNetwork
+func (a *ServiceNetworkApiService) CreateServiceNetworkExecute(r ApiCreateServiceNetworkRequest) (*ModelsServiceNetwork, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodPost
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsVPC
+		localVarReturnValue *ModelsServiceNetwork
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.CreateVPC")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.CreateServiceNetwork")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs"
+	localVarPath := localBasePath + "/api/service-networks"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
-	if r.vPC == nil {
-		return localVarReturnValue, nil, reportError("vPC is required and must be specified")
+	if r.serviceNetwork == nil {
+		return localVarReturnValue, nil, reportError("serviceNetwork is required and must be specified")
 	}
 
 	// to determine the Content-Type header
@@ -96,7 +96,7 @@ func (a *VPCApiService) CreateVPCExecute(r ApiCreateVPCRequest) (*ModelsVPC, *ht
 		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
 	}
 	// body params
-	localVarPostBody = r.vPC
+	localVarPostBody = r.serviceNetwork
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
 		return localVarReturnValue, nil, err
@@ -199,27 +199,27 @@ func (a *VPCApiService) CreateVPCExecute(r ApiCreateVPCRequest) (*ModelsVPC, *ht
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiDeleteVPCRequest struct {
+type ApiDeleteServiceNetworkRequest struct {
 	ctx        context.Context
-	ApiService *VPCApiService
+	ApiService *ServiceNetworkApiService
 	id         string
 }
 
-func (r ApiDeleteVPCRequest) Execute() (*ModelsVPC, *http.Response, error) {
-	return r.ApiService.DeleteVPCExecute(r)
+func (r ApiDeleteServiceNetworkRequest) Execute() (*ModelsServiceNetwork, *http.Response, error) {
+	return r.ApiService.DeleteServiceNetworkExecute(r)
 }
 
 /*
-DeleteVPC Delete VPC
+DeleteServiceNetwork Delete ServiceNetwork
 
-Deletes an existing vpc and associated IPAM prefix
+Deletes an existing serviceNetwork
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiDeleteVPCRequest
+	@param id ServiceNetwork ID
+	@return ApiDeleteServiceNetworkRequest
 */
-func (a *VPCApiService) DeleteVPC(ctx context.Context, id string) ApiDeleteVPCRequest {
-	return ApiDeleteVPCRequest{
+func (a *ServiceNetworkApiService) DeleteServiceNetwork(ctx context.Context, id string) ApiDeleteServiceNetworkRequest {
+	return ApiDeleteServiceNetworkRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
@@ -228,21 +228,21 @@ func (a *VPCApiService) DeleteVPC(ctx context.Context, id string) ApiDeleteVPCRe
 
 // Execute executes the request
 //
-//	@return ModelsVPC
-func (a *VPCApiService) DeleteVPCExecute(r ApiDeleteVPCRequest) (*ModelsVPC, *http.Response, error) {
+//	@return ModelsServiceNetwork
+func (a *ServiceNetworkApiService) DeleteServiceNetworkExecute(r ApiDeleteServiceNetworkRequest) (*ModelsServiceNetwork, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodDelete
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsVPC
+		localVarReturnValue *ModelsServiceNetwork
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.DeleteVPC")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.DeleteServiceNetwork")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs/{id}"
+	localVarPath := localBasePath + "/api/service-networks/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -346,27 +346,27 @@ func (a *VPCApiService) DeleteVPCExecute(r ApiDeleteVPCRequest) (*ModelsVPC, *ht
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiGetVPCRequest struct {
+type ApiGetServiceNetworkRequest struct {
 	ctx        context.Context
-	ApiService *VPCApiService
+	ApiService *ServiceNetworkApiService
 	id         string
 }
 
-func (r ApiGetVPCRequest) Execute() (*ModelsVPC, *http.Response, error) {
-	return r.ApiService.GetVPCExecute(r)
+func (r ApiGetServiceNetworkRequest) Execute() (*ModelsServiceNetwork, *http.Response, error) {
+	return r.ApiService.GetServiceNetworkExecute(r)
 }
 
 /*
-GetVPC Get VPCs
+GetServiceNetwork Get ServiceNetworks
 
-Gets a VPC by VPC ID
+Gets a ServiceNetwork by ServiceNetwork ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiGetVPCRequest
+	@param id ServiceNetwork ID
+	@return ApiGetServiceNetworkRequest
 */
-func (a *VPCApiService) GetVPC(ctx context.Context, id string) ApiGetVPCRequest {
-	return ApiGetVPCRequest{
+func (a *ServiceNetworkApiService) GetServiceNetwork(ctx context.Context, id string) ApiGetServiceNetworkRequest {
+	return ApiGetServiceNetworkRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
@@ -375,21 +375,21 @@ func (a *VPCApiService) GetVPC(ctx context.Context, id string) ApiGetVPCRequest 
 
 // Execute executes the request
 //
-//	@return ModelsVPC
-func (a *VPCApiService) GetVPCExecute(r ApiGetVPCRequest) (*ModelsVPC, *http.Response, error) {
+//	@return ModelsServiceNetwork
+func (a *ServiceNetworkApiService) GetServiceNetworkExecute(r ApiGetServiceNetworkRequest) (*ModelsServiceNetwork, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsVPC
+		localVarReturnValue *ModelsServiceNetwork
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.GetVPC")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.GetServiceNetwork")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs/{id}"
+	localVarPath := localBasePath + "/api/service-networks/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -504,34 +504,166 @@ func (a *VPCApiService) GetVPCExecute(r ApiGetVPCRequest) (*ModelsVPC, *http.Res
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiListDevicesInVPCRequest struct {
+type ApiListServiceNetworksRequest struct {
 	ctx        context.Context
-	ApiService *VPCApiService
+	ApiService *ServiceNetworkApiService
+}
+
+func (r ApiListServiceNetworksRequest) Execute() ([]ModelsServiceNetwork, *http.Response, error) {
+	return r.ApiService.ListServiceNetworksExecute(r)
+}
+
+/*
+ListServiceNetworks List ServiceNetworks
+
+Lists all ServiceNetworks
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiListServiceNetworksRequest
+*/
+func (a *ServiceNetworkApiService) ListServiceNetworks(ctx context.Context) ApiListServiceNetworksRequest {
+	return ApiListServiceNetworksRequest{
+		ApiService: a,
+		ctx:        ctx,
+	}
+}
+
+// Execute executes the request
+//
+//	@return []ModelsServiceNetwork
+func (a *ServiceNetworkApiService) ListServiceNetworksExecute(r ApiListServiceNetworksRequest) ([]ModelsServiceNetwork, *http.Response, error) {
+	var (
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue []ModelsServiceNetwork
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.ListServiceNetworks")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/api/service-networks"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 401 {
+			var v ModelsBaseError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 429 {
+			var v ModelsBaseError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v ModelsInternalServerError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
+type ApiListSitesInServiceNetworkRequest struct {
+	ctx        context.Context
+	ApiService *ServiceNetworkApiService
 	id         string
 	gtRevision *int32
 }
 
 // greater than revision
-func (r ApiListDevicesInVPCRequest) GtRevision(gtRevision int32) ApiListDevicesInVPCRequest {
+func (r ApiListSitesInServiceNetworkRequest) GtRevision(gtRevision int32) ApiListSitesInServiceNetworkRequest {
 	r.gtRevision = &gtRevision
 	return r
 }
 
-func (r ApiListDevicesInVPCRequest) Execute() ([]ModelsDevice, *http.Response, error) {
-	return r.ApiService.ListDevicesInVPCExecute(r)
+func (r ApiListSitesInServiceNetworkRequest) Execute() ([]ModelsSite, *http.Response, error) {
+	return r.ApiService.ListSitesInServiceNetworkExecute(r)
 }
 
 /*
-ListDevicesInVPC List Devices
+ListSitesInServiceNetwork List Sites
 
-Lists all devices for this VPC
+Lists all sites for this ServiceNetwork
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiListDevicesInVPCRequest
+	@param id Service Network ID
+	@return ApiListSitesInServiceNetworkRequest
 */
-func (a *VPCApiService) ListDevicesInVPC(ctx context.Context, id string) ApiListDevicesInVPCRequest {
-	return ApiListDevicesInVPCRequest{
+func (a *ServiceNetworkApiService) ListSitesInServiceNetwork(ctx context.Context, id string) ApiListSitesInServiceNetworkRequest {
+	return ApiListSitesInServiceNetworkRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
@@ -540,21 +672,21 @@ func (a *VPCApiService) ListDevicesInVPC(ctx context.Context, id string) ApiList
 
 // Execute executes the request
 //
-//	@return []ModelsDevice
-func (a *VPCApiService) ListDevicesInVPCExecute(r ApiListDevicesInVPCRequest) ([]ModelsDevice, *http.Response, error) {
+//	@return []ModelsSite
+func (a *ServiceNetworkApiService) ListSitesInServiceNetworkExecute(r ApiListSitesInServiceNetworkRequest) ([]ModelsSite, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue []ModelsDevice
+		localVarReturnValue []ModelsSite
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.ListDevicesInVPC")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.ListSitesInServiceNetwork")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs/{id}/devices"
+	localVarPath := localBasePath + "/api/ServiceNetworks/{id}/sites"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -661,440 +793,34 @@ func (a *VPCApiService) ListDevicesInVPCExecute(r ApiListDevicesInVPCRequest) ([
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiListMetadataInVPCRequest struct {
+type ApiUpdateServiceNetworkRequest struct {
 	ctx        context.Context
-	ApiService *VPCApiService
+	ApiService *ServiceNetworkApiService
 	id         string
-	prefix     []string
-	gtRevision *int32
+	update     *ModelsUpdateServiceNetwork
 }
 
-// greater than revision
-func (r ApiListMetadataInVPCRequest) GtRevision(gtRevision int32) ApiListMetadataInVPCRequest {
-	r.gtRevision = &gtRevision
-	return r
-}
-
-func (r ApiListMetadataInVPCRequest) Execute() ([]ModelsDeviceMetadata, *http.Response, error) {
-	return r.ApiService.ListMetadataInVPCExecute(r)
-}
-
-/*
-ListMetadataInVPC List Device Metadata
-
-Lists metadata for a device
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@param prefix used to filter down to the specified key prefixes
-	@return ApiListMetadataInVPCRequest
-*/
-func (a *VPCApiService) ListMetadataInVPC(ctx context.Context, id string, prefix []string) ApiListMetadataInVPCRequest {
-	return ApiListMetadataInVPCRequest{
-		ApiService: a,
-		ctx:        ctx,
-		id:         id,
-		prefix:     prefix,
-	}
-}
-
-// Execute executes the request
-//
-//	@return []ModelsDeviceMetadata
-func (a *VPCApiService) ListMetadataInVPCExecute(r ApiListMetadataInVPCRequest) ([]ModelsDeviceMetadata, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ModelsDeviceMetadata
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.ListMetadataInVPC")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/vpcs/{id}/metadata"
-	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"prefix"+"}", url.PathEscape(parameterValueToString(r.prefix, "prefix")), -1)
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	if r.gtRevision != nil {
-		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
-	}
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiListSecurityGroupsInVPCRequest struct {
-	ctx        context.Context
-	ApiService *VPCApiService
-	id         string
-	gtRevision *int32
-}
-
-// greater than revision
-func (r ApiListSecurityGroupsInVPCRequest) GtRevision(gtRevision int32) ApiListSecurityGroupsInVPCRequest {
-	r.gtRevision = &gtRevision
-	return r
-}
-
-func (r ApiListSecurityGroupsInVPCRequest) Execute() ([]ModelsSecurityGroup, *http.Response, error) {
-	return r.ApiService.ListSecurityGroupsInVPCExecute(r)
-}
-
-/*
-ListSecurityGroupsInVPC List Security Groups in a VPC
-
-Lists all Security Groups in a VPC
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiListSecurityGroupsInVPCRequest
-*/
-func (a *VPCApiService) ListSecurityGroupsInVPC(ctx context.Context, id string) ApiListSecurityGroupsInVPCRequest {
-	return ApiListSecurityGroupsInVPCRequest{
-		ApiService: a,
-		ctx:        ctx,
-		id:         id,
-	}
-}
-
-// Execute executes the request
-//
-//	@return []ModelsSecurityGroup
-func (a *VPCApiService) ListSecurityGroupsInVPCExecute(r ApiListSecurityGroupsInVPCRequest) ([]ModelsSecurityGroup, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ModelsSecurityGroup
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.ListSecurityGroupsInVPC")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/vpcs/{id}/security-groups"
-	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	if r.gtRevision != nil {
-		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
-	}
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
-		}
-		if localVarHTTPResponse.StatusCode == 401 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 429 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiListVPCsRequest struct {
-	ctx        context.Context
-	ApiService *VPCApiService
-}
-
-func (r ApiListVPCsRequest) Execute() ([]ModelsVPC, *http.Response, error) {
-	return r.ApiService.ListVPCsExecute(r)
-}
-
-/*
-ListVPCs List VPCs
-
-Lists all VPCs
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiListVPCsRequest
-*/
-func (a *VPCApiService) ListVPCs(ctx context.Context) ApiListVPCsRequest {
-	return ApiListVPCsRequest{
-		ApiService: a,
-		ctx:        ctx,
-	}
-}
-
-// Execute executes the request
-//
-//	@return []ModelsVPC
-func (a *VPCApiService) ListVPCsExecute(r ApiListVPCsRequest) ([]ModelsVPC, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ModelsVPC
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.ListVPCs")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/vpcs"
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
-		}
-		if localVarHTTPResponse.StatusCode == 401 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 429 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiUpdateVPCRequest struct {
-	ctx        context.Context
-	ApiService *VPCApiService
-	id         string
-	update     *ModelsUpdateVPC
-}
-
-// VPC Update
-func (r ApiUpdateVPCRequest) Update(update ModelsUpdateVPC) ApiUpdateVPCRequest {
+// ServiceNetwork Update
+func (r ApiUpdateServiceNetworkRequest) Update(update ModelsUpdateServiceNetwork) ApiUpdateServiceNetworkRequest {
 	r.update = &update
 	return r
 }
 
-func (r ApiUpdateVPCRequest) Execute() (*ModelsVPC, *http.Response, error) {
-	return r.ApiService.UpdateVPCExecute(r)
+func (r ApiUpdateServiceNetworkRequest) Execute() (*ModelsServiceNetwork, *http.Response, error) {
+	return r.ApiService.UpdateServiceNetworkExecute(r)
 }
 
 /*
-UpdateVPC Update VPCs
+UpdateServiceNetwork Update ServiceNetworks
 
-Updates a vpc by ID
+Updates a serviceNetwork by ID
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiUpdateVPCRequest
+	@param id ServiceNetwork ID
+	@return ApiUpdateServiceNetworkRequest
 */
-func (a *VPCApiService) UpdateVPC(ctx context.Context, id string) ApiUpdateVPCRequest {
-	return ApiUpdateVPCRequest{
+func (a *ServiceNetworkApiService) UpdateServiceNetwork(ctx context.Context, id string) ApiUpdateServiceNetworkRequest {
+	return ApiUpdateServiceNetworkRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
@@ -1103,21 +829,21 @@ func (a *VPCApiService) UpdateVPC(ctx context.Context, id string) ApiUpdateVPCRe
 
 // Execute executes the request
 //
-//	@return ModelsVPC
-func (a *VPCApiService) UpdateVPCExecute(r ApiUpdateVPCRequest) (*ModelsVPC, *http.Response, error) {
+//	@return ModelsServiceNetwork
+func (a *ServiceNetworkApiService) UpdateServiceNetworkExecute(r ApiUpdateServiceNetworkRequest) (*ModelsServiceNetwork, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodPatch
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsVPC
+		localVarReturnValue *ModelsServiceNetwork
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.UpdateVPC")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceNetworkApiService.UpdateServiceNetwork")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/vpcs/{id}"
+	localVarPath := localBasePath + "/api/service-networks/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1191,175 +917,6 @@ func (a *VPCApiService) UpdateVPCExecute(r ApiUpdateVPCRequest) (*ModelsVPC, *ht
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode == 404 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 429 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 500 {
-			var v ModelsInternalServerError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-	if err != nil {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: err.Error(),
-		}
-		return localVarReturnValue, localVarHTTPResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHTTPResponse, nil
-}
-
-type ApiWatchEventsRequest struct {
-	ctx        context.Context
-	ApiService *VPCApiService
-	id         string
-	watches    *[]ModelsWatch
-	publicKey  *string
-}
-
-// List of events to watch
-func (r ApiWatchEventsRequest) Watches(watches []ModelsWatch) ApiWatchEventsRequest {
-	r.watches = &watches
-	return r
-}
-
-// connect as the device with the given public key, device will be considered to be online for the duration of this request
-func (r ApiWatchEventsRequest) PublicKey(publicKey string) ApiWatchEventsRequest {
-	r.publicKey = &publicKey
-	return r
-}
-
-func (r ApiWatchEventsRequest) Execute() (*ModelsWatchEvent, *http.Response, error) {
-	return r.ApiService.WatchEventsExecute(r)
-}
-
-/*
-WatchEvents Watch events occurring in the vpc
-
-Watches events occurring in the vpc
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id VPC ID
-	@return ApiWatchEventsRequest
-*/
-func (a *VPCApiService) WatchEvents(ctx context.Context, id string) ApiWatchEventsRequest {
-	return ApiWatchEventsRequest{
-		ApiService: a,
-		ctx:        ctx,
-		id:         id,
-	}
-}
-
-// Execute executes the request
-//
-//	@return ModelsWatchEvent
-func (a *VPCApiService) WatchEventsExecute(r ApiWatchEventsRequest) (*ModelsWatchEvent, *http.Response, error) {
-	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ModelsWatchEvent
-	)
-
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VPCApiService.WatchEvents")
-	if err != nil {
-		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
-	}
-
-	localVarPath := localBasePath + "/api/vpc/{id}/events"
-	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-	if r.watches == nil {
-		return localVarReturnValue, nil, reportError("watches is required and must be specified")
-	}
-
-	if r.publicKey != nil {
-		parameterAddToHeaderOrQuery(localVarQueryParams, "public_key", r.publicKey, "")
-	}
-	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{"application/json"}
-
-	// set Content-Type header
-	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
-	if localVarHTTPContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
-	}
-
-	// to determine the Accept header
-	localVarHTTPHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
-	if localVarHTTPHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
-	}
-	// body params
-	localVarPostBody = r.watches
-	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHTTPResponse, err := a.client.callAPI(req)
-	if err != nil || localVarHTTPResponse == nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
-	localVarHTTPResponse.Body.Close()
-	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
-	if err != nil {
-		return localVarReturnValue, localVarHTTPResponse, err
-	}
-
-	if localVarHTTPResponse.StatusCode >= 300 {
-		newErr := &GenericOpenAPIError{
-			body:  localVarBody,
-			error: localVarHTTPResponse.Status,
-		}
-		if localVarHTTPResponse.StatusCode == 400 {
-			var v ModelsBaseError
-			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHTTPResponse, newErr
-			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
-			return localVarReturnValue, localVarHTTPResponse, newErr
-		}
-		if localVarHTTPResponse.StatusCode == 401 {
 			var v ModelsBaseError
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {

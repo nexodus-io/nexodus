@@ -26,6 +26,7 @@ import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTheme } from "@mui/material/styles";
 import { Tooltip, Accordion, AccordionDetails } from "@mui/material";
+import { ConditionalOnlineSinceField, StatusBooleanField } from "./Devices";
 
 interface SiteAccordionDetailsProps {
   id: string | number;
@@ -48,9 +49,9 @@ export const SiteList = () => (
       <TextField label="Name" source="name" />
       <TextField label="Platform" source="platform" />
       <ReferenceField
-        label="VPC"
-        source="vpc_id"
-        reference="vpcs"
+        label="Service Network"
+        source="service_network_id"
+        reference="service-networks"
         link="show"
       />
       <ReferenceField
@@ -59,6 +60,7 @@ export const SiteList = () => (
         reference="users"
         link="show"
       />
+      <StatusBooleanField label="Online Status" />
     </Datagrid>
   </List>
 );
@@ -104,17 +106,19 @@ const SiteShowLayout: FC = () => {
       <TextField label="OS" source="os" />
       <TextField label="Public Key" source="public_key" />
       <ReferenceField
-        label="VPC"
-        source="vpc_id"
-        reference="vpcs"
+        label="Service Network"
+        source="service_network_id"
+        reference="service-networks"
         link="show"
       />
-      <ReferenceField
-        label="Owner"
-        source="owner_id"
-        reference="users"
-        link="show"
-      />
+      {/*<ReferenceField*/}
+      {/*  label="Owner"*/}
+      {/*  source="owner_id"*/}
+      {/*  reference="users"*/}
+      {/*  link="show"*/}
+      {/*/>*/}
+      <StatusBooleanField label="Online Status" />
+      <ConditionalOnlineSinceField />
     </SimpleShowLayout>
   );
 };

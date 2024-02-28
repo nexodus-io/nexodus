@@ -7,7 +7,7 @@ import (
 // Informer creates a *ApiListSitesInOrganizationInformer which provides a simpler
 // API to list sites but which is implemented with the Watch api.  The *ApiListSitesInOrganizationInformer
 // maintains a local site cache which gets updated with the Watch events.
-func (r ApiListSitesInVPCRequest) Informer() *Informer[ModelsSite] {
+func (r ApiListSitesInServiceNetworkRequest) Informer() *Informer[ModelsSite] {
 	informer := NewInformer[ModelsSite](&SiteAdaptor{}, r.gtRevision, ApiWatchEventsRequest{
 		ctx:        r.ctx,
 		ApiService: r.ApiService.client.VPCApi,

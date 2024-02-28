@@ -36,16 +36,17 @@ USAGE:
    nexctl [global options] [command [command options]] [arguments...]
 
 COMMANDS:
-   device          Commands relating to devices
-   invitation      commands relating to invitations
-   nexd            Commands for interacting with the local instance of nexd
-   organization    Commands relating to organizations
-   reg-key         Commands relating to registration keys
-   security-group  commands relating to security groups
-   user            Commands relating to users
-   version         Get the version of nexctl
-   vpc             Commands relating to vpcs
-   help, h         Shows a list of commands or help for one command
+   device           Commands relating to devices
+   invitation       commands relating to invitations
+   nexd             Commands for interacting with the local instance of nexd
+   organization     Commands relating to organizations
+   reg-key          Commands relating to registration keys
+   security-group   commands relating to security groups
+   service-network  Commands relating to service networks
+   user             Commands relating to users
+   version          Get the version of nexctl
+   vpc              Commands relating to vpcs
+   help, h          Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --debug                     Enable debug logging (default: false) [$NEXCTL_DEBUG]

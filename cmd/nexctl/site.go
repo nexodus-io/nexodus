@@ -19,13 +19,13 @@ func createSiteCommand() *cli.Command {
 				Usage: "List all sites",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "vpc-id",
+						Name:     "service-network-id",
 						Value:    "",
 						Required: false,
 					},
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
-					orgID := command.String("vpc-id")
+					orgID := command.String("service-network-id")
 					if orgID != "" {
 						id, err := uuid.Parse(orgID)
 						if err != nil {
@@ -79,7 +79,7 @@ func siteTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SITE ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
-	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
+	fields = append(fields, TableField{Header: "SERVICE NETWORK ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 	fields = append(fields, TableField{Header: "OS", Field: "Os"})
 	return fields
@@ -92,9 +92,9 @@ func listAllSites(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func listVpcSites(ctx context.Context, command *cli.Command, vpcId uuid.UUID) error {
+func listVpcSites(ctx context.Context, command *cli.Command, serviceNetworkId uuid.UUID) error {
 	c := createClient(ctx, command)
-	sites := apiResponse(c.VPCApi.ListSitesInVPC(context.Background(), vpcId.String()).Execute())
+	sites := apiResponse(c.ServiceNetworkApi.ListSitesInServiceNetwork(context.Background(), serviceNetworkId.String()).Execute())
 	show(command, siteTableFields(command), sites)
 	return nil
 }

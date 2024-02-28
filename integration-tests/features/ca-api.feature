@@ -20,6 +20,26 @@ Feature: CA API
       }
       """
 
+    # Lets create a Service Network
+    When I POST path "/api/service-networks" with json body:
+      """
+      {
+        "organization_id": "${user_id}",
+        "description": "my service network"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ${response} as ${service_network}
+    And the response should match json:
+      """
+      {
+        "description": "my service network",
+        "id": "${service_network.id}",
+        "organization_id": "${user_id}",
+        "revision": ${service_network.revision}
+      }
+      """
+
     # Bob asks for his cert to be signed.
     Given I generate a new CSR and key as ${csr_pem}/${cert_key} using:
         """
@@ -43,14 +63,13 @@ Feature: CA API
       {"error":"a device token is required"}
       """
 
-
     # Create a site...
     Given I generate a new key pair as ${private_key}/${public_key}
     When I POST path "/api/sites" with json body:
       """
       {
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "platform": "kubernetes"
@@ -66,11 +85,13 @@ Feature: CA API
         "hostname": "",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "link_secret": "",
         "bearer_token": "${response.bearer_token}",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }
       """
@@ -96,7 +117,7 @@ Feature: CA API
     Then "${cert.Subject.CommonName}" should match "test"
 
     # the CA will set the URIs of cert to identify which site created the cert
-    Then "${cert.URIs.0 | string}" should match "spiffe://api.try.nexodus.127.0.0.1.nip.io/o/${user_id}/v/${user_id}/s/${site_id}"
+    Then "${cert.URIs.0 | string}" should match "spiffe://api.try.nexodus.127.0.0.1.nip.io/o/${user_id}/n/${service_network.id}/s/${site_id}"
 
-    # the CA cert is per VPC..
-    Then "${ca.URIs.0 | string}" should match "spiffe://api.try.nexodus.127.0.0.1.nip.io/o/${user_id}/v/${user_id}"
+    # the CA cert is per Service Network..
+    Then "${ca.URIs.0 | string}" should match "spiffe://api.try.nexodus.127.0.0.1.nip.io/o/${user_id}/n/${service_network.id}"

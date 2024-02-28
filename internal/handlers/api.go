@@ -50,7 +50,7 @@ type API struct {
 	Redis          *redis.Client
 	sessionManager *session.Manager
 	fetchManager   fetchmgr.FetchManager
-	onlineTracker  *DeviceTracker
+	onlineTracker  *AgentTracker
 	URL            string
 	URLParsed      *url.URL
 	PrivateKey     *rsa.PrivateKey
@@ -155,14 +155,22 @@ func (api *API) sendList(c *gin.Context, ctx context.Context, getList func(db *g
 }
 
 func (api *API) SendInternalServerError(c *gin.Context, err error) {
-	SendInternalServerError(c, api.logger, err)
+	c.JSON(http.StatusInternalServerError, api.NewInternalServerError(c, err))
 }
 
 func SendInternalServerError(c *gin.Context, logger *zap.SugaredLogger, err error) {
+	c.JSON(http.StatusInternalServerError, NewInternalServerError(c, logger, err))
+}
+
+func (api *API) NewInternalServerError(c *gin.Context, err error) *models.InternalServerError {
+	return NewInternalServerError(c, api.logger, err)
+}
+
+func NewInternalServerError(c *gin.Context, logger *zap.SugaredLogger, err error) *models.InternalServerError {
 	ctx := c.Request.Context()
 	util.WithTrace(ctx, logger).Errorw("internal server error", "error", err)
 
-	result := models.InternalServerError{
+	result := &models.InternalServerError{
 		BaseError: models.BaseError{
 			Error: "internal server error",
 		},
@@ -171,7 +179,7 @@ func SendInternalServerError(c *gin.Context, logger *zap.SugaredLogger, err erro
 	if sc.HasTraceID() {
 		result.TraceId = sc.TraceID().String()
 	}
-	c.JSON(http.StatusInternalServerError, result)
+	return result
 }
 func (api *API) GetCurrentUserID(c *gin.Context) uuid.UUID {
 	userId, found := c.Get(gin.AuthUserKey)
