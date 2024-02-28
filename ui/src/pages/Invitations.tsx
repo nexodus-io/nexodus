@@ -1,11 +1,18 @@
 import React, { Fragment, FunctionComponent, useCallback } from "react";
 import {
+  AutocompleteInput,
   BulkDeleteButton,
   BulkExportButton,
   Button,
+  CheckboxGroupInput,
+  ChipField,
   Create,
   Datagrid,
+  DateTimeInput,
+  Identifier,
   List,
+  NotificationType,
+  RaRecord,
   ReferenceInput,
   required,
   Show,
@@ -15,20 +22,10 @@ import {
   TextInput,
   useGetIdentity,
   useNotify,
-  useRefresh,
   useRecordContext,
-  NotificationType,
   UseRecordContextParams,
-  RaRecord,
-  Identifier,
-  DateTimeInput,
-  AutocompleteInput,
-  CheckboxGroupInput,
-  ArrayField,
-  SingleFieldList,
-  ChipField,
-  WrapperField,
 } from "react-admin";
+import { useNavigate } from "react-router-dom";
 
 import { backend, fetchJson as apiFetchJson } from "../common/Api";
 import { StringListField } from "../components/StringListField";
@@ -55,7 +52,7 @@ const InvitationListBulkActions = () => (
 const AcceptInvitationButton: FunctionComponent = () => {
   const record = useRecordContext<{ id?: number }>();
   const notify = useNotify();
-  const refresh = useRefresh();
+  const navigate = useNavigate();
 
   const handleAccept = useCallback(async () => {
     if (!record || !record.id) {
@@ -75,7 +72,7 @@ const AcceptInvitationButton: FunctionComponent = () => {
       );
       console.log("Invitation accept response:", response);
       notify("Invitation accepted", { type: "info" as NotificationType });
-      refresh();
+      navigate("/organizations");
     } catch (error) {
       if (error instanceof Error) {
         console.error("Error accepting invitation:", error.message);
@@ -89,7 +86,7 @@ const AcceptInvitationButton: FunctionComponent = () => {
         });
       }
     }
-  }, [record, notify, refresh]);
+  }, [record, notify, navigate]);
 
   return <Button label="Accept" onClick={handleAccept} />;
 };
