@@ -33,8 +33,10 @@ export const VPCList = () => {
       <Datagrid rowClick="show" bulkActionButtons={<VPCListBulkActions />}>
         <TextField label="Description" source="description" />
         {flags["devices"] && (
-          <div>
-            <TextField label="v4 CIDR" source="ipv4_cidr" />
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ marginRight: "8px" }}>
+              <TextField label="v4 CIDR" source="ipv4_cidr" />
+            </div>
             <TextField label="v6 CIDR" source="ipv6_cidr" />
             <ReferenceManyCount
               label="Devices"
@@ -61,12 +63,22 @@ export const VPCShow = () => {
       <SimpleShowLayout>
         <TextField label="ID" source="id" />
         <TextField label="Description" source="description" />
-
         {flags["devices"] && (
-          <div>
-            <TextField label="v4 CIDR" source="ipv4_cidr" />
-            <TextField label="v6 CIDR" source="ipv6_cidr" />
-
+          <div style={{ display: "block", marginBottom: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "8px",
+              }}
+            >
+              <TextField
+                label="v4 CIDR"
+                source="ipv4_cidr"
+                style={{ marginRight: "8px" }}
+              />
+              <TextField label="v6 CIDR" source="ipv6_cidr" />
+            </div>
             <ReferenceManyField
               label="Enrolled Devices"
               reference="devices"
