@@ -3,29 +3,54 @@ Feature: Device API
   Background:
     Given a user named "Bob" with password "testpass"
     Given a user named "Alice" with password "testpass"
+    Given a user named "Oliver" with password "testpass"
 
   Scenario: Bob creates and uses a reg-key.
+    
+    # Lets invite oliver to Bob's organization
+    Given I am logged in as "Oliver"
+    When I GET path "/api/users/me"
+    Then the response code should be 200
+    Given I store the ".id" selection from the response as ${oliver_user_id}
 
     Given I am logged in as "Bob"
 
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".id" selection from the response as ${user_id}
+    Given I store the ".id" selection from the response as ${bob_user_id}
     And the response should match json:
       """
       {
-        "id": "${user_id}",
+        "id": "${bob_user_id}",
         "full_name": "Test Bob",
         "picture": "",
         "username": "${response.username}"
       }
       """
     
+    When I POST path "/api/invitations" with json body:
+      """
+      {
+        "user_id": "${oliver_user_id}",
+        "organization_id": "${bob_user_id}"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ".id" selection from the response as ${invitation_id}
+
+    Given I am logged in as "Oliver"
+    When I POST path "/api/invitations/${invitation_id}/accept"
+    Then the response code should be 204
+    And the response should match ""
+
+    
+    Given I am logged in as "Bob"
     When I GET path "/api/vpcs"
     Then the response code should be 200
     Given I store the ${response[0].id} as ${vpc_id}
 
-    # Bob gets an empty list of reg-keys.
+    # Oliver can create a reg-key to Bob's VPC
+    Given I am logged in as "Oliver"
     When I GET path "/api/reg-keys"
     Then the response code should be 200
     And the response should match json:
@@ -33,11 +58,11 @@ Feature: Device API
       []
       """
 
-    # Bob creates a reg-key
+    # Oliver creates a reg-key
     When I POST path "/api/reg-keys" with json body:
       """
       {
-        "owner_id": "${user_id}",
+        "owner_id": "${oliver_user_id}",
         "vpc_id": "${vpc_id}"
       }
       """
@@ -50,13 +75,13 @@ Feature: Device API
         "id": "${reg_token_id}",
         "security_group_id": null,
         "bearer_token": "${reg_bearer_token}",
-        "owner_id": "${user_id}",
+        "owner_id": "${oliver_user_id}",
         "settings": null,
         "vpc_id": "${vpc_id}"
       }
       """
 
-    # Bob gets an should see 1 device in the device listing..
+    # Oliver should see 1 reg-key in the reg-keys listing.
     When I GET path "/api/reg-keys"
     Then the response code should be 200
     And the response should match json:
@@ -66,11 +91,21 @@ Feature: Device API
           "id": "${reg_token_id}",
           "security_group_id": null,
           "bearer_token": "${reg_bearer_token}",
-          "owner_id": "${user_id}",
+          "owner_id": "${oliver_user_id}",
           "settings": null,
           "vpc_id": "${vpc_id}"
         }
       ]
+      """
+    And I store the ${response} as ${regKey1}
+
+    # Bob should see the same reg-key in the reg-keys listing.
+    Given I am logged in as "Bob"
+    When I GET path "/api/reg-keys"
+    Then the response code should be 200
+    And the response should match json:
+      """
+      ${regKey1}
       """
 
     #
@@ -116,7 +151,7 @@ Feature: Device API
     When I POST path "/api/devices" with json body:
       """
       {
-        "owner_id": "${user_id}",
+        "owner_id": "${bob_user_id}",
         "vpc_id": "${vpc_id}",
         "public_key": "${public_key}",
         "endpoints": [{
@@ -211,7 +246,7 @@ Feature: Device API
         "id": "${reg_token_id}",
         "security_group_id": null,
         "bearer_token": "${reg_bearer_token}",
-        "owner_id": "${user_id}",
+        "owner_id": "${bob_user_id}",
         "settings": null,
         "vpc_id": "${vpc_id}"
       }
@@ -262,12 +297,12 @@ Feature: Device API
 
     When I GET path "/api/users/me"
     Then the response code should be 200
-    Given I store the ".id" selection from the response as ${user_id}
+    Given I store the ".id" selection from the response as ${bob_user_id}
 
     When I POST path "/api/reg-keys" with json body:
       """
       {
-        "owner_id": "${user_id}",
+        "owner_id": "${bob_user_id}",
         "vpc_id": "test"
       }
       """
