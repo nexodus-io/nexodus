@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v3"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.opentelemetry.io/otel/attribute"
@@ -65,7 +64,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 		// The vpc has to be owned by the user.
 		var vpc models.VPC
 		db := api.db.WithContext(ctx)
-		if res := api.VPCIsOwnedByCurrentUser(c, db).
+		if res := api.VPCIsReadableByCurrentUser(c, db).
 			First(&vpc, "id = ?", request.VpcID.String()); res.Error != nil {
 			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
 		}
@@ -309,13 +308,10 @@ func (api *API) RegKeyIsForCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 
 func (api *API) RegKeyIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-
-	// this could potentially be driven by rego output
-	if api.dialect == database.DialectSqlLite {
-		return db.Where("owner_id = ? OR organization_id in (SELECT id FROM organizations where owner_id=?)", userId, userId)
-	} else {
-		return db.Where("owner_id = ? OR organization_id::text in (SELECT id::text FROM organizations where owner_id=?)", userId, userId)
-	}
+	return db.Where(
+		db.Where("owner_id = ?", userId).
+			Or(api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles)),
+	)
 }
 
 // DeleteRegKey handles deleting a RegKey
