@@ -6,6 +6,9 @@ export const fetchJson = (url: string, options: any = {}) => {
     if (!response.ok) {
       throw new Error(`Could not fetch ${url}, status: ${response.status}`);
     }
+    if (response.status === 204) {
+      return null;
+    }
     return response.json();
   });
 };

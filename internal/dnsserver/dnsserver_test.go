@@ -5,6 +5,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 
 	_ "github.com/coredns/coredns/plugin/bind"
 	_ "github.com/coredns/coredns/plugin/forward"
@@ -32,10 +33,14 @@ func TestStart(t *testing.T) {
 	listenPort, _, err := server.Ports()
 	require.NoError(err)
 
+	d := &dns.Client{
+		Timeout: 5 * time.Second,
+	}
+
 	// Verify resolving a simple custom hosts works...
 	m := &dns.Msg{}
 	m.SetQuestion("example.org.", dns.TypeA)
-	resp, err := dns.Exchange(m, listenPort.String())
+	resp, _, err := d.Exchange(m, listenPort.String())
 	require.NoError(err)
 	require.Equal(dns.RcodeSuccess, resp.Rcode)
 	require.Equal(1, len(resp.Answer))
@@ -44,7 +49,7 @@ func TestStart(t *testing.T) {
 	// Verify resolving public dns name works...
 	m = &dns.Msg{}
 	m.SetQuestion("hiramchirino.com.", dns.TypeA)
-	resp, err = dns.Exchange(m, listenPort.String())
+	resp, _, err = d.Exchange(m, listenPort.String())
 	require.NoError(err)
 	require.Equal(dns.RcodeSuccess, resp.Rcode)
 	require.Equal(1, len(resp.Answer))
