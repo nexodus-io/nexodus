@@ -164,6 +164,7 @@ func deviceTableFields(command *cli.Command) []TableField {
 			}
 			return strings.Join(localIp4, ", ")
 		}})
+		fields = append(fields, TableField{Header: "SYMMETRIC NAT", Field: "SymmetricNat"})
 		fields = append(fields, TableField{Header: "OS", Field: "Os"})
 		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 		fields = append(fields, TableField{Header: "ONLINE", Field: "Online"})
