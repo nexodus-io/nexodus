@@ -12,12 +12,11 @@ package public
 
 // ModelsVPC struct for ModelsVPC
 type ModelsVPC struct {
-	CaCertificates []string `json:"ca_certificates,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Id             string   `json:"id,omitempty"`
-	Ipv4Cidr       string   `json:"ipv4_cidr,omitempty"`
-	Ipv6Cidr       string   `json:"ipv6_cidr,omitempty"`
-	OrganizationId string   `json:"organization_id,omitempty"`
-	PrivateCidr    bool     `json:"private_cidr,omitempty"`
-	Revision       int32    `json:"revision,omitempty"`
+	Description    string `json:"description,omitempty"`
+	Id             string `json:"id,omitempty"`
+	Ipv4Cidr       string `json:"ipv4_cidr,omitempty"`
+	Ipv6Cidr       string `json:"ipv6_cidr,omitempty"`
+	OrganizationId string `json:"organization_id,omitempty"`
+	PrivateCidr    bool   `json:"private_cidr,omitempty"`
+	Revision       int32  `json:"revision,omitempty"`
 }

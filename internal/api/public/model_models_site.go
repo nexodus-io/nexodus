@@ -13,15 +13,17 @@ package public
 // ModelsSite struct for ModelsSite
 type ModelsSite struct {
 	// the token nexd should use to reconcile Site state.
-	BearerToken string `json:"bearer_token,omitempty"`
-	Hostname    string `json:"hostname,omitempty"`
-	Id          string `json:"id,omitempty"`
-	LinkSecret  string `json:"link_secret,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Os          string `json:"os,omitempty"`
-	OwnerId     string `json:"owner_id,omitempty"`
-	Platform    string `json:"platform,omitempty"`
-	PublicKey   string `json:"public_key,omitempty"`
-	Revision    int32  `json:"revision,omitempty"`
-	VpcId       string `json:"vpc_id,omitempty"`
+	BearerToken      string `json:"bearer_token,omitempty"`
+	Hostname         string `json:"hostname,omitempty"`
+	Id               string `json:"id,omitempty"`
+	LinkSecret       string `json:"link_secret,omitempty"`
+	Name             string `json:"name,omitempty"`
+	Online           bool   `json:"online,omitempty"`
+	OnlineAt         string `json:"online_at,omitempty"`
+	Os               string `json:"os,omitempty"`
+	OwnerId          string `json:"owner_id,omitempty"`
+	Platform         string `json:"platform,omitempty"`
+	PublicKey        string `json:"public_key,omitempty"`
+	Revision         int32  `json:"revision,omitempty"`
+	ServiceNetworkId string `json:"service_network_id,omitempty"`
 }

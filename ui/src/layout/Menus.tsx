@@ -6,6 +6,7 @@ import OrganizationIcon from "@mui/icons-material/People";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
+import ServiceNetworkIcon from "@mui/icons-material/Cloud";
 import { useFlags } from "../common/FlagsContext";
 
 export const CustomMenu = (props: MenuProps) => {
@@ -19,7 +20,14 @@ export const CustomMenu = (props: MenuProps) => {
         primaryText="Organizations"
         leftIcon={<OrganizationIcon />}
       />
-      <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
+      <MenuItemLink
+        to="/invitations"
+        primaryText="Invitations"
+        leftIcon={<InvitationIcon />}
+      />
+      {flags["devices"] && (
+        <MenuItemLink to="/vpcs" primaryText="VPCs" leftIcon={<VPCIcon />} />
+      )}
       {flags["devices"] && (
         <MenuItemLink
           to="/devices"
@@ -27,20 +35,22 @@ export const CustomMenu = (props: MenuProps) => {
           leftIcon={<DeviceIcon />}
         />
       )}
-      {flags["sites"] && (
-        <MenuItemLink to="/sites" primaryText="Sites" leftIcon={<SiteIcon />} />
-      )}
-      <MenuItemLink
-        to="/invitations"
-        primaryText="Invitations"
-        leftIcon={<InvitationIcon />}
-      />
       {flags["security-groups"] && (
         <MenuItemLink
           to="/_security-groups"
           primaryText="Security Groups"
           leftIcon={<SecurityIcon />}
         />
+      )}
+      {flags["sites"] && (
+        <MenuItemLink
+          to="/service-networks"
+          primaryText="Service Networks"
+          leftIcon={<ServiceNetworkIcon />}
+        />
+      )}
+      {flags["sites"] && (
+        <MenuItemLink to="/sites" primaryText="Sites" leftIcon={<SiteIcon />} />
       )}
       <MenuItemLink
         to="/reg-keys"

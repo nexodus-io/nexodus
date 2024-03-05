@@ -22,6 +22,72 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/ServiceNetworks/{id}/sites": {
+            "get": {
+                "description": "Lists all sites for this ServiceNetwork",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "List Sites",
+                "operationId": "ListSitesInServiceNetwork",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "greater than revision",
+                        "name": "gt_revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Service Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Site"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/ca/sign": {
             "post": {
                 "description": "Signs a certificate signing request",
@@ -557,6 +623,68 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events": {
+            "post": {
+                "description": "Watches events occurring in the control plane",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Watch events occurring in the control plane",
+                "operationId": "Watch",
+                "parameters": [
+                    {
+                        "description": "List of events to watch",
+                        "name": "Watches",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Watch"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WatchEvent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -1940,6 +2068,308 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/service-networks": {
+            "get": {
+                "description": "Lists all ServiceNetworks",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "List ServiceNetworks",
+                "operationId": "ListServiceNetworks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ServiceNetwork"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a named serviceNetwork with the given CIDR",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "Create an ServiceNetwork",
+                "operationId": "CreateServiceNetwork",
+                "parameters": [
+                    {
+                        "description": "Add ServiceNetwork",
+                        "name": "ServiceNetwork",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AddServiceNetwork"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceNetwork"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictsError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/service-networks/{id}": {
+            "get": {
+                "description": "Gets a ServiceNetwork by ServiceNetwork ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "Get ServiceNetworks",
+                "operationId": "GetServiceNetwork",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ServiceNetwork ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceNetwork"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing serviceNetwork",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "Delete ServiceNetwork",
+                "operationId": "DeleteServiceNetwork",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ServiceNetwork ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceNetwork"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a serviceNetwork by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ServiceNetwork"
+                ],
+                "summary": "Update ServiceNetworks",
+                "operationId": "UpdateServiceNetwork",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ServiceNetwork ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ServiceNetwork Update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateServiceNetwork"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceNetwork"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/sites": {
             "get": {
                 "description": "Lists all sites",
@@ -2998,72 +3428,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/vpcs/{id}/sites": {
-            "get": {
-                "description": "Lists all sites for this VPC",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "VPC"
-                ],
-                "summary": "List Sites",
-                "operationId": "ListSitesInVPC",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "greater than revision",
-                        "name": "gt_revision",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "VPC ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Site"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/models.BaseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.InternalServerError"
-                        }
-                    }
-                }
-            }
-        },
         "/check/auth": {
             "get": {
                 "description": "Checks if the user is currently authenticated",
@@ -3429,6 +3793,10 @@ const docTemplate = `{
                     "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
+                "service_network_id": {
+                    "description": "ServiceNetworkID is the ID of the Service Network the device can join.",
+                    "type": "string"
+                },
                 "settings": {
                     "description": "Settings contains general settings for the device.",
                     "type": "object",
@@ -3468,6 +3836,18 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AddServiceNetwork": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "The Red Zone"
+                },
+                "organization_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.AddSite": {
             "type": "object",
             "properties": {
@@ -3480,7 +3860,7 @@ const docTemplate = `{
                 "public_key": {
                     "type": "string"
                 },
-                "vpc_id": {
+                "service_network_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
@@ -3856,13 +4236,17 @@ const docTemplate = `{
                     "description": "SecurityGroupId is the ID of the security group to assign to the device.",
                     "type": "string"
                 },
+                "service_network_id": {
+                    "description": "ServiceNetworkID is the ID of the Service Network the device can join.",
+                    "type": "string"
+                },
                 "settings": {
                     "description": "Settings contains general settings for the device.",
                     "type": "object",
                     "additionalProperties": true
                 },
                 "vpc_id": {
-                    "description": "VpcID is the ID of the VPC the device will join.",
+                    "description": "VpcID is the ID of the VPC the device can join.",
                     "type": "string"
                 }
             }
@@ -3917,6 +4301,30 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ServiceNetwork": {
+            "type": "object",
+            "properties": {
+                "ca_certificates": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Site": {
             "type": "object",
             "properties": {
@@ -3938,6 +4346,12 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "online": {
+                    "type": "boolean"
+                },
+                "online_at": {
+                    "type": "string"
+                },
                 "os": {
                     "type": "string"
                 },
@@ -3953,7 +4367,7 @@ const docTemplate = `{
                 "revision": {
                     "type": "integer"
                 },
-                "vpc_id": {
+                "service_network_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
                 }
@@ -4056,6 +4470,15 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UpdateServiceNetwork": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "The Red Zone"
+                }
+            }
+        },
         "models.UpdateSite": {
             "type": "object",
             "properties": {
@@ -4153,12 +4576,6 @@ const docTemplate = `{
         "models.VPC": {
             "type": "object",
             "properties": {
-                "ca_certificates": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "description": {
                     "type": "string"
                 },

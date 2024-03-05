@@ -14,6 +14,17 @@ Feature: Site API
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${user_id}
 
+    # Lets create a Service Network
+    When I POST path "/api/service-networks" with json body:
+      """
+      {
+        "organization_id": "${user_id}",
+        "description": "my service network"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ${response} as ${service_network}
+
     # Initial site listing should be empty.
     When I GET path "/api/sites"
     Then the response code should be 200
@@ -28,7 +39,7 @@ Feature: Site API
       """
       {
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "platform": "kubernetes"
@@ -44,11 +55,13 @@ Feature: Site API
         "hostname": "",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "link_secret": "",
         "bearer_token": "${response.bearer_token}",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }
       """
@@ -70,11 +83,13 @@ Feature: Site API
         "hostname": "kittenhome",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "link_secret": "",
         "bearer_token": "${response.bearer_token}",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }
       """
@@ -90,11 +105,13 @@ Feature: Site API
         "hostname": "kittenhome",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "link_secret": "",
         "bearer_token": "${response[0].bearer_token}",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }]
       """
@@ -147,10 +164,12 @@ Feature: Site API
         "hostname": "kittenhome",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "",
         "name": "site-a",
         "link_secret": "",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }
       """
@@ -160,7 +179,7 @@ Feature: Site API
       """
       {
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "platform": "kubernetes"
@@ -176,11 +195,13 @@ Feature: Site API
         "hostname": "",
         "os": "",
         "owner_id": "${user_id}",
-        "vpc_id": "${user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "link_secret": "",
         "bearer_token": "${response.bearer_token}",
+        "online": false,
+        "online_at": null,
         "platform": "kubernetes"
       }
       """
@@ -201,6 +222,17 @@ Feature: Site API
     Then the response code should be 200
     Given I store the ".id" selection from the response as ${oscar_user_id}
 
+    # Lets create a Service Network
+    When I POST path "/api/service-networks" with json body:
+      """
+      {
+        "organization_id": "${oscar_user_id}",
+        "description": "my service network"
+      }
+      """
+    Then the response code should be 201
+    Given I store the ${response} as ${service_network}
+
     When I POST path "/api/invitations" with json body:
       """
       {
@@ -218,12 +250,15 @@ Feature: Site API
 
     # Subscribe to the event stream
     Given I am logged in as "Oliver"
-    When I POST path "/api/vpcs/${oscar_user_id}/events" with json body expecting a json event stream:
+    When I POST path "/api/events" with json body expecting a json event stream:
       """
       [
         {
           "kind": "site",
-          "gt_revision": 0
+          "gt_revision": 0,
+          "options": {
+            "service-network-id": "${service_network.id}"
+          }
         }
       ]
       """
@@ -246,7 +281,7 @@ Feature: Site API
       """
       {
         "owner_id": "${oscar_user_id}",
-        "vpc_id": "${oscar_user_id}",
+        "service_network_id": "${service_network.id}",
         "public_key": "${public_key}",
         "name": "site-a",
         "platform": "kubernetes"
@@ -273,7 +308,9 @@ Feature: Site API
            "platform": "kubernetes",
            "public_key": "${public_key}",
            "revision": ${response.value.revision},
-           "vpc_id": "${oscar_user_id}"
+           "online": false,
+           "online_at": null,
+           "service_network_id": "${service_network.id}"
          }
       }
       """
@@ -307,7 +344,9 @@ Feature: Site API
            "platform": "kubernetes",
            "public_key": "${public_key}",
            "revision": ${response.value.revision},
-           "vpc_id": "${oscar_user_id}"
+           "online": false,
+           "online_at": null,
+           "service_network_id": "${service_network.id}"
          }
       }
       """
@@ -334,7 +373,9 @@ Feature: Site API
            "platform": "kubernetes",
            "public_key": "",
            "revision": ${response.value.revision},
-           "vpc_id": "${oscar_user_id}"
+           "online": false,
+           "online_at": null,
+           "service_network_id": "${service_network.id}"
          }
       }
       """

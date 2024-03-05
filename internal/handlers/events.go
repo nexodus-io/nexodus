@@ -29,15 +29,369 @@ type Watch struct {
 }
 
 var deviceCacheSize = 500
+var siteCacheSize = 500
 
 func init() {
-	size, err := util.GetenvInt("NEXAPI_DEVICE_CACHE_SIZE", "500")
-	if err == nil {
+	if size, err := util.GetenvInt("NEXAPI_DEVICE_CACHE_SIZE", "500"); err == nil {
 		deviceCacheSize = size
+	}
+	if size, err := util.GetenvInt("NEXAPI_SITE_CACHE_SIZE", "500"); err == nil {
+		siteCacheSize = size
 	}
 }
 
 // WatchEvents lets you watch for resource change events
+// @Summary      Watch events occurring in the control plane
+// @Description  Watches events occurring in the control plane
+// @Id           Watch
+// @Tags         Events
+// @Accept       json
+// @Produce      json
+// @Param        Watches         body   []models.Watch  true  "List of events to watch"
+// @Success      200  {object}  models.WatchEvent
+// @Failure      400  {object}  models.BaseError
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/events [post]
+func (api *API) WatchEvents(c *gin.Context) {
+
+	ctx, span := tracer.Start(c.Request.Context(), "WatchServiceNetworkEvents",
+		trace.WithAttributes(
+			attribute.String("id", c.Param("id")),
+		))
+	defer span.End()
+
+	var request []models.Watch
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
+		return
+	}
+
+	getServiceNetworkAndOrg := func(w models.Watch, i int) (serviceNetworkId uuid.UUID, organizationId uuid.UUID, failure *ApiResponseError) {
+		if w.Options == nil || w.Options["service-network-id"] == nil {
+			failure = NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError(fmt.Sprintf("request[%d].options.service-network-id", i), "required"))
+			return
+		}
+
+		serviceNetworkId, err := uuid.Parse(fmt.Sprint(w.Options["service-network-id"]))
+		if err != nil {
+			failure = NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError(fmt.Sprintf("request[%d].options.service-network-id", i), err.Error()))
+			return
+		}
+
+		var serviceNetwork models.ServiceNetwork
+		db := api.db.WithContext(ctx)
+		db = api.ServiceNetworkIsReadableByCurrentUser(c, db)
+		result := db.First(&serviceNetwork, "id = ?", serviceNetworkId.String())
+
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				failure = NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("service_network"))
+				return
+			}
+			failure = NewApiResponseError(http.StatusInternalServerError, api.NewInternalServerError(c, result.Error))
+			return
+
+		}
+		return serviceNetworkId, serviceNetwork.OrganizationID, nil
+	}
+
+	getVpcAndOrg := func(w models.Watch, i int) (vpcId uuid.UUID, organizationId uuid.UUID, failure *ApiResponseError) {
+		if w.Options == nil || w.Options["vpc-id"] == nil {
+			failure = NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError(fmt.Sprintf("request[%d].options.vpc-id", i), "required"))
+			return
+		}
+
+		vpcId, err := uuid.Parse(fmt.Sprint(w.Options["vpc-id"]))
+		if err != nil {
+			failure = NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError(fmt.Sprintf("request[%d].options.vpc-id", i), err.Error()))
+			return
+		}
+
+		var vpc models.VPC
+		db := api.db.WithContext(ctx)
+		db = api.VPCIsReadableByCurrentUser(c, db)
+		result := db.First(&vpc, "id = ?", vpcId.String())
+
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				failure = NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
+				return
+			}
+			failure = NewApiResponseError(http.StatusInternalServerError, api.NewInternalServerError(c, result.Error))
+			return
+
+		}
+		return vpcId, vpc.OrganizationID, nil
+	}
+
+	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+	if err2 != nil {
+		c.JSON(err2.Status, err2.Body)
+		return
+	}
+
+	var closers []func()
+	defer func() {
+		for _, closer := range closers {
+			closer()
+		}
+	}()
+	var watches []Watch
+	for i, r := range request {
+		switch r.Kind {
+
+		case "device":
+			if !api.FlagCheck(c, "devices") {
+				return
+			}
+
+			vpcId, _, apiErr := getVpcAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			fetcher := api.fetchManager.Open("org-devices:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+				var items deviceList
+				db = db.Unscoped().Limit(100).Order("revision")
+				if gtRevision != 0 {
+					db = db.Where("revision > ?", gtRevision)
+				}
+				db = db.Where("vpc_id = ?", vpcId.String())
+				result := db.Find(&items)
+				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					return nil, result.Error
+				}
+
+				for i := range items {
+					hideDeviceBearerToken(items[i], tokenClaims)
+				}
+
+				return items, nil
+			})
+			closers = append(closers, fetcher.Close)
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/devices/vpc=%s", vpcId.String()),
+				fetch:      fetcher.Fetch,
+			})
+
+		case "security-group":
+			if !api.FlagCheck(c, "security-groups") {
+				return
+			}
+
+			vpcId, organizationdId, apiErr := getVpcAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/security-groups/vpc=%s", vpcId.String()),
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+					var items securityGroupList
+					db = db.Unscoped().Limit(100).Order("revision")
+					if gtRevision != 0 {
+						db = db.Where("revision > ?", gtRevision)
+					}
+					db = db.Where("organization_id = ?", organizationdId.String())
+					result := db.Find(&items)
+					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						return nil, result.Error
+					}
+					return items, nil
+				},
+			})
+
+		case "device-metadata":
+
+			if !api.FlagCheck(c, "devices") {
+				return
+			}
+
+			vpcId, _, apiErr := getVpcAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			watchOptions := struct {
+				Prefixes []string `form:"prefix"`
+			}{}
+
+			if r.Options != nil {
+				b, err := json.Marshal(r.Options)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, models.NewApiError(err))
+				}
+				err = json.Unmarshal(b, &watchOptions)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, models.NewApiError(err))
+				}
+			}
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/metadata/vpc=%s", vpcId.String()),
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+
+					tempDB := db.Model(&models.DeviceMetadata{}).
+						Joins("inner join devices on devices.id=device_metadata.device_id").
+						Where( // extra wrapping Where needed to group the SQL expressions
+							db.Where("devices.vpc_id = ?", vpcId.String()),
+						)
+
+					// Building OR expressions with gorm is tricky...
+					if len(watchOptions.Prefixes) > 0 {
+						expressions := db
+						for i, prefix := range watchOptions.Prefixes {
+							if i == 0 {
+								expressions = expressions.Where("key LIKE ?", prefix+"%")
+							} else {
+								expressions = expressions.Or("key LIKE ?", prefix+"%")
+							}
+						}
+						tempDB = tempDB.Where( // extra wrapping Where needed to group the SQL expressions
+							expressions,
+						)
+					}
+					db = tempDB
+
+					var items deviceMetadataList
+					db = db.Unscoped().Limit(100).Order("device_metadata.revision")
+
+					if gtRevision != 0 {
+						db = db.Where("device_metadata.revision > ?", gtRevision)
+					}
+					results := db.Find(&items)
+					if results.Error != nil && !errors.Is(results.Error, gorm.ErrRecordNotFound) {
+						return nil, results.Error
+					}
+					return items, nil
+				},
+			})
+
+		case "vpc":
+			vpcId, organizationID, apiErr := getVpcAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/vpc=%s", vpcId.String()),
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+					var items vpcList
+					db = db.Unscoped().Limit(100).Order("revision")
+					if gtRevision != 0 {
+						db = db.Where("revision > ?", gtRevision)
+					}
+					db = db.Where("organization_id = ?", organizationID.String())
+					result := db.Find(&items)
+					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						return nil, result.Error
+					}
+					return items, nil
+				},
+			})
+
+		case "site":
+
+			if !api.FlagCheck(c, "sites") {
+				return
+			}
+
+			serviceNetworkId, _, apiErr := getServiceNetworkAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			fetcher := api.fetchManager.Open("org-sites:"+serviceNetworkId.String(), siteCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+				var items siteList
+				db = db.Unscoped().Limit(100).Order("revision")
+				if gtRevision != 0 {
+					db = db.Where("revision > ?", gtRevision)
+				}
+				db = db.Where("service_network_id = ?", serviceNetworkId.String())
+				result := db.Find(&items)
+				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+					return nil, result.Error
+				}
+
+				userId := api.GetCurrentUserID(c)
+				for i := range items {
+					hideSiteBearerToken(items[i], tokenClaims, userId)
+				}
+
+				return items, nil
+			})
+			closers = append(closers, fetcher.Close)
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/sites/service-network=%s", serviceNetworkId.String()),
+				fetch:      fetcher.Fetch,
+			})
+
+		case "service-network":
+
+			if !api.FlagCheck(c, "sites") {
+				return
+			}
+
+			serviceNetworkId, organizationdId, apiErr := getServiceNetworkAndOrg(r, i)
+			if apiErr != nil {
+				c.JSON(apiErr.Status, apiErr.Body)
+				return
+			}
+
+			watches = append(watches, Watch{
+				kind:       r.Kind,
+				gtRevision: r.GtRevision,
+				atTail:     r.AtTail,
+				signal:     fmt.Sprintf("/service-network=%s", serviceNetworkId.String()),
+				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+					var items serviceNetworkList
+					db = db.Unscoped().Limit(100).Order("revision")
+					if gtRevision != 0 {
+						db = db.Where("revision > ?", gtRevision)
+					}
+					db = db.Where("organization_id = ?", organizationdId.String())
+					result := db.Find(&items)
+					if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						return nil, result.Error
+					}
+					return items, nil
+				},
+			})
+		default:
+			c.JSON(http.StatusBadRequest, models.NewInvalidField(fmt.Sprintf("request[%d].kind", i)))
+		}
+	}
+
+	api.onlineTracker.Connected(api, c, tokenClaims.AgentID, func() {
+		api.sendMultiWatch(c, ctx, watches)
+	})
+}
+
+// WatchEventsInVPC lets you watch for resource change events
 // @Summary      Watch events occurring in the vpc
 // @Description  Watches events occurring in the vpc
 // @Id           WatchEvents
@@ -53,9 +407,9 @@ func init() {
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/vpc/{id}/events [post]
-func (api *API) WatchEvents(c *gin.Context) {
+func (api *API) WatchEventsInVPC(c *gin.Context) {
 
-	ctx, span := tracer.Start(c.Request.Context(), "WatchEvents",
+	ctx, span := tracer.Start(c.Request.Context(), "WatchVPCEvents",
 		trace.WithAttributes(
 			attribute.String("vpc_id", c.Param("id")),
 		))
@@ -84,8 +438,8 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 	var vpc models.VPC
 	db := api.db.WithContext(ctx)
-	db = api.VPCIsReadableByCurrentUser(c, db)
-	result := db.First(&vpc, "id = ?", vpcId.String())
+	result := api.VPCIsReadableByCurrentUser(c, db).
+		First(&vpc, "id = ?", vpcId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -94,6 +448,21 @@ func (api *API) WatchEvents(c *gin.Context) {
 			api.SendInternalServerError(c, result.Error)
 		}
 		return
+	}
+
+	var deviceId *uuid.UUID
+	if query.PublicKey != "" {
+		var device models.Device
+		res := db.First(&device, "public_key = ?", query.PublicKey)
+		if res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+			} else {
+				api.SendInternalServerError(c, res.Error)
+			}
+			return
+		}
+		deviceId = &device.ID
 	}
 
 	tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
@@ -143,41 +512,6 @@ func (api *API) WatchEvents(c *gin.Context) {
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
 				signal:     fmt.Sprintf("/devices/vpc=%s", vpcId.String()),
-				fetch:      fetcher.Fetch,
-			})
-
-		case "site":
-
-			if !api.FlagCheck(c, "sites") {
-				return
-			}
-
-			fetcher := api.fetchManager.Open("org-sites:"+vpcId.String(), deviceCacheSize, func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
-				var items siteList
-				db = db.Unscoped().Limit(100).Order("revision")
-				if gtRevision != 0 {
-					db = db.Where("revision > ?", gtRevision)
-				}
-				db = db.Where("vpc_id = ?", vpcId.String())
-				result := db.Find(&items)
-				if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					return nil, result.Error
-				}
-
-				userId := api.GetCurrentUserID(c)
-				for i := range items {
-					hideSiteBearerToken(items[i], tokenClaims, userId)
-				}
-
-				return items, nil
-			})
-			defer fetcher.Close()
-
-			watches = append(watches, Watch{
-				kind:       r.Kind,
-				gtRevision: r.GtRevision,
-				atTail:     r.AtTail,
-				signal:     fmt.Sprintf("/sites/vpc=%s", vpcId.String()),
 				fetch:      fetcher.Fetch,
 			})
 
@@ -296,10 +630,9 @@ func (api *API) WatchEvents(c *gin.Context) {
 
 	}
 
-	api.onlineTracker.Connected(api, c, query.PublicKey, func() {
+	api.onlineTracker.Connected(api, c, deviceId, func() {
 		api.sendMultiWatch(c, ctx, watches)
 	})
-
 }
 
 func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Watch) {

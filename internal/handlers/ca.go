@@ -146,33 +146,33 @@ func (api *API) SignCSR(c *gin.Context) {
 		return
 	}
 
-	// get the site and teh VPC CA
+	// get the site and the ServiceNetwork CA
 	site := models.Site{}
-	sendVPCNotify := false
+	sendServiceNetworkNotify := false
 	err = api.transaction(c, func(tx *gorm.DB) error {
 
-		if res := tx.Joins("Vpc").First(&site, "sites.id = ?", siteId); res.Error != nil {
+		if res := tx.Joins("ServiceNetwork").First(&site, "sites.id = ?", siteId); res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("site"))
 			}
 			return err
 		}
 
-		// allocate the VPC CA on demand
-		if len(site.Vpc.CaCertificates) == 0 {
-			cert, key, err := api.CreateVPCCertKeyPair(site.Vpc)
+		// allocate the ServiceNetwork CA on demand
+		if len(site.ServiceNetwork.CaCertificates) == 0 {
+			cert, key, err := api.CreateServiceNetworkCertKeyPair(site.ServiceNetwork)
 			if err != nil {
 				return err
 			}
 
-			site.Vpc.CaCertificates = []string{cert}
-			site.Vpc.CaKey = key
+			site.ServiceNetwork.CaCertificates = []string{cert}
+			site.ServiceNetwork.CaKey = key
 			if res := tx.Select("ca_certificates", "ca_key").
 				Where("ca_key is NULL").
-				Updates(site.Vpc); res.Error != nil {
+				Updates(site.ServiceNetwork); res.Error != nil {
 				return err
 			}
-			sendVPCNotify = true
+			sendServiceNetworkNotify = true
 		}
 
 		return nil
@@ -186,8 +186,8 @@ func (api *API) SignCSR(c *gin.Context) {
 		}
 		return
 	}
-	if sendVPCNotify {
-		api.signalBus.Notify(fmt.Sprintf("/vpc=%s", site.VpcID.String()))
+	if sendServiceNetworkNotify {
+		api.signalBus.Notify(fmt.Sprintf("/service-network=%s", site.ServiceNetworkID.String()))
 	}
 
 	template := &x509.Certificate{
@@ -201,7 +201,7 @@ func (api *API) SignCSR(c *gin.Context) {
 			{
 				Scheme: "spiffe",
 				Host:   api.URLParsed.Host,
-				Path:   fmt.Sprintf("/o/%s/v/%s/s/%s", site.OrganizationID, site.VpcID, site.ID),
+				Path:   fmt.Sprintf("/o/%s/n/%s/s/%s", site.OrganizationID, site.ServiceNetworkID, site.ID),
 			},
 		},
 		KeyUsage:    ku,
@@ -216,20 +216,20 @@ func (api *API) SignCSR(c *gin.Context) {
 		template.ExtKeyUsage = append(template.ExtKeyUsage, x509.ExtKeyUsageEmailProtection)
 	}
 
-	vpcCaKeyPair, err := ParseCertificateKeyPair([]byte(site.Vpc.CaCertificates[0]), []byte(site.Vpc.CaKey))
+	serviceNetworkCaKeyPair, err := ParseCertificateKeyPair([]byte(site.ServiceNetwork.CaCertificates[0]), []byte(site.ServiceNetwork.CaKey))
 	if err != nil {
 		api.SendInternalServerError(c, err)
 		return
 	}
 
-	cert, err := x509.CreateCertificate(rand.Reader, template, vpcCaKeyPair.Certificate, csr.PublicKey, vpcCaKeyPair.Key)
+	cert, err := x509.CreateCertificate(rand.Reader, template, serviceNetworkCaKeyPair.Certificate, csr.PublicKey, serviceNetworkCaKeyPair.Key)
 	if err != nil {
 		api.SendInternalServerError(c, fmt.Errorf("failed to generate certificate: %w", err))
 		return
 	}
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
 
-	err = VerifyCertificate(certPEM, append(vpcCaKeyPair.CertificatePem, api.caKeyPair.CertificatePem...), template.ExtKeyUsage...)
+	err = VerifyCertificate(certPEM, append(serviceNetworkCaKeyPair.CertificatePem, api.caKeyPair.CertificatePem...), template.ExtKeyUsage...)
 	if err != nil {
 		api.SendInternalServerError(c, fmt.Errorf("failed to verify generated certificate: %w", err))
 		return
@@ -237,20 +237,20 @@ func (api *API) SignCSR(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.CertificateSigningResponse{
 		Certificate: string(certPEM),
-		CA:          string(append(vpcCaKeyPair.CertificatePem, api.caKeyPair.CertificatePem...)),
-		//Certificate: string(append(certPEM, vpcCaKeyPair.CertificatePem...)),
+		CA:          string(append(serviceNetworkCaKeyPair.CertificatePem, api.caKeyPair.CertificatePem...)),
+		//Certificate: string(append(certPEM, serviceNetworkCaKeyPair.CertificatePem...)),
 		//CA:          string(api.caKeyPair.CertificatePem),
 	})
 
 }
 
-func (api *API) CreateVPCCertKeyPair(vpc *models.VPC) (string, string, error) {
+func (api *API) CreateServiceNetworkCertKeyPair(serviceNetwork *models.ServiceNetwork) (string, string, error) {
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return "", "", err
 	}
-	vpcsURI, err := url.Parse(fmt.Sprintf("%s/api/vpcs/%s", api.URL, vpc.ID))
+	serviceNetworksURI, err := url.Parse(fmt.Sprintf("%s/api/service-networks/%s", api.URL, serviceNetwork.ID))
 	if err != nil {
 		return "", "", err
 	}
@@ -263,7 +263,7 @@ func (api *API) CreateVPCCertKeyPair(vpc *models.VPC) (string, string, error) {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName: vpcsURI.String(),
+			CommonName: serviceNetworksURI.String(),
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(5, 0, 0),
@@ -274,7 +274,7 @@ func (api *API) CreateVPCCertKeyPair(vpc *models.VPC) (string, string, error) {
 			{
 				Scheme: "spiffe",
 				Host:   api.URLParsed.Host,
-				Path:   fmt.Sprintf("/o/%s/v/%s", vpc.OrganizationID, vpc.ID),
+				Path:   fmt.Sprintf("/o/%s/n/%s", serviceNetwork.OrganizationID, serviceNetwork.ID),
 			},
 		},
 	}
@@ -289,7 +289,7 @@ func (api *API) CreateVPCCertKeyPair(vpc *models.VPC) (string, string, error) {
 
 	err = VerifyCertificate([]byte(certPEM), []byte(api.caKeyPair.CertificatePem), x509.ExtKeyUsageAny)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to verify vpc certificate: %w", err)
+		return "", "", fmt.Errorf("failed to verify serviceNetwork certificate: %w", err)
 	}
 
 	return certPEM, keyPEM, nil

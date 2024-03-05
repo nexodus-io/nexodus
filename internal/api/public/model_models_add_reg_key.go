@@ -18,6 +18,8 @@ type ModelsAddRegKey struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// SecurityGroupId is the ID of the security group to assign to the device.
 	SecurityGroupId string `json:"security_group_id,omitempty"`
+	// ServiceNetworkID is the ID of the Service Network the device can join.
+	ServiceNetworkId string `json:"service_network_id,omitempty"`
 	// Settings contains general settings for the device.
 	Settings map[string]interface{} `json:"settings,omitempty"`
 	// SingleUse only allows the registration key to be used once.

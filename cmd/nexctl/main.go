@@ -106,6 +106,7 @@ func main() {
 			createDeviceCommand(),
 			createUserSubCommand(),
 			createSecurityGroupCommand(),
+			createServiceNetworkCommand(),
 			createSiteCommand(),
 			createInvitationCommand(),
 		},

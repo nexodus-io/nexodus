@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import React, { Fragment, useState } from "react";
 import {
   AutocompleteInput,
   BooleanField,
@@ -18,11 +18,14 @@ import {
   Show,
   SimpleForm,
   SimpleShowLayout,
+  TabbedForm,
+  TabbedFormView,
   TextField,
   TextInput,
   useGetIdentity,
   useRecordContext,
   UseRecordContextParams,
+  WithRecord,
 } from "react-admin";
 
 // @ts-ignore
@@ -30,6 +33,17 @@ import { JsonInput } from "./JsonInput";
 // @ts-ignore
 import { JsonField } from "./JsonField";
 import { useFlags } from "../common/FlagsContext";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  Checkbox,
+  FormControlLabel,
+  Paper,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
 
 const RegKeyListBulkActions = () => (
   <Fragment>
@@ -38,64 +52,136 @@ const RegKeyListBulkActions = () => (
   </Fragment>
 );
 
-export const RegKeyList = () => (
-  <List>
-    <Datagrid rowClick="show" bulkActionButtons={<RegKeyListBulkActions />}>
-      <TextField label="Description" source="description" />
-      <ReferenceField label="VPC" source="vpc_id" reference="vpcs" />
-      <BooleanField label="Single Use" source="device_id" looseValue={true} />
-      <DateField label="Expiration" source="expiration" showTime={true} />
-    </Datagrid>
-  </List>
-);
+export const RegKeyList = () => {
+  const flags = useFlags();
+
+  return (
+    <List>
+      <Datagrid rowClick="show" bulkActionButtons={<RegKeyListBulkActions />}>
+        <TextField label="Description" source="description" />
+        {flags["devices"] && (
+          <ReferenceField label="VPC" source="vpc_id" reference="vpcs" />
+        )}
+        {flags["sites"] && (
+          <ReferenceField
+            label="Service Network"
+            source="service_network_id"
+            reference="service-networks"
+          />
+        )}
+        <BooleanField label="Single Use" source="device_id" looseValue={true} />
+        <DateField label="Expiration" source="expiration" showTime={true} />
+      </Datagrid>
+    </List>
+  );
+};
 
 export const RegKeyFlagField = (
   props: UseRecordContextParams<RaRecord<Identifier>> | undefined,
 ) => {
   const record = useRecordContext(props);
   return record ? (
-    <pre>
-      --reg-key '{window.location.origin}#{record.bearer_token}'
-    </pre>
+    <>
+      <pre>
+        {props?.prefix} --reg-key '{window.location.origin}#
+        {record.bearer_token}'
+      </pre>
+    </>
   ) : null;
 };
 
 export const RegKeyShow = () => {
   const flags = useFlags();
+
   return (
     <Show>
       <SimpleShowLayout>
         <TextField label="ID" source="id" />
-        <RegKeyFlagField label="Command Line Flag" />
         <TextField label="Bearer Token" source="bearer_token" />
-        <ReferenceField
-          label="Organization"
-          source="vpc_id"
-          reference="vpcs"
-          link="show"
-        />
-        {flags["security-groups"] && (
-          <ReferenceField
-            label="Security Group"
-            source="security_group_id"
-            reference="security-groups"
-            // We can't deep link to security groups yet...
-            // link={(record) =>{
-            //   return `/_security-groups/${record.id}`
-            // }}
-          />
-        )}
-        {flags["devices"] && (
-          <ReferenceField
-            label="Device"
-            source="device_id"
-            reference="devices"
-            link="show"
-          />
-        )}
+        <TextField label="Description" source="description" />
         <BooleanField label="Single Use" source="device_id" looseValue={true} />
         <DateField label="Expiration" source="expiration" showTime={true} />
-        <TextField label="Description" source="description" />
+        <WithRecord
+          render={(record) => (
+            <>
+              {flags["devices"] && record.vpc_id != undefined && (
+                <Paper sx={{ width: "100%", marginTop: "1em" }}>
+                  <Card>
+                    <CardContent>
+                      <Typography gutterBottom variant="h5" component="div">
+                        Allows Device Registration
+                      </Typography>
+
+                      <SimpleShowLayout>
+                        <RegKeyFlagField
+                          label="Command Line Flag"
+                          prefix="nexd"
+                        />
+
+                        <ReferenceField
+                          source="vpc_id"
+                          reference="vpcs"
+                          link="show"
+                        />
+
+                        <ReferenceField
+                          label="Security Group"
+                          source="security_group_id"
+                          reference="security-groups"
+                        />
+
+                        {record.device_id && (
+                          <ReferenceField
+                            label="Device"
+                            source="device_id"
+                            reference="devices"
+                            link="show"
+                          />
+                        )}
+                      </SimpleShowLayout>
+                    </CardContent>
+                  </Card>
+                </Paper>
+              )}
+
+              {flags["sites"] && record.service_network_id != undefined && (
+                <Paper sx={{ width: "100%", marginTop: "1em" }}>
+                  <Card>
+                    <CardContent>
+                      <Typography gutterBottom variant="h5" component="div">
+                        Allows Site Registration
+                      </Typography>
+
+                      <SimpleShowLayout>
+                        <RegKeyFlagField
+                          label="Command Line Flag"
+                          prefix="skupper init"
+                        />
+
+                        <ReferenceField
+                          label="Service Network"
+                          source="service_network_id"
+                          reference="service-networks"
+                          link="show"
+                        />
+
+                        {record.device_id && (
+                          <ReferenceField
+                            label="Site"
+                            source="device_id"
+                            reference="sites"
+                            link="show"
+                          />
+                        )}
+                      </SimpleShowLayout>
+                    </CardContent>
+                  </Card>
+                </Paper>
+              )}
+            </>
+          )}
+        />
+
         {/*
         <JsonField label="Settings" source="settings" />
         */}
@@ -107,11 +193,26 @@ export const RegKeyShow = () => {
 export const RegKeyCreate = () => {
   const flags = useFlags();
   const { identity, isLoading, error } = useGetIdentity();
+  const [allowDevices, setAllowDevices] = useState(false);
+  const [allowSites, setAllowSites] = useState(false);
+
   if (isLoading || error) {
     return <div />;
   }
+
   return (
-    <Create>
+    <Create
+      transform={(record: any) => {
+        if (!allowDevices) {
+          delete record.vpc_id;
+          delete record.security_group_id;
+        }
+        if (!allowSites) {
+          delete record.service_network_id;
+        }
+        return record;
+      }}
+    >
       <SimpleForm>
         <TextInput
           label="Description"
@@ -119,18 +220,6 @@ export const RegKeyCreate = () => {
           source="description"
           fullWidth
         />
-        <ReferenceInput name="vpc_id" source="vpc_id" reference="vpcs">
-          <AutocompleteInput fullWidth />
-        </ReferenceInput>
-        {flags["security-groups"] && (
-          <ReferenceInput
-            name="security_group_id"
-            source="security_group_id"
-            reference="security-groups"
-          >
-            <AutocompleteInput fullWidth />
-          </ReferenceInput>
-        )}
         <BooleanInput
           label="Single Use"
           name="single_use"
@@ -143,15 +232,75 @@ export const RegKeyCreate = () => {
           source="expiration"
           fullWidth
         />
-        {/*
-        <JsonInput
-          label="Settings"
-          name="settings"
-          source="settings"
-          fullWidth
-          multiline={true}
-        />
-        */}
+
+        {flags["devices"] && (
+          <>
+            <FormControlLabel
+              label="Allow Device Registration"
+              control={
+                <Checkbox
+                  checked={allowDevices}
+                  onChange={(x) => {
+                    setAllowDevices(x.target.checked);
+                  }}
+                />
+              }
+            />
+            {allowDevices && (
+              <Paper sx={{ width: "100%", marginTop: "1em" }}>
+                <Card>
+                  <CardContent>
+                    <ReferenceInput
+                      name="vpc_id"
+                      source="vpc_id"
+                      reference="vpcs"
+                    >
+                      <AutocompleteInput fullWidth />
+                    </ReferenceInput>
+                    <ReferenceInput
+                      name="security_group_id"
+                      source="security_group_id"
+                      reference="security-groups"
+                    >
+                      <AutocompleteInput fullWidth />
+                    </ReferenceInput>
+                  </CardContent>
+                </Card>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {flags["sites"] && (
+          <>
+            <FormControlLabel
+              label="Allow Site Registration"
+              control={
+                <Checkbox
+                  checked={allowSites}
+                  onChange={(x) => {
+                    setAllowSites(x.target.checked);
+                  }}
+                />
+              }
+            />
+            {allowSites && (
+              <Paper sx={{ width: "100%", marginTop: "1em" }}>
+                <Card>
+                  <CardContent>
+                    <ReferenceInput
+                      name="service_network_id"
+                      source="service_network_id"
+                      reference="service-networks"
+                    >
+                      <AutocompleteInput fullWidth />
+                    </ReferenceInput>
+                  </CardContent>
+                </Card>
+              </Paper>
+            )}
+          </>
+        )}
       </SimpleForm>
     </Create>
   );

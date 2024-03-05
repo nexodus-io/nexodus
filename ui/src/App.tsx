@@ -9,6 +9,7 @@ import UserIcon from "@mui/icons-material/Person";
 import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
+import ServiceNetworkIcon from "@mui/icons-material/Cloud";
 
 // pages
 import { UserList, UserShow } from "./pages/Users";
@@ -41,6 +42,11 @@ import { SiteEdit, SiteList, SiteShow } from "./pages/Sites";
 import { authProvider, dataProvider } from "./DataProvider";
 import { createTheme } from "@mui/material";
 import { FlagsProvider } from "./common/FlagsContext";
+import {
+  ServiceNetworkCreate,
+  ServiceNetworkList,
+  ServiceNetworkShow,
+} from "./pages/ServiceNetworks";
 
 const darkTheme = createTheme({
   palette: { mode: "dark" },
@@ -97,6 +103,14 @@ const App = () => {
         icon={DeviceIcon}
         edit={DeviceEdit}
         recordRepresentation={(record) => `${record.hostname}`}
+      />
+      <Resource
+        name="service-networks"
+        list={ServiceNetworkList}
+        show={ServiceNetworkShow}
+        icon={ServiceNetworkIcon}
+        create={ServiceNetworkCreate}
+        recordRepresentation={(record) => `${record.description}`}
       />
       <Resource
         name="sites"
