@@ -194,6 +194,7 @@ const DeviceShowLayout: FC = () => {
           <TextField label="Source" source="source" />
         </Datagrid>
       </ArrayField>
+      <TextField label="Symmetric NAT" source="symmetric_nat" />
       <TextField label="Relay Node" source="relay" />
       <ReferenceField
         label="VPC"
