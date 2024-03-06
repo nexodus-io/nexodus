@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -24,7 +23,7 @@ func TestApiClientConflictError(t *testing.T) {
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
 
-	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+	c, err := client.NewClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
 		username,
 		password,
 	))
@@ -36,47 +35,47 @@ func TestApiClientConflictError(t *testing.T) {
 	require.NoError(err)
 	publicKey := privateKey.PublicKey().String()
 
-	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		Hostname:  "bbac3081d5e8",
+	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(client.ModelsAddDevice{
+		Hostname:  client.PtrString("bbac3081d5e8"),
 		VpcId:     orgs[0].Id,
-		PublicKey: publicKey,
-		Endpoints: []public.ModelsEndpoint{
+		PublicKey: client.PtrString(publicKey),
+		Endpoints: []client.ModelsEndpoint{
 			{
-				Source:  "local",
-				Address: "172.17.0.3:58664",
+				Source:  client.PtrString("local"),
+				Address: client.PtrString("172.17.0.3:58664"),
 			},
 			{
-				Source:  "stun:",
-				Address: "47.196.141.165",
+				Source:  client.PtrString("stun:"),
+				Address: client.PtrString("47.196.141.165"),
 			},
 		},
 	}).Execute()
 	require.NoError(err)
 
-	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		Hostname:  "bbac3081d5e8",
+	_, resp, err := c.DevicesApi.CreateDevice(ctx).Device(client.ModelsAddDevice{
+		Hostname:  client.PtrString("bbac3081d5e8"),
 		VpcId:     orgs[0].Id,
-		PublicKey: publicKey,
-		Endpoints: []public.ModelsEndpoint{
+		PublicKey: client.PtrString(publicKey),
+		Endpoints: []client.ModelsEndpoint{
 			{
-				Source:  "local",
-				Address: "172.17.0.3:58664",
+				Source:  client.PtrString("local"),
+				Address: client.PtrString("172.17.0.3:58664"),
 			},
 			{
-				Source:  "stun:",
-				Address: "47.196.141.165",
+				Source:  client.PtrString("stun:"),
+				Address: client.PtrString("47.196.141.165"),
 			},
 		},
 	}).Execute()
 	require.Error(err)
 	require.NotNil(resp)
 
-	var apiError *public.GenericOpenAPIError
+	var apiError *client.GenericOpenAPIError
 	require.True(errors.As(err, &apiError))
 
-	conflict, ok := apiError.Model().(public.ModelsConflictsError)
+	conflict, ok := apiError.Model().(client.ModelsConflictsError)
 	require.True(ok)
-	require.Equal(device.Id, conflict.Id)
+	require.Equal(device.GetId(), conflict.GetId())
 }
 
 func TestConcurrentApiAccess(t *testing.T) {
@@ -90,7 +89,7 @@ func TestConcurrentApiAccess(t *testing.T) {
 	username, cleanup := helper.createNewUser(ctx, password)
 	defer cleanup()
 
-	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+	c, err := client.NewClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
 		username,
 		password,
 	))
@@ -127,7 +126,7 @@ func TestDevicesInformer(t *testing.T) {
 	username, cancel := helper.createNewUser(ctx, password)
 	defer cancel()
 
-	c, err := client.NewAPIClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
+	c, err := client.NewClient(ctx, "https://api.try.nexodus.127.0.0.1.nip.io", nil, client.WithPasswordGrant(
 		username,
 		password,
 	))
@@ -139,9 +138,9 @@ func TestDevicesInformer(t *testing.T) {
 	require.NoError(err)
 	publicKey := privateKey.PublicKey().String()
 
-	ctx = c.VPCApi.WatchEvents(ctx, orgs[0].Id).NewSharedInformerContext()
-	sgInformer := c.VPCApi.ListSecurityGroupsInVPC(ctx, orgs[0].Id).Informer()
-	devicesInformer := c.VPCApi.ListDevicesInVPC(ctx, orgs[0].Id).Informer()
+	ctx = c.EventsApi.Watch(ctx).NewSharedInformerContext()
+	sgInformer := c.VPCApi.ListSecurityGroupsInVPC(ctx, orgs[0].GetId()).Informer()
+	devicesInformer := c.VPCApi.ListDevicesInVPC(ctx, orgs[0].GetId()).Informer()
 	devicesChanged := func() bool {
 		select {
 		case <-devicesInformer.Changed():
@@ -162,18 +161,18 @@ func TestDevicesInformer(t *testing.T) {
 
 	require.True(devicesChanged())
 
-	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(public.ModelsAddDevice{
-		Hostname:  "bbac3081d5e8",
+	device, _, err := c.DevicesApi.CreateDevice(ctx).Device(client.ModelsAddDevice{
+		Hostname:  client.PtrString("bbac3081d5e8"),
 		VpcId:     orgs[0].Id,
-		PublicKey: publicKey,
-		Endpoints: []public.ModelsEndpoint{
+		PublicKey: client.PtrString(publicKey),
+		Endpoints: []client.ModelsEndpoint{
 			{
-				Source:  "local",
-				Address: "172.17.0.3:58664",
+				Source:  client.PtrString("local"),
+				Address: client.PtrString("172.17.0.3:58664"),
 			},
 			{
-				Source:  "stun:",
-				Address: "47.196.141.165",
+				Source:  client.PtrString("stun:"),
+				Address: client.PtrString("47.196.141.165"),
 			},
 		},
 	}).Execute()
@@ -186,7 +185,7 @@ func TestDevicesInformer(t *testing.T) {
 	require.Len(devices, 1)
 
 	// We should get s
-	_, _, err = c.DevicesApi.DeleteDevice(ctx, device.Id).Execute()
+	_, _, err = c.DevicesApi.DeleteDevice(ctx, device.GetId()).Execute()
 	require.NoError(err)
 
 	require.Eventually(devicesChanged, 2*time.Second, time.Millisecond)

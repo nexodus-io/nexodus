@@ -1,8 +1,6 @@
 package nexodus
 
-import (
-	"github.com/nexodus-io/nexodus/internal/api/public"
-)
+import "github.com/nexodus-io/nexodus/internal/client"
 
 // All route management is a no-op in userspace mode.
 // We have a network stack with a single device and a
@@ -22,7 +20,7 @@ func (nx *Nexodus) handlePeerRouteUS(wgPeerConfig wgPeerConfig) error {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (nx *Nexodus) handlePeerRouteDeleteUS(dev string, wgPeerConfig public.ModelsDevice) {
+func (nx *Nexodus) handlePeerRouteDeleteUS(dev string, wgPeerConfig client.ModelsDevice) {
 	// no-op
 }
 

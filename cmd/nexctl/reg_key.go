@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -68,12 +68,12 @@ func createRegKeyCommand() *cli.Command {
 						settings = nil
 					}
 
-					return createRegKey(ctx, command, public.ModelsAddRegKey{
-						VpcId:           command.String("vpc-id"),
-						Description:     command.String("description"),
-						ExpiresAt:       getExpiration(command, "expiration"),
-						SingleUse:       command.Bool("single-use"),
-						SecurityGroupId: command.String("security-group-id"),
+					return createRegKey(ctx, command, client.ModelsAddRegKey{
+						VpcId:           client.PtrOptionalString(command.String("vpc-id")),
+						Description:     client.PtrOptionalString(command.String("description")),
+						ExpiresAt:       client.PtrOptionalString(getExpiration(command, "expiration")),
+						SingleUse:       client.PtrBool(command.Bool("single-use")),
+						SecurityGroupId: client.PtrOptionalString(command.String("security-group-id")),
 						Settings:        settings,
 					})
 				},
@@ -114,10 +114,10 @@ func createRegKeyCommand() *cli.Command {
 						settings = nil
 					}
 
-					return updateRegKey(ctx, command, command.String("reg-key-id"), public.ModelsUpdateRegKey{
-						Description:     command.String("description"),
-						ExpiresAt:       getExpiration(command, "expiration"),
-						SecurityGroupId: command.String("security-group-id"),
+					return updateRegKey(ctx, command, command.String("reg-key-id"), client.ModelsUpdateRegKey{
+						Description:     client.PtrOptionalString(command.String("description")),
+						ExpiresAt:       client.PtrOptionalString(getExpiration(command, "expiration")),
+						SecurityGroupId: client.PtrOptionalString(command.String("security-group-id")),
 						Settings:        settings,
 					})
 				},
@@ -148,14 +148,15 @@ func regTokenTableFields(command *cli.Command) []TableField {
 	fields = append(fields, TableField{Header: "TOKEN ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "DESCRIPTION", Field: "Description"})
 	fields = append(fields, TableField{Header: "CLI FLAGS", Formatter: func(item interface{}) string {
-		record := item.(public.ModelsRegKey)
-		return fmt.Sprintf("--reg-key %s#%s", command.String("service-url"), record.BearerToken)
+		record := item.(client.ModelsRegKey)
+		return fmt.Sprintf("--reg-key %s#%s", command.String("service-url"), record.GetBearerToken())
 	}})
 	if command.Bool("full") {
 		fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
 		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 		fields = append(fields, TableField{Header: "SINGLE USE", Formatter: func(item interface{}) string {
-			if item.(public.ModelsRegKey).DeviceId == "" {
+			key := item.(client.ModelsRegKey)
+			if key.GetDeviceId() == "" {
 				return "false"
 			} else {
 				return "true"
@@ -177,10 +178,10 @@ func listRegKeys(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func createRegKey(ctx context.Context, command *cli.Command, token public.ModelsAddRegKey) error {
+func createRegKey(ctx context.Context, command *cli.Command, token client.ModelsAddRegKey) error {
 	c := createClient(ctx, command)
-	if token.VpcId == "" {
-		token.VpcId = getDefaultVpcId(ctx, c)
+	if token.GetVpcId() == "" {
+		token.VpcId = client.PtrString(getDefaultVpcId(ctx, c))
 	}
 	res := apiResponse(c.RegKeyApi.
 		CreateRegKey(ctx).
@@ -190,7 +191,7 @@ func createRegKey(ctx context.Context, command *cli.Command, token public.Models
 	return nil
 }
 
-func updateRegKey(ctx context.Context, command *cli.Command, id string, update public.ModelsUpdateRegKey) error {
+func updateRegKey(ctx context.Context, command *cli.Command, id string, update client.ModelsUpdateRegKey) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.RegKeyApi.
 		UpdateRegKey(ctx, id).

@@ -33,7 +33,6 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/stun"
 	"github.com/nexodus-io/nexodus/internal/util"
@@ -163,8 +162,8 @@ type peerHealth struct {
 }
 
 type deviceCacheEntry struct {
-	device   public.ModelsDevice
-	metadata public.ModelsDeviceMetadata
+	device   client.ModelsDevice
+	metadata client.ModelsDeviceMetadata
 	// the last time this device was updated as seen from the API
 	lastUpdated time.Time
 	peerHealth
@@ -241,7 +240,7 @@ type Nexodus struct {
 	deviceCache              map[string]deviceCacheEntry
 	deviceCacheLock          sync.RWMutex
 	deviceReconciled         bool
-	devicesInformer          *public.Informer[public.ModelsDevice]
+	devicesInformer          *client.Informer[client.ModelsDevice]
 	endpointLocalAddress     string
 	exitNode                 exitNode
 	hostname                 string
@@ -255,13 +254,13 @@ type Nexodus struct {
 	os                       string
 	reflexiveAddrStunSrc     string
 	relayWgIP                string
-	securityGroup            *public.ModelsSecurityGroup
-	securityGroupsInformer   *public.Informer[public.ModelsSecurityGroup]
+	securityGroup            *client.ModelsSecurityGroup
+	securityGroupsInformer   *client.Informer[client.ModelsSecurityGroup]
 	status                   int // See the NexdStatus* constants
 	statusMsg                string
 	symmetricNat             bool
 	tunnelIface              string
-	vpc                      *public.ModelsVPC
+	vpc                      *client.ModelsVPC
 	wgConfig                 wgConfig
 	wireguardPubKey          string
 	wireguardPubKeyInConfig  bool
@@ -287,7 +286,7 @@ type wgLocalConfig struct {
 }
 
 func New(o Options) (*Nexodus, error) {
-	public.Logger = o.Logger
+	client.Logger = o.Logger
 	if err := binaryChecks(); err != nil {
 		return nil, err
 	}
@@ -491,7 +490,7 @@ func (nx *Nexodus) migrateLegacyState(stateDir string) error {
 
 func (nx *Nexodus) resetApiClient(ctx context.Context) error {
 	var err error
-	nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
+	nx.client, err = client.NewClient(ctx, nx.apiURL.String(), func(msg string) {
 		nx.SetStatus(NexdStatusAuth, msg)
 	}, nx.clientOptions...)
 	if err != nil {
@@ -600,18 +599,18 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	endpointSocket := net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort))
-	endpoints := []public.ModelsEndpoint{
+	endpoints := []client.ModelsEndpoint{
 		{
-			Source:  "local",
-			Address: endpointSocket,
+			Source:  client.PtrString("local"),
+			Address: &endpointSocket,
 		},
 		{
-			Source:  "stun:" + nx.reflexiveAddrStunSrc,
-			Address: nx.nodeReflexiveAddressIPv4.String(),
+			Source:  client.PtrString("stun:" + nx.reflexiveAddrStunSrc),
+			Address: client.PtrString(nx.nodeReflexiveAddressIPv4.String()),
 		},
 	}
 
-	var modelsDevice public.ModelsDevice
+	var modelsDevice client.ModelsDevice
 	var deviceOperationLogMsg string
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		modelsDevice, deviceOperationLogMsg, err = nx.createOrUpdateDeviceOperation(userId, endpoints)
@@ -626,17 +625,17 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 	nx.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
 	nx.logger.Infof("%s with UUID: [ %+v ] into vpc: [ %s (%s) ]",
-		deviceOperationLogMsg, modelsDevice.Id, nx.vpc.Id, nx.vpc.Description)
+		deviceOperationLogMsg, modelsDevice.GetId(), nx.vpc.GetId(), nx.vpc.GetDescription())
 
 	// Use the device token to auth with the apiserver...
-	if modelsDevice.BearerToken != "" {
+	if modelsDevice.GetBearerToken() != "" {
 
 		key, err := wgtypes.ParseKey(nx.wireguardPvtKey)
 		if err != nil {
 			return err
 		}
 
-		sealed, err := wgcrypto.ParseSealed(modelsDevice.BearerToken)
+		sealed, err := wgcrypto.ParseSealed(modelsDevice.GetBearerToken())
 		if err != nil {
 			return err
 		}
@@ -653,7 +652,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		//}
 
 		options = append(options, client.WithBearerToken(string(data)))
-		nx.client, err = client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {}, options...)
+		nx.client, err = client.NewClient(ctx, nx.apiURL.String(), func(msg string) {}, options...)
 		if err != nil {
 			return err
 		}
@@ -663,9 +662,9 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	nx.informerStop = informerCancel
 
 	// event stream sharing occurs due to the informers sharing the context created in following line:
-	informerCtx = nx.client.VPCApi.WatchEvents(informerCtx, nx.vpc.Id).PublicKey(nx.wireguardPubKey).NewSharedInformerContext()
-	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.Id).Informer()
-	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.Id).Informer()
+	informerCtx = nx.client.EventsApi.Watch(informerCtx). /*.GetPublicKey()(nx.wireguardPubKey).*/ NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.GetId()).Informer()
+	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.GetId()).Informer()
 
 	if nx.relay {
 		peerMap, _, err := nx.devicesInformer.Execute()
@@ -718,7 +717,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-ctx.Done():
 				return
 			case <-stunTicker.C:
-				if err := nx.reconcileStun(modelsDevice.Id); err != nil {
+				if err := nx.reconcileStun(modelsDevice.GetId()); err != nil {
 					if nx.os != Windows.String() { // windows does not currently support reuse port or bpf
 						nx.logger.Debug(err)
 					}
@@ -753,7 +752,7 @@ type NexodusClaims struct {
 	DeviceID       uuid.UUID `json:"device,omitempty"`
 }
 
-func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.ModelsVPC, error) {
+func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *client.ModelsVPC, error) {
 	if nx.regKey != "" {
 		// the userid and orgid are part of the registration token.
 		return nx.fetchRegistrationTokenUserIdAndVPC(ctx)
@@ -763,7 +762,7 @@ func (nx *Nexodus) fetchUserIdAndVpc(ctx context.Context) (string, *public.Model
 	}
 }
 
-func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (string, *public.ModelsVPC, error) {
+func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (string, *client.ModelsVPC, error) {
 
 	// get the certs used to validate the JWT.
 	regKeyModel, _, err := nx.client.RegKeyApi.GetRegKey(ctx, "me").Execute()
@@ -771,20 +770,20 @@ func (nx *Nexodus) fetchRegistrationTokenUserIdAndVPC(ctx context.Context) (stri
 		return "", nil, fmt.Errorf("could not fetch registration settings: %w", err)
 	}
 
-	nx.securityGroupId = regKeyModel.SecurityGroupId
-	nx.vpcId = regKeyModel.VpcId
+	nx.securityGroupId = regKeyModel.GetSecurityGroupId()
+	nx.vpcId = regKeyModel.GetVpcId()
 
-	vpc, _, err := nx.client.VPCApi.GetVPC(ctx, regKeyModel.VpcId).Execute()
+	vpc, _, err := nx.client.VPCApi.GetVPC(ctx, regKeyModel.GetVpcId()).Execute()
 	if err != nil {
 		return "", nil, err
 	}
-	return regKeyModel.OwnerId, vpc, nil
+	return regKeyModel.GetOwnerId(), vpc, nil
 }
 
-func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *public.ModelsVPC, error) {
+func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *client.ModelsVPC, error) {
 
 	var err error
-	var user *public.ModelsUser
+	var user *client.ModelsUser
 	var resp *http.Response
 	err = util.RetryOperationExpBackoff(ctx, retryInterval, func() error {
 		user, resp, err = nx.client.UsersApi.GetUser(ctx, "me").Execute()
@@ -813,10 +812,10 @@ func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *publi
 		return "", nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	var vpc *public.ModelsVPC
+	var vpc *client.ModelsVPC
 	err = util.RetryOperation(ctx, retryInterval, maxRetries, func() error {
 		if nx.vpcId == "" {
-			nx.vpcId = user.Id
+			nx.vpcId = user.GetId()
 		}
 
 		vpc, resp, err = nx.client.VPCApi.GetVPC(ctx, nx.vpcId).Execute()
@@ -837,7 +836,7 @@ func (nx *Nexodus) fetchUserIdAndVpcFromAPI(ctx context.Context) (string, *publi
 		return "", nil, fmt.Errorf("get vpc error: %w", err)
 	}
 
-	return user.Id, vpc, nil
+	return user.GetId(), vpc, nil
 }
 
 func (nx *Nexodus) Stop() {
@@ -882,7 +881,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	if existing.device.SecurityGroupId == uuid.Nil.String() {
+	if existing.device.GetSecurityGroupId() == uuid.Nil.String() {
 		// local device has no security group
 		if nx.securityGroup == nil {
 			// already set up that way, nothing to do
@@ -911,7 +910,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	responseSecGroup, found := securityGroups[existing.device.SecurityGroupId]
+	responseSecGroup, found := securityGroups[existing.device.GetSecurityGroupId()]
 	if !found {
 		nx.securityGroup = nil
 		if err := nx.processSecurityGroupRules(); err != nil {
@@ -930,7 +929,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 	oldSecGroup := nx.securityGroup
 	nx.securityGroup = &responseSecGroup
 
-	if oldSecGroup != nil && responseSecGroup.Id == oldSecGroup.Id &&
+	if oldSecGroup != nil && responseSecGroup.GetId() == oldSecGroup.GetId() &&
 		reflect.DeepEqual(responseSecGroup.InboundRules, oldSecGroup.InboundRules) &&
 		reflect.DeepEqual(responseSecGroup.OutboundRules, oldSecGroup.OutboundRules) {
 		// the group changed, but not in a way that matters for applying the rules locally
@@ -982,7 +981,7 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	}
 
 	// refresh the token grant by reconnecting to the API server
-	c, err := client.NewAPIClient(ctx, nx.apiURL.String(), func(msg string) {
+	c, err := client.NewClient(ctx, nx.apiURL.String(), func(msg string) {
 		nx.SetStatus(NexdStatusAuth, msg)
 	}, options...)
 	if err != nil {
@@ -994,9 +993,9 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	informerCtx, informerCancel := context.WithCancel(ctx)
 	nx.informerStop = informerCancel
 
-	informerCtx = nx.client.VPCApi.WatchEvents(informerCtx, nx.vpc.Id).NewSharedInformerContext()
-	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.Id).Informer()
-	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.Id).Informer()
+	informerCtx = nx.client.EventsApi.Watch(informerCtx).NewSharedInformerContext()
+	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.GetId()).Informer()
+	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.GetId()).Informer()
 
 	nx.SetStatus(NexdStatusRunning, "")
 	nx.logger.Infoln("Nexodus agent has re-established a connection to the api-server")
@@ -1017,15 +1016,15 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 	if nx.nodeReflexiveAddressIPv4 != reflexiveIP {
 		nx.logger.Infof("detected a NAT binding changed for this device %s from %s to %s, updating peers", deviceID, nx.nodeReflexiveAddressIPv4, reflexiveIP)
 
-		res, _, err := nx.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(public.ModelsUpdateDevice{
-			Endpoints: []public.ModelsEndpoint{
+		res, _, err := nx.client.DevicesApi.UpdateDevice(context.Background(), deviceID).Update(client.ModelsUpdateDevice{
+			Endpoints: []client.ModelsEndpoint{
 				{
-					Source:  "local",
-					Address: net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort)),
+					Source:  client.PtrString("local"),
+					Address: client.PtrString(net.JoinHostPort(nx.endpointLocalAddress, fmt.Sprintf("%d", nx.listenPort))),
 				},
 				{
-					Source:  "stun:" + stunServer1,
-					Address: reflexiveIP.String(),
+					Source:  client.PtrString("stun:" + stunServer1),
+					Address: client.PtrString(reflexiveIP.String()),
 				},
 			},
 		}).Execute()
@@ -1084,8 +1083,8 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 		// We haven't seen a handshake yet, so this peer connection is not up.
 		if d.peerHealthy {
 			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to no handshake",
-				d.device.Hostname, d.device.PublicKey,
-				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address)
+				d.device.GetHostname(), d.device.GetPublicKey(),
+				d.device.Endpoints[0].GetAddress(), d.device.Endpoints[1].GetAddress())
 		}
 		return false
 	}
@@ -1095,8 +1094,8 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 		// It has been too long since the last handshake, so this session has expired.
 		if d.peerHealthy {
 			nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is unhealthy due to lastHandshakeTime: %s > %s",
-				d.device.Hostname, d.device.PublicKey,
-				d.device.Endpoints[0].Address, d.device.Endpoints[1].Address,
+				d.device.GetHostname(), d.device.GetPublicKey(),
+				d.device.Endpoints[0].GetAddress(), d.device.Endpoints[1].GetAddress(),
 				time.Since(d.lastHandshakeTime).String(), deadline.String())
 		}
 		return false
@@ -1104,21 +1103,21 @@ func (nx *Nexodus) peerIsHealthy(d deviceCacheEntry) bool {
 
 	if !d.peerHealthy {
 		nx.logger.Debugf("peer (hostname:%s pubkey:%s [%s %s]) is now healthy",
-			d.device.Hostname, d.device.PublicKey,
-			d.device.Endpoints[0].Address, d.device.Endpoints[1].Address)
+			d.device.GetHostname(), d.device.GetPublicKey(),
+			d.device.Endpoints[0].GetAddress(), d.device.Endpoints[1].GetAddress())
 	}
 
 	return true
 }
 
 // assumes deviceCacheLock is held with a write-lock
-func (nx *Nexodus) addToDeviceCache(p public.ModelsDevice) {
+func (nx *Nexodus) addToDeviceCache(p client.ModelsDevice) {
 	d := deviceCacheEntry{
 		device:      p,
 		lastUpdated: time.Now(),
 	}
 	nx.peeringReset(&d)
-	nx.deviceCache[p.PublicKey] = d
+	nx.deviceCache[p.GetPublicKey()] = d
 }
 
 func (nx *Nexodus) reconcileDeviceCache() error {
@@ -1149,25 +1148,25 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 	newLocalConfig := false
 	for _, p := range peerMap {
 		// Update the cache if the device is new or has changed
-		existing, ok := nx.deviceCache[p.PublicKey]
+		existing, ok := nx.deviceCache[p.GetPublicKey()]
 		if !ok || deviceUpdated(existing.device, p) {
-			if p.PublicKey == nx.wireguardPubKey {
+			if p.GetPublicKey() == nx.wireguardPubKey {
 				newLocalConfig = true
 				if nx.securityGroup == nil || !reflect.DeepEqual(p.SecurityGroupId, nx.securityGroup.Id) {
 					nx.needSecGroupReconcile = true
 				}
 			}
 			nx.addToDeviceCache(p)
-			existing = nx.deviceCache[p.PublicKey]
-			delete(peerStats, p.PublicKey)
+			existing = nx.deviceCache[p.GetPublicKey()]
+			delete(peerStats, p.GetPublicKey())
 		}
 
 		// Store the relay IP for easy reference later
-		if p.Relay {
-			metadata, _, err := nx.getDeviceRelayMetadata(p.Id)
+		if p.GetRelay() {
+			metadata, _, err := nx.getDeviceRelayMetadata(p.GetId())
 			if err != nil {
 				nx.logger.Warnf("failed to get relay metadata for peer (hostname:%s pubkey:%s): %v",
-					p.Hostname, p.PublicKey, err)
+					p.GetHostname(), p.GetPublicKey(), err)
 			} else {
 				existing.metadata = metadata
 				nx.logger.Debugf("successfully fetched device metadata: %v", existing.metadata)
@@ -1176,10 +1175,10 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		}
 
 		// Keep track of peer connection stats for connection health tracking
-		curStats, ok := peerStats[p.PublicKey]
+		curStats, ok := peerStats[p.GetPublicKey()]
 		if !ok {
-			if nx.wireguardPubKey != p.PublicKey && existing.peeringMethod != peeringMethodViaRelay {
-				nx.logger.Debugf("peer (hostname:%s pubkey:%s) has no stats", p.Hostname, p.PublicKey)
+			if nx.wireguardPubKey != p.GetPublicKey() && existing.peeringMethod != peeringMethodViaRelay {
+				nx.logger.Debugf("peer (hostname:%s pubkey:%s) has no stats", p.GetHostname(), p.GetPublicKey())
 			}
 			// This won't be available early because the peer hasn't been configured yet
 			continue
@@ -1200,21 +1199,21 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 		if existing.peerHealthy {
 			existing.peerHealthyTime = now
 		}
-		nx.deviceCache[p.PublicKey] = existing
+		nx.deviceCache[p.GetPublicKey()] = existing
 	}
 
 	// Refresh wireguard peer configuration, getting any new peers or changes to existing peers
 	updatePeers := nx.buildPeersConfig()
 	if newLocalConfig || len(updatePeers) > 0 {
 		for _, peer := range updatePeers {
-			existing, ok := nx.deviceCache[peer.PublicKey]
+			existing, ok := nx.deviceCache[peer.GetPublicKey()]
 			if !ok {
 				continue
 			}
-			if peerConfig, ok := nx.wgConfig.Peers[peer.PublicKey]; ok {
+			if peerConfig, ok := nx.wgConfig.Peers[peer.GetPublicKey()]; ok {
 				existing.endpoint = peerConfig.Endpoint
 			}
-			nx.deviceCache[peer.PublicKey] = existing
+			nx.deviceCache[peer.GetPublicKey()] = existing
 		}
 
 		// Deploy updated wireguard peer configuration
@@ -1249,13 +1248,13 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 
 // deviceUpdated() returns whether fields that impact peering configuration have changed
 // between d1 and d2.
-func deviceUpdated(d1, d2 public.ModelsDevice) bool {
+func deviceUpdated(d1, d2 client.ModelsDevice) bool {
 	return !reflect.DeepEqual(d1.AllowedIps, d2.AllowedIps) ||
 		!reflect.DeepEqual(d1.AdvertiseCidrs, d2.AdvertiseCidrs) ||
 		!reflect.DeepEqual(d1.Endpoints, d2.Endpoints) ||
-		d1.Relay != d2.Relay ||
-		d1.SymmetricNat != d2.SymmetricNat ||
-		d1.SecurityGroupId != d2.SecurityGroupId
+		d1.GetRelay() != d2.GetRelay() ||
+		d1.GetSymmetricNat() != d2.GetSymmetricNat() ||
+		d1.GetSecurityGroupId() != d2.GetSecurityGroupId()
 }
 
 // checkUnsupportedConfigs general matrix checks of required information or constraints to run the agent and join the mesh
@@ -1317,10 +1316,10 @@ func (nx *Nexodus) symmetricNatDisco(ctx context.Context) error {
 }
 
 // orgRelayCheck checks if there is an existing Relay node in the organization that does not match this device's pub key
-func (nx *Nexodus) orgRelayCheck(peerMap map[string]public.ModelsDevice) (string, error) {
+func (nx *Nexodus) orgRelayCheck(peerMap map[string]client.ModelsDevice) (string, error) {
 	for _, p := range peerMap {
-		if p.Relay && nx.wireguardPubKey != p.PublicKey {
-			return p.Id, nil
+		if p.GetRelay() && nx.wireguardPubKey != p.GetPublicKey() {
+			return p.GetId(), nil
 		}
 	}
 	return "", nil

@@ -3,9 +3,8 @@ package nexodus
 import (
 	"errors"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"net"
-
-	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 const (
@@ -16,7 +15,7 @@ var (
 	securityGroupErr = errors.New("nftables setup error")
 )
 
-func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDevice) error {
+func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]client.ModelsDevice) error {
 	cfg := &wgConfig{
 		Interface: nx.wgConfig.Interface,
 		Peers:     nx.wgConfig.Peers,
@@ -32,11 +31,11 @@ func (nx *Nexodus) DeployWireguardConfig(updatedPeers map[string]public.ModelsDe
 	var lastErr error
 	// add routes and tunnels for the new peers only according to the cache diff
 	for _, updatedPeer := range updatedPeers {
-		if updatedPeer.Id == "" {
+		if updatedPeer.GetId() == "" {
 			continue
 		}
 		// add routes for each peer candidate (unless the key matches the local nodes key)
-		peer, ok := cfg.Peers[updatedPeer.PublicKey]
+		peer, ok := cfg.Peers[updatedPeer.GetPublicKey()]
 		if !ok || peer.PublicKey == nx.wireguardPubKey {
 			continue
 		}

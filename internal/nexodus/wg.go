@@ -4,11 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"net"
 	"strconv"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -151,10 +151,10 @@ func (nx *Nexodus) addPeerOS(wgPeerConfig wgPeerConfig) error {
 }
 
 // assumes a write lock is held on deviceCacheLock
-func (nx *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) error {
+func (nx *Nexodus) handlePeerDelete(peerMap map[string]client.ModelsDevice) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
 	for _, p := range nx.deviceCache {
-		if _, ok := peerMap[p.device.Id]; ok {
+		if _, ok := peerMap[p.device.GetId()]; ok {
 			continue
 		}
 
@@ -162,15 +162,15 @@ func (nx *Nexodus) handlePeerDelete(peerMap map[string]public.ModelsDevice) erro
 			return err
 		}
 		// remove peer from local peer and key cache
-		delete(nx.deviceCache, p.device.PublicKey)
+		delete(nx.deviceCache, p.device.GetPublicKey())
 	}
 
 	return nil
 }
 
-func (nx *Nexodus) peerCleanup(peer public.ModelsDevice) error {
-	nx.logger.Debugf("Deleting peering config for key: %s\n", peer.PublicKey)
-	if err := nx.deletePeer(peer.PublicKey, nx.tunnelIface); err != nil {
+func (nx *Nexodus) peerCleanup(peer client.ModelsDevice) error {
+	nx.logger.Debugf("Deleting peering config for key: %s\n", peer.GetPublicKey())
+	if err := nx.deletePeer(peer.GetPublicKey(), nx.tunnelIface); err != nil {
 		return fmt.Errorf("failed to delete peer: %w", err)
 	}
 	// delete the peer route(s)

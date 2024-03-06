@@ -138,6 +138,8 @@ func (api *API) WatchEvents(c *gin.Context) {
 			closer()
 		}
 	}()
+	currentUserID := api.GetCurrentUserID(c)
+
 	var watches []Watch
 	for i, r := range request {
 		switch r.Kind {
@@ -166,7 +168,7 @@ func (api *API) WatchEvents(c *gin.Context) {
 				}
 
 				for i := range items {
-					hideDeviceBearerToken(items[i], tokenClaims)
+					hideDeviceBearerToken(items[i], tokenClaims, currentUserID)
 				}
 
 				return items, nil
@@ -333,9 +335,8 @@ func (api *API) WatchEvents(c *gin.Context) {
 					return nil, result.Error
 				}
 
-				userId := api.GetCurrentUserID(c)
 				for i := range items {
-					hideSiteBearerToken(items[i], tokenClaims, userId)
+					hideSiteBearerToken(items[i], tokenClaims, currentUserID)
 				}
 
 				return items, nil
@@ -479,6 +480,7 @@ func (api *API) WatchEventsInVPC(c *gin.Context) {
 		}
 	}()
 	var watches []Watch
+	currentUserID := api.GetCurrentUserID(c)
 	for i, r := range request {
 		switch r.Kind {
 
@@ -500,7 +502,7 @@ func (api *API) WatchEventsInVPC(c *gin.Context) {
 				}
 
 				for i := range items {
-					hideDeviceBearerToken(items[i], tokenClaims)
+					hideDeviceBearerToken(items[i], tokenClaims, currentUserID)
 				}
 
 				return items, nil

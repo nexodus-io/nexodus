@@ -5,10 +5,10 @@ package integration_tests
 import (
 	"context"
 	"encoding/json"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"testing"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -142,11 +142,11 @@ func TestSecurityGroups(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
-	inboundRules := []public.ModelsSecurityRule{
+	inboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "18", "25", []string{"100.64.0.0/10"}),
 		helper.createSecurityRule("tcp", "18", "25", []string{"200::/64"}),
 	}
-	outboundRules := []public.ModelsSecurityRule{
+	outboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{""}),
 	}
 
@@ -194,10 +194,10 @@ func TestSecurityGroups(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{"200::/64"}),
 	}
-	outboundRules = []public.ModelsSecurityRule{
+	outboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv6", "0", "0", []string{""}),
 	}
 
@@ -241,11 +241,11 @@ func TestSecurityGroups(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("icmpv4", "0", "0", []string{"100.64.0.1-100.127.0.50"}),
 		helper.createSecurityRule("icmpv6", "0", "0", []string{""}),
 	}
-	outboundRules = []public.ModelsSecurityRule{
+	outboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("icmpv4", "0", "0", []string{""}),
 		helper.createSecurityRule("icmpv6", "0", "0", []string{"200::1-200::ffff:ffff:ffff:ffff"}),
 	}
@@ -285,11 +285,11 @@ func TestSecurityGroups(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// create the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "100", "200", []string{"100.64.0.0/10"}),
 		helper.createSecurityRule("ipv6", "300", "400", []string{"200::/64"}),
 	}
-	outboundRules = []public.ModelsSecurityRule{
+	outboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "0", "0", []string{"100.64.0.0/10"}),
 		helper.createSecurityRule("ipv6", "0", "0", []string{"200::/64"}),
 	}
@@ -425,7 +425,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
-	inboundRules := []public.ModelsSecurityRule{
+	inboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "5000", "6000",
 			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.100",
@@ -438,7 +438,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 			}),
 	}
 	// Verify an empty rule will apply a permit all
-	outboundRules := []public.ModelsSecurityRule{}
+	outboundRules := []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
@@ -499,7 +499,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NotEmpty(nfOutBefore2)
 
 	// Update the security group with the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "5000", "6000",
 			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.101",
@@ -512,7 +512,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 			}),
 	}
 	// Verify an empty rule will apply a permit all
-	outboundRules = []public.ModelsSecurityRule{}
+	outboundRules = []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.NoError(err)
@@ -536,11 +536,11 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.Empty(nfOutBefore2) // this got flushed
 
 	// create the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{}),
 		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
 	}
-	outboundRules = []public.ModelsSecurityRule{
+	outboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{}),
 		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
 	}
@@ -600,11 +600,11 @@ func TestSecurityGroupsExtended(t *testing.T) {
 
 	vpcID := user.ID
 	// create the new inbound and outbound rules
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{}),
 		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
 	}
-	outboundRules = []public.ModelsSecurityRule{
+	outboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("tcp", "0", "0", []string{}),
 		helper.createSecurityRule("icmpv4", "0", "0", []string{}),
 	}
@@ -636,7 +636,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 	require.NoError(err)
 
 	// Negative test where the from_port is greater than the to_port
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "456", "123",
 			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.100",
@@ -648,13 +648,13 @@ func TestSecurityGroupsExtended(t *testing.T) {
 				"2001:0000:0000:0000:0000:0000:0000:0010",
 			}),
 	}
-	outboundRules = []public.ModelsSecurityRule{}
+	outboundRules = []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where the from_port is 0 and not a valid 1-65535
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "0", "123",
 			[]string{"100.64.0.0/10",
 				"172.58.100.1-172.28.100.100",
@@ -665,13 +665,13 @@ func TestSecurityGroupsExtended(t *testing.T) {
 				"2001:0000:0000:0000:0000:0000:0000:0020",
 			}),
 	}
-	outboundRules = []public.ModelsSecurityRule{}
+	outboundRules = []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where there is an invalid address in ip_ranges
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "123", "456",
 			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.100",
@@ -683,13 +683,13 @@ func TestSecurityGroupsExtended(t *testing.T) {
 				"2001:0000:0000:0000:0000:0000:0000:0010",
 			}),
 	}
-	outboundRules = []public.ModelsSecurityRule{}
+	outboundRules = []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
 
 	// Negative test where there is an invalid protocol specified
-	inboundRules = []public.ModelsSecurityRule{
+	inboundRules = []client.ModelsSecurityRule{
 		helper.createSecurityRule("udp", "123", "456",
 			[]string{"100.64.0.0/10",
 				"172.28.100.1-172.28.100.100",
@@ -701,7 +701,7 @@ func TestSecurityGroupsExtended(t *testing.T) {
 				"2001:0000:0000:0000:0000:0000:0000:0010",
 			}),
 	}
-	outboundRules = []public.ModelsSecurityRule{}
+	outboundRules = []client.ModelsSecurityRule{}
 
 	err = helper.securityGroupRulesUpdate(username, password, inboundRules, outboundRules, secGroupID)
 	require.Error(err)
@@ -771,7 +771,7 @@ func TestSecurityGroupProtocolsOnly(t *testing.T) {
 	require.NotEmpty(nfOutBefore)
 
 	// Test all accepted protocols and a null and empty string
-	inboundRules := []public.ModelsSecurityRule{
+	inboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "0", "0", []string{""}),
 		helper.createSecurityRule("ipv6", "0", "0", []string{}),
 		helper.createSecurityRule("tcp", "0", "0", []string{""}),
@@ -779,7 +779,7 @@ func TestSecurityGroupProtocolsOnly(t *testing.T) {
 		helper.createSecurityRule("icmpv4", "0", "0", []string{""}),
 		helper.createSecurityRule("icmpv6", "0", "0", []string{}),
 	}
-	outboundRules := []public.ModelsSecurityRule{
+	outboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "0", "0", []string{""}),
 		helper.createSecurityRule("ipv6", "0", "0", []string{}),
 		helper.createSecurityRule("tcp", "0", "0", []string{""}),
@@ -855,13 +855,13 @@ func TestSecurityGroupProtocolsPortsOnly(t *testing.T) {
 	require.NotEmpty(nfOutBefore)
 
 	// Test all accepted protocols that accept a port range of 1-65535
-	inboundRules := []public.ModelsSecurityRule{
+	inboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "1000", "1100", []string{""}),
 		helper.createSecurityRule("ipv6", "2000", "2100", []string{}),
 		helper.createSecurityRule("tcp", "3000", "3100", []string{""}),
 		helper.createSecurityRule("udp", "4000", "4100", []string{}),
 	}
-	outboundRules := []public.ModelsSecurityRule{
+	outboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "1300", "1300", []string{""}),
 		helper.createSecurityRule("ipv6", "2300", "2300", []string{}),
 		helper.createSecurityRule("tcp", "3300", "3300", []string{""}),
@@ -936,13 +936,13 @@ func TestSecurityGroupProtocolsPortsCIDR(t *testing.T) {
 	require.NotEmpty(nfOutBefore)
 
 	// Test all accepted protocols, port range and the various accepted ip_range formats
-	inboundRules := []public.ModelsSecurityRule{
+	inboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "5000", "5999", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),
 		helper.createSecurityRule("ipv6", "6000", "6999", []string{"F100:0db8:0000:0000:0000:0000:0000:0000 - F200:0db8:ffff:ffff:ffff:ffff:ffff:ffff"}),
 		helper.createSecurityRule("tcp", "7000", "7999", []string{"100.3.2.1/32"}),
 		helper.createSecurityRule("udp", "8000", "8999", []string{"100.3.2.1"}),
 	}
-	outboundRules := []public.ModelsSecurityRule{
+	outboundRules := []client.ModelsSecurityRule{
 		helper.createSecurityRule("ipv4", "1400", "1400", []string{"192.168.64.10-192.168.64.50"}),
 		helper.createSecurityRule("ipv6", "2400", "2401", []string{"fd00:face:b00c:cafe::/64", "200::1-200::5", "fd00:face:b00c:cafe::1"}),
 		helper.createSecurityRule("tcp", "3400", "3402", []string{"10.130.0.1-10.130.0.5", "192.168.64.10-192.168.64.50", "100.100.0.128/25"}),

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -41,12 +41,12 @@ func createVpcCommand() *cli.Command {
 					},
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
-					return createVPC(ctx, command, public.ModelsAddVPC{
-						Ipv4Cidr:       command.String("ipv4-cidr"),
-						Ipv6Cidr:       command.String("ipv6-cidr"),
-						Description:    command.String("description"),
-						OrganizationId: command.String("organization-id"),
-						PrivateCidr:    !(command.String("ipv4-cidr") == "" && command.String("ipv6-cidr") == ""),
+					return createVPC(ctx, command, client.ModelsAddVPC{
+						Ipv4Cidr:       client.PtrOptionalString(command.String("ipv4-cidr")),
+						Ipv6Cidr:       client.PtrOptionalString(command.String("ipv6-cidr")),
+						Description:    client.PtrOptionalString(command.String("description")),
+						OrganizationId: client.PtrOptionalString(command.String("organization-id")),
+						PrivateCidr:    client.PtrBool(!(command.String("ipv4-cidr") == "" && command.String("ipv6-cidr") == "")),
 					})
 				},
 			},
@@ -69,8 +69,8 @@ func createVpcCommand() *cli.Command {
 						return err
 					}
 
-					update := public.ModelsUpdateVPC{
-						Description: command.String("description"),
+					update := client.ModelsUpdateVPC{
+						Description: client.PtrString(command.String("description")),
 					}
 					return updateVPC(ctx, command, id, update)
 				},
@@ -101,7 +101,7 @@ func createVpcCommand() *cli.Command {
 	}
 }
 
-func updateVPC(ctx context.Context, command *cli.Command, idStr string, update public.ModelsUpdateVPC) error {
+func updateVPC(ctx context.Context, command *cli.Command, idStr string, update client.ModelsUpdateVPC) error {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
@@ -136,10 +136,10 @@ func listVPCs(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func createVPC(ctx context.Context, command *cli.Command, resource public.ModelsAddVPC) error {
+func createVPC(ctx context.Context, command *cli.Command, resource client.ModelsAddVPC) error {
 	c := createClient(ctx, command)
-	if resource.OrganizationId == "" {
-		resource.OrganizationId = getDefaultOrgId(ctx, c)
+	if resource.GetOrganizationId() == "" {
+		resource.OrganizationId = client.PtrString(getDefaultOrgId(ctx, c))
 	}
 	res := apiResponse(c.VPCApi.
 		CreateVPC(ctx).
