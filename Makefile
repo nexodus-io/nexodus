@@ -346,13 +346,12 @@ $(PRIVATE_SWAGGER_YAML): $(APISERVER_DEPS) | dist
 gen-openapi-client: internal/api/public/client.go ## Generate the OpenAPI Client
 internal/api/public/client.go: $(SWAGGER_YAML) | dist
 	$(ECHO_PREFIX) printf "  %-12s $(SWAGGER_YAML)\n" "[OPENAPI CLIENT GEN]"
-	$(CMD_PREFIX) rm -f $(shell find internal/api/public | grep .go | grep -v _custom.go)
+	$(CMD_PREFIX) rm -f $(shell find internal/client | grep .go | grep -v custom_)
 	$(CMD_PREFIX) docker run --rm -v $(CURDIR):/src --user $(shell id -u):$(shell id -g) \
 		openapitools/openapi-generator-cli:v6.5.0 \
 		generate -i /src/$(SWAGGER_YAML) -g go \
-		--package-name public \
-		-o /src/internal/api/public \
-		-t /src/hack/openapi-templates \
+		--package-name client \
+		-o /src/internal/client \
 		--ignore-file-override /src/.openapi-generator-ignore $(PIPE_DEV_NULL)
 	$(ECHO_PREFIX) printf "  %-12s ./...\n" "[GO FMT]"
 	$(CMD_PREFIX) [ -z "$$(gofmt -l .)" ] || gofmt -w .

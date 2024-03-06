@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 	"log"
 )
@@ -65,9 +65,9 @@ func createSiteCommand() *cli.Command {
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
 					devID := command.String("site-id")
-					update := public.ModelsUpdateSite{}
+					update := client.ModelsUpdateSite{}
 					if command.IsSet("hostname") {
-						update.Hostname = command.String("hostname")
+						update.Hostname = client.PtrString(command.String("hostname"))
 					}
 					return updateSite(ctx, command, devID, update)
 				},
@@ -111,7 +111,7 @@ func deleteSite(ctx context.Context, command *cli.Command, devID string) error {
 	return nil
 }
 
-func updateSite(ctx context.Context, command *cli.Command, devID string, update public.ModelsUpdateSite) error {
+func updateSite(ctx context.Context, command *cli.Command, devID string, update client.ModelsUpdateSite) error {
 	devUUID, err := uuid.Parse(devID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)

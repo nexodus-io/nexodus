@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/olekukonko/tablewriter"
 	"net/http"
 	"net/url"
@@ -161,7 +160,7 @@ func createClient(ctx context.Context, command *cli.Command) *client.APIClient {
 		apiURL.Path = ""
 	}
 
-	c, err := client.NewAPIClient(ctx, apiURL.String(), nil, createClientOptions(command)...)
+	c, err := client.NewClient(ctx, apiURL.String(), nil, createClientOptions(command)...)
 	if err != nil {
 		Fatal(err)
 	}
@@ -312,39 +311,40 @@ func fieldFormatter(itemValue reflect.Value) string {
 
 func apiResponse[T any](resp T, httpResp *http.Response, err error) T {
 	if err != nil {
-		var openAPIError *public.GenericOpenAPIError
+		var openAPIError *client.GenericOpenAPIError
+		status := httpResp.StatusCode
 		switch {
 		case errors.As(err, &openAPIError):
 			model := openAPIError.Model()
 			switch err := model.(type) {
-			case public.ModelsBaseError:
-				Fatalf("error: %s, status: %d", err.Error, httpResp.StatusCode)
-			case public.ModelsConflictsError:
-				Fatalf("error: %s: conflicting id: %s, status: %d", err.Error, err.Id, httpResp.StatusCode)
-			case public.ModelsNotAllowedError:
-				message := fmt.Sprintf("error: %s", err.Error)
-				if err.Reason != "" {
-					message += fmt.Sprintf(", reason: %s", err.Reason)
+			case client.ModelsBaseError:
+				Fatalf("error: %s, status: %d", err.GetError(), status)
+			case client.ModelsConflictsError:
+				Fatalf("error: %s: conflicting id: %s, status: %d", err.GetError(), err.GetId(), status)
+			case client.ModelsNotAllowedError:
+				message := fmt.Sprintf("error: %s", err.GetError())
+				if err.GetReason() != "" {
+					message += fmt.Sprintf(", reason: %s", err.GetReason())
 				}
-				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
+				message += fmt.Sprintf(", status: %d", status)
 				Fatalf(message)
-			case public.ModelsValidationError:
-				message := fmt.Sprintf("error: %s", err.Error)
-				if err.Field != "" {
-					message += fmt.Sprintf(", field: %s", err.Field)
+			case client.ModelsValidationError:
+				message := fmt.Sprintf("error: %s", err.GetError())
+				if err.GetField() != "" {
+					message += fmt.Sprintf(", field: %s", err.GetField())
 				}
-				if err.Reason != "" {
-					message += fmt.Sprintf(", reason: %s", err.Reason)
+				if err.GetReason() != "" {
+					message += fmt.Sprintf(", reason: %s", err.GetReason())
 				}
-				message += fmt.Sprintf(", status: %d", httpResp.StatusCode)
+				message += fmt.Sprintf(", status: %d", status)
 				Fatalf(message)
-			case public.ModelsInternalServerError:
-				Fatalf("error: %s: trace id: %s, status: %d", err.Error, err.TraceId, httpResp.StatusCode)
+			case client.ModelsInternalServerError:
+				Fatalf("error: %s: trace id: %s, status: %d", err.GetError(), err.GetTraceId(), status)
 			default:
-				Fatalf("error: %s, status: %d", string(openAPIError.Body()), httpResp.StatusCode)
+				Fatalf("error: %s, status: %d", string(openAPIError.Body()), status)
 			}
 		default:
-			Fatalf("error: %+v, status: %d", err, httpResp.StatusCode)
+			Fatalf("error: %+v, status: %d", err, status)
 		}
 	}
 	return resp
@@ -386,10 +386,10 @@ func getJsonMap(command *cli.Command, name string) (map[string]interface{}, erro
 
 func getDefaultOrgId(ctx context.Context, c *client.APIClient) string {
 	user := apiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
-	return user.Id
+	return user.GetId()
 }
 
 func getDefaultVpcId(ctx context.Context, c *client.APIClient) string {
 	user := apiResponse(c.UsersApi.GetUser(ctx, "me").Execute())
-	return user.Id
+	return user.GetId()
 }

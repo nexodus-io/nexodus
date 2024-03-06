@@ -77,8 +77,9 @@ func (api *API) ListDevices(c *gin.Context) {
 	}
 
 	// only show the device token when using the reg token that created the device.
+	currentUserID := api.GetCurrentUserID(c)
 	for i := range devices {
-		hideDeviceBearerToken(&devices[i], tokenClaims)
+		hideDeviceBearerToken(&devices[i], tokenClaims, currentUserID)
 	}
 	c.JSON(http.StatusOK, devices)
 }
@@ -96,22 +97,24 @@ func encryptDeviceBearerToken(token string, publicKey string) string {
 	return sealed.String()
 }
 
-func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims) {
-	if claims == nil {
-		device.BearerToken = ""
-		return
+func hideDeviceBearerToken(device *models.Device, claims *models.NexodusClaims, currentUserId uuid.UUID) {
+	if claims != nil {
+		switch claims.Scope {
+		case "reg-token":
+			if claims.ID == device.RegKeyID.String() {
+				device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
+				return
+			}
+		case "device-token":
+			if claims.ID == device.ID.String() {
+				device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
+				return
+			}
+		}
 	}
-	switch claims.Scope {
-	case "reg-token":
-		if claims.ID == device.RegKeyID.String() {
-			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
-			return
-		}
-	case "device-token":
-		if claims.ID == device.ID.String() {
-			device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
-			return
-		}
+	if device.OwnerID == currentUserId {
+		device.BearerToken = encryptDeviceBearerToken(device.BearerToken, device.PublicKey)
+		return
 	}
 	device.BearerToken = ""
 }
@@ -168,7 +171,7 @@ func (api *API) GetDevice(c *gin.Context) {
 	}
 
 	// only show the device token when using the reg token that created the device.
-	hideDeviceBearerToken(&device, tokenClaims)
+	hideDeviceBearerToken(&device, tokenClaims, api.GetCurrentUserID(c))
 
 	c.JSON(http.StatusOK, device)
 }
@@ -395,7 +398,7 @@ func (api *API) UpdateDevice(c *gin.Context) {
 		return
 	}
 
-	hideDeviceBearerToken(&device, tokenClaims)
+	hideDeviceBearerToken(&device, tokenClaims, api.GetCurrentUserID(c))
 
 	api.signalBus.Notify(fmt.Sprintf("/devices/vpc=%s", device.VpcID.String()))
 	c.JSON(http.StatusOK, device)
@@ -640,8 +643,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 		return
 	}
 
-	hideDeviceBearerToken(&device, tokenClaims)
-
+	hideDeviceBearerToken(&device, tokenClaims, userId)
 	api.signalBus.Notify(fmt.Sprintf("/devices/vpc=%s", device.VpcID.String()))
 	c.JSON(http.StatusCreated, device)
 }
@@ -830,8 +832,9 @@ func (api *API) ListDevicesInVPC(c *gin.Context) {
 			return nil, result.Error
 		}
 
+		currentUserID := api.GetCurrentUserID(c)
 		for i := range items {
-			hideDeviceBearerToken(items[i], tokenClaims)
+			hideDeviceBearerToken(items[i], tokenClaims, currentUserID)
 		}
 		return items, nil
 	})

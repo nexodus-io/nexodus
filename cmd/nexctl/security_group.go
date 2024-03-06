@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -70,7 +70,7 @@ func createSecurityGroupCommand() *cli.Command {
 					inboundRulesStr := command.String("inbound-rules")
 					outboundRulesStr := command.String("outbound-rules")
 
-					var inboundRules, outboundRules []public.ModelsSecurityRule
+					var inboundRules, outboundRules []client.ModelsSecurityRule
 					if inboundRulesStr != "" {
 						inboundRules, err = jsonStringToSecurityRules(inboundRulesStr)
 						if err != nil {
@@ -111,7 +111,7 @@ func createSecurityGroupCommand() *cli.Command {
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
 
-					update := public.ModelsUpdateSecurityGroup{}
+					update := client.ModelsUpdateSecurityGroup{}
 
 					id, err := getUUID(command, "security-group-id")
 					if err != nil {
@@ -119,7 +119,7 @@ func createSecurityGroupCommand() *cli.Command {
 					}
 
 					if command.IsSet("description") {
-						update.Description = command.String("description")
+						update.Description = client.PtrString(command.String("description"))
 					}
 					if command.IsSet("inbound-rules") {
 						rules, err := jsonStringToSecurityRules(command.String("inbound-rules"))
@@ -159,7 +159,7 @@ func securityGroupTableFields(command *cli.Command) []TableField {
 }
 
 // createSecurityGroup creates a new security group.
-func createSecurityGroup(ctx context.Context, command *cli.Command, description, vpcId string, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func createSecurityGroup(ctx context.Context, command *cli.Command, description, vpcId string, inboundRules, outboundRules []client.ModelsSecurityRule) error {
 	c := createClient(ctx, command)
 	if vpcId == "" {
 		vpcId = getDefaultVpcId(ctx, c)
@@ -168,9 +168,9 @@ func createSecurityGroup(ctx context.Context, command *cli.Command, description,
 	if err != nil {
 		return fmt.Errorf("invalid rules: %w", err)
 	}
-	res := apiResponse(c.SecurityGroupApi.CreateSecurityGroup(ctx).SecurityGroup(public.ModelsAddSecurityGroup{
-		Description:   description,
-		VpcId:         vpcId,
+	res := apiResponse(c.SecurityGroupApi.CreateSecurityGroup(ctx).SecurityGroup(client.ModelsAddSecurityGroup{
+		Description:   client.PtrString(description),
+		VpcId:         client.PtrString(vpcId),
 		InboundRules:  inboundRules,
 		OutboundRules: outboundRules,
 	}).Execute())
@@ -179,7 +179,7 @@ func createSecurityGroup(ctx context.Context, command *cli.Command, description,
 }
 
 // updateSecurityGroup updates an existing security group.
-func updateSecurityGroup(ctx context.Context, command *cli.Command, secGroupID string, update public.ModelsUpdateSecurityGroup) error {
+func updateSecurityGroup(ctx context.Context, command *cli.Command, secGroupID string, update client.ModelsUpdateSecurityGroup) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.SecurityGroupApi.
 		UpdateSecurityGroup(ctx, secGroupID).
@@ -211,8 +211,8 @@ func deleteSecurityGroup(ctx context.Context, command *cli.Command, encodeOut, s
 	return nil
 }
 
-func jsonStringToSecurityRules(jsonString string) ([]public.ModelsSecurityRule, error) {
-	var rules []public.ModelsSecurityRule
+func jsonStringToSecurityRules(jsonString string) ([]client.ModelsSecurityRule, error) {
+	var rules []client.ModelsSecurityRule
 	err := json.Unmarshal([]byte(jsonString), &rules)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal security rules: %w", err)
@@ -221,7 +221,7 @@ func jsonStringToSecurityRules(jsonString string) ([]public.ModelsSecurityRule, 
 }
 
 // checkICMPRules prevents the user from defining ICMP rules with ports set to anything but 0.
-func checkICMPRules(inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule) error {
+func checkICMPRules(inboundRules []client.ModelsSecurityRule, outboundRules []client.ModelsSecurityRule) error {
 	for _, rule := range inboundRules {
 		err := checkICMPRule(rule)
 		if err != nil {
@@ -238,8 +238,8 @@ func checkICMPRules(inboundRules []public.ModelsSecurityRule, outboundRules []pu
 }
 
 // checkICMPRule checks an ICMP rules with ports set to anything but 0.
-func checkICMPRule(rule public.ModelsSecurityRule) error {
-	if rule.IpProtocol == "icmp" && (rule.FromPort != 0 || rule.ToPort != 0) {
+func checkICMPRule(rule client.ModelsSecurityRule) error {
+	if rule.GetIpProtocol() == "icmp" && (rule.GetFromPort() != 0 || rule.GetToPort() != 0) {
 		return fmt.Errorf("error: ICMP rule should have FromPort and ToPort set to 0 or left undefined")
 	}
 	return nil

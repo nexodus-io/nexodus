@@ -3,10 +3,10 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"os/exec"
 	"strings"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -106,7 +106,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 			if err := nx.nfPermitProtoPortAddrV6(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound v6 rule: %w", err)
 			}
-		} else if rule.FromPort != 0 && rule.ToPort != 0 {
+		} else if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			// if the rule is L4 port(s) range with no l3 addresses
 			if err := nx.nfPermitProtoPort(ingressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
@@ -134,7 +134,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 			if err := nx.nfPermitProtoPortAddrV6(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process outbound v6 rule: %w", err)
 			}
-		} else if rule.FromPort != 0 && rule.ToPort != 0 {
+		} else if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			// if the rule is L4 port(s) range with no l3 addresses
 			if err := nx.nfPermitProtoPort(egressChain, rule); err != nil {
 				return fmt.Errorf("nftables setup error, failed to process inbound destination port rule: %w", err)
@@ -177,7 +177,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 ip protocol icmp ip saddr 100.100.0.0/20 counter accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 100.100.0.1-100.100.0.100 iifname wg0 accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv4 ip daddr 8.8.8.8 udp dport 53 iifname "wg0" accept
-func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule client.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
@@ -188,10 +188,10 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 	} else {
 		srcOrDst = destAddr
 	}
-	switch rule.IpProtocol {
+	switch rule.GetIpProtocol() {
 	case protoIPv4:
 		// if the specified proto is ipv4 that specifies an L3 address and does not specify ports.
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
 				// v4 permits for L3 src or dst
@@ -200,9 +200,9 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 					return err
 				}
 			}
-		} else if rule.FromPort != 0 && rule.ToPort != 0 {
+		} else if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			// if the specified proto is ipv4 that specifies an L3 address and does specify ports.
-			ports := fmt.Sprintf("%d-%d", rule.FromPort, rule.ToPort)
+			ports := fmt.Sprintf("%d-%d", rule.GetFromPort(), rule.GetToPort())
 			if len(rule.IpRanges) > 0 {
 				for _, ipRange := range rule.IpRanges {
 					srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
@@ -216,7 +216,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		}
 	case protoTCP:
 		// permit ipv4 tcp to src/dst L3 to any destination port
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
@@ -226,7 +226,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 			}
 		}
 		// permit ipv4 tcp to L3 src/dst to specified destination port or port range
-		if rule.FromPort != 0 && rule.ToPort != 0 {
+		if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoTCP, dportOption, ruleInterface, "counter", actionAccept}
@@ -237,7 +237,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 		}
 	case protoUDP:
 		// permit ipv4 udp to src/dst L3 to any destination port
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
@@ -247,10 +247,10 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 			}
 		}
 		// permit ipv4 udp to L3 src/dst to specified destination port or port range
-		if rule.FromPort != 0 && rule.ToPort != 0 {
+		if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, srcOrDstOption, rule.GetIpProtocol(), dportOption, ruleInterface, "counter", actionAccept}
 				if _, err := policyCmd(nx.logger, nft); err != nil {
 					return err
 				}
@@ -278,7 +278,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV4(chain string, rule public.ModelsSecur
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889  iifname "wg0" accept
 // nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889 udp dport 53 iifname "wg0" accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 ip6 nexthdr ipv6-icmp ip6 saddr 200::/64 counter accept
-func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule client.ModelsSecurityRule) error {
 	var dportOption, srcOrDst string
 	var nft []string
 
@@ -290,11 +290,11 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		srcOrDst = destAddr
 	}
 
-	switch rule.IpProtocol {
+	switch rule.GetIpProtocol() {
 	case protoIPv6:
 		// nft add rule inet nexodus nexodus-outbound meta nfproto ipv6 ip6 daddr 2001:4860:4860::8888-2001:4860:4860::8889  iifname "wg0" accept
 		// ipv6 that specifies an L3 src/dst and does not specify ports.
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, ruleInterface, counter, actionAccept}
@@ -302,9 +302,9 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 					return err
 				}
 			}
-		} else if rule.FromPort > 0 && rule.ToPort > 0 {
+		} else if rule.GetFromPort() > 0 && rule.GetToPort() > 0 {
 			// ipv6 that specifies an L3 src/dst and specifies ports.
-			ports := fmt.Sprintf("%d-%d", rule.FromPort, rule.ToPort)
+			ports := fmt.Sprintf("%d-%d", rule.GetFromPort(), rule.GetToPort())
 			if len(rule.IpRanges) > 0 {
 				for _, ipRange := range rule.IpRanges {
 					srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
@@ -318,7 +318,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		}
 	case protoTCP:
 		// permit ipv4 tcp to src/dst L3 to any destination port
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoTCP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
@@ -328,10 +328,10 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 			}
 		}
 		// permit ipv6 udp to L3 src/dst to specified destination port or port range
-		if rule.FromPort != 0 && rule.ToPort != 0 {
+		if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
-				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, rule.IpProtocol, dportOption, ruleInterface, "counter", actionAccept}
+				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, rule.GetIpProtocol(), dportOption, ruleInterface, "counter", actionAccept}
 				if _, err := policyCmd(nx.logger, nft); err != nil {
 					return err
 				}
@@ -339,7 +339,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 		}
 	case protoUDP:
 		// permit ipv4 udp to src/dst L3 to any destination port
-		if rule.FromPort == 0 && rule.ToPort == 0 {
+		if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstOption, protoUDP, destPort, "0-65535", ruleInterface, "counter", actionAccept}
@@ -349,7 +349,7 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 			}
 		}
 		// permit ipv4 udp to L3 src/dst to specified destination port or port range
-		if rule.FromPort != 0 && rule.ToPort != 0 {
+		if rule.GetFromPort() != 0 && rule.GetToPort() != 0 {
 			for _, ipRange := range rule.IpRanges {
 				srcOrDstIpAddrOption := fmt.Sprintf("ip6 %s %s", srcOrDst, ipRange)
 				nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, srcOrDstIpAddrOption, protoUDP, dportOption, ruleInterface, "counter", actionAccept}
@@ -378,11 +378,11 @@ func (nx *Nexodus) nfPermitProtoPortAddrV6(chain string, rule public.ModelsSecur
 // nfPermitProtoPort creates a nftables rule that permits the specified rule. Example Rules handled by this method:
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 iifname "wg0" tcp dport 1-80 counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 iifname "wg0" tcp dport 1-80 counter accept
-func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoPort(chain string, rule client.ModelsSecurityRule) error {
 	var dportOption string
 	var nft []string
 	dportOption = nx.nftPortOption(rule)
-	switch rule.IpProtocol {
+	switch rule.GetIpProtocol() {
 	case protoIPv4:
 		// if the specified proto is ipv4, add rules for both tcp and udp to the chain with the specified dport
 		if dportOption == "" {
@@ -417,11 +417,11 @@ func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 		if dportOption == "" {
 			return nil
 		}
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.GetIpProtocol(), dportOption, ruleInterface, counter, actionAccept}
 		if _, err := policyCmd(nx.logger, nft); err != nil {
 			return err
 		}
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, dportOption, ruleInterface, counter, actionAccept}
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.GetIpProtocol(), dportOption, ruleInterface, counter, actionAccept}
 		if _, err := policyCmd(nx.logger, nft); err != nil {
 			return err
 		}
@@ -438,20 +438,20 @@ func (nx *Nexodus) nfPermitProtoPort(chain string, rule public.ModelsSecurityRul
 // nft insert rule inet nexodus nexodus-outbound meta nfproto ipv6  iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv4 tcp dport 0-65535 iifname "wg0" counter accept
 // nft add rule inet nexodus nexodus-inbound meta nfproto ipv6 tcp dport 0-65535  iifname "wg0" counter accept
-func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule) error {
+func (nx *Nexodus) nfPermitProtoAny(chain string, rule client.ModelsSecurityRule) error {
 	var nft []string
-	switch rule.IpProtocol {
+	switch rule.GetIpProtocol() {
 	case protoIPv4, protoIPv6:
 		// permit ipv4 any
-		if rule.IpProtocol == protoIPv4 {
-			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
+		if rule.GetIpProtocol() == protoIPv4 {
+			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.GetIpProtocol(), ruleInterface, counter, actionAccept}
 			if _, err := policyCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 		// permit ipv6 any
-		if rule.IpProtocol == protoIPv6 {
-			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.IpProtocol, ruleInterface, counter, actionAccept}
+		if rule.GetIpProtocol() == protoIPv6 {
+			nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", rule.GetIpProtocol(), ruleInterface, counter, actionAccept}
 			if _, err := policyCmd(nx.logger, nft); err != nil {
 				return err
 			}
@@ -459,14 +459,14 @@ func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 
 	case "icmp", protoICMPv4, protoICMPv6:
 		// permit icmpv4 any
-		if rule.IpProtocol == protoICMPv4 || rule.IpProtocol == "icmp" {
+		if rule.GetIpProtocol() == protoICMPv4 || rule.GetIpProtocol() == "icmp" {
 			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, "ip", "protocol", protoICMP, ruleInterface, counter, actionAccept}
 			if _, err := policyCmd(nx.logger, nft); err != nil {
 				return err
 			}
 		}
 		// permit icmpv6 any
-		if rule.IpProtocol == protoICMPv6 {
+		if rule.GetIpProtocol() == protoICMPv6 {
 			// ip6 nexthdr is used instead of ip6 protocol for IPv6, because the protocol field is not directly in the IPv6 header.
 			nft = []string{"insert", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, "ip6", "nexthdr", "ipv6-icmp", ruleInterface, counter, actionAccept}
 			if _, err := policyCmd(nx.logger, nft); err != nil {
@@ -475,12 +475,12 @@ func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 		}
 	case protoTCP, protoUDP:
 		// permit ip/ip6 tcp or udp any to all ports
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv4, rule.GetIpProtocol(), destPort, "0-65535", ruleInterface, counter, actionAccept}
 		if _, err := policyCmd(nx.logger, nft); err != nil {
 			return err
 		}
 		// permit ipv6 tcp or udp any
-		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.IpProtocol, destPort, "0-65535", ruleInterface, counter, actionAccept}
+		nft = []string{"add", "rule", tableFamily, sgTableName, chain, "meta", "nfproto", protoIPv6, rule.GetIpProtocol(), destPort, "0-65535", ruleInterface, counter, actionAccept}
 		if _, err := policyCmd(nx.logger, nft); err != nil {
 			return err
 		}
@@ -493,16 +493,16 @@ func (nx *Nexodus) nfPermitProtoAny(chain string, rule public.ModelsSecurityRule
 }
 
 // nftPortOption returns the nftables port option for the specified rule.
-func (nx *Nexodus) nftPortOption(rule public.ModelsSecurityRule) string {
+func (nx *Nexodus) nftPortOption(rule client.ModelsSecurityRule) string {
 	var portOption string
 	var portRange string
 
-	if rule.FromPort == 0 && rule.ToPort == 0 {
+	if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 		portRange = fmt.Sprintf("%d-%d", 0, 65535)
-	} else if rule.FromPort == rule.ToPort {
-		portRange = fmt.Sprintf("%d", rule.FromPort)
+	} else if rule.GetFromPort() == rule.GetToPort() {
+		portRange = fmt.Sprintf("%d", rule.GetFromPort())
 	} else {
-		portRange = fmt.Sprintf("%d-%d", rule.FromPort, rule.ToPort)
+		portRange = fmt.Sprintf("%d-%d", rule.GetFromPort(), rule.GetToPort())
 	}
 	portOption = fmt.Sprintf("%s %s", destPort, portRange)
 
@@ -602,7 +602,7 @@ func policyCmd(logger *zap.SugaredLogger, cmd []string) (string, error) {
 	return string(output), nil
 }
 
-func debugSecurityGroupRules(logger *zap.SugaredLogger, inboundRules, outboundRules []public.ModelsSecurityRule) error {
+func debugSecurityGroupRules(logger *zap.SugaredLogger, inboundRules, outboundRules []client.ModelsSecurityRule) error {
 	inJson, err := json.MarshalIndent(inboundRules, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to print debug json inbound rules: %w", err)

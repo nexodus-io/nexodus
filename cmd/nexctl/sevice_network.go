@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -33,9 +33,9 @@ func createServiceNetworkCommand() *cli.Command {
 					},
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
-					return createServiceNetwork(ctx, command, public.ModelsAddServiceNetwork{
-						Description:    command.String("description"),
-						OrganizationId: command.String("organization-id"),
+					return createServiceNetwork(ctx, command, client.ModelsAddServiceNetwork{
+						Description:    client.PtrString(command.String("description")),
+						OrganizationId: client.PtrString(command.String("organization-id")),
 					})
 				},
 			},
@@ -58,8 +58,8 @@ func createServiceNetworkCommand() *cli.Command {
 						return err
 					}
 
-					update := public.ModelsUpdateServiceNetwork{
-						Description: command.String("description"),
+					update := client.ModelsUpdateServiceNetwork{
+						Description: client.PtrString(command.String("description")),
 					}
 					return updateServiceNetwork(ctx, command, id, update)
 				},
@@ -85,7 +85,7 @@ func createServiceNetworkCommand() *cli.Command {
 	}
 }
 
-func updateServiceNetwork(ctx context.Context, command *cli.Command, idStr string, update public.ModelsUpdateServiceNetwork) error {
+func updateServiceNetwork(ctx context.Context, command *cli.Command, idStr string, update client.ModelsUpdateServiceNetwork) error {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		Fatalf("failed to parse a valid UUID from %s %v", idStr, err)
@@ -118,10 +118,10 @@ func listServiceNetworks(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func createServiceNetwork(ctx context.Context, command *cli.Command, resource public.ModelsAddServiceNetwork) error {
+func createServiceNetwork(ctx context.Context, command *cli.Command, resource client.ModelsAddServiceNetwork) error {
 	c := createClient(ctx, command)
-	if resource.OrganizationId == "" {
-		resource.OrganizationId = getDefaultOrgId(ctx, c)
+	if resource.GetOrganizationId() == "" {
+		resource.OrganizationId = client.PtrString(getDefaultOrgId(ctx, c))
 	}
 	res := apiResponse(c.ServiceNetworkApi.
 		CreateServiceNetwork(ctx).

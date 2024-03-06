@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/database"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -28,7 +29,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
@@ -582,7 +582,7 @@ func (helper *Helper) getNodeHostname(ctx context.Context, ctr testcontainers.Co
 }
 
 // createSecurityRule creates a rule to append to security group rules
-func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr string, ipRanges []string) public.ModelsSecurityRule {
+func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr string, ipRanges []string) client.ModelsSecurityRule {
 	fromPort := int32(0)
 	toPort := int32(0)
 
@@ -610,10 +610,10 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 	}
 
 	// Create the rule
-	rule := public.ModelsSecurityRule{
-		IpProtocol: protocol,
-		FromPort:   fromPort,
-		ToPort:     toPort,
+	rule := client.ModelsSecurityRule{
+		IpProtocol: client.PtrString(protocol),
+		FromPort:   client.PtrInt32(fromPort),
+		ToPort:     client.PtrInt32(toPort),
 		IpRanges:   ipRanges,
 	}
 
@@ -709,7 +709,7 @@ func (helper *Helper) connectToPort(ctx context.Context, ctr testcontainers.Cont
 }
 
 // securityGroupRulesUpdate update security group rule
-func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string) error {
+func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []client.ModelsSecurityRule, outboundRules []client.ModelsSecurityRule, secGroupID string) error {
 	// Marshal rules to JSON
 	inboundJSON, err := json.Marshal(inboundRules)
 	if err != nil {
