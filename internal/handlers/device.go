@@ -587,6 +587,11 @@ func (api *API) CreateDevice(c *gin.Context) {
 			return err
 		}
 
+		var symmetricNat bool
+		if request.SymmetricNat != nil {
+			symmetricNat = *request.SymmetricNat
+		}
+
 		device = models.Device{
 			Base: models.Base{
 				ID: deviceId,
@@ -611,7 +616,7 @@ func (api *API) CreateDevice(c *gin.Context) {
 			},
 			AdvertiseCidrs:  request.AdvertiseCidrs,
 			Relay:           request.Relay,
-			SymmetricNat:    request.SymmetricNat,
+			SymmetricNat:    symmetricNat,
 			Hostname:        request.Hostname,
 			Os:              request.Os,
 			SecurityGroupId: vpc.ID,

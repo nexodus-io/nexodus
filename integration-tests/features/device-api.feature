@@ -202,6 +202,55 @@ Feature: Device API
       }
       """
 
+    # Bob can update if device is no more behind symmetric NAT.
+    When I PATCH path "/api/devices/${device_id}" with json body:
+      """
+      {
+        "symmetric_nat": false
+      }
+      """
+    Then the response code should be 200
+    And the response should match json:
+      """
+      {
+        "allowed_ips": [
+          "${response.allowed_ips[0]}",
+          "${response.allowed_ips[1]}"
+        ],
+        "online": false,
+        "online_at": null,
+        "advertise_cidrs": null,
+        "endpoints": [{
+          "source": "local",
+          "address": "172.17.0.3:58664"
+        }, {
+          "source": "stun:stun1.l.google.com:19302",
+          "address": "172.17.0.3:58664"
+        }],
+        "hostname": "kittenhome",
+        "id": "${device_id}",
+        "vpc_id": "${vpc_id}",
+        "os": "linux",
+        "public_key": "${public_key}",
+        "relay": true,
+        "revision": ${response.revision},
+        "symmetric_nat": false,
+        "ipv4_tunnel_ips": [
+          {
+            "address": "${response.ipv4_tunnel_ips[0].address}",
+            "cidr": "${response.ipv4_tunnel_ips[0].cidr}"
+          }
+        ],
+        "ipv6_tunnel_ips": [
+          {
+            "address": "${response.ipv6_tunnel_ips[0].address}",
+            "cidr": "${response.ipv6_tunnel_ips[0].cidr}"
+          }
+        ],        "owner_id": "${user_id}",
+        "security_group_id": "${response.security_group_id}"
+      }
+      """
+
     # Bob gets the devices and should see 1 device in the device listing..
     When I GET path "/api/devices"
     Then the response code should be 200
@@ -230,7 +279,7 @@ Feature: Device API
           "public_key": "${public_key}",
           "relay": true,
           "revision": ${response[0].revision},
-          "symmetric_nat": true,
+          "symmetric_nat": false,
           "security_group_id": "${response[0].security_group_id}",
           "ipv4_tunnel_ips": [
             {
@@ -313,7 +362,7 @@ Feature: Device API
         "public_key": "",
         "relay": true,
         "revision": ${response.revision},
-        "symmetric_nat": true,
+        "symmetric_nat": false,
         "ipv4_tunnel_ips": [
           {
             "address": "${response.ipv4_tunnel_ips[0].address}",

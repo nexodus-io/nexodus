@@ -39,7 +39,7 @@ type AddDevice struct {
 	AdvertiseCidrs  []string   `json:"advertise_cidrs" example:"172.16.42.0/24"`
 	IPv4TunnelIPs   []TunnelIP `json:"ipv4_tunnel_ips" gorm:"type:JSONB; serializer:json"`
 	Relay           bool       `json:"relay"`
-	SymmetricNat    bool       `json:"symmetric_nat"`
+	SymmetricNat    *bool      `json:"symmetric_nat"`
 	Hostname        string     `json:"hostname" example:"myhost"`
 	Endpoints       []Endpoint `json:"endpoints" gorm:"type:JSONB; serializer:json"`
 	Os              string     `json:"os"`

@@ -16,8 +16,9 @@ func (suite *HandlerTestSuite) TestCreateGetDevice() {
 	require := suite.Require()
 	assert := suite.Assert()
 	newDevice := models.AddDevice{
-		VpcID:     suite.testUserID,
-		PublicKey: "atestpubkey",
+		VpcID:        suite.testUserID,
+		PublicKey:    "atestpubkey",
+		SymmetricNat: suite.SymmetricNat,
 	}
 
 	resBody, err := json.Marshal(newDevice)

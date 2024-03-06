@@ -35,12 +35,13 @@ const (
 
 type HandlerTestSuite struct {
 	suite.Suite
-	logger      *zap.SugaredLogger
-	ipam        *http.Server
-	wg          *sync.WaitGroup
-	api         *API
-	testUserID  uuid.UUID
-	testUser2ID uuid.UUID
+	logger       *zap.SugaredLogger
+	ipam         *http.Server
+	wg           *sync.WaitGroup
+	api          *API
+	testUserID   uuid.UUID
+	testUser2ID  uuid.UUID
+	SymmetricNat *bool
 }
 
 func (suite *HandlerTestSuite) SetupSuite() {
@@ -52,6 +53,7 @@ func (suite *HandlerTestSuite) SetupSuite() {
 	suite.ipam = ipam.NewTestIPAMServer()
 	suite.wg = &sync.WaitGroup{}
 	suite.wg.Add(1)
+	suite.SymmetricNat = new(bool)
 
 	listener, err := net.Listen("tcp", "[::1]:49090")
 	suite.Require().NoError(err)
