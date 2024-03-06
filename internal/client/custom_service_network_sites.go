@@ -1,9 +1,9 @@
 package client
 
-// Informer creates a *Informer which provides a simpler
-// API to list sites but which is implemented with the Watch api.  The *Informer
+// ListInformer creates a *ListInformer which provides a simpler
+// API to list sites but which is implemented with the Watch api.  The *ListInformer
 // maintains a local site cache which gets updated with the Watch events.
-func (r ApiListSitesInServiceNetworkRequest) Informer() *Informer[ModelsSite] {
+func (r ApiListSitesInServiceNetworkRequest) Informer() *ListInformer[ModelsSite] {
 	informer := NewInformer[ModelsSite](&SiteAdaptor{}, r.gtRevision, ApiWatchRequest{
 		ctx:        r.ctx,
 		ApiService: r.ApiService.client.EventsApi,

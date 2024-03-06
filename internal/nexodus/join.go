@@ -107,9 +107,13 @@ func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string) (*http.Response, e
 }
 
 func (nx *Nexodus) getDeviceRelayMetadata(deviceId string) (client.ModelsDeviceMetadata, *http.Response, error) {
-	metadata, resp, err := nx.client.DevicesApi.GetDeviceMetadataKey(context.Background(), deviceId, "relay").Execute()
+	metadata, resp, err := nx.relayMetadataInformer.Execute()
 	if err != nil {
 		return client.ModelsDeviceMetadata{}, resp, err
 	}
-	return *metadata, resp, nil
+	item, found := metadata[deviceId+"/relay"]
+	if !found {
+		return client.ModelsDeviceMetadata{}, resp, errors.New("relay metadata not found")
+	}
+	return item, resp, nil
 }

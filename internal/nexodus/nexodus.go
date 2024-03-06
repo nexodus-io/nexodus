@@ -240,7 +240,7 @@ type Nexodus struct {
 	deviceCache              map[string]deviceCacheEntry
 	deviceCacheLock          sync.RWMutex
 	deviceReconciled         bool
-	devicesInformer          *client.Informer[client.ModelsDevice]
+	devicesInformer          *client.ListInformer[client.ModelsDevice]
 	endpointLocalAddress     string
 	exitNode                 exitNode
 	hostname                 string
@@ -255,7 +255,7 @@ type Nexodus struct {
 	reflexiveAddrStunSrc     string
 	relayWgIP                string
 	securityGroup            *client.ModelsSecurityGroup
-	securityGroupsInformer   *client.Informer[client.ModelsSecurityGroup]
+	securityGroupsInformer   *client.ListInformer[client.ModelsSecurityGroup]
 	status                   int // See the NexdStatus* constants
 	statusMsg                string
 	symmetricNat             bool
@@ -265,6 +265,8 @@ type Nexodus struct {
 	wireguardPubKey          string
 	wireguardPubKeyInConfig  bool
 	wireguardPvtKey          string
+	relayMetadataInformer    *client.ListInformer[client.ModelsDeviceMetadata]
+	deviceId                 string
 }
 
 type wgConfig struct {
@@ -620,12 +622,14 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 		return nil
 	})
+	nx.deviceId = modelsDevice.GetId()
+
 	if err != nil {
 		return fmt.Errorf("join error %w", err)
 	}
-	nx.logger.Debug(fmt.Sprintf("Device: %+v", modelsDevice))
+	nx.logger.Debugf("Device: %s", util.JsonStringer(modelsDevice))
 	nx.logger.Infof("%s with UUID: [ %+v ] into vpc: [ %s (%s) ]",
-		deviceOperationLogMsg, modelsDevice.GetId(), nx.vpc.GetId(), nx.vpc.GetDescription())
+		deviceOperationLogMsg, nx.deviceId, nx.vpc.GetId(), nx.vpc.GetDescription())
 
 	// Use the device token to auth with the apiserver...
 	if modelsDevice.GetBearerToken() != "" {
@@ -665,6 +669,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	informerCtx = nx.client.EventsApi.Watch(informerCtx). /*.GetPublicKey()(nx.wireguardPubKey).*/ NewSharedInformerContext()
 	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.GetId()).Informer()
 	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.GetId()).Informer()
+	nx.relayMetadataInformer = nx.client.VPCApi.ListMetadataInVPC(informerCtx, nx.vpc.GetId()).Key("relay").Informer()
 
 	if nx.relay {
 		peerMap, _, err := nx.devicesInformer.Execute()
@@ -717,11 +722,13 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			case <-ctx.Done():
 				return
 			case <-stunTicker.C:
-				if err := nx.reconcileStun(modelsDevice.GetId()); err != nil {
+				if err := nx.reconcileStun(nx.deviceId); err != nil {
 					if nx.os != Windows.String() { // windows does not currently support reuse port or bpf
 						nx.logger.Debug(err)
 					}
 				}
+			case <-nx.relayMetadataInformer.Changed():
+				nx.reconcileDevices(ctx, options)
 			case <-nx.devicesInformer.Changed():
 				nx.reconcileDevices(ctx, options)
 			case <-nx.securityGroupsInformer.Changed():
@@ -996,6 +1003,7 @@ func (nx *Nexodus) reconcileDevices(ctx context.Context, options []client.Option
 	informerCtx = nx.client.EventsApi.Watch(informerCtx).NewSharedInformerContext()
 	nx.securityGroupsInformer = nx.client.VPCApi.ListSecurityGroupsInVPC(informerCtx, nx.vpc.GetId()).Informer()
 	nx.devicesInformer = nx.client.VPCApi.ListDevicesInVPC(informerCtx, nx.vpc.GetId()).Informer()
+	nx.relayMetadataInformer = nx.client.VPCApi.ListMetadataInVPC(informerCtx, nx.vpc.GetId()).Key("relay").Informer()
 
 	nx.SetStatus(NexdStatusRunning, "")
 	nx.logger.Infoln("Nexodus agent has re-established a connection to the api-server")

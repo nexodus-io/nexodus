@@ -185,9 +185,8 @@ func getDeviceMetadataKey(ctx context.Context, command *cli.Command, deviceID st
 
 func getVpcMetadata(ctx context.Context, command *cli.Command, vpcID string) error {
 	c := createClient(ctx, command)
-	prefixes := []string{}
 	res := apiResponse(c.VPCApi.
-		ListMetadataInVPC(ctx, vpcID, prefixes).
+		ListMetadataInVPC(ctx, vpcID).
 		Execute())
 	show(command, metadataTableFields(command, true), res)
 	return nil

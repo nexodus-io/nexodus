@@ -220,14 +220,11 @@ func (api *API) WatchEvents(c *gin.Context) {
 				return
 			}
 
-			vpcId, _, apiErr := getVpcAndOrg(r, i)
-			if apiErr != nil {
-				c.JSON(apiErr.Status, apiErr.Body)
-				return
-			}
-
 			watchOptions := struct {
-				Prefixes []string `form:"prefix"`
+				Prefixes []string `json:"prefix"`
+				Key      string   `json:"key"`
+				DeviceId string   `json:"device-id"`
+				VpcId    string   `json:"vpc-id"`
 			}{}
 
 			if r.Options != nil {
@@ -241,34 +238,72 @@ func (api *API) WatchEvents(c *gin.Context) {
 				}
 			}
 
+			if watchOptions.DeviceId != "" {
+				// verify we can read the device...
+				var device models.Device
+				db := api.db.WithContext(ctx)
+				result := api.DeviceIsOwnedByCurrentUser(c, db).
+					First(&device, "id = ?", watchOptions.DeviceId)
+				if result.Error != nil {
+					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						c.JSON(http.StatusNotFound, models.NewNotFoundError("device"))
+						return
+					} else {
+						api.SendInternalServerError(c, result.Error)
+						return
+					}
+				}
+				watchOptions.VpcId = device.VpcID.String()
+			} else if watchOptions.VpcId != "" {
+				// verify that we access to the vpc
+				_, _, apiErr := getVpcAndOrg(r, i)
+				if apiErr != nil {
+					c.JSON(apiErr.Status, apiErr.Body)
+					return
+				}
+			} else {
+				c.JSON(http.StatusBadRequest, models.NewBaseError("device-id or vpc-id required"))
+				return
+			}
+
 			watches = append(watches, Watch{
 				kind:       r.Kind,
 				gtRevision: r.GtRevision,
 				atTail:     r.AtTail,
-				signal:     fmt.Sprintf("/metadata/vpc=%s", vpcId.String()),
-				fetch: func(db *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
+				signal:     fmt.Sprintf("/metadata/vpc=%s", watchOptions.VpcId),
+				fetch: func(tx *gorm.DB, gtRevision uint64) (fetchmgr.ResourceList, error) {
 
-					tempDB := db.Model(&models.DeviceMetadata{}).
-						Joins("inner join devices on devices.id=device_metadata.device_id").
-						Where( // extra wrapping Where needed to group the SQL expressions
-							db.Where("devices.vpc_id = ?", vpcId.String()),
-						)
+					db := tx
+					if watchOptions.DeviceId != "" {
+						db = tx.Where("device_id = ?", watchOptions.DeviceId)
+					} else if watchOptions.VpcId != "" {
+						db = tx.Model(&models.DeviceMetadata{}).
+							Joins("inner join devices on devices.id=device_metadata.device_id").
+							Where( // extra wrapping Where needed to group the SQL expressions
+								db.Where("devices.vpc_id = ?", watchOptions.VpcId),
+							)
+					} else {
+						return nil, fmt.Errorf("invalid query")
+					}
 
-					// Building OR expressions with gorm is tricky...
+					// build up an OR expression for the prefixes
 					if len(watchOptions.Prefixes) > 0 {
-						expressions := db
+						orClaus := tx
 						for i, prefix := range watchOptions.Prefixes {
 							if i == 0 {
-								expressions = expressions.Where("key LIKE ?", prefix+"%")
+								orClaus = orClaus.Where("key LIKE ?", prefix+"%")
 							} else {
-								expressions = expressions.Or("key LIKE ?", prefix+"%")
+								orClaus = orClaus.Or("key LIKE ?", prefix+"%")
 							}
 						}
-						tempDB = tempDB.Where( // extra wrapping Where needed to group the SQL expressions
-							expressions,
+						db = db.Where( // extra wrapping Where needed to group the SQL expressions
+							orClaus,
 						)
 					}
-					db = tempDB
+
+					if watchOptions.Key != "" {
+						db = tx.Where("key = ?", watchOptions.Key)
+					}
 
 					var items deviceMetadataList
 					db = db.Unscoped().Limit(100).Order("device_metadata.revision")
@@ -640,12 +675,13 @@ func (api *API) WatchEventsInVPC(c *gin.Context) {
 func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Watch) {
 	type watchState struct {
 		Watch
-		sub    *signalbus.Subscription
-		idx    int
-		list   fetchmgr.ResourceList
-		atTail bool
-		err    error
-		parked bool
+		sub     *signalbus.Subscription
+		idx     int
+		list    fetchmgr.ResourceList
+		atTail  bool
+		err     error
+		parked  bool
+		idsSent map[string]struct{}
 	}
 
 	var states []*watchState
@@ -667,7 +703,9 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 
 		state.idx = 1
 		state.atTail = w.atTail
-
+		if !state.atTail {
+			state.idsSent = make(map[string]struct{})
+		}
 		states = append(states, state)
 	}
 
@@ -694,11 +732,17 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 
 				} else if state.list != nil && state.idx < state.list.Len() {
 
-					result, revision, deletedAt := state.list.Item(state.idx)
+					result, id, revision, deletedAt := state.list.Item(state.idx)
 					state.gtRevision = revision
 					state.idx += 1
 
 					if deletedAt.Valid {
+						if state.idsSent != nil {
+							if _, found := state.idsSent[id]; !found {
+								// we never sent the change event so, we don't have to delete it.
+								continue
+							}
+						}
 						return models.WatchEvent{
 							Kind:  state.kind,
 							Type:  "delete",
@@ -706,6 +750,10 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 						}
 					}
 
+					if state.idsSent != nil {
+						// keep track of the ids we've sent to make sure we delete them if we need to
+						state.idsSent[id] = struct{}{}
+					}
 					return models.WatchEvent{
 						Kind:  state.kind,
 						Type:  "change",
@@ -735,6 +783,7 @@ func (api *API) sendMultiWatch(c *gin.Context, ctx context.Context, watches []Wa
 						// bookmark idea taken from: https://kubernetes.io/docs/reference/using-api/api-concepts/#watch-bookmarks
 						if !state.atTail {
 							state.atTail = true
+							state.idsSent = nil
 							return models.WatchEvent{
 								Kind: state.kind,
 								Type: "tail",

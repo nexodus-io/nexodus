@@ -99,7 +99,8 @@ func (api *API) ListDeviceMetadata(c *gin.Context) {
 // @Description  Lists metadata for a device
 // @Param        id              path   string   true  "VPC ID"
 // @Param		 gt_revision     query  uint64   false "greater than revision"
-// @Param        prefix          path   []string true  "used to filter down to the specified key prefixes"
+// @Param        prefix          query   []string false  "used to filter down to the specified key prefixes"
+// @Param        key             query   string false  "used to filter down to the specified key"
 // @Accept	     json
 // @Produce      json
 // @Success      200  {object}  []models.DeviceMetadata
@@ -121,6 +122,7 @@ func (api *API) ListMetadataInVPC(c *gin.Context) {
 	query := struct {
 		Query
 		Prefixes []string `form:"prefix"`
+		Key      string   `form:"key"`
 	}{}
 	if err := c.ShouldBindQuery(&query); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewApiError(err))
@@ -164,6 +166,10 @@ func (api *API) ListMetadataInVPC(c *gin.Context) {
 			)
 		}
 		db = tempDB
+
+		if query.Key != "" {
+			db = db.Where("key = ?", query.Key)
+		}
 		db = FilterAndPaginateWithQuery(db, &models.DeviceMetadata{}, c, query.Query, "key")
 
 		var items deviceMetadataList
@@ -177,9 +183,9 @@ func (api *API) ListMetadataInVPC(c *gin.Context) {
 
 type deviceMetadataList []*models.DeviceMetadata
 
-func (d deviceMetadataList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d deviceMetadataList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, fmt.Sprintf("%s/%s", item.DeviceID, item.Key), item.Revision, item.DeletedAt
 }
 
 func (d deviceMetadataList) Len() int {

@@ -3348,8 +3348,13 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "used to filter down to the specified key prefixes",
                         "name": "prefix",
-                        "in": "path",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "used to filter down to the specified key",
+                        "name": "key",
+                        "in": "query"
                     }
                 ],
                 "responses": {

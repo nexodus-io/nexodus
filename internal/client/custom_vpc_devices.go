@@ -4,10 +4,10 @@ import (
 	"github.com/nexodus-io/nexodus/internal/util"
 )
 
-// Informer creates a *Informer which provides a simpler
-// API to list devices but which is implemented with the Watch api.  The *Informer
+// ListInformer creates a *ListInformer which provides a simpler
+// API to list devices but which is implemented with the Watch api.  The *ListInformer
 // maintains a local device cache which gets updated with the Watch events.
-func (r ApiListDevicesInVPCRequest) Informer() *Informer[ModelsDevice] {
+func (r ApiListDevicesInVPCRequest) Informer() *ListInformer[ModelsDevice] {
 	informer := NewInformer[ModelsDevice](&DeviceAdaptor{}, r.gtRevision, ApiWatchRequest{
 		ctx:        r.ctx,
 		ApiService: r.ApiService.client.EventsApi,

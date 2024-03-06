@@ -311,9 +311,9 @@ func (api *API) UpdateServiceNetwork(c *gin.Context) {
 
 type serviceNetworkList []*models.ServiceNetwork
 
-func (d serviceNetworkList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d serviceNetworkList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d serviceNetworkList) Len() int {

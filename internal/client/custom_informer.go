@@ -16,7 +16,7 @@ type InformerAdaptor[T any] interface {
 	Key(item T) string
 }
 
-type Informer[T any] struct {
+type ListInformer[T any] struct {
 	adaptor               InformerAdaptor[T]
 	watchEventsDataLoader *WatchDataLoader
 	watch                 ModelsWatch
@@ -28,8 +28,8 @@ type Informer[T any] struct {
 	response              *http.Response
 }
 
-func NewInformer[T any](adaptor InformerAdaptor[T], gtRevision *int32, request ApiWatchRequest, options map[string]interface{}) *Informer[T] {
-	informer := Informer[T]{
+func NewInformer[T any](adaptor InformerAdaptor[T], gtRevision *int32, request ApiWatchRequest, options map[string]interface{}) *ListInformer[T] {
+	informer := ListInformer[T]{
 		watch: ModelsWatch{
 			Kind:       PtrString(adaptor.Kind()),
 			GtRevision: gtRevision,
@@ -52,13 +52,13 @@ func NewInformer[T any](adaptor InformerAdaptor[T], gtRevision *int32, request A
 	return &informer
 }
 
-func (informer *Informer[T]) Changed() <-chan struct{} {
+func (informer *ListInformer[T]) Changed() <-chan struct{} {
 	return informer.changed
 }
 
 var ErrContextCanceled = errors.New("context canceled")
 
-func (informer *Informer[T]) Execute() (map[string]T, *http.Response, error) {
+func (informer *ListInformer[T]) Execute() (map[string]T, *http.Response, error) {
 
 	informer.mu.Lock()
 	// after a failure... we need to reset some things... so that we can recover...
@@ -91,7 +91,7 @@ func (informer *Informer[T]) Execute() (map[string]T, *http.Response, error) {
 	return informer.data, informer.response, informer.err
 }
 
-func (informer *Informer[T]) notify() {
+func (informer *ListInformer[T]) notify() {
 	// try to signal...
 	select {
 	case informer.changed <- struct{}{}:
@@ -99,7 +99,7 @@ func (informer *Informer[T]) notify() {
 	}
 }
 
-func (informer *Informer[T]) handleWatchEvent(event ModelsWatchEvent, response *http.Response, err error) {
+func (informer *ListInformer[T]) handleWatchEvent(event ModelsWatchEvent, response *http.Response, err error) {
 	informer.mu.Lock()
 	defer informer.mu.Unlock()
 
@@ -192,4 +192,22 @@ func JsonUnmarshal(from map[string]interface{}, to interface{}) error {
 		return err
 	}
 	return json.Unmarshal(b, to)
+}
+
+type GetInformer[T any] struct {
+	list *ListInformer[T]
+}
+
+func (informer *GetInformer[T]) Execute() (*T, *http.Response, error) {
+	x, resp, err := informer.list.Execute()
+	if err != nil {
+		return nil, resp, err
+	}
+	for _, v := range x {
+		return &v, resp, nil
+	}
+	return nil, resp, nil
+}
+func (informer *GetInformer[T]) Changed() <-chan struct{} {
+	return informer.list.Changed()
 }
