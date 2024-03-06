@@ -159,6 +159,7 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                use_remote_address: true
                 stat_prefix: admin
                 http_filters:
                   - name: envoy.filters.http.router
@@ -216,6 +217,7 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                use_remote_address: true
                 access_log:
                   - name: envoy.access_loggers.file
                     typed_config:
@@ -294,6 +296,7 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                use_remote_address: true
                 access_log:
                   - name: envoy.access_loggers.file
                     typed_config:
