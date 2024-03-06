@@ -47,6 +47,7 @@ type APIRouterOptions struct {
 func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.TrustedPlatform = "X-Forwarded-For"
 
 	r.Use(NoCacheMiddleware)
 	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{
