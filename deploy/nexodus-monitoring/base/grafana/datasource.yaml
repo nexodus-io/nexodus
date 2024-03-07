@@ -1,34 +1,56 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
-  name: nexodus-grafanadatasource
+  name: prometheus-ds
 spec:
-  name: middleware.yaml
-  datasources:
-    - name: Prometheus
-      type: prometheus
-      access: proxy
-      url: http://prometheus-operated:9090
-      isDefault: true
-      version: 1
-      editable: false
-      jsonData:
-        tlsSkipVerify: true
-        timeInterval: "5s"
-    - name: Tempo
-      type: tempo
-      access: proxy
-      url: http://tempo:3200
-      isDefault: false
-      version: 1
-      editable: false
-      jsonData:
-        tracesToLogs:
-          datasourceUid: 'Loki'
-    - name: Loki
-      type: loki
-      access: proxy
-      url: http://loki:3100/
-      isDefault: false
-      version: 1
-      editable: false
+  instanceSelector:
+    matchLabels:
+      dashboards: "nexodus-grafana"
+  datasource:
+    name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-operated:9090
+    isDefault: true
+    version: 1
+    editable: false
+    jsonData:
+      tlsSkipVerify: true
+      timeInterval: "5s"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: tempo-ds
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "nexodus-grafana"
+  datasource:
+    name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    version: 1
+    editable: false
+    jsonData:
+      tracesToLogs:
+        datasourceUid: 'Loki'
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: loki-ds
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "nexodus-grafana"
+  datasource:
+    name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100/
+    isDefault: false
+    version: 1
+    editable: false
