@@ -2950,12 +2950,15 @@ paths:
         type: integer
       - collectionFormat: csv
         description: used to filter down to the specified key prefixes
-        in: path
+        in: query
         items:
           type: string
         name: prefix
-        required: true
         type: array
+      - description: used to filter down to the specified key
+        in: query
+        name: key
+        type: string
       produces:
       - application/json
       responses:

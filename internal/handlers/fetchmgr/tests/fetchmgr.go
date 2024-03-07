@@ -68,7 +68,7 @@ func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, managers ...FetchMa
 					break
 				}
 				for i := 0; i < wl.Len(); i++ {
-					_, seq, _ := wl.Item(i)
+					_, _, seq, _ := wl.Item(i)
 					require.Equal(lastSeq+1, seq)
 					lastSeq = seq
 				}
@@ -83,7 +83,7 @@ func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, managers ...FetchMa
 				wl, err := fetcher.Fetch(nil, lastSeq)
 				require.NoError(err)
 				for i := 0; i < wl.Len(); i++ {
-					_, seq, _ := wl.Item(i)
+					_, _, seq, _ := wl.Item(i)
 					require.Equal(lastSeq+1, seq)
 					lastSeq = seq
 				}
@@ -101,7 +101,7 @@ func TestFetchManagerReducesDBFetchesAtTheTail(t *testing.T, managers ...FetchMa
 				wl, err := fetcher.Fetch(nil, lastSeq)
 				require.NoError(err)
 				for i := 0; i < wl.Len(); i++ {
-					_, seq, _ := wl.Item(i)
+					_, _, seq, _ := wl.Item(i)
 					require.Equal(lastSeq+1, seq)
 					lastSeq = seq
 				}

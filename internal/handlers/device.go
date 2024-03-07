@@ -30,9 +30,9 @@ var (
 
 type deviceList []*models.Device
 
-func (d deviceList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d deviceList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d deviceList) Len() int {

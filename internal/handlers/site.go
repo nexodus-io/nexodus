@@ -20,9 +20,9 @@ import (
 
 type siteList []*models.Site
 
-func (d siteList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d siteList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d siteList) Len() int {

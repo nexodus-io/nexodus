@@ -665,13 +665,26 @@ type ApiListMetadataInVPCRequest struct {
 	ctx        context.Context
 	ApiService *VPCApiService
 	id         string
-	prefix     []string
 	gtRevision *int32
+	prefix     *[]string
+	key        *string
 }
 
 // greater than revision
 func (r ApiListMetadataInVPCRequest) GtRevision(gtRevision int32) ApiListMetadataInVPCRequest {
 	r.gtRevision = &gtRevision
+	return r
+}
+
+// used to filter down to the specified key prefixes
+func (r ApiListMetadataInVPCRequest) Prefix(prefix []string) ApiListMetadataInVPCRequest {
+	r.prefix = &prefix
+	return r
+}
+
+// used to filter down to the specified key
+func (r ApiListMetadataInVPCRequest) Key(key string) ApiListMetadataInVPCRequest {
+	r.key = &key
 	return r
 }
 
@@ -686,15 +699,13 @@ Lists metadata for a device
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param id VPC ID
-	@param prefix used to filter down to the specified key prefixes
 	@return ApiListMetadataInVPCRequest
 */
-func (a *VPCApiService) ListMetadataInVPC(ctx context.Context, id string, prefix []string) ApiListMetadataInVPCRequest {
+func (a *VPCApiService) ListMetadataInVPC(ctx context.Context, id string) ApiListMetadataInVPCRequest {
 	return ApiListMetadataInVPCRequest{
 		ApiService: a,
 		ctx:        ctx,
 		id:         id,
-		prefix:     prefix,
 	}
 }
 
@@ -716,7 +727,6 @@ func (a *VPCApiService) ListMetadataInVPCExecute(r ApiListMetadataInVPCRequest) 
 
 	localVarPath := localBasePath + "/api/vpcs/{id}/metadata"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"prefix"+"}", url.PathEscape(parameterValueToString(r.prefix, "prefix")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -724,6 +734,12 @@ func (a *VPCApiService) ListMetadataInVPCExecute(r ApiListMetadataInVPCRequest) 
 
 	if r.gtRevision != nil {
 		parameterAddToHeaderOrQuery(localVarQueryParams, "gt_revision", r.gtRevision, "")
+	}
+	if r.prefix != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "prefix", r.prefix, "csv")
+	}
+	if r.key != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "key", r.key, "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
