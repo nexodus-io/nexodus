@@ -2,14 +2,11 @@ apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
   name: nexodus-grafana
+  labels:
+    dashboards: "nexodus-grafana"
 spec:
   client:
-    preferService: true
-  ingress:
-    enabled: true
-    hostname: grafana.127.0.0.1.nip.io
-    path: /
-    pathType: Prefix
+    preferIngress: false
   config:
     log:
       mode: "console"
@@ -20,12 +17,7 @@ spec:
     server:
       root_url: http://grafana.127.0.0.1.nip.io
     auth:
-      disable_login_form: false
-      disable_signout_menu: true
+      disable_login_form: "false"
+      disable_signout_menu: "true"
     auth.anonymous:
-      enabled: true
-  dashboardLabelSelector:
-    - matchExpressions:
-        - key: app.kubernetes.io/component
-          operator: In
-          values: [grafana]
+      enabled: "true"
