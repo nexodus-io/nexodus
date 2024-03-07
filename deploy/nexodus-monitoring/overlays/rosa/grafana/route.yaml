@@ -13,6 +13,6 @@ spec:
     termination: reencrypt
   to:
     kind: Service
-    name: grafana-service
+    name: nexodus-grafana-service
     weight: 100
   wildcardPolicy: None
