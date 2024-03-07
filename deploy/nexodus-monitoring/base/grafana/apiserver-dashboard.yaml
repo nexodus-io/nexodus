@@ -3,6 +3,10 @@ kind: GrafanaDashboard
 metadata:
   name: nexodus-dashboard
 spec:
+  resyncPeriod: 30s
+  instanceSelector:
+    matchLabels:
+      dashboards: "nexodus-grafana"
   json: >
     {
       "annotations": {
