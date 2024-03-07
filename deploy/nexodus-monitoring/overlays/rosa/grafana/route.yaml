@@ -6,7 +6,7 @@ metadata:
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: grafana-tls
 spec:
-  host: nexodus-grafana.apps.open-svc-sts.k1wl.p1.openshiftapps.com
+  host: nexodus-grafana.apps.platform-sts.pcbk.p1.openshiftapps.com
   port:
     targetPort: https
   tls:
