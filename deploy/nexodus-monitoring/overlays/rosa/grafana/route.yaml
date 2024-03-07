@@ -8,9 +8,9 @@ metadata:
 spec:
   host: nexodus-grafana.apps.platform-sts.pcbk.p1.openshiftapps.com
   port:
-    targetPort: https
+    targetPort: 3000
   tls:
-    termination: reencrypt
+    termination: edge
   to:
     kind: Service
     name: nexodus-grafana-service
