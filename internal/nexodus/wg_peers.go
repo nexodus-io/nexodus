@@ -259,7 +259,7 @@ func (nx *Nexodus) buildPeersConfig() map[string]client.ModelsDevice {
 
 		if hostname != "" && derpAddr != "" {
 			if nx.nexRelay.myDerp == DefaultDerpRegionID {
-				nx.logger.Debugf("User on-boarded derp relay is available, switching to on-boarded relay from public relay. : [ %v] ", nx.nexRelay.derpMap.Regions[CustomDerpRegionID])
+				nx.logger.Debugf("User on-boarded derp relay is available, switching to on-boarded relay from public relay.")
 				nx.nexRelay.closeDerpLocked(nx.nexRelay.myDerp, "switching to custom DERP map")
 			}
 			if nx.nexRelay.myDerp == 0 {

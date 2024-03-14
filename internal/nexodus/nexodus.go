@@ -932,7 +932,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	nx.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+	nx.logger.Debugf("Security Group change detected: %+v", util.JsonStringer(responseSecGroup))
 	oldSecGroup := nx.securityGroup
 	nx.securityGroup = &responseSecGroup
 
@@ -1043,7 +1043,7 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 			nx.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
 			if err = nx.reconcileDeviceCache(); err != nil {
-				nx.logger.Debugf("reconcile failed %v", res)
+				nx.logger.Debugf("reconcile failed %v", util.JsonStringer(res))
 			}
 		}
 	}
@@ -1177,7 +1177,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 					p.GetHostname(), p.GetPublicKey(), err)
 			} else {
 				existing.metadata = metadata
-				nx.logger.Debugf("successfully fetched device metadata: %v", existing.metadata)
+				nx.logger.Debugf("successfully fetched device metadata: %s", util.JsonStringer(existing.metadata))
 			}
 			nx.relayWgIP = p.AllowedIps[0]
 		}
