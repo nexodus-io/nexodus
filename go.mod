@@ -32,7 +32,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/itchyny/gojq v0.12.14
-	github.com/jackc/pgx/v5 v5.5.3
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/mhmtszr/concurrent-swiss-map v1.0.6
