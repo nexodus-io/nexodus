@@ -872,7 +872,7 @@ func (nx *Nexodus) Stop() {
 	}
 	if nx.nexRelay.derpProxy != nil {
 		nx.logger.Info("Stopping HTTPS/TLS Derp Server Proxy")
-		nx.nexRelay.derpProxy.stopDerpProxy()
+		nx.nexRelay.derpProxy.Stop()
 	}
 }
 
@@ -1239,9 +1239,9 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if nx.nexRelay.derpProxy == nil {
 				// Start Derp Proxy if we have a Derp Map and a Derp ID
 				nx.nexRelay.derpProxy = NewDerpUserSpaceProxy(nx.logger, &nx.nexRelay)
-				nx.nexRelay.derpProxy.startDerpProxy()
+				nx.nexRelay.derpProxy.Start()
 			} else if nx.nexRelay.derpProxy.port != nx.nexRelay.myDerp {
-				nx.nexRelay.derpProxy.restartDerpProxy()
+				nx.nexRelay.derpProxy.Restart()
 			}
 		}
 	}
