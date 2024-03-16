@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nexodus-io/nexodus/internal/client"
 	"net"
+	"net/netip"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -75,7 +76,7 @@ var wgPeerMethods = []wgPeerMethod{
 		// We are behind the same reflexive address as the peer, try direct, local peering
 		name: peeringMethodDirectLocal,
 		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, reflexiveIP4 string, healthyRelay bool, _ bool) bool {
-			return !nx.relay && !device.GetRelay() && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
+			return !nx.relay && !nx.relayOnly && !device.GetRelay() && nx.nodeReflexiveAddressIPv4.Addr().String() == parseIPfromAddrPort(reflexiveIP4)
 		},
 		buildPeerConfig: buildDirectLocalPeer,
 	},
@@ -84,7 +85,7 @@ var wgPeerMethods = []wgPeerMethod{
 		// This is the address+port opened up by the peer using STUN.
 		name: peeringMethodReflexive,
 		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, _ string, healthyRelay bool, _ bool) bool {
-			return !nx.relay && !device.GetRelay() && !device.GetSymmetricNat() && !nx.symmetricNat
+			return !nx.relay && !nx.relayOnly && !device.GetRelay() && !device.GetSymmetricNat() && !nx.symmetricNat
 		},
 		buildPeerConfig: buildReflexivePeer,
 	},
@@ -93,7 +94,9 @@ var wgPeerMethods = []wgPeerMethod{
 		// and none of the peering methods above worked
 		name: peeringMethodViaDerpRelay,
 		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, reflexiveIP4 string, healthyRelay bool, wgRelayAvailable bool) bool {
-			return !nx.relay && !device.GetRelay() && !wgRelayAvailable && (nx.symmetricNat || device.GetSymmetricNat()) && nx.nodeReflexiveAddressIPv4.Addr().String() != parseIPfromAddrPort(reflexiveIP4)
+			return !nx.relay && !device.GetRelay() && // don't use if either peer is a relay.
+				!wgRelayAvailable && // don't use if a wg relay is available...
+				(nx.symmetricNat || device.GetSymmetricNat()) // use if one of the peers on a symmetric nat.
 		},
 		buildPeerConfig: buildPeerViaDerpRelay,
 	},
@@ -278,10 +281,12 @@ func (nx *Nexodus) buildPeersConfig() map[string]client.ModelsDevice {
 						nx.logger.Errorf("Failed to parse stun address %s : %v", derpAddr, err)
 					}
 
-					err = SetLocalDerpDnsEntry(ip, hostname)
+					addr, err := netip.ParseAddr(ip)
 					if err != nil {
-						nx.logger.Warnf("failed to set local DNS entry for relay device %v: %v", relayDevice.metadata.GetDeviceId(), err)
+						nx.logger.Errorf("Failed to parse ip address %s : %v", ip, err)
 					}
+
+					nx.nexRelay.inMemResolver.Set(hostname, []netip.Addr{addr})
 				}
 			}
 
@@ -296,9 +301,7 @@ func (nx *Nexodus) buildPeersConfig() map[string]client.ModelsDevice {
 			if err != nil {
 				nx.nexRelay.logger.Warnf("failed to get hostname for derp relay device %s: %v", relayDevice.metadata.GetDeviceId(), err)
 			} else {
-				if err = RemoveLocalDerpDnsEntry(hostname); err != nil {
-					nx.nexRelay.logger.Warnf("failed to remove local DNS entry for derp relay device %s: %v", relayDevice.metadata.GetDeviceId(), err)
-				}
+				nx.nexRelay.inMemResolver.Delete(hostname)
 			}
 		}
 		nx.nexRelay.SetDefaultDERPMap()

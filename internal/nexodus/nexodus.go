@@ -136,6 +136,9 @@ type nexRelay struct {
 	// derpRecvCh is used by receiveDERP to read DERP messages.
 	// It must have buffer size > 0; see issue 3736.
 	derpRecvCh chan derpReadResult
+
+	// this is used to provide fallback IP resolution for derp servers.
+	inMemResolver *InMemResolver
 }
 
 type peerHealth struct {
@@ -221,6 +224,7 @@ type Nexodus struct {
 	regKey                  string
 	relay                   bool
 	relayDerp               bool
+	relayOnly               bool
 	requestedIP             string
 	stateDir                string
 	stateStore              state.Store
@@ -308,6 +312,7 @@ func New(o Options) (*Nexodus, error) {
 		networkRouterDisableNAT: o.NetworkRouterDisableNAT,
 		apiURL:                  o.ApiURL,
 		symmetricNat:            o.RelayOnly,
+		relayOnly:               o.RelayOnly,
 		logger:                  o.Logger,
 		logLevel:                o.LogLevel,
 		version:                 o.Version,
@@ -334,6 +339,7 @@ func New(o Options) (*Nexodus, error) {
 			peerLastDerp:  make(map[key.NodePublic]int),
 			logf:          tlogger.WithPrefix(log.Printf, "nexodus-derp: "),
 			logger:        o.Logger,
+			inMemResolver: NewInMemResolver(),
 		},
 		exitNode: exitNode{
 			exitNodeClientEnabled: o.ExitNodeClientEnabled,

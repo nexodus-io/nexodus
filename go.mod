@@ -77,7 +77,6 @@ require (
 )
 
 require (
-	github.com/txn2/txeh v1.5.4
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13
 	golang.org/x/time v0.5.0
 	nhooyr.io/websocket v1.8.10

@@ -556,8 +556,6 @@ github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+F
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
-github.com/txn2/txeh v1.5.4 h1:ZL9o3e7S8RnduFhUl42/wn//Aq/uWI9Md8MluSRUvN8=
-github.com/txn2/txeh v1.5.4/go.mod h1:qYzGG9kCzeVEI12geK4IlanHWY8X4uy/I3NcW7mk8g4=
 github.com/ugorji/go/codec v1.2.11 h1:BMaWp1Bb6fHwEtbplGBGJ498wD+LKlNSl25MjdZY4dU=
 github.com/ugorji/go/codec v1.2.11/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
 github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.3 h1:girTS67d1m8+XUJLbNBDjCSH8BtujWFoI93W1OUjFIc=

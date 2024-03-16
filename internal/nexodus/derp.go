@@ -226,6 +226,7 @@ func (nr *nexRelay) derpWriteChanOfAddr(addr netip.AddrPort, peer key.NodePublic
 	dc.NotePreferred(nr.myDerp == regionID)
 	dc.SetAddressFamilySelector(derpAddrFamSelector{nr})
 	dc.DNSCache = dnscache.Get()
+	dc.DNSCache.LookupIPFallback = nr.inMemResolver.LookupIP
 
 	ctx, cancel := context.WithCancel(nr.connCtx)
 	ch := make(chan derpWriteRequest, bufferedDerpWritesBeforeDrop())
