@@ -3,10 +3,14 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api"
 	"net"
 
+	"github.com/nexodus-io/nexodus/internal/api"
+
 	"go.uber.org/zap"
+
+	"bytes"
+	"net/http"
 )
 
 const (
@@ -130,5 +134,37 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]api.KeepaliveStatus, 
 		}
 	}
 
+	go nx.sendPeerData(peerConnResultsMap)
+
 	return peerConnResultsMap
+}
+
+func (nx *Nexodus) sendPeerData (resultsMap map[string]api.KeepaliveStatus) {
+
+	peerResultsData, err := json.Marshal(resultsMap)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return
+	}
+
+	resp, err := http.Post("/status", "application/json", bytes.NewBuffer(peerResultsData))
+	if err != nil {
+		fmt.Println("Error sending POST request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Unexpected response status code:", resp.StatusCode)
+		// Handle error response if needed
+		return
+	}
+
+	var responseData map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+		fmt.Println("Error decoding JSON response:", err)
+		return
+	}
+
+	fmt.Println("Response:", responseData)
 }

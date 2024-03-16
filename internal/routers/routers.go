@@ -177,6 +177,10 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.PATCH("/security-groups/:id", api.UpdateSecurityGroup)
 		apiGroup.DELETE("/security-groups/:id", api.DeleteSecurityGroup)
 
+		// Status
+		apiGroup.POST("/status", api.CreateStatus)
+		apiGroup.GET("/status", api.GetStatus)
+
 		// List / Watch Event API used by nexd
 		apiGroup.POST("/vpcs/:id/events", api.WatchEvents)
 		apiGroup.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
