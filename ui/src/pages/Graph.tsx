@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactFlow from 'reactflow';
+import ReactFlow from 'react-flow-renderer';
  
 import 'reactflow/dist/style.css';
  
