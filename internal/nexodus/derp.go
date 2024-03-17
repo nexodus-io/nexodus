@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nexodus-io/nexodus/pkg/derp/derphttp"
 	"tailscale.com/derp"
+	"tailscale.com/derp/derphttp"
 	"tailscale.com/health"
 	"tailscale.com/logtail/backoff"
 	"tailscale.com/net/dnscache"
