@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231031_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231106_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231107_0000"
@@ -15,6 +16,7 @@ import (
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231206_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231211_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240221_0000"
+	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240312_0000"
 	"sort"
 
 	"github.com/cenkalti/backoff/v4"
@@ -27,6 +29,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	
 )
 
 var tracer trace.Tracer

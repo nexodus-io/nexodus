@@ -9,6 +9,10 @@ import (
 	//"context"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	//"github.com/google/uuid"
 	//"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
@@ -70,6 +74,46 @@ func (api *API) CreateStatus(c *gin.Context) {
 }
 
 func (api *API) GetStatus(c *gin.Context) {
-	
+    ctx, span := tracer.Start(c.Request.Context(), "ListStatus", trace.WithAttributes(
+        attribute.String("id", c.Param("id")),
+    ))
+    defer span.End()
 
+    if !api.FlagCheck(c, "status") {
+        return
+    }
+
+    k, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
+        return
+    }
+
+    var status models.Status
+
+    db := api.db.WithContext(ctx)
+    db = api.StatusIsOwnedByCurrentUser(c, db)
+    result := db.First(&status, "id = ?", k)
+    if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+        c.Status(http.StatusNotFound)
+        return
+    }
+
+    tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
+    if err2 != nil {
+        c.JSON(err2.Status, err2.Body)
+        return
+    }
+
+    // only show the status token when using the reg token that created the status|
+    userId := api.GetCurrentUserID(c)
+    hideStatusBearerToken(&status, tokenClaims, userId)
+
+    c.JSON(http.StatusOK, status)
 }
+
+func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+    userId := api.GetCurrentUserID(c)
+    return db.Where("owner_id = ?", userId)
+}
+
