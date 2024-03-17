@@ -90,17 +90,6 @@ var wgPeerMethods = []wgPeerMethod{
 		buildPeerConfig: buildReflexivePeer,
 	},
 	{
-		// Try connecting to the peer via a derp relay, in case the legacy relay is not available
-		// and none of the peering methods above worked
-		name: peeringMethodViaDerpRelay,
-		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, reflexiveIP4 string, healthyRelay bool, wgRelayAvailable bool) bool {
-			return !nx.relay && !device.GetRelay() && // don't use if either peer is a relay.
-				!wgRelayAvailable && // don't use if a wg relay is available...
-				(nx.symmetricNat || device.GetSymmetricNat()) // use if one of the peers on a symmetric nat.
-		},
-		buildPeerConfig: buildPeerViaDerpRelay,
-	},
-	{
 		// Last chance, try connecting to the peer via a wireguard relay
 		name: peeringMethodViaRelay,
 		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, _ string, healthyRelay bool, wgRelayAvailable bool) bool {
@@ -111,6 +100,17 @@ var wgPeerMethods = []wgPeerMethod{
 				AllowedIPsForRelay: device.AdvertiseCidrs,
 			}
 		},
+	},
+	{
+		// Try connecting to the peer via a derp relay, in case the legacy relay is not available
+		// and none of the peering methods above worked
+		name: peeringMethodViaDerpRelay,
+		checkPrereqs: func(nx *Nexodus, device client.ModelsDevice, reflexiveIP4 string, healthyRelay bool, wgRelayAvailable bool) bool {
+			return !nx.relay && !device.GetRelay() && // don't use if either peer is a relay.
+				!wgRelayAvailable && // don't use if a wg relay is available...
+				(nx.symmetricNat || device.GetSymmetricNat()) // use if one of the peers on a symmetric nat.
+		},
+		buildPeerConfig: buildPeerViaDerpRelay,
 	},
 }
 
@@ -359,7 +359,7 @@ func (nx *Nexodus) peeringFailed(d deviceCacheEntry, healthyRelay bool) bool {
 		return false
 	}
 
-	if d.peeringMethodIndex == len(wgPeerMethods)-1 {
+	if d.peeringMethod == peeringMethodViaRelay {
 		return !healthyRelay
 	}
 
