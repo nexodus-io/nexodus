@@ -10,7 +10,7 @@ import (
 )
 
 type Status struct {
-	UserId      uuid.UUID `gorm:"index"`
+	UserId		uuid.UUID	`gorm:"index"`
 	WgIP        string
 	IsReachable bool
 	Hostname    string
@@ -22,7 +22,7 @@ func init() {
 	migrationId := "20240312_0000"
 
 	CreateMigrationFromActions(migrationId,
-
+		ExecAction(`DROP TABLE IF EXISTS status`, ""),
 		CreateTableAction(&Status{}),
 	)
 }
