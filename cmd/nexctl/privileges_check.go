@@ -2,12 +2,23 @@ package main
 
 import (
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/api"
+	"net"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
-// hasPrivileges checks for root/admin privileges based on the platform.
+// hasPrivileges checks to see if we can access nexd over the admin interface (unix socket)
 func hasPrivileges() error {
+
+	// the true test if we have privileges is if we can open the socket file.
+	err := canAccessSocketAPI()
+	if err == nil {
+		return nil
+	}
+
+	// If we can't open it's likely we are not running as root/admin.  Return a helpful error message....
 	switch osType := getOSType(); osType {
 	case "linux":
 		if !isLinuxRoot() {
@@ -24,7 +35,9 @@ func hasPrivileges() error {
 	default:
 		return fmt.Errorf("unsupported operating system type: %s", osType)
 	}
-	return nil
+
+	// we are not running as root/admin and we can't open the socket file.  It's likely nexd is not running.
+	return fmt.Errorf("is nexd running?: %w", err)
 }
 
 // getOSType gets the operating system.
@@ -56,4 +69,16 @@ func isWindowsAdmin() bool {
 	// Check for admin privileges on Windows.
 	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
 	return err == nil
+}
+
+func canAccessSocketAPI() error {
+	conn, err := net.Dial("unix", api.UnixSocketPath)
+	if err != nil {
+		conn, err = net.Dial("unix", filepath.Base(api.UnixSocketPath))
+		if err != nil {
+			return fmt.Errorf("failed to connect to nexd at '%s': %w\n", api.UnixSocketPath, err)
+		}
+	}
+	conn.Close()
+	return nil
 }

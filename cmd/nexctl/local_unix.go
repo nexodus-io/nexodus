@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/rpc/jsonrpc"
-	"os"
 	"path/filepath"
 
 	"github.com/nexodus-io/nexodus/internal/api"
@@ -27,6 +26,12 @@ func init() {
 				DefaultText: api.UnixSocketPath,
 				Required:    false,
 			},
+		},
+		Before: func(ctx context.Context, command *cli.Command) error {
+			if err := hasPrivileges(); err != nil {
+				return err
+			}
+			return nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -267,13 +272,6 @@ func init() {
 			},
 		},
 	})
-	// Apply privilege check only for 'nexctl nexd' subcommand
-	if len(os.Args) > 1 && os.Args[1] == "nexd" {
-		if err := hasPrivileges(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
 }
 
 func callNexd(method string, arg string) (string, error) {
