@@ -35,7 +35,6 @@ import (
 	"tailscale.com/net/stun"
 	"tailscale.com/tsweb"
 	"tailscale.com/types/key"
-	"tailscale.com/util/cmpx"
 
 	"github.com/nexodus-io/nexodus/internal/util"
 )
@@ -515,7 +514,11 @@ func DefaultMeshPSKFile() string {
 }
 
 func rateLimitedListenAndServeTLS(srv *http.Server) error {
-	ln, err := net.Listen("tcp", cmpx.Or(srv.Addr, ":https"))
+	addr := srv.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
