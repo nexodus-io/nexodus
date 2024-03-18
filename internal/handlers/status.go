@@ -98,17 +98,6 @@ func (api *API) GetStatus(c *gin.Context) {
         c.Status(http.StatusNotFound)
         return
     }
-
-    tokenClaims, err2 := NxodusClaims(c, api.db.WithContext(ctx))
-    if err2 != nil {
-        c.JSON(err2.Status, err2.Body)
-        return
-    }
-
-    // only show the status token when using the reg token that created the status|
-    userId := api.GetCurrentUserID(c)
-    hideStatusBearerToken(&status, tokenClaims, userId)
-
     c.JSON(http.StatusOK, status)
 }
 
@@ -117,3 +106,47 @@ func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB
     return db.Where("owner_id = ?", userId)
 }
 
+func (api *API) UpdateStatus(c *gin.Context) {
+    ctx, span := tracer.Start(c.Request.Context(), "UpdateStatus")
+    defer span.End()
+
+    statusId, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+        return
+    }
+
+    var request struct {
+        Latency string `json:"latency"`
+    }
+    if err := c.ShouldBindJSON(&request); err != nil {
+        c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
+        return
+    }
+
+    userId := api.GetCurrentUserID(c)
+
+    err = api.transaction(ctx, func(tx *gorm.DB) error {
+        var status models.Status
+        if err := tx.Where("id = ? AND user_id = ?", statusId, userId).First(&status).Error; err != nil {
+            if errors.Is(err, gorm.ErrRecordNotFound) {
+                return errors.New("status not found or not owned by user")
+            }
+            return err
+        }
+
+        status.Latency = request.Latency
+        return tx.Save(&status).Error
+    })
+
+    if err != nil {
+        if err.Error() == "status not found or not owned by user" {
+            c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+        } else {
+            api.SendInternalServerError(c, err)
+        }
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Latency updated successfully"})
+}
