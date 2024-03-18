@@ -136,6 +136,9 @@ type nexRelay struct {
 	// derpRecvCh is used by receiveDERP to read DERP messages.
 	// It must have buffer size > 0; see issue 3736.
 	derpRecvCh chan derpReadResult
+
+	// this is used to provide fallback IP resolution for derp servers.
+	inMemResolver *InMemResolver
 }
 
 type peerHealth struct {
@@ -221,6 +224,7 @@ type Nexodus struct {
 	regKey                  string
 	relay                   bool
 	relayDerp               bool
+	relayOnly               bool
 	requestedIP             string
 	stateDir                string
 	stateStore              state.Store
@@ -308,6 +312,7 @@ func New(o Options) (*Nexodus, error) {
 		networkRouterDisableNAT: o.NetworkRouterDisableNAT,
 		apiURL:                  o.ApiURL,
 		symmetricNat:            o.RelayOnly,
+		relayOnly:               o.RelayOnly,
 		logger:                  o.Logger,
 		logLevel:                o.LogLevel,
 		version:                 o.Version,
@@ -334,6 +339,7 @@ func New(o Options) (*Nexodus, error) {
 			peerLastDerp:  make(map[key.NodePublic]int),
 			logf:          tlogger.WithPrefix(log.Printf, "nexodus-derp: "),
 			logger:        o.Logger,
+			inMemResolver: NewInMemResolver(),
 		},
 		exitNode: exitNode{
 			exitNodeClientEnabled: o.ExitNodeClientEnabled,
@@ -872,7 +878,7 @@ func (nx *Nexodus) Stop() {
 	}
 	if nx.nexRelay.derpProxy != nil {
 		nx.logger.Info("Stopping HTTPS/TLS Derp Server Proxy")
-		nx.nexRelay.derpProxy.stopDerpProxy()
+		nx.nexRelay.derpProxy.Stop()
 	}
 }
 
@@ -932,7 +938,7 @@ func (nx *Nexodus) reconcileSecurityGroups(ctx context.Context) {
 		return
 	}
 
-	nx.logger.Debugf("Security Group change detected: %+v", responseSecGroup)
+	nx.logger.Debugf("Security Group change detected: %+v", util.JsonStringer(responseSecGroup))
 	oldSecGroup := nx.securityGroup
 	nx.securityGroup = &responseSecGroup
 
@@ -1043,7 +1049,7 @@ func (nx *Nexodus) reconcileStun(deviceID string) error {
 			nx.nodeReflexiveAddressIPv4 = reflexiveIP
 			// reinitialize peers if the NAT binding has changed for the node
 			if err = nx.reconcileDeviceCache(); err != nil {
-				nx.logger.Debugf("reconcile failed %v", res)
+				nx.logger.Debugf("reconcile failed %v", util.JsonStringer(res))
 			}
 		}
 	}
@@ -1177,7 +1183,7 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 					p.GetHostname(), p.GetPublicKey(), err)
 			} else {
 				existing.metadata = metadata
-				nx.logger.Debugf("successfully fetched device metadata: %v", existing.metadata)
+				nx.logger.Debugf("successfully fetched device metadata: %s", util.JsonStringer(existing.metadata))
 			}
 			nx.relayWgIP = p.AllowedIps[0]
 		}
@@ -1239,9 +1245,9 @@ func (nx *Nexodus) reconcileDeviceCache() error {
 			if nx.nexRelay.derpProxy == nil {
 				// Start Derp Proxy if we have a Derp Map and a Derp ID
 				nx.nexRelay.derpProxy = NewDerpUserSpaceProxy(nx.logger, &nx.nexRelay)
-				nx.nexRelay.derpProxy.startDerpProxy()
+				nx.nexRelay.derpProxy.Start()
 			} else if nx.nexRelay.derpProxy.port != nx.nexRelay.myDerp {
-				nx.nexRelay.derpProxy.restartDerpProxy()
+				nx.nexRelay.derpProxy.Restart()
 			}
 		}
 	}

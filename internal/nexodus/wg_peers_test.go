@@ -20,18 +20,27 @@ func TestRebuildPeerConfig(t *testing.T) {
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxRelay := &Nexodus{
 		vpc:                      nxBase.vpc,
 		relay:                    true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxSymmetricNAT := &Nexodus{
 		vpc:                      nxBase.vpc,
 		symmetricNat:             true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxDerpRelay := &Nexodus{
 		vpc:                      nxBase.vpc,
@@ -97,7 +106,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 		},
 		{
 			// Ensure we choose reflexive peering when the reflexive IPs are different
-			name:           "reflexive peering",
+			name:           "reflexive peering with relay",
 			nx:             nxBase,
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
@@ -159,8 +168,8 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			expectedMethod: peeringMethodDirectLocal,
-			secondMethod:   peeringMethodDirectLocal, // our only choice without a relay
-			thirdMethod:    peeringMethodDirectLocal, // our only choice without a relay
+			secondMethod:   peeringMethodViaDerpRelay, // our only choice without a wg relay
+			thirdMethod:    peeringMethodDirectLocal,  // roll back around to first option.
 		},
 		{
 			// No peering method available when we are behind symmetric NAT and we

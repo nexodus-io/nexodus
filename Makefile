@@ -391,8 +391,10 @@ dist/.generate: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) dist/.ui-fmt docs/user-g
 	$(CMD_PREFIX) [ -z "$(shell gofmt -l .)" ] || gofmt -w .
 	$(CMD_PREFIX) touch $@
 
+.PHONEY:e2e-setup
+ e2e-setup: e2eprereqs dist/nexd dist/nexctl image-nexd image-playwright derpcerts
 .PHONY: e2e
-e2e: e2eprereqs dist/nexd dist/nexctl image-nexd image-playwright derpcerts ## Run e2e verbose tests
+e2e: e2e-setup ## Run e2e verbose tests
 	CGO_ENABLED=1 gotestsum --format $(GOTESTSUM_FMT) -- \
 		-race --tags=integration ./integration-tests/... $(shell [ -z "$$NEX_TEST" ] || echo "-run $$NEX_TEST" )
 

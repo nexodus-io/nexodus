@@ -89,6 +89,18 @@ func (helper *Helper) logf(fmt string, args ...any) {
 	}
 }
 
+type ExtraHosts string
+
+func WithExtraHosts(ctx context.Context, hosts []string) context.Context {
+	return context.WithValue(ctx, ExtraHosts("ExtraHosts"), hosts)
+}
+func ExtraHostsValue(ctx context.Context) []string {
+	if v, ok := ctx.Value(ExtraHosts("ExtraHosts")).([]string); ok {
+		return v
+	}
+	return nil
+}
+
 // CreateNode creates a container
 func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, networks []string, v6 v6Enable) (testcontainers.Container, func()) {
 
@@ -114,6 +126,16 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 	certsDir, err := findCertsDir()
 	require.NoError(helper.T, err)
 
+	extraHosts := []string{
+		fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+		fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+		fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+	}
+
+	if hosts := ExtraHostsValue(ctx); hosts != nil {
+		extraHosts = append(extraHosts, hosts...)
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:    "quay.io/nexodus/nexd:latest",
 		Name:     name,
@@ -125,11 +147,7 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 				"NET_ADMIN",
 				"NET_RAW",
 			}
-			hostConfig.ExtraHosts = []string{
-				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-			}
+			hostConfig.ExtraHosts = extraHosts
 			hostConfig.AutoRemove = true
 			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
 		},
@@ -139,25 +157,6 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 			"-c",
 			"echo ready && sleep infinity",
 		},
-	}
-
-	if derpIp := os.Getenv("NEX_DERP_RELAY_IP"); derpIp != "" {
-		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
-			hostConfig.Sysctls = hostConfSysctl
-			hostConfig.CapAdd = []string{
-				"SYS_MODULE",
-				"NET_ADMIN",
-				"NET_RAW",
-			}
-			hostConfig.ExtraHosts = []string{
-				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("relay.nexodus.io:%s", derpIp),
-			}
-			hostConfig.AutoRemove = true
-			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
-		}
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

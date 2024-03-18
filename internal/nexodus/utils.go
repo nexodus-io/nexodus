@@ -13,8 +13,6 @@ import (
 	"strings"
 
 	"github.com/nexodus-io/nexodus/internal/stun"
-	"github.com/txn2/txeh"
-
 	"go.uber.org/zap"
 )
 
@@ -280,32 +278,4 @@ func ResolveURLToIP(rawURL string) ([]net.IP, error) {
 	}
 
 	return ips, nil
-}
-
-func SetLocalDerpDnsEntry(ip string, domain string) error {
-	hosts, err := txeh.NewHostsDefault()
-	if err != nil {
-		return fmt.Errorf("failed to read hosts file : %w", err)
-	}
-
-	hosts.AddHost(ip, domain)
-	err = hosts.Save()
-	if err != nil {
-		return fmt.Errorf("failed to save hosts file : %w", err)
-	}
-	return nil
-}
-
-func RemoveLocalDerpDnsEntry(domain string) error {
-	hosts, err := txeh.NewHostsDefault()
-	if err != nil {
-		return fmt.Errorf("failed to read hosts file : %w", err)
-	}
-
-	hosts.RemoveHost(domain)
-	err = hosts.Save()
-	if err != nil {
-		return fmt.Errorf("failed to save hosts file : %w", err)
-	}
-	return nil
 }
