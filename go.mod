@@ -1,6 +1,7 @@
 module github.com/nexodus-io/nexodus
 
 go 1.22
+
 toolchain go1.22.1
 
 require (
@@ -82,7 +83,7 @@ require (
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13
 	golang.org/x/time v0.5.0
 	nhooyr.io/websocket v1.8.10
-	tailscale.com v1.62.0
+	tailscale.com v1.58.0
 )
 
 require (
@@ -177,9 +178,9 @@ require (
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/prometheus/client_golang v1.19.0 // indirect
+	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
-	github.com/prometheus/common v0.48.0 // indirect
+	github.com/prometheus/common v0.46.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
@@ -258,7 +259,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.0 // indirect
-	github.com/open-policy-agent/opa v0.62.1
+	github.com/open-policy-agent/opa v0.61.0
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
