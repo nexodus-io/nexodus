@@ -553,9 +553,9 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 			options = append(options, client.WithPasswordGrant(nx.username, nx.password))
 		}
 	}
-	if nx.insecureSkipTlsVerify { // #nosec G402
+	if nx.insecureSkipTlsVerify {
 		options = append(options, client.WithTLSConfig(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402
 		}))
 	}
 	nx.clientOptions = options

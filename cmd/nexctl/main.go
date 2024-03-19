@@ -175,9 +175,9 @@ func createClientOptions(command *cli.Command) []client.Option {
 		),
 		client.WithUserAgent(fmt.Sprintf("nexctl/%s (%s; %s)", Version, runtime.GOOS, runtime.GOARCH)),
 	}
-	if command.Bool("insecure-skip-tls-verify") { // #nosec G402
+	if command.Bool("insecure-skip-tls-verify") {
 		options = append(options, client.WithTLSConfig(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402
 		}))
 	}
 	return options
