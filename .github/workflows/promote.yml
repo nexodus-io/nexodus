@@ -4,10 +4,22 @@ concurrency: prod-${{ github.ref_name }}
 
 on:
   workflow_call:
+    inputs:
+      skip_qa_dev:
+        description: 'skip running the qa-dev workflow used to validate main prior to promotion'
+        required: false
+        type: boolean
   workflow_dispatch:
+    inputs:
+      skip_qa_dev:
+        description: 'skip running the qa-dev workflow used to validate main prior to promotion'
+        required: false
+        type: boolean
 
 jobs:
   run-qa-dev:
+    if: github.event.inputs.skip_qa_dev != true
+
     # Dispatch the qa-dev workflow to validate main prior to promotion
     runs-on: ubuntu-latest
 
