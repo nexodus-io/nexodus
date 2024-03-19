@@ -35,9 +35,8 @@ func randString(nByte int) (string, error) {
 func (o *OidcAgent) prepareContext(c *gin.Context) context.Context {
 	if o.insecureTLS {
 		parent := c.Request.Context()
-		// #nosec: G402
 		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec: G402
 		}
 		client := &http.Client{Transport: transport}
 		return oidc.ClientContext(parent, client)
