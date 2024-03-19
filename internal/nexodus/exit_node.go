@@ -35,13 +35,13 @@ func (nx *Nexodus) ExitNodeClientSetup() error {
 				// assign the device advertising a default route as the exit node server/origin node
 				localEndpoint := ""
 				for _, endpoint := range deviceEntry.device.Endpoints {
-					if endpoint.Source == "local" {
-						localEndpoint = endpoint.Address
+					if endpoint.GetSource() == "local" {
+						localEndpoint = endpoint.GetAddress()
 						break
 					}
 				}
 				nx.exitNode.exitNodeOrigins[0] = wgPeerConfig{
-					PublicKey:           deviceEntry.device.PublicKey,
+					PublicKey:           deviceEntry.device.GetPublicKey(),
 					Endpoint:            localEndpoint,
 					AllowedIPs:          deviceEntry.device.AllowedIps,
 					PersistentKeepAlive: persistentKeepalive,

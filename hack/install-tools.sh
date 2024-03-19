@@ -35,7 +35,7 @@ if [ -z "$(which kind)" ] || [ "$1" = "--force" ]; then
 fi
 if [ -z "$(which golangci-lint)" ] || [ "$1" = "--force" ]; then
   echo installing golangci-lint
-  go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
+  go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
 fi
 if [ -z "$(which swag)" ] || [ "$1" = "--force" ]; then
   echo installing swag
@@ -59,7 +59,7 @@ if [ -z "$(which go-licenses)" ] || [ "$1" = "--force" ]; then
 fi
 if [ -z "$(which gotestsum)" ] || [ "$1" = "--force" ]; then
   echo installing gotestsum
-  go install gotest.tools/gotestsum@v1.10.0
+  go install gotest.tools/gotestsum@v1.11.0
 fi
 
 

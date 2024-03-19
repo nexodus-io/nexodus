@@ -1,6 +1,6 @@
 module github.com/nexodus-io/nexodus
 
-go 1.21
+go 1.22
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
@@ -25,14 +25,14 @@ require (
 	github.com/gin-contrib/zap v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-gormigrate/gormigrate/v2 v2.1.1
-	github.com/go-jose/go-jose/v3 v3.0.1
+	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/go-session/redis/v3 v3.1.0
 	github.com/go-session/session/v3 v3.2.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/itchyny/gojq v0.12.14
-	github.com/jackc/pgx/v5 v5.5.3
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/metal-stack/go-ipam v1.11.6
 	github.com/mhmtszr/concurrent-swiss-map v1.0.6
@@ -77,7 +77,6 @@ require (
 )
 
 require (
-	github.com/txn2/txeh v1.5.4
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13
 	golang.org/x/time v0.5.0
 	nhooyr.io/websocket v1.8.10
@@ -277,12 +276,12 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go4.org/netipx v0.0.0-20230824141953-6213f710f925 // indirect
 	golang.org/x/crypto v0.19.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.17.0 // indirect
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014 // indirect
 	google.golang.org/grpc v1.61.1
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

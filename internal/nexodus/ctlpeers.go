@@ -21,16 +21,16 @@ func (ac *NexdCtl) ListPeers(_ string, result *string) error {
 		RelayRequired: ac.nx.symmetricNat,
 	}
 	ac.nx.deviceCacheIterRead(func(d deviceCacheEntry) {
-		if d.device.PublicKey == ac.nx.wireguardPubKey {
+		if d.device.GetPublicKey() == ac.nx.wireguardPubKey {
 			return
 		}
-		p, ok := response.Peers[d.device.PublicKey]
+		p, ok := response.Peers[d.device.GetPublicKey()]
 		if !ok {
 			return
 		}
 		p.Healthy = d.peerHealthy
-		response.Peers[d.device.PublicKey] = p
-		if d.peerHealthy && d.device.Relay {
+		response.Peers[d.device.GetPublicKey()] = p
+		if d.peerHealthy && d.device.GetRelay() {
 			response.RelayPresent = true
 		}
 	})

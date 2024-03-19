@@ -59,9 +59,8 @@ func NewOidcAgent(ctx context.Context,
 	cookieKey string,
 ) (*OidcAgent, error) {
 	if insecureTLS {
-		// #nosec: G402
 		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec: G402
 		}
 		client := &http.Client{Transport: transport}
 		ctx = oidc.ClientContext(ctx, client)

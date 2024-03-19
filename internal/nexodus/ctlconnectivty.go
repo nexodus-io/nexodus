@@ -55,22 +55,22 @@ func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
 	if !nx.relay {
 		nx.deviceCacheIterRead(func(value deviceCacheEntry) {
 			// skip the node sourcing the probe
-			if nx.wireguardPubKey == value.device.PublicKey {
+			if nx.wireguardPubKey == value.device.GetPublicKey() {
 				return
 			}
 			var nodeAddr string
-			pubKey := value.device.PublicKey
+			pubKey := value.device.GetPublicKey()
 			if family == v6 {
-				nodeAddr = value.device.Ipv6TunnelIps[0].Address
+				nodeAddr = value.device.Ipv6TunnelIps[0].GetAddress()
 			} else {
-				nodeAddr = value.device.Ipv4TunnelIps[0].Address
+				nodeAddr = value.device.Ipv4TunnelIps[0].GetAddress()
 			}
 			if net.ParseIP(nodeAddr) == nil {
 				nx.logger.Debugf("failed parsing an ip address from %s", nodeAddr)
 				return
 			}
 
-			hostname := value.device.Hostname
+			hostname := value.device.GetHostname()
 			peersByKey[pubKey] = api.KeepaliveStatus{
 				WgIP:        nodeAddr,
 				IsReachable: false,
