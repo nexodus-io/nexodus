@@ -18,7 +18,7 @@ on:
 
 jobs:
   run-qa-dev:
-    if: github.event.inputs.skip_qa_dev != true
+    if: github.event.inputs.skip_qa_dev != 'true'
 
     # Dispatch the qa-dev workflow to validate main prior to promotion
     runs-on: ubuntu-latest
