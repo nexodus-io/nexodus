@@ -22,24 +22,26 @@ import CardImageDark from "../wordmark_dark.png";
 import { backend } from "../common/Api";
 
 function createData(
-  ip: string,
   hostname: string,
+  ipAddress: string,
   latency: number,
+  peeringMethod: string,
+  connectionStatus: string,
 ) {
-  return { ip, hostname, latency };
+  return { hostname, ipAddress, latency, peeringMethod, connectionStatus };
 }
 
 const deviceRows = [
-  createData("100.64.0.19", "80cbb9be04cc", 25),
-  createData("100.64.0.26", "48e5326fc084", 64),
-  createData("100.64.0.25", "194712efa971", 47),
+  createData("80cbb9be04cc", "100.64.0.19", 25, "none", "Reachable"),
+  createData("48e5326fc084", "100.64.0.26", 64, "relay-node-peer", "Unreachable"),
+  createData("194712efa971", "100.64.0.25", 47, "none", "Reachable"),
 ];
 
 const relayRows = [
-  createData("100.64.0.26", "48e5326fc084", 64),
-  createData("100.64.0.19", "80cbb9be04cc", 25),
-  createData("100.64.0.25", "194712efa971", 47),
-]
+  createData("48e5326fc084", "100.64.0.26", 64, "relay-node-peer", "Unreachable"),
+  createData("80cbb9be04cc", "100.64.0.19", 25, "none", "Reachable"),
+  createData("194712efa971", "100.64.0.25", 47, "none", "Reachable"),
+];
 
 const Dashboard: React.FC = () => {
   const theme = useTheme();
@@ -89,8 +91,9 @@ const Dashboard: React.FC = () => {
         </CardContent>
       </Card>
         <div style={{ display: 'flex', flexDirection: 'row' }}>
-          <div style={{ marginRight: '50px'}}>
-            <button style={styles.device}
+          <div style={{ marginRight: '50px' }}>
+            <button style={{ ...styles.device,
+            background: theme.palette.mode === 'dark' ? 'rgb(150, 150, 150)' : 'rgb(239, 239, 239)' }}
             onClick={togglePopupDevice}>
               Device:
               <span style={styles.ip}>100.64.0.19</span>
@@ -98,25 +101,29 @@ const Dashboard: React.FC = () => {
             </button>
             {isOpenDevice && (
                   <TableContainer component={Paper}>
-                  <Table sx={{ minWidth: 400 }} aria-label="simple table">
+                  <Table sx={{ minWidth: 600 }} aria-label="simple table">
                     <TableHead>
                       <TableRow>
-                        <TableCell>IP Address</TableCell>
-                        <TableCell align="center">Hostname</TableCell>
+                        <TableCell>Hostname</TableCell>
+                        <TableCell align="center">IP Address</TableCell>
                         <TableCell align="center">Latency&nbsp;(ms)</TableCell>
+                        <TableCell align="center">Peering Method</TableCell>
+                        <TableCell align="right">Connection Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {deviceRows.map((row, index) => (
                         <TableRow
-                          key={row.ip}
+                          key={row.hostname}
                           sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                         >
                           <TableCell component="th" scope="row" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>
-                            {row.ip}
+                            {row.hostname}
                           </TableCell>
-                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.hostname}</TableCell>
+                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.ipAddress}</TableCell>
                           <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.latency}</TableCell>
+                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.peeringMethod}</TableCell>
+                          <TableCell align="right" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.connectionStatus}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -125,7 +132,8 @@ const Dashboard: React.FC = () => {
               )}
           </div>
           <div>
-            <button style={styles.relay}
+            <button style={{ ...styles.relay,
+            background: theme.palette.mode === 'dark' ? 'rgb(150, 150, 150)' : 'rgb(239, 239, 239)' }}
             onClick={togglePopupRelay}>
               Relay:
               <span style={styles.ip}>100.64.0.26</span>
@@ -133,25 +141,29 @@ const Dashboard: React.FC = () => {
             </button>
             {isOpenRelay && (
                   <TableContainer component={Paper}>
-                  <Table sx={{ minWidth: 400 }} aria-label="simple table">
+                  <Table sx={{ minWidth: 600 }} aria-label="simple table">
                     <TableHead>
                       <TableRow>
-                        <TableCell>IP Address</TableCell>
-                        <TableCell align="center">Hostname</TableCell>
+                        <TableCell>Hostname</TableCell>
+                        <TableCell align="center">IP Address</TableCell>
                         <TableCell align="center">Latency&nbsp;(ms)</TableCell>
+                        <TableCell align="center">Peering Method</TableCell>
+                        <TableCell align="right">Connection Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {relayRows.map((row, index) => (
                         <TableRow
-                          key={row.ip}
+                          key={row.hostname}
                           sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                         >
                           <TableCell component="th" scope="row" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>
-                            {row.ip}
+                            {row.hostname}
                           </TableCell>
-                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.hostname}</TableCell>
+                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.ipAddress}</TableCell>
                           <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.latency}</TableCell>
+                          <TableCell align="center" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.peeringMethod}</TableCell>
+                          <TableCell align="right" style={{textDecoration: index === 0 ? 'underline' : 'none'}}>{row.connectionStatus}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -169,9 +181,12 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '9px 16px',
-    backgroundColor: 'green',
-    borderColor: 'green',
+    //borderColor: 'green',
+    //borderWidth: 2,
+    border: 'none',
     borderTopRightRadius: '20px',
+    outline: '2px solid green',
+    boxShadow: '0 0 5px 2px rgba(0, 255, 0, 0.5)',
     display: 'flex',
     alignItems: 'center',
   },
@@ -179,9 +194,12 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '9px 16px',
-    backgroundColor: 'red',
-    borderColor: 'red',
+    //borderColor: 'red',
+    //borderWidth: 2,
+    border: 'none',
     borderRadius: '50px',
+    outline: '2px solid red',
+    boxShadow: '0 0 5px 2px rgba(255, 0, 0, 0.5)',
     display: 'flex',
     alignItems: 'center',
   },
@@ -189,17 +207,15 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '12px 16px',
-    backgroundColor: 'gray',
-    borderColor: 'gray',
     marginLeft: '10px',
   },
   onlineIcon: {
-    color: 'white',
+    color: 'green',
     fontSize: '20px',
     marginLeft: '10px',
   },
   offlineIcon: {
-    color: 'white',
+    color: 'red',
     fontSize: '20px',
     marginLeft: '10px',
   },
