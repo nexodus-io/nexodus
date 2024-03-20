@@ -22,177 +22,176 @@ valid_token if {
 	valid_keycloak_token
 }
 
+valid_reg_token if {
+	valid_nexodus_token
+	contains(token_payload.scope, "reg-token")
+}
+
+valid_device_token if {
+	valid_nexodus_token
+	contains(token_payload.scope, "device-token")
+}
+
 default allow := false
 
 allow if {
-	"organizations" = input.path[1]
+	input.path[1] in [
+		"organizations",
+		"invitations",
+		"reg-keys",
+		"vpcs",
+		"service-networks",
+		"security-groups",
+	]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:organizations")
 }
 
+##
+
 allow if {
-	"organizations" = input.path[1]
+	input.path[1] in [
+		"organizations",
+		"invitations",
+		"reg-keys",
+		"vpcs",
+		"service-networks",
+		"security-groups",
+	]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:organizations")
 }
 
 allow if {
-	"vpcs" = input.path[1]
-	action_is_read
-	valid_keycloak_token
-	contains(token_payload.scope, "read:organizations")
-}
-
-allow if {
-	"vpcs" = input.path[1]
-	action_is_write
-	valid_keycloak_token
-	contains(token_payload.scope, "write:organizations")
-}
-
-allow if {
-	"invitations" = input.path[1]
-	action_is_read
-	valid_keycloak_token
-	contains(token_payload.scope, "read:organizations")
-}
-
-allow if {
-	"invitations" = input.path[1]
-	action_is_write
-	valid_keycloak_token
-	contains(token_payload.scope, "write:organizations")
-}
-
-allow if {
-	input.path[1] in ["devices", "sites"]
+	input.path[1] in [
+		"devices",
+		"sites",
+	]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:devices")
 }
 
 allow if {
-	input.path[1] in ["devices", "sites"]
+	input.path[1] in [
+		"devices",
+		"sites",
+	]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:devices")
 }
 
 allow if {
-	"users" = input.path[1]
+	input.path[1] in ["users"]
 	action_is_read
 	valid_keycloak_token
 	contains(token_payload.scope, "read:users")
 }
 
 allow if {
-	"users" = input.path[1]
+	input.path[1] in ["users"]
 	action_is_write
 	valid_keycloak_token
 	contains(token_payload.scope, "write:users")
 }
 
 allow if {
-	"security-groups" = input.path[1]
-	action_is_read
+	input.path[1] in ["fflags"]
 	valid_keycloak_token
-	contains(token_payload.scope, "read:organizations")
-}
-
-allow if {
-	"security-groups" = input.path[1]
-	action_is_write
-	valid_keycloak_token
-	contains(token_payload.scope, "write:organizations")
-}
-
-allow if {
-	"fflags" = input.path[1]
-	valid_keycloak_token
-}
-
-allow if {
-	"reg-keys" = input.path[1]
-	action_is_read
-	valid_keycloak_token
-	contains(token_payload.scope, "read:organizations")
-}
-
-allow if {
-	"reg-keys" = input.path[1]
-	action_is_write
-	valid_keycloak_token
-	contains(token_payload.scope, "write:organizations")
 }
 
 # reg token can get its own token
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	action_is_read
 	"reg-keys" = input.path[1]
 	"me" = input.path[2]
+	action_is_read
+	valid_reg_token
 }
 
 # reg token can create a device or site
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	input.method == "POST"
 	count(input.path) == 2
-	input.path[1] in ["devices", "sites"]
+	input.path[1] in [
+		"devices",
+		"sites",
+	]
+	input.method == "POST"
+	valid_reg_token
 }
 
 # reg token can update a device or site
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	input.method == "PATCH"
 	count(input.path) == 3
-	input.path[1] in ["devices", "sites"]
+	input.path[1] in [
+		"devices",
+		"sites",
+	]
+	input.method == "PATCH"
+	valid_reg_token
 }
 
 # reg token can update a device metadata
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	input.method == "PUT"
 	count(input.path) == 5
 	"devices" = input.path[1]
 	"metadata" = input.path[3]
+	input.method == "PUT"
+	valid_reg_token
 }
 
-# reg token can get a devices/orgs/vpcs/sites
+# reg token can get a devices/orgs/vpcs/sites/service-networks
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "reg-token")
-	input.method == "GET"
-	input.path[1] in ["organizations", "vpcs", "devices", "sites"]
+	input.path[1] in [
+		"organizations",
+		"vpcs",
+		"devices",
+		"sites",
+		"service-networks",
+	]
+	action_is_read
+	valid_reg_token
 }
 
 # device tokens can read/update a device
 allow if {
-	valid_nexodus_token
-	contains(token_payload.scope, "device-token")
+	input.path[1] in [
+		"devices",
+		"sites",
+	]
 	input.method in ["GET", "PATCH"]
-	input.path[1] in ["devices", "sites"]
+	valid_device_token
 }
 
 allow if {
-	input.path[1] in ["organizations", "vpcs"]
+	input.path[1] in [
+		"organizations",
+		"vpcs",
+		"service-networks",
+	]
 	action_is_read
-	valid_nexodus_token
-	contains(token_payload.scope, "device-token")
+	valid_device_token
 }
 
 allow if {
-	input.path[1] in ["organizations", "vpcs"]
+	input.path[1] in ["vpcs"]
 	"events" = input.path[3]
 	input.method == "POST"
-	valid_nexodus_token
-	contains(token_payload.scope, "device-token")
+	valid_device_token
+}
+
+allow if {
+	input.path == ["api", "events"]
+	input.method == "POST"
+	valid_device_token
+}
+
+allow if {
+	input.path == ["api", "events"]
+	input.method == "POST"
+	valid_keycloak_token
 }
 
 allow if {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 )
 
@@ -127,9 +127,9 @@ func createOrganization(ctx context.Context, command *cli.Command, name, descrip
 	c := createClient(ctx, command)
 	res := apiResponse(c.OrganizationsApi.
 		CreateOrganization(ctx).
-		Organization(public.ModelsAddOrganization{
-			Name:        name,
-			Description: description,
+		Organization(client.ModelsAddOrganization{
+			Name:        client.PtrString(name),
+			Description: client.PtrString(description),
 		}).Execute())
 	show(command, orgTableFields(), res)
 	return nil
@@ -176,12 +176,12 @@ func orgUsersTableFields() []TableField {
 	fields = append(fields, TableField{Header: "ORGANIZATION ID", Field: "OrganizationId"})
 	fields = append(fields, TableField{Header: "USER ID", Field: "UserId"})
 	fields = append(fields, TableField{Header: "USER NAME", Formatter: func(item interface{}) string {
-		usr := item.(public.ModelsUserOrganization)
-		return usr.User.Username
+		usr := item.(client.ModelsUserOrganization)
+		return usr.User.GetUsername()
 	}})
 	fields = append(fields, TableField{Header: "FULL NAME", Formatter: func(item interface{}) string {
-		usr := item.(public.ModelsUserOrganization)
-		return usr.User.FullName
+		usr := item.(client.ModelsUserOrganization)
+		return usr.User.GetFullName()
 	}})
 	return fields
 }

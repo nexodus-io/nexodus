@@ -65,6 +65,7 @@ Feature: Device API
     And the response should match json:
       """
       {
+        "bearer_token": "${response.bearer_token}",
         "allowed_ips": [
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
@@ -115,6 +116,7 @@ Feature: Device API
     And the response should match json:
       """
       {
+        "bearer_token": "${response.bearer_token}",
         "allowed_ips": [
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
@@ -164,6 +166,7 @@ Feature: Device API
     And the response should match json:
       """
       {
+        "bearer_token": "${response.bearer_token}",
         "allowed_ips": [
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"
@@ -209,6 +212,7 @@ Feature: Device API
       """
       [
         {
+          "bearer_token": "${response[0].bearer_token}",
           "allowed_ips": [
             "${response[0].allowed_ips[0]}",
             "${response[0].allowed_ips[1]}"
@@ -357,6 +361,7 @@ Feature: Device API
     And the response should match json:
       """
       {
+        "bearer_token": "${response.bearer_token}",
         "allowed_ips": [
           "${response.allowed_ips[0]}",
           "${response.allowed_ips[1]}"

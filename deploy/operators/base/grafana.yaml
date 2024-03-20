@@ -18,7 +18,7 @@ metadata:
   name: grafana-operator
   namespace: nexodus-monitoring
 spec:
-  channel: v4
+  channel: v5
   name: grafana-operator
   source: operatorhubio-catalog
   sourceNamespace: olm

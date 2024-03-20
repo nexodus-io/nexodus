@@ -4,15 +4,15 @@ package nexodus
 
 import (
 	"encoding/json"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"testing"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func runTestPacketFilterRuleBuilder(t *testing.T, securityGroupJSON string, expectedRules []string) {
-	var secGroup public.ModelsSecurityGroup
+	var secGroup client.ModelsSecurityGroup
 	err := json.Unmarshal([]byte(securityGroupJSON), &secGroup)
 	if err != nil {
 		t.Fatalf("Error unmarshaling JSON: %v", err)

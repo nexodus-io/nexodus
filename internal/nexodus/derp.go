@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nexodus-io/nexodus/pkg/derp/derphttp"
 	"tailscale.com/derp"
+	"tailscale.com/derp/derphttp"
 	"tailscale.com/health"
 	"tailscale.com/logtail/backoff"
 	"tailscale.com/net/dnscache"
@@ -226,6 +226,7 @@ func (nr *nexRelay) derpWriteChanOfAddr(addr netip.AddrPort, peer key.NodePublic
 	dc.NotePreferred(nr.myDerp == regionID)
 	dc.SetAddressFamilySelector(derpAddrFamSelector{nr})
 	dc.DNSCache = dnscache.Get()
+	dc.DNSCache.LookupIPFallback = nr.inMemResolver.LookupIP
 
 	ctx, cancel := context.WithCancel(nr.connCtx)
 	ch := make(chan derpWriteRequest, bufferedDerpWritesBeforeDrop())

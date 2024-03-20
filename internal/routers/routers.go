@@ -47,6 +47,7 @@ type APIRouterOptions struct {
 func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.TrustedPlatform = "X-Forwarded-For"
 
 	r.Use(NoCacheMiddleware)
 	loggerMiddleware := ginzap.GinzapWithConfig(o.Logger.Desugar(), &ginzap.Config{
@@ -136,18 +137,27 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.POST("/invitations/:id/accept", api.AcceptInvitation)
 		apiGroup.DELETE("/invitations/:id", api.DeleteInvitation)
 
-		apiGroup.GET("/vpcs", api.ListVPCs)
-		apiGroup.GET("/vpcs/:id", api.GetVPC)
-		apiGroup.PATCH("/vpcs/:id", api.UpdateVPC)
-		apiGroup.POST("/vpcs", api.CreateVPC)
-		apiGroup.DELETE("/vpcs/:id", api.DeleteVPC)
-
 		// Registration Tokens
 		apiGroup.GET("/reg-keys", api.ListRegKeys)
 		apiGroup.GET("/reg-keys/:id", api.GetRegKey)
 		apiGroup.POST("/reg-keys", api.CreateRegKey)
 		apiGroup.PATCH("/reg-keys/:id", api.UpdateRegKey)
 		apiGroup.DELETE("/reg-keys/:id", api.DeleteRegKey)
+
+		// Events
+		apiGroup.POST("/events", api.WatchEvents)
+
+		// VPCs
+		apiGroup.GET("/vpcs", api.ListVPCs)
+		apiGroup.GET("/vpcs/:id", api.GetVPC)
+		apiGroup.PATCH("/vpcs/:id", api.UpdateVPC)
+		apiGroup.POST("/vpcs", api.CreateVPC)
+		apiGroup.DELETE("/vpcs/:id", api.DeleteVPC)
+
+		apiGroup.POST("/vpcs/:id/events", api.WatchEventsInVPC)
+		apiGroup.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
+		apiGroup.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
+		apiGroup.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
 
 		// Devices
 		apiGroup.GET("/devices", api.ListDevices)
@@ -163,13 +173,6 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.DELETE("/devices/:id/metadata/:key", api.DeleteDeviceMetadataKey)
 		apiGroup.DELETE("/devices/:id/metadata", api.DeleteDeviceMetadata)
 
-		// Sites
-		apiGroup.GET("/sites", api.ListSites)
-		apiGroup.GET("/sites/:id", api.GetSite)
-		apiGroup.PATCH("/sites/:id", api.UpdateSite)
-		apiGroup.POST("/sites", api.CreateSite)
-		apiGroup.DELETE("/sites/:id", api.DeleteSite)
-
 		// Security Groups
 		apiGroup.GET("/security-groups", api.ListSecurityGroups)
 		apiGroup.GET("/security-groups/:id", api.GetSecurityGroup)
@@ -181,13 +184,21 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		apiGroup.POST("/status", api.CreateStatus)
 		apiGroup.GET("/status", api.GetStatus)
 
-		// List / Watch Event API used by nexd
-		apiGroup.POST("/vpcs/:id/events", api.WatchEvents)
-		apiGroup.GET("/vpcs/:id/devices", api.ListDevicesInVPC)
-		apiGroup.GET("/vpcs/:id/sites", api.ListSitesInVPC)
-		apiGroup.GET("/vpcs/:id/metadata", api.ListMetadataInVPC)
-		apiGroup.GET("/vpcs/:id/security-groups", api.ListSecurityGroupsInVPC)
+		// Service Networks
+		apiGroup.GET("/service-networks", api.ListServiceNetworks)
+		apiGroup.GET("/service-networks/:id", api.GetServiceNetwork)
+		apiGroup.PATCH("/service-networks/:id", api.UpdateServiceNetwork)
+		apiGroup.POST("/service-networks", api.CreateServiceNetwork)
+		apiGroup.DELETE("/service-networks/:id", api.DeleteServiceNetwork)
 
+		apiGroup.GET("/service-networks/:id/sites", api.ListSitesInServiceNetwork)
+
+		// Sites
+		apiGroup.GET("/sites", api.ListSites)
+		apiGroup.GET("/sites/:id", api.GetSite)
+		apiGroup.PATCH("/sites/:id", api.UpdateSite)
+		apiGroup.POST("/sites", api.CreateSite)
+		apiGroup.DELETE("/sites/:id", api.DeleteSite)
 		apiGroup.POST("/ca/sign", api.SignCSR)
 	}
 

@@ -2,15 +2,15 @@
 # Use this file to prevent files from being overwritten by the generator.
 # The patterns follow closely to .gitignore or .dockerignore.
 
-internal/api/*/README.md
-internal/api/*/docs/**.md
-internal/api/*/**all_of.go
-internal/api/*/go.mod
-internal/api/*/go.sum
-internal/api/*/api/openapi.yaml
-internal/api/*/api/
-internal/api/*/*.sh
-internal/api/*/.gitignore
-internal/api/*/.openapi-generator-ignore
-internal/api/*/.travis.yml
-internal/api/*/test/**
+internal/client/README.md
+internal/client/docs/**.md
+internal/client/**all_of.go
+internal/client/go.mod
+internal/client/go.sum
+internal/client/api/openapi.yaml
+internal/client/api/
+internal/client/*.sh
+internal/client/.gitignore
+internal/client/.openapi-generator-ignore
+internal/client/.travis.yml
+internal/client/test/**

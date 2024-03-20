@@ -20,9 +20,9 @@ import (
 
 type siteList []*models.Site
 
-func (d siteList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d siteList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d siteList) Len() int {
@@ -237,9 +237,9 @@ func (api *API) UpdateSite(c *gin.Context) {
 			}
 		}
 
-		var vpc models.VPC
-		if result = tx.First(&vpc, "id = ?", site.VpcID); result.Error != nil {
-			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
+		var ServiceNetwork models.ServiceNetwork
+		if result = tx.First(&ServiceNetwork, "id = ?", site.ServiceNetworkID); result.Error != nil {
+			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("service_network"))
 		}
 
 		if request.Hostname != nil {
@@ -273,7 +273,7 @@ func (api *API) UpdateSite(c *gin.Context) {
 
 	hideSiteBearerToken(&site, tokenClaims, api.GetCurrentUserID(c))
 
-	api.signalBus.Notify(fmt.Sprintf("/sites/vpc=%s", site.VpcID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/sites/service-network=%s", site.ServiceNetworkID.String()))
 	c.JSON(http.StatusOK, site)
 }
 
@@ -311,8 +311,8 @@ func (api *API) CreateSite(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("public_key"))
 		return
 	}
-	if request.VpcID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
+	if request.ServiceNetworkID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("service_network_id"))
 		return
 	}
 
@@ -320,11 +320,11 @@ func (api *API) CreateSite(c *gin.Context) {
 	var site models.Site
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
 
-		var vpc models.VPC
-		if result := api.VPCIsReadableByCurrentUser(c, tx).
+		var ServiceNetwork models.ServiceNetwork
+		if result := api.ServiceNetworkIsReadableByCurrentUser(c, tx).
 			Preload("Organization").
-			First(&vpc, "id = ?", request.VpcID); result.Error != nil {
-			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
+			First(&ServiceNetwork, "id = ?", request.ServiceNetworkID); result.Error != nil {
+			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("service_network"))
 		}
 
 		res := tx.Where("public_key = ?", request.PublicKey).First(&site)
@@ -354,19 +354,19 @@ func (api *API) CreateSite(c *gin.Context) {
 			}
 
 			// is the user token restricted to operating on a single site?
-			if tokenClaims.DeviceID != uuid.Nil {
-				err = tx.Where("id = ?", tokenClaims.DeviceID).First(&site).Error
+			if tokenClaims.AgentID != nil {
+				err = tx.Where("id = ?", tokenClaims.AgentID).First(&site).Error
 				if err == nil {
 					// If we get here the site exists but has a different public key, so assume
 					// the reg toke has been previously used.
 					return NewApiResponseError(http.StatusBadRequest, models.NewApiError(errRegKeyExhausted))
 				}
 
-				siteId = tokenClaims.DeviceID
+				siteId = *tokenClaims.AgentID
 			}
 
-			if tokenClaims.VpcID != request.VpcID {
-				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("vpc_id", "does not match the reg key vpc_id"))
+			if tokenClaims.ServiceNetworkID == nil || *tokenClaims.ServiceNetworkID != request.ServiceNetworkID {
+				return NewApiResponseError(http.StatusBadRequest, models.NewFieldValidationError("service_network_id", "does not match the reg key service_network_id"))
 			}
 		}
 		if siteId == uuid.Nil {
@@ -383,14 +383,14 @@ func (api *API) CreateSite(c *gin.Context) {
 			Base: models.Base{
 				ID: siteId,
 			},
-			OwnerID:        api.GetCurrentUserID(c),
-			VpcID:          vpc.ID,
-			OrganizationID: vpc.OrganizationID,
-			PublicKey:      request.PublicKey,
-			Platform:       request.Platform,
-			Name:           request.Name,
-			RegKeyID:       regKeyID,
-			BearerToken:    "ST:" + siteToken.String(),
+			OwnerID:          api.GetCurrentUserID(c),
+			ServiceNetworkID: ServiceNetwork.ID,
+			OrganizationID:   ServiceNetwork.OrganizationID,
+			PublicKey:        request.PublicKey,
+			Platform:         request.Platform,
+			Name:             request.Name,
+			RegKeyID:         regKeyID,
+			BearerToken:      "ST:" + siteToken.String(),
 		}
 
 		if res := tx.
@@ -416,7 +416,7 @@ func (api *API) CreateSite(c *gin.Context) {
 
 	hideSiteBearerToken(&site, tokenClaims, api.GetCurrentUserID(c))
 
-	api.signalBus.Notify(fmt.Sprintf("/sites/vpc=%s", site.VpcID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/sites/service-network=%s", site.ServiceNetworkID.String()))
 	c.JSON(http.StatusCreated, site)
 }
 
@@ -460,9 +460,9 @@ func (api *API) DeleteSite(c *gin.Context) {
 		return
 	}
 
-	var vpc models.VPC
+	var ServiceNetwork models.ServiceNetwork
 	result := db.
-		First(&vpc, "id = ?", site.VpcID)
+		First(&ServiceNetwork, "id = ?", site.ServiceNetworkID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		api.SendInternalServerError(c, result.Error)
 	}
@@ -481,31 +481,31 @@ func (api *API) DeleteSite(c *gin.Context) {
 		return
 	}
 
-	api.signalBus.Notify(fmt.Sprintf("/sites/vpc=%s", site.VpcID.String()))
+	api.signalBus.Notify(fmt.Sprintf("/sites/service-network=%s", site.ServiceNetworkID.String()))
 
 	c.JSON(http.StatusOK, site)
 }
 
-// ListSitesInVPC lists all sites in an VPC
+// ListSitesInServiceNetwork lists all sites in an ServiceNetwork
 // @Summary      List Sites
-// @Description  Lists all sites for this VPC
-// @Id           ListSitesInVPC
-// @Tags         VPC
+// @Description  Lists all sites for this ServiceNetwork
+// @Id           ListSitesInServiceNetwork
+// @Tags         ServiceNetwork
 // @Accept       json
 // @Produce      json
 // @Param		 gt_revision     query  uint64   false "greater than revision"
-// @Param		 id              path   string true "VPC ID"
+// @Param		 id              path   string true "Service Network ID"
 // @Success      200  {object}  []models.Site
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/vpcs/{id}/sites [get]
-func (api *API) ListSitesInVPC(c *gin.Context) {
+// @Router       /api/ServiceNetworks/{id}/sites [get]
+func (api *API) ListSitesInServiceNetwork(c *gin.Context) {
 
-	ctx, span := tracer.Start(c.Request.Context(), "ListSitesInVPC",
+	ctx, span := tracer.Start(c.Request.Context(), "ListSitesInServiceNetwork",
 		trace.WithAttributes(
-			attribute.String("vpc_id", c.Param("id")),
+			attribute.String("service_network_id", c.Param("id")),
 		))
 	defer span.End()
 
@@ -513,19 +513,19 @@ func (api *API) ListSitesInVPC(c *gin.Context) {
 		return
 	}
 
-	vpcId, err := uuid.Parse(c.Param("id"))
+	ServiceNetworkId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
 	}
-	var vpc models.VPC
+	var ServiceNetwork models.ServiceNetwork
 	db := api.db.WithContext(ctx)
-	result := api.VPCIsReadableByCurrentUser(c, db).
-		First(&vpc, "id = ?", vpcId.String())
+	result := api.ServiceNetworkIsReadableByCurrentUser(c, db).
+		First(&ServiceNetwork, "id = ?", ServiceNetworkId.String())
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, models.NewNotFoundError("vpc"))
+			c.JSON(http.StatusNotFound, models.NewNotFoundError("service_network"))
 		} else {
 			api.SendInternalServerError(c, result.Error)
 		}
@@ -545,7 +545,7 @@ func (api *API) ListSitesInVPC(c *gin.Context) {
 	}
 
 	api.sendList(c, ctx, func(db *gorm.DB) (fetchmgr.ResourceList, error) {
-		db = db.Where("vpc_id = ?", vpcId.String())
+		db = db.Where("service_network_id = ?", ServiceNetworkId.String())
 		db = FilterAndPaginateWithQuery(db, &models.Site{}, c, query, "hostname")
 
 		var items siteList

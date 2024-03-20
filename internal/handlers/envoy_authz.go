@@ -129,11 +129,10 @@ func checkRegistrationToken(ctx context.Context, api *API, token string) (*auth.
 			ID:      regToken.ID.String(),
 			Subject: user.IdpID,
 		},
-		VpcID: regToken.VpcID,
-		Scope: "reg-token",
-	}
-	if regToken.DeviceId != nil {
-		claims.DeviceID = *regToken.DeviceId
+		VpcID:            regToken.VpcID,
+		ServiceNetworkID: regToken.ServiceNetworkID,
+		Scope:            "reg-token",
+		AgentID:          regToken.DeviceId,
 	}
 	if regToken.ExpiresAt != nil {
 		claims.ExpiresAt = jwt.NewNumericDate(*regToken.ExpiresAt)
@@ -193,8 +192,9 @@ func checkSiteToken(ctx context.Context, api *API, token string) (*auth.CheckRes
 			ID:      site.ID.String(),
 			Subject: user.IdpID,
 		},
-		VpcID: site.VpcID,
-		Scope: "device-token",
+		ServiceNetworkID: &site.ServiceNetworkID,
+		Scope:            "device-token",
+		AgentID:          &site.ID,
 	}
 
 	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)
@@ -251,8 +251,9 @@ func checkDeviceToken(ctx context.Context, api *API, token string) (*auth.CheckR
 			ID:      device.ID.String(),
 			Subject: user.IdpID,
 		},
-		VpcID: device.VpcID,
-		Scope: "device-token",
+		VpcID:   &device.VpcID,
+		Scope:   "device-token",
+		AgentID: &device.ID,
 	}
 
 	jwttoken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(api.PrivateKey)

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 	"log"
 )
@@ -19,13 +19,13 @@ func createSiteCommand() *cli.Command {
 				Usage: "List all sites",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "vpc-id",
+						Name:     "service-network-id",
 						Value:    "",
 						Required: false,
 					},
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
-					orgID := command.String("vpc-id")
+					orgID := command.String("service-network-id")
 					if orgID != "" {
 						id, err := uuid.Parse(orgID)
 						if err != nil {
@@ -65,9 +65,9 @@ func createSiteCommand() *cli.Command {
 				},
 				Action: func(ctx context.Context, command *cli.Command) error {
 					devID := command.String("site-id")
-					update := public.ModelsUpdateSite{}
+					update := client.ModelsUpdateSite{}
 					if command.IsSet("hostname") {
-						update.Hostname = command.String("hostname")
+						update.Hostname = client.PtrString(command.String("hostname"))
 					}
 					return updateSite(ctx, command, devID, update)
 				},
@@ -79,7 +79,7 @@ func siteTableFields(command *cli.Command) []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "SITE ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
-	fields = append(fields, TableField{Header: "VPC ID", Field: "VpcId"})
+	fields = append(fields, TableField{Header: "SERVICE NETWORK ID", Field: "VpcId"})
 	fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 	fields = append(fields, TableField{Header: "OS", Field: "Os"})
 	return fields
@@ -92,9 +92,9 @@ func listAllSites(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func listVpcSites(ctx context.Context, command *cli.Command, vpcId uuid.UUID) error {
+func listVpcSites(ctx context.Context, command *cli.Command, serviceNetworkId uuid.UUID) error {
 	c := createClient(ctx, command)
-	sites := apiResponse(c.VPCApi.ListSitesInVPC(context.Background(), vpcId.String()).Execute())
+	sites := apiResponse(c.ServiceNetworkApi.ListSitesInServiceNetwork(context.Background(), serviceNetworkId.String()).Execute())
 	show(command, siteTableFields(command), sites)
 	return nil
 }
@@ -111,7 +111,7 @@ func deleteSite(ctx context.Context, command *cli.Command, devID string) error {
 	return nil
 }
 
-func updateSite(ctx context.Context, command *cli.Command, devID string, update public.ModelsUpdateSite) error {
+func updateSite(ctx context.Context, command *cli.Command, devID string, update client.ModelsUpdateSite) error {
 	devUUID, err := uuid.Parse(devID)
 	if err != nil {
 		log.Fatalf("failed to parse a valid UUID from %s %v", devUUID, err)
