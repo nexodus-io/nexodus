@@ -90,7 +90,7 @@ func (api *API) CreateStatus(c *gin.Context) {
 
 func (api *API) GetStatus(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListStatus", trace.WithAttributes(
-		attribute.String("id", c.Param("id")),
+		attribute.String("UserId", c.Param("UserIdid")),
 	))
 	defer span.End()
 

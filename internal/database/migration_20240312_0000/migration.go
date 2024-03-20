@@ -10,7 +10,7 @@ import (
 )
 
 type Status struct {
-	UserId		uuid.UUID	`gorm:"index"`
+	UserId      uuid.UUID `gorm:"index"`
 	WgIP        string
 	IsReachable bool
 	Hostname    string

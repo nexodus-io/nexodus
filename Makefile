@@ -383,7 +383,7 @@ docs/user-guide/nexctl.md: dist/nexctl hack/nexctl-docs.sh
 	$(ECHO_PREFIX) printf "  %-12s nexctl\n" "[DOCS]"
 	$(CMD_PREFIX) hack/nexctl-docs.sh
 
-dist/.generate: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML) dist/.ui-fmt docs/user-guide/nexd.md docs/user-guide/nexctl.md | dist
+dist/.generate: $(SWAGGER_YAML) $(PRIVATE_SWAGGER_YAML)  docs/user-guide/nexd.md docs/user-guide/nexctl.md | dist
 	$(ECHO_PREFIX) printf "  %-12s \n" "[MOD TIDY]"
 	$(CMD_PREFIX) go mod tidy
 

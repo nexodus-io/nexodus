@@ -9,6 +9,7 @@ api_reg_key.go
 api_security_group.go
 api_service_network.go
 api_sites.go
+api_status.go
 api_users.go
 api_vpc.go
 client.go
@@ -39,6 +40,7 @@ model_models_security_group.go
 model_models_security_rule.go
 model_models_service_network.go
 model_models_site.go
+model_models_status.go
 model_models_tunnel_ip.go
 model_models_update_device.go
 model_models_update_reg_key.go

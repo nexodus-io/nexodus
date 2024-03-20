@@ -72,6 +72,8 @@ type APIClient struct {
 
 	SitesApi *SitesApiService
 
+	StatusApi *StatusApiService
+
 	UsersApi *UsersApiService
 
 	VPCApi *VPCApiService
@@ -104,6 +106,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.SecurityGroupApi = (*SecurityGroupApiService)(&c.common)
 	c.ServiceNetworkApi = (*ServiceNetworkApiService)(&c.common)
 	c.SitesApi = (*SitesApiService)(&c.common)
+	c.StatusApi = (*StatusApiService)(&c.common)
 	c.UsersApi = (*UsersApiService)(&c.common)
 	c.VPCApi = (*VPCApiService)(&c.common)
 
