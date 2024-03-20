@@ -27,6 +27,12 @@ func init() {
 				Required:    false,
 			},
 		},
+		Before: func(ctx context.Context, command *cli.Command) error {
+			if err := hasPrivileges(); err != nil {
+				return err
+			}
+			return nil
+		},
 		Commands: []*cli.Command{
 			{
 				Name:   "version",

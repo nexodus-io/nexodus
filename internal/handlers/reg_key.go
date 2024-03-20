@@ -43,9 +43,9 @@ func (api *API) CreateRegKey(c *gin.Context) {
 		return
 	}
 
-	// org field is required...
-	if request.VpcID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id"))
+	// vpc_id | service_network_id field is required...
+	if request.VpcID == nil && request.ServiceNetworkID == nil {
+		c.JSON(http.StatusBadRequest, models.NewFieldNotPresentError("vpc_id, service_network_id"))
 		return
 	}
 
@@ -61,29 +61,41 @@ func (api *API) CreateRegKey(c *gin.Context) {
 	record := models.RegKey{}
 	err = api.transaction(ctx, func(tx *gorm.DB) error {
 
-		// The vpc has to be owned by the user.
-		var vpc models.VPC
-		db := api.db.WithContext(ctx)
-		if res := api.VPCIsReadableByCurrentUser(c, db).
-			First(&vpc, "id = ?", request.VpcID.String()); res.Error != nil {
-			return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
-		}
-
 		// Let store the reg token... without the client id yet... to avoid creating
 		// clients in KC that are not correlated with our DB.
 		record = models.RegKey{
-			OwnerID:        userId,
-			VpcID:          vpc.ID,
-			OrganizationID: vpc.OrganizationID,
-			BearerToken:    "RK:" + token.String(),
-			Description:    request.Description,
-			ExpiresAt:      request.ExpiresAt,
-			Settings:       request.Settings,
+			OwnerID:          userId,
+			VpcID:            request.VpcID,
+			ServiceNetworkID: request.ServiceNetworkID,
+			BearerToken:      "RK:" + token.String(),
+			Description:      request.Description,
+			ExpiresAt:        request.ExpiresAt,
+			Settings:         request.Settings,
+		}
+
+		// User needs to be a member of the VPC's org
+		if request.VpcID != nil {
+			var vpc models.VPC
+			if res := api.VPCIsReadableByCurrentUser(c, tx).
+				First(&vpc, "id = ?", request.VpcID.String()); res.Error != nil {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("vpc"))
+			}
+			record.OrganizationID = &vpc.OrganizationID
+		}
+
+		// User needs to be a member of the ServiceNetwork's org
+		if request.ServiceNetworkID != nil {
+			var sn models.ServiceNetwork
+			if res := api.ServiceNetworkIsReadableByCurrentUser(c, tx).
+				First(&sn, "id = ?", request.ServiceNetworkID.String()); res.Error != nil {
+				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("service_network"))
+			}
+			record.SNOrganizationID = &sn.OrganizationID
 		}
 
 		if request.SecurityGroupId != nil {
 			var sg models.SecurityGroup
-			if res := api.SecurityGroupIsReadableByCurrentUser(c, db).
+			if res := api.SecurityGroupIsReadableByCurrentUser(c, tx).
 				First(&sg, "id = ?", *request.SecurityGroupId); res.Error != nil {
 				return NewApiResponseError(http.StatusNotFound, models.NewNotFoundError("security_group_id"))
 			}
@@ -95,7 +107,7 @@ func (api *API) CreateRegKey(c *gin.Context) {
 			record.DeviceId = &deviceID
 		}
 
-		if res := db.Create(&record); res.Error != nil {
+		if res := tx.Create(&record); res.Error != nil {
 			return res.Error
 		}
 
@@ -310,7 +322,8 @@ func (api *API) RegKeyIsForCurrentUserOrOrgOwner(c *gin.Context, db *gorm.DB) *g
 	userId := api.GetCurrentUserID(c)
 	return db.Where(
 		db.Where("owner_id = ?", userId).
-			Or(api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles)),
+			Or(api.CurrentUserHasRole(c, db, "organization_id", OwnerRoles)).
+			Or(api.CurrentUserHasRole(c, db, "sn_organization_id", OwnerRoles)),
 	)
 }
 

@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:1.20-bullseye
+FROM docker.io/library/golang:1.22-bullseye
 
 # To allow installing kubectl
 #RUN mkdir /etc/apt/keyrings &&\

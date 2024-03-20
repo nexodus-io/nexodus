@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"strings"
 	"time"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/urfave/cli/v3"
 )
 
@@ -84,17 +84,17 @@ func createDeviceCommand() *cli.Command {
 						return err
 					}
 
-					update := public.ModelsUpdateDevice{}
+					update := client.ModelsUpdateDevice{}
 					if command.IsSet("hostname") {
 						value := command.String("hostname")
-						update.Hostname = value
+						update.Hostname = client.PtrString(value)
 					}
 					if command.IsSet("security-group-id") {
 						value, err := getUUID(command, "security-group-id")
 						if err != nil {
 							return err
 						}
-						update.SecurityGroupId = value
+						update.SecurityGroupId = client.PtrString(value)
 					}
 					return updateDevice(ctx, command, devID, update)
 				},
@@ -115,13 +115,13 @@ func deviceTableFields(command *cli.Command) []TableField {
 	fields = append(fields, TableField{Header: "HOSTNAME", Field: "Hostname"})
 	fields = append(fields, TableField{Header: "TUNNEL IPS",
 		Formatter: func(item interface{}) string {
-			dev := item.(public.ModelsDevice)
+			dev := item.(client.ModelsDevice)
 			ips := []string{}
 			for _, ip := range dev.Ipv4TunnelIps {
-				ips = append(ips, ip.Address)
+				ips = append(ips, ip.GetAddress())
 			}
 			for _, ip := range dev.Ipv6TunnelIps {
-				ips = append(ips, ip.Address)
+				ips = append(ips, ip.GetAddress())
 			}
 			return strings.Join(ips, ", ")
 		},
@@ -132,49 +132,50 @@ func deviceTableFields(command *cli.Command) []TableField {
 	if full {
 		fields = append(fields, TableField{Header: "PUBLIC KEY", Field: "PublicKey"})
 		fields = append(fields, TableField{Header: "LOCAL IP", Formatter: func(item interface{}) string {
-			dev := item.(public.ModelsDevice)
+			dev := item.(client.ModelsDevice)
 			for _, endpoint := range dev.Endpoints {
-				if endpoint.Source == "local" {
-					return endpoint.Address
+				if endpoint.GetSource() == "local" {
+					return endpoint.GetAddress()
 				}
 			}
 			return ""
 		}})
 		fields = append(fields, TableField{Header: "ADVERTISED CIDR", Formatter: func(item interface{}) string {
-			dev := item.(public.ModelsDevice)
+			dev := item.(client.ModelsDevice)
 			return strings.Join(dev.AllowedIps, ", ")
 		}})
 		fields = append(fields, TableField{Header: "REFLEXIVE IPv4", Formatter: func(item interface{}) string {
-			dev := item.(public.ModelsDevice)
+			dev := item.(client.ModelsDevice)
 			var reflexiveIp4 []string
 			for _, endpoint := range dev.Endpoints {
-				if endpoint.Source != "local" {
-					reflexiveIp4 = append(reflexiveIp4, endpoint.Address)
+				if endpoint.GetSource() != "local" {
+					reflexiveIp4 = append(reflexiveIp4, endpoint.GetAddress())
 				}
 			}
 			return strings.Join(reflexiveIp4, ", ")
 		}})
 		fields = append(fields, TableField{Header: "LOCAL IPv4", Formatter: func(item interface{}) string {
-			dev := item.(public.ModelsDevice)
+			dev := item.(client.ModelsDevice)
 			var localIp4 []string
 			for _, endpoint := range dev.Endpoints {
-				if endpoint.Source == "local" {
-					localIp4 = append(localIp4, endpoint.Address)
+				if endpoint.GetSource() == "local" {
+					localIp4 = append(localIp4, endpoint.GetAddress())
 				}
 			}
 			return strings.Join(localIp4, ", ")
 		}})
+		fields = append(fields, TableField{Header: "SYMMETRIC NAT", Field: "SymmetricNat"})
 		fields = append(fields, TableField{Header: "OS", Field: "Os"})
 		fields = append(fields, TableField{Header: "SECURITY GROUP ID", Field: "SecurityGroupId"})
 		fields = append(fields, TableField{Header: "ONLINE", Field: "Online"})
 		fields = append(fields, TableField{Header: "ONLINE SINCE", Formatter: func(item interface{}) string {
-			d := item.(public.ModelsDevice)
-			if !d.Online {
+			d := item.(client.ModelsDevice)
+			if !d.GetOnline() {
 				return ""
 			}
-			parsedTime, err := time.Parse(time.RFC3339, d.OnlineAt)
+			parsedTime, err := time.Parse(time.RFC3339, d.GetOnlineAt())
 			if err != nil {
-				return d.OnlineAt
+				return d.GetOnlineAt()
 			}
 			localTime := parsedTime.Local()
 			return localTime.Format(LocalTimeFormat)
@@ -211,7 +212,7 @@ func deleteDevice(ctx context.Context, command *cli.Command, devID string) error
 	return nil
 }
 
-func updateDevice(ctx context.Context, command *cli.Command, devID string, update public.ModelsUpdateDevice) error {
+func updateDevice(ctx context.Context, command *cli.Command, devID string, update client.ModelsUpdateDevice) error {
 	c := createClient(ctx, command)
 	res := apiResponse(c.DevicesApi.
 		UpdateDevice(ctx, devID).

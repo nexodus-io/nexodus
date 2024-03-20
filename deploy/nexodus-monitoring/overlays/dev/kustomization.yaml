@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - prometheus-rbac.yaml
   - prometheus-service.yaml
+  - ingress.yaml
   - ../../base

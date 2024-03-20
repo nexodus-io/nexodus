@@ -4,10 +4,21 @@ concurrency: prod-${{ github.ref_name }}
 
 on:
   workflow_call:
+    inputs:
+      skip_qa_dev:
+        description: 'skip running the qa-dev workflow used to validate main prior to promotion'
+        required: false
+        type: boolean
   workflow_dispatch:
+    inputs:
+      skip_qa_dev:
+        description: 'skip running the qa-dev workflow used to validate main prior to promotion'
+        required: false
+        type: boolean
 
 jobs:
   run-qa-dev:
+
     # Dispatch the qa-dev workflow to validate main prior to promotion
     runs-on: ubuntu-latest
 
@@ -16,14 +27,17 @@ jobs:
 
     steps:
       - name: Checkout code
+        if: github.event.inputs.skip_qa_dev != 'true'
         uses: actions/checkout@v4
 
       - name: Capture current timestamp
+        if: github.event.inputs.skip_qa_dev != 'true'
         run: |
           current_time=$(date --utc +%Y-%m-%dT%H:%M:%S+00:00)
           echo "current_time=${current_time}" >> "$GITHUB_ENV"
 
       - name: Dispatch the qa-dev workflow
+        if: github.event.inputs.skip_qa_dev != 'true'
         run: |
           curl -X POST \
           -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" \
@@ -33,6 +47,7 @@ jobs:
           echo "Triggered qa-dev Workflow."
 
       - name: Wait for qa-dev workflow to complete
+        if: github.event.inputs.skip_qa_dev != 'true'
         timeout-minutes: 30
         run: |
           check_status() {

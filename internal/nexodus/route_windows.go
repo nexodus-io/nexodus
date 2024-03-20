@@ -4,9 +4,9 @@ package nexodus
 
 import (
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"net"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 )
 
@@ -56,7 +56,7 @@ func (nx *Nexodus) handlePeerRouteOS(wgPeerConfig wgPeerConfig) error {
 }
 
 // handlePeerRoute when a peer is this handles route deletion
-func (nx *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig public.ModelsDevice) {
+func (nx *Nexodus) handlePeerRouteDeleteOS(dev string, wgPeerConfig client.ModelsDevice) {
 	// TODO: Windoze route lookups
 	for _, allowedIP := range wgPeerConfig.AllowedIps {
 		// if the host does not support v6, skip adding the route

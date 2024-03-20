@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/urfave/cli/v3"
 	"strings"
 )
@@ -54,10 +54,10 @@ func createInvitationCommand() *cli.Command {
 					}
 					role := command.StringSlice("role")
 
-					return createInvitation(ctx, command, public.ModelsAddInvitation{
-						OrganizationId: organizationId,
-						UserId:         userId,
-						Email:          command.String("email"),
+					return createInvitation(ctx, command, client.ModelsAddInvitation{
+						OrganizationId: client.PtrString(organizationId),
+						UserId:         client.PtrString(userId),
+						Email:          client.PtrString(command.String("email")),
 						Roles:          role,
 					})
 				},
@@ -104,16 +104,16 @@ func invitationsTableFields() []TableField {
 	var fields []TableField
 	fields = append(fields, TableField{Header: "INVITATION ID", Field: "Id"})
 	fields = append(fields, TableField{Header: "ORGANIZATION", Formatter: func(item interface{}) string {
-		inv := item.(public.ModelsInvitation)
-		return inv.Organization.Name
+		inv := item.(client.ModelsInvitation)
+		return inv.Organization.GetName()
 	}})
 	fields = append(fields, TableField{Header: "FROM", Formatter: func(item interface{}) string {
-		inv := item.(public.ModelsInvitation)
-		return fmt.Sprintf("%s <%s>", inv.From.FullName, inv.From.Username)
+		inv := item.(client.ModelsInvitation)
+		return fmt.Sprintf("%s <%s>", inv.From.GetFullName(), inv.From.GetUsername())
 	}})
 	fields = append(fields, TableField{Header: "EMAIL", Field: "Email"})
 	fields = append(fields, TableField{Header: "ROLES", Formatter: func(item interface{}) string {
-		inv := item.(public.ModelsInvitation)
+		inv := item.(client.ModelsInvitation)
 		return strings.Join(inv.Roles, ", ")
 	}})
 	fields = append(fields, TableField{Header: "EXPIRES AT", Field: "ExpiresAt"})
@@ -148,12 +148,12 @@ func deleteInvitation(ctx context.Context, command *cli.Command, id string) erro
 	return nil
 }
 
-func createInvitation(ctx context.Context, command *cli.Command, invitation public.ModelsAddInvitation) error {
+func createInvitation(ctx context.Context, command *cli.Command, invitation client.ModelsAddInvitation) error {
 	c := createClient(ctx, command)
-	if invitation.OrganizationId == "" {
-		invitation.OrganizationId = getDefaultOrgId(ctx, c)
+	if invitation.GetOrganizationId() == "" {
+		invitation.OrganizationId = client.PtrString(getDefaultOrgId(ctx, c))
 	}
-	if invitation.UserId == "" && invitation.Email == "" {
+	if invitation.GetUserId() == "" && invitation.GetEmail() == "" {
 		return fmt.Errorf("either the --user-id or --email flags are required")
 	}
 	res := apiResponse(c.InvitationApi.

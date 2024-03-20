@@ -71,6 +71,10 @@ definitions:
         description: SecurityGroupId is the ID of the security group to assign to
           the device.
         type: string
+      service_network_id:
+        description: ServiceNetworkID is the ID of the Service Network the device
+          can join.
+        type: string
       settings:
         additionalProperties: true
         description: Settings contains general settings for the device.
@@ -98,6 +102,14 @@ definitions:
       vpc_id:
         type: string
     type: object
+  models.AddServiceNetwork:
+    properties:
+      description:
+        example: The Red Zone
+        type: string
+      organization_id:
+        type: string
+    type: object
   models.AddSite:
     properties:
       name:
@@ -106,7 +118,7 @@ definitions:
         type: string
       public_key:
         type: string
-      vpc_id:
+      service_network_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
     type: object
@@ -429,12 +441,16 @@ definitions:
         description: SecurityGroupId is the ID of the security group to assign to
           the device.
         type: string
+      service_network_id:
+        description: ServiceNetworkID is the ID of the Service Network the device
+          can join.
+        type: string
       settings:
         additionalProperties: true
         description: Settings contains general settings for the device.
         type: object
       vpc_id:
-        description: VpcID is the ID of the VPC the device will join.
+        description: VpcID is the ID of the VPC the device can join.
         type: string
     type: object
   models.SecurityGroup:
@@ -470,6 +486,22 @@ definitions:
       to_port:
         type: integer
     type: object
+  models.ServiceNetwork:
+    properties:
+      ca_certificates:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
+      organization_id:
+        type: string
+      revision:
+        type: integer
+    type: object
   models.Site:
     properties:
       bearer_token:
@@ -485,6 +517,10 @@ definitions:
         type: string
       name:
         type: string
+      online:
+        type: boolean
+      online_at:
+        type: string
       os:
         type: string
       owner_id:
@@ -495,7 +531,7 @@ definitions:
         type: string
       revision:
         type: integer
-      vpc_id:
+      service_network_id:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
     type: object
@@ -568,6 +604,12 @@ definitions:
           $ref: '#/definitions/models.SecurityRule'
         type: array
     type: object
+  models.UpdateServiceNetwork:
+    properties:
+      description:
+        example: The Red Zone
+        type: string
+    type: object
   models.UpdateSite:
     properties:
       hostname:
@@ -632,10 +674,6 @@ definitions:
     type: object
   models.VPC:
     properties:
-      ca_certificates:
-        items:
-          type: string
-        type: array
       description:
         type: string
       id:
@@ -693,6 +731,50 @@ info:
   title: Nexodus API
   version: "1.0"
 paths:
+  /api/ServiceNetworks/{id}/sites:
+    get:
+      consumes:
+      - application/json
+      description: Lists all sites for this ServiceNetwork
+      operationId: ListSitesInServiceNetwork
+      parameters:
+      - description: greater than revision
+        in: query
+        name: gt_revision
+        type: integer
+      - description: Service Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Site'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Sites
+      tags:
+      - ServiceNetwork
   /api/ca/sign:
     post:
       consumes:
@@ -1058,6 +1140,47 @@ paths:
       summary: Set Device Metadata by key
       tags:
       - Devices
+  /api/events:
+    post:
+      consumes:
+      - application/json
+      description: Watches events occurring in the control plane
+      operationId: Watch
+      parameters:
+      - description: List of events to watch
+        in: body
+        name: Watches
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.Watch'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WatchEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Watch events occurring in the control plane
+      tags:
+      - Events
   /api/fflags:
     get:
       consumes:
@@ -1976,6 +2099,208 @@ paths:
       summary: Update Security Group
       tags:
       - SecurityGroup
+  /api/service-networks:
+    get:
+      consumes:
+      - application/json
+      description: Lists all ServiceNetworks
+      operationId: ListServiceNetworks
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ServiceNetwork'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List ServiceNetworks
+      tags:
+      - ServiceNetwork
+    post:
+      consumes:
+      - application/json
+      description: Creates a named serviceNetwork with the given CIDR
+      operationId: CreateServiceNetwork
+      parameters:
+      - description: Add ServiceNetwork
+        in: body
+        name: ServiceNetwork
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddServiceNetwork'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ServiceNetwork'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ConflictsError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Create an ServiceNetwork
+      tags:
+      - ServiceNetwork
+  /api/service-networks/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing serviceNetwork
+      operationId: DeleteServiceNetwork
+      parameters:
+      - description: ServiceNetwork ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/models.ServiceNetwork'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete ServiceNetwork
+      tags:
+      - ServiceNetwork
+    get:
+      consumes:
+      - application/json
+      description: Gets a ServiceNetwork by ServiceNetwork ID
+      operationId: GetServiceNetwork
+      parameters:
+      - description: ServiceNetwork ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ServiceNetwork'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Get ServiceNetworks
+      tags:
+      - ServiceNetwork
+    patch:
+      consumes:
+      - application/json
+      description: Updates a serviceNetwork by ID
+      operationId: UpdateServiceNetwork
+      parameters:
+      - description: ServiceNetwork ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ServiceNetwork Update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateServiceNetwork'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ServiceNetwork'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Update ServiceNetworks
+      tags:
+      - ServiceNetwork
   /api/sites:
     get:
       consumes:
@@ -2625,12 +2950,15 @@ paths:
         type: integer
       - collectionFormat: csv
         description: used to filter down to the specified key prefixes
-        in: path
+        in: query
         items:
           type: string
         name: prefix
-        required: true
         type: array
+      - description: used to filter down to the specified key
+        in: query
+        name: key
+        type: string
       produces:
       - application/json
       responses:
@@ -2683,50 +3011,6 @@ paths:
           schema:
             $ref: '#/definitions/models.InternalServerError'
       summary: List Security Groups in a VPC
-      tags:
-      - VPC
-  /api/vpcs/{id}/sites:
-    get:
-      consumes:
-      - application/json
-      description: Lists all sites for this VPC
-      operationId: ListSitesInVPC
-      parameters:
-      - description: greater than revision
-        in: query
-        name: gt_revision
-        type: integer
-      - description: VPC ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Site'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/models.BaseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.InternalServerError'
-      summary: List Sites
       tags:
       - VPC
   /check/auth:

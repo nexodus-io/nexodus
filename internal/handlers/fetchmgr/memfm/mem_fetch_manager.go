@@ -82,9 +82,10 @@ func (cache *cache) Fill(fetcher *basefm.Fetcher, db *gorm.DB, gtRevision uint64
 		}
 
 		for i := 0; i < fetchLength; i++ {
-			item, revision, deletedAt := w.Item(i)
+			item, id, revision, deletedAt := w.Item(i)
 			cache.ringBuffer[cache.writePos%ringSize] = fetchmgr.ResourceItem{
 				Item:      item,
+				Id:        id,
 				Revision:  revision,
 				DeletedAt: deletedAt,
 			}
