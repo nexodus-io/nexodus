@@ -88,15 +88,26 @@ func (api *API) CreateStatus(c *gin.Context) {
 
 }
 
+// GetStatus gets the status of a user by their ID
+// @Summary Get user status
+// @Description Gets statuses based on userd
+// @Tags status
+// @Accept json
+// @Produce json
+// @Param id path string true "id"
+// @Param id path string true "Unique identifier for the status"
+// @Success      200  {object}  models.Device
+// @Failure		 401  {object}  models.BaseError
+// @Failure      400  {object}  models.BaseError
+// @Failure      404  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router /status/{id} [get]
 func (api *API) GetStatus(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "ListStatus", trace.WithAttributes(
-		attribute.String("UserId", c.Param("UserIdid")),
+	ctx, span := tracer.Start(c.Request.Context(), "GetStatus", trace.WithAttributes(
+		attribute.String("id", c.Param("id")),
 	))
 	defer span.End()
-
-	if !api.FlagCheck(c, "status") {
-		return
-	}
 
 	k, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -108,7 +119,7 @@ func (api *API) GetStatus(c *gin.Context) {
 
 	db := api.db.WithContext(ctx)
 	db = api.StatusIsOwnedByCurrentUser(c, db)
-	result := db.First(&status, "id = ?", k)
+	result := db.Find(&status, "id = ?", k)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
