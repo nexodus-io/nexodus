@@ -84,6 +84,7 @@ func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
 		})
 	}
 	res.Peers = nx.probeConnectivity(peersByKey, nx.logger)
+	fmt.Print(res.Peers)
 
 	return res
 }

@@ -712,6 +712,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		secGroupTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
 		pollTicker := time.NewTicker(pollInterval)
+		connectivityTicker := time.NewTicker(pollInterval)
 		defer pollTicker.Stop()
 		for {
 			select {
@@ -732,6 +733,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				// be processed when they come in on the informer. This periodic check is needed to
 				// re-establish our connection to the API if it is lost.
 				nx.reconcileDevices(ctx, options)
+			case <-connectivityTicker.C:
+				nx.connectivityProbe("v4")
 			case <-secGroupTicker.C:
 				nx.reconcileSecurityGroups(ctx)
 			}
