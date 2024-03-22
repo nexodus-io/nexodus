@@ -1,8 +1,6 @@
 package nexodus
 
-import (
-	"github.com/nexodus-io/nexodus/internal/api/public"
-)
+import "github.com/nexodus-io/nexodus/internal/client"
 
 func (nx *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) error {
 	if nx.userspaceMode {
@@ -12,7 +10,7 @@ func (nx *Nexodus) handlePeerRoute(wgPeerConfig wgPeerConfig) error {
 	}
 }
 
-func (nx *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig public.ModelsDevice) {
+func (nx *Nexodus) handlePeerRouteDelete(dev string, wgPeerConfig client.ModelsDevice) {
 	if nx.userspaceMode {
 		nx.handlePeerRouteDeleteUS(dev, wgPeerConfig)
 	} else {

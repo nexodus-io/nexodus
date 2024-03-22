@@ -78,6 +78,30 @@ Feature: Events API
       """
     Then the response code should be 201
     Given I store the ${response} as ${device1}
+    And the response should match json:
+      """
+      {
+        "bearer_token": "${response.bearer_token}",
+        "advertise_cidrs": null,
+        "allowed_ips":${device1.allowed_ips} ,
+        "endpoints": null,
+        "hostname": "device1",
+        "id": "${device1.id}",
+        "ipv4_tunnel_ips": ${device1.ipv4_tunnel_ips},
+        "ipv6_tunnel_ips": ${device1.ipv6_tunnel_ips},
+        "online": false,
+        "online_at": null,
+        "os": "",
+        "owner_id": "${oscar_user_id}",
+        "public_key": "${device1.public_key}",
+        "relay": false,
+        "revision": ${device1.revision},
+        "security_group_id": "${device1.security_group_id}",
+        "symmetric_nat": true,
+        "vpc_id": "${device1.vpc_id}"
+      }
+      """
+
     Given I store the ${response.id} as ${device_id}
 
     Given I am logged in as "Oliver"
@@ -136,7 +160,25 @@ Feature: Events API
       {
         "kind": "device",
         "type": "change",
-        "value": ${device1}
+        "value": {
+          "advertise_cidrs": null,
+          "allowed_ips":${device1.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "device1",
+          "id": "${device1.id}",
+          "ipv4_tunnel_ips": ${device1.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${device1.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oscar_user_id}",
+          "public_key": "${device1.public_key}",
+          "relay": false,
+          "revision": ${device1.revision},
+          "security_group_id": "${device1.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${device1.vpc_id}"
+        }
       }
       """
 
@@ -169,7 +211,30 @@ Feature: Events API
       """
     Then the response code should be 201
     Given I store the ${response} as ${device2}
-    Given I store the ${response.id} as ${device2_id}
+    And the response should match json:
+      """
+      {
+        "bearer_token": "${response.bearer_token}",
+        "advertise_cidrs": null,
+        "allowed_ips":${device2.allowed_ips} ,
+        "endpoints": null,
+        "hostname": "device2",
+        "id": "${device2.id}",
+        "ipv4_tunnel_ips": ${device2.ipv4_tunnel_ips},
+        "ipv6_tunnel_ips": ${device2.ipv6_tunnel_ips},
+        "online": false,
+        "online_at": null,
+        "os": "",
+        "owner_id": "${oscar_user_id}",
+        "public_key": "${device2.public_key}",
+        "relay": false,
+        "revision": ${device2.revision},
+        "security_group_id": "${device2.security_group_id}",
+        "symmetric_nat": true,
+        "vpc_id": "${device2.vpc_id}"
+      }
+      """
+
 
     # We should get additional change events...
     Given I am logged in as "Oliver"
@@ -179,7 +244,25 @@ Feature: Events API
       {
         "kind": "device",
         "type": "change",
-        "value": ${device2}
+        "value": {
+          "advertise_cidrs": null,
+          "allowed_ips":${device2.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "device2",
+          "id": "${device2.id}",
+          "ipv4_tunnel_ips": ${device2.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${device2.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oscar_user_id}",
+          "public_key": "${device2.public_key}",
+          "relay": false,
+          "revision": ${device2.revision},
+          "security_group_id": "${device2.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${device2.vpc_id}"
+        }
       }
       """
 
@@ -241,7 +324,7 @@ Feature: Events API
       """
 
     Given I am logged in as "Oscar"
-    When I DELETE path "/api/devices/${device2_id}"
+    When I DELETE path "/api/devices/${device2.id}"
     Then the response code should be 200
     Given I store the ${response} as ${deleted_device}
 

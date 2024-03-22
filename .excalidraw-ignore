@@ -8,6 +8,8 @@ docs/development/design/nexodus-architecture.png
 docs/development/env-file-screenshot.png
 docs/images/security-groups-ui-1.png
 ui/src/.*
+ui/playwright-report/.*
+ui/test-results/.*
 internal/email/test.png
 ui/src/images/favicon/.*
 ui/node_modules/.*

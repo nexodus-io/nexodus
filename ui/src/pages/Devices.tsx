@@ -36,7 +36,7 @@ const DeviceListBulkActions = () => (
   </div>
 );
 
-const StatusBooleanField = (props: BooleanFieldProps): JSX.Element => {
+export const StatusBooleanField = (props: BooleanFieldProps): JSX.Element => {
   const { source, label, valueLabelTrue } = props;
   const record = useRecordContext(props);
 
@@ -126,7 +126,7 @@ const DeviceAccordionDetails: FC<DeviceAccordionDetailsProps> = ({ id }) => {
   );
 };
 
-const ConditionalOnlineSinceField = () => {
+export const ConditionalOnlineSinceField = () => {
   const record = useRecordContext();
   const theme = useTheme();
 
@@ -194,6 +194,7 @@ const DeviceShowLayout: FC = () => {
           <TextField label="Source" source="source" />
         </Datagrid>
       </ArrayField>
+      <TextField label="Symmetric NAT" source="symmetric_nat" />
       <TextField label="Relay Node" source="relay" />
       <ReferenceField
         label="VPC"

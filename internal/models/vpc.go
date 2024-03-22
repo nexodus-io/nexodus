@@ -12,8 +12,6 @@ type VPC struct {
 	PrivateCidr    bool          `json:"private_cidr"`
 	Ipv4Cidr       string        `json:"ipv4_cidr"`
 	Ipv6Cidr       string        `json:"ipv6_cidr"`
-	CaKey          string        `json:"-"`
-	CaCertificates []string      `json:"ca_certificates,omitempty" gorm:"type:JSONB; serializer:json"`
 	Organization   *Organization `json:"-"`
 	Revision       uint64        `json:"revision" gorm:"type:bigserial;index:"`
 }

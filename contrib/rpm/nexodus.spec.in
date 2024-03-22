@@ -63,11 +63,12 @@ Requires: nftables
 #%go_generate_buildrequires
 
 %build
-REQUIRED_GO_VERSION="1.21"
+REQUIRED_GO_VERSION="1.22"
 GO_VERSION=$(go version | awk '{print $3}' | cut -c 3-)
 if [[ ! "$GO_VERSION" == $REQUIRED_GO_VERSION* ]]; then
-  curl -L https://go.dev/dl/go1.21.5.linux-amd64.tar.gz -o go1.21.5.linux-amd64.tar.gz
-  tar -C .. -xzf go1.21.5.linux-amd64.tar.gz
+  v=1.22.1
+  curl -L https://go.dev/dl/go${v}.linux-amd64.tar.gz -o go${v}.linux-amd64.tar.gz
+  tar -C .. -xzf go${v}.linux-amd64.tar.gz
   export PATH=/$(pwd)/../go/bin:$PATH
  fi
 

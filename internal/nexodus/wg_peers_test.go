@@ -1,38 +1,46 @@
 package nexodus
 
 import (
+	"github.com/nexodus-io/nexodus/internal/client"
 	"net/netip"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-
-	"github.com/nexodus-io/nexodus/internal/api/public"
 )
 
 func TestRebuildPeerConfig(t *testing.T) {
 	zLogger, _ := zap.NewDevelopment()
 	testLogger := zLogger.Sugar()
 	nxBase := &Nexodus{
-		vpc: &public.ModelsVPC{
-			Ipv4Cidr: "100.64.0.0/10",
-			Ipv6Cidr: "200::/64",
+		vpc: &client.ModelsVPC{
+			Ipv4Cidr: client.PtrString("100.64.0.0/10"),
+			Ipv6Cidr: client.PtrString("200::/64"),
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxRelay := &Nexodus{
 		vpc:                      nxBase.vpc,
 		relay:                    true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxSymmetricNAT := &Nexodus{
 		vpc:                      nxBase.vpc,
 		symmetricNat:             true,
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
+		nexRelay: nexRelay{
+			derpIpMapping: NewDerpIpMapping(),
+		},
 	}
 	nxDerpRelay := &Nexodus{
 		vpc:                      nxBase.vpc,
@@ -98,7 +106,7 @@ func TestRebuildPeerConfig(t *testing.T) {
 		},
 		{
 			// Ensure we choose reflexive peering when the reflexive IPs are different
-			name:           "reflexive peering",
+			name:           "reflexive peering with relay",
 			nx:             nxBase,
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "2.2.2.2:4321",
@@ -160,8 +168,8 @@ func TestRebuildPeerConfig(t *testing.T) {
 			peerLocalIP:    "192.168.10.50:5678",
 			peerStunIP:     "1.1.1.1:4321",
 			expectedMethod: peeringMethodDirectLocal,
-			secondMethod:   peeringMethodDirectLocal, // our only choice without a relay
-			thirdMethod:    peeringMethodDirectLocal, // our only choice without a relay
+			secondMethod:   peeringMethodViaDerpRelay, // our only choice without a wg relay
+			thirdMethod:    peeringMethodDirectLocal,  // roll back around to first option.
 		},
 		{
 			// No peering method available when we are behind symmetric NAT and we
@@ -207,20 +215,20 @@ func TestRebuildPeerConfig(t *testing.T) {
 		tc := tcIter
 		t.Run(tc.name, func(t *testing.T) {
 			d := deviceCacheEntry{
-				device: public.ModelsDevice{
-					Endpoints: []public.ModelsEndpoint{
+				device: client.ModelsDevice{
+					Endpoints: []client.ModelsEndpoint{
 						{
-							Address: tc.peerLocalIP,
-							Source:  "local",
+							Address: client.PtrString(tc.peerLocalIP),
+							Source:  client.PtrString("local"),
 						},
 						{
-							Address: tc.peerStunIP,
-							Source:  "stun",
+							Address: client.PtrString(tc.peerStunIP),
+							Source:  client.PtrString("stun"),
 						},
 					},
-					PublicKey:    "bacon",
-					Relay:        tc.peerIsRelay,
-					SymmetricNat: tc.peerSymmetricNAT,
+					PublicKey:    client.PtrString("bacon"),
+					Relay:        client.PtrBool(tc.peerIsRelay),
+					SymmetricNat: client.PtrBool(tc.peerSymmetricNAT),
 				},
 			}
 			tc.nx.peeringReset(&d)
@@ -281,64 +289,64 @@ func TestBuildPeersConfig(t *testing.T) {
 	// - theRelay: a relay we can reach directly.
 	//
 	nx := &Nexodus{
-		vpc: &public.ModelsVPC{
-			Ipv4Cidr: "100.64.0.0/10",
-			Ipv6Cidr: "200::/64",
+		vpc: &client.ModelsVPC{
+			Ipv4Cidr: client.PtrString("100.64.0.0/10"),
+			Ipv6Cidr: client.PtrString("200::/64"),
 		},
 		nodeReflexiveAddressIPv4: netip.MustParseAddrPort("1.1.1.1:1234"),
 		logger:                   testLogger,
 		deviceCache: map[string]deviceCacheEntry{
 			"directPeerWithAdvertiseCidrs": {
-				device: public.ModelsDevice{
-					Endpoints: []public.ModelsEndpoint{
+				device: client.ModelsDevice{
+					Endpoints: []client.ModelsEndpoint{
 						{
-							Address: "192.168.50.2:5678",
-							Source:  "local",
+							Address: client.PtrString("192.168.50.2:5678"),
+							Source:  client.PtrString("local"),
 						},
 						{
-							Address: "2.2.2.2:4321",
-							Source:  "stun",
+							Address: client.PtrString("2.2.2.2:4321"),
+							Source:  client.PtrString("stun"),
 						},
 					},
-					PublicKey: "directPeerWithAdvertiseCidrs",
+					PublicKey: client.PtrString("directPeerWithAdvertiseCidrs"),
 					AdvertiseCidrs: []string{
 						"192.168.50.0/24",
 					},
 				},
 			},
 			"peerViaRelayWithAdvertiseCidrs": {
-				device: public.ModelsDevice{
-					Endpoints: []public.ModelsEndpoint{
+				device: client.ModelsDevice{
+					Endpoints: []client.ModelsEndpoint{
 						{
-							Address: "192.168.40.2:5678",
-							Source:  "local",
+							Address: client.PtrString("192.168.40.2:5678"),
+							Source:  client.PtrString("local"),
 						},
 						{
-							Address: "2.2.2.2:4321",
-							Source:  "stun",
+							Address: client.PtrString("2.2.2.2:4321"),
+							Source:  client.PtrString("stun"),
 						},
 					},
-					PublicKey:    "peerViaRelayWithAdvertiseCidrs",
-					SymmetricNat: true,
+					PublicKey:    client.PtrString("peerViaRelayWithAdvertiseCidrs"),
+					SymmetricNat: client.PtrBool(true),
 					AdvertiseCidrs: []string{
 						"192.168.40.0/24",
 					},
 				},
 			},
 			"theRelay": {
-				device: public.ModelsDevice{
-					Endpoints: []public.ModelsEndpoint{
+				device: client.ModelsDevice{
+					Endpoints: []client.ModelsEndpoint{
 						{
-							Address: "192.168.30.5:5678",
-							Source:  "local",
+							Address: client.PtrString("192.168.30.5:5678"),
+							Source:  client.PtrString("local"),
 						},
 						{
-							Address: "3.3.3.3:4321",
-							Source:  "stun",
+							Address: client.PtrString("3.3.3.3:4321"),
+							Source:  client.PtrString("stun"),
 						},
 					},
-					PublicKey: "theRelay",
-					Relay:     true,
+					PublicKey: client.PtrString("theRelay"),
+					Relay:     client.PtrBool(true),
 				},
 			},
 		},
@@ -348,7 +356,7 @@ func TestBuildPeersConfig(t *testing.T) {
 		d := dIter
 		nx.peeringReset(&d)
 		d.peerHealthy = true
-		nx.deviceCache[d.device.PublicKey] = d
+		nx.deviceCache[d.device.GetPublicKey()] = d
 	}
 
 	updatedDevices := nx.buildPeersConfig()

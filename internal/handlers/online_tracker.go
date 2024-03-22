@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/redis/go-redis/v9"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-func New(logger *zap.Logger) (*DeviceTracker, error) {
+func New(logger *zap.Logger) (*AgentTracker, error) {
 
 	redisAddr := util.Getenv("NEXAPI_REDIS_SERVER", "redis:6379")
 	redisDB, err := util.GetenvInt("NEXAPI_REDIS_DB", "1")
@@ -19,7 +20,7 @@ func New(logger *zap.Logger) (*DeviceTracker, error) {
 		return nil, err
 	}
 
-	return &DeviceTracker{
+	return &AgentTracker{
 		redis: redis.NewClient(&redis.Options{
 			Addr:             redisAddr,
 			DB:               redisDB,
@@ -27,81 +28,100 @@ func New(logger *zap.Logger) (*DeviceTracker, error) {
 		}),
 		reconnectGracePeriod: time.Second * 5,
 		logger:               logger,
-		keyPrefix:            "dev-track:",
-		localDevices:         map[string]int{},
+		keyPrefix:            "agent-track:",
+		localAgents:          map[string]int{},
 	}, nil
 }
 
 // One of these exists off of the top-level API object.
-type DeviceTracker struct {
+type AgentTracker struct {
 	mu                   sync.Mutex
 	redis                *redis.Client
 	logger               *zap.Logger
 	keyPrefix            string
 	pubSub               *redis.PubSub
-	localDevices         map[string]int
+	localAgents          map[string]int
 	reconnectGracePeriod time.Duration
 }
 
-func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, fn func()) {
-	if publicKey == "" {
+func (at *AgentTracker) Connected(api *API, c *gin.Context, agentIdPtr *uuid.UUID, fn func()) {
+	if agentIdPtr == nil {
 		fn()
 		return
 	}
+	agentId := agentIdPtr.String()
+
+	logger := at.logger.With(zap.String("agent-id", agentId))
 
 	device := &models.Device{}
-	result := api.DeviceIsOwnedByCurrentUser(c, api.db).First(&device, "public_key = ?", publicKey)
-	if result.Error != nil {
-		ot.logger.Warn("cannot track: invalid device public_key", zap.String("public_key", publicKey), zap.Error(result.Error))
+	_ = api.DeviceIsOwnedByCurrentUser(c, api.db).First(&device, "id = ?", agentId)
+
+	site := &models.Site{}
+	_ = api.SiteIsOwnedByCurrentUser(c, api.db).First(&site, "id = ?", agentId)
+
+	if device.ID == uuid.Nil && site.ID == uuid.Nil {
+		at.logger.Warn("cannot track: invalid agent id")
 		fn()
 		return
 	}
 
-	if err := ot.connected(publicKey); err != nil {
-		ot.logger.Warn("failed to update online redis state for device", zap.String("public_key", publicKey), zap.Error(err))
+	if err := at.connected(agentId); err != nil {
+		logger.Warn("failed to update online redis state for device", zap.Error(err))
 		fn()
 		return
 	}
 
-	if !device.Online {
+	if device.ID != uuid.Nil && !device.Online {
 		device.Online = true
 		now := time.Now()
 		device.OnlineAt = &now
 		err := api.db.Select("online", "online_at").Updates(device).Error
 		if err != nil {
-			ot.logger.Warn("failed to update db state for device", zap.String("public_key", publicKey), zap.Error(err))
+			logger.Warn("failed to update db state for device", zap.Error(err))
+			fn()
+		}
+	}
+	if site.ID != uuid.Nil && !site.Online {
+		site.Online = true
+		now := time.Now()
+		site.OnlineAt = &now
+		err := api.db.Select("online", "online_at").Updates(site).Error
+		if err != nil {
+			logger.Warn("failed to update db state for site", zap.Error(err))
 			fn()
 		}
 	}
 
 	defer func() {
-		if err := ot.disconnected(publicKey); err != nil {
-			ot.logger.Warn("failed to update offline redis state for device", zap.String("public_key", publicKey), zap.Error(err))
+		if err := at.disconnected(agentId); err != nil {
+			logger.Warn("failed to update offline redis state for agent", zap.Error(err))
 			return
 		}
-		time.AfterFunc(ot.reconnectGracePeriod, func() {
-			connected, err := ot.isConnected(publicKey)
+		time.AfterFunc(at.reconnectGracePeriod, func() {
+			connected, err := at.isConnected(agentId)
 			if err != nil {
-				ot.logger.Warn("failed to get online state for device", zap.String("public_key", publicKey), zap.Error(err))
+				logger.Warn("failed to get online state for agent", zap.Error(err))
 				return
 			}
 			if connected {
 				return
 			}
+			now := time.Now()
 
-			device := &models.Device{}
-			result := api.db.First(&device, "public_key = ?", publicKey)
-			if result.Error != nil {
-				ot.logger.Warn("cannot track: invalid device public_key", zap.String("public_key", publicKey), zap.Error(result.Error))
-				return
-			}
-			if device.Online {
+			if device.ID != uuid.Nil {
 				device.Online = false
-				now := time.Now()
 				device.OnlineAt = &now
-				err := api.db.Select("online", "online_at").Updates(device).Error
+				err = api.db.Select("online", "online_at").Where("online = true").Updates(device).Error
 				if err != nil {
-					ot.logger.Warn("failed to update db state for device", zap.String("public_key", publicKey), zap.Error(err))
+					logger.Warn("failed to update db state for device", zap.Error(err))
+				}
+			}
+			if site.ID != uuid.Nil {
+				site.Online = false
+				site.OnlineAt = &now
+				err = api.db.Select("online", "online_at").Where("online = true").Updates(site).Error
+				if err != nil {
+					logger.Warn("failed to update db state for site", zap.Error(err))
 				}
 			}
 		})
@@ -109,57 +129,57 @@ func (ot *DeviceTracker) Connected(api *API, c *gin.Context, publicKey string, f
 	fn()
 }
 
-func (ot *DeviceTracker) connected(publicKey string) error {
+func (at *AgentTracker) connected(publicKey string) error {
 
-	ot.mu.Lock()
-	defer ot.mu.Unlock()
+	at.mu.Lock()
+	defer at.mu.Unlock()
 
 	// don't send a subscriptions to redis... it will only track 1 sub.
-	if count, found := ot.localDevices[publicKey]; found {
+	if count, found := at.localAgents[publicKey]; found {
 		count++
-		ot.localDevices[publicKey] = count
+		at.localAgents[publicKey] = count
 		return nil
 	}
 
-	ot.localDevices[publicKey] = 1
-	if ot.pubSub == nil {
-		ot.pubSub = ot.redis.Subscribe(context.Background(), ot.keyPrefix+publicKey)
+	at.localAgents[publicKey] = 1
+	if at.pubSub == nil {
+		at.pubSub = at.redis.Subscribe(context.Background(), at.keyPrefix+publicKey)
 	}
 
-	err := ot.pubSub.Subscribe(context.Background(), ot.keyPrefix+publicKey)
+	err := at.pubSub.Subscribe(context.Background(), at.keyPrefix+publicKey)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ot *DeviceTracker) disconnected(publicKey string) error {
+func (at *AgentTracker) disconnected(publicKey string) error {
 
-	ot.mu.Lock()
-	defer ot.mu.Unlock()
+	at.mu.Lock()
+	defer at.mu.Unlock()
 
-	count, found := ot.localDevices[publicKey]
+	count, found := at.localAgents[publicKey]
 	if !found {
 		return nil
 	}
 
 	count--
 	if count != 0 {
-		ot.localDevices[publicKey] = count
+		at.localAgents[publicKey] = count
 		return nil
 	}
 
-	delete(ot.localDevices, publicKey)
-	err := ot.pubSub.Unsubscribe(context.Background(), ot.keyPrefix+publicKey)
+	delete(at.localAgents, publicKey)
+	err := at.pubSub.Unsubscribe(context.Background(), at.keyPrefix+publicKey)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ot *DeviceTracker) isConnected(publicKey string) (bool, error) {
-	key := ot.keyPrefix + publicKey
-	result, err := ot.redis.PubSubNumSub(context.Background(), key).Result()
+func (at *AgentTracker) isConnected(publicKey string) (bool, error) {
+	key := at.keyPrefix + publicKey
+	result, err := at.redis.PubSubNumSub(context.Background(), key).Result()
 	if err != nil {
 		return false, err
 	}

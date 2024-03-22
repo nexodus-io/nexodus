@@ -7,26 +7,26 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
+	"github.com/nexodus-io/nexodus/internal/client"
 )
 
-func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []public.ModelsEndpoint) (public.ModelsDevice, string, error) {
-	newDev := public.ModelsAddDevice{
+func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []client.ModelsEndpoint) (client.ModelsDevice, string, error) {
+	newDev := client.ModelsAddDevice{
 		VpcId:           nx.vpc.Id,
-		SecurityGroupId: nx.securityGroupId,
-		PublicKey:       nx.wireguardPubKey,
+		SecurityGroupId: client.PtrOptionalString(nx.securityGroupId),
+		PublicKey:       &nx.wireguardPubKey,
 		AdvertiseCidrs:  nx.advertiseCidrs,
-		SymmetricNat:    nx.symmetricNat,
-		Hostname:        nx.hostname,
-		Relay:           nx.relay || nx.relayDerp,
-		Os:              nx.os,
+		SymmetricNat:    &nx.symmetricNat,
+		Hostname:        &nx.hostname,
+		Relay:           client.PtrBool(nx.relay || nx.relayDerp),
+		Os:              &nx.os,
 		Endpoints:       endpoints,
 	}
 
 	if len(nx.requestedIP) > 0 {
-		newDev.Ipv4TunnelIps = []public.ModelsTunnelIP{
+		newDev.Ipv4TunnelIps = []client.ModelsTunnelIP{
 			{
-				Address: nx.requestedIP,
+				Address: &nx.requestedIP,
 				Cidr:    nx.vpc.Ipv4Cidr,
 			},
 		}
@@ -35,17 +35,18 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 	deviceOperationMsg := "Successfully registered device"
 	var resp *http.Response
 	if err != nil {
-		var apiError *public.GenericOpenAPIError
+		var apiError *client.GenericOpenAPIError
 		if errors.As(err, &apiError) {
 			switch model := apiError.Model().(type) {
-			case public.ModelsConflictsError:
-				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.Id).Update(public.ModelsUpdateDevice{
-					VpcId:          nx.vpc.Id,
-					AdvertiseCidrs: nx.advertiseCidrs,
-					SymmetricNat:   nx.symmetricNat,
-					Hostname:       nx.hostname,
-					Endpoints:      endpoints,
-					Relay:          nx.relay || nx.relayDerp,
+			case client.ModelsConflictsError:
+				d, resp, err = nx.client.DevicesApi.UpdateDevice(context.Background(), model.GetId()).Update(client.ModelsUpdateDevice{
+					AdvertiseCidrs:  newDev.AdvertiseCidrs,
+					Endpoints:       newDev.Endpoints,
+					Hostname:        newDev.Hostname,
+					Relay:           newDev.Relay,
+					SecurityGroupId: newDev.SecurityGroupId,
+					SymmetricNat:    newDev.SymmetricNat,
+					VpcId:           newDev.VpcId,
 				}).Execute()
 				deviceOperationMsg = "Reconnected as device"
 				if err != nil {
@@ -53,31 +54,31 @@ func (nx *Nexodus) createOrUpdateDeviceOperation(userID string, endpoints []publ
 					if resp != nil {
 						bytes, err := io.ReadAll(resp.Body)
 						if err != nil {
-							return public.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, resp.Status)
+							return client.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, resp.Status)
 						}
 						respText = string(bytes)
 					}
-					return public.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, respText)
+					return client.ModelsDevice{}, "", fmt.Errorf("error updating device: %w - %s", err, respText)
 				}
 			default:
-				return public.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
+				return client.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
 			}
 		} else {
-			return public.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
+			return client.ModelsDevice{}, "", fmt.Errorf("error creating device: %w", err)
 		}
 	}
 
-	resp, err = nx.updateDeviceRelayMetadata(d.Id)
+	resp, err = nx.updateDeviceRelayMetadata(d.GetId())
 	if err != nil {
 		respText := ""
 		if resp != nil {
 			bytes, err := io.ReadAll(resp.Body)
 			if err != nil {
-				return public.ModelsDevice{}, "", fmt.Errorf("error updating device metadata: %w - %s", err, resp.Status)
+				return client.ModelsDevice{}, "", fmt.Errorf("error updating device metadata: %w - %s", err, resp.Status)
 			}
 			respText = string(bytes)
 		}
-		return public.ModelsDevice{}, "", fmt.Errorf("error updating device metadata: %w - %s", err, respText)
+		return client.ModelsDevice{}, "", fmt.Errorf("error updating device metadata: %w - %s", err, respText)
 	}
 
 	return *d, deviceOperationMsg, nil
@@ -105,10 +106,14 @@ func (nx *Nexodus) updateDeviceRelayMetadata(deviceId string) (*http.Response, e
 	return nil, nil
 }
 
-func (nx *Nexodus) getDeviceRelayMetadata(deviceId string) (public.ModelsDeviceMetadata, *http.Response, error) {
-	metadata, resp, err := nx.client.DevicesApi.GetDeviceMetadataKey(context.Background(), deviceId, "relay").Execute()
+func (nx *Nexodus) getDeviceRelayMetadata(deviceId string) (client.ModelsDeviceMetadata, *http.Response, error) {
+	metadata, resp, err := nx.relayMetadataInformer.Execute()
 	if err != nil {
-		return public.ModelsDeviceMetadata{}, resp, err
+		return client.ModelsDeviceMetadata{}, resp, err
 	}
-	return *metadata, resp, nil
+	item, found := metadata[deviceId+"/relay"]
+	if !found {
+		return client.ModelsDeviceMetadata{}, resp, errors.New("relay metadata not found")
+	}
+	return item, resp, nil
 }

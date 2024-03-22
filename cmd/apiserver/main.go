@@ -350,9 +350,9 @@ func main() {
 					User:     command.String("smtp-user"),
 					Password: command.String("smtp-password"),
 				}
-				if command.Bool("smtp-tls") { // #nosec G402
+				if command.Bool("smtp-tls") {
 					smtpServer.Tls = &tls.Config{
-						InsecureSkipVerify: command.Bool("insecure-tls"),
+						InsecureSkipVerify: command.Bool("insecure-tls"), // #nosec G402
 					}
 				}
 				api.SmtpServer = smtpServer

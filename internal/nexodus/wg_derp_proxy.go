@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/util"
 	"net"
 	"net/netip"
+	"sync"
 
 	"go.uber.org/zap"
 	"go4.org/mem"
@@ -19,8 +21,11 @@ type DerpUserSpaceProxy struct {
 	listenAddr net.Addr
 	srcAddr    net.Addr
 	nexRelay   *nexRelay
-	ctx        context.Context
-	cancel     context.CancelFunc
+
+	mu     sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     *sync.WaitGroup
 
 	localConn  net.PacketConn
 	packetConn *ipv4.PacketConn
@@ -38,31 +43,45 @@ func NewDerpUserSpaceProxy(logger *zap.SugaredLogger, nexRelay *nexRelay) *DerpU
 	return p
 }
 
-func (p *DerpUserSpaceProxy) startDerpProxy() {
-	p.startListening()
+func (p *DerpUserSpaceProxy) Restart() {
+	p.Stop()
+
+	//Reset the port
+	p.mu.Lock()
+	p.port = p.nexRelay.myDerp
+	p.mu.Unlock()
+
+	p.Start()
 }
 
-func (p *DerpUserSpaceProxy) restartDerpProxy() {
-	p.ctx.Done()
+func (p *DerpUserSpaceProxy) Stop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
+	if p.cancel == nil {
+		return
+	}
+
+	p.cancel()
 	if err := p.closeConn(); err != nil {
 		p.log.Errorf("failed to close the local user space connection %v", err)
 	}
-
-	//Reset the port
-	p.port = p.nexRelay.myDerp
-	p.startListening()
+	p.wg.Wait()
+	p.packetConn = nil
+	p.localConn = nil
+	p.cancel = nil
+	p.wg = nil
+	p.ctx = nil
+	p.listenAddr = nil
 }
 
-func (p *DerpUserSpaceProxy) stopDerpProxy() {
-	p.cancel()
-	p.ctx.Done()
-}
-
-// StartListening start the proxy with the given remote conn
-func (p *DerpUserSpaceProxy) startListening() {
+// Start start the proxy with the given remote conn
+func (p *DerpUserSpaceProxy) Start() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	p.ctx, p.cancel = context.WithCancel(context.Background())
+	p.wg = &sync.WaitGroup{}
 
 	// Create a UDP address to listen on
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", p.port))
@@ -89,9 +108,8 @@ func (p *DerpUserSpaceProxy) startListening() {
 	p.log.Debugf("Proxy start listening on %s for wireguard packets.", p.localConn.LocalAddr())
 
 	p.listenAddr = p.localConn.LocalAddr()
-
-	go p.proxyToRemote()
-	go p.proxyToLocal()
+	util.GoWithWaitGroup(p.wg, p.proxyToRemote)
+	util.GoWithWaitGroup(p.wg, p.proxyToLocal)
 }
 
 // CloseConn close the localConn
@@ -108,7 +126,6 @@ func (p *DerpUserSpaceProxy) closeConn() error {
 // proxyToRemote proxies everything from Wireguard to the RemoteKey peer
 // blocks
 func (p *DerpUserSpaceProxy) proxyToRemote() {
-
 	buf := make([]byte, 1500)
 	for {
 		select {
@@ -152,6 +169,8 @@ func (p *DerpUserSpaceProxy) proxyToRemote() {
 				}
 
 				select {
+				case <-p.ctx.Done():
+					return
 				case <-p.nexRelay.donec:
 					p.log.Errorf("nexRelay is done")
 				case ch <- derpWriteRequest{addrPort, pubKey, buf[:n]}:
@@ -166,44 +185,48 @@ func (p *DerpUserSpaceProxy) proxyToRemote() {
 // proxyToLocal proxies everything from the RemoteKey peer to local Wireguard
 // blocks
 func (p *DerpUserSpaceProxy) proxyToLocal() {
-
 	buf := make([]byte, 1500)
-	for dm := range p.nexRelay.derpRecvCh {
-		if dm.copyBuf == nil {
-			p.log.Debugf("No copyBuf func found for the derp read result")
-			continue
-		}
-		ncopy := dm.copyBuf(buf)
-		if ncopy != dm.n {
-			err := fmt.Errorf("received DERP packet of length %d that's too big for WireGuard buf size %d", dm.n, ncopy)
-			p.log.Debugf("derp-read: %v", err)
-			continue
-		}
-
-		b := dm.src.Raw32() //nolint:staticcheck
-		pubKey := base64.StdEncoding.EncodeToString(b[:])
-		p.log.Debugf("packet (%d bytes) received from (regionId : %d, wgPubKey: %s pubKey : %s)", ncopy, dm.regionID, dm.src.WireGuardGoString(), pubKey)
-
-		if srcIp := p.nexRelay.derpIpMapping.CheckIfKeyExist(pubKey); srcIp != "" {
-
-			dstIp, _, err := net.SplitHostPort(p.srcAddr.String())
-			if err != nil {
-				p.log.Debugf("Error splitting host port %s : %v", p.srcAddr.String(), err)
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case dm := <-p.nexRelay.derpRecvCh:
+			if dm.copyBuf == nil {
+				p.log.Debugf("No copyBuf func found for the derp read result")
+				continue
+			}
+			ncopy := dm.copyBuf(buf)
+			if ncopy != dm.n {
+				err := fmt.Errorf("received DERP packet of length %d that's too big for WireGuard buf size %d", dm.n, ncopy)
+				p.log.Debugf("derp-read: %v", err)
 				continue
 			}
 
-			cm := &ipv4.ControlMessage{TTL: 0, Src: net.ParseIP(srcIp), Dst: net.ParseIP(dstIp), IfIndex: 1}
-			var n int
-			n, err = p.packetConn.WriteTo(buf[:ncopy], cm, p.srcAddr)
-			if err != nil {
-				p.log.Debugf("Error writing to local wireguard UDP packets:%v", err)
+			b := dm.src.Raw32() //nolint:staticcheck
+			pubKey := base64.StdEncoding.EncodeToString(b[:])
+			p.log.Debugf("packet (%d bytes) received from (regionId : %d, wgPubKey: %s pubKey : %s)", ncopy, dm.regionID, dm.src.WireGuardGoString(), pubKey)
+
+			if srcIp := p.nexRelay.derpIpMapping.CheckIfKeyExist(pubKey); srcIp != "" {
+
+				dstIp, _, err := net.SplitHostPort(p.srcAddr.String())
+				if err != nil {
+					p.log.Debugf("Error splitting host port %s : %v", p.srcAddr.String(), err)
+					continue
+				}
+
+				cm := &ipv4.ControlMessage{TTL: 0, Src: net.ParseIP(srcIp), Dst: net.ParseIP(dstIp), IfIndex: 1}
+				var n int
+				n, err = p.packetConn.WriteTo(buf[:ncopy], cm, p.srcAddr)
+				if err != nil {
+					p.log.Debugf("Error writing to local wireguard UDP packets:%v", err)
+					continue
+				}
+				p.log.Debugf("packet (%d bytes) sent to (writeToDstAddr : %s, writeToSrcAddr : %s)", n, p.srcAddr.String(), cm.Src.String())
+
+			} else {
+				p.log.Debugf("Error getting srcIp from derpIpMapping for pubKey %s", pubKey)
 				continue
 			}
-			p.log.Debugf("packet (%d bytes) sent to (writeToDstAddr : %s, writeToSrcAddr : %s)", n, p.srcAddr.String(), cm.Src.String())
-
-		} else {
-			p.log.Debugf("Error getting srcIp from derpIpMapping for pubKey %s", pubKey)
-			continue
 		}
 	}
 }

@@ -169,8 +169,6 @@ func init() {
 					return res.Error
 				}
 
-				
-
 				return nil
 			})
 		},

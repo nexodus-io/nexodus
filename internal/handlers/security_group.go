@@ -43,9 +43,9 @@ var allowedProtocols = map[string]bool{
 
 type securityGroupList []*models.SecurityGroup
 
-func (d securityGroupList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d securityGroupList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d securityGroupList) Len() int {

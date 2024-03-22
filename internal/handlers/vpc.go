@@ -403,9 +403,9 @@ func (api *API) UpdateVPC(c *gin.Context) {
 
 type vpcList []*models.VPC
 
-func (d vpcList) Item(i int) (any, uint64, gorm.DeletedAt) {
+func (d vpcList) Item(i int) (any, string, uint64, gorm.DeletedAt) {
 	item := d[i]
-	return item, item.Revision, item.DeletedAt
+	return item, item.ID.String(), item.Revision, item.DeletedAt
 }
 
 func (d vpcList) Len() int {

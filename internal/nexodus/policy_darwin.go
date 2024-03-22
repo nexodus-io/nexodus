@@ -4,12 +4,12 @@ package nexodus
 
 import (
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -158,7 +158,7 @@ func (nx *Nexodus) processSecurityGroupRules() error {
 	return nil
 }
 
-func (prb *pfRuleBuilder) pfPermitProtoPortAddr(rule public.ModelsSecurityRule, direction string) error {
+func (prb *pfRuleBuilder) pfPermitProtoPortAddr(rule client.ModelsSecurityRule, direction string) error {
 	var portOption string
 	var directionToken string
 
@@ -168,10 +168,10 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAddr(rule public.ModelsSecurityRule, 
 		directionToken = "pass out"
 	}
 
-	if rule.FromPort == 0 && rule.ToPort == 0 {
+	if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 		portOption = ""
 	} else {
-		portOption = fmt.Sprintf("port %d:%d", rule.FromPort, rule.ToPort)
+		portOption = fmt.Sprintf("port %d:%d", rule.GetFromPort(), rule.GetToPort())
 	}
 
 	ipRangesStr := strings.Join(rule.IpRanges, ", ")
@@ -185,7 +185,7 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAddr(rule public.ModelsSecurityRule, 
 		ipDirection = fmt.Sprintf("to { %s }", ipRangesStr)
 	}
 
-	protocol := rule.IpProtocol
+	protocol := rule.GetIpProtocol()
 	inetType := "inet"
 	if protocol == "ipv6" || protocol == "icmp6" || protocol == "icmpv6" {
 		inetType = "inet6"
@@ -215,7 +215,7 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAddr(rule public.ModelsSecurityRule, 
 	return nil
 }
 
-func (prb *pfRuleBuilder) pfPermitProtoPortAnyAddr(rule public.ModelsSecurityRule, direction string) error {
+func (prb *pfRuleBuilder) pfPermitProtoPortAnyAddr(rule client.ModelsSecurityRule, direction string) error {
 	var portOption string
 	var directionToken string
 
@@ -225,10 +225,10 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAnyAddr(rule public.ModelsSecurityRul
 		directionToken = "pass out"
 	}
 
-	if rule.FromPort == 0 && rule.ToPort == 0 {
+	if rule.GetFromPort() == 0 && rule.GetToPort() == 0 {
 		portOption = ""
 	} else {
-		portOption = fmt.Sprintf("port %d:%d", rule.FromPort, rule.ToPort)
+		portOption = fmt.Sprintf("port %d:%d", rule.GetFromPort(), rule.GetToPort())
 	}
 
 	ipDirection := "to any"
@@ -238,7 +238,7 @@ func (prb *pfRuleBuilder) pfPermitProtoPortAnyAddr(rule public.ModelsSecurityRul
 		ipDirection = "to any"
 	}
 
-	protocol := rule.IpProtocol
+	protocol := rule.GetIpProtocol()
 	inetType := "inet"
 	if protocol == "ipv6" || protocol == "icmp6" || protocol == "icmpv6" {
 		inetType = "inet6"

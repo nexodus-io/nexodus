@@ -4,7 +4,7 @@ package integration_tests
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -16,6 +16,7 @@ import (
 // peers behind symmetric NATs are not able to connect to each other if derp
 // relay (public or on-boarded) is not available.
 func TestConnectivityFailureWithoutDerpRelay(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -27,8 +28,7 @@ func TestConnectivityFailureWithoutDerpRelay(t *testing.T) {
 
 	// Make sure that the nodes don't reach to the public derp relay
 	// that is running at relay.nexodus.io
-	err := os.Setenv("NEX_DERP_RELAY_IP", "127.0.0.1")
-	require.NoError(err)
+	ctx = WithExtraHosts(ctx, []string{fmt.Sprintf("relay.nexodus.io:%s", "127.0.0.1")})
 
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
@@ -59,6 +59,7 @@ func TestConnectivityFailureWithoutDerpRelay(t *testing.T) {
 // public relay. Public relay is deployed as a part of kind nexodus stack
 // with self signed certificates.
 func TestConnectivityViaPublicRelay1(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -76,8 +77,7 @@ func TestConnectivityViaPublicRelay1(t *testing.T) {
 
 	// Set the relay IP as an environment variable so createNode can use it to
 	// set the DNS entry pointing to the relay.
-	err = os.Setenv("NEX_DERP_RELAY_IP", relayIp)
-	require.NoError(err)
+	ctx = WithExtraHosts(ctx, []string{fmt.Sprintf("relay.nexodus.io:%s", relayIp)})
 
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
@@ -112,6 +112,7 @@ func TestConnectivityViaPublicRelay1(t *testing.T) {
 // connect to each other through a public relay. Public relay is deployed
 // as a part of kind nexodus stack with self signed certificates.
 func TestConnectivityViaPublicRelay2(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -129,8 +130,7 @@ func TestConnectivityViaPublicRelay2(t *testing.T) {
 
 	// Set the relay IP as an environment variable so createNode can use it to
 	// set the DNS entry pointing to the relay.
-	err = os.Setenv("NEX_DERP_RELAY_IP", relayIp)
-	require.NoError(err)
+	ctx = WithExtraHosts(ctx, []string{fmt.Sprintf("relay.nexodus.io:%s", relayIp)})
 
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
@@ -165,6 +165,7 @@ func TestConnectivityViaPublicRelay2(t *testing.T) {
 // on-boarded relay.
 
 func TestConnectivityViaOnboardedRelay1(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -177,17 +178,24 @@ func TestConnectivityViaOnboardedRelay1(t *testing.T) {
 	// create the nodes
 	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, enableV6)
 	defer stop()
+
+	// start derp relay and onboard the relay as well
+	helper.runNexd(ctx, relay, "--username", username, "--password", password, "relayderp",
+		"--hostname", "custom.relay.nexodus.io", "--certmode", "manual", "--certdir /.certs/", "--onboard")
+
+	customRelayIP, err := relay.ContainerIP(ctx)
+	require.NoError(err)
+	ctx = WithExtraHosts(ctx, []string{
+		fmt.Sprintf("custom.relay.nexodus.io:%s", customRelayIP),
+	})
+
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
 	defer stop()
 
-	// start derp relay and onboard the relay as well
-	helper.runNexd(ctx, relay, "--username", username, "--password", password, "relayderp",
-		"--hostname custom.relay.nexodus.io", "--certmode manual", "--certdir /.certs/", "--onboard")
-
 	// validate nexd has started on the relay node
-	err := helper.nexdStatus(ctx, relay)
+	err = helper.nexdStatus(ctx, relay)
 	require.NoError(err)
 
 	// Start both the nodes in the relay-only mode to mimic the symmetric NAT scenario
@@ -213,6 +221,7 @@ func TestConnectivityViaOnboardedRelay1(t *testing.T) {
 // behind symmetric NATs and other behind reflexive address, are able to
 // connect to each other through a on-boarded relay.
 func TestConnectivityViaOnboardedRelay2(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -225,6 +234,14 @@ func TestConnectivityViaOnboardedRelay2(t *testing.T) {
 	// create the nodes
 	relay, stop := helper.CreateNode(ctx, "relay", []string{defaultNetwork}, enableV6)
 	defer stop()
+
+	customRelayIP, err := relay.ContainerIP(ctx)
+	require.NoError(err)
+
+	ctx = WithExtraHosts(ctx, []string{
+		fmt.Sprintf("custom.relay.nexodus.io:%s", customRelayIP),
+	})
+
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
 	node2, stop := helper.CreateNode(ctx, "node2", []string{defaultNetwork}, enableV6)
@@ -232,10 +249,10 @@ func TestConnectivityViaOnboardedRelay2(t *testing.T) {
 
 	// start derp relay and onboard the relay as well
 	helper.runNexd(ctx, relay, "--username", username, "--password", password, "relayderp",
-		"--hostname custom.relay.nexodus.io", "--certmode manual", "--certdir /.certs/", "--onboard")
+		"--hostname", "custom.relay.nexodus.io", "--certmode", "manual", "--certdir /.certs/", "--onboard")
 
 	// validate nexd has started on the relay node
-	err := helper.nexdStatus(ctx, relay)
+	err = helper.nexdStatus(ctx, relay)
 	require.NoError(err)
 
 	// Start one node with relay-only to mimic symmetric NAT and other behind reflexive address
@@ -258,6 +275,7 @@ func TestConnectivityViaOnboardedRelay2(t *testing.T) {
 }
 
 func TestConnectivityWithRelaySwitchover(t *testing.T) {
+	t.Parallel()
 	helper := NewHelper(t)
 	require := helper.require
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -280,10 +298,15 @@ func TestConnectivityWithRelaySwitchover(t *testing.T) {
 	relayIp, err := pubrelay.ContainerIP(ctx)
 	require.NoError(err)
 
+	onboardrelayIp, err := onboardrelay.ContainerIP(ctx)
+	require.NoError(err)
+
 	// Set the relay IP as an environment variable so createNode can use it to
 	// set the DNS entry pointing to the relay.
-	os.Setenv("NEX_DERP_RELAY_IP", relayIp)
-	require.NoError(err)
+	ctx = WithExtraHosts(ctx, []string{
+		fmt.Sprintf("relay.nexodus.io:%s", relayIp),
+		fmt.Sprintf("custom.relay.nexodus.io:%s", onboardrelayIp),
+	})
 
 	node1, stop := helper.CreateNode(ctx, "node1", []string{defaultNetwork}, enableV6)
 	defer stop()
@@ -328,7 +351,7 @@ func TestConnectivityWithRelaySwitchover(t *testing.T) {
 
 	// start derp relay and onboard the relay as well
 	helper.runNexd(ctx, onboardrelay, "--username", username, "--password", password, "relayderp",
-		"--hostname relay.nexodus.io", "--certmode manual", "--certdir /.certs/", "--onboard")
+		"--hostname", "custom.relay.nexodus.io", "--certmode", "manual", "--certdir /.certs/", "--onboard")
 
 	// validate nexd has started on the relay node
 	err = helper.nexdStatus(ctx, onboardrelay)

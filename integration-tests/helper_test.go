@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/nexodus-io/nexodus/internal/client"
 	"github.com/nexodus-io/nexodus/internal/database"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -28,7 +29,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/nexodus-io/nexodus/internal/api/public"
 	"github.com/nexodus-io/nexodus/internal/nexodus"
 	"github.com/nexodus-io/nexodus/internal/util"
 	"github.com/stretchr/testify/assert"
@@ -89,6 +89,18 @@ func (helper *Helper) logf(fmt string, args ...any) {
 	}
 }
 
+type ExtraHosts string
+
+func WithExtraHosts(ctx context.Context, hosts []string) context.Context {
+	return context.WithValue(ctx, ExtraHosts("ExtraHosts"), hosts)
+}
+func ExtraHostsValue(ctx context.Context) []string {
+	if v, ok := ctx.Value(ExtraHosts("ExtraHosts")).([]string); ok {
+		return v
+	}
+	return nil
+}
+
 // CreateNode creates a container
 func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, networks []string, v6 v6Enable) (testcontainers.Container, func()) {
 
@@ -114,6 +126,16 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 	certsDir, err := findCertsDir()
 	require.NoError(helper.T, err)
 
+	extraHosts := []string{
+		fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+		fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+		fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
+	}
+
+	if hosts := ExtraHostsValue(ctx); hosts != nil {
+		extraHosts = append(extraHosts, hosts...)
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:    "quay.io/nexodus/nexd:latest",
 		Name:     name,
@@ -125,11 +147,7 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 				"NET_ADMIN",
 				"NET_RAW",
 			}
-			hostConfig.ExtraHosts = []string{
-				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-			}
+			hostConfig.ExtraHosts = extraHosts
 			hostConfig.AutoRemove = true
 			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
 		},
@@ -139,25 +157,6 @@ func (helper *Helper) CreateNode(ctx context.Context, nameSuffix string, network
 			"-c",
 			"echo ready && sleep infinity",
 		},
-	}
-
-	if derpIp := os.Getenv("NEX_DERP_RELAY_IP"); derpIp != "" {
-		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
-			hostConfig.Sysctls = hostConfSysctl
-			hostConfig.CapAdd = []string{
-				"SYS_MODULE",
-				"NET_ADMIN",
-				"NET_RAW",
-			}
-			hostConfig.ExtraHosts = []string{
-				fmt.Sprintf("try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("api.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("auth.try.nexodus.127.0.0.1.nip.io:%s", hostDNSName),
-				fmt.Sprintf("relay.nexodus.io:%s", derpIp),
-			}
-			hostConfig.AutoRemove = true
-			hostConfig.Binds = append(hostConfig.Binds, certsDir+":/.certs")
-		}
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -582,7 +581,7 @@ func (helper *Helper) getNodeHostname(ctx context.Context, ctr testcontainers.Co
 }
 
 // createSecurityRule creates a rule to append to security group rules
-func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr string, ipRanges []string) public.ModelsSecurityRule {
+func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr string, ipRanges []string) client.ModelsSecurityRule {
 	fromPort := int32(0)
 	toPort := int32(0)
 
@@ -610,10 +609,10 @@ func (helper *Helper) createSecurityRule(protocol string, fromPortStr, toPortStr
 	}
 
 	// Create the rule
-	rule := public.ModelsSecurityRule{
-		IpProtocol: protocol,
-		FromPort:   fromPort,
-		ToPort:     toPort,
+	rule := client.ModelsSecurityRule{
+		IpProtocol: client.PtrString(protocol),
+		FromPort:   client.PtrInt32(fromPort),
+		ToPort:     client.PtrInt32(toPort),
 		IpRanges:   ipRanges,
 	}
 
@@ -709,7 +708,7 @@ func (helper *Helper) connectToPort(ctx context.Context, ctr testcontainers.Cont
 }
 
 // securityGroupRulesUpdate update security group rule
-func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []public.ModelsSecurityRule, outboundRules []public.ModelsSecurityRule, secGroupID string) error {
+func (helper *Helper) securityGroupRulesUpdate(username, password string, inboundRules []client.ModelsSecurityRule, outboundRules []client.ModelsSecurityRule, secGroupID string) error {
 	// Marshal rules to JSON
 	inboundJSON, err := json.Marshal(inboundRules)
 	if err != nil {

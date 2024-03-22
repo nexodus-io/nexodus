@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # we need to update our derp integration to pickup the latest tailscale upates.
+      - dependency-name: "tailscale.com"
+      # the new opa brings in a new prometheus dep wich is not compatible with other modules.
+      - dependency-name: "github.com/open-policy-agent/opa"

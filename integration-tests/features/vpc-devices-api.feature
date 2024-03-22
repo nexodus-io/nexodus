@@ -66,6 +66,29 @@ Feature: Organization Devices API
       """
     Then the response code should be 201
     Given I store the ${response} as ${oliver_device}
+    And the response should match json:
+      """
+      {
+        "bearer_token": "${response.bearer_token}",
+        "advertise_cidrs": null,
+        "allowed_ips":${oliver_device.allowed_ips} ,
+        "endpoints": null,
+        "hostname": "oliver-laptop",
+        "id": "${oliver_device.id}",
+        "ipv4_tunnel_ips": ${oliver_device.ipv4_tunnel_ips},
+        "ipv6_tunnel_ips": ${oliver_device.ipv6_tunnel_ips},
+        "online": false,
+        "online_at": null,
+        "os": "",
+        "owner_id": "${oliver_user_id}",
+        "public_key": "${public_key}",
+        "relay": false,
+        "revision": ${oliver_device.revision},
+        "security_group_id": "${oliver_device.security_group_id}",
+        "symmetric_nat": true,
+        "vpc_id": "${vpc_id}"
+      }
+      """
 
     Given I am logged in as "Oscar"
     Given I generate a new public key as ${public_key}
@@ -85,6 +108,29 @@ Feature: Organization Devices API
       """
     Then the response code should be 201
     Given I store the ${response} as ${oscar_device}
+    And the response should match json:
+      """
+      {
+        "bearer_token": "${response.bearer_token}",
+        "advertise_cidrs": null,
+        "allowed_ips":${oscar_device.allowed_ips} ,
+        "endpoints": null,
+        "hostname": "oscar-pc",
+        "id": "${oscar_device.id}",
+        "ipv4_tunnel_ips": ${oscar_device.ipv4_tunnel_ips},
+        "ipv6_tunnel_ips": ${oscar_device.ipv6_tunnel_ips},
+        "online": false,
+        "online_at": null,
+        "os": "",
+        "owner_id": "${oscar_user_id}",
+        "public_key": "${public_key}",
+        "relay": false,
+        "revision": ${oscar_device.revision},
+        "security_group_id": "${oscar_device.security_group_id}",
+        "symmetric_nat": true,
+        "vpc_id": "${vpc_id}"
+      }
+      """
 
     # Users that are not in the org should not be able to add devices to the org.
     Given I am logged in as "EvilBob"
@@ -116,8 +162,45 @@ Feature: Organization Devices API
     And the response should match json:
       """
       [
-        ${oliver_device},
-        ${oscar_device}
+        {
+          "advertise_cidrs": null,
+          "allowed_ips":${oliver_device.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "oliver-laptop",
+          "id": "${oliver_device.id}",
+          "ipv4_tunnel_ips": ${oliver_device.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${oliver_device.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oliver_user_id}",
+          "public_key": "${oliver_device.public_key}",
+          "relay": false,
+          "revision": ${oliver_device.revision},
+          "security_group_id": "${oliver_device.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${vpc_id}"
+        },
+        {
+          "bearer_token": "${response[1].bearer_token}",
+          "advertise_cidrs": null,
+          "allowed_ips":${oscar_device.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "oscar-pc",
+          "id": "${oscar_device.id}",
+          "ipv4_tunnel_ips": ${oscar_device.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${oscar_device.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oscar_user_id}",
+          "public_key": "${oscar_device.public_key}",
+          "relay": false,
+          "revision": ${oscar_device.revision},
+          "security_group_id": "${oscar_device.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${vpc_id}"
+        }
       ]
       """
 
@@ -127,8 +210,45 @@ Feature: Organization Devices API
     And the response should match json:
       """
       [
-        ${oliver_device},
-        ${oscar_device}
+        {
+          "bearer_token": "${response[0].bearer_token}",
+          "advertise_cidrs": null,
+          "allowed_ips":${oliver_device.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "oliver-laptop",
+          "id": "${oliver_device.id}",
+          "ipv4_tunnel_ips": ${oliver_device.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${oliver_device.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oliver_user_id}",
+          "public_key": "${oliver_device.public_key}",
+          "relay": false,
+          "revision": ${oliver_device.revision},
+          "security_group_id": "${oliver_device.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${vpc_id}"
+        },
+        {
+          "advertise_cidrs": null,
+          "allowed_ips":${oscar_device.allowed_ips} ,
+          "endpoints": null,
+          "hostname": "oscar-pc",
+          "id": "${oscar_device.id}",
+          "ipv4_tunnel_ips": ${oscar_device.ipv4_tunnel_ips},
+          "ipv6_tunnel_ips": ${oscar_device.ipv6_tunnel_ips},
+          "online": false,
+          "online_at": null,
+          "os": "",
+          "owner_id": "${oscar_user_id}",
+          "public_key": "${oscar_device.public_key}",
+          "relay": false,
+          "revision": ${oscar_device.revision},
+          "security_group_id": "${oscar_device.security_group_id}",
+          "symmetric_nat": true,
+          "vpc_id": "${vpc_id}"
+        }
       ]
       """
 
