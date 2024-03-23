@@ -131,7 +131,7 @@ func (api *API) GetStatus(c *gin.Context) {
 // @Summary      List Statues
 // @Description  Lists all Statues
 // @Id  		 ListStatues
-// @Tags         statues
+// @Tags         status
 // @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.Status
@@ -142,8 +142,6 @@ func (api *API) GetStatus(c *gin.Context) {
 func (api *API) ListStatues(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "ListStatues")
 	defer span.End()
-
-	
 
 	statues := make([]models.Status, 0)
 

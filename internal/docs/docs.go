@@ -2670,7 +2670,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "statues"
+                    "status"
                 ],
                 "summary": "List Statues",
                 "operationId": "ListStatues",
