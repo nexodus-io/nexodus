@@ -9,6 +9,7 @@ api_reg_key.go
 api_security_group.go
 api_service_network.go
 api_sites.go
+api_statues.go
 api_status.go
 api_users.go
 api_vpc.go

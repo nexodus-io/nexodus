@@ -139,7 +139,7 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]api.KeepaliveStatus, 
 	return peerConnResultsMap
 }
 
-func (nx *Nexodus) sendPeerData (resultsMap map[string]api.KeepaliveStatus) {
+func (nx *Nexodus) sendPeerData(resultsMap map[string]api.KeepaliveStatus) {
 
 	peerResultsData, err := json.Marshal(resultsMap)
 	if err != nil {

@@ -195,7 +195,7 @@ type ApiStatusIdGetRequest struct {
 	id2        string
 }
 
-func (r ApiStatusIdGetRequest) Execute() (*ModelsDevice, *http.Response, error) {
+func (r ApiStatusIdGetRequest) Execute() (*ModelsStatus, *http.Response, error) {
 	return r.ApiService.StatusIdGetExecute(r)
 }
 
@@ -220,13 +220,13 @@ func (a *StatusApiService) StatusIdGet(ctx context.Context, id string, id2 strin
 
 // Execute executes the request
 //
-//	@return ModelsDevice
-func (a *StatusApiService) StatusIdGetExecute(r ApiStatusIdGetRequest) (*ModelsDevice, *http.Response, error) {
+//	@return ModelsStatus
+func (a *StatusApiService) StatusIdGetExecute(r ApiStatusIdGetRequest) (*ModelsStatus, *http.Response, error) {
 	var (
 		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
-		localVarReturnValue *ModelsDevice
+		localVarReturnValue *ModelsStatus
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "StatusApiService.StatusIdGet")
