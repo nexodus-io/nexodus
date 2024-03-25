@@ -1,0 +1,13 @@
+/* styles.css */
+.custom-device-node {
+  background: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-family: Arial, sans-serif;
+}
+
+.device-info {
+  text-align: left;
+}
+
