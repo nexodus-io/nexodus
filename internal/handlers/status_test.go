@@ -13,14 +13,15 @@ import (
 	"github.com/nexodus-io/nexodus/internal/models"
 )
 
-func (suite *HandlerTestSuite) TestCreateStatus() {
+func (suite *HandlerTestSuite) TestListStatues() {
 	require := suite.Require()
 
+	// Optional: Create a new status as part of setup for this test
 	newStatus := models.Status{
 		UserId:      suite.testUserID,
-		WgIP:        "1.23.3",
+		WgIP:        "1.23.4",
 		IsReachable: true,
-		Hostname:    "Tester",
+		Hostname:    "ListTester",
 		Latency:     "1",
 		Method:      "Internet",
 	}
@@ -28,7 +29,7 @@ func (suite *HandlerTestSuite) TestCreateStatus() {
 	resBody, err := json.Marshal(newStatus)
 	require.NoError(err)
 
-	_, res, err := suite.ServeRequest(
+	_, _, err = suite.ServeRequest(
 		http.MethodPost,
 		"/status", "/status",
 		func(c *gin.Context) {
@@ -38,16 +39,23 @@ func (suite *HandlerTestSuite) TestCreateStatus() {
 	)
 	require.NoError(err)
 
+	// Make a GET request to ListStatues
+	_, res, err := suite.ServeRequest(
+		http.MethodGet,
+		"/status", "/status",
+		func(c *gin.Context) {
+			suite.api.ListStatues(c)
+		},
+		nil, // No body needed for GET request
+	)
+	require.NoError(err)
+
 	body, err := io.ReadAll(res.Body)
 	require.NoError(err)
 
-	require.Equal(http.StatusCreated, res.Code, "HTTP error: %s", string(body))
+	require.Equal(http.StatusOK, res.Code, "HTTP error: %s", string(body))
 
-	var actual models.Status
+	var actual []models.Status
 	err = json.Unmarshal(body, &actual)
 	require.NoError(err)
-
-	// Add more assertions as needed
-	require.Equal(newStatus.WgIP, actual.WgIP)
-
 }

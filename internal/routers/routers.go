@@ -183,6 +183,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		// Status
 		apiGroup.POST("/status", api.CreateStatus)
 		apiGroup.GET("/status/:id", api.GetStatus)
+		apiGroup.GET("/status", api.ListStatues)
 
 		// Service Networks
 		apiGroup.GET("/service-networks", api.ListServiceNetworks)

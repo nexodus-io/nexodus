@@ -96,7 +96,7 @@ func (api *API) CreateStatus(c *gin.Context) {
 // @Produce json
 // @Param id path string true "id"
 // @Param id path string true "Unique identifier for the status"
-// @Success      200  {object}  models.Device
+// @Success      200  {object}  models.Status
 // @Failure		 401  {object}  models.BaseError
 // @Failure      400  {object}  models.BaseError
 // @Failure      404  {object}  models.BaseError
@@ -127,9 +127,39 @@ func (api *API) GetStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
+// ListStatues lists all Statues
+// @Summary      List Statues
+// @Description  Lists all Statues
+// @Id  		 ListStatues
+// @Tags         status
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  []models.Status
+// @Failure		 401  {object}  models.BaseError
+// @Failure		 429  {object}  models.BaseError
+// @Failure      500  {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/statues [get]
+func (api *API) ListStatues(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListStatues")
+	defer span.End()
+
+	statues := make([]models.Status, 0)
+
+	db := api.db.WithContext(ctx)
+	db = api.StatusIsOwnedByCurrentUser(c, db)
+	//db = FilterAndPaginate(db, &models.Status{}, c, "hostname")
+	result := db.Find(&statues)
+	if result.Error != nil {
+		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
+		return
+	}
+
+	c.JSON(http.StatusOK, statues)
+}
+
 func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
 	userId := api.GetCurrentUserID(c)
-	return db.Where("owner_id = ?", userId)
+	return db.Where("user_id = ?", userId)
 }
 
 func (api *API) UpdateStatus(c *gin.Context) {

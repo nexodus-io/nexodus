@@ -2660,6 +2660,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/statues": {
+            "get": {
+                "description": "Lists all Statues",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "status"
+                ],
+                "summary": "List Statues",
+                "operationId": "ListStatues",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Status"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.InternalServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/status": {
             "post": {
                 "description": "Adds a new status",
@@ -3612,7 +3657,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Device"
+                            "$ref": "#/definitions/models.Status"
                         }
                     },
                     "400": {

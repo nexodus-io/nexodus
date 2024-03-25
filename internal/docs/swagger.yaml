@@ -2510,6 +2510,36 @@ paths:
       summary: Update Sites
       tags:
       - Sites
+  /api/statues:
+    get:
+      consumes:
+      - application/json
+      description: Lists all Statues
+      operationId: ListStatues
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Status'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: List Statues
+      tags:
+      - status
   /api/status:
     post:
       consumes:
@@ -3147,7 +3177,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Device'
+            $ref: '#/definitions/models.Status'
         "400":
           description: Bad Request
           schema:
