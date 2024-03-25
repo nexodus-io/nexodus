@@ -1,4 +1,4 @@
-// DeviceNodeComponent.tsx
+
 import React, { FunctionComponent } from 'react';
 import { Card, CardHeader, CardContent, Table, TableBody, TableCell, TableHead, TableRow, Button } from '@mui/material';
 import OnlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -13,7 +13,7 @@ interface DeviceNodeData {
 }
 
 interface DeviceNodeComponentProps {
-  data: DeviceNodeData; // Adjusted for React Flow
+  data: DeviceNodeData; 
 }
 
 export const DeviceNodeComponent: React.FC<DeviceNodeComponentProps> = ({ data }) => {

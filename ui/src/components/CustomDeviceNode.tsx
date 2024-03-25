@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Handle, Position } from 'reactflow';
-import { DeviceNodeComponent, DeviceNodeData } from './Nodes'; // Adjust the import path as needed
+import { DeviceNodeComponent, DeviceNodeData } from './Nodes';
 
 interface CustomDeviceNodeProps {
   data: DeviceNodeData;
