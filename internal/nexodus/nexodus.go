@@ -1343,5 +1343,5 @@ func (nx *Nexodus) defaultTunnelDev() string {
 	if nx.userspaceMode {
 		return nx.defaultTunnelDevUS()
 	}
-	return defaultTunnelDevOS()
+	return avaliableTunnelDevOS()
 }
