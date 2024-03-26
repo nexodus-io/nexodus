@@ -13,6 +13,8 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/TableRow";
+import CloudIcon from '@mui/icons-material/Cloud';
+import RouterIcon from "@mui/icons-material/Router";
 import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import { useTheme } from "@mui/material/styles";
@@ -93,10 +95,13 @@ const Dashboard: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'row' }}>
           <div style={{ marginRight: '50px' }}>
             <button style={{ ...styles.device,
-            background: theme.palette.mode === 'dark' ? 'rgb(150, 150, 150)' : 'rgb(239, 239, 239)' }}
+            background: theme.palette.mode === 'dark' ? 'rgb(170, 170, 170)' : 'rgb(240, 240, 240)' }}
             onClick={togglePopupDevice}>
-              Device:
+              <CloudIcon style={styles.deviceIcon} />
+              Device
+              <div style={styles.separator}></div>
               <span style={styles.ip}>100.64.0.19</span>
+              <div style={styles.separator}></div>
               <OnlineIcon style={styles.onlineIcon} />
             </button>
             {isOpenDevice && (
@@ -133,10 +138,13 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <button style={{ ...styles.relay,
-            background: theme.palette.mode === 'dark' ? 'rgb(150, 150, 150)' : 'rgb(239, 239, 239)' }}
+            background: theme.palette.mode === 'dark' ? 'rgb(170, 170, 170)' : 'rgb(240, 240, 240)' }}
             onClick={togglePopupRelay}>
-              Relay:
+              <RouterIcon style={styles.relayIcon} />
+              Relay
+              <div style={styles.separator}></div>
               <span style={styles.ip}>100.64.0.26</span>
+              <div style={styles.separator}></div>
               <HighlightOffIcon style={styles.offlineIcon} />
             </button>
             {isOpenRelay && (
@@ -181,8 +189,6 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '9px 16px',
-    //borderColor: 'green',
-    //borderWidth: 2,
     border: 'none',
     borderTopRightRadius: '20px',
     outline: '2px solid green',
@@ -194,8 +200,6 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '9px 16px',
-    //borderColor: 'red',
-    //borderWidth: 2,
     border: 'none',
     borderRadius: '50px',
     outline: '2px solid red',
@@ -207,17 +211,31 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     padding: '12px 16px',
-    marginLeft: '10px',
+    marginRight: '-15px',
+  },
+  separator: {
+    height: '40px',
+    width: '2px',
+    background: 'rgba(100, 100, 100, 0.5)',
+    marginLeft: '15px',
+  },
+  deviceIcon: {
+    fontSize: '20px',
+    marginRight: '8px',
+  },
+  relayIcon:{
+    fontSize: '20px',
+    marginRight: '8px',
   },
   onlineIcon: {
     color: 'green',
     fontSize: '20px',
-    marginLeft: '10px',
+    marginLeft: '15px',
   },
   offlineIcon: {
     color: 'red',
     fontSize: '20px',
-    marginLeft: '10px',
+    marginLeft: '15px',
   },
 };
 
