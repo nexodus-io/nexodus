@@ -2,37 +2,23 @@ package handlers
 
 import (
 	"errors"
-	//"fmt"
-	//"github.com/nexodus-io/nexodus/internal/handlers/fetchmgr"
-	"net/http"
-	//"time"
-	//"context"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-
-	//"github.com/google/uuid"
-	//"github.com/nexodus-io/nexodus/internal/database"
-	"github.com/nexodus-io/nexodus/internal/models"
-	//"github.com/nexodus-io/nexodus/internal/util"
-	//"github.com/nexodus-io/nexodus/internal/wgcrypto"
-	//"go.opentelemetry.io/otel/attribute"
-	//"go.opentelemetry.io/otel/trace"
-	//"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gorm.io/gorm"
-	//"gorm.io/gorm/clause"
+	"net/http"
 )
 
-// CreateStatus handles adding a new device
-// @Summary      Add Status
+// CreateStatus handles adding a new status
+// @Summary      Add Statuses
 // @Id  		 CreateStatus
-// @Tags         status
+// @Tags         Statuses
 // @Description  Adds a new status
 // @Accept       json
 // @Produce      json
-// @Param        Status  body   models.Status  true "Status"
+// @Param        Status  body   models.AddStatus  true "Add Status"
 // @Success      201  {object}  models.Status
 // @Failure      400  {object}  models.BaseError
 // @Failure		 401  {object}  models.BaseError
@@ -127,11 +113,11 @@ func (api *API) GetStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
-// ListStatues lists all Statues
-// @Summary      List Statues
-// @Description  Lists all Statues
-// @Id  		 ListStatues
-// @Tags         status
+// ListStatues Lists all statuses
+// @Summary      List Statuses
+// @Description  Lists all Statuses
+// @Id  		 ListStatuses
+// @Tags         Statuses
 // @Accept       json
 // @Produce      json
 // @Success      200  {object}  []models.Status

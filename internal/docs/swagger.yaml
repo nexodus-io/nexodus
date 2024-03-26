@@ -122,6 +122,19 @@ definitions:
         example: 694aa002-5d19-495e-980b-3d8fd508ea10
         type: string
     type: object
+  models.AddStatus:
+    properties:
+      hostname:
+        type: string
+      is_reachable:
+        type: boolean
+      latency:
+        type: string
+      method:
+        type: string
+      wg_ip:
+        type: string
+    type: object
   models.AddVPC:
     properties:
       description:
@@ -2514,8 +2527,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Lists all Statues
-      operationId: ListStatues
+      description: Lists all Statuses
+      operationId: ListStatuses
       produces:
       - application/json
       responses:
@@ -2537,9 +2550,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: List Statues
+      summary: List Statuses
       tags:
-      - status
+      - Statuses
   /api/status:
     post:
       consumes:
@@ -2547,12 +2560,12 @@ paths:
       description: Adds a new status
       operationId: CreateStatus
       parameters:
-      - description: Status
+      - description: Add Status
         in: body
         name: Status
         required: true
         schema:
-          $ref: '#/definitions/models.Status'
+          $ref: '#/definitions/models.AddStatus'
       produces:
       - application/json
       responses:
@@ -2580,9 +2593,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.InternalServerError'
-      summary: Add Status
+      summary: Add Statuses
       tags:
-      - status
+      - Statuses
   /api/users:
     get:
       consumes:

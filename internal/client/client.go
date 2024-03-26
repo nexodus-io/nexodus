@@ -74,6 +74,8 @@ type APIClient struct {
 
 	StatusApi *StatusApiService
 
+	StatusesApi *StatusesApiService
+
 	UsersApi *UsersApiService
 
 	VPCApi *VPCApiService
@@ -107,6 +109,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.ServiceNetworkApi = (*ServiceNetworkApiService)(&c.common)
 	c.SitesApi = (*SitesApiService)(&c.common)
 	c.StatusApi = (*StatusApiService)(&c.common)
+	c.StatusesApi = (*StatusesApiService)(&c.common)
 	c.UsersApi = (*UsersApiService)(&c.common)
 	c.VPCApi = (*VPCApiService)(&c.common)
 
