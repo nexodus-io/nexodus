@@ -6,7 +6,7 @@ import React from 'react';
 
 
 
-import CustomDeviceNode from '../components/CustomDeviceNodeF';
+import CustomDeviceNode from '../components/CustomDeviceNode';
 
 const nodeTypes = { customDeviceNode: CustomDeviceNode };
 
