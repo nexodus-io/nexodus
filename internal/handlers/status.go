@@ -36,7 +36,7 @@ func (api *API) CreateStatus(c *gin.Context) {
 		return
 	}
 
-	var request models.Status
+	var request models.AddStatus
 	// Call BindJSON to bind the received JSON
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPayloadError(err))
