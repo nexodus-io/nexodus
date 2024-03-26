@@ -36,6 +36,11 @@ export const CustomMenu = (props: MenuProps) => {
           leftIcon={<DeviceIcon />}
         />
       )}
+      <MenuItemLink
+        to="/graph"
+        primaryText="Graph"
+        leftIcon={<HubIcon />}
+      />
       {flags["security-groups"] && (
         <MenuItemLink
           to="/_security-groups"

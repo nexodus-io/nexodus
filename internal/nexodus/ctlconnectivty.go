@@ -6,11 +6,16 @@ import (
 	"net"
 
 	"github.com/nexodus-io/nexodus/internal/api"
+	"github.com/nexodus-io/nexodus/internal/client"
 
 	"go.uber.org/zap"
 
-	"bytes"
-	"net/http"
+	//"bytes"
+	//"net/http"
+	"context"
+	//"errors"
+	//"io"
+	//"net/http"
 )
 
 const (
@@ -135,37 +140,41 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]api.KeepaliveStatus, 
 		}
 	}
 
-	go nx.sendPeerData(peerConnResultsMap)
+	_, err := nx.createStatusesOperation(peerConnResultsMap)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
 
 	return peerConnResultsMap
 }
 
-func (nx *Nexodus) sendPeerData(resultsMap map[string]api.KeepaliveStatus) {
+func (nx *Nexodus) createStatusesOperation(resultsMap map[string]api.KeepaliveStatus) (string, error) {
 
-	peerResultsData, err := json.Marshal(resultsMap)
-	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return
+	var err error
+
+	for _, status := range resultsMap {
+
+		hostname := status.Hostname
+		isReachable := status.IsReachable
+		latency := status.Latency
+		method := status.Method
+		wgip := status.WgIP
+
+		newStatus := client.ModelsAddStatus{
+			Hostname:    &hostname,
+			IsReachable: &isReachable,
+			Latency:     &latency,
+			Method:      &method,
+			WgIp:        &wgip,
+		}
+		_, _, err = nx.client.StatusesApi.CreateStatus(context.Background()).Status(newStatus).Execute()
+
+		if err != nil {
+			return "New status error", fmt.Errorf("error: %w", err)
+		}
+
 	}
 
-	resp, err := http.Post("/status", "application/json", bytes.NewBuffer(peerResultsData))
-	if err != nil {
-		fmt.Println("Error sending POST request:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Unexpected response status code:", resp.StatusCode)
-		// Handle error response if needed
-		return
-	}
-
-	var responseData map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-		fmt.Println("Error decoding JSON response:", err)
-		return
-	}
-
-	fmt.Println("Response:", responseData)
+	return "", nil
 }
