@@ -2662,7 +2662,7 @@ const docTemplate = `{
         },
         "/api/statues": {
             "get": {
-                "description": "Lists all Statues",
+                "description": "Lists all Statuses",
                 "consumes": [
                     "application/json"
                 ],
@@ -2670,10 +2670,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "status"
+                    "Statuses"
                 ],
-                "summary": "List Statues",
-                "operationId": "ListStatues",
+                "summary": "List Statuses",
+                "operationId": "ListStatuses",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2715,18 +2715,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "status"
+                    "Statuses"
                 ],
-                "summary": "Add Status",
+                "summary": "Add Statuses",
                 "operationId": "CreateStatus",
                 "parameters": [
                     {
-                        "description": "Status",
+                        "description": "Add Status",
                         "name": "Status",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Status"
+                            "$ref": "#/definitions/models.AddStatus"
                         }
                     }
                 ],
@@ -4047,6 +4047,26 @@ const docTemplate = `{
                 "service_network_id": {
                     "type": "string",
                     "example": "694aa002-5d19-495e-980b-3d8fd508ea10"
+                }
+            }
+        },
+        "models.AddStatus": {
+            "type": "object",
+            "properties": {
+                "hostname": {
+                    "type": "string"
+                },
+                "is_reachable": {
+                    "type": "boolean"
+                },
+                "latency": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "wg_ip": {
+                    "type": "string"
                 }
             }
         },

@@ -10,6 +10,7 @@ api_security_group.go
 api_service_network.go
 api_sites.go
 api_status.go
+api_statuses.go
 api_users.go
 api_vpc.go
 client.go
@@ -21,6 +22,7 @@ model_models_add_reg_key.go
 model_models_add_security_group.go
 model_models_add_service_network.go
 model_models_add_site.go
+model_models_add_status.go
 model_models_add_vpc.go
 model_models_base_error.go
 model_models_certificate_signing_request.go

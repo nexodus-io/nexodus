@@ -76,7 +76,7 @@ const App = () => {
       />
       <CustomRoutes>
         <Route path="/_security-groups" element={<SecurityGroups />} />
-        <Route path="/graph" element={<Graph />} /> 
+        <Route path="/graph" element={<Graph />} />
       </CustomRoutes>
       <Resource
         name="security-groups"
@@ -105,7 +105,7 @@ const App = () => {
         icon={DeviceIcon}
         edit={DeviceEdit}
         recordRepresentation={(record) => `${record.hostname}`}
-        />
+      />
       <Resource
         name="service-networks"
         list={ServiceNetworkList}
