@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nexodus-io/nexodus/internal/database"
 	"github.com/nexodus-io/nexodus/internal/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 // CreateStatus handles adding a new status
@@ -47,9 +49,13 @@ func (api *API) CreateStatus(c *gin.Context) {
 	var status models.Status
 
 	err := api.transaction(ctx, func(tx *gorm.DB) error {
+		var user models.User
+		if res := tx.First(&user, "id = ?", userId); res.Error != nil {
+			return errUserNotFound
+		}
 
 		status = models.Status{
-			UserId:      userId,
+			UserId:      api.GetCurrentUserID(c),
 			WgIP:        request.WgIP,
 			IsReachable: request.IsReachable,
 			Hostname:    request.Hostname,
@@ -57,6 +63,15 @@ func (api *API) CreateStatus(c *gin.Context) {
 			Method:      request.Method,
 		}
 
+		if res := tx.Create(&status); res.Error != nil {
+			if database.IsDuplicateError(res.Error) {
+				return res.Error
+			}
+			api.logger.Error("Failed to create organization: ", res.Error)
+			return res.Error
+		}
+
+		api.logger.Infof("New Status request [ %s ] request", status.UserId)
 		return nil
 	})
 

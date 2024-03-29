@@ -65,7 +65,7 @@ func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
 		nx.deviceCacheIterRead(func(value deviceCacheEntry) {
 			// skip the node sourcing the probe
 			if nx.wireguardPubKey == value.device.GetPublicKey() {
-				return
+				//return
 			}
 			var nodeAddr string
 			pubKey := value.device.GetPublicKey()
@@ -162,11 +162,11 @@ func (nx *Nexodus) createStatusesOperation(resultsMap map[string]api.KeepaliveSt
 		wgip := status.WgIP
 
 		newStatus := client.ModelsAddStatus{
-			Hostname:    &hostname,
+			WgIp:        &wgip,
 			IsReachable: &isReachable,
+			Hostname:    &hostname,
 			Latency:     &latency,
 			Method:      &method,
-			WgIp:        &wgip,
 		}
 		_, _, err = nx.client.StatusesApi.CreateStatus(context.Background()).Status(newStatus).Execute()
 

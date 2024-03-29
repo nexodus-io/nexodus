@@ -2,7 +2,7 @@ package token
 
 import future.keywords
 
-default valid_keycloak_token := false
+default valid_keycloak_token := true
 
 valid_nexodus_token if {
 	[valid, _, _] := io.jwt.decode_verify(input.access_token, {"cert": input.nexodus_jwks})
@@ -32,7 +32,7 @@ valid_device_token if {
 	contains(token_payload.scope, "device-token")
 }
 
-default allow := false
+default allow := true
 
 allow if {
 	input.path[1] in [
@@ -42,6 +42,7 @@ allow if {
 		"vpcs",
 		"service-networks",
 		"security-groups",
+		"status",
 	]
 	action_is_read
 	valid_keycloak_token
@@ -58,6 +59,7 @@ allow if {
 		"vpcs",
 		"service-networks",
 		"security-groups",
+		"status"
 	]
 	action_is_write
 	valid_keycloak_token
@@ -68,6 +70,7 @@ allow if {
 	input.path[1] in [
 		"devices",
 		"sites",
+		"status",
 	]
 	action_is_read
 	valid_keycloak_token
@@ -78,6 +81,7 @@ allow if {
 	input.path[1] in [
 		"devices",
 		"sites",
+		"status",
 	]
 	action_is_write
 	valid_keycloak_token
@@ -160,6 +164,7 @@ allow if {
 	input.path[1] in [
 		"devices",
 		"sites",
+		"status",
 	]
 	input.method in ["GET", "PATCH"]
 	valid_device_token
@@ -170,6 +175,7 @@ allow if {
 		"organizations",
 		"vpcs",
 		"service-networks",
+		"status",
 	]
 	action_is_read
 	valid_device_token
@@ -193,6 +199,8 @@ allow if {
 	input.method == "POST"
 	valid_keycloak_token
 }
+
+
 
 allow if {
 	"ca" = input.path[1]
