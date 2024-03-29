@@ -1,21 +1,21 @@
 import React from 'react';
 
 import { Handle, Position } from 'reactflow';
-import { DeviceNodeComponent, DeviceNodeData } from './Nodes';
+import { RelayNodeComponent, RelayNodeData } from './RelayNode';
 
-interface CustomDeviceNodeProps {
-  data: DeviceNodeData;
+interface CustomRelayNodeProps {
+  data: RelayNodeData;
 }
 
-const CustomDeviceNode: React.FC<CustomDeviceNodeProps> = ({ data }) => {
+const CustomRelayNode: React.FC<CustomRelayNodeProps> = ({ data }) => {
   return (
     <>
       <Handle
         type="target"
         position={Position.Top}
-        style={{ left: '50%', top: '50%', zIndex: -1 }}
+        style={{ left: '50%', top: '50%', zIndex: -1}}
       />
-      <DeviceNodeComponent data={data} />
+      <RelayNodeComponent data={data} />
       <Handle
         type="source"
         position={Position.Bottom}
@@ -26,8 +26,7 @@ const CustomDeviceNode: React.FC<CustomDeviceNodeProps> = ({ data }) => {
 };
 
 
-
-export default CustomDeviceNode;
+export default CustomRelayNode;
 
 
 

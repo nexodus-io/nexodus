@@ -4,7 +4,7 @@ import OnlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { styled } from '@mui/material/styles';
 
-export interface DeviceNodeData {
+export interface RelayNodeData {
   id: string;
   ip: string;
   hostname: string;
@@ -13,14 +13,14 @@ export interface DeviceNodeData {
   online: boolean;
 }
 
-interface DeviceNodeComponentProps {
-  data: DeviceNodeData;
+interface RelayNodeComponentProps {
+  data: RelayNodeData;
 }
 
 // Custom styling
 const CustomCard = styled(Card)(({ theme }) => ({
-  borderRadius: '0 25px 0 0',
-  border: '2px solid green', 
+  borderRadius: '25px 25px 25px 25px', 
+  border: '2px solid red', 
   marginBottom: '1rem',
   '& .MuiCardHeader-title': {
     fontSize: '12px', 
@@ -31,7 +31,7 @@ const CustomCard = styled(Card)(({ theme }) => ({
   },
 }));
 
-export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = ({ data }) => {
+export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({ data }) => {
   const { ip, hostname, latency, peeringMethod, online } = data;
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -40,7 +40,7 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
   return (
     <CustomCard>
       <CardHeader
-        title={<Typography variant="h6">Device: {hostname}</Typography>}
+        title={<Typography variant="h6">Relay: {hostname}</Typography>}
         action={
           <Button onClick={toggleOpen}>
             {online ? <OnlineIcon color="success" /> : <HighlightOffIcon color="error" />}
@@ -54,8 +54,6 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
               <TableRow>
                 <TableCell>Hostname</TableCell>
                 <TableCell>IP Address</TableCell>
-                <TableCell>Latency (ms)</TableCell>
-                <TableCell>Peering Method</TableCell>
                 <TableCell>Connection Status</TableCell>
               </TableRow>
             </TableHead>
@@ -63,8 +61,6 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
               <TableRow>
                 <TableCell>{hostname}</TableCell>
                 <TableCell>{ip}</TableCell>
-                <TableCell>{latency}</TableCell>
-                <TableCell>{peeringMethod}</TableCell>
                 <TableCell>{online ? 'Reachable' : 'Unreachable'}</TableCell>
               </TableRow>
             </TableBody>
