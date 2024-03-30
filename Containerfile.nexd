@@ -20,6 +20,8 @@ RUN dnf update -qy && \
     dnf clean all -y &&\
     rm -rf /var/cache/yum
 
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
 ARG BUILD_PROFILE=dev
 ARG NEXODUS_PPROF=
 ARG NEXODUS_RACE_DETECTOR=
@@ -88,6 +90,7 @@ COPY --chmod=755 --from=build /src/dist/nexd /bin/nexd
 COPY --chmod=755 --from=build /src/dist/nexd-kstore /bin/nexd-kstore
 COPY --chmod=755 --from=build /src/dist/nexctl /bin/nexctl
 COPY --chmod=755 --from=build /go/bin/mkcert /bin/mkcert
+COPY --chmod=755 --from=build /go/bin/dlv /bin/dlv
 COPY --chmod=755 --from=build /go/bin/wireguard /bin/nexd-wireguard-go
 COPY --chmod=755 --from=build /src/udping /bin/udping
 COPY --chmod=755 --from=build /src/udpong /bin/udpong

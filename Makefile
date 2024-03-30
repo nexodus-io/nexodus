@@ -37,6 +37,7 @@ NEXODUS_BUILD_PROFILE?=dev
 NEXODUS_LDFLAGS:=$(NEXODUS_LDFLAGS) -X main.Version=$(NEXODUS_VERSION)-$(NEXODUS_RELEASE)
 ifeq ($(NEXODUS_BUILD_PROFILE),dev)
 	NEXODUS_LDFLAGS+=-X main.DefaultServiceURL=https://try.nexodus.127.0.0.1.nip.io
+	NEXODUS_GCFLAGS+=all=-N -l
 else ifeq ($(NEXODUS_BUILD_PROFILE),qa)
 	NEXODUS_LDFLAGS+=-X main.DefaultServiceURL=https://qa.nexodus.io
 else ifeq ($(NEXODUS_BUILD_PROFILE),prod)
