@@ -2,21 +2,11 @@
 resources:
 
   - "@type": "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.Secret"
-    name: nexodus-api-cert
+    name: nexodus-cert
     tls_certificate:
       certificate_chain:
-        filename: /configs/envoy-certs/nexodus-api-cert/tls.crt
+        filename: /configs/envoy-certs/nexodus-cert/tls.crt
       private_key:
-        filename: /configs/envoy-certs/nexodus-api-cert/tls.key
+        filename: /configs/envoy-certs/nexodus-cert/tls.key
       watched_directory:
-        path: /configs/envoy-certs/nexodus-api-cert
-
-  - "@type": "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.Secret"
-    name: nexodus-frontend-cert
-    tls_certificate:
-      certificate_chain:
-        filename: /configs/envoy-certs/nexodus-frontend-cert/tls.crt
-      private_key:
-        filename: /configs/envoy-certs/nexodus-frontend-cert/tls.key
-      watched_directory:
-        path: /configs/envoy-certs/nexodus-frontend-cert
+        path: /configs/envoy-certs/nexodus-cert

@@ -156,7 +156,7 @@ spec:
             - name: NEXAPI_TLS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: nexodus-api-cert
+                  name: nexodus-cert
                   key: tls.key
             - name: NEXAPI_SMTP_FROM
               valueFrom:

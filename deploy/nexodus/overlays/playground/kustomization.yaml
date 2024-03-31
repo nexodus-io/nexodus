@@ -23,6 +23,7 @@ configMapGenerator:
       - APIPROXY_OIDC_URL=https://auth.playground.nexodus.io/realms/nexodus
       - APIPROXY_API_DOMAIN=api.playground.nexodus.io
       - APIPROXY_WEB_DOMAIN=playground.nexodus.io
+        APIPROXY_AUTH_DOMAIN=auth.playground.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://playground.nexodus.io
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:info,router:info,jwt:info
   - behavior: merge
@@ -42,25 +43,14 @@ patches:
   # Update the dns names for the certificates
   - target:
       kind: Certificate
-      name: nexodus-frontend-cert
+      name: nexodus-cert
     patch: |-
       - op: replace
-        path: /spec/dnsNames/0
-        value: playground.nexodus.io
-  - target:
-      kind: Certificate
-      name: nexodus-api-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: api.playground.nexodus.io
-  - target:
-      kind: Certificate
-      name: nexodus-auth-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.playground.nexodus.io
+        path: /spec/dnsNames
+        value:
+          - playground.nexodus.io
+          - api.playground.nexodus.io
+          - auth.playground.nexodus.io
   # Update the dns names for the ingress
   - patch: |-
       - op: replace
