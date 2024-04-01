@@ -1,8 +1,19 @@
-import React, { FunctionComponent } from 'react';
-import { Card, CardHeader, CardContent, Table, TableBody, TableCell, TableHead, TableRow, Button, Typography } from '@mui/material';
-import OnlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import { styled } from '@mui/material/styles';
+import React, { FunctionComponent } from "react";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Button,
+  Typography,
+} from "@mui/material";
+import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { styled } from "@mui/material/styles";
 
 export interface RelayNodeData {
   id: string;
@@ -19,19 +30,21 @@ interface RelayNodeComponentProps {
 
 // Custom styling
 const CustomCard = styled(Card)(({ theme }) => ({
-  borderRadius: '25px 25px 25px 25px', 
-  border: '2px solid red', 
-  marginBottom: '1rem',
-  '& .MuiCardHeader-title': {
-    fontSize: '12px', 
+  borderRadius: "25px 25px 25px 25px",
+  border: "2px solid red",
+  marginBottom: "1rem",
+  "& .MuiCardHeader-title": {
+    fontSize: "12px",
     fontWeight: "bold",
   },
-  '& .MuiCardContent-root': {
-    paddingTop: 0, 
+  "& .MuiCardContent-root": {
+    paddingTop: 0,
   },
 }));
 
-export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({ data }) => {
+export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
+  data,
+}) => {
   const { ip, hostname, latency, peeringMethod, online } = data;
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -43,7 +56,11 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
         title={<Typography variant="h6">Relay: {hostname}</Typography>}
         action={
           <Button onClick={toggleOpen}>
-            {online ? <OnlineIcon color="success" /> : <HighlightOffIcon color="error" />}
+            {online ? (
+              <OnlineIcon color="success" />
+            ) : (
+              <HighlightOffIcon color="error" />
+            )}
           </Button>
         }
       />
@@ -61,7 +78,7 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
               <TableRow>
                 <TableCell>{hostname}</TableCell>
                 <TableCell>{ip}</TableCell>
-                <TableCell>{online ? 'Reachable' : 'Unreachable'}</TableCell>
+                <TableCell>{online ? "Reachable" : "Unreachable"}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -70,4 +87,3 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
     </CustomCard>
   );
 };
-

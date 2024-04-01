@@ -29,7 +29,8 @@ import {
   InvitationShow,
 } from "./pages/Invitations";
 import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
-import Graph from "./pages/Graph";
+import {GraphComponent} from "./pages/Status";
+import { StatusList } from "./pages/Status";
 
 // components
 import { CustomMenu } from "./layout/Menus";
@@ -76,12 +77,18 @@ const App = () => {
       />
       <CustomRoutes>
         <Route path="/_security-groups" element={<SecurityGroups />} />
-        <Route path="/graph" element={<Graph />} />
+        <Route path="/status" element={<GraphComponent/>} />
       </CustomRoutes>
       <Resource
         name="security-groups"
         recordRepresentation={(record) => `${record.description}`}
       />
+      <Resource
+        name="status"
+        list={StatusList}
+        recordRepresentation={(record) => `${record.wg_ip}`}
+      />
+
       <Resource
         name="organizations"
         list={OrganizationList}

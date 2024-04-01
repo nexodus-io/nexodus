@@ -3,6 +3,11 @@ package routers
 import (
 	"context"
 	"crypto/tls"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/go-session/session/v3"
 	"github.com/nexodus-io/nexodus/internal/docs"
 	"github.com/nexodus-io/nexodus/pkg/ginsession"
@@ -11,10 +16,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap/zapcore"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	ginzap "github.com/gin-contrib/zap"
@@ -183,7 +184,7 @@ func NewAPIRouter(ctx context.Context, o APIRouterOptions) (*gin.Engine, error) 
 		// Status
 		apiGroup.POST("/status", api.CreateStatus)
 		apiGroup.GET("/status/:id", api.GetStatus)
-		apiGroup.GET("/status", api.ListStatues)
+		apiGroup.GET("/status", api.ListStatuses)
 
 		// Service Networks
 		apiGroup.GET("/service-networks", api.ListServiceNetworks)

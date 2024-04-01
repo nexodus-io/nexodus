@@ -20,6 +20,7 @@ var _ MappedNullable = &ModelsStatus{}
 // ModelsStatus struct for ModelsStatus
 type ModelsStatus struct {
 	Hostname    *string `json:"hostname,omitempty"`
+	Id          *string `json:"id,omitempty"`
 	IsReachable *bool   `json:"is_reachable,omitempty"`
 	Latency     *string `json:"latency,omitempty"`
 	Method      *string `json:"method,omitempty"`
@@ -74,6 +75,38 @@ func (o *ModelsStatus) HasHostname() bool {
 // SetHostname gets a reference to the given string and assigns it to the Hostname field.
 func (o *ModelsStatus) SetHostname(v string) {
 	o.Hostname = &v
+}
+
+// GetId returns the Id field value if set, zero value otherwise.
+func (o *ModelsStatus) GetId() string {
+	if o == nil || IsNil(o.Id) {
+		var ret string
+		return ret
+	}
+	return *o.Id
+}
+
+// GetIdOk returns a tuple with the Id field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *ModelsStatus) GetIdOk() (*string, bool) {
+	if o == nil || IsNil(o.Id) {
+		return nil, false
+	}
+	return o.Id, true
+}
+
+// HasId returns a boolean if a field has been set.
+func (o *ModelsStatus) HasId() bool {
+	if o != nil && !IsNil(o.Id) {
+		return true
+	}
+
+	return false
+}
+
+// SetId gets a reference to the given string and assigns it to the Id field.
+func (o *ModelsStatus) SetId(v string) {
+	o.Id = &v
 }
 
 // GetIsReachable returns the IsReachable field value if set, zero value otherwise.
@@ -248,6 +281,9 @@ func (o ModelsStatus) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	if !IsNil(o.Hostname) {
 		toSerialize["hostname"] = o.Hostname
+	}
+	if !IsNil(o.Id) {
+		toSerialize["id"] = o.Id
 	}
 	if !IsNil(o.IsReachable) {
 		toSerialize["is_reachable"] = o.IsReachable

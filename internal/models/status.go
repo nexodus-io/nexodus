@@ -5,6 +5,7 @@ import (
 )
 
 type Status struct {
+	Base
 	UserId      uuid.UUID `json:"user_id"`
 	WgIP        string    `json:"wg_ip"`
 	IsReachable bool      `json:"is_reachable"`
@@ -22,6 +23,7 @@ type AddStatus struct {
 }
 
 /*type UpdateStatus struct{
+	WgIP		string  `json:"wg_ip"`
     IsReachable bool   `json:"is_reachable"`
     Latency     string `json:""`
     Method      string `json:"method"`

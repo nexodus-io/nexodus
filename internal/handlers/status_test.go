@@ -44,7 +44,7 @@ func (suite *HandlerTestSuite) TestListStatues() {
 		http.MethodGet,
 		"/status", "/status",
 		func(c *gin.Context) {
-			suite.api.ListStatues(c)
+			suite.api.ListStatuses(c)
 		},
 		nil, // No body needed for GET request
 	)

@@ -1,10 +1,8 @@
-import React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
-import '@mui/material';
-import OnlineIcon from '@mui/icons-material/CheckCircleOutline';
-import OfflineIcon from '@mui/icons-material/HighlightOff';
-
-
+import React from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import "@mui/material";
+import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
+import OfflineIcon from "@mui/icons-material/HighlightOff";
 
 interface DeviceNodeData {
   id: string;
@@ -20,15 +18,16 @@ interface CustomDeviceNodeProps {
 }
 
 const CustomDeviceNode: React.FC<CustomDeviceNodeProps> = ({ data }) => {
-  const { hostname, ipAddress, latency, peeringMethod, connectionStatus } = data;
+  const { hostname, ipAddress, latency, peeringMethod, connectionStatus } =
+    data;
 
   return (
     <div
       style={{
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        padding: '10px',
-        backgroundColor: '#fff',
+        border: "1px solid #ddd",
+        borderRadius: "4px",
+        padding: "10px",
+        backgroundColor: "#fff",
       }}
     >
       <div>{hostname}</div>
@@ -43,4 +42,3 @@ const CustomDeviceNode: React.FC<CustomDeviceNodeProps> = ({ data }) => {
 };
 
 export default CustomDeviceNode;
-
