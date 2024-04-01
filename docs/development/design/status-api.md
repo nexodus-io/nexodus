@@ -40,31 +40,31 @@ The proposed API additions are as follows:
 - New models
 
 ```go
-	// Status represents the status of single user device 
+    // Status represents the status of single user device 
 	type Status struct {
 		Base
-		UserId      uuid.UUID `json:"user_id"`
-		WgIP        string    `json:"wg_ip"`
-		IsReachable bool      `json:"is_reachable"`
-		Hostname    string    `json:"hostname"`
-		Latency     string    `json:"latency"`
-		Method      string    `json:"method"`
-	}
+        UserId      uuid.UUID `json:"user_id"`
+        WgIP        string    `json:"wg_ip"`
+        IsReachable bool      `json:"is_reachable"`
+        Hostname    string    `json:"hostname"`
+   	    Latency     string    `json:"latency"`
+        Method      string    `json:"method"`
+    }
 
-	// AddStatus is the information necessary to add a device status
-	type AddStatus struct {
-		WgIP        string `json:"wg_ip"`
-		IsReachable bool   `json:"is_reachable"`
-		Hostname    string `json:"hostname"`
-		Latency     string `json:"latency"`
-		Method      string `json:"method"`
-	}
+    // AddStatus is the information necessary to add a device status
+    type AddStatus struct {
+        WgIP        string `json:"wg_ip"`
+        IsReachable bool   `json:"is_reachable"`
+        Hostname    string `json:"hostname"`
+        Latency     string `json:"latency"`
+        Method      string `json:"method"`
+    }
 
-	// UpdateStatus is the information needed to update a device status that already exists
-	type UpdateStatus struct{
-		WgIP		string  `json:"wg_ip"`
-		IsReachable bool   `json:"is_reachable"`
-		Latency     string `json:""`
-		Method      string `json:"method"`
-	}
+    // UpdateStatus is the information needed to update a device status that already exists
+    type UpdateStatus struct{
+        WgIP		string  `json:"wg_ip"`
+        IsReachable bool   `json:"is_reachable"`
+        Latency     string `json:""`
+        Method      string `json:"method"`
+    }
 ```
