@@ -22,9 +22,9 @@ type AddStatus struct {
 	Method      string `json:"method"`
 }
 
-/*type UpdateStatus struct{
+type UpdateStatus struct{
 	WgIP		string  `json:"wg_ip"`
     IsReachable bool   `json:"is_reachable"`
     Latency     string `json:""`
     Method      string `json:"method"`
-}*/
+}
