@@ -145,29 +145,29 @@ func (api *API) GetStatus(c *gin.Context) {
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
 // @Router       /api/status [get]
-	func (api *API) ListStatuses(c *gin.Context) {
-		ctx, span := tracer.Start(c.Request.Context(), "ListStatuses")
-		defer span.End()
-		var status []models.Status
+func (api *API) ListStatuses(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "ListStatuses")
+	defer span.End()
+	var status []models.Status
 
-		//status := make([]models.Status, 0)
+	//status := make([]models.Status, 0)
 
-		db := api.db.WithContext(ctx)
-		db = api.StatusIsOwnedByCurrentUser(c, db)
-		db = FilterAndPaginate(db, &models.Status{}, c, "wg_ip")
-		result := db.Find(&status)
-		if result.Error != nil {
-			api.SendInternalServerError(c, errors.New("error fetching statuses"))
-			return
-		}
-
-		c.JSON(http.StatusOK, status)
+	db := api.db.WithContext(ctx)
+	db = api.StatusIsOwnedByCurrentUser(c, db)
+	db = FilterAndPaginate(db, &models.Status{}, c, "wg_ip")
+	result := db.Find(&status)
+	if result.Error != nil {
+		api.SendInternalServerError(c, errors.New("error fetching statuses"))
+		return
 	}
 
-	func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-		userId := api.GetCurrentUserID(c)
-		return db.Where("user_id = ?", userId)
-	}
+	c.JSON(http.StatusOK, status)
+}
+
+func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+	userId := api.GetCurrentUserID(c)
+	return db.Where("user_id = ?", userId)
+}
 
 /*func (api *API) UpdateStatus(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateStatus")
