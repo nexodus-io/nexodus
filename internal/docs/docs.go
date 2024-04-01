@@ -2660,7 +2660,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/statues": {
+        "/api/status": {
             "get": {
                 "description": "Lists all Statuses",
                 "consumes": [
@@ -2703,9 +2703,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/status": {
+            },
             "post": {
                 "description": "Adds a new status",
                 "consumes": [
@@ -4582,6 +4580,10 @@ const docTemplate = `{
             "properties": {
                 "hostname": {
                     "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
                 "is_reachable": {
                     "type": "boolean"

@@ -65,7 +65,7 @@ func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
 		nx.deviceCacheIterRead(func(value deviceCacheEntry) {
 			// skip the node sourcing the probe
 			if nx.wireguardPubKey == value.device.GetPublicKey() {
-				//return
+				return
 			}
 			var nodeAddr string
 			pubKey := value.device.GetPublicKey()

@@ -2653,7 +2653,7 @@
                 }
             }
         },
-        "/api/statues": {
+        "/api/status": {
             "get": {
                 "description": "Lists all Statuses",
                 "consumes": [
@@ -2696,9 +2696,7 @@
                         }
                     }
                 }
-            }
-        },
-        "/api/status": {
+            },
             "post": {
                 "description": "Adds a new status",
                 "consumes": [
@@ -4575,6 +4573,10 @@
             "properties": {
                 "hostname": {
                     "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "aa22666c-0f57-45cb-a449-16efecc04f2e"
                 },
                 "is_reachable": {
                     "type": "boolean"

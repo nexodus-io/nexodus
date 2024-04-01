@@ -552,6 +552,9 @@ definitions:
     properties:
       hostname:
         type: string
+      id:
+        example: aa22666c-0f57-45cb-a449-16efecc04f2e
+        type: string
       is_reachable:
         type: boolean
       latency:
@@ -2523,7 +2526,7 @@ paths:
       summary: Update Sites
       tags:
       - Sites
-  /api/statues:
+  /api/status:
     get:
       consumes:
       - application/json
@@ -2553,7 +2556,6 @@ paths:
       summary: List Statuses
       tags:
       - Statuses
-  /api/status:
     post:
       consumes:
       - application/json

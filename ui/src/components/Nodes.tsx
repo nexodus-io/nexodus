@@ -1,8 +1,19 @@
-import React, { FunctionComponent } from 'react';
-import { Card, CardHeader, CardContent, Table, TableBody, TableCell, TableHead, TableRow, Button, Typography } from '@mui/material';
-import OnlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import { styled } from '@mui/material/styles';
+import React, { FunctionComponent } from "react";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Button,
+  Typography,
+} from "@mui/material";
+import OnlineIcon from "@mui/icons-material/CheckCircleOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { styled } from "@mui/material/styles";
 
 export interface DeviceNodeData {
   id: string;
@@ -19,19 +30,21 @@ interface DeviceNodeComponentProps {
 
 // Custom styling
 const CustomCard = styled(Card)(({ theme }) => ({
-  borderRadius: '0 25px 0 0',
-  border: '2px solid green', 
-  marginBottom: '1rem',
-  '& .MuiCardHeader-title': {
-    fontSize: '12px', 
+  borderRadius: "0 25px 0 0",
+  border: "2px solid green",
+  marginBottom: "1rem",
+  "& .MuiCardHeader-title": {
+    fontSize: "12px",
     fontWeight: "bold",
   },
-  '& .MuiCardContent-root': {
-    paddingTop: 0, 
+  "& .MuiCardContent-root": {
+    paddingTop: 0,
   },
 }));
 
-export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = ({ data }) => {
+export const DeviceNodeComponent: FunctionComponent<
+  DeviceNodeComponentProps
+> = ({ data }) => {
   const { ip, hostname, latency, peeringMethod, online } = data;
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -43,7 +56,11 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
         title={<Typography variant="h6">Device: {hostname}</Typography>}
         action={
           <Button onClick={toggleOpen}>
-            {online ? <OnlineIcon color="success" /> : <HighlightOffIcon color="error" />}
+            {online ? (
+              <OnlineIcon color="success" />
+            ) : (
+              <HighlightOffIcon color="error" />
+            )}
           </Button>
         }
       />
@@ -65,7 +82,7 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
                 <TableCell>{ip}</TableCell>
                 <TableCell>{latency}</TableCell>
                 <TableCell>{peeringMethod}</TableCell>
-                <TableCell>{online ? 'Reachable' : 'Unreachable'}</TableCell>
+                <TableCell>{online ? "Reachable" : "Unreachable"}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -74,4 +91,3 @@ export const DeviceNodeComponent: FunctionComponent<DeviceNodeComponentProps> = 
     </CustomCard>
   );
 };
-

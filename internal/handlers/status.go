@@ -110,7 +110,7 @@ func (api *API) GetStatus(c *gin.Context) {
 	))
 	defer span.End()
 
-	k, err := uuid.Parse(c.Param("id"))
+	_, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.NewBadPathParameterError("id"))
 		return
@@ -120,11 +120,16 @@ func (api *API) GetStatus(c *gin.Context) {
 
 	db := api.db.WithContext(ctx)
 	db = api.StatusIsOwnedByCurrentUser(c, db)
-	result := db.Find(&status, "id = ?", k)
+	db = FilterAndPaginate(db, &models.Status{}, c, "hostname")
+	result := db.Find(&status)
+
+	//result := db.Find(&status, "id = ?", k)
+
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.Status(http.StatusNotFound)
 		return
 	}
+
 	c.JSON(http.StatusOK, status)
 }
 
@@ -139,31 +144,32 @@ func (api *API) GetStatus(c *gin.Context) {
 // @Failure		 401  {object}  models.BaseError
 // @Failure		 429  {object}  models.BaseError
 // @Failure      500  {object}  models.InternalServerError "Internal Server Error"
-// @Router       /api/statues [get]
-func (api *API) ListStatues(c *gin.Context) {
-	ctx, span := tracer.Start(c.Request.Context(), "ListStatues")
-	defer span.End()
+// @Router       /api/status [get]
+	func (api *API) ListStatuses(c *gin.Context) {
+		ctx, span := tracer.Start(c.Request.Context(), "ListStatuses")
+		defer span.End()
+		var status []models.Status
 
-	statues := make([]models.Status, 0)
+		//status := make([]models.Status, 0)
 
-	db := api.db.WithContext(ctx)
-	db = api.StatusIsOwnedByCurrentUser(c, db)
-	//db = FilterAndPaginate(db, &models.Status{}, c, "hostname")
-	result := db.Find(&statues)
-	if result.Error != nil {
-		api.SendInternalServerError(c, errors.New("error fetching keys from db"))
-		return
+		db := api.db.WithContext(ctx)
+		db = api.StatusIsOwnedByCurrentUser(c, db)
+		db = FilterAndPaginate(db, &models.Status{}, c, "wg_ip")
+		result := db.Find(&status)
+		if result.Error != nil {
+			api.SendInternalServerError(c, errors.New("error fetching statuses"))
+			return
+		}
+
+		c.JSON(http.StatusOK, status)
 	}
 
-	c.JSON(http.StatusOK, statues)
-}
+	func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
+		userId := api.GetCurrentUserID(c)
+		return db.Where("user_id = ?", userId)
+	}
 
-func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB {
-	userId := api.GetCurrentUserID(c)
-	return db.Where("user_id = ?", userId)
-}
-
-func (api *API) UpdateStatus(c *gin.Context) {
+/*func (api *API) UpdateStatus(c *gin.Context) {
 	ctx, span := tracer.Start(c.Request.Context(), "UpdateStatus")
 	defer span.End()
 
@@ -206,4 +212,4 @@ func (api *API) UpdateStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Latency updated successfully"})
-}
+}*/
