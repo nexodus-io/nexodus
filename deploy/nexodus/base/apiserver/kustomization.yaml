@@ -6,7 +6,7 @@ configMapGenerator:
       - NEXAPI_DEBUG=1
       - NEXAPI_IPAM_URL=http://ipam:9090
       - NEXAPI_OIDC_URL=https://auth.try.nexodus.127.0.0.1.nip.io/realms/nexodus
-      - NEXAPI_OIDC_BACKCHANNEL=https://auth:8443/realms/nexodus
+      - NEXAPI_OIDC_BACKCHANNEL=http://auth:8080/realms/nexodus
       - NEXAPI_INSECURE_TLS=1
       - NEXAPI_TRACE_ENDPOINT_OTLP="tempo.nexodus-monitoring.svc:4317"
       - NEXAPI_TRACE_INSECURE="1"

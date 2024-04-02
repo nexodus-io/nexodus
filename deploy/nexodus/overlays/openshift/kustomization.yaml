@@ -21,21 +21,7 @@ patches:
   # Use the letsencrypt issuer instead of the self-signed issuer
   - target:
       kind: Certificate
-      name: nexodus-auth-cert
-    patch: |-
-      - op: replace
-        path: /spec/issuerRef/name
-        value: letsencrypt
-  - target:
-      kind: Certificate
-      name: nexodus-frontend-cert
-    patch: |-
-      - op: replace
-        path: /spec/issuerRef/name
-        value: letsencrypt
-  - target:
-      kind: Certificate
-      name: nexodus-api-cert
+      name: nexodus-cert
     patch: |-
       - op: replace
         path: /spec/issuerRef/name

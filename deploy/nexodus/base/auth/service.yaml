@@ -4,5 +4,5 @@ metadata:
   name: auth
 spec:
   ports:
-    - port: 8443
-      targetPort: 8443
+    - port: 8080
+      targetPort: 8080
