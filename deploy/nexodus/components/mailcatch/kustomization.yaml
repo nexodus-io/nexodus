@@ -1,0 +1,18 @@
+#
+# This component is responsible for deploying the mailcatch service.
+# It is a simple SMTP server that catches all emails sent to it
+# and displays them in a web interface.
+#
+# It will be accessible at https://mailcatch.try.nexodus.127.0.0.1.nip.io
+#
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+secretGenerator:
+  - name: smtp-server
+    literals:
+      - NEXAPI_SMTP_HOST_PORT=mailcatch:1025
+      - NEXAPI_SMTP_FROM=noreply@try.nexodus.127.0.0.1.nip.io
