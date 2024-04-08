@@ -213,3 +213,37 @@ func (api *API) StatusIsOwnedByCurrentUser(c *gin.Context, db *gorm.DB) *gorm.DB
 
 	c.JSON(http.StatusOK, gin.H{"message": "Latency updated successfully"})
 }*/
+
+// DeleteAllStatuses deletes all statuses in the database
+// @Summary      Delete All Statuses
+// @Description  Deletes all statuses from the database
+// @Tags         Statuses
+// @Accept       json
+// @Produce      json
+// @Success      204      "No Content"
+// @Failure      401      {object}  models.BaseError
+// @Failure      429      {object}  models.BaseError
+// @Failure      500      {object}  models.InternalServerError "Internal Server Error"
+// @Router       /api/status [delete]
+func (api *API) DeleteAllStatuses(c *gin.Context) {
+	ctx, span := tracer.Start(c.Request.Context(), "DeleteAllStatuses")
+	defer span.End()
+
+	userId := api.GetCurrentUserID(c)
+
+	err := api.transaction(ctx, func(tx *gorm.DB) error {
+
+		if res := tx.Unscoped().Where("user_id = ?", userId).Delete(&models.Status{}); res.Error != nil {
+			api.logger.Error("Failed to delete statuses for user: ", res.Error)
+			return res.Error
+		}
+		return nil
+	})
+
+	if err != nil {
+		api.SendInternalServerError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
