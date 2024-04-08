@@ -7,6 +7,8 @@ interface CustomRelayNodeProps {
   data: RelayNodeData;
 }
 
+//This provides the basic foundation for a ReactFlow relay node
+//The actual design of the node is in RelayNode.tsx
 const CustomRelayNode: React.FC<CustomRelayNodeProps> = ({ data }) => {
   return (
     <>
