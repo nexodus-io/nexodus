@@ -2527,6 +2527,30 @@ paths:
       tags:
       - Sites
   /api/status:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes all statuses from the database
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/models.BaseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.InternalServerError'
+      summary: Delete All Statuses
+      tags:
+      - Statuses
     get:
       consumes:
       - application/json

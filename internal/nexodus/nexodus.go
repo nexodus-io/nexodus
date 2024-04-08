@@ -710,6 +710,8 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		// kick it off with an immediate reconcile
 		nx.reconcileDevices(ctx, options)
 		nx.reconcileSecurityGroups(ctx)
+		nx.deleteStatusesOperation()
+		nx.connectivityProbe("v4")
 		for _, proxy := range nx.proxies {
 			proxy.Start(ctx, wg, nx.userspaceNet)
 		}
@@ -722,7 +724,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		secGroupTicker := time.NewTicker(time.Second * 20)
 		defer stunTicker.Stop()
 		pollTicker := time.NewTicker(pollInterval)
-		connectivityTicker := time.NewTicker(pollInterval)
+		connectivityTicker := time.NewTicker(time.Minute * 5)
 		defer pollTicker.Stop()
 		for {
 			select {
@@ -747,6 +749,7 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				nx.reconcileDevices(ctx, options)
 
 			case <-connectivityTicker.C:
+				nx.deleteStatusesOperation()
 				nx.connectivityProbe("v4")
 			case <-secGroupTicker.C:
 				nx.reconcileSecurityGroups(ctx)
