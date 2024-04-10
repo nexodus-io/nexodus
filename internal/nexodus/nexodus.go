@@ -710,8 +710,15 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		// kick it off with an immediate reconcile
 		nx.reconcileDevices(ctx, options)
 		nx.reconcileSecurityGroups(ctx)
-		nx.deleteStatusesOperation()
+
+		response, err := nx.deleteStatusesOperation()
+		if err != nil {
+			nx.connectivityProbe("v4")
+			fmt.Print("", response)
+		}
+
 		nx.connectivityProbe("v4")
+
 		for _, proxy := range nx.proxies {
 			proxy.Start(ctx, wg, nx.userspaceNet)
 		}
@@ -749,7 +756,12 @@ func (nx *Nexodus) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				nx.reconcileDevices(ctx, options)
 
 			case <-connectivityTicker.C:
-				nx.deleteStatusesOperation()
+				response, err := nx.deleteStatusesOperation()
+				if err != nil {
+					nx.connectivityProbe("v4")
+					fmt.Print("", response)
+					continue
+				}
 				nx.connectivityProbe("v4")
 			case <-secGroupTicker.C:
 				nx.reconcileSecurityGroups(ctx)

@@ -3,7 +3,7 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
-	
+
 	"net"
 
 	"github.com/nexodus-io/nexodus/internal/api"
@@ -183,16 +183,16 @@ func (nx *Nexodus) createStatusesOperation(resultsMap map[string]api.KeepaliveSt
 func (nx *Nexodus) deleteStatusesOperation() (string, error) {
 	response, err := nx.client.StatusesApi.ApiStatusDelete(context.Background()).Execute()
 	if err != nil {
-		
-		if response != nil {
-			fmt.Printf("API call failed with status code: %d\n", response.StatusCode)
-
-			
-		}
-
-		// Return a custom error or the original error
-		return "", fmt.Errorf("failed to delete statuses: %v", err)
+		return "Delete status error", fmt.Errorf("error: %w", err)
 	}
+
+	if response != nil {
+		fmt.Print("", response)
+
+	}
+
+	// Return a custom error or the original error
+	//return "", fmt.Errorf("failed to delete statuses: %v", err)
 
 	// If the operation is successful
 	return "Statuses successfully deleted", nil
