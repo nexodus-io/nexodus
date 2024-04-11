@@ -106,13 +106,10 @@ const fetchStatus = async () => {
   return statusData;
 };
 
-// React functional component for rendering the network graph.
 const GraphComponent = () => {
-  // Initialize state for nodes and edges with empty arrays.
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
-  // Fetch data and update state
   useEffect(() => {
     const displayStatuses = async () => {
       try {
@@ -137,32 +134,26 @@ const GraphComponent = () => {
           })
         );
 
-        const generatedEdges: Edge[] = generatedNodes
-          .map((node, index) => {
-            if (index < generatedNodes.length - 1) {
-              return {
-                id: `e${node.id}-${generatedNodes[index + 1].id}`,
-                source: node.id,
-                target: generatedNodes[index + 1].id,
-                animated: !status[index].is_reachable,
-              };
-            }
-            return null;
-          })
-          .filter((edge): edge is Edge => edge !== null);
+        // Ensure there is at least one node to connect to
+        if (generatedNodes.length > 1) {
+          const generatedEdges: Edge[] = generatedNodes.slice(1).map((node) => ({
+            id: `e${node.id}-1`, // Connects each node to the first node, whose ID is '1'
+            source: node.id,
+            target: '1',  // This assumes the first node has an ID of '1'
+            animated: node.data.online,
+          }));
 
-        setNodes(generatedNodes);
-        setEdges(generatedEdges);
+          setNodes(generatedNodes);
+          setEdges(generatedEdges);
+        }
       } catch (error) {
         console.error("Error fetching or processing data:", error);
       }
     };
 
     displayStatuses(); // Initial call
-
   }, []);
 
-  // Render the graph component
   return (
     <ReactFlowProvider>
       <div style={{ height: "90vh" }}>
@@ -175,6 +166,5 @@ const GraphComponent = () => {
     </ReactFlowProvider>
   );
 };
-
 
 export default GraphComponent;
