@@ -42,7 +42,7 @@ const nodeTypes = {
 };
 
 // Mock JSON data
-/*const jsonData = [
+const jsonData = [
   {
     "wg_ip": "100.64.0.2",
     "is_reachable": true,
@@ -63,8 +63,15 @@ const nodeTypes = {
     "hostname": "bill.test",
     "latency": "16.65ms",
     "method": "via-relay"
+  },
+  {
+    "wg_ip": "101.64.0.3",
+    "is_reachable": true,
+    "hostname": "bill.test2",
+    "latency": "16.65ms",
+    "method": "direct"
   }
-];*/
+];
 
 // Defines the data structure for a device node in the network graph.
 interface DeviceNodeData {
@@ -113,14 +120,20 @@ const GraphComponent = () => {
   useEffect(() => {
     const displayStatuses = async () => {
       try {
-        const status = await fetchStatus();
+        const status = await fetchStatus(); // Fetch the status data
 
-        const generatedNodes: Node[] = status.map(
-          (item: NodeData, index: number) => ({
-            id: `${index + 1}`,
-            type: "customDeviceNode",
+        const generatedNodes: Node[] = [];
+        const generatedEdges: Edge[] = [];
+
+        jsonData.forEach((item: NodeData, index: number) => {
+          const nodeId = `${index + 1}`;
+          const nodeType = item.method === "relay-node-peer" || item.method === "derp-relay" ? "customRelayNode" : "customDeviceNode";
+
+          const newNode: Node = {
+            id: nodeId,
+            type: nodeType,
             data: {
-              id: `${index + 1}`,
+              id: nodeId,
               ip: item.wg_ip,
               hostname: item.hostname,
               latency: parseFloat(item.latency),
@@ -131,21 +144,38 @@ const GraphComponent = () => {
               x: Math.random() * window.innerWidth,
               y: Math.random() * window.innerHeight,
             },
-          })
-        );
+          };
 
-        // Ensure there is at least one node to connect to
-        if (generatedNodes.length > 1) {
-          const generatedEdges: Edge[] = generatedNodes.slice(1).map((node) => ({
-            id: `e${node.id}-1`, // Connects each node to the first node, whose ID is '1'
-            source: node.id,
-            target: '1',  // This assumes the first node has an ID of '1'
-            animated: node.data.online,
-          }));
+          generatedNodes.push(newNode);
 
-          setNodes(generatedNodes);
-          setEdges(generatedEdges);
-        }
+          // Ensure each node connects back to the first node by default if it's not a relay connection
+          if (item.method !== "via-relay" && generatedNodes.length > 1) {
+            const targetNode = generatedNodes[0]; // Connects back to the first node
+            generatedEdges.push({
+              id: `e${nodeId}-${targetNode.id}`,
+              source: nodeId,
+              target: targetNode.id,
+              animated: item.is_reachable,
+            });
+          }
+
+          // Special handling for nodes that should connect via relay
+          if (nodeType === "customRelayNode" || item.method === "via-relay") {
+            // Find the first custom relay node or use the current one if it's a relay
+            const relayNode = generatedNodes.find(n => n.type === "customRelayNode") || newNode;
+            if (relayNode && relayNode.id !== nodeId) { // Avoid self-connection for relay nodes
+              generatedEdges.push({
+                id: `e${nodeId}-${relayNode.id}`,
+                source: nodeId,
+                target: relayNode.id,
+                animated: item.is_reachable,
+              });
+            }
+          }
+        });
+
+        setNodes(generatedNodes);
+        setEdges(generatedEdges);
       } catch (error) {
         console.error("Error fetching or processing data:", error);
       }
@@ -153,6 +183,7 @@ const GraphComponent = () => {
 
     displayStatuses(); // Initial call
   }, []);
+
 
   return (
     <ReactFlowProvider>
