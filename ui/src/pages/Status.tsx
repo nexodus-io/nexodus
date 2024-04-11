@@ -16,6 +16,7 @@ import {
   DateField,
   Edit,
   List,
+  NotificationType,
   ReferenceField,
   ReferenceInput,
   Show,
@@ -25,12 +26,14 @@ import {
   TextInput,
   useGetIdentity,
   useRecordContext,
+  useNotify,
 } from "react-admin";
 import "reactflow/dist/style.css";
-import React,{ useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 //Imports our custom nodes
 import CustomDeviceNode from "../components/CustomDeviceNode";
 import CustomRelayNode from "../components/CustomRelayNode";
+import { backend, fetchJson as apiFetchJson } from "../common/Api";
 
 //Defines the imported custom nodes
 const nodeTypes = {
@@ -39,7 +42,7 @@ const nodeTypes = {
 };
 
 // Mock JSON data
-const jsonData = [
+/*const jsonData = [
   {
     "wg_ip": "100.64.0.2",
     "is_reachable": true,
@@ -61,7 +64,7 @@ const jsonData = [
     "latency": "16.65ms",
     "method": "via-relay"
   }
-];
+];*/
 
 // Defines the data structure for a device node in the network graph.
 interface DeviceNodeData {
@@ -72,7 +75,7 @@ interface DeviceNodeData {
   peeringMethod: string;
   online: boolean;
 }
-// Defines the structure for incoming node data. 
+// Defines the structure for incoming node data.
 interface NodeData {
   wg_ip: string;
   is_reachable: boolean;
@@ -95,62 +98,75 @@ interface Edge {
   target: string;
   animated: boolean;
 }
+const fetchStatus = async () => {
+  const statusData = await apiFetchJson(`${backend}/api/status`, {
+    method: "GET",
+  });
 
-
+  return statusData;
+};
 
 // React functional component for rendering the network graph.
-export const GraphComponent: React.FC = () => {
-// Initialize state for nodes and edges with empty arrays.
+const GraphComponent = () => {
+  // Initialize state for nodes and edges with empty arrays.
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
-
-  
+  // Fetch data and update state
   useEffect(() => {
-    // Transform each item in the mock JSON data into a Node object for React Flow.
-    // This includes setting the node's type, data, and random position(for now).
-    const generatedNodes: Node[] = jsonData.map((item: NodeData, index: number) => ({
-        id: `${index + 1}`,
-      type: 'customDeviceNode',
-      data: {
-        id: `${index + 1}`, 
-        ip: item.wg_ip,
-        hostname: item.hostname,
-        latency: parseFloat(item.latency), 
-        peeringMethod: item.method,
-        online: item.is_reachable,
-    },
-      position: { x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight },//TODO: Have a more organized method of ordering nodes
-    }));
+    const displayStatuses = async () => {
+      try {
+        const status = await fetchStatus();
 
-    // Generates Edge objects connecting the nodes. Animation indicates reachability.
-    const generatedEdges: Edge[] = generatedNodes.map((node, index) => {
-      if (index < generatedNodes.length - 1) { // Check to ensure we do not exceed the array bounds.
-        return {
-          id: `e${node.id}-${generatedNodes[index + 1].id}`,
-          source: node.id,
-          target: generatedNodes[index + 1].id,
-          animated: !jsonData[index].is_reachable,
-        };
+        const generatedNodes: Node[] = status.map(
+          (item: NodeData, index: number) => ({
+            id: `${index + 1}`,
+            type: "customDeviceNode",
+            data: {
+              id: `${index + 1}`,
+              ip: item.wg_ip,
+              hostname: item.hostname,
+              latency: parseFloat(item.latency),
+              peeringMethod: item.method,
+              online: item.is_reachable,
+            },
+            position: {
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+            },
+          })
+        );
+
+        const generatedEdges: Edge[] = generatedNodes
+          .map((node, index) => {
+            if (index < generatedNodes.length - 1) {
+              return {
+                id: `e${node.id}-${generatedNodes[index + 1].id}`,
+                source: node.id,
+                target: generatedNodes[index + 1].id,
+                animated: !status[index].is_reachable,
+              };
+            }
+            return null;
+          })
+          .filter((edge): edge is Edge => edge !== null);
+
+        setNodes(generatedNodes);
+        setEdges(generatedEdges);
+      } catch (error) {
+        console.error("Error fetching or processing data:", error);
       }
-      return null;
-    }).filter((edge): edge is Edge => edge !== null); //Remove nulls from the array
+    };
 
-    // Update the state with the generated nodes and edges.
-    setNodes(generatedNodes);
-    setEdges(generatedEdges);
+    displayStatuses(); // Initial call
+
   }, []);
-  //TODO: Impliment the code to run every 5 seconds rather than just once(Code is ready just needs to be tested)
 
-
-//Draws the graph, passes the custom nodes and edges, and impliments basic ReactFlow controls such as navigation, zooming, etc.
+  // Render the graph component
   return (
     <ReactFlowProvider>
-      <div style={{ height: '90vh' }}> 
-        <ReactFlow  
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}>
+      <div style={{ height: "90vh" }}>
+        <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes}>
           <MiniMap />
           <Controls />
           <Background />
@@ -161,15 +177,4 @@ export const GraphComponent: React.FC = () => {
 };
 
 
-export const StatusList = () => (
-  <List>
-    <Datagrid>
-      <TextField label="ID" source="user_id" />
-      <TextField label="Hostname" source="hostname" />
-      <TextField label="Wireguard IP" source="wg_ip" />
-      <TextField label="IsReachable" source="is_reachable" />
-      <TextField label="Latency" source="latency" />
-      <TextField label="Method" source="method" />
-    </Datagrid>
-  </List>
-);
+export default GraphComponent;

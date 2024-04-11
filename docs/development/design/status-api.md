@@ -31,6 +31,7 @@ The proposed API additions are as follows:
     // Updates a device status if a status already exists
     private.PUT("/status", api.UpdateStatus)
 ```
+
 ## New Tables
 
     A new table will be defined for device statuses.
@@ -62,7 +63,7 @@ The proposed API additions are as follows:
 
     // UpdateStatus is the information needed to update a device status that already exists
     type UpdateStatus struct{
-        WgIP		string  `json:"wg_ip"`
+        WgIP        string  `json:"wg_ip"`
         IsReachable bool   `json:"is_reachable"`
         Latency     string `json:""`
         Method      string `json:"method"`
