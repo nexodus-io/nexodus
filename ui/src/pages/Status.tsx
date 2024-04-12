@@ -4,6 +4,7 @@ import ReactFlow, {
   Controls,
   Background,
   ReactFlowProvider,
+  applyNodeChanges,
 } from "reactflow";
 import {
   ArrayField,
@@ -29,7 +30,7 @@ import {
   useNotify,
 } from "react-admin";
 import "reactflow/dist/style.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 //Imports our custom nodes
 import CustomDeviceNode from "../components/CustomDeviceNode";
 import CustomRelayNode from "../components/CustomRelayNode";
@@ -154,10 +155,30 @@ const GraphComponent = () => {
     displayStatuses(); // Initial call
   }, []);
 
+  const onNodeDragStop = (event: any, node: { id: string; position: { x: any; y: any; }; }) => {
+    setNodes((currNodes) => currNodes.map((n) => {
+      if (n.id === node.id) {
+        return {
+          ...n,
+          position: {
+            x: node.position.x,
+            y: node.position.y,
+          }
+        };
+      }
+      return n;
+    }));
+  };
+
   return (
     <ReactFlowProvider>
       <div style={{ height: "90vh" }}>
-        <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodeDragStop={onNodeDragStop}
+          nodeTypes={nodeTypes}
+        >
           <MiniMap />
           <Controls />
           <Background />
