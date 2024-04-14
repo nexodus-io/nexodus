@@ -43,7 +43,7 @@ const nodeTypes = {
 };
 
 // Mock JSON data
-const jsonData = [
+/* const jsonData = [
   {
     "wg_ip": "100.64.0.2",
     "is_reachable": true,
@@ -72,7 +72,7 @@ const jsonData = [
     "latency": "16.65ms",
     "method": "direct"
   }
-];
+]; */ 
 
 // Defines the data structure for a device node in the network graph.
 interface DeviceNodeData {
@@ -126,7 +126,7 @@ const GraphComponent = () => {
         const generatedNodes: Node[] = [];
         const generatedEdges: Edge[] = [];
 
-        jsonData.forEach((item: NodeData, index: number) => {
+        status.forEach((item: NodeData, index: number) => {
           const nodeId = `${index + 1}`;
           const nodeType = item.method === "relay-node-peer" || item.method === "derp-relay" ? "customRelayNode" : "customDeviceNode";
 

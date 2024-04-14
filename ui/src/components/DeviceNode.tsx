@@ -29,9 +29,9 @@ interface DeviceNodeComponentProps {
 }
 
 // Custom styling
-const CustomCard = styled(Card)(({ theme }) => ({
+const CustomCard = styled(Card)(({ styled, latency }: { styled: any; latency: number }) => ({
   borderRadius: "0 25px 0 0",
-  border: "2px solid green",
+  border: `2px solid ${latency <= 40 ? "green" : latency <= 80 ? "orange" : "red"}`,
   marginBottom: "1rem",
   "& .MuiCardHeader-title": {
     fontSize: "12px",
@@ -39,7 +39,7 @@ const CustomCard = styled(Card)(({ theme }) => ({
   },
   "& .MuiCardContent-root": {
     paddingTop: 0,
-  },
+  }, 
 }));
 
 export const DeviceNodeComponent: FunctionComponent<
@@ -51,7 +51,7 @@ export const DeviceNodeComponent: FunctionComponent<
   const toggleOpen = () => setIsOpen(!isOpen);
 
   return (
-    <CustomCard>
+    <CustomCard styled={{}} latency={latency}>
       <CardHeader
         title={<Typography variant="h6">Device: {hostname}</Typography>}
         action={

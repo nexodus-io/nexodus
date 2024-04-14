@@ -31,7 +31,7 @@ interface RelayNodeComponentProps {
 // Custom styling
 const CustomCard = styled(Card)(({ theme }) => ({
   borderRadius: "25px 25px 25px 25px",
-  border: "2px solid red",
+  border: "2px solid blue",
   marginBottom: "1rem",
   "& .MuiCardHeader-title": {
     fontSize: "12px",
