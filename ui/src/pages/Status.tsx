@@ -6,31 +6,8 @@ import ReactFlow, {
   ReactFlowProvider,
   applyNodeChanges,
 } from "reactflow";
-import {
-  ArrayField,
-  AutocompleteInput,
-  BooleanField,
-  BooleanFieldProps,
-  BulkDeleteButton,
-  BulkExportButton,
-  Datagrid,
-  DateField,
-  Edit,
-  List,
-  NotificationType,
-  ReferenceField,
-  ReferenceInput,
-  Show,
-  SimpleForm,
-  SimpleShowLayout,
-  TextField,
-  TextInput,
-  useGetIdentity,
-  useRecordContext,
-  useNotify,
-} from "react-admin";
 import "reactflow/dist/style.css";
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 //Imports our custom nodes
 import CustomDeviceNode from "../components/CustomDeviceNode";
 import CustomRelayNode from "../components/CustomRelayNode";
@@ -117,88 +94,94 @@ const fetchStatus = async () => {
 const GraphComponent = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  
+  const displayStatuses = async () => {
+    try {
+      const status = await fetchStatus(); // fetch the status data
 
-  useEffect(() => {
-    const displayStatuses = async () => {
-      try {
-        const status = await fetchStatus(); // Fetch the status data
+      const generatedNodes: Node[] = [];
+      const generatedEdges: Edge[] = [];
 
-        const generatedNodes: Node[] = [];
-        const generatedEdges: Edge[] = [];
+      status.forEach((item: NodeData, index: number) => {
+        const nodeId = `${index + 1}`;
+        const nodeType = item.method === "relay-node-peer" || item.method === "derp-relay" ? "customRelayNode" : "customDeviceNode";
 
-        status.forEach((item: NodeData, index: number) => {
-          const nodeId = `${index + 1}`;
-          const nodeType = item.method === "relay-node-peer" || item.method === "derp-relay" ? "customRelayNode" : "customDeviceNode";
-
-          const newNode: Node = {
+        const newNode: Node = {
+          id: nodeId,
+          type: nodeType,
+          data: {
             id: nodeId,
-            type: nodeType,
-            data: {
-              id: nodeId,
-              ip: item.wg_ip,
-              hostname: item.hostname,
-              latency: parseFloat(item.latency),
-              peeringMethod: item.method,
-              online: item.is_reachable,
-            },
-            position: {
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-            },
-          };
+            ip: item.wg_ip,
+            hostname: item.hostname,
+            latency: parseFloat(item.latency),
+            peeringMethod: item.method,
+            online: item.is_reachable,
+          },
+          position: {
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+          },
+        };
 
-          generatedNodes.push(newNode);
+        generatedNodes.push(newNode);
 
-          // Ensure each node connects back to the first node by default if it's not a relay connection
-          if (item.method !== "via-relay" && generatedNodes.length > 1) {
-            const targetNode = generatedNodes[0]; // Connects back to the first node
+        // Ensure each node connects back to the first node by default if it's not a relay connection
+        if (item.method !== "via-relay" && generatedNodes.length > 1) {
+          const targetNode = generatedNodes[0]; // Connects back to the first node
+          generatedEdges.push({
+            id: `e${nodeId}-${targetNode.id}`,
+            source: nodeId,
+            target: targetNode.id,
+            animated: item.is_reachable,
+          });
+        }
+
+        // Special handling for nodes that should connect via relay
+        if (nodeType === "customRelayNode" || item.method === "via-relay") {
+          // Find the first custom relay node or use the current one if it's a relay
+          const relayNode = generatedNodes.find(n => n.type === "customRelayNode") || newNode;
+          if (relayNode && relayNode.id !== nodeId) { // Avoid self-connection for relay nodes
             generatedEdges.push({
-              id: `e${nodeId}-${targetNode.id}`,
+              id: `e${nodeId}-${relayNode.id}`,
               source: nodeId,
-              target: targetNode.id,
+              target: relayNode.id,
               animated: item.is_reachable,
             });
           }
+        }
+      });
 
-          // Special handling for nodes that should connect via relay
-          if (nodeType === "customRelayNode" || item.method === "via-relay") {
-            // Find the first custom relay node or use the current one if it's a relay
-            const relayNode = generatedNodes.find(n => n.type === "customRelayNode") || newNode;
-            if (relayNode && relayNode.id !== nodeId) { // Avoid self-connection for relay nodes
-              generatedEdges.push({
-                id: `e${nodeId}-${relayNode.id}`,
-                source: nodeId,
-                target: relayNode.id,
-                animated: item.is_reachable,
-              });
-            }
-          }
-        });
-
-        setNodes(generatedNodes);
-        setEdges(generatedEdges);
-      } catch (error) {
-        console.error("Error fetching or processing data:", error);
-      }
-    };
-
-    displayStatuses(); // Initial call
-  }, []);
-
-  const onNodeDragStop = (event: any, node: { id: string; position: { x: any; y: any; }; }) => {
-    setNodes((currNodes) => currNodes.map((n) => {
-      if (n.id === node.id) {
-        return {
-          ...n,
-          position: {
-            x: node.position.x,
-            y: node.position.y,
-          }
-        };
-      }
-      return n;
-    }));
+      setNodes(generatedNodes);
+      setEdges(generatedEdges);
+    } catch (error) {
+      console.error("Error fetching or processing data:", error);
+    }
   };
+
+useEffect(() => {
+  displayStatuses(); // initial call
+
+  const interval = setInterval(displayStatuses, 180000) // fetches every 3 minutes 
+
+  return () => {
+    clearInterval(interval); // cleanup interval when component unmounts 
+  };
+}, []);
+
+const onNodeDragStop = (event: any, node: { id: string; position: { x: any; y: any; }; }) => {
+  setNodes((currNodes) => currNodes.map((n) => {
+    if (n.id === node.id) {
+      return {
+        ...n,
+        position: {
+          x: node.position.x,
+          y: node.position.y,
+        }
+      };
+    }
+    return n;
+  }));
+};
 
   return (
     <ReactFlowProvider>
