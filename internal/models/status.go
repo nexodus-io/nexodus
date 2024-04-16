@@ -25,6 +25,6 @@ type AddStatus struct {
 type UpdateStatus struct {
 	WgIP        string `json:"wg_ip"`
 	IsReachable bool   `json:"is_reachable"`
-	Latency     string `json:""`
+	Latency     string `json:"latency"`
 	Method      string `json:"method"`
 }
