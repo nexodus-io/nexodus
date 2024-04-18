@@ -31,11 +31,7 @@ interface RelayNodeComponentProps {
 // Custom styling
 const CustomCard = styled(Card)(({ styled, latency }: { styled: any; latency: number }) => ({
   borderRadius: "25px 25px 25px 25px",
-<<<<<<< HEAD
-  border: `2px solid ${latency <= 40 ? "green" : latency <= 80 ? "orange" : "red"}`,
-=======
-  border: "3px solid blue",
->>>>>>> e3d1c5ecbe3b54c4e3144b67f10450f08cb7713f
+  border: `3px solid ${latency <= 100 ? "green" : latency <= 1000 ? "orange" : "red"}`,
   marginBottom: "1rem",
   "& .MuiCardHeader-title": {
     fontSize: "12px",
