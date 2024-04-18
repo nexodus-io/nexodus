@@ -31,7 +31,7 @@ interface DeviceNodeComponentProps {
 // Custom styling
 const CustomCard = styled(Card)(({ styled, latency }: { styled: any; latency: number }) => ({
   borderRadius: "0 25px 0 0",
-  border: `2px solid ${latency <= 40 ? "green" : latency <= 80 ? "orange" : "red"}`,
+  border: `3px solid ${latency <= 100 ? "green" : latency <= 1000 ? "orange" : "red"}`,
   marginBottom: "1rem",
   "& .MuiCardHeader-title": {
     fontSize: "12px",
