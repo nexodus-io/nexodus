@@ -24,6 +24,13 @@ const nodeTypes = {
   {
     "wg_ip": "100.64.0.2",
     "is_reachable": true,
+    "hostname": "ip-172-31-26-233.us-east-2.host",
+    "latency": "59.04ms",
+    "method": "host"
+  },
+  {
+    "wg_ip": "100.64.0.44",
+    "is_reachable": true,
     "hostname": "ip-172-31-26-233.us-east-2.compute.internal",
     "latency": "59.04ms",
     "method": "relay-node-peer"
@@ -39,7 +46,7 @@ const nodeTypes = {
     "wg_ip": "101.64.0.3",
     "is_reachable": false,
     "hostname": "bill.test",
-    "latency": "16.65ms",
+    "latency": "NaN",
     "method": "via-relay"
   },
   {
@@ -49,7 +56,7 @@ const nodeTypes = {
     "latency": "16.65ms",
     "method": "direct"
   }
-]; */ 
+]; */
 
 // Defines the data structure for a device node in the network graph.
 interface DeviceNodeData {
