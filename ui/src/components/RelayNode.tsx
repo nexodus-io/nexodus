@@ -29,9 +29,9 @@ interface RelayNodeComponentProps {
 }
 
 // Custom styling
-const CustomCard = styled(Card)(({ theme }) => ({
+const CustomCard = styled(Card)(({ styled, latency }: { styled: any; latency: number }) => ({
   borderRadius: "25px 25px 25px 25px",
-  border: "2px solid blue",
+  border: `2px solid ${latency <= 40 ? "green" : latency <= 80 ? "orange" : "red"}`,
   marginBottom: "1rem",
   "& .MuiCardHeader-title": {
     fontSize: "12px",
@@ -51,7 +51,7 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
   const toggleOpen = () => setIsOpen(!isOpen);
 
   return (
-    <CustomCard>
+    <CustomCard styled={{}} latency={latency}>
       <CardHeader
         title={<Typography variant="h6">Relay: {hostname}</Typography>}
         action={
@@ -71,6 +71,8 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
               <TableRow>
                 <TableCell>Hostname</TableCell>
                 <TableCell>IP Address</TableCell>
+                <TableCell>Latency (ms)</TableCell>
+                <TableCell>Peering Method</TableCell>
                 <TableCell>Connection Status</TableCell>
               </TableRow>
             </TableHead>
@@ -78,6 +80,8 @@ export const RelayNodeComponent: FunctionComponent<RelayNodeComponentProps> = ({
               <TableRow>
                 <TableCell>{hostname}</TableCell>
                 <TableCell>{ip}</TableCell>
+                <TableCell>{latency}</TableCell>
+                <TableCell>{peeringMethod}</TableCell>
                 <TableCell>{online ? "Reachable" : "Unreachable"}</TableCell>
               </TableRow>
             </TableBody>
