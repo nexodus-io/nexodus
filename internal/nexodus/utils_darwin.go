@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/vishvananda/netlink"
@@ -110,6 +111,37 @@ func DeleteRouteV6(prefix, dev string) error {
 
 func defaultTunnelDevOS() string {
 	return darwinIface
+}
+
+func isIfaceInUse(iface net.Interface) bool {
+	cmd := exec.Command("scutil", "--nwi", iface.Name)
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	outputStr := string(output)
+	return strings.Contains(outputStr, "No network information")
+}
+func isIfaceTUN(iface net.Interface) bool {
+	match, _ := regexp.MatchString(`^utun[0-9]*$`, iface.Name)
+	return match
+}
+func avaliableTunnelDevOS() string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		fmt.Errorf("error retrieving network ifaces: %w", err)
+	}
+	var avaliableIface string
+	for _, iface := range ifaces {
+		if isIfaceTUN(iface) && isIfaceInUse(iface) {
+			avaliableIface = iface.Name
+			break
+		}
+	}
+	if avaliableIface == "" {
+		fmt.Errorf("no unused network interface found: %w", err)
+	}
+	return avaliableIface
 }
 
 // binaryChecks validate the required binaries are available
