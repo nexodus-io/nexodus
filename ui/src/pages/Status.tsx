@@ -20,50 +20,7 @@ const nodeTypes = {
 };
 
 // Mock JSON data
- const jsonData = [
-  {
-    "wg_ip": "100.64.0.22",
-    "is_reachable": true,
-    "hostname": "ip-172-31-26-233.us-east-2.compute.host",
-    "latency": "59.04ms",
-    "method": "host"
-  },
-  {
-    "wg_ip": "100.64.0.44",
-    "is_reachable": true,
-    "hostname": "ip-172-31-26-233.us-east-2.compute.internal",
-    "latency": "509.04ms",
-    "method": "relay-node-peer"
-  },
-  {
-    "wg_ip": "100.64.0.3",
-    "is_reachable": true,
-    "hostname": "nuc.lan",
-    "latency": "116.65ms",
-    "method": "via-relay"
-  },
-  {
-    "wg_ip": "101.64.0.3",
-    "is_reachable": false,
-    "hostname": "bill.test",
-    "latency": "NaN",
-    "method": "via-relay"
-  },
-  {
-    "wg_ip": "101.64.0.3",
-    "is_reachable": true,
-    "hostname": "bill.test2",
-    "latency": "16.65ms",
-    "method": "direct"
-  },
-  {
-    "wg_ip": "101.64.0.4",
-    "is_reachable": false,
-    "hostname": "bill.test3",
-    "latency": "1.65ms",
-    "method": "direct"
-  }
-]
+ 
 
 // Defines the data structure for a device node in the network graph.
 interface DeviceNodeData {
@@ -116,7 +73,7 @@ const GraphComponent = () => {
       const generatedNodes: Node[] = [];
       const generatedEdges: Edge[] = [];
 
-      jsonData.forEach((item: NodeData, index: number) => {
+      status.forEach((item: NodeData, index: number) => {
         const nodeId = `${index + 1}`;
         const nodeType = item.method === "relay-node-peer" || item.method === "derp-relay" ? "customRelayNode" : "customDeviceNode";
 
