@@ -14,6 +14,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: auth
+                name: apiproxy
                 port:
                   number: 8443

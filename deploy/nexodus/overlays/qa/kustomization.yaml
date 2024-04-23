@@ -22,6 +22,7 @@ configMapGenerator:
       - APIPROXY_OIDC_URL=https://auth.qa.nexodus.io/realms/nexodus
       - APIPROXY_API_DOMAIN=api.qa.nexodus.io
       - APIPROXY_WEB_DOMAIN=qa.nexodus.io
+      - APIPROXY_AUTH_DOMAIN=auth.qa.nexodus.io
       - APIPROXY_WEB_ORIGINS=https://qa.nexodus.io
       - ENVOY_COMP_LOG_LEVEL=upstream:info,http:debug,router:debug,jwt:debug
     name: apiproxy
@@ -38,26 +39,14 @@ patches:
   # Update the dns names for the certificates
   - target:
       kind: Certificate
-      name: nexodus-frontend-cert
+      name: nexodus-cert
     patch: |-
       - op: replace
-        path: /spec/dnsNames/0
-        value: qa.nexodus.io
-  - target:
-      kind: Certificate
-      name: nexodus-api-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: api.qa.nexodus.io
-  - target:
-      kind: Certificate
-      name: nexodus-auth-cert
-    patch: |-
-      - op: replace
-        path: /spec/dnsNames/0
-        value: auth.qa.nexodus.io
-
+        path: /spec/dnsNames
+        value:
+          - qa.nexodus.io
+          - api.qa.nexodus.io
+          - auth.qa.nexodus.io
   - patch: |-
       - op: replace
         path: /spec/rules/0/host

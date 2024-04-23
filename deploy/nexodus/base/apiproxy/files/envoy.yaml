@@ -31,7 +31,9 @@ static_resources:
 
     - name: auth
       connect_timeout: 5s
-      type: LOGICAL_DNS
+      type: STRICT_DNS
+      dns_refresh_rate: 1s
+      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
         cluster_name: auth
@@ -41,11 +43,7 @@ static_resources:
                   address:
                     socket_address:
                       address: auth
-                      port_value: 8443
-      transport_socket:
-        name: envoy.transport_sockets.tls
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+                      port_value: 8080
 
     # upstream server: apiserver
     - name: apiserver
@@ -197,6 +195,82 @@ static_resources:
 
       filter_chains:
         - filter_chain_match:
+            server_names: ["${APIPROXY_AUTH_DOMAIN}"]
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                # TODO: try to get dynamic loading of certs working...
+                # tls_certificate_sds_secret_configs:
+                #   name: nexodus-cert
+                #   sds_config:
+                #     path: /configs/envoy/sds_config.yaml
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.crt"
+                    private_key:
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.key"
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                use_remote_address: true
+                access_log:
+                  - name: envoy.access_loggers.file
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                      path: /dev/stdout
+
+                stat_prefix: auth
+                http_filters:
+
+                  # This is needed to enable the rate limiter:
+                  - name: envoy.filters.http.ratelimit
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+                      # domain: "%REQ(:authority)%"
+                      domain: "nexodus"
+                      failure_mode_deny: false
+                      timeout: 0.5s
+                      enable_x_ratelimit_headers: DRAFT_VERSION_03
+                      rate_limit_service:
+                        transport_api_version: V3
+                        grpc_service:
+                          envoy_grpc:
+                            cluster_name: ratelimiter
+
+                  # This is mandatory in order to have the HTTP routes above.
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+                route_config:
+                  name: auth
+                  virtual_hosts:
+                    - name: auth
+                      domains:
+                        - "${APIPROXY_AUTH_DOMAIN}"
+                      retry_policy:
+                        num_retries: 2
+                        retry_back_off:
+                          base_interval: 0.25s
+                          max_interval: 60s
+                        retry_on: 5xx,connect-failure,refused-stream
+                      routes:
+                        - name: default
+                          match:
+                            prefix: /
+                          route:
+                            timeout: 10s
+                            cluster: auth
+                            rate_limits:
+                              - actions:
+                                  - generic_key:
+                                      descriptor_key: resource_group
+                                      descriptor_value: auth
+
+        - filter_chain_match:
             server_names: ["${APIPROXY_WEB_DOMAIN}"]
           transport_socket:
             name: envoy.transport_sockets.tls
@@ -205,14 +279,14 @@ static_resources:
               common_tls_context:
                 # TODO: try to get dynamic loading of certs working...
                 # tls_certificate_sds_secret_configs:
-                #   name: nexodus-frontend-cert
+                #   name: nexodus-cert
                 #   sds_config:
                 #     path: /configs/envoy/sds_config.yaml
                 tls_certificates:
                   - certificate_chain:
-                      filename: "/configs/envoy-certs/nexodus-frontend-cert/tls.crt"
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.crt"
                     private_key:
-                      filename: "/configs/envoy-certs/nexodus-frontend-cert/tls.key"
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.key"
           filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
@@ -284,14 +358,14 @@ static_resources:
               common_tls_context:
                 # TODO: try to get dynamic loading of certs working...
                 # tls_certificate_sds_secret_configs:
-                #   name: nexodus-api-cert
+                #   name: nexodus-cert
                 #   sds_config:
                 #     path: /configs/envoy/sds_config.yaml
                 tls_certificates:
                   - certificate_chain:
-                      filename: "/configs/envoy-certs/nexodus-api-cert/tls.crt"
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.crt"
                     private_key:
-                      filename: "/configs/envoy-certs/nexodus-api-cert/tls.key"
+                      filename: "/configs/envoy-certs/nexodus-cert/tls.key"
           filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:

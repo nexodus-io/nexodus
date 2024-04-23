@@ -1,9 +1,9 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: nexodus-api-cert
+  name: nexodus-cert
 spec:
-  secretName: nexodus-api-cert
+  secretName: nexodus-cert
   duration: 2160h0m0s
   renewBefore: 360h0m0s
   subject:
@@ -17,7 +17,9 @@ spec:
     - server auth
     - client auth
   dnsNames:
+    - try.nexodus.127.0.0.1.nip.io
     - api.try.nexodus.127.0.0.1.nip.io
+    - auth.try.nexodus.127.0.0.1.nip.io
   issuerRef:
     name: nexodus-issuer
     kind: Issuer

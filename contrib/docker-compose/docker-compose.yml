@@ -1,0 +1,197 @@
+version: "3.7"
+name: nexodus
+networks:
+  nexodus:
+volumes:
+  db:
+
+services:
+  db:
+    container_name: nexodus_db
+    image: postgres:16-alpine
+    networks:
+      - nexodus
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/postgresql/data
+
+  ingress:
+    restart: unless-stopped
+    container_name: nexodus_ingress
+    networks:
+      - nexodus
+    depends_on:
+      - apiserver
+      - frontend
+      - auth
+    image: envoyproxy/envoy:v1.27.0
+    volumes:
+      - type: bind
+        source: ./volumes/ingress/certs
+        target: /configs/envoy-certs/nexodus-cert
+        read_only: true
+      - type: bind
+        source: ./volumes/envoy/config
+        target: /configs/envoy
+        read_only: true
+      - type: bind
+        source: ./volumes/envoy/sockets
+        target: /sockets
+    command:
+      - envoy
+      - --config-path
+      - /configs/envoy/envoy.yaml
+      - --component-log-level
+      - ${ENVOY_COMP_LOG_LEVEL}
+    ports:
+      - "443:8443"
+
+  frontend:
+    restart: unless-stopped
+    container_name: nexodus_frontend
+    networks:
+      - nexodus
+    build:
+      context: ../..
+      dockerfile: Containerfile.frontend
+
+  apiserver:
+    restart: unless-stopped
+    container_name: nexodus_apiserver
+    networks:
+      - nexodus
+    depends_on:
+      - db
+    # image: nexodus/nexodus:latest
+    build:
+      context: ../..
+      dockerfile: Containerfile.apiserver
+      args:
+        ARG NEXODUS_PPROF: ${NEXODUS_PPROF}
+        ARG NEXODUS_RACE_DETECTOR: ${NEXODUS_RACE_DETECTOR}
+    env_file:
+      - .env-keys
+    environment:
+      NEXAPI_LISTEN: 0.0.0.0:8080
+      NEXAPI_DEBUG: ${NEXAPI_DEBUG}
+      NEXAPI_DB_HOST: db
+      NEXAPI_DB_PORT: 5432
+      NEXAPI_DB_NAME: ${POSTGRES_DB}
+      NEXAPI_DB_USER: ${POSTGRES_USER}
+      NEXAPI_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      NEXAPI_DB_SSLMODE: ${POSTGRES_SSL_MODE}
+      NEXAPI_IPAM_URL: ${NEXAPI_IPAM_URL}
+      NEXAPI_OIDC_URL: ${NEXAPI_OIDC_URL}
+      NEXAPI_OIDC_BACKCHANNEL: ${NEXAPI_OIDC_BACKCHANNEL}
+      NEXAPI_INSECURE_TLS: ${NEXAPI_INSECURE_TLS}
+      NEXAPI_OIDC_CLIENT_ID_WEB: ${WEB_CLIENT_ID}
+      NEXAPI_OIDC_CLIENT_SECRET_WEB: ${WEB_CLIENT_SECRET}
+      NEXAPI_OIDC_CLIENT_ID_CLI: ${CLI_CLIENT_ID}
+      NEXAPI_TRACE_ENDPOINT_OTLP: ${NEXAPI_TRACE_ENDPOINT_OTLP}
+      NEXAPI_TRACE_INSECURE: ${NEXAPI_TRACE_INSECURE}
+      NEXAPI_FFLAG_SECURITY_GROUPS: ${NEXAPI_FFLAG_SECURITY_GROUPS}
+      NEXAPI_ORIGINS: ${NEXAPI_ORIGINS}
+      NEXAPI_DOMAIN: ${NEXAPI_DOMAIN}
+      NEXAPI_SCOPES: ${NEXAPI_SCOPES}
+      NEXAPI_REDIS_SERVER: ${NEXAPI_REDIS_SERVER}
+      NEXAPI_REDIS_DB: ${NEXAPI_REDIS_DB}
+      NEXAPI_ENVIRONMENT: ${NEXAPI_ENVIRONMENT}
+      NEXAPI_FETCH_MGR: ${NEXAPI_FETCH_MGR}
+      NEXAPI_FETCH_MGR_TIMEOUT: ${NEXAPI_FETCH_MGR_TIMEOUT}
+      NEXAPI_DEVICE_CACHE_SIZE: ${NEXAPI_DEVICE_CACHE_SIZE}
+      NEXAPI_URL: ${NEXAPI_URL}
+      NEXAPI_SMTP_FROM: ${NEXAPI_SMTP_FROM}
+      NEXAPI_SMTP_HOST_PORT: ${NEXAPI_SMTP_HOST_PORT}
+      NEXAPI_SMTP_PASSWORD: ${NEXAPI_SMTP_PASSWORD}
+      NEXAPI_SMTP_TLS: ${NEXAPI_SMTP_TLS}
+      NEXAPI_SMTP_USER: ${NEXAPI_SMTP_USER}
+      NEXAPI_FFLAG_DEVICES: ${NEXAPI_FFLAG_DEVICES}
+      NEXAPI_FFLAG_SITES: ${NEXAPI_FFLAG_SITES}
+    healthcheck:
+      test: curl --fail http://localhost:8080/private/ready || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 6
+    volumes:
+      - type: bind
+        source: ./volumes/apiserver/sockets
+        target: /var/lib/apiserver
+    ports:
+      - "2345:2345"
+    # comment the following line to disable remote debugging of the apiserver
+    command: /dlv --continue --listen=:2345 --api-version=2 --only-same-user=false --headless --accept-multiclient exec /apiserver
+
+  auth:
+    restart: unless-stopped
+    container_name: nexodus_auth
+    networks:
+      - nexodus
+    depends_on:
+      - db
+    image: quay.io/keycloak/keycloak:21.0.2
+    volumes:
+      - type: bind
+        source: ../../deploy/nexodus/base/auth/files/nexodus.json
+        target: /opt/keycloak/data/import/nexodus.json
+    environment:
+      KC_DB: "postgres"
+      KC_DB_URL_HOST: db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${POSTGRES_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_PROXY: "edge"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8080"
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      WEB_CLIENT_ID: ${WEB_CLIENT_ID}
+      WEB_CLIENT_SECRET: ${WEB_CLIENT_SECRET}
+      CLI_CLIENT_ID: ${CLI_CLIENT_ID}
+      FRONTEND_URL: ${FRONTEND_URL}
+      REDIRECT_URL: ${REDIRECT_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    command: [ "start", "--import-realm", "--features=preview", "--features=declarative-user-profile" ]
+
+  ipam:
+    restart: unless-stopped
+    container_name: nexodus_ipam
+    networks:
+      - nexodus
+    depends_on:
+      - db
+    build:
+      context: ../..
+      dockerfile: Containerfile.ipam
+    environment:
+      GOIPAM_PG_HOST: db
+      GOIPAM_PG_PORT: 5432
+      GOIPAM_PG_DBNAME: ${POSTGRES_DB}
+      GOIPAM_PG_USER: ${POSTGRES_USER}
+      GOIPAM_PG_PASSWORD: ${POSTGRES_PASSWORD}
+      GOIPAM_PG_SSLMODE: ${POSTGRES_SSL_MODE}
+    command:
+      - --grpc-server-endpoint=0.0.0.0:9090
+      - postgres
+
+  redis:
+    restart: unless-stopped
+    container_name: nexodus_redis
+    networks:
+      - nexodus
+    image: redis:6.0
+    command: [ "--maxmemory", "200mb", "--maxmemory-policy", "allkeys-lru", "--save", "" ]
+    volumes: []

@@ -21,7 +21,9 @@ RUN dnf update -qy && \
     dnf clean all -y &&\
     rm -rf /var/cache/yum
 
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
+ARG BUILD_PROFILE=dev
 ARG NEXODUS_PPROF=
 ARG NEXODUS_RACE_DETECTOR=
 
@@ -33,10 +35,12 @@ COPY . .
 RUN NOISY_BUILD=y \
     NEXODUS_RACE_DETECTOR=${NEXODUS_RACE_DETECTOR} \
     NEXODUS_PPROF=${NEXODUS_PPROF} \
+    NEXODUS_BUILD_PROFILE=$BUILD_PROFILE \
     make dist/apiserver
 
 FROM registry.access.redhat.com/ubi8/ubi
 
 COPY --from=build /src/dist/apiserver /apiserver
+COPY --chmod=755 --from=build /go/bin/dlv /dlv
 EXPOSE 8080
-ENTRYPOINT [ "/apiserver" ]
+CMD ["/apiserver"]

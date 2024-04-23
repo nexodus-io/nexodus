@@ -37,6 +37,11 @@ spec:
                 configMapKeyRef:
                   name: apiproxy
                   key: APIPROXY_WEB_DOMAIN
+            - name: APIPROXY_AUTH_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: apiproxy
+                  key: APIPROXY_AUTH_DOMAIN
             - name: APIPROXY_WEB_ORIGINS
               valueFrom:
                 configMapKeyRef:
@@ -92,11 +97,8 @@ spec:
               mountPath: /configs/envoy
             - name: envoy-unix-sockets
               mountPath: /sockets
-            - name: nexodus-api-cert
-              mountPath: "/configs/envoy-certs/nexodus-api-cert"
-              readOnly: true
-            - name: nexodus-frontend-cert
-              mountPath: "/configs/envoy-certs/nexodus-frontend-cert"
+            - name: nexodus-cert
+              mountPath: "/configs/envoy-certs/nexodus-cert"
               readOnly: true
 
           readinessProbe:
@@ -130,11 +132,7 @@ spec:
         - name: envoy-unix-sockets
           emptyDir:
             medium: Memory
-        - name: nexodus-api-cert
+        - name: nexodus-cert
           secret:
-            secretName: nexodus-api-cert
-            optional: false
-        - name: nexodus-frontend-cert
-          secret:
-            secretName: nexodus-frontend-cert
+            secretName: nexodus-cert
             optional: false
