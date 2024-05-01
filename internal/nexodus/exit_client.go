@@ -74,7 +74,7 @@ func nfAddExitSrcDestPortMangleRule(logger *zap.SugaredLogger, proto string, por
 	return nil
 }
 
-// nfAddExitSrcDestPortMangleRule adds a rule to the nftables mangle (alter) table that
+// nfAddExitSrcApiServerOOBMangleRule adds a rule to the nftables mangle (alter) table that
 // sets the mark 0x4B66 for OOB (out of band) packets sent to a specific port.
 func nfAddExitSrcApiServerOOBMangleRule(logger *zap.SugaredLogger, proto, apiServer string, port int) error {
 	if _, err := policyCmd(logger, []string{"add", "rule", "inet", nfOobMangleTable, "OUTPUT", "ip", "daddr", apiServer,

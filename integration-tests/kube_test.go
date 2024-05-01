@@ -76,7 +76,7 @@ func TestStoreStateInKubeFileSystem(t *testing.T) {
 
 }
 
-// TestProxyEgress tests that nexd proxy can be used with a single egress rule
+// TestStoreStateInKubeSecrets tests that nexd proxy can be used with a single egress rule
 func TestStoreStateInKubeSecrets(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
