@@ -167,7 +167,7 @@ func TestProxyEgressUDP(t *testing.T) {
 	wg.Wait()
 }
 
-// TestProxyEgress tests that nexd proxy can be used with multiple egress rules
+// TestProxyEgressMultipleRules tests that nexd proxy can be used with multiple egress rules
 func TestProxyEgressMultipleRules(t *testing.T) {
 	t.Parallel()
 	helper := NewHelper(t)
@@ -787,7 +787,7 @@ type testProxyLoadBalancerOpts struct {
 	flag           string
 }
 
-// TestProxyEgress tests that nexd proxy can load balance between multiple egress rules on the same listen port
+// testProxyLoadBalancer tests that nexd proxy can load balance between multiple egress rules on the same listen port
 func testProxyLoadBalancer(t *testing.T, opts testProxyLoadBalancerOpts) {
 
 	t.Parallel()
