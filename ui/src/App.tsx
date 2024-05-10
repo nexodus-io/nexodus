@@ -29,6 +29,7 @@ import {
   InvitationShow,
 } from "./pages/Invitations";
 import SecurityGroups from "./pages/SecurityGroups/SecurityGroups";
+import  GraphComponent from "./pages/Status";
 
 // components
 import { CustomMenu } from "./layout/Menus";
@@ -75,6 +76,7 @@ const App = () => {
       />
       <CustomRoutes>
         <Route path="/_security-groups" element={<SecurityGroups />} />
+        <Route path="/status" element={<GraphComponent />} />
       </CustomRoutes>
       <Resource
         name="security-groups"

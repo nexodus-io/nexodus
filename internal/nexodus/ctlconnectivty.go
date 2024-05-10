@@ -3,10 +3,20 @@ package nexodus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nexodus-io/nexodus/internal/api"
+
 	"net"
 
+	"github.com/nexodus-io/nexodus/internal/api"
+	"github.com/nexodus-io/nexodus/internal/client"
+
 	"go.uber.org/zap"
+
+	//"bytes"
+	//"net/http"
+	"context"
+	//"errors"
+	//"io"
+	//"net/http"
 )
 
 const (
@@ -80,6 +90,7 @@ func (nx *Nexodus) connectivityProbe(family string) api.PingPeersResponse {
 		})
 	}
 	res.Peers = nx.probeConnectivity(peersByKey, nx.logger)
+	fmt.Print(res.Peers)
 
 	return res
 }
@@ -130,5 +141,59 @@ func (nx *Nexodus) probeConnectivity(peersByKey map[string]api.KeepaliveStatus, 
 		}
 	}
 
+	_, err := nx.createStatusesOperation(peerConnResultsMap)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
 	return peerConnResultsMap
+}
+
+func (nx *Nexodus) createStatusesOperation(resultsMap map[string]api.KeepaliveStatus) (string, error) {
+
+	var err error
+
+	for _, status := range resultsMap {
+
+		hostname := status.Hostname
+		isReachable := status.IsReachable
+		latency := status.Latency
+		method := status.Method
+		wgip := status.WgIP
+
+		newStatus := client.ModelsAddStatus{
+			WgIp:        &wgip,
+			IsReachable: &isReachable,
+			Hostname:    &hostname,
+			Latency:     &latency,
+			Method:      &method,
+		}
+		_, _, err = nx.client.StatusesApi.CreateStatus(context.Background()).Status(newStatus).Execute()
+
+		if err != nil {
+			return "New status error", fmt.Errorf("error: %w", err)
+		}
+
+	}
+
+	return "", nil
+}
+
+func (nx *Nexodus) deleteStatusesOperation() (string, error) {
+	response, err := nx.client.StatusesApi.ApiStatusDelete(context.Background()).Execute()
+	if err != nil {
+		return "Delete status error", fmt.Errorf("error: %w", err)
+	}
+
+	if response != nil {
+		fmt.Print("", response)
+
+	}
+
+	// Return a custom error or the original error
+	//return "", fmt.Errorf("failed to delete statuses: %v", err)
+
+	// If the operation is successful
+	return "Statuses successfully deleted", nil
 }

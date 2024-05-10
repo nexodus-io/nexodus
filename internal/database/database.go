@@ -3,6 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
+
+	"sort"
+
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231031_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231106_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231107_0000"
@@ -15,8 +18,7 @@ import (
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231206_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20231211_0000"
 	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240221_0000"
-	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240227_0000"
-	"sort"
+	_ "github.com/nexodus-io/nexodus/internal/database/migration_20240312_0000"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-gormigrate/gormigrate/v2"
