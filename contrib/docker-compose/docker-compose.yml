@@ -27,8 +27,8 @@ services:
         target: /var/lib/postgresql/data
 
   ingress:
-    restart: unless-stopped
     container_name: nexodus_ingress
+    restart: unless-stopped
     networks:
       - nexodus
     depends_on:
@@ -58,8 +58,8 @@ services:
       - "443:8443"
 
   frontend:
-    restart: unless-stopped
     container_name: nexodus_frontend
+    restart: unless-stopped
     networks:
       - nexodus
     build:
@@ -67,8 +67,8 @@ services:
       dockerfile: Containerfile.frontend
 
   apiserver:
-    restart: unless-stopped
     container_name: nexodus_apiserver
+    restart: unless-stopped
     networks:
       - nexodus
     depends_on:
@@ -133,8 +133,8 @@ services:
     command: /dlv --continue --listen=:2345 --api-version=2 --only-same-user=false --headless --accept-multiclient exec /apiserver
 
   auth:
-    restart: unless-stopped
     container_name: nexodus_auth
+    restart: unless-stopped
     networks:
       - nexodus
     depends_on:
@@ -167,8 +167,8 @@ services:
     command: [ "start", "--import-realm", "--features=preview", "--features=declarative-user-profile" ]
 
   ipam:
-    restart: unless-stopped
     container_name: nexodus_ipam
+    restart: unless-stopped
     networks:
       - nexodus
     depends_on:
@@ -188,10 +188,18 @@ services:
       - postgres
 
   redis:
-    restart: unless-stopped
     container_name: nexodus_redis
+    restart: unless-stopped
     networks:
       - nexodus
     image: redis:6.0
     command: [ "--maxmemory", "200mb", "--maxmemory-policy", "allkeys-lru", "--save", "" ]
-    volumes: []
+
+  mailcatch:
+    container_name: nexodus_mailcatch
+    image: sj26/mailcatcher:v0.9.0
+    restart: unless-stopped
+    ports:
+      - "1080:1080"
+    networks:
+      - nexodus

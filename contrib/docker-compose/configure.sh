@@ -4,6 +4,8 @@ cd $(dirname "$0")
 
 if [[ ! -f .env  || "${1}" == "--force" ]] ; then
   cp example.env .env
+else
+  echo "File .env already exists. Use --force to overwrite."
 fi
 
 set -o allexport
@@ -35,5 +37,5 @@ cat ../../deploy/nexodus/base/apiproxy/files/envoy.yaml | \
 
 echo "Done.... now run:"
 echo
-echo "   docker-compose up -d"
+echo "   docker compose up -d"
 echo

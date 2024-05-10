@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mailcatch
+spec:
+  rules:
+    - host: mailcatch.try.nexodus.127.0.0.1.nip.io
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: mailcatch
+                port:
+                  number: 1080

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailcatch
+  labels:
+    app: mailcatch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mailcatch
+  template:
+    metadata:
+      labels:
+        app: mailcatch
+    spec:
+      containers:
+        - name: mailcatch
+          image: "sj26/mailcatcher:v0.9.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 1080
+              protocol: TCP
+            - name: smtp
+              containerPort: 1025
+              protocol: TCP
