@@ -2,11 +2,12 @@ package migration_20231114_0000
 
 import (
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/google/uuid"
 	. "github.com/nexodus-io/nexodus/internal/database/migrations"
 	"gorm.io/gorm"
-	"os"
-	"time"
 )
 
 type Base struct {
@@ -70,13 +71,24 @@ type RegKey struct {
 	ExpiresAt      *time.Time `json:"expires_at,omitempty"` // ExpiresAt is optional, if set the registration key is only valid until the ExpiresAt time.
 }
 
+type Status struct {
+	Base
+	OwnerID     uuid.UUID `json:"owner_id,omitempty"`
+	WgIP        string
+	IsReachable bool
+	Description string `json:"description"`
+	Hostname    string
+	Latency     string
+	Method      string
+}
+
 const (
 	defaultIPAMv4Cidr = "100.64.0.0/10"
 	defaultIPAMv6Cidr = "200::/64"
 )
 
 func init() {
-	migrationId := "20231114-0000"
+	migrationId := "20231114-00001"
 	CreateMigrationFromActions(migrationId,
 		func(tx *gorm.DB, apply bool) error {
 			if !(apply && os.Getenv("NEXAPI_ENVIRONMENT") == "development") {

@@ -7,6 +7,7 @@ import InvitationIcon from "@mui/icons-material/Rsvp";
 import RegKeyIcon from "@mui/icons-material/Key";
 import VPCIcon from "@mui/icons-material/Cloud";
 import ServiceNetworkIcon from "@mui/icons-material/Cloud";
+import HubIcon from "@mui/icons-material/Hub";
 import { useFlags } from "../common/FlagsContext";
 
 export const CustomMenu = (props: MenuProps) => {
@@ -35,6 +36,9 @@ export const CustomMenu = (props: MenuProps) => {
           leftIcon={<DeviceIcon />}
         />
       )}
+
+      <MenuItemLink to="/status" primaryText="Graph" leftIcon={<HubIcon />} />
+
       {flags["security-groups"] && (
         <MenuItemLink
           to="/_security-groups"

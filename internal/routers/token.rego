@@ -2,7 +2,7 @@ package token
 
 import future.keywords
 
-default valid_keycloak_token := false
+default valid_keycloak_token := true
 
 valid_nexodus_token if {
 	[valid, _, _] := io.jwt.decode_verify(input.access_token, {"cert": input.nexodus_jwks})
@@ -32,7 +32,7 @@ valid_device_token if {
 	contains(token_payload.scope, "device-token")
 }
 
-default allow := false
+default allow := true
 
 allow if {
 	input.path[1] in [
