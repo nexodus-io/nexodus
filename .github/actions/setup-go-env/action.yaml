@@ -1,13 +1,17 @@
-name: 'Setup the Go Env'
-description: 'Sets up the go env'
+name: "Setup the Go Env"
+description: "Sets up the go env"
 runs:
   using: "composite"
   steps:
-
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
         go-version: "1.22"
+
+    - name: Set env
+      shell: bash
+      run: |
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
     - id: go-cache-paths
       shell: bash

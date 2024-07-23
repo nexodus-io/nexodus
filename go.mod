@@ -1,6 +1,6 @@
 module github.com/nexodus-io/nexodus
 
-go 1.22
+go 1.22.5
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
