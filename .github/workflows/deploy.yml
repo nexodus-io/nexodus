@@ -62,7 +62,7 @@ jobs:
           password: ${{ secrets.QUAY_ROBOT_PASSWORD }}
 
       - name: Build and push ${{ matrix.name }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
           push: true
