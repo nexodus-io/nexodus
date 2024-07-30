@@ -13,7 +13,7 @@ require (
 	github.com/coredns/coredns v1.11.1
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/cucumber/godog v0.14.0
-	github.com/docker/docker v25.0.3+incompatible // 24.0 branch
+	github.com/docker/docker v26.1.4+incompatible // 24.0 branch
 	github.com/dustin/go-humanize v1.0.1
 	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
 	github.com/emersion/go-smtp v0.20.2
@@ -161,6 +161,7 @@ require (
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
