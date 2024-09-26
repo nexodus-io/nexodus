@@ -5,6 +5,7 @@ resources:
   - issuer.yaml
 components:
   - ../../components/promtail
+  - ../../components/mailcatch
 # Uncomment this to enable rate limiting
 #  - ../../components/limitador
 namespace: nexodus
